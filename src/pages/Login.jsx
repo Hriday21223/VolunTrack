@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 import Card from '@/components/Card.jsx'
@@ -17,6 +17,7 @@ export default function Login() {
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [showCredential, setShowCredential] = useState(false)
   const [toast, setToast] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -235,16 +236,25 @@ export default function Login() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <input
                         id="credential"
-                        type="password"
+                        type={showCredential ? 'text' : 'password'}
                         required
                         autoComplete={mode === 'pin' ? 'one-time-code' : 'current-password'}
                         inputMode={mode === 'pin' ? 'numeric' : 'text'}
                         pattern={mode === 'pin' ? '[0-9]*' : undefined}
-                        className="input pl-9 bg-slate-900/80 text-white border-white/10"
+                        className="input pl-9 pr-10 bg-slate-900/80 text-white border-white/10"
                         placeholder={mode === 'pin' ? '••••' : '••••••••'}
                         value={mode === 'pin' ? pin : password}
                         onChange={(e) => (mode === 'pin' ? setPin(e.target.value) : setPassword(e.target.value))}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowCredential((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        tabIndex={-1}
+                        title={showCredential ? 'Hide' : 'Show'}
+                      >
+                        {showCredential ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
                 )}

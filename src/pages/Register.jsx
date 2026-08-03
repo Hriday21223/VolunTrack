@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check } from 'lucide-react'
+import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check, Users } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -17,6 +17,12 @@ const ROLES = [
     label: "I'm a Volunteer Task Maker",
     description: 'Post volunteer opportunities, manage signups, and log hours for your team.',
     icon: Hand,
+  },
+  {
+    id: 'parent',
+    label: "I'm a Parent",
+    description: "Follow your child's logged volunteer hours and verification status — read only. Ask your child for their link code in Settings → Family to get started.",
+    icon: Users,
   },
 ]
 

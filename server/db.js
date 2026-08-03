@@ -19,6 +19,13 @@ export function getPool() {
       // Managed Postgres (Render/Neon/etc.) requires TLS; local dev does not.
       ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false },
     })
+    // Managed Postgres (e.g. Neon) closes idle connections; without this
+    // listener that surfaces as an unhandled 'error' event that crashes the
+    // whole process. A dropped idle client is not fatal — pg-pool discards
+    // it and opens a new one on the next query.
+    pool.on('error', (err) => {
+      console.error('Postgres pool idle client error:', err.message)
+    })
   }
   return pool
 }
@@ -140,6 +147,30 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
   message     TEXT NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS supervisor_verifications (
+  id               TEXT PRIMARY KEY,
+  token            TEXT UNIQUE NOT NULL,
+  student_name     TEXT NOT NULL,
+  supervisor_name  TEXT,
+  supervisor_email TEXT NOT NULL,
+  activity         TEXT NOT NULL,
+  hours            NUMERIC NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  responded_at     TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_supervisor_verifications_token ON supervisor_verifications(token);
+
+CREATE TABLE IF NOT EXISTS parent_child_links (
+  parent_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  child_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (parent_id, child_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_parent_child_links_child ON parent_child_links(child_id);
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
@@ -161,5 +192,36 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS backup_codes TEXT`) } catch {}
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS student_email TEXT`) } catch {}
+
+  // Parent portal
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS child_link_code TEXT UNIQUE`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_name TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_email TEXT`) } catch {}
+  try {
+    await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none','pending','approved','rejected'))`)
+  } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS verification_token TEXT UNIQUE`) } catch {}
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS log_id TEXT REFERENCES logs(id) ON DELETE SET NULL`) } catch {}
+
+  // Widen the role CHECK constraint to allow 'parent'. This is the first
+  // migration that modifies an existing constraint rather than adding a
+  // column, so the constraint name is looked up dynamically instead of
+  // assumed, then dropped and recreated — idempotent across boots.
+  try {
+    await query(`
+      DO $$
+      DECLARE cname text;
+      BEGIN
+        SELECT conname INTO cname FROM pg_constraint
+          WHERE conrelid = 'users'::regclass AND contype = 'c'
+            AND pg_get_constraintdef(oid) ILIKE '%role%IN%';
+        IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
+        ALTER TABLE users ADD CONSTRAINT users_role_check
+          CHECK (role IN ('admin','school','student','volunteer','parent'));
+      END $$;
+    `)
+  } catch (error) { console.error('role constraint migration failed:', error) }
+
   return true
 }

@@ -20,8 +20,8 @@ export default function ReviewPopup() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-[#0f1813] p-8 shadow-soft text-white">
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1813] p-6 sm:p-8 shadow-soft text-white max-h-[85vh] overflow-y-auto">
         <div className="text-center">
           <div className="w-14 h-14 rounded-full bg-brand-900/40 border border-brand-700/30 grid place-items-center mx-auto mb-4">
             <Heart className="w-7 h-7 text-brand-400" />

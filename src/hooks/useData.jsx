@@ -1,8 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { listLogs, createLog, updateLog, deleteLog,
          listGoals, upsertGoal, deleteGoal,
          getEarned, markEarned, getReviews, saveReview } from '@/api/index.js'
 import { evaluateAchievements } from '@/lib/achievements.js'
+import { getVerificationStatus } from '@/lib/supervisorNotify.js'
+import { syncCreateLog, syncUpdateLog, syncDeleteLog } from '@/lib/logSync.js'
 
 const DataContext = createContext(null)
 
@@ -30,23 +32,54 @@ export function DataProvider({ children }) {
     const log = createLog(data)
     setLogs((prev) => {
       const next = [log, ...prev]
-      const total = next.reduce((s, l) => s + (Number(l.hours) || 0), 0)
-      if (total >= 10 && getReviews().length === 0) {
+      if (next.length >= 1 && getReviews().length === 0) {
         setShowReview(true)
       }
       return next
     })
-    return log
+    // Write-through to the server for signed-in accounts, so a linked
+    // parent can see it. Best-effort — a pre-existing local log created
+    // before this synced never gets a serverId, and that's fine (no
+    // backfill of history predating this feature).
+    const whenSynced = syncCreateLog(log).then((serverId) => {
+      if (serverId) {
+        updateLog(log.id, { serverId }) // raw local write, doesn't re-trigger sync
+        setLogs((prev) => prev.map((l) => (l.id === log.id ? { ...l, serverId } : l)))
+      }
+      return serverId
+    })
+    return { ...log, whenSynced }
   }, [])
   const editLog = useCallback((id, patch) => {
     const log = updateLog(id, patch)
-    if (log) setLogs((prev) => prev.map((l) => (l.id === id ? log : l)))
+    if (log) {
+      setLogs((prev) => prev.map((l) => (l.id === id ? log : l)))
+      if (log.serverId) syncUpdateLog(log.serverId, patch)
+    }
     return log
   }, [])
+
+  // Once per session, check any logs still awaiting a supervisor's response
+  // and pick up their approve/reject decision.
+  const checkedVerifications = useRef(false)
+  useEffect(() => {
+    if (checkedVerifications.current) return
+    checkedVerifications.current = true
+    const pending = listLogs().filter((l) => l.verificationStatus === 'pending' && l.verificationToken)
+    pending.forEach(async (l) => {
+      const result = await getVerificationStatus(l.verificationToken)
+      if (result && (result.status === 'approved' || result.status === 'rejected')) {
+        const log = updateLog(l.id, { verificationStatus: result.status, verified: result.status === 'approved' })
+        if (log) setLogs((prev) => prev.map((x) => (x.id === l.id ? log : x)))
+      }
+    })
+  }, [])
   const removeLog = useCallback((id) => {
+    const target = logs.find((l) => l.id === id)
     deleteLog(id)
     setLogs((prev) => prev.filter((l) => l.id !== id))
-  }, [])
+    if (target?.serverId) syncDeleteLog(target.serverId)
+  }, [logs])
 
   const saveGoal = useCallback((g) => {
     const next = upsertGoal(g)

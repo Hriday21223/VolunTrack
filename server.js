@@ -6,9 +6,11 @@ import dotenv from 'dotenv'
 import nodemailer from 'nodemailer'
 import { initSchema, hasDatabase, query } from './server/db.js'
 import { authenticate, hashPassword } from './server/auth.js'
-import { uid } from './server/ids.js'
+import { uid, generateToken } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import schoolRoutes from './server/routes/school.js'
+import logsRoutes from './server/routes/logs.js'
+import parentRoutes from './server/routes/parent.js'
 
 dotenv.config()
 
@@ -52,6 +54,8 @@ app.use(authenticate)
 // Server-backed accounts & (later) school dashboards.
 app.use('/api/auth', apiLimiter, authRoutes)
 app.use('/api/school', apiLimiter, schoolRoutes)
+app.use('/api/logs', apiLimiter, logsRoutes)
+app.use('/api/parent', apiLimiter, parentRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
@@ -311,6 +315,198 @@ app.post('/api/contact', emailLimiter, async (req, res) => {
   } catch (error) {
     console.error('Contact email failed:', error)
     return res.status(500).json({ error: 'Failed to send message.' })
+  }
+})
+
+app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
+  const { supervisorEmail, supervisorName, studentName, studentEmail, hours, activity, signupUrl, logId } = req.body
+
+  if (!supervisorEmail || typeof supervisorEmail !== 'string' || !supervisorEmail.includes('@') || supervisorEmail.length > 254) {
+    return res.status(400).json({ error: 'Invalid supervisor email.' })
+  }
+  if (!studentName || typeof studentName !== 'string' || studentName.length > 100) {
+    return res.status(400).json({ error: 'Invalid student name.' })
+  }
+  if (studentEmail && (typeof studentEmail !== 'string' || !studentEmail.includes('@') || studentEmail.length > 254)) {
+    return res.status(400).json({ error: 'Invalid student email.' })
+  }
+  if (!activity || typeof activity !== 'string' || activity.length > 200) {
+    return res.status(400).json({ error: 'Invalid activity.' })
+  }
+  const hoursNum = Number(hours)
+  if (!Number.isFinite(hoursNum) || hoursNum <= 0) {
+    return res.status(400).json({ error: 'Invalid hours.' })
+  }
+  if (!signupUrl || typeof signupUrl !== 'string' || signupUrl.length > 500) {
+    return res.status(400).json({ error: 'Invalid signup URL.' })
+  }
+
+  const { transport, missing } = transporter()
+  if (!transport) {
+    return res.status(503).json({
+      error: 'Email backend is not configured.',
+      missingVars: missing,
+    })
+  }
+
+  // Only when a DB is available can we hold tamper-proof verification state
+  // (the student's browser can't be trusted to self-report "verified").
+  let token = null
+  if (hasDatabase()) {
+    token = generateToken()
+    try {
+      await query(
+        `INSERT INTO supervisor_verifications (id, token, student_name, student_email, supervisor_name, supervisor_email, activity, hours)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [uid('sv'), token, studentName, studentEmail || null, supervisorName || null, supervisorEmail, activity, hoursNum],
+      )
+    } catch (error) {
+      console.error('Could not create supervisor verification record:', error)
+      token = null
+    }
+  }
+
+  // If this log was already synced to the server (the caller is
+  // authenticated and owns it), link the verification token onto that log
+  // row so a parent's read-only view can see the outcome later. Never trust
+  // an unverified logId from the request body.
+  if (token && logId && req.auth) {
+    try {
+      const { rows: logRows } = await query('SELECT user_id FROM logs WHERE id = $1', [logId])
+      if (logRows.length && logRows[0].user_id === req.auth.sub) {
+        await query('UPDATE logs SET verification_token = $1, verification_status = $2 WHERE id = $3', [token, 'pending', logId])
+        await query('UPDATE supervisor_verifications SET log_id = $1 WHERE token = $2', [logId, token])
+      }
+    } catch (error) {
+      console.error('Could not link verification to log:', error)
+    }
+  }
+
+  let verifyUrl = null
+  if (token) {
+    try {
+      const u = new URL(signupUrl)
+      u.pathname = u.pathname.replace(/\/register\/?$/, '/verify-hours')
+      u.search = `?token=${token}`
+      verifyUrl = u.toString()
+    } catch {
+      token = null
+    }
+  }
+
+  const safeStudent = escapeHtml(studentName)
+  const safeActivity = escapeHtml(activity)
+  const safeSupervisorName = supervisorName ? escapeHtml(supervisorName) : ''
+  const safeSignupUrl = escapeHtml(signupUrl)
+  const safeVerifyUrl = verifyUrl ? escapeHtml(verifyUrl) : null
+  const greeting = safeSupervisorName ? `Hi ${safeSupervisorName},` : 'Hi,'
+
+  const text = `${supervisorName ? `Hi ${supervisorName},` : 'Hi,'}\n\n`
+    + `${studentName} logged ${hoursNum} hour(s) for "${activity}" and listed you as their supervisor on VolunTrack.\n\n`
+    + (verifyUrl
+      ? `Please review and approve or reject these hours: ${verifyUrl}\n\n`
+      : '')
+    + `Sign up for a free VolunTrack account: ${signupUrl}`
+
+  const html = `
+    <p>${greeting}</p>
+    <p><strong>${safeStudent}</strong> logged <strong>${hoursNum}</strong> hour(s) for "${safeActivity}" and listed you as their supervisor on VolunTrack.</p>
+    ${safeVerifyUrl ? `
+    <p style="margin-top:24px">
+      <a href="${safeVerifyUrl}" style="display:inline-block;padding:10px 20px;background:#3f8344;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Review these hours</a>
+    </p>` : ''}
+    <p style="margin-top:16px">
+      <a href="${safeSignupUrl}" style="color:#3f8344;font-weight:600">Or sign up for your own VolunTrack account</a>
+    </p>`
+
+  try {
+    await transport.sendMail({
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to: supervisorEmail,
+      subject: 'You were listed as a supervisor on VolunTrack',
+      text,
+      html,
+    })
+    return res.status(200).json({ ok: true, token })
+  } catch (error) {
+    console.error('Supervisor notification email failed:', error)
+    return res.status(500).json({ error: 'Failed to send notification.' })
+  }
+})
+
+app.get('/api/verify-hours/:token', async (req, res) => {
+  if (!hasDatabase()) return res.status(404).json({ error: 'Not available.' })
+  const { token } = req.params
+  try {
+    const { rows } = await query(
+      'SELECT student_name, supervisor_name, activity, hours, status FROM supervisor_verifications WHERE token = $1',
+      [token],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Verification link not found.' })
+    const row = rows[0]
+    return res.json({
+      studentName: row.student_name,
+      supervisorName: row.supervisor_name,
+      activity: row.activity,
+      hours: Number(row.hours),
+      status: row.status,
+    })
+  } catch (error) {
+    console.error('Fetch verification failed:', error)
+    return res.status(500).json({ error: 'Could not look up verification.' })
+  }
+})
+
+app.post('/api/verify-hours/:token/:action', async (req, res) => {
+  if (!hasDatabase()) return res.status(404).json({ error: 'Not available.' })
+  const { token, action } = req.params
+  if (action !== 'approve' && action !== 'reject') {
+    return res.status(400).json({ error: 'Invalid action.' })
+  }
+  try {
+    const { rows } = await query(
+      'SELECT status, student_email, student_name, supervisor_name, activity, hours FROM supervisor_verifications WHERE token = $1',
+      [token],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Verification link not found.' })
+
+    // Idempotent: the first response wins, further clicks/reopens don't change it.
+    if (rows[0].status !== 'pending') {
+      return res.json({ status: rows[0].status })
+    }
+
+    const newStatus = action === 'approve' ? 'approved' : 'rejected'
+    await query(
+      'UPDATE supervisor_verifications SET status = $1, responded_at = now() WHERE token = $2',
+      [newStatus, token],
+    )
+    // No-op if this token was never linked to a synced log (e.g. the
+    // student wasn't signed into a server-backed account when they logged
+    // the hours) — a parent simply won't see the status for that log.
+    await query('UPDATE logs SET verification_status = $1 WHERE verification_token = $2', [newStatus, token])
+
+    // Best-effort: let the student know the outcome. Never fails the response.
+    const row = rows[0]
+    if (row.student_email) {
+      const { transport } = transporter()
+      if (transport) {
+        const verb = newStatus === 'approved' ? 'approved' : 'rejected'
+        const who = row.supervisor_name ? escapeHtml(row.supervisor_name) : 'Your supervisor'
+        const safeActivity = escapeHtml(row.activity)
+        transport.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to: row.student_email,
+          subject: `Your supervisor ${verb} your VolunTrack hours`,
+          text: `${row.supervisor_name || 'Your supervisor'} ${verb} the ${row.hours} hour(s) you logged for "${row.activity}".`,
+          html: `<p><strong>${who}</strong> ${verb} the <strong>${row.hours}</strong> hour(s) you logged for "${safeActivity}".</p>`,
+        }).catch((error) => console.error('Student outcome email failed:', error))
+      }
+    }
+
+    return res.json({ status: newStatus })
+  } catch (error) {
+    console.error('Update verification failed:', error)
+    return res.status(500).json({ error: 'Could not update verification.' })
   }
 })
 

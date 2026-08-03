@@ -1,0 +1,4 @@
+#Sat Jul 11 16:21:32 CDT 2026
+base.0=/Users/hridaykarnatam/VolunteerTrack/android/app/build/intermediates/dex/release/mergeDexRelease/classes.dex
+path.0=classes.dex
+renamed.0=classes.dex

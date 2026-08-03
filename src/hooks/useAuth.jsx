@@ -41,22 +41,33 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = useCallback(async (email, password) => {
-    // Try backend API first
+    // Try backend API first. Only a genuinely unreachable backend (the
+    // fetch itself throwing — offline, static-host demo, etc.) falls back
+    // to the local-only account. A real response from the backend (wrong
+    // password, unknown email, etc.) must surface as a real error instead
+    // of silently retrying against a local account that may not match —
+    // that used to mask real failures and leave the session with no auth
+    // token, breaking every server-backed feature with no explanation.
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    let response
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/auth/login`, {
+      response = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ email, password })
       })
-      
+    } catch {
+      response = null
+    }
+
+    if (response) {
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json().catch(() => ({}))
         throw new Error(error.error || 'Login failed')
       }
-      
+
       const data = await response.json()
 
       // 2FA required — return temp token for the TOTP challenge step
@@ -66,21 +77,21 @@ export function AuthProvider({ children }) {
 
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', data.token)
-      
+
       // Store user session
       write(SESSION_KEY, data.user)
       setUser(data.user)
       return data.user
-    } catch {
-      // Fallback to local storage for demo mode
-      const account = findUserByEmail(email)
-      if (!account) throw new Error('No account with that email.')
-      if (!verifyPassword(account, password)) throw new Error('Incorrect password.')
-      const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = account
-      write(SESSION_KEY, safe)
-      setUser(safe)
-      return safe
     }
+
+    // Backend unreachable — fall back to local storage for demo mode.
+    const account = findUserByEmail(email)
+    if (!account) throw new Error('No account with that email.')
+    if (!verifyPassword(account, password)) throw new Error('Incorrect password.')
+    const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = account
+    write(SESSION_KEY, safe)
+    setUser(safe)
+    return safe
   }, [])
 
   const verifyTotp = useCallback(async (tempToken, code) => {
@@ -220,39 +231,47 @@ export function AuthProvider({ children }) {
   }, [])
 
   const register = useCallback(async (data) => {
-    // Try backend API first
+    // See login()'s comment — only a genuinely unreachable backend falls
+    // back to a local-only account. A real backend response (e.g. "email
+    // already exists") must surface as a real error, not silently create a
+    // token-less local account instead.
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    let response
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/auth/register`, {
+      response = await fetch(`${apiUrl}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
       })
-      
+    } catch {
+      response = null
+    }
+
+    if (response) {
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json().catch(() => ({}))
         throw new Error(error.error || 'Registration failed')
       }
-      
+
       const result = await response.json()
 
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', result.token)
-      
+
       // Store user session
       write(SESSION_KEY, result.user)
       setUser(result.user)
       return result.user
-    } catch {
-      // Fallback to local storage for demo mode
-      const account = createUser(data)
-      const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = account
-      write(SESSION_KEY, safe)
-      setUser(safe)
-      return safe
     }
+
+    // Backend unreachable — fall back to local storage for demo mode.
+    const account = createUser(data)
+    const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = account
+    write(SESSION_KEY, safe)
+    setUser(safe)
+    return safe
   }, [])
 
   const logout = useCallback(() => {

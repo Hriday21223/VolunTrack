@@ -1,0 +1,10 @@
+{
+	"appId": "com.voluntrack.voluntrack",
+	"appName": "VolunTrack",
+	"webDir": "dist",
+	"plugins": {
+		"CapacitorUpdater": {
+			"appId": "com.voluntrack.voluntrack"
+		}
+	}
+}

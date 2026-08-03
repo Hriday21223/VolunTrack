@@ -45,7 +45,7 @@ export default function AppLayout({ children, title, subtitle, action }) {
 
         <div className="flex-1 min-w-0 flex flex-col">
           <header className="sticky top-0 z-20 border-b border-earth-900/80 bg-[#071117]/90 backdrop-blur md:px-8">
-            <div className="px-4 md:px-8 py-4 flex items-center gap-3">
+            <div className="px-4 md:px-8 py-4 flex flex-wrap items-center gap-3">
               <button
                 className="md:hidden p-2 -ml-2 rounded-lg text-earth-200 hover:bg-white/10"
                 onClick={() => setDrawerOpen(true)}

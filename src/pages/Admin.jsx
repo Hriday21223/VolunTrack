@@ -276,14 +276,6 @@ export default function Admin() {
         </div>
       }
     >
-      <Card className="mb-4">
-        <div className="text-center py-3">
-          <a href="https://groups.google.com/g/volunteertrack" target="_blank" rel="noreferrer" className="text-sm text-brand-700 dark:text-brand-300 hover:underline font-medium">
-            VolunteerTrack Google Group →
-          </a>
-        </div>
-      </Card>
-
       {tab === 'reviews' ? (
         reviews.length === 0 ? (
           <Card>

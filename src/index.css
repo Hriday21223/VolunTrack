@@ -4,6 +4,9 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
+  /* Safety net: nothing should force page-wide horizontal scroll on a
+     narrow phone screen even if a specific element overflows. */
+  html, body { @apply overflow-x-hidden; }
   body {
     @apply bg-earth-50 text-earth-900 font-sans antialiased;
   }
@@ -25,6 +28,10 @@
                             dark:bg-[#15211b] dark:border-[#243529] dark:text-earth-100 dark:hover:bg-[#1b2a22]; }
   .btn-ghost    { @apply btn text-earth-700 hover:bg-earth-100 dark:text-earth-200 dark:hover:bg-[#1b2a22]; }
   .btn-danger   { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  /* Compact variant for tight header rows — combine with a color variant,
+     e.g. `btn-sm btn-primary`. Declared after the color variants so its
+     smaller padding/text-size wins the cascade over `.btn`'s defaults. */
+  .btn-sm       { @apply btn px-3 py-1.5 text-sm gap-1.5; }
 
   .card {
     @apply bg-white border border-earth-100 rounded-2xl shadow-card

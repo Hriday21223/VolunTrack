@@ -4,63 +4,74 @@ import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, 
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
+// Labels here match Sidebar.jsx exactly (same route, same label) so the
+// nav doesn't appear to rename itself between desktop and mobile. "Log"
+// also lives in the floating FAB below for quick access, but still gets a
+// labeled entry here since the FAB alone has no room for text.
 const CORE_ITEMS = {
   student: [
-    { to: '/',             label: 'Home',          icon: Home },
+    { to: '/',             label: 'Dashboard',     icon: Home },
     { to: '/?view=nearby', label: 'Opportunities', icon: MapPin },
-    { to: '/log',          label: 'Log',           icon: Clock, isPrimary: true },
+    { to: '/log',          label: 'Log Hours',           icon: Clock },
     { to: '/profile',      label: 'Profile',       icon: User },
     { to: '/settings',     label: 'Settings',      icon: Settings },
   ],
   volunteer: [
-    { to: '/',             label: 'Home',     icon: Home },
-    { to: '/my-tasks',     label: 'Tasks',    icon: ClipboardList },
-    { to: '/log',          label: 'Log',      icon: Clock, isPrimary: true },
-    { to: '/profile',      label: 'Profile',  icon: User },
-    { to: '/settings',     label: 'Settings', icon: Settings },
+    { to: '/',             label: 'Dashboard', icon: Home },
+    { to: '/my-tasks',     label: 'Tasks',     icon: ClipboardList },
+    { to: '/log',          label: 'Log Hours',       icon: Clock },
+    { to: '/profile',      label: 'Profile',   icon: User },
+    { to: '/settings',     label: 'Settings',  icon: Settings },
   ],
   school: [
-    { to: '/',             label: 'Home',     icon: Home },
+    { to: '/',             label: 'Dashboard', icon: Home },
     { to: '/school/dashboard', label: 'School', icon: School },
-    { to: '/log',          label: 'Log',      icon: Clock, isPrimary: true },
-    { to: '/profile',      label: 'Profile',  icon: User },
-    { to: '/settings',     label: 'Settings', icon: Settings },
+    { to: '/log',          label: 'Log Hours',       icon: Clock },
+    { to: '/profile',      label: 'Profile',   icon: User },
+    { to: '/settings',     label: 'Settings',  icon: Settings },
   ],
   admin: [
-    { to: '/',             label: 'Home',     icon: Home },
-    { to: '/admin',        label: 'Admin',    icon: Shield },
-    { to: '/log',          label: 'Log',      icon: Clock, isPrimary: true },
-    { to: '/profile',      label: 'Profile',  icon: User },
-    { to: '/settings',     label: 'Settings', icon: Settings },
+    { to: '/',             label: 'Dashboard', icon: Home },
+    { to: '/admin',        label: 'Admin',     icon: Shield },
+    { to: '/log',          label: 'Log Hours',       icon: Clock },
+    { to: '/profile',      label: 'Profile',   icon: User },
+    { to: '/settings',     label: 'Settings',  icon: Settings },
+  ],
+  parent: [
+    { to: '/parent',       label: 'Dashboard', icon: Home },
+    { to: '/settings',     label: 'Settings',  icon: Settings },
   ],
 }
 
 const MORE_ITEMS = {
   student: [
-    { to: '/calendar',     label: 'Calendar', icon: Calendar },
-    { to: '/achievements', label: 'Awards',   icon: Trophy },
-    { to: '/reports',      label: 'Reports',  icon: FileText },
-    { to: '/help',         label: 'Help',     icon: HelpCircle },
-    { to: '/status',       label: 'Status',   icon: Activity },
+    { to: '/calendar',     label: 'Calendar',      icon: Calendar },
+    { to: '/achievements', label: 'Achievements',  icon: Trophy },
+    { to: '/reports',      label: 'Reports',       icon: FileText },
+    { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/status',       label: 'System Status', icon: Activity },
   ],
   volunteer: [
-    { to: '/calendar',     label: 'Calendar', icon: Calendar },
-    { to: '/achievements', label: 'Awards',   icon: Trophy },
-    { to: '/reports',      label: 'Reports',  icon: FileText },
-    { to: '/help',         label: 'Help',     icon: HelpCircle },
-    { to: '/status',       label: 'Status',   icon: Activity },
+    { to: '/calendar',     label: 'Calendar',      icon: Calendar },
+    { to: '/achievements', label: 'Achievements',  icon: Trophy },
+    { to: '/reports',      label: 'Reports',       icon: FileText },
+    { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/status',       label: 'System Status', icon: Activity },
   ],
   school: [
-    { to: '/calendar',     label: 'Calendar', icon: Calendar },
-    { to: '/reports',      label: 'Reports',  icon: FileText },
-    { to: '/help',         label: 'Help',     icon: HelpCircle },
-    { to: '/status',       label: 'Status',   icon: Activity },
+    { to: '/calendar',     label: 'Calendar',      icon: Calendar },
+    { to: '/reports',      label: 'Reports',       icon: FileText },
+    { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/status',       label: 'System Status', icon: Activity },
   ],
   admin: [
-    { to: '/calendar',     label: 'Calendar', icon: Calendar },
-    { to: '/reports',      label: 'Reports',  icon: FileText },
+    { to: '/calendar',     label: 'Calendar',      icon: Calendar },
+    { to: '/reports',      label: 'Reports',       icon: FileText },
+    { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/status',       label: 'System Status', icon: Activity },
+  ],
+  parent: [
     { to: '/help',         label: 'Help',     icon: HelpCircle },
-    { to: '/status',       label: 'Status',   icon: Activity },
   ],
 }
 
@@ -68,11 +79,12 @@ export default function MobileTabBar() {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const sheetRef = useRef(null)
   const role = user?.role || 'student'
   const coreItems = CORE_ITEMS[role] || CORE_ITEMS.student
   const moreItems = MORE_ITEMS[role] || MORE_ITEMS.student
-  const [moreOpen, setMoreOpen] = useState(false)
-  const sheetRef = useRef(null)
+  const showLogFab = !!user && role !== 'parent'
 
   const isActive = (to) => {
     if (to.includes('?')) {
@@ -102,6 +114,12 @@ export default function MobileTabBar() {
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) setMoreOpen(false)
   }
+
+  // Logged-out visitors get no bottom nav — its icons all point at
+  // <Protected> routes that would just bounce them back to /login, and it
+  // was covering the login/register/reset forms with no clearance for it.
+  // (Placed after all hooks above so hook call order stays unconditional.)
+  if (!user) return null
 
   return (
     <>
@@ -154,12 +172,14 @@ export default function MobileTabBar() {
             </li>
           </ul>
         </div>
-        <Link
-          to="/log"
-          className="absolute -top-10 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/40 flex items-center justify-center active:scale-90 transition-transform"
-        >
-          <Plus className="w-6 h-6" strokeWidth={3} />
-        </Link>
+        {showLogFab && (
+          <Link
+            to="/log"
+            className="absolute -top-10 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/40 flex items-center justify-center active:scale-90 transition-transform"
+          >
+            <Plus className="w-6 h-6" strokeWidth={3} />
+          </Link>
+        )}
       </nav>
 
       {moreOpen && (

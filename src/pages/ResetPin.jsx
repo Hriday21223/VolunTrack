@@ -130,7 +130,7 @@ export default function ResetPin() {
                 <Shield className="w-6 h-6 text-brand-500" />
                 <div>
                   <h1 className="text-2xl font-bold">Reset your PIN</h1>
-                  <p className="text-sm text-earth-500 dark:text-earth-400">We&rsquo;ll email a recovery code to confirm it&rsquo;s really you.</p>
+                  <p className="text-sm text-earth-500 dark:text-earth-400">We&rsquo;ll email a PIN recovery code to confirm it&rsquo;s really you.</p>
                 </div>
               </div>
 
@@ -163,7 +163,7 @@ export default function ResetPin() {
                             'your email credentials'
                           )}{' '}
                           to <code className="font-mono">.env</code> and restart <code className="font-mono">npm run backend</code>.
-                          For now, the recovery code will appear on screen so you can finish.
+                          For now, the PIN recovery code will appear on screen so you can finish.
                         </div>
                       </div>
                     </div>
@@ -172,7 +172,7 @@ export default function ResetPin() {
                   {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
 
                   <button className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '300ms' }} type="submit" disabled={delivery.status === 'sending'}>
-                    {delivery.status === 'sending' ? 'Sending code…' : 'Send recovery code'}
+                    {delivery.status === 'sending' ? 'Sending code…' : 'Send PIN recovery code'}
                   </button>
                 </form>
               ) : (
@@ -180,7 +180,7 @@ export default function ResetPin() {
                   <DeliveryBanner delivery={delivery} email={email} sentCode={sentCode} onResend={resend} retrying={retrying} />
 
                   <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-                    <label className="label">Recovery code</label>
+                    <label className="label">PIN recovery code</label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                       <input
@@ -248,7 +248,7 @@ function DeliveryBanner({ delivery, email, sentCode, onResend, retrying }) {
       <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
         <Inbox className="w-4 h-4 mt-0.5 shrink-0" />
         <span>
-          A recovery code has been sent to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
+          A PIN recovery code has been sent to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
         </span>
       </div>
     )
@@ -264,7 +264,7 @@ function DeliveryBanner({ delivery, email, sentCode, onResend, retrying }) {
               {isStaticHost ? (
                 <div>
                   This deployment is a static site, so there&rsquo;s no email server reachable from here.
-                  The recovery code is shown below &mdash; only you can see this screen.
+                  The PIN recovery code is shown below &mdash; only you can see this screen.
                 </div>
               ) : (
                 <div>
@@ -292,7 +292,7 @@ function DeliveryBanner({ delivery, email, sentCode, onResend, retrying }) {
         </div>
         {sentCode && (
           <div className="rounded-2xl border border-brand-500/20 bg-brand-500/10 p-3 text-sm text-brand-900 dark:text-brand-100">
-            Your recovery code is <span className="font-semibold">{sentCode}</span>. Use it within 15 minutes.
+            Your PIN recovery code is <span className="font-semibold">{sentCode}</span>. Use it within 15 minutes.
           </div>
         )}
       </div>

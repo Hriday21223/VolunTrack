@@ -28,6 +28,8 @@ import SchoolRegister from '@/pages/SchoolRegister.jsx'
 import Help from '@/pages/Help.jsx'
 import MyTasks from '@/pages/MyTasks.jsx'
 import Status from '@/pages/Status.jsx'
+import VerifyHours from '@/pages/VerifyHours.jsx'
+import ParentDashboard from '@/pages/ParentDashboard.jsx'
 
 function Protected({ children }) {
   const { user } = useAuth()
@@ -54,7 +56,9 @@ function AdminProtected({ children }) {
 
 function Home() {
   const { user } = useAuth()
-  return user ? <Protected><Dashboard /></Protected> : <About />
+  if (!user) return <About />
+  if (user.role === 'parent') return <Navigate to="/parent" replace />
+  return <Protected><Dashboard /></Protected>
 }
 
 function Shell() {
@@ -72,8 +76,10 @@ function Shell() {
         <Route path="/about"           element={<About />} />
         <Route path="/contact"         element={<Contact />} />
         <Route path="/status"         element={<Status />} />
+        <Route path="/verify-hours"   element={<VerifyHours />} />
 
         <Route path="/"             element={<Home />} />
+        <Route path="/parent"       element={<Protected><ParentDashboard /></Protected>} />
         <Route path="/log"          element={<Protected><LogHours /></Protected>} />
         <Route path="/calendar"     element={<Protected><CalendarView /></Protected>} />
         <Route path="/achievements" element={<Protected><Achievements /></Protected>} />

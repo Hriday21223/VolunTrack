@@ -1,4 +1,4 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, School, Activity } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, School, Activity, Users } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -13,7 +13,7 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',        icon: HelpCircle },
-    { to: '/status',       label: 'Status',      icon: Activity },
+    { to: '/status',       label: 'System Status',      icon: Activity },
   ],
   volunteer: [
     { to: '/',             label: 'Dashboard',   icon: Home },
@@ -25,7 +25,7 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
-    { to: '/status',       label: 'Status',           icon: Activity },
+    { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   school: [
     { to: '/',             label: 'Dashboard',        icon: Home },
@@ -36,7 +36,7 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',          icon: User },
     { to: '/settings',     label: 'Settings',         icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
-    { to: '/status',       label: 'Status',           icon: Activity },
+    { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   admin: [
     { to: '/',             label: 'Dashboard',   icon: Home },
@@ -47,7 +47,12 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
-    { to: '/status',       label: 'Status',           icon: Activity },
+    { to: '/status',       label: 'System Status',           icon: Activity },
+  ],
+  parent: [
+    { to: '/parent',       label: 'Dashboard',  icon: Home },
+    { to: '/settings',     label: 'Settings',   icon: Settings },
+    { to: '/help',         label: 'Help',       icon: HelpCircle },
   ],
 }
 
@@ -91,12 +96,12 @@ export default function Sidebar() {
 
       <div className="px-5 pb-6 pt-4 text-xs text-earth-400 border-t border-earth-900/80">
         <div className="rounded-3xl bg-white/5 p-3 text-earth-300">
-          Private local storage only. No upload required.
+          Your hours are stored on this device. Creating an account also stores some data (Family sharing, school linking, sync) on our server.
         </div>
         <div className="mt-4 flex gap-3">
           <Link to="/about" className="text-earth-300 hover:text-white">About</Link>
           <Link to="/contact" className="text-earth-300 hover:text-white">Contact</Link>
-          <Link to="/status" className="text-earth-300 hover:text-white">Status</Link>
+          <Link to="/status" className="text-earth-300 hover:text-white">System Status</Link>
         </div>
         <div className="mt-4 text-earth-500">© VolunTrack 2026</div>
       </div>

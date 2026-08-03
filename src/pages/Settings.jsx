@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Send, Copy, Eye, EyeOff, QrCode, Upload, Sparkles, CheckCircle2, ChevronDown } from 'lucide-react'
+import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Copy, Eye, EyeOff, QrCode, Upload, Sparkles, CheckCircle2, ChevronDown, Users, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
 import { hashPin, sendPasswordResetCode, clearPasswordResetCode, createLog } from '@/api/index.js'
 import { buildDemoLogs, buildDemoGoals, buildDemoReminders } from '@/lib/demoData.js'
-import { findPartnerByCode } from '@/lib/partners.js'
-import { sendSchoolReport } from '@/lib/schoolReport.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -51,9 +49,12 @@ export default function Settings() {
   const [schoolCode, setSchoolCode] = useState('')
   const [schoolName, setSchoolName] = useState('')
   const [schoolBusy, setSchoolBusy] = useState(false)
-  const [schoolErr, setSchoolErr] = useState('')
-  const [reportBusy, setReportBusy] = useState(false)
-  const [reportMsg, setReportMsg] = useState('')
+  const [childLinkCode, setChildLinkCode] = useState(null)
+  const [childLinkBusy, setChildLinkBusy] = useState(false)
+  const [linkChildInput, setLinkChildInput] = useState('')
+  const [linkChildBusy, setLinkChildBusy] = useState(false)
+  const [linkChildErr, setLinkChildErr] = useState('')
+  const [linkedChildren, setLinkedChildren] = useState([])
   const [pdfs, setPdfs] = useState([])
   const [showSchool, setShowSchool] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState(null)
@@ -160,44 +161,6 @@ export default function Settings() {
   const [pwError, setPwError] = useState('')
   const [pwDone, setPwDone] = useState(false)
 
-  const partner = findPartnerByCode(user?.schoolCode)
-
-  const linkSchool = () => {
-    setSchoolErr('')
-    const match = findPartnerByCode(schoolCode)
-    if (!match) { setSchoolErr('That PIN does not match a partner school.'); return }
-    updateProfile({ schoolCode: match.code })
-    setSchoolCode('')
-    setToast(true)
-  }
-
-  const unlinkSchool = () => {
-    updateProfile({ schoolCode: null })
-    setReportMsg('')
-  }
-
-  const sendReport = async () => {
-    if (!partner) return
-    setReportBusy(true)
-    setReportMsg('')
-    const totalHours = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
-    const entries = logs.map((l) => ({
-      date: l.date, activity: l.activity, category: l.category, hours: Number(l.hours) || 0,
-    }))
-    const res = await sendSchoolReport({
-      to: partner.email, school: partner.name, student: user?.name || user?.email,
-      totalHours, entries,
-    })
-    setReportBusy(false)
-    if (res.ok) {
-      setReportMsg(`Sent ${totalHours}h to ${partner.name}.`)
-    } else if (!res.backendAvailable) {
-      setReportMsg('Email server is unavailable on this site, so the report could not be sent.')
-    } else {
-      setReportMsg(res.reason || 'Could not send the report.')
-    }
-  }
-
   const addGoal = (e) => {
     e.preventDefault()
     if (!newGoal.title.trim()) return
@@ -253,6 +216,85 @@ export default function Settings() {
       } catch {}
     })()
   }, [user?.schoolId])
+
+  const familyApiUrl = import.meta.env.VITE_API_URL || '/api'
+  const authHeaders = () => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+  }
+
+  useEffect(() => {
+    if (user?.role !== 'student') return
+    ;(async () => {
+      try {
+        const res = await fetch(`${familyApiUrl}/parent/child-link-code`, { headers: authHeaders() })
+        if (!res.ok) return
+        const data = await res.json()
+        setChildLinkCode(data.childLinkCode)
+      } catch {}
+    })()
+  }, [user?.role])
+
+  const loadLinkedChildren = async () => {
+    try {
+      const res = await fetch(`${familyApiUrl}/parent/children`, { headers: authHeaders() })
+      if (!res.ok) return
+      const data = await res.json()
+      setLinkedChildren(data.children || [])
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (user?.role !== 'parent') return
+    loadLinkedChildren()
+  }, [user?.role])
+
+  const generateChildLinkCode = async () => {
+    setChildLinkBusy(true)
+    try {
+      const res = await fetch(`${familyApiUrl}/parent/child-link-code`, { method: 'POST', headers: authHeaders() })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not generate a code.')
+      setChildLinkCode(data.childLinkCode)
+      setToastMessage('Code generated')
+      setToast(true)
+    } catch (error) {
+      setToastMessage(error.message)
+      setToast(true)
+    } finally {
+      setChildLinkBusy(false)
+    }
+  }
+
+  const linkChild = async () => {
+    if (!linkChildInput.trim()) return
+    setLinkChildBusy(true)
+    setLinkChildErr('')
+    try {
+      const res = await fetch(`${familyApiUrl}/parent/link`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ code: linkChildInput.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not link to that student.')
+      setLinkChildInput('')
+      setToastMessage(`Linked to ${data.child?.name || 'student'}`)
+      setToast(true)
+      loadLinkedChildren()
+    } catch (error) {
+      setLinkChildErr(error.message)
+    } finally {
+      setLinkChildBusy(false)
+    }
+  }
+
+  const unlinkChild = async (childId) => {
+    try {
+      await fetch(`${familyApiUrl}/parent/children/${childId}`, { method: 'DELETE', headers: authHeaders() })
+      loadLinkedChildren()
+    } catch {}
+  }
 
   const savePin = () => {
     if (!user) return
@@ -584,13 +626,13 @@ export default function Settings() {
           <Card>
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-brand-600" />
-              <h3 className="font-display font-semibold">PIN unlock</h3>
+              <h3 className="font-display font-semibold">App unlock PIN</h3>
             </div>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Set a 4-digit PIN to unlock the app quickly. If you forget it, reset it with your email and a 6-digit recovery code.
+              Set a 4-digit app unlock PIN to sign in quickly instead of typing your password. If you forget it, reset it with your email and a PIN recovery code.
             </p>
             <div className="space-y-3">
-              <label className="label">New PIN</label>
+              <label className="label">New app unlock PIN</label>
               <input
                 type="password"
                 inputMode="numeric"
@@ -600,7 +642,7 @@ export default function Settings() {
                 placeholder="1234"
                 className="input w-full bg-slate-900/80 text-white border-white/10"
               />
-              <label className="label">Confirm PIN</label>
+              <label className="label">Confirm app unlock PIN</label>
               <input
                 type="password"
                 inputMode="numeric"
@@ -616,12 +658,12 @@ export default function Settings() {
                 disabled={!/^[0-9]{4}$/.test(pin) || pin !== pinConfirm}
                 className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Save PIN
+                Save app unlock PIN
               </button>
               <div className="text-xs text-earth-400">
-                Forgot your PIN? <Link to="/reset-pin" className="text-brand-700 hover:underline">Reset PIN via email</Link>.
+                Forgot your app unlock PIN? <Link to="/reset-pin" className="text-brand-700 hover:underline">Reset it via email</Link>.
               </div>
-              {pinSaved && <div className="text-sm text-emerald-300">PIN saved. Use it on the login screen.</div>}
+              {pinSaved && <div className="text-sm text-emerald-300">App unlock PIN saved. Use it on the login screen.</div>}
             </div>
           </Card>
 
@@ -709,39 +751,6 @@ export default function Settings() {
         </CollapsibleSection>
 
         <CollapsibleSection icon={School} label="School" defaultOpen={true}>
-          <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><School className="w-4 h-4 text-brand-600" /> School partnership</h3>
-            {partner ? (
-              <>
-                <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-                  Linked to <span className="font-medium text-earth-800 dark:text-earth-100">{partner.name}</span>. Send your volunteer hours straight to them.
-                </p>
-                <button onClick={sendReport} disabled={reportBusy} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
-                  {reportBusy ? 'Sending…' : <>Send my hours now <Send className="w-4 h-4" /></>}
-                </button>
-                <button onClick={unlinkSchool} className="btn-ghost w-full mt-2">Unlink school</button>
-                {reportMsg && <div className="text-sm text-earth-600 dark:text-earth-300 mt-3">{reportMsg}</div>}
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-                  Enter the PIN your school or organization gave you. Once linked, you can send your logged hours to them — they don't have to ask.
-                </p>
-                <label className="label">School PIN</label>
-                <input
-                  className="input w-full"
-                  value={schoolCode}
-                  onChange={(e) => setSchoolCode(e.target.value)}
-                  placeholder="e.g. DEMO123"
-                />
-                {schoolErr && <div className="text-sm text-red-600 dark:text-red-300 mt-2">{schoolErr}</div>}
-                <button onClick={linkSchool} disabled={!schoolCode.trim()} className="btn-primary w-full mt-3 disabled:opacity-50 disabled:cursor-not-allowed">
-                  Link school
-                </button>
-              </>
-            )}
-          </Card>
-
           {user?.role !== 'school' && user?.role !== 'admin' && (
             <Card>
               <div className="flex items-center gap-2 mb-3">
@@ -820,6 +829,77 @@ export default function Settings() {
           )}
         </CollapsibleSection>
 
+        {(user?.role === 'student' || user?.role === 'parent') && (
+          <CollapsibleSection icon={Users} label="Family" defaultOpen={false}>
+            {user?.role === 'student' && (
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-brand-600" />
+                  <h3 className="font-display font-semibold">Share with a parent</h3>
+                </div>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+                  Generate a code and share it with a parent so they can follow your logged hours and verification status. Only hours logged from now on will be visible to them.
+                </p>
+                {childLinkCode ? (
+                  <div className="space-y-3">
+                    <div className="p-4 bg-slate-900/80 rounded-xl border border-white/10">
+                      <div className="text-xs text-earth-400 mb-1">Your link code</div>
+                      <div className="text-2xl font-mono font-bold text-white tracking-wider">{childLinkCode}</div>
+                    </div>
+                    <button onClick={generateChildLinkCode} disabled={childLinkBusy} className="btn-ghost w-full text-sm">
+                      {childLinkBusy ? 'Generating…' : 'Generate new code'}
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={generateChildLinkCode} disabled={childLinkBusy} className="btn-primary w-full">
+                    {childLinkBusy ? 'Generating…' : 'Generate link code'}
+                  </button>
+                )}
+              </Card>
+            )}
+
+            {user?.role === 'parent' && (
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-brand-600" />
+                  <h3 className="font-display font-semibold">Link your child</h3>
+                </div>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+                  Enter the code your child generated in their Settings to follow their logged hours.
+                </p>
+                <input
+                  type="text"
+                  value={linkChildInput}
+                  onChange={(e) => setLinkChildInput(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
+                  placeholder="K7XQ-2M9P"
+                  className="input w-full font-mono"
+                />
+                {linkChildErr && <div className="text-sm text-red-600 dark:text-red-300 mt-2">{linkChildErr}</div>}
+                <button onClick={linkChild} disabled={!linkChildInput.trim() || linkChildBusy} className="btn-primary w-full mt-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {linkChildBusy ? 'Linking…' : 'Link child'}
+                </button>
+
+                {linkedChildren.length > 0 && (
+                  <div className="mt-5 space-y-2">
+                    <div className="text-xs text-earth-400 uppercase tracking-wide">Linked children</div>
+                    {linkedChildren.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between rounded-xl border border-earth-200/60 dark:border-white/[0.06] px-3 py-2">
+                        <div>
+                          <div className="text-sm font-medium">{c.name}</div>
+                          <div className="text-xs text-earth-400">{c.email}</div>
+                        </div>
+                        <button onClick={() => unlinkChild(c.id)} className="btn-ghost p-1.5" title="Unlink">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
+          </CollapsibleSection>
+        )}
+
         <CollapsibleSection icon={Bell} label="Reminders & Notifications" defaultOpen={false}>
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> Reminders</h3>
@@ -834,7 +914,7 @@ export default function Settings() {
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Privacy</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400">
-              Your data is stored only on this device. Nothing is uploaded to a server. Sign out below to clear your session.
+              Your logged hours are stored on this device. If you've created an account, some features above (Family sharing, school linking, cross-device sync, two-factor authentication) also store data on our server. Sign out below to clear your session.
             </p>
             <div className="text-xs text-earth-500 dark:text-earth-400 mt-3 space-y-1">
               <div>Signed in as <span className="font-medium text-earth-800 dark:text-earth-100">{user?.email}</span></div>

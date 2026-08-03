@@ -1,0 +1,66 @@
+[
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-debug-28:/drawable_splash.xml.flat",
+        "source": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-main-30:/drawable/splash.xml"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-debug-28:/layout_activity_main.xml.flat",
+        "source": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-main-30:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.voluntrack.voluntrack.app-debug-28:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.voluntrack.voluntrack.app-main-30:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-debug-28:/xml_file_paths.xml.flat",
+        "source": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-main-30:/xml/file_paths.xml"
+    },
+    {
+        "merged": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-debug-28:/xml_config.xml.flat",
+        "source": "/Users/hridaykarnatam/.gradle/daemon/8.14.3/com.voluntrack.voluntrack.app-main-30:/xml/config.xml"
+    }
+]

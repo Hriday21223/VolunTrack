@@ -78,7 +78,7 @@ export default function ForgotPassword() {
         <Card padded={false} className="p-7 animate-scale-in">
           {code && !delivered && (
             <div className="mb-6 rounded-2xl border border-brand-500/20 bg-brand-500/10 p-3 text-sm text-brand-900 dark:text-brand-100">
-              Recovery code: <span className="font-semibold">{code}</span>
+              Password recovery code: <span className="font-semibold">{code}</span>
             </div>
           )}
 
@@ -87,13 +87,13 @@ export default function ForgotPassword() {
               <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/30 grid place-items-center text-brand-700 mx-auto animate-bounce-in">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h1 className="text-2xl font-bold mt-3 text-center animate-fade-in-up" style={{ animationDelay: '100ms' }}>Recovery code ready</h1>
+              <h1 className="text-2xl font-bold mt-3 text-center animate-fade-in-up" style={{ animationDelay: '100ms' }}>Password recovery code ready</h1>
 
               {delivery.status === 'sent' ? (
                 <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-200 flex items-start gap-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
                   <Inbox className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
-                    A recovery code has been emailed to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
+                    A password recovery code has been emailed to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
                   </span>
                 </div>
               ) : (
@@ -105,7 +105,7 @@ export default function ForgotPassword() {
                         {delivery.reason === 'no-backend' ? (
                           <div>
                             This deployment is a static site, so there&rsquo;s no email server reachable from here.
-                            The recovery code is shown below &mdash; only you can see this screen.
+                            The password recovery code is shown below &mdash; only you can see this screen.
                           </div>
                         ) : (
                           <div>
@@ -132,7 +132,7 @@ export default function ForgotPassword() {
                     </div>
                   </div>
                   <div className="rounded-2xl border border-brand-500/20 bg-brand-500/10 p-3 text-sm text-brand-900 dark:text-brand-100">
-                    Recovery code: <span className="font-semibold">{code}</span>
+                    Password recovery code: <span className="font-semibold">{code}</span>
                   </div>
                 </div>
               )}
@@ -145,7 +145,7 @@ export default function ForgotPassword() {
             <div className="animate-fade-in-up">
               <h1 className="text-2xl font-bold mb-1">Forgot password?</h1>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-                Enter the email on your account and we&rsquo;ll email a recovery code.
+                Enter the email on your account and we&rsquo;ll email a password recovery code.
               </p>
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
@@ -183,7 +183,7 @@ export default function ForgotPassword() {
                 {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
 
                 <button className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '300ms' }} type="submit" disabled={delivery.status === 'sending'}>
-                  {delivery.status === 'sending' ? 'Sending email… code below' : 'Email me a recovery code'}
+                  {delivery.status === 'sending' ? 'Sending email… code below' : 'Email me a password recovery code'}
                 </button>
               </form>
               <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-6 animate-fade-in-up" style={{ animationDelay: '400ms' }}>

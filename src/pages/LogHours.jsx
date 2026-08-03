@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, Trash2, Upload, Mail, User, FileSignature, ShieldCheck, MapPin, Navigation } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import FileDrop from '@/components/FileDrop.jsx'
 import Toast from '@/components/Toast.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import { hoursBetween, fmtHours } from '@/utils/date.js'
+import { notifySupervisor } from '@/lib/supervisorNotify.js'
+import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { format } from 'date-fns'
 
 const blank = () => ({
@@ -23,10 +26,13 @@ const blank = () => ({
   supervisorSignature: '',
   proof: null,
   verified: false,
+  verificationStatus: 'none',
+  verificationToken: null,
 })
 
 export default function LogHours({ editId, onCloseEdit }) {
   const { logs, addLog, editLog, removeLog } = useData()
+  const { user } = useAuth()
   const nav = useNavigate()
   const [form, setForm] = useState(blank())
   const [toast, setToast] = useState(false)
@@ -48,7 +54,7 @@ export default function LogHours({ editId, onCloseEdit }) {
 
   const onChange = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
     setError('')
     if (!form.activity.trim()) { setError('Please enter an activity name.'); return }
@@ -56,15 +62,31 @@ export default function LogHours({ editId, onCloseEdit }) {
     if (hours <= 0)             { setError('End time must be after start time.'); return }
 
     try {
-      const payload = { ...form, hours, verified: !!form.verified }
+      const payload = { ...form, hours }
       if (editId) {
         editLog(editId, payload)
         setToast(true)
         onCloseEdit?.()
       } else {
-        addLog(payload)
+        const created = addLog(payload)
         setForm(blank())
         setToast(true)
+        if (payload.supervisorEmail?.trim()) {
+          const serverId = await created.whenSynced.catch(() => null)
+          notifySupervisor({
+            supervisorEmail: payload.supervisorEmail,
+            supervisorName: payload.supervisorName,
+            studentName: user?.name || 'A VolunTrack student',
+            studentEmail: user?.email || null,
+            hours: payload.hours,
+            activity: payload.activity,
+            logId: serverId,
+          }).then((result) => {
+            if (result.token) {
+              editLog(created.id, { verificationStatus: 'pending', verificationToken: result.token })
+            }
+          })
+        }
       }
     } catch (err) {
       setError('Could not save — your proof file might be too large. Try a smaller image.')
@@ -75,17 +97,21 @@ export default function LogHours({ editId, onCloseEdit }) {
     setLocating(true)
     setLocError('')
     try {
-      const position = await new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error('Geolocation is not supported by your browser.'))
-          return
-        }
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        })
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by your browser.')
+      }
+      const getPosition = (options) => new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options)
       })
+      let position
+      try {
+        // Standard accuracy first — fast, and works on desktops without GPS
+        // hardware (Wi-Fi/IP based). High accuracy alone often times out on
+        // those devices while it waits for a GPS fix that never comes.
+        position = await getPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 })
+      } catch {
+        position = await getPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
+      }
 
       const { latitude, longitude } = position.coords
       const response = await fetch(
@@ -209,10 +235,22 @@ export default function LogHours({ editId, onCloseEdit }) {
                 <input className="input" placeholder="Type your full name to sign" value={form.supervisorSignature} onChange={onChange('supervisorSignature')} />
                 <div className="hint">By typing your name, you confirm this work was completed as described.</div>
               </div>
-              <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.verified} onChange={(e) => setForm((f) => ({ ...f, verified: e.target.checked }))} className="w-4 h-4 accent-brand-600" />
-                Mark this entry as verified
-              </label>
+              {form.supervisorEmail?.trim() ? (
+                <div className="sm:col-span-2">
+                  <VerificationBadge status={form.verificationStatus} />
+                  {(!form.verificationStatus || form.verificationStatus === 'none') && (
+                    <p className="text-xs text-earth-400 mt-1">
+                      Verification is set by your supervisor, not by you — they'll get an email with an approve/reject link once you save. This usually takes a day or two.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-amber-500">
+                    No supervisor listed — this entry won't be verified. Add a supervisor email above if you need it verified.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
         </div>

@@ -113,8 +113,8 @@ export default function Contact() {
               <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
                 <Mail className="w-4 h-4 text-brand-600" /> Email
               </h3>
-               <a href="mailto:volunteertrack@googlegroups.com" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">
-                volunteertrack@googlegroups.com
+               <a href="mailto:volunteertrackinfo@gmail.com" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">
+                volunteertrackinfo@gmail.com
               </a>
               <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">For general questions and support.</p>
             </Card>

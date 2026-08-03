@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.0" type="partial_results">
+    <map id="UnsafeIntentLaunch">
+            <map id="unprotected">
+                <entry
+                    name="com.voluntrack.voluntrack.MainActivity"
+                    boolean="true"/>
+            </map>
+    </map>
+    <map id="UnusedResources">
+        <location id="R.layout.activity_main"
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/layout/activity_main.xml"
+            line="2"
+            column="1"
+            startOffset="39"
+            endLine="12"
+            endColumn="55"
+            endOffset="534"/>
+        <location id="R.string.custom_url_scheme"
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/values/strings.xml"
+            line="6"
+            column="13"
+            startOffset="237"
+            endLine="6"
+            endColumn="37"
+            endOffset="261"/>
+        <location id="R.string.package_name"
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/values/strings.xml"
+            line="5"
+            column="13"
+            startOffset="170"
+            endLine="5"
+            endColumn="32"
+            endOffset="189"/>
+        <location id="R.style.AppTheme_NoActionBar"
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/values/styles.xml"
+            line="12"
+            column="12"
+            startOffset="420"
+            endLine="12"
+            endColumn="39"
+            endOffset="447"/>
+        <location id="R.xml.config"
+            file="${:app*debug*MAIN*sourceProvider*0*resDir*0}/xml/config.xml"
+            line="2"
+            column="1"
+            startOffset="39"
+            endLine="6"
+            endColumn="10"
+            endOffset="185"/>
+        <entry
+            name="model"
+            string="color[colorPrimary(U),colorPrimaryDark(U),colorAccent(U)],drawable[splash(U)],layout[activity_main(D)],mipmap[ic_launcher(U),ic_launcher_round(U)],string[app_name(U),title_activity_main(U),package_name(D),custom_url_scheme(D)],style[AppTheme(U),AppTheme_NoActionBarLaunch(U),Theme_AppCompat_Light_DarkActionBar(R),AppTheme_NoActionBar(D),Theme_AppCompat_DayNight_NoActionBar(E),Theme_SplashScreen(R)],xml[file_paths(U),config(D)];3^0,5^0^5,6^0^5,b^d^0^1^2,c^10^3,e^f;;;"/>
+    </map>
+
+</incidents>

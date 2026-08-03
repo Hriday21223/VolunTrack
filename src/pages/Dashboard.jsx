@@ -9,6 +9,7 @@ import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
+import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { format, startOfWeek, startOfMonth, addDays, parseISO } from 'date-fns'
@@ -161,14 +162,14 @@ export default function Dashboard() {
       title={`Hi, ${user?.name?.split(' ')[0] || 'there'} 👋`}
       subtitle={user?.school ? `${user.school} · ${user.grade || 'Volunteer'}` : 'Welcome back to VolunTrack.'}
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {user?.role === 'student' && (
             <>
               <button onClick={() => setDashTab(dashTab === 'nearby' ? 'home' : 'nearby')} className={`btn-sm ${dashTab === 'nearby' ? 'btn-primary' : 'btn-ghost'}`}>
-                <MapPin className="w-3.5 h-3.5 mr-1" /> Opportunities
+                <MapPin className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">Opportunities</span>
               </button>
               <button onClick={() => setDashTab(dashTab === 'volunteer' ? 'home' : 'volunteer')} className={`btn-sm ${dashTab === 'volunteer' ? 'btn-primary' : 'btn-ghost'}`}>
-                <Hand className="w-3.5 h-3.5 mr-1" /> Volunteer
+                <Hand className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">Volunteer</span>
               </button>
             </>
           )}
@@ -705,6 +706,7 @@ export default function Dashboard() {
                       <span>{fromNow(l.createdAt)}</span>
                     </div>
                   </div>
+                  <VerificationBadge status={l.verificationStatus} />
                   {l.category && (
                     <span className={`chip ${categoryColor(l.category)}`}>{l.category}</span>
                   )}

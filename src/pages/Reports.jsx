@@ -5,6 +5,7 @@ import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { categoryColor } from '@/lib/categories.js'
@@ -168,6 +169,7 @@ export default function Reports() {
                       <th className="text-left px-4 py-2">Activity</th>
                       <th className="text-left px-4 py-2">Category</th>
                       <th className="text-left px-4 py-2">Supervisor</th>
+                      <th className="text-left px-4 py-2">Status</th>
                       <th className="text-right px-4 py-2">Hours</th>
                     </tr>
                   </thead>
@@ -178,6 +180,7 @@ export default function Reports() {
                         <td className="px-4 py-2">{l.activity || '—'}</td>
                         <td className="px-4 py-2">{l.category && <span className={`chip ${categoryColor(l.category)}`}>{l.category}</span>}</td>
                         <td className="px-4 py-2">{l.supervisorName || '—'}</td>
+                        <td className="px-4 py-2"><VerificationBadge status={l.verificationStatus} /></td>
                         <td className="px-4 py-2 text-right font-medium">{fmtHours(Number(l.hours) || 0)}</td>
                       </tr>
                     ))}

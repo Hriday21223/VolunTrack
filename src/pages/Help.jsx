@@ -136,6 +136,11 @@ function StudentHandbook() {
         <p>If you're linked to a school, your dashboard shows announcements sent by your school admin. Check them regularly for updates, deadlines, and important info.</p>
       </Section>
 
+      <Section title="Family Sharing">
+        <p>Want a parent to be able to follow your logged hours and verification status? Go to <Link to="/settings" className="text-brand-400 hover:underline">Settings → Family</Link> and generate a link code. Share that code with your parent — they'll enter it in their own account to link to yours.</p>
+        <p className="mt-2">Only hours logged from the moment you generate the code onward are visible to them; earlier entries stay private. Your parent can only view your hours — they can't edit or delete anything.</p>
+      </Section>
+
       <Section title="Two-Factor Authentication (2FA)">
         <p>For extra security, you can enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings → Two-Factor Authentication</Link>. Once enabled, you'll need to enter a 6-digit code from your authenticator app (like Google Authenticator or Authy) every time you sign in.</p>
         <p className="mt-2">During setup you'll receive 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
