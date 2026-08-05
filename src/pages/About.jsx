@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Instagram, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Gift, Zap } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 
 const FEATURES = [
   { icon: Calendar,  title: 'Simple hour logging', body: 'Log activity, time, location, and proof so your volunteer work is always ready to share.' },
@@ -112,6 +113,14 @@ function FaqItem({ q, a }) {
 }
 
 export default function About() {
+  // Rendered at both "/" and "/about" for logged-out visitors — canonicalize
+  // to "/" so search engines don't treat them as duplicate pages.
+  useSeo({
+    title: 'Volunteer Hour Tracker for Students & Schools',
+    description: 'VolunTrack is a calm volunteer hour tracker. Log hours, set goals, earn badges, and generate reports for school or community service.',
+    canonicalPath: '/',
+  })
+
   useEffect(() => {
     window.scrollTo(0, 0)
     const els = document.querySelectorAll('[data-animate]')

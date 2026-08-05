@@ -3,8 +3,15 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, Instagram } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 
 export default function Contact() {
+  useSeo({
+    title: 'Contact Us',
+    description: 'Found a bug, have a feature request, or want to say hi? Get in touch with the VolunTrack team.',
+    path: '/contact',
+  })
+
   useEffect(() => { window.scrollTo(0, 0) }, [])
   const [form, setForm] = useState({ name: '', email: '', subject: 'General question', message: '' })
   const [busy, setBusy] = useState(false)
