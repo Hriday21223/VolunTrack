@@ -4,6 +4,7 @@ import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, 
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 
 const ROLES = [
   {
@@ -27,6 +28,12 @@ const ROLES = [
 ]
 
 export default function Register() {
+  useSeo({
+    title: 'Create an Account',
+    description: 'Create a free VolunTrack account to start tracking volunteer hours, setting goals, and earning badges.',
+    path: '/register',
+  })
+
   const { register } = useAuth()
   const nav = useNavigate()
   const apiUrl = import.meta.env.VITE_API_URL || '/api'

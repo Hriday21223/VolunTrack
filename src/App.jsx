@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react'
 import MobileTabBar from '@/components/MobileTabBar.jsx'
 import BadgeToasts from '@/components/BadgeToasts.jsx'
 import ReminderToasts from '@/components/ReminderToasts.jsx'
+import ErrorBoundary from '@/components/ErrorBoundary.jsx'
 
 import Login from '@/pages/Login.jsx'
 import Register from '@/pages/Register.jsx'
@@ -103,11 +104,13 @@ function Shell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <Shell />
-        <Analytics />
-      </DataProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <DataProvider>
+          <Shell />
+          <Analytics />
+        </DataProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }

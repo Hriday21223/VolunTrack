@@ -5,8 +5,15 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 
 export default function Login() {
+  useSeo({
+    title: 'Sign In',
+    description: 'Sign in to your VolunTrack account to log volunteer hours and track your progress.',
+    path: '/login',
+  })
+
   const { login, verifyTotp, verifyBackupCode, loginWithPin, user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const nav = useNavigate()

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, HardDrive, Smartphone, Clock, Database, Cpu, Monitor, Eye, AlertTriangle, Bell, Bot, Loader2, Wrench, Server, List } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 
 function StatusBadge({ ok, label }) {
   return (
@@ -29,6 +30,12 @@ const STORAGE_KEYS = [
 ]
 
 export default function Status() {
+  useSeo({
+    title: 'System Status',
+    description: 'Live status and uptime for VolunTrack services.',
+    path: '/status',
+  })
+
   useEffect(() => { window.scrollTo(0, 0) }, [])
 
   const storageOk = (() => {
@@ -104,7 +111,14 @@ export default function Status() {
 
   const storageBreakdown = STORAGE_KEYS.map((key) => {
     const raw = localStorage.getItem(key)
-    const data = raw ? JSON.parse(raw) : null
+    let data = null
+    if (raw) {
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        data = raw
+      }
+    }
     const count = Array.isArray(data) ? data.length : (data ? 1 : 0)
     const size = raw ? new TextEncoder().encode(raw).length : 0
     const label = key.replace('voluntrack:', '')

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { BookOpen, School, Globe, Clock, Calendar, Trophy, FileText, User, Settings, MapPin, Users, CheckCircle, HelpCircle, ArrowRight, Mail, Shield, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 
 const TABS = [
   { id: 'quickstart', label: 'Quick Start', icon: Zap },
@@ -307,6 +308,12 @@ function Faq() {
 // ── Main Help Component ──────────────────────────────────────────────────────
 
 export default function Help() {
+  useSeo({
+    title: 'Help & Handbooks',
+    description: 'Guides, FAQs, and handbooks for students, volunteers, and schools using VolunTrack.',
+    path: '/help',
+  })
+
   const [tab, setTab] = useState('quickstart')
 
   return (
