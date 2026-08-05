@@ -104,7 +104,14 @@ export default function Status() {
 
   const storageBreakdown = STORAGE_KEYS.map((key) => {
     const raw = localStorage.getItem(key)
-    const data = raw ? JSON.parse(raw) : null
+    let data = null
+    if (raw) {
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        data = raw
+      }
+    }
     const count = Array.isArray(data) ? data.length : (data ? 1 : 0)
     const size = raw ? new TextEncoder().encode(raw).length : 0
     const label = key.replace('voluntrack:', '')
