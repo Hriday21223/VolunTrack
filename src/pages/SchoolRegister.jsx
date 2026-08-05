@@ -3,10 +3,17 @@ import { useState } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, School, Hash } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function SchoolRegister() {
+  useSeo({
+    title: 'Register Your School',
+    description: 'Create a free school account on VolunTrack to review, verify, and manage your students’ volunteer hours.',
+    path: '/school/register',
+  })
+
   const nav = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', password: '', pin: '' })
   const [busy, setBusy] = useState(false)

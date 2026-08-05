@@ -74,7 +74,13 @@ Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 
    ```bash
    VITE_API_URL=https://voluntrack-backend.onrender.com/api
+   VITE_SITE_URL=https://your-site.netlify.app
    ```
+
+   `VITE_SITE_URL` should be this site's own public URL (no trailing slash) —
+   it's baked into canonical/Open Graph tags and `robots.txt`/`sitemap.xml`
+   at build time. If you attach a custom domain later, update this value and
+   redeploy so SEO tags follow automatically — no code changes needed.
 
 6. Deploy. Note the assigned site URL (e.g., `https://your-site.netlify.app`).
 7. Back in Render, set `FRONTEND_URL` on the backend service to that Netlify URL so CORS allows it.
