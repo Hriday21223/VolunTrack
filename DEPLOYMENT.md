@@ -62,24 +62,26 @@ After creating the service, add these environment variables in Render:
 - `ADMIN_EMAIL`: Your admin email
 - `ADMIN_PASSWORD`: Strong password for admin
 
-## Step 4: Deploy Frontend with Backend URL
+## Step 4: Deploy Frontend to Netlify
 
 Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 
-1. Add to your `.env` file:
+1. Go to [netlify.com](https://netlify.com) and sign up/login
+2. Click "Add new site" → "Import an existing project"
+3. Connect your GitHub repository and select `VolunteerTrack`
+4. Netlify will detect the `netlify.toml` (build command `npm run build`, publish dir `dist`)
+5. Add the environment variable:
+
    ```bash
-   VITE_API_URL=https://voluntrack-backend.onrender.com
+   VITE_API_URL=https://voluntrack-backend.onrender.com/api
    ```
 
-2. Rebuild and redeploy the frontend:
-   ```bash
-   npm run build
-   npm run deploy
-   ```
+6. Deploy. Note the assigned site URL (e.g., `https://your-site.netlify.app`).
+7. Back in Render, set `FRONTEND_URL` on the backend service to that Netlify URL so CORS allows it.
 
 ## Step 5: Test Cross-Device Sync
 
-1. **Desktop**: Go to https://hriday21223.github.io/VolunteerTrack/
+1. **Desktop**: Go to your Netlify site URL
 2. **Register/Login** with your account (now using backend)
 3. **Settings** → Generate sync PIN
 4. **Mobile**: Open same URL on phone
@@ -105,7 +107,7 @@ Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 
 ## Architecture
 
-- **Frontend**: GitHub Pages (static React app)
+- **Frontend**: Netlify (static React app)
 - **Backend**: Render (Node.js + Express)
 - **Database**: Neon (PostgreSQL)
 - **Auth**: JWT tokens stored in localStorage
@@ -115,6 +117,6 @@ Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 
 - **Render**: Free tier (750 hours/month)
 - **Neon**: Free tier (0.5GB storage, ~200 hours compute)
-- **GitHub Pages**: Free
+- **Netlify**: Free tier
 
 Total: **$0/month** for hobby usage!

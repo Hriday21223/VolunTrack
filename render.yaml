@@ -5,6 +5,9 @@
 # ⚠️  Sensitive env vars (DATABASE_URL, EMAIL_USER, EMAIL_PASSWORD) are NOT
 #     stored in this file. Set them in the Render dashboard under
 #     Dashboard → your-service → Environment to keep them out of version control.
+#
+# Also set FRONTEND_URL there to your deployed Netlify site URL (e.g.
+# https://your-site.netlify.app) once it's known, so CORS allows it.
 services:
   - type: web
     name: voluntrack-backend

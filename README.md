@@ -1,10 +1,9 @@
 # VolunTrack
 
 [![CI](https://github.com/Hriday21223/VolunteerTrack/actions/workflows/ci.yml/badge.svg)](https://github.com/Hriday21223/VolunteerTrack/actions/workflows/ci.yml)
-[![Deploy](https://github.com/Hriday21223/VolunteerTrack/actions/workflows/deploy.yml/badge.svg)](https://github.com/Hriday21223/VolunteerTrack/actions/workflows/deploy.yml)
 [![Dependabot](https://github.com/Hriday21223/VolunteerTrack/security/dependabot)](https://github.com/Hriday21223/VolunteerTrack/security/dependabot)
 
-**Live demo:** [hriday21223.github.io/VolunteerTrack](https://hriday21223.github.io/VolunteerTrack)
+**Live demo:** hosted on Netlify — update this link once the site is deployed (see [DEPLOYMENT.md](DEPLOYMENT.md))
 
 A warm, focused volunteer hour tracker. Log hours, set goals, earn achievements, and generate reports for school or community organizations.
 

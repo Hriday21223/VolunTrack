@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 
 export default defineConfig({
-  base: '/VolunteerTrack/',
+  base: '/',
 
   plugins: [
     react(),
@@ -30,8 +30,8 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
 
-        start_url: '/VolunteerTrack/',
-        scope: '/VolunteerTrack/',
+        start_url: '/',
+        scope: '/',
 
         icons: [
           {

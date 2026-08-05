@@ -9,7 +9,7 @@ applyStoredTheme()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename="/VolunteerTrack">
+    <BrowserRouter>
       <App />
     </BrowserRouter>
   </React.StrictMode>,

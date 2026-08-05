@@ -41,7 +41,7 @@ app.set('trust proxy', 1)
 app.use(helmet())
 app.use(cors({
   origin: [
-    'https://hriday21223.github.io',
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
     'http://localhost:5173',
     'http://localhost:10000',
   ],

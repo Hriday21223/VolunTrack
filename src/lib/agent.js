@@ -63,7 +63,7 @@ export async function runAgent(service, incidentId) {
   if (service === 'Service Worker') {
     logAgentAction('Attempting to re-register Service Worker...', 'fixing')
     try {
-      await navigator.serviceWorker.register('/VolunteerTrack/sw.js')
+      await navigator.serviceWorker.register('/sw.js')
       const reg = await navigator.serviceWorker.ready
       if (reg.active) {
         updateIncidentStatus(incidentId, 'resolved')
@@ -328,7 +328,7 @@ export async function runAgent(service, incidentId) {
   if (service === 'PWA') {
     logAgentAction('Attempting to re-register Service Worker for PWA...', 'fixing')
     try {
-      await navigator.serviceWorker.register('/VolunteerTrack/sw.js')
+      await navigator.serviceWorker.register('/sw.js')
       const reg = await navigator.serviceWorker.ready
       if (reg.active) {
         updateIncidentStatus(incidentId, 'resolved')
