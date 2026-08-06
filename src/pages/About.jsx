@@ -145,7 +145,7 @@ export default function About() {
       <div className="relative px-4 md:px-8 py-5">
         <header className="flex flex-wrap items-center justify-between gap-3 animate-fade-in-up">
           <Link to="/login" className="flex items-center gap-3">
-            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="VolunTrack" className="w-11 h-11 object-contain" />
+            <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-11 h-11 object-contain" />
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-earth-500 dark:text-earth-400">VolunTrack</p>
               <p className="font-display font-bold text-lg text-earth-900 dark:text-earth-100">Volunteer hour tracking</p>
