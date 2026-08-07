@@ -71,6 +71,7 @@ export function printCertificate({ user, totalHours, goalReached }) {
   if (!w) return
   const name = user?.name || 'Volunteer'
   const school = user?.school || ''
+  const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   w.document.write(`
     <html><head><title>Certificate of Service</title>
     <style>
@@ -83,7 +84,10 @@ export function printCertificate({ user, totalHours, goalReached }) {
       .body { color:#3a3024; font-size:15px; line-height:1.6; margin-top:16px; }
       .hours { font-size:28px; color:#3f8344; margin:24px 0; font-weight:700; }
       .sig { margin-top:48px; display:flex; justify-content:space-between; color:#6c502d; font-size:13px; }
-      .sig div { border-top:1px solid #6c502d; padding-top:6px; width:200px; }
+      .sig div { text-align:center; }
+      .sig-value { margin-bottom:6px; white-space:nowrap; }
+      .sig-line { border-top:1px solid #6c502d; padding-top:6px; width:200px; }
+      .signature { font-family:'Brush Script MT','Segoe Script',cursive; font-size:20px; color:#214327; }
     </style></head>
     <body>
       <div class="frame">
@@ -100,8 +104,14 @@ export function printCertificate({ user, totalHours, goalReached }) {
             : 'in service of their community.'}
         </div>
         <div class="sig">
-          <div>Date</div>
-          <div>VolunTrack</div>
+          <div>
+            <div class="sig-value">${escapeHtml(issuedDate)}</div>
+            <div class="sig-line">Date</div>
+          </div>
+          <div>
+            <div class="sig-value signature">VolunTrack Org</div>
+            <div class="sig-line">VolunTrack</div>
+          </div>
         </div>
       </div>
       <script>window.onload=()=>window.print();</script>
