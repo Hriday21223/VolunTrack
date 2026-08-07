@@ -143,8 +143,8 @@ function StudentHandbook() {
       </Section>
 
       <Section title="Two-Factor Authentication (2FA)">
-        <p>For extra security, you can enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>. Choose either an authenticator app (like Google Authenticator or Authy) or a code texted to your phone — only one method can be active at a time. Once enabled, you'll need to enter that 6-digit code every time you sign in.</p>
-        <p className="mt-2">If you use the authenticator app method, setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
+        <p>For extra security, you can enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link> using an authenticator app (like Google Authenticator or Authy). Once enabled, you'll need to enter a 6-digit code every time you sign in.</p>
+        <p className="mt-2">Setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
       </Section>
 
       <Section title="Profile & Settings">

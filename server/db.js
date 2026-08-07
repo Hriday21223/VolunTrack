@@ -109,9 +109,9 @@ CREATE TABLE IF NOT EXISTS public_tasks (
   created_by      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   creator_name    TEXT,
   creator_email   TEXT,
-   phone           TEXT,
-   important_info  TEXT,
-   latitude        DECIMAL(10,7),
+  phone           TEXT,
+  important_info  TEXT,
+  latitude        DECIMAL(10,7),
   longitude       DECIMAL(10,7),
   status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
