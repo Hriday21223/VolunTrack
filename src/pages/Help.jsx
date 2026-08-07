@@ -143,8 +143,8 @@ function StudentHandbook() {
       </Section>
 
       <Section title="Two-Factor Authentication (2FA)">
-        <p>For extra security, you can enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings → Two-Factor Authentication</Link>. Once enabled, you'll need to enter a 6-digit code from your authenticator app (like Google Authenticator or Authy) every time you sign in.</p>
-        <p className="mt-2">During setup you'll receive 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
+        <p>For extra security, you can enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>. Choose either an authenticator app (like Google Authenticator or Authy) or a code texted to your phone — only one method can be active at a time. Once enabled, you'll need to enter that 6-digit code every time you sign in.</p>
+        <p className="mt-2">If you use the authenticator app method, setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
       </Section>
 
       <Section title="Profile & Settings">
@@ -254,11 +254,11 @@ function Faq() {
         />
         <FaqItem
           question="How do I enable two-factor authentication (2FA)?"
-          answer="Go to Settings → Two-Factor Authentication → Enable 2FA. Scan the QR code with an authenticator app (Google Authenticator, Authy, etc.), enter the 6-digit code to confirm, and save your backup codes. You'll need to enter a code from your app each time you sign in."
+          answer="Go to Settings, then choose one of the two 2FA cards. For an authenticator app: click Enable 2FA, scan the QR code with an app like Google Authenticator or Authy, enter the 6-digit code to confirm, and save your backup codes. For SMS: enter your phone number, then confirm the code we text you. Only one method can be enabled at a time, and you'll need to enter a code each time you sign in."
         />
         <FaqItem
           question="I lost my authenticator — how do I log in?"
-          answer="On the login screen, after entering your password, click 'Use a backup code instead' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don't have backup codes, use the password reset flow from the login page."
+          answer="On the login screen, after entering your password, click 'Use a backup code instead' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don't have backup codes, use the password reset flow from the login page. (Backup codes only apply to the authenticator app method — SMS 2FA has no backup codes, so use 'Resend code' if a text doesn't arrive.)"
         />
         <FaqItem
           question="How do I join a school?"

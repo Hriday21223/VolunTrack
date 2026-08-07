@@ -4,11 +4,13 @@ import validator from 'validator'
 import bcrypt from 'bcryptjs'
 import * as OTPAuth from 'otpauth'
 import crypto from 'crypto'
+import twilio from 'twilio'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth } from '../auth.js'
 
 const router = express.Router()
+const isProd = process.env.NODE_ENV === 'production'
 
 // Rate limit auth endpoints to prevent brute force attacks
 const authLimiter = rateLimit({
@@ -69,6 +71,17 @@ function validateSyncPin(pin) {
   return trimmed
 }
 
+// Requires E.164 format (e.g. +15555550100) — what Twilio and other SMS
+// APIs need to send a message.
+function validatePhone(phone) {
+  if (!phone) return null
+  const trimmed = phone.trim()
+  if (!validator.isMobilePhone(trimmed, 'any', { strictMode: true })) {
+    return null
+  }
+  return trimmed
+}
+
 function publicUser(row) {
   return {
     id: row.id,
@@ -79,6 +92,8 @@ function publicUser(row) {
     grade: row.grade,
     syncPin: row.sync_pin,
     totpEnabled: row.totp_enabled,
+    phone: row.phone_verified ? row.phone : null,
+    smsEnabled: row.sms_2fa_enabled,
     createdAt: row.created_at,
   }
 }
@@ -149,6 +164,10 @@ router.post('/login', authLimiter, requireDb, async (req, res) => {
     const user = publicUser(row)
     if (row.totp_enabled) {
       return res.json({ requiresTotp: true, tempToken: signTempToken(user) })
+    }
+    if (row.sms_2fa_enabled) {
+      const { devCode } = await issueSmsOtp(row.id, row.phone)
+      return res.json({ requiresSms: true, tempToken: signTempToken(user), devCode })
     }
     return res.json({ token: signToken(user), user })
   } catch (error) {
@@ -299,6 +318,55 @@ router.post('/grant-admin', authLimiter, requireDb, requireAuth(), async (req, r
 })
 
 // ---------------------------------------------------------------------------
+// SMS Two-Factor Authentication (alternative to TOTP — mutually exclusive)
+// ---------------------------------------------------------------------------
+
+const SMS_OTP_TTL_MS = 10 * 60 * 1000
+
+// Lazily built — env vars may not be set yet at module load time in tests.
+function smsClient() {
+  const sid = process.env.TWILIO_ACCOUNT_SID
+  const token = process.env.TWILIO_AUTH_TOKEN
+  const from = process.env.TWILIO_FROM_NUMBER
+  if (!sid || !token || !from) {
+    return { client: null, from: null, missing: [
+      !sid && 'TWILIO_ACCOUNT_SID', !token && 'TWILIO_AUTH_TOKEN', !from && 'TWILIO_FROM_NUMBER',
+    ].filter(Boolean) }
+  }
+  return { client: twilio(sid, token), from, missing: [] }
+}
+
+function generateSmsOtp() {
+  return String(crypto.randomInt(0, 1_000_000)).padStart(6, '0')
+}
+
+// Generates a fresh 6-digit code, stores its hash + expiry on the user row,
+// and sends it via Twilio. When Twilio isn't configured, falls back to
+// "code on screen" dev mode (same pattern as the SMTP-less email flow in
+// server.js) — the code is logged and returned so local dev / demo mode
+// keeps working without a paid SMS account.
+async function issueSmsOtp(userId, phone) {
+  const code = generateSmsOtp()
+  const hash = await bcrypt.hash(code, 10)
+  const expiresAt = new Date(Date.now() + SMS_OTP_TTL_MS)
+  await query('UPDATE users SET sms_otp_code = $1, sms_otp_expires_at = $2 WHERE id = $3', [hash, expiresAt, userId])
+
+  const { client, from } = smsClient()
+  if (!client) {
+    console.log(`[dev] SMS 2FA code for ${phone}: ${code}`)
+    return { sent: false, devCode: isProd ? undefined : code }
+  }
+  await client.messages.create({ to: phone, from, body: `Your VolunTrack verification code is ${code}. It expires in 10 minutes.` })
+  return { sent: true, devCode: undefined }
+}
+
+async function verifySmsOtp(row, code) {
+  if (!row.sms_otp_code || !row.sms_otp_expires_at) return false
+  if (new Date(row.sms_otp_expires_at).getTime() < Date.now()) return false
+  return bcrypt.compare(code, row.sms_otp_code)
+}
+
+// ---------------------------------------------------------------------------
 // TOTP Two-Factor Authentication
 // ---------------------------------------------------------------------------
 
@@ -326,6 +394,9 @@ router.post('/totp/setup', authLimiter, requireDb, requireAuth(), async (req, re
     const row = rows[0]
     if (row.totp_enabled) {
       return res.status(400).json({ error: '2FA is already enabled. Disable it first.' })
+    }
+    if (row.sms_2fa_enabled) {
+      return res.status(400).json({ error: 'SMS 2FA is enabled. Disable it first to switch to an authenticator app.' })
     }
 
     const totp = new OTPAuth.TOTP({
@@ -389,7 +460,7 @@ router.post('/totp/verify-setup', authLimiter, requireDb, requireAuth(), async (
     }
 
     await query('UPDATE users SET totp_enabled = true WHERE id = $1', [req.auth.sub])
-    return res.json({ ok: true, user: publicUser(row) })
+    return res.json({ ok: true, user: publicUser({ ...row, totp_enabled: true }) })
   } catch (error) {
     console.error('totp verify-setup failed:', error)
     return res.status(500).json({ error: 'Could not verify 2FA code.' })
@@ -513,6 +584,190 @@ router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) =>
   } catch (error) {
     console.error('totp backup-recovery failed:', error)
     return res.status(500).json({ error: 'Could not verify backup code.' })
+  }
+})
+
+// POST /api/auth/sms/setup — validate phone, send a code (not yet enabled)
+router.post('/sms/setup', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  const phone = validatePhone(req.body.phone || '')
+  if (!phone) {
+    return res.status(400).json({ error: 'Enter a valid phone number, including country code (e.g. +15555550100).' })
+  }
+
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    const row = rows[0]
+
+    if (row.totp_enabled) {
+      return res.status(400).json({ error: 'Authenticator app 2FA is enabled. Disable it first to switch to SMS.' })
+    }
+    if (row.sms_2fa_enabled) {
+      return res.status(400).json({ error: 'SMS 2FA is already enabled. Disable it first.' })
+    }
+
+    await query('UPDATE users SET phone = $1, phone_verified = false WHERE id = $2', [phone, req.auth.sub])
+    const { devCode } = await issueSmsOtp(req.auth.sub, phone)
+    return res.json({ ok: true, phone, devCode })
+  } catch (error) {
+    console.error('sms setup failed:', error)
+    return res.status(500).json({ error: 'Could not send verification code.' })
+  }
+})
+
+// POST /api/auth/sms/verify-setup — confirm a code to enable SMS 2FA
+router.post('/sms/verify-setup', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  const code = String(req.body.code || '').trim()
+  if (!/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: 'Enter a 6-digit code.' })
+  }
+
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    const row = rows[0]
+
+    if (row.sms_2fa_enabled) {
+      return res.status(400).json({ error: 'SMS 2FA is already enabled.' })
+    }
+    if (!row.phone) {
+      return res.status(400).json({ error: 'No SMS setup in progress. Run /sms/setup first.' })
+    }
+
+    const ok = await verifySmsOtp(row, code)
+    if (!ok) {
+      return res.status(401).json({ error: 'Invalid or expired code.' })
+    }
+
+    await query(
+      'UPDATE users SET sms_2fa_enabled = true, phone_verified = true, sms_otp_code = NULL, sms_otp_expires_at = NULL WHERE id = $1',
+      [req.auth.sub],
+    )
+    const { rows: updated } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    return res.json({ ok: true, user: publicUser(updated[0]) })
+  } catch (error) {
+    console.error('sms verify-setup failed:', error)
+    return res.status(500).json({ error: 'Could not verify code.' })
+  }
+})
+
+// POST /api/auth/sms/resend — resend the setup code to the pending phone
+router.post('/sms/resend', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    const row = rows[0]
+
+    if (row.sms_2fa_enabled) {
+      return res.status(400).json({ error: 'SMS 2FA is already enabled.' })
+    }
+    if (!row.phone) {
+      return res.status(400).json({ error: 'No SMS setup in progress. Run /sms/setup first.' })
+    }
+
+    const { devCode } = await issueSmsOtp(req.auth.sub, row.phone)
+    return res.json({ ok: true, devCode })
+  } catch (error) {
+    console.error('sms resend failed:', error)
+    return res.status(500).json({ error: 'Could not resend code.' })
+  }
+})
+
+// POST /api/auth/sms/disable — disable SMS 2FA (requires password)
+router.post('/sms/disable', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  const password = req.body.password
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Password is required to disable SMS 2FA.' })
+  }
+
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    const row = rows[0]
+
+    if (!row.sms_2fa_enabled) {
+      return res.status(400).json({ error: 'SMS 2FA is not enabled.' })
+    }
+
+    const ok = await verifyPassword(password, row.password_hash)
+    if (!ok) return res.status(403).json({ error: 'Incorrect password.' })
+
+    await query(
+      'UPDATE users SET sms_2fa_enabled = false, phone = NULL, phone_verified = false, sms_otp_code = NULL, sms_otp_expires_at = NULL WHERE id = $1',
+      [req.auth.sub],
+    )
+    const { rows: updated } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    return res.json({ ok: true, user: publicUser(updated[0]) })
+  } catch (error) {
+    console.error('sms disable failed:', error)
+    return res.status(500).json({ error: 'Could not disable SMS 2FA.' })
+  }
+})
+
+// POST /api/auth/sms/challenge — verify SMS code during login (uses temp token)
+router.post('/sms/challenge', authLimiter, requireDb, async (req, res) => {
+  const { tempToken, code } = req.body
+  if (!tempToken || typeof tempToken !== 'string') {
+    return res.status(400).json({ error: 'Missing temporary token.' })
+  }
+  if (!code || typeof code !== 'string' || !/^\d{6}$/.test(code.trim())) {
+    return res.status(400).json({ error: 'Enter a 6-digit code.' })
+  }
+
+  const payload = verifyTempToken(tempToken)
+  if (!payload) {
+    return res.status(401).json({ error: 'Session expired. Please log in again.' })
+  }
+
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    const row = rows[0]
+
+    if (!row.sms_2fa_enabled || !row.phone) {
+      return res.status(400).json({ error: 'SMS 2FA is not enabled on this account.' })
+    }
+
+    const ok = await verifySmsOtp(row, code.trim())
+    if (!ok) {
+      return res.status(401).json({ error: 'Invalid or expired code.' })
+    }
+
+    await query('UPDATE users SET sms_otp_code = NULL, sms_otp_expires_at = NULL WHERE id = $1', [row.id])
+    const user = publicUser(row)
+    return res.json({ token: signToken(user), user })
+  } catch (error) {
+    console.error('sms challenge failed:', error)
+    return res.status(500).json({ error: 'Could not verify code.' })
+  }
+})
+
+// POST /api/auth/sms/resend-challenge — resend the login code (uses temp token)
+router.post('/sms/resend-challenge', authLimiter, requireDb, async (req, res) => {
+  const { tempToken } = req.body
+  if (!tempToken || typeof tempToken !== 'string') {
+    return res.status(400).json({ error: 'Missing temporary token.' })
+  }
+
+  const payload = verifyTempToken(tempToken)
+  if (!payload) {
+    return res.status(401).json({ error: 'Session expired. Please log in again.' })
+  }
+
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    const row = rows[0]
+
+    if (!row.sms_2fa_enabled || !row.phone) {
+      return res.status(400).json({ error: 'SMS 2FA is not enabled on this account.' })
+    }
+
+    const { devCode } = await issueSmsOtp(row.id, row.phone)
+    return res.json({ ok: true, devCode })
+  } catch (error) {
+    console.error('sms resend-challenge failed:', error)
+    return res.status(500).json({ error: 'Could not resend code.' })
   }
 })
 
