@@ -193,12 +193,6 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS backup_codes TEXT`) } catch {}
 
-  // SMS 2FA columns (alternative to TOTP — the two are mutually exclusive)
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT false`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_2fa_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_otp_code TEXT`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_otp_expires_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS student_email TEXT`) } catch {}
 
   // Parent portal

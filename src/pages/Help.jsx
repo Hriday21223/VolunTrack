@@ -254,11 +254,11 @@ function Faq() {
         />
         <FaqItem
           question="How do I enable two-factor authentication (2FA)?"
-          answer="Go to Settings, then choose one of the two 2FA cards. For an authenticator app: click Enable 2FA, scan the QR code with an app like Google Authenticator or Authy, enter the 6-digit code to confirm, and save your backup codes. For SMS: enter your phone number, then confirm the code we text you. Only one method can be enabled at a time, and you'll need to enter a code each time you sign in."
+          answer="Go to Settings, then find the Two-Factor Authentication card. Click Enable 2FA, scan the QR code with an authenticator app like Google Authenticator or Authy, enter the 6-digit code to confirm, and save your backup codes. You'll need to enter a code each time you sign in."
         />
         <FaqItem
           question="I lost my authenticator — how do I log in?"
-          answer="On the login screen, after entering your password, click 'Use a backup code instead' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don't have backup codes, use the password reset flow from the login page. (Backup codes only apply to the authenticator app method — SMS 2FA has no backup codes, so use 'Resend code' if a text doesn't arrive.)"
+          answer="On the login screen, after entering your password, click 'Use a backup code instead' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don't have backup codes, use the password reset flow from the login page."
         />
         <FaqItem
           question="How do I join a school?"
