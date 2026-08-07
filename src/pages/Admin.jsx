@@ -116,6 +116,22 @@ export default function Admin() {
     } catch { setToastMessage('Failed to update payment'); setToast(true) }
   }
 
+  const rejectPayment = async (id) => {
+    const reason = prompt('Why is this payment confirmation being rejected? The school will be emailed this reason.')
+    if (!reason || !reason.trim()) return
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/admin/${id}/payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 'rejected', notes: reason.trim() }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      loadSchools()
+      setToastMessage('Payment rejected — school notified'); setToast(true)
+    } catch { setToastMessage('Failed to reject payment'); setToast(true) }
+  }
+
   const markUnpaid = async (id) => {
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
@@ -374,11 +390,18 @@ export default function Admin() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           s.payment_status === 'paid'
                             ? 'bg-emerald-500/10 text-emerald-400'
+                            : s.payment_status === 'pending'
+                            ? 'bg-blue-500/10 text-blue-400'
+                            : s.payment_status === 'rejected'
+                            ? 'bg-red-500/10 text-red-400'
                             : 'bg-amber-500/10 text-amber-400'
                         }`}>
-                          {s.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                          {s.payment_status === 'paid' ? 'Paid' : s.payment_status === 'pending' ? 'Pending review' : s.payment_status === 'rejected' ? 'Rejected' : 'Unpaid'}
                         </span>
                       </div>
+                      {s.payment_confirmation_ref && s.payment_status === 'pending' && (
+                        <p className="text-xs text-earth-500 mt-0.5">Ref: <span className="font-mono">{s.payment_confirmation_ref}</span></p>
+                      )}
                       {s.payment_notes && (
                         <p className="text-xs text-earth-500 mt-0.5">{s.payment_notes}</p>
                       )}
@@ -392,6 +415,11 @@ export default function Admin() {
                     ) : (
                       <button onClick={() => { setPayModal(s.id); setPayNotes('') }} className="text-emerald-400 hover:text-emerald-300 p-2" title="Mark as paid">
                         <CreditCard className="w-4 h-4" />
+                      </button>
+                    )}
+                    {s.payment_status === 'pending' && (
+                      <button onClick={() => rejectPayment(s.id)} className="text-red-400 hover:text-red-300 p-2" title="Reject payment confirmation">
+                        <XCircle className="w-4 h-4" />
                       </button>
                     )}
                     <button onClick={() => { setNotifySchoolId(s.id); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this school">

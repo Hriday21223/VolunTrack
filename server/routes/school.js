@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
+import { sendEmail } from '../email.js'
 
 const router = express.Router()
 
@@ -17,6 +18,27 @@ const limiter = rateLimit({
 function requireDb(_req, res, next) {
   if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
   next()
+}
+
+// Blocks student submissions and school-admin management routes until the
+// user's school has a verified payment. Looks up school_id fresh from the
+// DB (not the JWT) so a payment status change takes effect immediately.
+async function requirePaidSchool(req, res, next) {
+  try {
+    const { rows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = rows[0]?.school_id
+    if (!schoolId) return res.status(400).json({ error: 'No school linked to your account.' })
+
+    const { rows: schoolRows } = await query('SELECT payment_status FROM schools WHERE id = $1', [schoolId])
+    if (schoolRows.length === 0) return res.status(404).json({ error: 'School not found.' })
+    if (schoolRows[0].payment_status !== 'paid') {
+      return res.status(403).json({ error: 'This school has not completed payment yet. Submissions are paused until payment is verified.' })
+    }
+    next()
+  } catch (error) {
+    console.error('requirePaidSchool check failed:', error)
+    return res.status(500).json({ error: 'Could not verify school payment status.' })
+  }
 }
 
 // Register a school
@@ -79,7 +101,7 @@ router.post('/join', limiter, requireDb, requireAuth(), async (req, res) => {
 })
 
 // Get students under this school (school admin only)
-router.get('/students', limiter, requireDb, requireAuth('school'), async (req, res) => {
+router.get('/students', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
@@ -98,7 +120,7 @@ router.get('/students', limiter, requireDb, requireAuth('school'), async (req, r
 })
 
 // Add a student to the school by email (school admin only)
-router.post('/add-student', limiter, requireDb, requireAuth('school'), async (req, res) => {
+router.post('/add-student', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase()
   if (!email || !validator.isEmail(email)) return res.status(400).json({ error: 'Valid email required.' })
 
@@ -120,7 +142,10 @@ router.post('/add-student', limiter, requireDb, requireAuth('school'), async (re
 })
 
 // Upload a PDF (student or admin)
-router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), async (req, res) => {
+router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), async (req, res, next) => {
+  if (req.auth.role === 'admin') return next()
+  return requirePaidSchool(req, res, next)
+}, async (req, res) => {
   const { filename, fileData, fileType } = req.body
 
   if (!filename || !fileData) return res.status(400).json({ error: 'Filename and file data required.' })
@@ -195,7 +220,7 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 })
 
 // Approve or reject a PDF (school admin)
-router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school'), async (req, res) => {
+router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
   const { status, notes } = req.body
   if (!status || !['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Status must be approved or rejected.' })
 
@@ -222,16 +247,17 @@ router.get('/info', limiter, requireDb, async (req, res) => {
   const id = String(req.query.id || '').trim()
   if (!pin && !id) return res.status(400).json({ error: 'School code or id required.' })
   try {
+    const cols = 'id, name, pin, payment_status, payment_notes, paid_at, payment_due_date, payment_confirmation_ref'
     let rows
     if (pin) {
-      const r = await query('SELECT id, name, pin, payment_status, payment_notes, paid_at, payment_due_date FROM schools WHERE pin = $1', [pin])
+      const r = await query(`SELECT ${cols} FROM schools WHERE pin = $1`, [pin])
       rows = r.rows
     } else {
-      const r = await query('SELECT id, name, pin, payment_status, payment_notes, paid_at, payment_due_date FROM schools WHERE id = $1', [id])
+      const r = await query(`SELECT ${cols} FROM schools WHERE id = $1`, [id])
       rows = r.rows
     }
     if (rows.length === 0) return res.status(404).json({ error: 'No school found.' })
-    return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date } })
+    return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date, paymentConfirmationRef: rows[0].payment_confirmation_ref } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
   }
@@ -506,13 +532,35 @@ router.get('/public-tasks/:id/logs', limiter, requireDb, requireAuth(), async (r
   }
 })
 
+// School admin submits their bank payment confirmation number after paying.
+// Puts the school into 'pending' until an admin verifies it against the
+// actual bank deposit — this does not unlock the school by itself.
+router.post('/submit-payment-confirmation', limiter, requireDb, requireAuth('school'), async (req, res) => {
+  const reference = String(req.body.reference || '').trim()
+  if (!reference || reference.length > 200) return res.status(400).json({ error: 'Bank confirmation number is required.' })
+
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    if (!userRows[0]?.school_id) return res.status(400).json({ error: 'No school linked to your account.' })
+
+    await query(
+      `UPDATE schools SET payment_status = 'pending', payment_confirmation_ref = $1, payment_notes = NULL WHERE id = $2`,
+      [reference, userRows[0].school_id],
+    )
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('submit payment confirmation failed:', error)
+    return res.status(500).json({ error: 'Could not submit payment confirmation.' })
+  }
+})
+
 // --- Admin endpoints ---
 
 // List all schools (admin only)
 router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.paid_at, s.payment_due_date, s.created_at,
+      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.created_at,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s ORDER BY s.created_at DESC`,
     )
@@ -545,7 +593,12 @@ router.get('/admin/submissions', limiter, requireDb, requireAuth('admin'), async
 // Update payment status for a school (admin only)
 router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const { status, notes } = req.body
-  if (!status || !['paid', 'unpaid'].includes(status)) return res.status(400).json({ error: 'Status must be paid or unpaid.' })
+  if (!status || !['paid', 'unpaid', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be paid, unpaid, or rejected.' })
+  }
+  if (status === 'rejected' && (!notes || !notes.trim())) {
+    return res.status(400).json({ error: 'A reason is required when rejecting a payment.' })
+  }
 
   try {
     if (status === 'paid') {
@@ -556,9 +609,30 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
     } else {
       await query(
         'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = NULL WHERE id = $3',
-        [status, null, req.params.id],
+        [status, notes || null, req.params.id],
       )
     }
+
+    // Rejected payments notify the school so they know to resubmit.
+    if (status === 'rejected') {
+      const id = uid('anot')
+      const rejectMsg = `Your payment confirmation could not be verified: ${notes.trim()}. Please resubmit a valid bank confirmation number.`
+      await query(
+        'INSERT INTO admin_notifications (id, school_id, message) VALUES ($1, $2, $3)',
+        [id, req.params.id, rejectMsg],
+      )
+
+      const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
+      if (rows[0]?.contact_email) {
+        await sendEmail({
+          to: rows[0].contact_email,
+          subject: 'Payment confirmation rejected — VolunTrack',
+          html: `<p>${rejectMsg}</p>`,
+          idempotencyKey: `payment-rejected/${req.params.id}/${id}`,
+        })
+      }
+    }
+
     return res.json({ ok: true })
   } catch (error) {
     console.error('update payment failed:', error)
@@ -603,6 +677,15 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
       'INSERT INTO admin_notifications (id, message) VALUES ($1, $2)',
       [id, message.trim()],
     )
+
+    const { rows: schools } = await query('SELECT id, contact_email FROM schools WHERE contact_email IS NOT NULL')
+    await Promise.all(schools.map((s) => sendEmail({
+      to: s.contact_email,
+      subject: 'Payment notice from VolunTrack',
+      html: `<p>${message.trim()}</p>`,
+      idempotencyKey: `payment-notice/${s.id}/${id}`,
+    })))
+
     return res.status(201).json({ ok: true, id })
   } catch (error) {
     console.error('notify payment failed:', error)
@@ -622,6 +705,17 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
       'INSERT INTO admin_notifications (id, school_id, message) VALUES ($1, $2, $3)',
       [id, req.params.schoolId, message.trim()],
     )
+
+    const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.schoolId])
+    if (rows[0]?.contact_email) {
+      await sendEmail({
+        to: rows[0].contact_email,
+        subject: 'Payment notice from VolunTrack',
+        html: `<p>${message.trim()}</p>`,
+        idempotencyKey: `payment-notice/${req.params.schoolId}/${id}`,
+      })
+    }
+
     return res.status(201).json({ ok: true, id })
   } catch (error) {
     console.error('notify school failed:', error)
@@ -657,7 +751,7 @@ router.get('/admin/notifications', limiter, requireDb, requireAuth(), async (req
 // --- School chat (school admin → students) ---
 
 // Send a message (school admin only)
-router.post('/messages', limiter, requireDb, requireAuth('school'), async (req, res) => {
+router.post('/messages', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
   const { message } = req.body
   if (!message || typeof message !== 'string' || message.trim().length === 0 || message.length > 2000) {
     return res.status(400).json({ error: 'Message is required (max 2000 chars).' })

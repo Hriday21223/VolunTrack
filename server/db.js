@@ -42,9 +42,10 @@ CREATE TABLE IF NOT EXISTS schools (
   name            TEXT NOT NULL,
   pin             TEXT UNIQUE NOT NULL,
   contact_email   TEXT,
-  payment_status  TEXT NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('paid','unpaid')),
+  payment_status  TEXT NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('paid','unpaid','pending','rejected')),
   payment_notes   TEXT,
   paid_at         TIMESTAMPTZ,
+  payment_confirmation_ref TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -187,18 +188,14 @@ export async function initSchema() {
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_notes TEXT`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_due_date DATE`) } catch {}
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_confirmation_ref TEXT`) } catch {}
+  try { await query(`ALTER TABLE schools DROP CONSTRAINT IF EXISTS schools_payment_status_check`) } catch {}
+  try { await query(`ALTER TABLE schools ADD CONSTRAINT schools_payment_status_check CHECK (payment_status IN ('paid','unpaid','pending','rejected'))`) } catch {}
   try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS school_id TEXT REFERENCES schools(id) ON DELETE CASCADE`) } catch {}
   // 2FA columns
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS backup_codes TEXT`) } catch {}
-
-  // SMS 2FA columns (alternative to TOTP — the two are mutually exclusive)
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN NOT NULL DEFAULT false`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_2fa_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_otp_code TEXT`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_otp_expires_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS student_email TEXT`) } catch {}
 
   // Parent portal

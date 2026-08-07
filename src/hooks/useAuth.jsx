@@ -24,21 +24,29 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
+  // Re-fetches the session user from the backend so server-side changes
+  // (e.g. a school's payment status flipping) show up without a re-login.
+  const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return null
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    try {
+      const r = await fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) return null
+      const data = await r.json()
+      if (data?.user) {
+        write(SESSION_KEY, data.user)
+        setUser(data.user)
+        return data.user
+      }
+    } catch {}
+    return null
+  }, [])
+
   // Refresh user from backend on mount (syncs schoolId, role, etc.)
   useEffect(() => {
-    const token = localStorage.getItem('voluntrack:auth_token')
-    if (!token) return
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.user) {
-          write(SESSION_KEY, data.user)
-          setUser(data.user)
-        }
-      })
-      .catch(() => {})
-  }, [])
+    refreshUser()
+  }, [refreshUser])
 
   const login = useCallback(async (email, password) => {
     // Try backend API first. Only a genuinely unreachable backend (the
@@ -73,11 +81,6 @@ export function AuthProvider({ children }) {
       // 2FA required — return temp token for the TOTP challenge step
       if (data.requiresTotp) {
         return { requiresTotp: true, tempToken: data.tempToken }
-      }
-
-      // SMS 2FA required — a code was just texted to the user's phone
-      if (data.requiresSms) {
-        return { requiresSms: true, tempToken: data.tempToken, devCode: data.devCode }
       }
 
       // Store the token for future authenticated requests
@@ -130,107 +133,6 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
-    write(SESSION_KEY, data.user)
-    setUser(data.user)
-    return data.user
-  }, [])
-
-  const verifySms = useCallback(async (tempToken, code) => {
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    const response = await fetch(`${apiUrl}/auth/sms/challenge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tempToken, code }),
-    })
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err.error || 'Invalid code')
-    }
-    const data = await response.json()
-    localStorage.setItem('voluntrack:auth_token', data.token)
-    write(SESSION_KEY, data.user)
-    setUser(data.user)
-    return data.user
-  }, [])
-
-  const resendSmsChallenge = useCallback(async (tempToken) => {
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    const response = await fetch(`${apiUrl}/auth/sms/resend-challenge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tempToken }),
-    })
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err.error || 'Could not resend code')
-    }
-    return response.json()
-  }, [])
-
-  const setupSms = useCallback(async (phone) => {
-    const token = localStorage.getItem('voluntrack:auth_token')
-    if (!token) throw new Error('Not authenticated')
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    const response = await fetch(`${apiUrl}/auth/sms/setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ phone }),
-    })
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err.error || 'Failed to send verification code')
-    }
-    return response.json()
-  }, [])
-
-  const resendSmsSetup = useCallback(async () => {
-    const token = localStorage.getItem('voluntrack:auth_token')
-    if (!token) throw new Error('Not authenticated')
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    const response = await fetch(`${apiUrl}/auth/sms/resend`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    })
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err.error || 'Could not resend code')
-    }
-    return response.json()
-  }, [])
-
-  const verifySmsSetup = useCallback(async (code) => {
-    const token = localStorage.getItem('voluntrack:auth_token')
-    if (!token) throw new Error('Not authenticated')
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    const response = await fetch(`${apiUrl}/auth/sms/verify-setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ code }),
-    })
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err.error || 'Invalid code')
-    }
-    const data = await response.json()
-    write(SESSION_KEY, data.user)
-    setUser(data.user)
-    return data.user
-  }, [])
-
-  const disableSms = useCallback(async (password) => {
-    const token = localStorage.getItem('voluntrack:auth_token')
-    if (!token) throw new Error('Not authenticated')
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    const response = await fetch(`${apiUrl}/auth/sms/disable`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ password }),
-    })
-    if (!response.ok) {
-      const err = await response.json()
-      throw new Error(err.error || 'Failed to disable SMS 2FA')
-    }
-    const data = await response.json()
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
@@ -491,7 +393,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, login, verifyTotp, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, verifySms, resendSmsChallenge, setupSms, resendSmsSetup, verifySmsSetup, disableSms, loginWithPin, loginWithSyncPin, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin }}>
+    <AuthContext.Provider value={{ user, login, verifyTotp, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

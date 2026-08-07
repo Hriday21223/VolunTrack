@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function SchoolDashboard() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const nav = useNavigate()
   const [tab, setTab] = useState('pdfs')
   const [pdfs, setPdfs] = useState([])
@@ -31,6 +31,8 @@ export default function SchoolDashboard() {
   const [sendingMsg, setSendingMsg] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState(null)
   const [adminNotifs, setAdminNotifs] = useState([])
+  const [confirmRef, setConfirmRef] = useState('')
+  const [confirmBusy, setConfirmBusy] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -98,6 +100,31 @@ export default function SchoolDashboard() {
       console.error('Load failed:', e)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSubmitConfirmation = async (e) => {
+    e.preventDefault()
+    if (!confirmRef.trim()) return
+    setConfirmBusy(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/submit-payment-confirmation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reference: confirmRef.trim() }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to submit') }
+      setToastMsg('Confirmation submitted — awaiting admin verification.')
+      setToast(true)
+      setConfirmRef('')
+      await refreshUser()
+      loadData()
+    } catch (e) {
+      setToastMsg(e.message)
+      setToast(true)
+    } finally {
+      setConfirmBusy(false)
     }
   }
 
@@ -207,6 +234,57 @@ export default function SchoolDashboard() {
     )
   }
 
+  // Source of truth is the authenticated user's schoolPaymentStatus (set at
+  // login/me and refreshed via loadData below) — NOT the /school/info fetch.
+  // That fetch can fail (network error, rate limit) and must never fail the
+  // gate open; schoolInfo is only used below for supplementary display.
+  const paymentStatus = user?.schoolPaymentStatus
+  if (user?.role === 'school' && paymentStatus && paymentStatus !== 'paid') {
+    return (
+      <AppLayout title="Payment Required" subtitle="Your school's account is locked until payment is verified">
+        <div className="max-w-lg mx-auto space-y-4">
+          {adminNotifs.length > 0 && (
+            <div className="space-y-2">
+              {adminNotifs.map((n) => (
+                <div key={n.id} className="text-sm p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <p>{n.message}</p>
+                  <p className="text-xs text-earth-500 mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <Card>
+            <h3 className="font-semibold mb-2">
+              {paymentStatus === 'pending' ? 'Confirmation submitted' : paymentStatus === 'rejected' ? 'Confirmation rejected' : 'Payment required'}
+            </h3>
+            {paymentStatus === 'pending' && (
+              <p className="text-sm text-earth-500 mb-3">We received your bank confirmation number and it's awaiting admin verification. Student uploads and management stay locked until it's approved.</p>
+            )}
+            {paymentStatus === 'rejected' && (
+              <p className="text-sm text-red-500 mb-3">{schoolInfo?.paymentNotes || 'Your confirmation could not be verified.'} Please double-check the number and resubmit.</p>
+            )}
+            {paymentStatus === 'unpaid' && (
+              <p className="text-sm text-earth-500 mb-3">Please complete payment using the instructions sent to your school's email, then enter the bank confirmation number below.</p>
+            )}
+            <form onSubmit={handleSubmitConfirmation} className="space-y-3">
+              <input
+                type="text"
+                placeholder="Bank confirmation / reference number"
+                value={confirmRef}
+                onChange={(e) => setConfirmRef(e.target.value)}
+                className="input"
+              />
+              <button type="submit" className="btn-primary w-full" disabled={confirmBusy || !confirmRef.trim()}>
+                {confirmBusy ? 'Submitting…' : 'Submit confirmation'}
+              </button>
+            </form>
+          </Card>
+        </div>
+        <Toast show={toast} message={toastMsg} onClose={() => setToast(false)} />
+      </AppLayout>
+    )
+  }
+
   return (
     <AppLayout
       title={user?.role === 'school' ? 'School Dashboard' : 'My Documents'}
@@ -300,11 +378,19 @@ export default function SchoolDashboard() {
         {user?.role === 'student' && (
           <Card>
             <h3 className="font-semibold mb-3 flex items-center gap-2"><Upload className="w-4 h-4 text-brand-600" /> Upload verification PDF</h3>
-            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">Upload volunteer hour verification documents for your school to review.</p>
-            <label className="btn-primary inline-flex items-center cursor-pointer">
-              {uploading ? 'Uploading…' : <><Upload className="w-4 h-4 mr-2" /> Choose PDF</>}
-              <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-            </label>
+            {paymentStatus && paymentStatus !== 'paid' ? (
+              <p className="text-sm p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+                Your school hasn't completed payment yet — submissions are paused until payment is verified.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">Upload volunteer hour verification documents for your school to review.</p>
+                <label className="btn-primary inline-flex items-center cursor-pointer">
+                  {uploading ? 'Uploading…' : <><Upload className="w-4 h-4 mr-2" /> Choose PDF</>}
+                  <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                </label>
+              </>
+            )}
           </Card>
         )}
 
