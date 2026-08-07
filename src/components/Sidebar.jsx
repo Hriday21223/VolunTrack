@@ -1,4 +1,4 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, School, Activity, Users } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, School, Activity, Users, Building2, Medal } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -9,6 +9,8 @@ const ROLE_ITEMS = {
     { to: '/log',          label: 'Log Hours',   icon: Clock },
     { to: '/calendar',     label: 'Calendar',    icon: Calendar },
     { to: '/achievements', label: 'Achievements', icon: Trophy },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard', icon: Medal },
     { to: '/reports',      label: 'Reports',     icon: FileText },
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
@@ -21,6 +23,8 @@ const ROLE_ITEMS = {
     { to: '/log',          label: 'Log Hours',   icon: Clock },
     { to: '/calendar',     label: 'Calendar',    icon: Calendar },
     { to: '/achievements', label: 'Achievements', icon: Trophy },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard', icon: Medal },
     { to: '/reports',      label: 'Reports',     icon: FileText },
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
@@ -32,6 +36,8 @@ const ROLE_ITEMS = {
     { to: '/school/dashboard', label: 'School Dashboard', icon: School },
     { to: '/log',          label: 'Log Hours',        icon: Clock },
     { to: '/calendar',     label: 'Calendar',         icon: Calendar },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard', icon: Medal },
     { to: '/reports',      label: 'Reports',          icon: FileText },
     { to: '/profile',      label: 'Profile',          icon: User },
     { to: '/settings',     label: 'Settings',         icon: Settings },
@@ -43,6 +49,8 @@ const ROLE_ITEMS = {
     { to: '/admin',        label: 'Admin',       icon: Shield },
     { to: '/log',          label: 'Log Hours',   icon: Clock },
     { to: '/calendar',     label: 'Calendar',    icon: Calendar },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard', icon: Medal },
     { to: '/reports',      label: 'Reports',     icon: FileText },
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },

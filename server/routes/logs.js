@@ -22,18 +22,25 @@ function requireDb(_req, res, next) {
 // writes to the caller's own account — there is no way to pass a target
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
+// Base64 dataURLs inflate ~33% over raw bytes; FileDrop caps uploads at
+// 1.5MB client-side, so a well-behaved client never exceeds this.
+const MAX_PROOF_PHOTO_CHARS = 2_200_000
+
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, supervisorName, supervisorEmail } = req.body
+  const { date, activity, category, hours, notes, supervisorName, supervisorEmail, supervisorSignature, proofPhotoData, proofPhotoType } = req.body
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
   }
+  if (proofPhotoData && proofPhotoData.length > MAX_PROOF_PHOTO_CHARS) {
+    return res.status(400).json({ error: 'Proof photo is too large.' })
+  }
   try {
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, supervisor_name, supervisor_email)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, supervisorName || null, supervisorEmail || null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, supervisor_name, supervisor_email, supervisor_signature, proof_photo_data, proof_photo_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, proofPhotoData || null, proofPhotoType || null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -48,7 +55,10 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Log not found.' })
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
 
-    const { date, activity, category, hours, notes, supervisorName, supervisorEmail } = req.body
+    const { date, activity, category, hours, notes, supervisorName, supervisorEmail, supervisorSignature, proofPhotoData, proofPhotoType } = req.body
+    if (proofPhotoData && proofPhotoData.length > MAX_PROOF_PHOTO_CHARS) {
+      return res.status(400).json({ error: 'Proof photo is too large.' })
+    }
     await query(
       `UPDATE logs SET
          date = COALESCE($1, date),
@@ -57,9 +67,12 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          hours = COALESCE($4, hours),
          notes = COALESCE($5, notes),
          supervisor_name = COALESCE($6, supervisor_name),
-         supervisor_email = COALESCE($7, supervisor_email)
-       WHERE id = $8`,
-      [date || null, activity || null, category || null, hours != null ? Number(hours) : null, notes || null, supervisorName || null, supervisorEmail || null, req.params.id],
+         supervisor_email = COALESCE($7, supervisor_email),
+         supervisor_signature = COALESCE($8, supervisor_signature),
+         proof_photo_data = COALESCE($9, proof_photo_data),
+         proof_photo_type = COALESCE($10, proof_photo_type)
+       WHERE id = $11`,
+      [date || null, activity || null, category || null, hours != null ? Number(hours) : null, notes || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, proofPhotoData || null, proofPhotoType || null, req.params.id],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -96,7 +109,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
     }
 
     const { rows } = await query(
-      `SELECT id, date, activity, category, hours, notes, supervisor_name, supervisor_email, verification_status, created_at
+      `SELECT id, date, activity, category, hours, notes, supervisor_name, supervisor_email, supervisor_signature, proof_photo_data, proof_photo_type, verification_status, created_at
        FROM logs WHERE user_id = $1 ORDER BY date DESC, created_at DESC`,
       [userId],
     )

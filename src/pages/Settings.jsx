@@ -33,7 +33,7 @@ export default function Settings() {
   const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, setupSms, resendSmsSetup, verifySmsSetup, disableSms } = useAuth()
   const { goals, saveGoal, removeGoal, logs } = useData()
   const nav = useNavigate()
-  const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, primary: false })
+  const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, deadline: '', primary: false })
   const [toast, setToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [pin, setPin] = useState('')
@@ -239,8 +239,8 @@ export default function Settings() {
   const addGoal = (e) => {
     e.preventDefault()
     if (!newGoal.title.trim()) return
-    saveGoal({ ...newGoal, title: newGoal.title.trim(), targetHours: Number(newGoal.targetHours) || 0 })
-    setNewGoal({ title: '', targetHours: 50, primary: false })
+    saveGoal({ ...newGoal, title: newGoal.title.trim(), targetHours: Number(newGoal.targetHours) || 0, deadline: newGoal.deadline || null })
+    setNewGoal({ title: '', targetHours: 50, deadline: '', primary: false })
     setToastMessage('Goal added')
     setToast(true)
   }
@@ -491,6 +491,21 @@ export default function Settings() {
     <AppLayout title="Settings" subtitle="Make VolunTrack your own.">
       <div className="space-y-3">
 
+        <CollapsibleSection icon={theme === 'dark' ? Moon : Sun} label="Appearance" defaultOpen={true}>
+          <Card>
+            <h3 className="font-display font-semibold mb-3 flex items-center gap-2">
+              {theme === 'dark' ? <Moon className="w-4 h-4 text-brand-600" /> : <Sun className="w-4 h-4 text-brand-600" />} Theme
+            </h3>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+              Switch between light and dark mode. Your choice is remembered on this device.
+            </p>
+            <button onClick={toggle} className="btn-secondary inline-flex items-center gap-2">
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              Switch to {theme === 'dark' ? 'light' : 'dark'} mode
+            </button>
+          </Card>
+        </CollapsibleSection>
+
         <CollapsibleSection icon={Star} label="Goals & Data" defaultOpen={true}>
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Star className="w-4 h-4 text-amber-500" /> Goals</h3>
@@ -512,7 +527,9 @@ export default function Settings() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{g.title}</div>
-                      <div className="text-xs text-earth-500 dark:text-earth-400">{g.targetHours}h target</div>
+                      <div className="text-xs text-earth-500 dark:text-earth-400">
+                        {g.targetHours}h target{g.deadline ? ` · due ${g.deadline}` : ''}
+                      </div>
                     </div>
                     <button onClick={() => removeGoal(g.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete">
                       <Trash2 className="w-4 h-4" />
@@ -522,7 +539,7 @@ export default function Settings() {
               </ul>
             )}
 
-            <form onSubmit={addGoal} className="grid sm:grid-cols-[1fr_120px_auto] gap-2">
+            <form onSubmit={addGoal} className="grid sm:grid-cols-[1fr_120px_160px_auto] gap-2">
               <input
                 className="input" placeholder="Goal title (e.g. 50 hours by June)"
                 value={newGoal.title} onChange={(e) => setNewGoal((g) => ({ ...g, title: e.target.value }))}
@@ -530,6 +547,10 @@ export default function Settings() {
               <input
                 type="number" min="1" className="input"
                 value={newGoal.targetHours} onChange={(e) => setNewGoal((g) => ({ ...g, targetHours: e.target.value }))}
+              />
+              <input
+                type="date" className="input" title="Deadline (optional)"
+                value={newGoal.deadline} onChange={(e) => setNewGoal((g) => ({ ...g, deadline: e.target.value }))}
               />
               <button className="btn-primary"><Plus className="w-4 h-4" /> Add</button>
             </form>

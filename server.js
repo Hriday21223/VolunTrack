@@ -11,6 +11,10 @@ import authRoutes from './server/routes/auth.js'
 import schoolRoutes from './server/routes/school.js'
 import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
+import goalsRoutes from './server/routes/goals.js'
+import organizationsRoutes from './server/routes/organizations.js'
+import leaderboardRoutes from './server/routes/leaderboard.js'
+import remindersRoutes from './server/routes/reminders.js'
 
 dotenv.config()
 
@@ -47,7 +51,7 @@ app.use(cors({
   ],
   credentials: true,
 }))
-app.use(express.json({ limit: '1mb' }))
+app.use(express.json({ limit: '3mb' }))
 app.use(apiLimiter)
 app.use(authenticate)
 
@@ -56,6 +60,10 @@ app.use('/api/auth', apiLimiter, authRoutes)
 app.use('/api/school', apiLimiter, schoolRoutes)
 app.use('/api/logs', apiLimiter, logsRoutes)
 app.use('/api/parent', apiLimiter, parentRoutes)
+app.use('/api/goals', apiLimiter, goalsRoutes)
+app.use('/api/organizations', apiLimiter, organizationsRoutes)
+app.use('/api/leaderboard', apiLimiter, leaderboardRoutes)
+app.use('/api/reminders', apiLimiter, remindersRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
@@ -556,12 +564,59 @@ async function seedAdmin() {
   console.log(`Seeded admin account: ${email}`)
 }
 
+// Daily best-effort digest for goals with an approaching or passed deadline
+// that still have hours remaining. `last_reminder_sent_at` de-dupes so the
+// same goal isn't emailed every day the process happens to be warm. This is
+// a companion to GET /api/reminders/me (server/routes/reminders.js), which
+// covers the same alerts in-app for when this Render instance is cold.
+async function runReminderDigest() {
+  if (!hasDatabase()) return
+  const { transport } = transporter()
+  if (!transport) return
+
+  try {
+    const { rows } = await query(
+      `SELECT g.id, g.label, g.target, g.deadline, u.email, u.name,
+              COALESCE((SELECT SUM(l.hours) FROM logs l WHERE l.user_id = g.user_id), 0) AS logged_hours
+       FROM goals g
+       JOIN users u ON u.id = g.user_id
+       WHERE g.deadline IS NOT NULL
+         AND g.deadline >= CURRENT_DATE - INTERVAL '30 days'
+         AND g.deadline <= CURRENT_DATE + INTERVAL '14 days'
+         AND (g.last_reminder_sent_at IS NULL OR g.last_reminder_sent_at < now() - INTERVAL '7 days')`,
+    )
+
+    for (const g of rows) {
+      const hoursRemaining = Math.max(0, Number(g.target) - Number(g.logged_hours))
+      if (hoursRemaining <= 0) continue
+      try {
+        await transport.sendMail({
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+          to: g.email,
+          subject: `VolunTrack: "${g.label}" goal deadline approaching`,
+          html: `<p>Hi ${escapeHtml(g.name)},</p>
+                 <p>Your goal <strong>${escapeHtml(g.label)}</strong> has a deadline of ${escapeHtml(g.deadline)}.
+                 You still need <strong>${hoursRemaining}</strong> more hour${hoursRemaining === 1 ? '' : 's'} to reach it.</p>
+                 <p>Log your hours in VolunTrack to stay on track.</p>`,
+        })
+        await query('UPDATE goals SET last_reminder_sent_at = now() WHERE id = $1', [g.id])
+      } catch (error) {
+        console.error(`reminder email failed for goal ${g.id}:`, error.message)
+      }
+    }
+  } catch (error) {
+    console.error('reminder digest query failed:', error)
+  }
+}
+
 async function start() {
   if (hasDatabase()) {
     try {
       await initSchema()
       await seedAdmin()
       console.log('Database ready.')
+      runReminderDigest()
+      setInterval(runReminderDigest, 24 * 60 * 60 * 1000)
     } catch (error) {
       console.error('Database init failed:', error)
     }

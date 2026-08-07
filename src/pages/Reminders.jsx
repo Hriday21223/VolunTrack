@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Bell, Plus, Trash2, Power, BellRing, BellOff, Calendar, Repeat, Clock, Pencil } from 'lucide-react'
+import { Bell, Plus, Trash2, Power, BellRing, BellOff, Calendar, Repeat, Clock, Pencil, Target, AlertTriangle } from 'lucide-react'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { reminderApi } from '@/hooks/useReminders.js'
 import { computeNextAt } from '@/lib/scheduler.js'
@@ -8,6 +8,28 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { cn } from '@/utils/cn.js'
+
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+function useServerAlerts() {
+  const [goalAlerts, setGoalAlerts] = useState([])
+  const [inactivityDays, setInactivityDays] = useState(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    fetch(`${apiUrl}/reminders/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return
+        setGoalAlerts(data.goalAlerts || [])
+        setInactivityDays(data.inactivityDays)
+      })
+      .catch(() => {})
+  }, [])
+
+  return { goalAlerts, inactivityDays }
+}
 
 const KINDS = [
   { value: 'one-off',  label: 'One time' },
@@ -37,6 +59,7 @@ export default function Reminders() {
   const [perm, setPerm] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
   const [toast, setToast] = useState(false)
   const [err, setErr] = useState('')
+  const { goalAlerts, inactivityDays } = useServerAlerts()
 
   // Re-read whenever the page mounts
   useEffect(() => { setItems(reminderApi.list()) }, [])
@@ -195,6 +218,29 @@ export default function Reminders() {
         </Card>
 
         <div className="lg:col-span-2 space-y-4">
+          {(goalAlerts.some((g) => g.urgent) || (inactivityDays !== null && inactivityDays >= 7)) && (
+            <Card className="border border-amber-500/30 bg-amber-500/5">
+              <div className="font-display font-semibold flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" /> Alerts
+              </div>
+              <ul className="space-y-2">
+                {inactivityDays !== null && inactivityDays >= 7 && (
+                  <li className="text-sm text-earth-700 dark:text-earth-200 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                    You haven't logged hours in {inactivityDays} days.
+                  </li>
+                )}
+                {goalAlerts.filter((g) => g.urgent).map((g) => (
+                  <li key={g.id} className="text-sm text-earth-700 dark:text-earth-200 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-amber-500 shrink-0" />
+                    "{g.label}" needs {g.hoursRemaining}h more by {g.deadline}
+                    {g.daysUntil >= 0 ? ` (${g.daysUntil} day${g.daysUntil === 1 ? '' : 's'} left)` : ' (past due)'}.
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           <Card>
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>

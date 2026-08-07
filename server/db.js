@@ -230,5 +230,35 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('role constraint migration failed:', error) }
 
+  // Proof photo + typed supervisor signature on a log entry (previously
+  // captured client-side only and silently dropped before reaching the
+  // server).
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_photo_data TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_photo_type TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_signature TEXT`) } catch {}
+
+  // Goals: optional deadline (for reminder alerts), which goal drives the
+  // dashboard ring, and reminder de-duplication.
+  try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
+  try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS last_reminder_sent_at TIMESTAMPTZ`) } catch {}
+
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS organizations (
+        id            TEXT PRIMARY KEY,
+        name          TEXT NOT NULL,
+        description   TEXT,
+        category      TEXT,
+        website       TEXT,
+        contact_email TEXT,
+        city          TEXT,
+        created_by    TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`CREATE INDEX IF NOT EXISTS idx_organizations_category ON organizations(category)`)
+  } catch (error) { console.error('organizations table migration failed:', error) }
+
   return true
 }

@@ -194,13 +194,16 @@ export function listGoals() {
 export function upsertGoal(goal) {
   const goals = listGoals()
   const existingIdx = goals.findIndex((g) => g.id === goal.id)
+  let saved
   if (existingIdx === -1) {
-    goals.push({ id: uid('goal'), createdAt: new Date().toISOString(), ...goal })
+    saved = { id: uid('goal'), createdAt: new Date().toISOString(), ...goal }
+    goals.push(saved)
   } else {
-    goals[existingIdx] = { ...goals[existingIdx], ...goal }
+    saved = { ...goals[existingIdx], ...goal }
+    goals[existingIdx] = saved
   }
   write(keys.goals, goals)
-  return goals
+  return saved
 }
 
 export function deleteGoal(id) {

@@ -5,6 +5,7 @@ import { listLogs, createLog, updateLog, deleteLog,
 import { evaluateAchievements } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 import { syncCreateLog, syncUpdateLog, syncDeleteLog } from '@/lib/logSync.js'
+import { syncCreateGoal, syncUpdateGoal, syncDeleteGoal } from '@/lib/goalSync.js'
 
 const DataContext = createContext(null)
 
@@ -82,13 +83,30 @@ export function DataProvider({ children }) {
   }, [logs])
 
   const saveGoal = useCallback((g) => {
-    const next = upsertGoal(g)
-    setGoals(next)
+    const isNew = !g.id
+    const saved = upsertGoal(g)
+    setGoals(listGoals())
+    // Write-through to the server for signed-in accounts, mirroring addLog/
+    // editLog below. Best-effort — a failed sync just leaves the goal
+    // local-only, same as a log that never got a serverId.
+    if (isNew) {
+      syncCreateGoal(saved).then((serverId) => {
+        if (serverId) {
+          upsertGoal({ ...saved, serverId }) // raw local write, doesn't re-trigger sync
+          setGoals(listGoals())
+        }
+      })
+    } else if (saved.serverId) {
+      syncUpdateGoal(saved.serverId, g)
+    }
+    return saved
   }, [])
   const removeGoal = useCallback((id) => {
+    const target = goals.find((g) => g.id === id)
     deleteGoal(id)
     setGoals((prev) => prev.filter((g) => g.id !== id))
-  }, [])
+    if (target?.serverId) syncDeleteGoal(target.serverId)
+  }, [goals])
 
   const refreshLogs = useCallback(() => setLogs(listLogs()), [])
   const dismissBadges = useCallback(() => setPendingBadges([]), [])

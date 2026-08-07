@@ -24,6 +24,9 @@ export async function syncCreateLog(log) {
         notes: log.notes,
         supervisorName: log.supervisorName || null,
         supervisorEmail: log.supervisorEmail || null,
+        supervisorSignature: log.supervisorSignature || null,
+        proofPhotoData: log.proof?.dataUrl || null,
+        proofPhotoType: log.proof?.mimeType || null,
       }),
     })
     if (!res.ok) return null
@@ -37,8 +40,16 @@ export async function syncCreateLog(log) {
 export async function syncUpdateLog(serverId, patch) {
   const headers = authHeaders()
   if (!headers || !serverId) return
+  // `proof` is a FileDrop value object ({ dataUrl, mimeType, name }) in the
+  // local log shape; the server expects it flattened, same as syncCreateLog.
+  const { proof, ...rest } = patch
+  const body = { ...rest }
+  if (proof !== undefined) {
+    body.proofPhotoData = proof?.dataUrl || null
+    body.proofPhotoType = proof?.mimeType || null
+  }
   try {
-    await fetch(`${apiUrl}/logs/${serverId}`, { method: 'PATCH', headers, body: JSON.stringify(patch) })
+    await fetch(`${apiUrl}/logs/${serverId}`, { method: 'PATCH', headers, body: JSON.stringify(body) })
   } catch {
     // best-effort
   }

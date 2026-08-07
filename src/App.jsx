@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { AuthProvider, useAuth } from '@/hooks/useAuth.jsx'
@@ -8,6 +8,7 @@ import MobileTabBar from '@/components/MobileTabBar.jsx'
 import BadgeToasts from '@/components/BadgeToasts.jsx'
 import ReminderToasts from '@/components/ReminderToasts.jsx'
 import ErrorBoundary from '@/components/ErrorBoundary.jsx'
+import SplashScreen from '@/components/SplashScreen.jsx'
 
 // About is the logged-out landing page served at "/" — kept as a static import
 // so the initial route renders without an extra chunk round-trip. Every other
@@ -36,6 +37,8 @@ const MyTasks = lazy(() => import('@/pages/MyTasks.jsx'))
 const Status = lazy(() => import('@/pages/Status.jsx'))
 const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
 const ParentDashboard = lazy(() => import('@/pages/ParentDashboard.jsx'))
+const Organizations = lazy(() => import('@/pages/Organizations.jsx'))
+const Leaderboard = lazy(() => import('@/pages/Leaderboard.jsx'))
 
 function RouteFallback() {
   return (
@@ -99,6 +102,8 @@ function Shell() {
           <Route path="/calendar"     element={<Protected><CalendarView /></Protected>} />
           <Route path="/achievements" element={<Protected><Achievements /></Protected>} />
           <Route path="/reminders"    element={<Protected><Reminders /></Protected>} />
+          <Route path="/organizations" element={<Protected><Organizations /></Protected>} />
+          <Route path="/leaderboard"  element={<Protected><Leaderboard /></Protected>} />
           <Route path="/reports"      element={<Protected><Reports /></Protected>} />
           <Route path="/profile"      element={<Protected><Profile /></Protected>} />
           <Route path="/settings"     element={<Protected><Settings /></Protected>} />
@@ -118,8 +123,10 @@ function Shell() {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true)
   return (
     <ErrorBoundary>
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <AuthProvider>
         <DataProvider>
           <Shell />

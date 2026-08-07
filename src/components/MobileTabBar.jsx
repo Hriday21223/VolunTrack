@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, School, Activity, MapPin, X, ChevronRight, Building2, Medal } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
@@ -47,6 +47,8 @@ const MORE_ITEMS = {
   student: [
     { to: '/calendar',     label: 'Calendar',      icon: Calendar },
     { to: '/achievements', label: 'Achievements',  icon: Trophy },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard',   icon: Medal },
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/status',       label: 'System Status', icon: Activity },
@@ -54,18 +56,24 @@ const MORE_ITEMS = {
   volunteer: [
     { to: '/calendar',     label: 'Calendar',      icon: Calendar },
     { to: '/achievements', label: 'Achievements',  icon: Trophy },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard',   icon: Medal },
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   school: [
     { to: '/calendar',     label: 'Calendar',      icon: Calendar },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard',   icon: Medal },
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   admin: [
     { to: '/calendar',     label: 'Calendar',      icon: Calendar },
+    { to: '/organizations', label: 'Organizations', icon: Building2 },
+    { to: '/leaderboard',  label: 'Leaderboard',   icon: Medal },
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/status',       label: 'System Status', icon: Activity },
