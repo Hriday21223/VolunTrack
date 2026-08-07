@@ -1,4 +1,21 @@
 User-agent: *
 Allow: /
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /reset-pin
+Disallow: /sync-login
+Disallow: /verify-hours
+Disallow: /parent
+Disallow: /log
+Disallow: /calendar
+Disallow: /achievements
+Disallow: /reminders
+Disallow: /reports
+Disallow: /profile
+Disallow: /settings
+Disallow: /my-tasks
+Disallow: /admin
+Disallow: /school/dashboard
+Disallow: /api/
 
-Sitemap: https://voluntrack.example.com/sitemap.xml
+Sitemap: http://localhost:5173/sitemap.xml

@@ -1,4 +1,6 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
 import { AuthProvider, useAuth } from '@/hooks/useAuth.jsx'
 import { DataProvider, useData } from '@/hooks/useData.jsx'
 import { Analytics } from '@vercel/analytics/react'
@@ -7,30 +9,41 @@ import BadgeToasts from '@/components/BadgeToasts.jsx'
 import ReminderToasts from '@/components/ReminderToasts.jsx'
 import ErrorBoundary from '@/components/ErrorBoundary.jsx'
 
-import Login from '@/pages/Login.jsx'
-import Register from '@/pages/Register.jsx'
-import ForgotPassword from '@/pages/ForgotPassword.jsx'
-import ResetPassword from '@/pages/ResetPassword.jsx'
-import ResetPin from '@/pages/ResetPin.jsx'
-import SyncLogin from '@/pages/SyncLogin.jsx'
+// About is the logged-out landing page served at "/" — kept as a static import
+// so the initial route renders without an extra chunk round-trip. Every other
+// route is code-split since only one is ever active at a time.
 import About from '@/pages/About.jsx'
-import Contact from '@/pages/Contact.jsx'
-import Dashboard from '@/pages/Dashboard.jsx'
-import LogHours from '@/pages/LogHours.jsx'
-import CalendarView from '@/pages/CalendarView.jsx'
-import Achievements from '@/pages/Achievements.jsx'
-import Reports from '@/pages/Reports.jsx'
-import Profile from '@/pages/Profile.jsx'
-import Settings from '@/pages/Settings.jsx'
-import Reminders from '@/pages/Reminders.jsx'
-import Admin from '@/pages/Admin.jsx'
-import SchoolDashboard from '@/pages/SchoolDashboard.jsx'
-import SchoolRegister from '@/pages/SchoolRegister.jsx'
-import Help from '@/pages/Help.jsx'
-import MyTasks from '@/pages/MyTasks.jsx'
-import Status from '@/pages/Status.jsx'
-import VerifyHours from '@/pages/VerifyHours.jsx'
-import ParentDashboard from '@/pages/ParentDashboard.jsx'
+const Login = lazy(() => import('@/pages/Login.jsx'))
+const Register = lazy(() => import('@/pages/Register.jsx'))
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword.jsx'))
+const ResetPassword = lazy(() => import('@/pages/ResetPassword.jsx'))
+const ResetPin = lazy(() => import('@/pages/ResetPin.jsx'))
+const SyncLogin = lazy(() => import('@/pages/SyncLogin.jsx'))
+const Contact = lazy(() => import('@/pages/Contact.jsx'))
+const Dashboard = lazy(() => import('@/pages/Dashboard.jsx'))
+const LogHours = lazy(() => import('@/pages/LogHours.jsx'))
+const CalendarView = lazy(() => import('@/pages/CalendarView.jsx'))
+const Achievements = lazy(() => import('@/pages/Achievements.jsx'))
+const Reports = lazy(() => import('@/pages/Reports.jsx'))
+const Profile = lazy(() => import('@/pages/Profile.jsx'))
+const Settings = lazy(() => import('@/pages/Settings.jsx'))
+const Reminders = lazy(() => import('@/pages/Reminders.jsx'))
+const Admin = lazy(() => import('@/pages/Admin.jsx'))
+const SchoolDashboard = lazy(() => import('@/pages/SchoolDashboard.jsx'))
+const SchoolRegister = lazy(() => import('@/pages/SchoolRegister.jsx'))
+const Help = lazy(() => import('@/pages/Help.jsx'))
+const MyTasks = lazy(() => import('@/pages/MyTasks.jsx'))
+const Status = lazy(() => import('@/pages/Status.jsx'))
+const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
+const ParentDashboard = lazy(() => import('@/pages/ParentDashboard.jsx'))
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-[#071117] grid place-items-center">
+      <Loader2 className="h-6 w-6 text-brand-500 animate-spin" />
+    </div>
+  )
+}
 
 function Protected({ children }) {
   const { user } = useAuth()
@@ -66,35 +79,37 @@ function Shell() {
   const { pendingBadges, dismissBadges } = useData()
   return (
     <>
-      <Routes>
-        <Route path="/login"           element={<PublicOnly><Login /></PublicOnly>} />
-        <Route path="/register"        element={<PublicOnly><Register /></PublicOnly>} />
-        <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
-        <Route path="/reset-password"  element={<PublicOnly><ResetPassword /></PublicOnly>} />
-        <Route path="/reset-pin"       element={<PublicOnly><ResetPin /></PublicOnly>} />
-        <Route path="/sync-login"      element={<PublicOnly><SyncLogin /></PublicOnly>} />
-        <Route path="/school/register" element={<SchoolRegister />} />
-        <Route path="/about"           element={<About />} />
-        <Route path="/contact"         element={<Contact />} />
-        <Route path="/status"         element={<Status />} />
-        <Route path="/verify-hours"   element={<VerifyHours />} />
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/login"           element={<PublicOnly><Login /></PublicOnly>} />
+          <Route path="/register"        element={<PublicOnly><Register /></PublicOnly>} />
+          <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
+          <Route path="/reset-password"  element={<PublicOnly><ResetPassword /></PublicOnly>} />
+          <Route path="/reset-pin"       element={<PublicOnly><ResetPin /></PublicOnly>} />
+          <Route path="/sync-login"      element={<PublicOnly><SyncLogin /></PublicOnly>} />
+          <Route path="/school/register" element={<SchoolRegister />} />
+          <Route path="/about"           element={<About />} />
+          <Route path="/contact"         element={<Contact />} />
+          <Route path="/status"         element={<Status />} />
+          <Route path="/verify-hours"   element={<VerifyHours />} />
 
-        <Route path="/"             element={<Home />} />
-        <Route path="/parent"       element={<Protected><ParentDashboard /></Protected>} />
-        <Route path="/log"          element={<Protected><LogHours /></Protected>} />
-        <Route path="/calendar"     element={<Protected><CalendarView /></Protected>} />
-        <Route path="/achievements" element={<Protected><Achievements /></Protected>} />
-        <Route path="/reminders"    element={<Protected><Reminders /></Protected>} />
-        <Route path="/reports"      element={<Protected><Reports /></Protected>} />
-        <Route path="/profile"      element={<Protected><Profile /></Protected>} />
-        <Route path="/settings"     element={<Protected><Settings /></Protected>} />
-        <Route path="/help"         element={<Help />} />
-        <Route path="/my-tasks"    element={<Protected><MyTasks /></Protected>} />
-        <Route path="/admin"        element={<AdminProtected><Admin /></AdminProtected>} />
-        <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
+          <Route path="/"             element={<Home />} />
+          <Route path="/parent"       element={<Protected><ParentDashboard /></Protected>} />
+          <Route path="/log"          element={<Protected><LogHours /></Protected>} />
+          <Route path="/calendar"     element={<Protected><CalendarView /></Protected>} />
+          <Route path="/achievements" element={<Protected><Achievements /></Protected>} />
+          <Route path="/reminders"    element={<Protected><Reminders /></Protected>} />
+          <Route path="/reports"      element={<Protected><Reports /></Protected>} />
+          <Route path="/profile"      element={<Protected><Profile /></Protected>} />
+          <Route path="/settings"     element={<Protected><Settings /></Protected>} />
+          <Route path="/help"         element={<Help />} />
+          <Route path="/my-tasks"    element={<Protected><MyTasks /></Protected>} />
+          <Route path="/admin"        element={<AdminProtected><Admin /></AdminProtected>} />
+          <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
       <MobileTabBar />
       <BadgeToasts badgeIds={pendingBadges} onDone={dismissBadges} />
       <ReminderToasts />

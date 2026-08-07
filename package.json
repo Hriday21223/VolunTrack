@@ -10,6 +10,7 @@
     "dev": "vite",
     "backend": "node server.js",
     "start": "node server.js",
+    "prebuild": "node scripts/generate-seo-files.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint ."
