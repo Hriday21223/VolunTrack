@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Copy, Eye, EyeOff, QrCode, Upload, Sparkles, CheckCircle2, ChevronDown, Users, X, MessageSquare } from 'lucide-react'
+import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Copy, Eye, EyeOff, QrCode, Upload, Sparkles, CheckCircle2, ChevronDown, Users, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
@@ -30,7 +30,7 @@ function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children })
 
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
-  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, setupSms, resendSmsSetup, verifySmsSetup, disableSms } = useAuth()
+  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp } = useAuth()
   const { goals, saveGoal, removeGoal, logs } = useData()
   const nav = useNavigate()
   const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, primary: false })
@@ -70,18 +70,6 @@ export default function Settings() {
   const [disablePw, setDisablePw] = useState('')
   const [showDisableForm, setShowDisableForm] = useState(false)
   const totpQrRef = useRef(null)
-
-  // SMS 2FA state
-  const [smsPhone, setSmsPhone] = useState('')
-  const [smsSetupPending, setSmsSetupPending] = useState(false)
-  const [smsCode, setSmsCode] = useState('')
-  const [smsBusy, setSmsBusy] = useState(false)
-  const [smsErr, setSmsErr] = useState('')
-  const [smsDone, setSmsDone] = useState(false)
-  const [smsDevCode, setSmsDevCode] = useState('')
-  const [smsResendMsg, setSmsResendMsg] = useState('')
-  const [smsDisablePw, setSmsDisablePw] = useState('')
-  const [showSmsDisableForm, setShowSmsDisableForm] = useState(false)
 
   useEffect(() => {
     if (showQR && displaySyncPin && qrCanvasRef.current) {
@@ -146,69 +134,6 @@ export default function Settings() {
       setTotpErr(e.message)
     } finally {
       setTotpBusy(false)
-    }
-  }
-
-  const handleSetupSms = async (e) => {
-    e.preventDefault()
-    setSmsErr('')
-    setSmsBusy(true)
-    try {
-      const data = await setupSms(smsPhone)
-      setSmsDevCode(data.devCode || '')
-      setSmsSetupPending(true)
-    } catch (e) {
-      setSmsErr(e.message)
-    } finally {
-      setSmsBusy(false)
-    }
-  }
-
-  const handleResendSmsSetup = async () => {
-    setSmsErr('')
-    setSmsResendMsg('')
-    try {
-      const data = await resendSmsSetup()
-      setSmsDevCode(data.devCode || '')
-      setSmsResendMsg('A new code was sent.')
-      setTimeout(() => setSmsResendMsg(''), 4000)
-    } catch (e) {
-      setSmsErr(e.message)
-    }
-  }
-
-  const handleVerifySmsSetup = async (e) => {
-    e.preventDefault()
-    setSmsErr('')
-    setSmsBusy(true)
-    try {
-      await verifySmsSetup(smsCode)
-      setSmsDone(true)
-      setSmsSetupPending(false)
-      setSmsCode('')
-      setSmsPhone('')
-      setSmsDevCode('')
-    } catch (e) {
-      setSmsErr(e.message)
-    } finally {
-      setSmsBusy(false)
-    }
-  }
-
-  const handleDisableSms = async (e) => {
-    e.preventDefault()
-    setSmsErr('')
-    setSmsBusy(true)
-    try {
-      await disableSms(smsDisablePw)
-      setShowSmsDisableForm(false)
-      setSmsDisablePw('')
-      setToastMessage('SMS 2FA disabled')
-      setToast(true)
-    } catch (e) {
-      setSmsErr(e.message)
-    } finally {
-      setSmsBusy(false)
     }
   }
 
@@ -685,10 +610,6 @@ export default function Settings() {
                   </div>
                 </form>
               </div>
-            ) : user?.smsEnabled ? (
-              <div className="text-sm text-earth-400 p-3 rounded-xl bg-slate-900/30 border border-white/5">
-                SMS 2FA is already enabled. Disable it below to switch to an authenticator app.
-              </div>
             ) : (
               <button onClick={handleSetupTotp} disabled={totpBusy} className="btn-primary w-full">
                 {totpBusy ? 'Setting up…' : 'Enable 2FA'}
@@ -698,107 +619,6 @@ export default function Settings() {
             {totpDone && (
               <div className="mt-3 text-sm text-emerald-400 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" /> 2FA enabled successfully!
-              </div>
-            )}
-          </Card>
-
-          <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-brand-600" /> SMS Two-Factor Authentication</h3>
-            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              An alternative to the authenticator app above — requires a code texted to your phone when you sign in. Only one 2FA method can be active at a time.
-            </p>
-
-            {user?.totpEnabled ? (
-              <div className="text-sm text-earth-400 p-3 rounded-xl bg-slate-900/30 border border-white/5">
-                Authenticator app 2FA is already enabled. Disable it above to switch to SMS.
-              </div>
-            ) : user?.smsEnabled ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-300">SMS 2FA is enabled for {user.phone}</span>
-                </div>
-                {showSmsDisableForm ? (
-                  <form onSubmit={handleDisableSms} className="space-y-3">
-                    <p className="text-sm text-earth-400">Enter your password to disable SMS 2FA:</p>
-                    <input
-                      type="password"
-                      value={smsDisablePw}
-                      onChange={(e) => setSmsDisablePw(e.target.value)}
-                      placeholder="Your password"
-                      className="input w-full"
-                      required
-                    />
-                    {smsErr && <div className="text-sm text-red-400">{smsErr}</div>}
-                    <div className="flex gap-2">
-                      <button type="submit" disabled={smsBusy} className="btn-danger flex-1">
-                        {smsBusy ? 'Disabling…' : 'Disable SMS 2FA'}
-                      </button>
-                      <button type="button" onClick={() => { setShowSmsDisableForm(false); setSmsDisablePw(''); setSmsErr('') }} className="btn-ghost flex-1">
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <button onClick={() => setShowSmsDisableForm(true)} className="btn-ghost w-full text-red-400 hover:text-red-300">
-                    Disable SMS 2FA
-                  </button>
-                )}
-              </div>
-            ) : smsSetupPending ? (
-              <form onSubmit={handleVerifySmsSetup} className="space-y-3">
-                <p className="text-sm text-earth-400">Enter the 6-digit code we sent to {smsPhone}:</p>
-                {smsDevCode && (
-                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
-                    No SMS provider configured — dev code: <span className="font-mono font-semibold">{smsDevCode}</span>
-                  </div>
-                )}
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  value={smsCode}
-                  onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="000000"
-                  className="input w-full text-center text-lg tracking-widest font-mono"
-                  autoFocus
-                />
-                {smsErr && <div className="text-sm text-red-400">{smsErr}</div>}
-                {smsResendMsg && <div className="text-sm text-emerald-400">{smsResendMsg}</div>}
-                <div className="flex gap-2">
-                  <button type="submit" disabled={smsBusy || smsCode.length !== 6} className="btn-primary flex-1">
-                    {smsBusy ? 'Verifying…' : 'Enable SMS 2FA'}
-                  </button>
-                  <button type="button" onClick={() => { setSmsSetupPending(false); setSmsCode(''); setSmsErr(''); setSmsDevCode('') }} className="btn-ghost flex-1">
-                    Cancel
-                  </button>
-                </div>
-                <button type="button" onClick={handleResendSmsSetup} className="w-full text-center text-sm text-brand-500 hover:underline">
-                  Resend code
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleSetupSms} className="space-y-3">
-                <label className="label">Phone number</label>
-                <input
-                  type="tel"
-                  value={smsPhone}
-                  onChange={(e) => setSmsPhone(e.target.value)}
-                  placeholder="+1 555 555 0100"
-                  className="input w-full"
-                  required
-                />
-                {smsErr && <div className="text-sm text-red-400">{smsErr}</div>}
-                <button type="submit" disabled={smsBusy} className="btn-primary w-full">
-                  {smsBusy ? 'Sending code…' : 'Send verification code'}
-                </button>
-              </form>
-            )}
-
-            {smsDone && (
-              <div className="mt-3 text-sm text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> SMS 2FA enabled successfully!
               </div>
             )}
           </Card>

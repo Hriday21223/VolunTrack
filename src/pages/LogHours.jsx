@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, Trash2, Upload, Mail, User, FileSignature, ShieldCheck, MapPin, Navigation } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
@@ -12,6 +12,40 @@ import { hoursBetween, fmtHours } from '@/utils/date.js'
 import { notifySupervisor } from '@/lib/supervisorNotify.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { format } from 'date-fns'
+
+// Rotating appreciation notes for the student once a supervisor approves.
+// Built as opener x closer combinations (10 x 10 = 100 unique notes) rather
+// than 100 flat strings, so the pool stays reviewable while rarely repeating.
+const STUDENT_THANKS_OPENERS = [
+  'Nice work — your supervisor confirmed this entry',
+  'Verified',
+  "Great job — that one's confirmed",
+  'Confirmed by your supervisor',
+  'That entry just got the green light',
+  'Your supervisor signed off on this one',
+  'Locked in — this entry is now verified',
+  'One more verified entry in the books',
+  'Solid — your supervisor backed this one up',
+  'Officially confirmed',
+]
+const STUDENT_THANKS_CLOSERS = [
+  'Keep it up!',
+  'that entry now carries extra weight on reports and transcripts.',
+  'your hours are adding up.',
+  'nice consistency.',
+  'that record is looking strong.',
+  "verified hours like this are what colleges and scholarships actually check.",
+  'keep logging like this.',
+  'this is exactly what a clean record looks like.',
+  "that's one less thing to worry about at report time.",
+  'well earned.',
+]
+
+function pickComboSimple(openers, closers) {
+  const opener = openers[Math.floor(Math.random() * openers.length)]
+  const closer = closers[Math.floor(Math.random() * closers.length)]
+  return `${opener} — ${closer}`
+}
 
 const blank = () => ({
   activity: '',
@@ -39,6 +73,11 @@ export default function LogHours({ editId, onCloseEdit }) {
   const [error, setError] = useState('')
   const [locating, setLocating] = useState(false)
   const [locError, setLocError] = useState('')
+  // Re-rolled per log entry (editId/verificationToken), not on every
+  // render — the picker itself doesn't read these, it just gates when a
+  // fresh random note should be picked.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const studentThanksNote = useMemo(() => pickComboSimple(STUDENT_THANKS_OPENERS, STUDENT_THANKS_CLOSERS), [editId, form.verificationToken])
 
   useEffect(() => {
     if (editId) {
@@ -241,6 +280,11 @@ export default function LogHours({ editId, onCloseEdit }) {
                   {(!form.verificationStatus || form.verificationStatus === 'none') && (
                     <p className="text-xs text-earth-400 mt-1">
                       Verification is set by your supervisor, not by you — they'll get an email with an approve/reject link once you save. This usually takes a day or two.
+                    </p>
+                  )}
+                  {form.verificationStatus === 'approved' && (
+                    <p className="text-xs text-brand-600 dark:text-brand-400 mt-1 font-medium">
+                      {studentThanksNote}
                     </p>
                   )}
                 </div>

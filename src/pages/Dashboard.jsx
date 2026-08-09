@@ -292,7 +292,15 @@ export default function Dashboard() {
                     </div>
                     <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                     <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${t.latitude != null && t.longitude != null ? `${t.latitude},${t.longitude}` : encodeURIComponent(t.location)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 hover:text-brand-400 hover:underline"
+                      >
+                        <MapPin className="w-3 h-3" /> {t.location}
+                      </a>
                       <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}{t.time ? ` · ${t.time}` : ''}</span>
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} slots</span>
                     </div>
@@ -359,7 +367,15 @@ export default function Dashboard() {
                     <p className="font-medium">{t.title}</p>
                     <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                     <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${t.latitude != null && t.longitude != null ? `${t.latitude},${t.longitude}` : encodeURIComponent(t.location)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 hover:text-brand-400 hover:underline"
+                      >
+                        <MapPin className="w-3 h-3" /> {t.location}
+                      </a>
                       <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}{t.time ? ` · ${t.time}` : ''}</span>
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} needed</span>
                       {t.distance != null && (

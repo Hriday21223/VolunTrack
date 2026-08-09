@@ -36,7 +36,11 @@ export async function sendRecoveryEmail({ email, code, type }) {
   }
   try {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 8000)
+    // Gmail SMTP's first connection of a session (fresh TLS handshake) can
+    // take 5-10s — 8s was aborting real, successful sends and telling users
+    // delivery failed when it hadn't. 25s covers a cold connection with room
+    // to spare while still failing fast on a genuinely broken backend.
+    const timer = setTimeout(() => controller.abort(), 25000)
     const response = await fetch(`${apiUrl}/send-reset-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -94,6 +94,7 @@ export default function ForgotPassword() {
                   <Inbox className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
                     A password recovery code has been emailed to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
+                    Don't see it? Check the Spam folder and Promotions/Updates tab.
                   </span>
                 </div>
               ) : (

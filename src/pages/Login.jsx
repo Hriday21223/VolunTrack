@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Mail, Lock, ArrowRight, ShieldCheck, MessageSquare, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 import Card from '@/components/Card.jsx'
@@ -14,7 +14,7 @@ export default function Login() {
     path: '/login',
   })
 
-  const { login, verifyTotp, verifyBackupCode, verifySms, resendSmsChallenge, loginWithPin, user } = useAuth()
+  const { login, verifyTotp, verifyBackupCode, loginWithPin, user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const nav = useNavigate()
   const loc = useLocation()
@@ -30,14 +30,10 @@ export default function Login() {
 
   // 2FA challenge state
   const [totpPending, setTotpPending] = useState(false)
-  const [smsPending, setSmsPending] = useState(false)
   const [tempToken, setTempToken] = useState('')
   const [totpCode, setTotpCode] = useState('')
   const [backupMode, setBackupMode] = useState(false)
   const [backupCode, setBackupCode] = useState('')
-  const [smsCode, setSmsCode] = useState('')
-  const [smsDevCode, setSmsDevCode] = useState('')
-  const [smsResendMsg, setSmsResendMsg] = useState('')
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
     setIsMobile(mq.matches)
@@ -63,13 +59,6 @@ export default function Login() {
           setBusy(false)
           return
         }
-        if (result?.requiresSms) {
-          setTempToken(result.tempToken)
-          setSmsDevCode(result.devCode || '')
-          setSmsPending(true)
-          setBusy(false)
-          return
-        }
         setToast(true)
         setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
       }
@@ -92,34 +81,6 @@ export default function Login() {
       setErr(e.message)
     } finally {
       setBusy(false)
-    }
-  }
-
-  const onSmsSubmit = async (e) => {
-    e.preventDefault()
-    setErr('')
-    setBusy(true)
-    try {
-      await verifySms(tempToken, smsCode)
-      setToast(true)
-      setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
-    } catch (e) {
-      setErr(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const onResendSms = async () => {
-    setErr('')
-    setSmsResendMsg('')
-    try {
-      const data = await resendSmsChallenge(tempToken)
-      setSmsDevCode(data.devCode || '')
-      setSmsResendMsg('A new code was sent.')
-      setTimeout(() => setSmsResendMsg(''), 4000)
-    } catch (e) {
-      setErr(e.message)
     }
   }
 
@@ -193,44 +154,7 @@ export default function Login() {
                 </button>
               </div>
 
-              {smsPending ? (
-                <form onSubmit={onSmsSubmit} className="space-y-5">
-                  <div className="text-center mb-2">
-                    <MessageSquare className="w-10 h-10 text-sky-400 mx-auto mb-2" />
-                    <p className="text-sm text-slate-300">Enter the 6-digit code we texted to your phone</p>
-                  </div>
-                  {smsDevCode && (
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-                      No SMS provider configured — dev code: <span className="font-mono font-semibold">{smsDevCode}</span>
-                    </div>
-                  )}
-                  <div>
-                    <label className="label text-slate-300" htmlFor="sms-code">SMS code</label>
-                    <input
-                      id="sms-code"
-                      type="text"
-                      required
-                      autoComplete="one-time-code"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={6}
-                      className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-[0.5em] font-mono"
-                      placeholder="000000"
-                      value={smsCode}
-                      onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      autoFocus
-                    />
-                  </div>
-                  {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
-                  {smsResendMsg && <div className="text-sm text-emerald-300 text-center">{smsResendMsg}</div>}
-                  <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy || smsCode.length !== 6}>
-                    {busy ? 'Verifying…' : <>Verify <ArrowRight className="w-4 h-4" /></>}
-                  </button>
-                  <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={onResendSms}>
-                    Resend code
-                  </button>
-                </form>
-              ) : totpPending ? (
+              {totpPending ? (
                 backupMode ? (
                   <form onSubmit={onBackupSubmit} className="space-y-5">
                     <div className="text-center mb-2">

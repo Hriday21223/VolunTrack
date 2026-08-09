@@ -249,6 +249,7 @@ function DeliveryBanner({ delivery, email, sentCode, onResend, retrying }) {
         <Inbox className="w-4 h-4 mt-0.5 shrink-0" />
         <span>
           A PIN recovery code has been sent to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
+          Don't see it? Check the Spam folder and Promotions/Updates tab.
         </span>
       </div>
     )

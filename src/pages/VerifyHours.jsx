@@ -1,10 +1,68 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, XCircle, ShieldCheck, AlertTriangle } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// Rotating appreciation notes for the supervisor. Built as opener x closer
+// combinations (10 x 10 = 100 unique notes per context) rather than 100 flat
+// strings, so the pool stays reviewable while still rarely repeating.
+const SUPERVISOR_THANKS_OPENERS = [
+  (name) => `Thank you for taking the time to support ${name}'s volunteer work`,
+  (name) => `${name} is lucky to have a supervisor who follows through on things like this`,
+  (name) => `A quick thank you for verifying ${name}'s hours`,
+  (name) => `Thanks for backing up ${name}'s hard work with your verification`,
+  (name) => `We know your day is busy, so thank you for making time for ${name}'s verification`,
+  (name) => `On behalf of ${name}, thank you for confirming this`,
+  (name) => `Appreciate you taking a moment for ${name}'s hours`,
+  (name) => `Thanks for standing behind ${name}'s work here`,
+  (name) => `${name}'s record just got a little stronger, thanks to you`,
+  (name) => `Big thanks for looking this over for ${name}`,
+]
+const SUPERVISOR_THANKS_CLOSERS = [
+  'supervisors like you make programs like this possible.',
+  "it's a small thing on your end, but it matters a lot on theirs.",
+  'this kind of follow-through is what keeps student records trustworthy.',
+  'volunteer work only counts for as much as someone is willing to vouch for it — and you just did.',
+  "we don't take that for granted.",
+  'that kind of support adds up over a school year.',
+  'it genuinely helps more than a quick click might suggest.',
+  'students notice when adults follow through like this.',
+  "it's supervisors like you who make this program trustworthy.",
+  'thanks for being part of how this works.',
+]
+const SUPERVISOR_STANDING_OPENERS = [
+  (name) => `Thanks for taking a moment to verify ${name}'s hours`,
+  (name) => `Your review helps keep ${name}'s record accurate and trusted`,
+  (name) => `We know your time is limited, so thanks for spending some of it on ${name}'s work`,
+  (name) => `${name} is counting on you here, and we appreciate you showing up for it`,
+  (name) => `Reviewing this only takes a minute, but it matters a lot to ${name}`,
+  (name) => `Thanks in advance for looking this over for ${name}`,
+  (name) => `${name} listed you because they trust your word`,
+  (name) => `Thanks for being the person ${name} can point to for this`,
+  (name) => `A minute of your time helps ${name}'s record hold up`,
+  (name) => `We appreciate supervisors like you making time for ${name}`,
+]
+const SUPERVISOR_STANDING_CLOSERS = [
+  'it means a lot to have supervisors like you supporting student volunteers.',
+  'thank you for making time for this.',
+  "it's a small ask, but it counts for a lot.",
+  'that trust is worth a lot to a student building a record.',
+  'we appreciate it more than a quick click might suggest.',
+  'thanks for helping keep this program credible.',
+  'it genuinely helps.',
+  'thank you for being someone students can rely on.',
+  "we don't take it for granted.",
+  'thanks for being part of how this works.',
+]
+
+function pickCombo(openers, closers, name) {
+  const opener = openers[Math.floor(Math.random() * openers.length)](name)
+  const closer = closers[Math.floor(Math.random() * closers.length)]
+  return `${opener} — ${closer}`
+}
 
 export default function VerifyHours() {
   const [searchParams] = useSearchParams()
@@ -65,6 +123,15 @@ export default function VerifyHours() {
 }
 
 function VerifyCard({ data, busy, onRespond }) {
+  const thanksNote = useMemo(
+    () => pickCombo(SUPERVISOR_THANKS_OPENERS, SUPERVISOR_THANKS_CLOSERS, data.studentName),
+    [data.studentName],
+  )
+  const standingNote = useMemo(
+    () => pickCombo(SUPERVISOR_STANDING_OPENERS, SUPERVISOR_STANDING_CLOSERS, data.studentName),
+    [data.studentName],
+  )
+
   if (data.status === 'approved') {
     return (
       <div className="text-center">
@@ -72,6 +139,9 @@ function VerifyCard({ data, busy, onRespond }) {
         <h1 className="text-xl font-bold">Hours approved</h1>
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">
           You approved {data.hours} hour(s) logged by {data.studentName} for "{data.activity}".
+        </p>
+        <p className="text-sm text-brand-600 dark:text-brand-400 mt-4 font-medium">
+          {thanksNote}
         </p>
       </div>
     )
@@ -110,6 +180,9 @@ function VerifyCard({ data, busy, onRespond }) {
           Reject
         </button>
       </div>
+      <p className="text-xs text-earth-500 dark:text-earth-400 text-center mt-4">
+        {standingNote}
+      </p>
     </div>
   )
 }
