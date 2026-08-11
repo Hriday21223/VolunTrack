@@ -204,6 +204,23 @@ CREATE TABLE IF NOT EXISTS organization_invites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_organization_invites_token ON organization_invites(token);
+
+-- A contact-form submission and every reply in its thread (admin outbound,
+-- visitor inbound via the Resend webhook) share one thread_id, so the whole
+-- conversation can be displayed and matched against incoming replies.
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id          TEXT PRIMARY KEY,
+  thread_id   TEXT NOT NULL,
+  direction   TEXT NOT NULL CHECK (direction IN ('inbound','outbound')),
+  name        TEXT,
+  email       TEXT NOT NULL,
+  subject     TEXT,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_messages_thread ON contact_messages(thread_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_contact_messages_email ON contact_messages(email);
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
