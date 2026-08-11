@@ -1,14 +1,14 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, MapPin, X, School, Users, Hand, FileText, MessageSquare, Bell, Calendar } from 'lucide-react'
+import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
-import { useLocalStorage } from '@/hooks/useLocalStorage.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
+import SpotlightTour from '@/components/SpotlightTour.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
@@ -23,12 +23,17 @@ const fmtDist = (km) => {
   return `${n.toFixed(1)}km`
 }
 
+const STUDENT_TOUR_STEPS = [
+  { selector: '[data-tour="log-hours"]', title: 'Log hours', description: 'Click here any time to record a volunteer session — activity, hours, and proof if you have it.' },
+  { selector: '[data-tour="goal-progress"]', title: 'Goal progress', description: 'Track how close you are to your primary volunteering goal, and how many hours are left.' },
+  { selector: '[data-tour="weekly-chart"]', title: 'Weekly chart', description: 'See your hours for the current week broken down by day, so you can keep momentum going.' },
+  { selector: '[data-tour="recent-activity"]', title: 'Recent activity', description: 'Your most recently logged sessions show up here — jump back in any time to log more.' },
+]
+
 export default function Dashboard() {
   const { user } = useAuth()
   const { logs, goals, earned } = useData()
   const [searchParams] = useSearchParams()
-  const [hasSeenTour, setHasSeenTour] = useLocalStorage('voluntrack:dashboard-tour', false)
-  const [showTour, setShowTour] = useState(!hasSeenTour)
   const [schoolInfo, setSchoolInfo] = useState(null)
   const [publicTasks, setPublicTasks] = useState([])
   const [nearbyTasks, setNearbyTasks] = useState([])
@@ -144,11 +149,6 @@ export default function Dashboard() {
 
   const recent = useMemo(() => logs.slice(0, 5), [logs])
 
-  const closeTour = () => {
-    setShowTour(false)
-    setHasSeenTour(true)
-  }
-
   return (
     <AppLayout
       title={`Hi, ${user?.name?.split(' ')[0] || 'there'} 👋`}
@@ -166,55 +166,15 @@ export default function Dashboard() {
             </>
           )}
           {dashTab === 'home' && (
-            <Link to="/log" className="btn-primary">
+            <Link to="/log" data-tour="log-hours" className="btn-primary">
               <Plus className="w-4 h-4" /> Log hours
             </Link>
           )}
         </div>
       }
     >
-      {showTour && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-earth-900 bg-[#07131a] shadow-2xl">
-            <div className="p-6 bg-gradient-to-r from-brand-600 via-brand-500 to-sky-500 text-white">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.35em] text-brand-100">Dashboard tour</div>
-                  <h1 className="mt-3 text-3xl font-bold">Welcome to VolunTrack</h1>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeTour}
-                  className="rounded-full p-2 text-white/80 hover:bg-white/10"
-                  aria-label="Close tour"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <p className="mt-4 text-sm text-slate-100/90">
-                This tour highlights the core dashboard panels so new volunteers can start logging hours fast.
-              </p>
-            </div>
-            <div className="p-6 space-y-4 text-sm text-earth-300">
-              <div className="rounded-3xl border border-earth-900 bg-[#08141d] p-4">
-                <strong className="block font-semibold">Progress at a glance</strong>
-                Track total hours, goal progress, and what remains to reach your main volunteering goal.
-              </div>
-              <div className="rounded-3xl border border-earth-900 bg-[#08141d] p-4">
-                <strong className="block font-semibold">Weekly chart</strong>
-                See your hours for the current week and keep momentum with day-by-day activity.
-              </div>
-              <div className="rounded-3xl border border-earth-900 bg-[#08141d] p-4">
-                <strong className="block font-semibold">Recent activity</strong>
-                Quickly jump to log more hours or review the latest volunteer sessions.
-              </div>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <button onClick={closeTour} className="btn-primary w-full sm:w-auto">Got it</button>
-                <Link to="/log" className="btn-secondary w-full sm:w-auto text-center">Log your first hours</Link>
-              </div>
-            </div>
-          </div>
-        </div>
+      {dashTab === 'home' && (
+        <SpotlightTour storageKey="voluntrack:tour-seen:student" steps={STUDENT_TOUR_STEPS} />
       )}
 
       {dashTab === 'nearby' && user?.role === 'student' ? (
@@ -598,7 +558,7 @@ export default function Dashboard() {
         </Card>
 
         <div className="grid lg:grid-cols-3 gap-3">
-          <Card className="p-4">
+          <Card className="p-4" data-tour="goal-progress">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="text-xs text-earth-400">Goal progress</div>
@@ -635,7 +595,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <Card className="lg:col-span-2 p-4">
+        <Card className="lg:col-span-2 p-4" data-tour="weekly-chart">
           <div className="flex items-center justify-between mb-1">
             <div>
               <div className="text-xs text-earth-400">This week</div>
@@ -669,7 +629,7 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3" data-tour="recent-activity">
           <div className="flex items-center justify-between mb-2">
             <div className="font-display font-semibold text-sm">Recent activity</div>
             <Link to="/log" className="text-xs text-brand-500 hover:underline flex items-center gap-0.5">
