@@ -31,6 +31,8 @@ const Reminders = lazy(() => import('@/pages/Reminders.jsx'))
 const Admin = lazy(() => import('@/pages/Admin.jsx'))
 const SchoolDashboard = lazy(() => import('@/pages/SchoolDashboard.jsx'))
 const SchoolRegister = lazy(() => import('@/pages/SchoolRegister.jsx'))
+const OrganizationDashboard = lazy(() => import('@/pages/OrganizationDashboard.jsx'))
+const OrganizationRegister = lazy(() => import('@/pages/OrganizationRegister.jsx'))
 const Help = lazy(() => import('@/pages/Help.jsx'))
 const MyTasks = lazy(() => import('@/pages/MyTasks.jsx'))
 const Status = lazy(() => import('@/pages/Status.jsx'))
@@ -72,6 +74,7 @@ function Home() {
   const { user } = useAuth()
   if (!user) return <About />
   if (user.role === 'parent') return <Navigate to="/parent" replace />
+  if (user.role === 'org') return <Navigate to="/organization/dashboard" replace />
   return <Protected><Dashboard /></Protected>
 }
 
@@ -88,6 +91,7 @@ function Shell() {
           <Route path="/reset-pin"       element={<PublicOnly><ResetPin /></PublicOnly>} />
           <Route path="/sync-login"      element={<PublicOnly><SyncLogin /></PublicOnly>} />
           <Route path="/school/register" element={<SchoolRegister />} />
+          <Route path="/organization/register" element={<OrganizationRegister />} />
           <Route path="/about"           element={<About />} />
           <Route path="/contact"         element={<Contact />} />
           <Route path="/status"         element={<Status />} />
@@ -106,6 +110,7 @@ function Shell() {
           <Route path="/my-tasks"    element={<Protected><MyTasks /></Protected>} />
           <Route path="/admin"        element={<AdminProtected><Admin /></AdminProtected>} />
           <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
+          <Route path="/organization/dashboard" element={<Protected><OrganizationDashboard /></Protected>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

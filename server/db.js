@@ -185,6 +185,25 @@ CREATE TABLE IF NOT EXISTS school_invites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_school_invites_token ON school_invites(token);
+
+CREATE TABLE IF NOT EXISTS organizations (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  contact_email TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS organization_invites (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  email         TEXT NOT NULL,
+  token         TEXT UNIQUE NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','expired','completed')),
+  expires_at    TIMESTAMPTZ NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_organization_invites_token ON organization_invites(token);
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
@@ -256,6 +275,29 @@ export async function initSchema() {
         IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
         ALTER TABLE users ADD CONSTRAINT users_role_check
           CHECK (role IN ('admin','school','school_staff','student','volunteer','parent'));
+      END $$;
+    `)
+  } catch (error) { console.error('role constraint migration failed:', error) }
+
+  // Organizations — an entity above schools (e.g. a district or nonprofit
+  // running multiple schools/chapters) that can add schools under itself
+  // without going through the platform admin. See server/routes/organization.js.
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`ALTER TABLE school_invites ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
+
+  // Widen again to allow 'org' — an organization's own admin account.
+  try {
+    await query(`
+      DO $$
+      DECLARE cname text;
+      BEGIN
+        SELECT conname INTO cname FROM pg_constraint
+          WHERE conrelid = 'users'::regclass AND contype = 'c'
+            AND pg_get_constraintdef(oid) ILIKE '%role%IN%';
+        IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
+        ALTER TABLE users ADD CONSTRAINT users_role_check
+          CHECK (role IN ('admin','school','school_staff','student','volunteer','parent','org'));
       END $$;
     `)
   } catch (error) { console.error('role constraint migration failed:', error) }

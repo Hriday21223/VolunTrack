@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2 } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -19,14 +19,14 @@ function generateDraft(contact) {
     `Hey ${name}, good to hear from you.`,
     `Hi ${name} — appreciate you reaching out.`,
   ]
-  const intro = intros[contact.sentAt ? contact.sentAt.length % intros.length : 0]
+  const intro = intros[contact.sentAt ? contact.sentAt % intros.length : 0]
 
   const closings = [
     '\n\nBest,\nVolunTrack',
     '\n\nTalk soon,\nVolunTrack',
     '\n\nThanks again,\nVolunTrack',
   ]
-  const closing = closings[contact.sentAt ? contact.sentAt.length % closings.length : 0]
+  const closing = closings[contact.sentAt ? contact.sentAt % closings.length : 0]
 
   const bodies = {
     'General question': (
@@ -39,7 +39,7 @@ function generateDraft(contact) {
       `Really appreciate the suggestion — this is exactly the kind of feedback that shapes what gets built next.\n\nFor context, VolunTrack today covers hour logging, goals, badges, reminders, printable reports and certificates, and full school accounts (dashboards, PDF verification, payment tracking, admin invites). Your idea sounds like it'd fit well alongside that.\n\nMind opening it as an issue on GitHub so it doesn't get lost? https://github.com/Hriday21223/VolunTrack/issues — or just reply here and I'll take it from there.`
     ),
     'School or organization partnership': (
-      `Great timing — school accounts are live on VolunTrack today, not just on a roadmap. Once your school is set up, you get:\n- A dashboard to review and verify student volunteer hours (with PDF proof uploads)\n- A school code students use to link their accounts\n- Co-admin accounts if you've got more than one staff member managing it\n\nRather than asking you to fill out a signup form yourself, I'll go ahead and send your school an invite email with a link to finish setup — you'll just need to set a password and pick a school code. Expect that shortly; let me know if you'd like me to use a different contact email than this one.\n\nHappy to answer any questions in the meantime.`
+      `Great timing — school accounts are live on VolunTrack today, not just on a roadmap. Once your school is set up, you get:\n- A dashboard to review and verify student volunteer hours (with PDF proof uploads)\n- A school code students use to link their accounts\n- Co-admin accounts if you've got more than one staff member managing it\n\nPricing is based on your school's size, so once I know a bit more (student count, semester vs. year-round use) I'll send over a quote alongside the invite. Rather than asking you to fill out a signup form yourself, I'll go ahead and send your school an invite email with a link to finish setup — you'll just need to set a password and pick a school code. Expect that shortly; let me know if you'd like me to use a different contact email than this one.\n\nHappy to answer any questions in the meantime.`
     ),
   }
 
@@ -55,6 +55,7 @@ export default function Admin() {
   const { user } = useAuth()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [drafts, setDrafts] = useState({})
+  const [copiedIdx, setCopiedIdx] = useState(null)
   const [tab, setTab] = useState('inbox')
   const [schools, setSchools] = useState([])
   const [loadingSchools, setLoadingSchools] = useState(false)
@@ -73,9 +74,12 @@ export default function Admin() {
   const [invites, setInvites] = useState([])
   const [loadingInvites, setLoadingInvites] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteKind, setInviteKind] = useState('school') // 'school' | 'organization'
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [sendingInvite, setSendingInvite] = useState(false)
+  const [organizations, setOrganizations] = useState([])
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false)
   const [incidents, setIncidents] = useState([])
   const [agentLog, setAgentLog] = useState([])
   const [fixing, setFixing] = useState(null)
@@ -111,17 +115,27 @@ export default function Admin() {
     }
   }, [])
 
+  // Kind-to-endpoint-base map — school and organization invites are separate
+  // backend resources (school_invites vs organization_invites tables) but
+  // share this one tab in the UI, tagged by `kind` after merging.
+  const inviteBase = (kind) => (kind === 'organization' ? `${apiUrl}/organization/admin` : `${apiUrl}/school/admin`)
+
   const loadInvites = useCallback(async () => {
     setLoadingInvites(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       if (!token) return
-      const res = await fetch(`${apiUrl}/school/admin/invites`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) return
-      const data = await res.json()
-      setInvites(data.invites || [])
+      const [schoolRes, orgRes] = await Promise.all([
+        fetch(`${apiUrl}/school/admin/invites`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiUrl}/organization/admin/invites`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      const schoolData = schoolRes.ok ? await schoolRes.json() : { invites: [] }
+      const orgData = orgRes.ok ? await orgRes.json() : { invites: [] }
+      const merged = [
+        ...(schoolData.invites || []).map((inv) => ({ ...inv, kind: 'school' })),
+        ...(orgData.invites || []).map((inv) => ({ ...inv, kind: 'organization' })),
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      setInvites(merged)
     } catch {} finally {
       setLoadingInvites(false)
     }
@@ -132,7 +146,7 @@ export default function Admin() {
     setSendingInvite(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/school/admin/invite`, {
+      const res = await fetch(`${inviteBase(inviteKind)}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: inviteName.trim(), email: inviteEmail.trim() }),
@@ -145,10 +159,10 @@ export default function Admin() {
     } catch (e) { setToastMessage(e.message || 'Failed to send invite'); setToast(true) } finally { setSendingInvite(false) }
   }
 
-  const resendInvite = async (id) => {
+  const resendInvite = async (id, kind) => {
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/school/admin/invite/${id}/resend`, {
+      const res = await fetch(`${inviteBase(kind)}/invite/${id}/resend`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -159,11 +173,11 @@ export default function Admin() {
     } catch (e) { setToastMessage(e.message || 'Failed to resend invite'); setToast(true) }
   }
 
-  const deleteInvite = async (id) => {
+  const deleteInvite = async (id, kind) => {
     if (!confirm('Delete this invite?')) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/school/admin/invite/${id}`, {
+      const res = await fetch(`${inviteBase(kind)}/invite/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -171,6 +185,22 @@ export default function Admin() {
       loadInvites()
     } catch {}
   }
+
+  const loadOrganizations = useCallback(async () => {
+    setLoadingOrganizations(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      if (!token) return
+      const res = await fetch(`${apiUrl}/school/admin/organizations`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      setOrganizations(data.organizations || [])
+    } catch {} finally {
+      setLoadingOrganizations(false)
+    }
+  }, [])
 
   const markPaid = async (id) => {
     try {
@@ -341,6 +371,17 @@ export default function Admin() {
     })
   }
 
+  const copyDraft = async (idx) => {
+    try {
+      await navigator.clipboard.writeText(drafts[idx])
+      setCopiedIdx(idx)
+      setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 2000)
+    } catch {
+      setToastMessage('Could not copy — select and copy the text manually.')
+      setToast(true)
+    }
+  }
+
   const remove = (idx) => {
     const next = contacts.filter((_, i) => i !== idx)
     localStorage.setItem('voluntrack:contacts', JSON.stringify(next))
@@ -355,8 +396,8 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${contacts.length} message${contacts.length === 1 ? '' : 's'} received` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : 'Manage schools'}
+      subtitle={tab === 'inbox' ? `${contacts.length} message${contacts.length === 1 ? '' : 's'} received` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -370,6 +411,9 @@ export default function Admin() {
           </button>
           <button onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
+          </button>
+          <button onClick={() => { setTab('organizations'); loadOrganizations() }} className={`btn-sm ${tab === 'organizations' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Building2 className="w-3.5 h-3.5 mr-1" /> Organizations
           </button>
           <button onClick={() => setTab('incidents')} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
             <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Incidents
@@ -424,7 +468,7 @@ export default function Admin() {
               <School className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p className="font-medium text-earth-900 dark:text-earth-100">No schools registered</p>
               <p className="text-sm mt-1">Schools will appear here when they register.</p>
-              <button onClick={() => setShowInviteModal(true)} className="btn-primary inline-flex mt-4">Invite a school</button>
+              <button onClick={() => { setInviteKind('school'); setShowInviteModal(true) }} className="btn-primary inline-flex mt-4">Invite a school</button>
             </div>
           </Card>
         ) : (
@@ -454,7 +498,7 @@ export default function Admin() {
               <button onClick={() => { setNotifySchoolId(null); setShowNotifyModal(true) }} className="btn-sm btn-ghost">
                 <Bell className="w-3.5 h-3.5 mr-1" /> Notify all schools
               </button>
-              <button onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary ml-auto">
+              <button onClick={() => { setInviteKind('school'); setShowInviteModal(true) }} className="btn-sm btn-primary ml-auto">
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite school
               </button>
             </div>
@@ -539,28 +583,41 @@ export default function Admin() {
             <div className="text-center py-12 text-earth-500">
               <UserPlus className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p className="font-medium text-earth-900 dark:text-earth-100">No invites sent</p>
-              <p className="text-sm mt-1">Invite a school and they'll get a link to finish setup themselves.</p>
-              <button onClick={() => setShowInviteModal(true)} className="btn-primary inline-flex mt-4">
-                <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite a school
-              </button>
+              <p className="text-sm mt-1">Invite a school or organization and they'll get a link to finish setup themselves.</p>
+              <div className="flex gap-2 justify-center mt-4">
+                <button onClick={() => { setInviteKind('school'); setShowInviteModal(true) }} className="btn-primary inline-flex">
+                  <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite a school
+                </button>
+                <button onClick={() => { setInviteKind('organization'); setShowInviteModal(true) }} className="btn-ghost inline-flex">
+                  <Building2 className="w-3.5 h-3.5 mr-1" /> Invite an organization
+                </button>
+              </div>
             </div>
           </Card>
         ) : (
           <div className="space-y-3">
-            <div className="flex justify-end mb-4">
-              <button onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary">
+            <div className="flex justify-end gap-2 mb-4">
+              <button onClick={() => { setInviteKind('school'); setShowInviteModal(true) }} className="btn-sm btn-primary">
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite school
+              </button>
+              <button onClick={() => { setInviteKind('organization'); setShowInviteModal(true) }} className="btn-sm btn-ghost">
+                <Building2 className="w-3.5 h-3.5 mr-1" /> Invite organization
               </button>
             </div>
             {invites.map((inv) => (
-              <Card key={inv.id} padded={false} className="p-4">
+              <Card key={`${inv.kind}-${inv.id}`} padded={false} className="p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <UserPlus className="w-8 h-8 text-brand-600 shrink-0" />
+                    {inv.kind === 'organization' ? (
+                      <Building2 className="w-8 h-8 text-brand-600 shrink-0" />
+                    ) : (
+                      <UserPlus className="w-8 h-8 text-brand-600 shrink-0" />
+                    )}
                     <div className="min-w-0">
                       <p className="font-medium text-sm">{inv.name}</p>
                       <p className="text-xs text-earth-400">{inv.email}</p>
                       <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="text-xs text-earth-500 uppercase tracking-wide">{inv.kind === 'organization' ? 'Organization' : 'School'}</span>
                         <span className="text-xs text-earth-500">Sent {new Date(inv.created_at).toLocaleDateString()}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           inv.effective_status === 'completed'
@@ -576,13 +633,46 @@ export default function Admin() {
                   </div>
                   <div className="flex gap-1">
                     {inv.effective_status !== 'completed' && (
-                      <button onClick={() => resendInvite(inv.id)} className="text-brand-400 hover:text-brand-300 p-2" title="Resend invite">
+                      <button onClick={() => resendInvite(inv.id, inv.kind)} className="text-brand-400 hover:text-brand-300 p-2" title="Resend invite">
                         <RefreshCw className="w-4 h-4" />
                       </button>
                     )}
-                    <button onClick={() => deleteInvite(inv.id)} className="text-red-400 hover:text-red-300 p-2" title="Delete invite">
+                    <button onClick={() => deleteInvite(inv.id, inv.kind)} className="text-red-400 hover:text-red-300 p-2" title="Delete invite">
                       <Trash2 className="w-4 h-4" />
                     </button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : tab === 'organizations' ? (
+        loadingOrganizations ? (
+          <Card><p className="text-center text-earth-400 py-8">Loading organizations…</p></Card>
+        ) : organizations.length === 0 ? (
+          <Card>
+            <div className="text-center py-12 text-earth-500">
+              <Building2 className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <p className="font-medium text-earth-900 dark:text-earth-100">No organizations yet</p>
+              <p className="text-sm mt-1">Organizations register themselves and add their own schools — this list is read-only.</p>
+            </div>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {organizations.map((org) => (
+              <Card key={org.id} padded={false} className="p-4">
+                <div className="flex items-center gap-3">
+                  <Building2 className="w-8 h-8 text-brand-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm">{org.name}</p>
+                    <p className="text-xs text-earth-400">
+                      {org.contact_email}
+                    </p>
+                    <span className="text-xs text-earth-500">
+                      <School className="w-3 h-3 inline mr-1" />
+                      {org.school_count} school{Number(org.school_count) === 1 ? '' : 's'} ·
+                      Joined {new Date(org.created_at).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               </Card>
@@ -699,7 +789,20 @@ export default function Admin() {
                   <p className="mt-2 text-sm text-earth-800 dark:text-earth-200 whitespace-pre-wrap">{c.message}</p>
                   {drafts[idx] && (
                     <div className="mt-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800">
-                      <div className="text-xs font-semibold text-brand-700 dark:text-brand-300 mb-1">AI draft</div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-xs font-semibold text-brand-700 dark:text-brand-300">AI draft</div>
+                        <button
+                          onClick={() => copyDraft(idx)}
+                          className="flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-300 hover:text-brand-900 dark:hover:text-brand-100"
+                          title="Copy draft to clipboard"
+                        >
+                          {copiedIdx === idx ? (
+                            <><Check className="w-3.5 h-3.5" /> Copied</>
+                          ) : (
+                            <><Copy className="w-3.5 h-3.5" /> Copy</>
+                          )}
+                        </button>
+                      </div>
                       <p className="text-sm text-earth-700 dark:text-earth-300 whitespace-pre-wrap">{drafts[idx]}</p>
                     </div>
                   )}
@@ -742,15 +845,19 @@ export default function Admin() {
       {showInviteModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-2">Invite a school</h3>
-            <p className="text-sm text-earth-400 mb-4">They'll get an email with a link to set their own password and school code. The link expires in 3 days.</p>
+            <h3 className="font-semibold mb-2">{inviteKind === 'organization' ? 'Invite an organization' : 'Invite a school'}</h3>
+            <p className="text-sm text-earth-400 mb-4">
+              {inviteKind === 'organization'
+                ? "They'll get an email with a link to set their own password, then they can add their own schools. The link expires in 3 days."
+                : "They'll get an email with a link to set their own password and school code. The link expires in 3 days."}
+            </p>
             <div className="space-y-3">
               <input
-                className="input" placeholder="School name"
+                className="input" placeholder={inviteKind === 'organization' ? 'Organization name' : 'School name'}
                 value={inviteName} onChange={(e) => setInviteName(e.target.value)}
               />
               <input
-                className="input" type="email" placeholder="admin@school.edu"
+                className="input" type="email" placeholder={inviteKind === 'organization' ? 'admin@district.edu' : 'admin@school.edu'}
                 value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
               />
               <div className="flex gap-2">
