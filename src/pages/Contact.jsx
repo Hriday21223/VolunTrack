@@ -28,14 +28,9 @@ export default function Contact() {
       return
     }
     setBusy(true)
-    const list = JSON.parse(localStorage.getItem('voluntrack:contacts') || '[]')
-    list.push({ ...form, sentAt: new Date().toISOString() })
-    localStorage.setItem('voluntrack:contacts', JSON.stringify(list))
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
-      await fetch(`${apiUrl}/contact`, {
+      const res = await fetch(`${apiUrl}/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,15 +39,16 @@ export default function Contact() {
           subject: form.subject,
           message: form.message,
         }),
-        signal: controller.signal,
       })
-      clearTimeout(timeout)
-    } catch {
-      // Backend email delivery is optional; message is saved locally.
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send message.')
+      setDone(true)
+      setForm({ name: '', email: '', subject: 'General question', message: '' })
+    } catch (e) {
+      setSendErr(e.message || 'Failed to send message. Please try again.')
+    } finally {
+      setBusy(false)
     }
-    setDone(true)
-    setForm({ name: '', email: '', subject: 'General question', message: '' })
-    setBusy(false)
   }
 
   return (
