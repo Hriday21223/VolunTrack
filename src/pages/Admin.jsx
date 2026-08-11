@@ -13,20 +13,24 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 function generateDraft(contact) {
   const subject = contact.subject || 'General question'
   const name = contact.name || 'there'
+  // Deterministic-but-varied pick, seeded by the thread id/timestamp so the
+  // same contact doesn't always get the exact same opener.
+  const seed = String(contact.thread_id ?? contact.sentAt ?? '')
+    .split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
 
   const intros = [
     `Hi ${name}, thanks for writing in!`,
     `Hey ${name}, good to hear from you.`,
     `Hi ${name} — appreciate you reaching out.`,
   ]
-  const intro = intros[contact.sentAt ? contact.sentAt % intros.length : 0]
+  const intro = intros[seed % intros.length]
 
   const closings = [
     '\n\nBest,\nVolunTrack',
     '\n\nTalk soon,\nVolunTrack',
     '\n\nThanks again,\nVolunTrack',
   ]
-  const closing = closings[contact.sentAt ? contact.sentAt % closings.length : 0]
+  const closing = closings[seed % closings.length]
 
   const bodies = {
     'General question': (
@@ -54,8 +58,12 @@ export default function Admin() {
   const nav = useNavigate()
   const { user } = useAuth()
   const [isAuthorized, setIsAuthorized] = useState(false)
+  const [threads, setThreads] = useState([])
+  const [loadingThreads, setLoadingThreads] = useState(false)
   const [drafts, setDrafts] = useState({})
   const [copiedIdx, setCopiedIdx] = useState(null)
+  const [sendingIdx, setSendingIdx] = useState(null)
+  const [sendErrors, setSendErrors] = useState({})
   const [tab, setTab] = useState('inbox')
   const [schools, setSchools] = useState([])
   const [loadingSchools, setLoadingSchools] = useState(false)
@@ -322,10 +330,20 @@ export default function Admin() {
     } catch { setToastMessage('Failed to send notification'); setToast(true) }
   }
 
-  const contacts = useMemo(() => {
+  const loadThreads = useCallback(async () => {
+    setLoadingThreads(true)
     try {
-      return JSON.parse(localStorage.getItem('voluntrack:contacts') || '[]').sort((a, b) => b.sentAt - a.sentAt)
-    } catch { return [] }
+      const token = localStorage.getItem('voluntrack:auth_token')
+      if (!token) return
+      const res = await fetch(`${apiUrl}/contact/admin/threads`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      setThreads(data.threads || [])
+    } catch {} finally {
+      setLoadingThreads(false)
+    }
   }, [])
 
   const reviews = useMemo(() => {
@@ -335,6 +353,10 @@ export default function Admin() {
   useEffect(() => {
     loadSchools()
   }, [loadSchools])
+
+  useEffect(() => {
+    loadThreads()
+  }, [loadThreads])
 
   // Show access denied if user is not authorized
   if (!isAuthorized) {
@@ -359,45 +381,77 @@ export default function Admin() {
   }
 
 
-  const toggleDraft = (idx) => {
+  const toggleDraft = (threadId) => {
     setDrafts((prev) => {
       const next = { ...prev }
-      if (next[idx]) {
-        delete next[idx]
+      if (next[threadId]) {
+        delete next[threadId]
       } else {
-        next[idx] = generateDraft(contacts[idx])
+        const thread = threads.find((t) => t.thread_id === threadId)
+        next[threadId] = generateDraft(thread)
       }
       return next
     })
   }
 
-  const copyDraft = async (idx) => {
+  const copyDraft = async (threadId) => {
     try {
-      await navigator.clipboard.writeText(drafts[idx])
-      setCopiedIdx(idx)
-      setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 2000)
+      await navigator.clipboard.writeText(drafts[threadId])
+      setCopiedIdx(threadId)
+      setTimeout(() => setCopiedIdx((cur) => (cur === threadId ? null : cur)), 2000)
     } catch {
       setToastMessage('Could not copy — select and copy the text manually.')
       setToast(true)
     }
   }
 
-  const remove = (idx) => {
-    const next = contacts.filter((_, i) => i !== idx)
-    localStorage.setItem('voluntrack:contacts', JSON.stringify(next))
-    window.location.reload()
+  const removeThread = async (threadId) => {
+    if (!confirm('Delete this entire conversation?')) return
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/contact/admin/threads/${threadId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Failed to delete')
+      setThreads((prev) => prev.filter((t) => t.thread_id !== threadId))
+    } catch {
+      setToastMessage('Failed to delete conversation')
+      setToast(true)
+    }
   }
 
-  const clearAll = () => {
-    if (!confirm('Delete all messages?')) return
-    localStorage.setItem('voluntrack:contacts', JSON.stringify([]))
-    window.location.reload()
+  const sendDraft = async (threadId) => {
+    const draft = drafts[threadId]
+    if (!draft) return
+    setSendingIdx(threadId)
+    setSendErrors((prev) => { const next = { ...prev }; delete next[threadId]; return next })
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/contact/admin/threads/${threadId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: draft }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send')
+      setSendingIdx(null)
+      setDrafts((prev) => { const next = { ...prev }; delete next[threadId]; return next })
+      setToastMessage('Reply sent')
+      setToast(true)
+      loadThreads()
+    } catch (e) {
+      setSendingIdx(null)
+      setSendErrors((prev) => ({ ...prev, [threadId]: e.message }))
+      setToastMessage(e.message)
+      setToast(true)
+    }
   }
 
   return (
     <AppLayout
       title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${contacts.length} message${contacts.length === 1 ? '' : 's'} received` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -765,7 +819,9 @@ export default function Admin() {
             )}
           </Card>
         </>
-      ) : contacts.length === 0 ? (
+      ) : loadingThreads ? (
+        <Card><p className="text-center text-earth-400 py-8">Loading messages…</p></Card>
+      ) : threads.length === 0 ? (
         <Card>
           <div className="text-center py-12 text-earth-500">
             <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-50" />
@@ -776,49 +832,73 @@ export default function Admin() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {contacts.map((c, idx) => (
-            <Card key={c.sentAt + idx} padded={false} className="p-5">
+          {threads.map((c) => {
+            const id = c.thread_id
+            return (
+            <Card key={id} padded={false} className="p-5">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-earth-900 dark:text-earth-100">{c.name || 'Unknown'}</span>
                     <a href={`mailto:${c.email}`} className="text-brand-700 dark:text-brand-300 hover:underline text-sm break-all">{c.email}</a>
-                    <span className="text-xs text-earth-500 whitespace-nowrap">{new Date(c.sentAt).toLocaleString()}</span>
+                    <span className="text-xs text-earth-500 whitespace-nowrap">{new Date(c.created_at).toLocaleString()}</span>
+                    {Number(c.message_count) > 1 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-300 font-medium">{c.message_count} messages</span>
+                    )}
                   </div>
-                  <div className="mt-1 text-xs font-medium uppercase tracking-wide text-earth-600 dark:text-earth-300">{c.subject || 'General question'}</div>
+                  <div className="mt-1 text-xs font-medium uppercase tracking-wide text-earth-600 dark:text-earth-300">
+                    {c.subject || 'General question'} {c.direction === 'outbound' && <span className="text-brand-500 normal-case">· awaiting their reply</span>}
+                  </div>
                   <p className="mt-2 text-sm text-earth-800 dark:text-earth-200 whitespace-pre-wrap">{c.message}</p>
-                  {drafts[idx] && (
+                  {drafts[id] && (
                     <div className="mt-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800">
                       <div className="flex items-center justify-between mb-1">
                         <div className="text-xs font-semibold text-brand-700 dark:text-brand-300">AI draft</div>
                         <button
-                          onClick={() => copyDraft(idx)}
+                          onClick={() => copyDraft(id)}
                           className="flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-300 hover:text-brand-900 dark:hover:text-brand-100"
                           title="Copy draft to clipboard"
                         >
-                          {copiedIdx === idx ? (
+                          {copiedIdx === id ? (
                             <><Check className="w-3.5 h-3.5" /> Copied</>
                           ) : (
                             <><Copy className="w-3.5 h-3.5" /> Copy</>
                           )}
                         </button>
                       </div>
-                      <p className="text-sm text-earth-700 dark:text-earth-300 whitespace-pre-wrap">{drafts[idx]}</p>
+                      <p className="text-sm text-earth-700 dark:text-earth-300 whitespace-pre-wrap">{drafts[id]}</p>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <button
+                          onClick={() => { if (sendErrors[id] || confirm(`Send this reply to ${c.email}?`)) sendDraft(id) }}
+                          className={`btn-sm ${sendErrors[id] ? 'btn-danger' : 'btn-primary'}`}
+                          disabled={sendingIdx === id}
+                        >
+                          {sendErrors[id] ? (
+                            <><RefreshCw className="w-3.5 h-3.5 mr-1" /> {sendingIdx === id ? 'Resending…' : 'Resend'}</>
+                          ) : (
+                            <><Mail className="w-3.5 h-3.5 mr-1" /> {sendingIdx === id ? 'Sending…' : 'Send reply'}</>
+                          )}
+                        </button>
+                        {sendErrors[id] && (
+                          <span className="text-xs text-red-500">Failed: {sendErrors[id]}</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <button onClick={() => toggleDraft(idx)} className="p-2 rounded-lg text-earth-500 hover:text-brand-700 hover:bg-brand-500/10 self-start"
-                    title={drafts[idx] ? 'Hide draft' : 'Generate draft reply'}>
-                    <Sparkles className={`w-4 h-4 ${drafts[idx] ? 'text-brand-600' : ''}`} />
+                  <button onClick={() => toggleDraft(id)} className="p-2 rounded-lg text-earth-500 hover:text-brand-700 hover:bg-brand-500/10 self-start"
+                    title={drafts[id] ? 'Hide draft' : 'Generate draft reply'}>
+                    <Sparkles className={`w-4 h-4 ${drafts[id] ? 'text-brand-600' : ''}`} />
                   </button>
-                  <button onClick={() => remove(idx)} className="p-2 rounded-lg text-earth-500 hover:text-red-600 hover:bg-red-500/10 self-start" title="Delete">
+                  <button onClick={() => removeThread(id)} className="p-2 rounded-lg text-earth-500 hover:text-red-600 hover:bg-red-500/10 self-start" title="Delete conversation">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </Card>
-          ))}
+            )
+          })}
         </div>
       )}
 
