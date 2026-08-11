@@ -3,9 +3,16 @@ import { Building2, UserPlus, School, Users } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+const ORG_TOUR_STEPS = [
+  { selector: '[data-tour="org-schools-tab"]', title: 'Your schools', description: 'Every school you’ve added lives here, along with their payment status and student counts.' },
+  { selector: '[data-tour="org-add-school"]', title: 'Add a school', description: 'Add a school and they get an email invite to set their own password and school code.' },
+  { selector: '[data-tour="org-invites-tab"]', title: 'Invites', description: 'Track invites you’ve sent — pending, set up, or expired.' },
+]
 
 // Minimal by design: an organization's dashboard only adds schools and shows
 // its own school list — day-to-day management (students, PDFs, co-admins,
@@ -83,15 +90,18 @@ export default function OrganizationDashboard() {
       subtitle={tab === 'schools' ? `${schools.length} school${schools.length === 1 ? '' : 's'} added` : `${invites.length} invite${invites.length === 1 ? '' : 's'} sent`}
       action={
         <div className="flex gap-2">
-          <button onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="org-schools-tab" onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" /> Schools
           </button>
-          <button onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="org-invites-tab" onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
         </div>
       }
     >
+      {tab === 'schools' && !loadingSchools && (
+        <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
+      )}
       {tab === 'schools' ? (
         loadingSchools ? (
           <Card><p className="text-center text-earth-400 py-8">Loading schools…</p></Card>
@@ -101,7 +111,7 @@ export default function OrganizationDashboard() {
               <Building2 className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p className="font-medium text-earth-900 dark:text-earth-100">No schools yet</p>
               <p className="text-sm mt-1">Add a school and they'll get an email to finish setting up their own account.</p>
-              <button onClick={() => setShowInviteModal(true)} className="btn-primary inline-flex mt-4">
+              <button data-tour="org-add-school" onClick={() => setShowInviteModal(true)} className="btn-primary inline-flex mt-4">
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Add a school
               </button>
             </div>
@@ -109,7 +119,7 @@ export default function OrganizationDashboard() {
         ) : (
           <div className="space-y-3">
             <div className="flex justify-end mb-4">
-              <button onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary">
+              <button data-tour="org-add-school" onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary">
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Add school
               </button>
             </div>
