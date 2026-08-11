@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -15,36 +15,36 @@ function generateDraft(contact) {
   const name = contact.name || 'there'
 
   const intros = [
-    `Hi ${name},`,
-    `Hello ${name},`,
-    `Thanks for reaching out, ${name}.`,
+    `Hi ${name}, thanks for writing in!`,
+    `Hey ${name}, good to hear from you.`,
+    `Hi ${name} — appreciate you reaching out.`,
   ]
   const intro = intros[contact.sentAt ? contact.sentAt.length % intros.length : 0]
 
   const closings = [
-    '\n\nBest,\nThe VolunteerTrack Team',
-    '\n\nCheers,\nThe VolunteerTrack Team',
-    '\n\nThanks,\nThe VolunteerTrack Team',
+    '\n\nBest,\nHriday (VolunTrack)',
+    '\n\nTalk soon,\nHriday (VolunTrack)',
+    '\n\nThanks again,\nHriday (VolunTrack)',
   ]
   const closing = closings[contact.sentAt ? contact.sentAt.length % closings.length : 0]
 
   const bodies = {
     'General question': (
-      `Thanks for your interest in VolunteerTrack!\n\nVolunteerTrack is a free, open-source PWA that lets students log service hours, set goals, earn badges, and export PDF reports — all without an account server. Everything stays on your device (privacy-first).\n\nIt runs on React 18 with Vite and works offline after the first visit. Source and live link: https://github.com/Hriday21223/VolunteerTrack\n\nIf you have specific questions, feel free to reply to this email or open an issue on GitHub: https://github.com/Hriday21223/VolunteerTrack/issues`
+      `VolunTrack is a free, privacy-first app for logging volunteer hours — students track activities, set goals, earn badges, and export ready-to-print PDF reports. It works fully offline after the first load, and by default everything stays on your own device (no account needed unless you want one).\n\nIf there's a school or organization behind your question, we also support school accounts now — a dashboard for reviewing student hours, PDF verification, and PIN-based student linking.\n\nHappy to answer anything specific — just reply here, or poke around the code: https://github.com/Hriday21223/VolunTrack`
     ),
     'Bug report': (
-      `Thanks for reporting this! We appreciate your help making VolunteerTrack better.\n\nCould you share a few more details so we can look into it?\n- What browser and device are you using?\n- What steps did you take before the issue appeared?\n- Any error messages or screenshots?\n\nYou can also file an issue directly on GitHub: https://github.com/Hriday21223/VolunteerTrack/issues\n\nWe typically respond within a couple of days.`
+      `Sorry you ran into this, and thanks for flagging it. To track it down quickly, could you send over:\n- Browser and device (e.g. Chrome on Mac, Safari on iPhone)\n- What you were doing right before it happened\n- Any error message or a screenshot, if you have one\n\nYou're welcome to reply directly here, or open an issue on GitHub if you'd rather: https://github.com/Hriday21223/VolunTrack/issues\n\nI'll dig in as soon as I hear back.`
     ),
     'Feature request': (
-      `Thanks for the suggestion! We're always looking for ways to improve VolunteerTrack.\n\nHere's what's currently on our roadmap:\n- Phase 1 (shipped): Core logging, badges, reminders, reports\n- Phase 2 (shipped): Printable certificates, email-based PIN/password reset\n- Phase 3 (in progress): School & organization plans, verified supervisor flow, bulk CSV import\n\nYour idea sounds like it could fit well. Want to open a feature request on GitHub so we can track it? https://github.com/Hriday21223/VolunteerTrack/issues`
+      `Really appreciate the suggestion — this is exactly the kind of feedback that shapes what gets built next.\n\nFor context, VolunTrack today covers hour logging, goals, badges, reminders, printable reports and certificates, and full school accounts (dashboards, PDF verification, payment tracking, admin invites). Your idea sounds like it'd fit well alongside that.\n\nMind opening it as an issue on GitHub so it doesn't get lost? https://github.com/Hriday21223/VolunTrack/issues — or just reply here and I'll take it from there.`
     ),
     'School or organization partnership': (
-      `Thanks for your interest in partnering with VolunteerTrack!\n\nWe're actively building Phase 3, which includes:\n- School & organization plans\n- Verified supervisor flow\n- Bulk CSV import\n\nThis will make it easy for schools to adopt VolunteerTrack across their entire student body. We'd love to hear more about your needs.\n\nIn the meantime, the current version is free and open-source — you can find it at https://github.com/Hriday21223/VolunteerTrack\n\nLet's continue the conversation on GitHub: https://github.com/Hriday21223/VolunteerTrack/issues`
+      `Great timing — school accounts are live on VolunTrack today, not just on a roadmap. Once your school is set up, you get:\n- A dashboard to review and verify student volunteer hours (with PDF proof uploads)\n- A school code students use to link their accounts\n- Co-admin accounts if you've got more than one staff member managing it\n\nRather than asking you to fill out a signup form yourself, I'll go ahead and send your school an invite email with a link to finish setup — you'll just need to set a password and pick a school code. Expect that shortly; let me know if you'd like me to use a different contact email than this one.\n\nHappy to answer any questions in the meantime.`
     ),
   }
 
   const body = bodies[subject] || (
-    `Thanks for your message! VolunteerTrack is a privacy-first volunteer hour tracker built for students and clubs. It's free, open-source, and works entirely in the browser.\n\nSource: https://github.com/Hriday21223/VolunteerTrack\n\nLet us know if you have any other questions!`
+    `VolunTrack is a free, privacy-first volunteer hour tracker for students, clubs, and now schools too — logging, goals, badges, printable reports, and school dashboards all in one place. Take a look: https://github.com/Hriday21223/VolunTrack\n\nLet me know if you have any other questions!`
   )
 
   return intro + '\n\n' + body + closing
@@ -60,6 +60,9 @@ export default function Admin() {
   const [loadingSchools, setLoadingSchools] = useState(false)
   const [payModal, setPayModal] = useState(null) // school id
   const [payNotes, setPayNotes] = useState('')
+  const [noteModal, setNoteModal] = useState(null) // school id
+  const [noteDraft, setNoteDraft] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
   const [toast, setToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [dueDate, setDueDate] = useState('')
@@ -67,6 +70,12 @@ export default function Admin() {
   const [showDueModal, setShowDueModal] = useState(false)
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [notifySchoolId, setNotifySchoolId] = useState(null) // null = all schools, string = specific school
+  const [invites, setInvites] = useState([])
+  const [loadingInvites, setLoadingInvites] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteName, setInviteName] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [sendingInvite, setSendingInvite] = useState(false)
   const [incidents, setIncidents] = useState([])
   const [agentLog, setAgentLog] = useState([])
   const [fixing, setFixing] = useState(null)
@@ -101,6 +110,67 @@ export default function Admin() {
       setLoadingSchools(false)
     }
   }, [])
+
+  const loadInvites = useCallback(async () => {
+    setLoadingInvites(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      if (!token) return
+      const res = await fetch(`${apiUrl}/school/admin/invites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      setInvites(data.invites || [])
+    } catch {} finally {
+      setLoadingInvites(false)
+    }
+  }, [])
+
+  const sendInvite = async () => {
+    if (!inviteName.trim() || !inviteEmail.trim()) return
+    setSendingInvite(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/admin/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: inviteName.trim(), email: inviteEmail.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setShowInviteModal(false); setInviteName(''); setInviteEmail('')
+      loadInvites()
+      setToastMessage('Invite sent'); setToast(true)
+    } catch (e) { setToastMessage(e.message || 'Failed to send invite'); setToast(true) } finally { setSendingInvite(false) }
+  }
+
+  const resendInvite = async (id) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/admin/invite/${id}/resend`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      loadInvites()
+      setToastMessage('Invite resent'); setToast(true)
+    } catch (e) { setToastMessage(e.message || 'Failed to resend invite'); setToast(true) }
+  }
+
+  const deleteInvite = async (id) => {
+    if (!confirm('Delete this invite?')) return
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/admin/invite/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Failed')
+      loadInvites()
+    } catch {}
+  }
 
   const markPaid = async (id) => {
     try {
@@ -144,6 +214,21 @@ export default function Admin() {
       loadSchools()
       setToastMessage('School marked as unpaid'); setToast(true)
     } catch { setToastMessage('Failed to update payment'); setToast(true) }
+  }
+
+  const saveNote = async (id) => {
+    setSavingNote(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/admin/${id}/notes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note: noteDraft }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setNoteModal(null); setNoteDraft(''); loadSchools()
+      setToastMessage('Internal note saved'); setToast(true)
+    } catch { setToastMessage('Failed to save note'); setToast(true) } finally { setSavingNote(false) }
   }
 
   const deleteSchool = async (id, name) => {
@@ -270,8 +355,8 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${contacts.length} message${contacts.length === 1 ? '' : 's'} received` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : 'Manage schools'}
+      subtitle={tab === 'inbox' ? `${contacts.length} message${contacts.length === 1 ? '' : 's'} received` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -282,6 +367,9 @@ export default function Admin() {
           </button>
           <button onClick={() => { setTab('schools'); loadSchools() }} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" /> Schools
+          </button>
+          <button onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
+            <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
           <button onClick={() => setTab('incidents')} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
             <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Incidents
@@ -336,7 +424,7 @@ export default function Admin() {
               <School className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p className="font-medium text-earth-900 dark:text-earth-100">No schools registered</p>
               <p className="text-sm mt-1">Schools will appear here when they register.</p>
-              <Link to="/school/register" className="btn-primary inline-flex mt-4">Register a school</Link>
+              <button onClick={() => setShowInviteModal(true)} className="btn-primary inline-flex mt-4">Invite a school</button>
             </div>
           </Card>
         ) : (
@@ -366,9 +454,9 @@ export default function Admin() {
               <button onClick={() => { setNotifySchoolId(null); setShowNotifyModal(true) }} className="btn-sm btn-ghost">
                 <Bell className="w-3.5 h-3.5 mr-1" /> Notify all schools
               </button>
-              <Link to="/school/register" className="btn-sm btn-primary ml-auto">
-                <School className="w-3.5 h-3.5 mr-1" /> Add school
-              </Link>
+              <button onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary ml-auto">
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite school
+              </button>
             </div>
             {schools.map((s) => (
               <Card key={s.id} padded={false} className="p-4">
@@ -405,9 +493,18 @@ export default function Admin() {
                       {s.payment_notes && (
                         <p className="text-xs text-earth-500 mt-0.5">{s.payment_notes}</p>
                       )}
+                      {s.admin_notes && (
+                        <p className="text-xs text-amber-500/80 mt-0.5 flex items-start gap-1">
+                          <ShieldCheck className="w-3 h-3 mt-0.5 shrink-0" />
+                          <span><span className="font-medium">Internal note (admin only):</span> {s.admin_notes}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <button onClick={() => { setNoteModal(s.id); setNoteDraft(s.admin_notes || '') }} className={`p-2 ${s.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
+                      <ShieldCheck className="w-4 h-4" />
+                    </button>
                     {s.payment_status === 'paid' ? (
                       <button onClick={() => markUnpaid(s.id)} className="text-amber-400 hover:text-amber-300 p-2" title="Mark as unpaid">
                         <CreditCard className="w-4 h-4" />
@@ -426,6 +523,64 @@ export default function Admin() {
                       <Bell className="w-4 h-4" />
                     </button>
                     <button onClick={() => deleteSchool(s.id, s.name)} className="text-red-400 hover:text-red-300 p-2" title="Delete school">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : tab === 'invites' ? (
+        loadingInvites ? (
+          <Card><p className="text-center text-earth-400 py-8">Loading invites…</p></Card>
+        ) : invites.length === 0 ? (
+          <Card>
+            <div className="text-center py-12 text-earth-500">
+              <UserPlus className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <p className="font-medium text-earth-900 dark:text-earth-100">No invites sent</p>
+              <p className="text-sm mt-1">Invite a school and they'll get a link to finish setup themselves.</p>
+              <button onClick={() => setShowInviteModal(true)} className="btn-primary inline-flex mt-4">
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite a school
+              </button>
+            </div>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex justify-end mb-4">
+              <button onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary">
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite school
+              </button>
+            </div>
+            {invites.map((inv) => (
+              <Card key={inv.id} padded={false} className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <UserPlus className="w-8 h-8 text-brand-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{inv.name}</p>
+                      <p className="text-xs text-earth-400">{inv.email}</p>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="text-xs text-earth-500">Sent {new Date(inv.created_at).toLocaleDateString()}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          inv.effective_status === 'completed'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : inv.effective_status === 'expired'
+                            ? 'bg-red-500/10 text-red-400'
+                            : 'bg-amber-500/10 text-amber-400'
+                        }`}>
+                          {inv.effective_status === 'completed' ? 'Set up' : inv.effective_status === 'expired' ? 'Expired' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    {inv.effective_status !== 'completed' && (
+                      <button onClick={() => resendInvite(inv.id)} className="text-brand-400 hover:text-brand-300 p-2" title="Resend invite">
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={() => deleteInvite(inv.id)} className="text-red-400 hover:text-red-300 p-2" title="Delete invite">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -578,6 +733,51 @@ export default function Admin() {
               <div className="flex gap-2">
                 <button onClick={() => setPayModal(null)} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={() => markPaid(payModal)} className="btn-primary flex-1">Mark as paid</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2">Invite a school</h3>
+            <p className="text-sm text-earth-400 mb-4">They'll get an email with a link to set their own password and school code. The link expires in 3 days.</p>
+            <div className="space-y-3">
+              <input
+                className="input" placeholder="School name"
+                value={inviteName} onChange={(e) => setInviteName(e.target.value)}
+              />
+              <input
+                className="input" type="email" placeholder="admin@school.edu"
+                value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setShowInviteModal(false)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={sendInvite} className="btn-primary flex-1" disabled={sendingInvite || !inviteName.trim() || !inviteEmail.trim()}>
+                  {sendingInvite ? 'Sending…' : 'Send invite'}
+                </button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {noteModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-amber-400" /> Internal note</h3>
+            <p className="text-sm text-earth-400 mb-4">Only visible to admins — the school never sees this.</p>
+            <div className="space-y-3">
+              <textarea
+                className="input" rows={4}
+                placeholder="e.g. Called 6/1, they're waiting on district approval for the wire"
+                value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setNoteModal(null)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={() => saveNote(noteModal)} className="btn-primary flex-1" disabled={savingNote}>{savingNote ? 'Saving…' : 'Save note'}</button>
               </div>
             </div>
           </Card>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Search, Users, MapPin, Calendar, MessageSquare, Bell } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2 } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -11,6 +11,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 export default function SchoolDashboard() {
   const { user, refreshUser } = useAuth()
   const nav = useNavigate()
+  const isSchoolAdmin = user?.role === 'school' || user?.role === 'school_staff'
   const [tab, setTab] = useState('pdfs')
   const [pdfs, setPdfs] = useState([])
   const [students, setStudents] = useState([])
@@ -33,6 +34,10 @@ export default function SchoolDashboard() {
   const [adminNotifs, setAdminNotifs] = useState([])
   const [confirmRef, setConfirmRef] = useState('')
   const [confirmBusy, setConfirmBusy] = useState(false)
+  const [staff, setStaff] = useState([])
+  const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '' })
+  const [addingStaff, setAddingStaff] = useState(false)
+  const [staffErr, setStaffErr] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -66,6 +71,41 @@ export default function SchoolDashboard() {
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setSendingMsg(false) }
   }
 
+  const handleAddStaff = async (e) => {
+    e.preventDefault()
+    setStaffErr('')
+    setAddingStaff(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/staff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(staffForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add co-admin')
+      setToastMsg('Co-admin added!')
+      setToast(true)
+      setStaffForm({ name: '', email: '', password: '' })
+      loadData()
+    } catch (e) { setStaffErr(e.message) } finally { setAddingStaff(false) }
+  }
+
+  const handleRemoveStaff = async (id) => {
+    if (!confirm('Remove this co-admin? They will lose access immediately.')) return
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/staff/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Failed')
+      setToastMsg('Co-admin removed')
+      setToast(true)
+      loadData()
+    } catch { setToastMsg('Failed to remove co-admin'); setToast(true) }
+  }
+
   const loadData = async () => {
     setLoading(true)
     try {
@@ -89,11 +129,16 @@ export default function SchoolDashboard() {
         setTasks(data.tasks || [])
       }
 
-      if (user.role === 'school') {
+      if (isSchoolAdmin) {
         const stuRes = await fetch(`${apiUrl}/school/students`, { headers })
         if (stuRes.ok) {
           const data = await stuRes.json()
           setStudents(data.students || [])
+        }
+        const staffRes = await fetch(`${apiUrl}/school/staff`, { headers })
+        if (staffRes.ok) {
+          const data = await staffRes.json()
+          setStaff(data.staff || [])
         }
       }
     } catch (e) {
@@ -115,7 +160,7 @@ export default function SchoolDashboard() {
         body: JSON.stringify({ reference: confirmRef.trim() }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to submit') }
-      setToastMsg('Confirmation submitted — awaiting admin verification.')
+      setToastMsg('Confirmation submitted — please allow 3–5 business days for verification. We\'ll email you once approved.')
       setToast(true)
       setConfirmRef('')
       await refreshUser()
@@ -218,7 +263,7 @@ export default function SchoolDashboard() {
             <div className="bg-white rounded-xl overflow-hidden" style={{ height: '80vh' }}>
               <embed src={`data:${selectedPdf.fileType};base64,${selectedPdf.fileData}`} type="application/pdf" className="w-full h-full" />
             </div>
-            {user?.role === 'school' && selectedPdf.status === 'pending' && (
+            {isSchoolAdmin && selectedPdf.status === 'pending' && (
               <div className="flex gap-2 mt-4">
                 <button onClick={() => reviewPdf(selectedPdf.id, 'approved')} className="btn-primary flex-1">
                   <CheckCircle className="w-4 h-4 mr-2" /> Approve
@@ -239,7 +284,7 @@ export default function SchoolDashboard() {
   // That fetch can fail (network error, rate limit) and must never fail the
   // gate open; schoolInfo is only used below for supplementary display.
   const paymentStatus = user?.schoolPaymentStatus
-  if (user?.role === 'school' && paymentStatus && paymentStatus !== 'paid') {
+  if (isSchoolAdmin && paymentStatus && paymentStatus !== 'paid') {
     return (
       <AppLayout title="Payment Required" subtitle="Your school's account is locked until payment is verified">
         <div className="max-w-lg mx-auto space-y-4">
@@ -258,7 +303,7 @@ export default function SchoolDashboard() {
               {paymentStatus === 'pending' ? 'Confirmation submitted' : paymentStatus === 'rejected' ? 'Confirmation rejected' : 'Payment required'}
             </h3>
             {paymentStatus === 'pending' && (
-              <p className="text-sm text-earth-500 mb-3">We received your bank confirmation number and it's awaiting admin verification. Student uploads and management stay locked until it's approved.</p>
+              <p className="text-sm text-earth-500 mb-3">We received your bank confirmation number. Please allow 3–5 business days for our team to verify it — you'll get an approval email once it's confirmed, and student uploads and management will unlock automatically.</p>
             )}
             {paymentStatus === 'rejected' && (
               <p className="text-sm text-red-500 mb-3">{schoolInfo?.paymentNotes || 'Your confirmation could not be verified.'} Please double-check the number and resubmit.</p>
@@ -266,18 +311,25 @@ export default function SchoolDashboard() {
             {paymentStatus === 'unpaid' && (
               <p className="text-sm text-earth-500 mb-3">Please complete payment using the instructions sent to your school's email, then enter the bank confirmation number below.</p>
             )}
-            <form onSubmit={handleSubmitConfirmation} className="space-y-3">
-              <input
-                type="text"
-                placeholder="Bank confirmation / reference number"
-                value={confirmRef}
-                onChange={(e) => setConfirmRef(e.target.value)}
-                className="input"
-              />
-              <button type="submit" className="btn-primary w-full" disabled={confirmBusy || !confirmRef.trim()}>
-                {confirmBusy ? 'Submitting…' : 'Submit confirmation'}
-              </button>
-            </form>
+            {paymentStatus !== 'pending' && user?.role === 'school' && (
+              <form onSubmit={handleSubmitConfirmation} className="space-y-3">
+                <label htmlFor="confirmRef" className="text-sm text-earth-500">Please enter your bank confirmation / reference number</label>
+                <input
+                  id="confirmRef"
+                  type="text"
+                  placeholder="e.g. WIRE-12345 or check #4821"
+                  value={confirmRef}
+                  onChange={(e) => setConfirmRef(e.target.value)}
+                  className="input"
+                />
+                <button type="submit" className="btn-primary w-full" disabled={confirmBusy || !confirmRef.trim()}>
+                  {confirmBusy ? 'Submitting…' : 'Submit confirmation'}
+                </button>
+              </form>
+            )}
+            {paymentStatus !== 'pending' && user?.role === 'school_staff' && (
+              <p className="text-sm text-earth-500">Only the school's primary admin account can submit a payment confirmation.</p>
+            )}
           </Card>
         </div>
         <Toast show={toast} message={toastMsg} onClose={() => setToast(false)} />
@@ -287,10 +339,10 @@ export default function SchoolDashboard() {
 
   return (
     <AppLayout
-      title={user?.role === 'school' ? 'School Dashboard' : 'My Documents'}
+      title={isSchoolAdmin ? 'School Dashboard' : 'My Documents'}
       subtitle={
         <span className="flex items-center gap-2">
-          {user?.role === 'school' ? 'Review student uploads' : 'Upload verification documents'}
+          {isSchoolAdmin ? 'Review student uploads' : 'Upload verification documents'}
           {schoolInfo?.paymentStatus && (
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               schoolInfo.paymentStatus === 'paid'
@@ -305,12 +357,17 @@ export default function SchoolDashboard() {
       action={
         <div className="flex gap-2">
           <button onClick={() => setTab('pdfs')} className={`btn-sm ${tab === 'pdfs' ? 'btn-primary' : 'btn-ghost'}`}>Reports</button>
-          {user?.role === 'school' && (
+          {isSchoolAdmin && (
             <>
               <button onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>Students</button>
               <button onClick={() => { setTab('chat'); loadMessages() }} className={`btn-sm ${tab === 'chat' ? 'btn-primary' : 'btn-ghost'}`}>
                 <MessageSquare className="w-3.5 h-3.5 mr-1" /> Chat
               </button>
+              {user?.role === 'school' && (
+                <button onClick={() => setTab('staff')} className={`btn-sm ${tab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
+                </button>
+              )}
             </>
           )}
           <button onClick={() => setTab('volunteer')} className={`btn-sm ${tab === 'volunteer' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -345,7 +402,7 @@ export default function SchoolDashboard() {
           }
           return null
         })()}
-        {tab === 'chat' && user?.role === 'school' && (
+        {tab === 'chat' && isSchoolAdmin && (
           <div className="space-y-4">
             <Card>
               <h3 className="font-semibold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-brand-600" /> Send announcement</h3>
@@ -394,7 +451,7 @@ export default function SchoolDashboard() {
           </Card>
         )}
 
-        {tab === 'students' && user?.role === 'school' && (
+        {tab === 'students' && isSchoolAdmin && (
           <>
             <div className="flex gap-2 mb-4">
               <button onClick={() => setSubTab('list')} className={`btn-sm ${subTab === 'list' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -457,6 +514,51 @@ export default function SchoolDashboard() {
               </Card>
             )}
           </>
+        )}
+
+        {tab === 'staff' && user?.role === 'school' && (
+          <div className="space-y-4">
+            <Card>
+              <h3 className="font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Add a co-admin</h3>
+              <p className="text-sm text-earth-500 mb-3">
+                Co-admins can review uploads, manage students, and send announcements — {staff.length}/10 used.
+              </p>
+              {staff.length >= 10 ? (
+                <p className="text-sm p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+                  You've reached the limit of 10 co-admins. Remove one below to add another.
+                </p>
+              ) : (
+                <form onSubmit={handleAddStaff} className="space-y-3">
+                  <input type="text" className="input" placeholder="Name" value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
+                  <input type="email" className="input" placeholder="Email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} required />
+                  <input type="password" className="input" placeholder="Temporary password (min 8 chars)" value={staffForm.password} onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })} minLength={8} required />
+                  <button type="submit" className="btn-primary" disabled={addingStaff}>{addingStaff ? 'Adding…' : 'Add co-admin'}</button>
+                  {staffErr && <p className="text-sm text-red-500">{staffErr}</p>}
+                </form>
+              )}
+            </Card>
+
+            <Card>
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-brand-600" /> Co-admins ({staff.length})</h3>
+              {staff.length === 0 ? (
+                <p className="text-sm text-earth-500">No co-admins added yet.</p>
+              ) : (
+                <div className="divide-y divide-white/10">
+                  {staff.map((m) => (
+                    <div key={m.id} className="py-3 flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-sm">{m.name}</p>
+                        <p className="text-xs text-earth-400">{m.email}</p>
+                      </div>
+                      <button onClick={() => handleRemoveStaff(m.id)} className="text-red-400 hover:text-red-300 p-2" title="Remove co-admin">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
         )}
 
         {tab === 'volunteer' && (
@@ -588,7 +690,7 @@ export default function SchoolDashboard() {
                   <button onClick={() => viewPdf(pdf.id)} className="btn-ghost text-sm p-2">
                     <FileText className="w-4 h-4" />
                   </button>
-                  {user?.role === 'school' && pdf.status === 'pending' && (
+                  {isSchoolAdmin && pdf.status === 'pending' && (
                     <>
                       <button onClick={() => reviewPdf(pdf.id, 'approved')} className="text-emerald-400 hover:text-emerald-300 p-1" title="Approve">
                         <CheckCircle className="w-5 h-5" />

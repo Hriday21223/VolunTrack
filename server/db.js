@@ -46,12 +46,13 @@ CREATE TABLE IF NOT EXISTS schools (
   payment_notes   TEXT,
   paid_at         TIMESTAMPTZ,
   payment_confirmation_ref TEXT,
+  admin_notes     TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
-  role          TEXT NOT NULL CHECK (role IN ('admin','school','student','volunteer')),
+  role          TEXT NOT NULL CHECK (role IN ('admin','school','school_staff','student','volunteer','parent')),
   name          TEXT NOT NULL,
   email         TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
@@ -172,6 +173,18 @@ CREATE TABLE IF NOT EXISTS parent_child_links (
 );
 
 CREATE INDEX IF NOT EXISTS idx_parent_child_links_child ON parent_child_links(child_id);
+
+CREATE TABLE IF NOT EXISTS school_invites (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  email         TEXT NOT NULL,
+  token         TEXT UNIQUE NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','expired','completed')),
+  expires_at    TIMESTAMPTZ NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_school_invites_token ON school_invites(token);
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
@@ -189,6 +202,8 @@ export async function initSchema() {
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_due_date DATE`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_confirmation_ref TEXT`) } catch {}
+  // Internal-only note for admins — never exposed to the school (see /info and /admin/list column lists).
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS admin_notes TEXT`) } catch {}
   try { await query(`ALTER TABLE schools DROP CONSTRAINT IF EXISTS schools_payment_status_check`) } catch {}
   try { await query(`ALTER TABLE schools ADD CONSTRAINT schools_payment_status_check CHECK (payment_status IN ('paid','unpaid','pending','rejected'))`) } catch {}
   try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS school_id TEXT REFERENCES schools(id) ON DELETE CASCADE`) } catch {}
@@ -223,6 +238,24 @@ export async function initSchema() {
         IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
         ALTER TABLE users ADD CONSTRAINT users_role_check
           CHECK (role IN ('admin','school','student','volunteer','parent'));
+      END $$;
+    `)
+  } catch (error) { console.error('role constraint migration failed:', error) }
+
+  // Widen again to allow 'school_staff' — school co-admins (up to 10 per
+  // school, see POST /school/staff) who share day-to-day dashboard access
+  // but not billing/account-deletion actions.
+  try {
+    await query(`
+      DO $$
+      DECLARE cname text;
+      BEGIN
+        SELECT conname INTO cname FROM pg_constraint
+          WHERE conrelid = 'users'::regclass AND contype = 'c'
+            AND pg_get_constraintdef(oid) ILIKE '%role%IN%';
+        IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
+        ALTER TABLE users ADD CONSTRAINT users_role_check
+          CHECK (role IN ('admin','school','school_staff','student','volunteer','parent'));
       END $$;
     `)
   } catch (error) { console.error('role constraint migration failed:', error) }
