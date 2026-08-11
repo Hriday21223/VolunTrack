@@ -4,9 +4,17 @@ import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Sea
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+const SCHOOL_TOUR_STEPS = [
+  { selector: '[data-tour="tab-reports"]', title: 'Reports', description: 'Review the PDF proof documents students upload, and approve or reject each one.' },
+  { selector: '[data-tour="tab-students"]', title: 'Students', description: 'See everyone linked to your school, and add students by email.' },
+  { selector: '[data-tour="tab-chat"]', title: 'Chat', description: 'Send an announcement to every student linked to your school at once.' },
+  { selector: '[data-tour="tab-staff"]', title: 'Co-admins', description: 'Add up to 10 co-admins who can share the day-to-day work of reviewing uploads and managing students.' },
+]
 
 export default function SchoolDashboard() {
   const { user, refreshUser } = useAuth()
@@ -356,15 +364,15 @@ export default function SchoolDashboard() {
       }
       action={
         <div className="flex gap-2">
-          <button onClick={() => setTab('pdfs')} className={`btn-sm ${tab === 'pdfs' ? 'btn-primary' : 'btn-ghost'}`}>Reports</button>
+          <button data-tour="tab-reports" onClick={() => setTab('pdfs')} className={`btn-sm ${tab === 'pdfs' ? 'btn-primary' : 'btn-ghost'}`}>Reports</button>
           {isSchoolAdmin && (
             <>
-              <button onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>Students</button>
-              <button onClick={() => { setTab('chat'); loadMessages() }} className={`btn-sm ${tab === 'chat' ? 'btn-primary' : 'btn-ghost'}`}>
+              <button data-tour="tab-students" onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>Students</button>
+              <button data-tour="tab-chat" onClick={() => { setTab('chat'); loadMessages() }} className={`btn-sm ${tab === 'chat' ? 'btn-primary' : 'btn-ghost'}`}>
                 <MessageSquare className="w-3.5 h-3.5 mr-1" /> Chat
               </button>
               {user?.role === 'school' && (
-                <button onClick={() => setTab('staff')} className={`btn-sm ${tab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
+                <button data-tour="tab-staff" onClick={() => setTab('staff')} className={`btn-sm ${tab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
                   <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
                 </button>
               )}
@@ -376,6 +384,7 @@ export default function SchoolDashboard() {
         </div>
       }
     >
+      {isSchoolAdmin && <SpotlightTour storageKey="voluntrack:tour-seen:school" steps={SCHOOL_TOUR_STEPS} />}
       <div className="max-w-4xl mx-auto space-y-4">
         {adminNotifs.length > 0 && (
           <Card>
