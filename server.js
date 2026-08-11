@@ -12,6 +12,7 @@ import schoolRoutes from './server/routes/school.js'
 import organizationRoutes from './server/routes/organization.js'
 import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
+import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
 
 dotenv.config()
 
@@ -48,6 +49,12 @@ app.use(cors({
   ],
   credentials: true,
 }))
+
+// Registered ahead of express.json() — Resend webhook signature
+// verification needs the raw request body, which express.json() would
+// otherwise already have consumed by the time a router saw it.
+app.post('/api/contact/inbound', express.raw({ type: 'application/json' }), handleInboundWebhook)
+
 app.use(express.json({ limit: '1mb' }))
 app.use(apiLimiter)
 app.use(authenticate)
@@ -58,6 +65,7 @@ app.use('/api/school', apiLimiter, schoolRoutes)
 app.use('/api/organization', apiLimiter, organizationRoutes)
 app.use('/api/logs', apiLimiter, logsRoutes)
 app.use('/api/parent', apiLimiter, parentRoutes)
+app.use('/api/contact', apiLimiter, contactRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
@@ -274,51 +282,9 @@ app.post('/api/send-report', async (req, res) => {
   }
 })
 
-app.post('/api/contact', emailLimiter, async (req, res) => {
-  const { name, email, subject, message } = req.body
-  
-  // Basic input validation
-  if (!name || typeof name !== 'string' || name.trim().length === 0 || name.length > 100) {
-    return res.status(400).json({ error: 'Invalid name.' })
-  }
-  if (!email || typeof email !== 'string' || !email.includes('@') || email.length > 254) {
-    return res.status(400).json({ error: 'Invalid email.' })
-  }
-  if (!message || typeof message !== 'string' || message.trim().length === 0 || message.length > 5000) {
-    return res.status(400).json({ error: 'Invalid message.' })
-  }
-  if (subject && (typeof subject !== 'string' || subject.length > 200)) {
-    return res.status(400).json({ error: 'Invalid subject.' })
-  }
-
-  const { transport, missing } = transporter()
-  if (!transport) {
-    return res.status(503).json({
-      error: 'Email backend is not configured.',
-      missingVars: missing,
-    })
-  }
-
-  const to = process.env.CONTACT_EMAIL || 'volunteertrack@googlegroups.com'
-  const sanitizedMessage = message.trim()
-  const sanitizedSubject = subject ? subject.trim() : 'General question'
-  const body = `New contact message from ${name.trim()} <${email.trim()}>\nSubject: ${sanitizedSubject}\n\n${sanitizedMessage}`
-
-  try {
-    await transport.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to,
-      replyTo: email,
-      subject: `VolunTrack contact: ${subject || 'General question'}`,
-      text: body,
-      html: `<pre style="font-family: sans-serif; white-space: pre-wrap;">${body}</pre>`,
-    })
-    return res.status(200).json({ ok: true })
-  } catch (error) {
-    console.error('Contact email failed:', error)
-    return res.status(500).json({ error: 'Failed to send message.' })
-  }
-})
+// POST /api/contact now lives in server/routes/contact.js (persists to
+// contact_messages so the admin inbox works across browsers/devices,
+// instead of the old email-only, localStorage-backed version).
 
 app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
   const { supervisorEmail, supervisorName, studentName, studentEmail, hours, activity, signupUrl, logId } = req.body
