@@ -9,6 +9,7 @@ import { authenticate, hashPassword } from './server/auth.js'
 import { uid, generateToken } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import schoolRoutes from './server/routes/school.js'
+import organizationRoutes from './server/routes/organization.js'
 import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
 
@@ -54,6 +55,7 @@ app.use(authenticate)
 // Server-backed accounts & (later) school dashboards.
 app.use('/api/auth', apiLimiter, authRoutes)
 app.use('/api/school', apiLimiter, schoolRoutes)
+app.use('/api/organization', apiLimiter, organizationRoutes)
 app.use('/api/logs', apiLimiter, logsRoutes)
 app.use('/api/parent', apiLimiter, parentRoutes)
 

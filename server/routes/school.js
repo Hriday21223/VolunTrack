@@ -74,8 +74,8 @@ router.post('/register', limiter, requireDb, async (req, res) => {
 
     const schoolId = uid('sch')
     await query(
-      'INSERT INTO schools (id, name, pin, contact_email) VALUES ($1, $2, $3, $4)',
-      [schoolId, name, pin, email],
+      'INSERT INTO schools (id, name, pin, contact_email, organization_id) VALUES ($1, $2, $3, $4, $5)',
+      [schoolId, name, pin, email, invite?.organization_id || null],
     )
 
     const hash = await hashPassword(password)
@@ -683,6 +683,26 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
   } catch (error) {
     console.error('admin schools list failed:', error)
     return res.status(500).json({ error: 'Could not fetch schools.' })
+  }
+})
+
+// List organizations with an aggregate school count (admin only). Read-only —
+// the platform admin doesn't manage organizations directly; each org manages
+// its own schools via POST /organization/invite-school.
+router.get('/admin/organizations', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT o.id, o.name, o.contact_email, o.created_at,
+        COUNT(s.id) AS school_count
+       FROM organizations o
+       LEFT JOIN schools s ON s.organization_id = o.id
+       GROUP BY o.id
+       ORDER BY o.created_at DESC`,
+    )
+    return res.json({ organizations: rows })
+  } catch (error) {
+    console.error('admin organizations list failed:', error)
+    return res.status(500).json({ error: 'Could not fetch organizations.' })
   }
 })
 
