@@ -4,11 +4,18 @@ import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles,
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getReviews } from '@/api/index.js'
 import { runAgent, updateIncidentStatus, getAgentLog, logAgentAction } from '@/lib/agent.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+const ADMIN_TOUR_STEPS = [
+  { selector: '[data-tour="admin-inbox"]', title: 'Inbox', description: 'Contact-form messages land here, threaded by conversation, with AI-drafted replies you can send or copy.' },
+  { selector: '[data-tour="admin-schools"]', title: 'Schools', description: 'Verify payments, leave internal-only notes, and manage every school on the platform.' },
+  { selector: '[data-tour="admin-incidents"]', title: 'Incidents', description: 'Detected issues show up here, with an AI agent log and one-click approve-fix workflow.' },
+]
 
 function generateDraft(contact) {
   const subject = contact.subject || 'General question'
@@ -454,13 +461,13 @@ export default function Admin() {
       subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
-          <button onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
             <MessageSquare className="w-3.5 h-3.5 mr-1" /> Inbox
           </button>
           <button onClick={() => setTab('reviews')} className={`btn-sm ${tab === 'reviews' ? 'btn-primary' : 'btn-ghost'}`}>
             <Star className="w-3.5 h-3.5 mr-1" /> Reviews
           </button>
-          <button onClick={() => { setTab('schools'); loadSchools() }} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="admin-schools" onClick={() => { setTab('schools'); loadSchools() }} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" /> Schools
           </button>
           <button onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -469,7 +476,7 @@ export default function Admin() {
           <button onClick={() => { setTab('organizations'); loadOrganizations() }} className={`btn-sm ${tab === 'organizations' ? 'btn-primary' : 'btn-ghost'}`}>
             <Building2 className="w-3.5 h-3.5 mr-1" /> Organizations
           </button>
-          <button onClick={() => setTab('incidents')} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
+          <button data-tour="admin-incidents" onClick={() => setTab('incidents')} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
             <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Incidents
             {incidents.length > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{incidents.length > 9 ? '9+' : incidents.length}</span>
@@ -478,6 +485,9 @@ export default function Admin() {
         </div>
       }
     >
+      {tab === 'inbox' && !loadingThreads && (
+        <SpotlightTour storageKey="voluntrack:tour-seen:admin" steps={ADMIN_TOUR_STEPS} />
+      )}
       {tab === 'reviews' ? (
         reviews.length === 0 ? (
           <Card>
