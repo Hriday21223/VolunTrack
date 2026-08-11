@@ -69,7 +69,7 @@ export default function Admin() {
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [drafts, setDrafts] = useState({})
   const [copiedIdx, setCopiedIdx] = useState(null)
-  const [sendingIdx, setSendingIdx] = useState(null)
+  const [sendingIds, setSendingIds] = useState(() => new Set())
   const [sendErrors, setSendErrors] = useState({})
   const [tab, setTab] = useState('inbox')
   const [schools, setSchools] = useState([])
@@ -431,7 +431,7 @@ export default function Admin() {
   const sendDraft = async (threadId) => {
     const draft = drafts[threadId]
     if (!draft) return
-    setSendingIdx(threadId)
+    setSendingIds((prev) => new Set(prev).add(threadId))
     setSendErrors((prev) => { const next = { ...prev }; delete next[threadId]; return next })
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
@@ -442,16 +442,17 @@ export default function Admin() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send')
-      setSendingIdx(null)
+      if (!data.sent) throw new Error('Reply saved, but the email could not be delivered')
       setDrafts((prev) => { const next = { ...prev }; delete next[threadId]; return next })
       setToastMessage('Reply sent')
       setToast(true)
       loadThreads()
     } catch (e) {
-      setSendingIdx(null)
       setSendErrors((prev) => ({ ...prev, [threadId]: e.message }))
       setToastMessage(e.message)
       setToast(true)
+    } finally {
+      setSendingIds((prev) => { const next = new Set(prev); next.delete(threadId); return next })
     }
   }
 
@@ -881,12 +882,12 @@ export default function Admin() {
                         <button
                           onClick={() => { if (sendErrors[id] || confirm(`Send this reply to ${c.email}?`)) sendDraft(id) }}
                           className={`btn-sm ${sendErrors[id] ? 'btn-danger' : 'btn-primary'}`}
-                          disabled={sendingIdx === id}
+                          disabled={sendingIds.has(id)}
                         >
                           {sendErrors[id] ? (
-                            <><RefreshCw className="w-3.5 h-3.5 mr-1" /> {sendingIdx === id ? 'Resending…' : 'Resend'}</>
+                            <><RefreshCw className="w-3.5 h-3.5 mr-1" /> {sendingIds.has(id) ? 'Resending…' : 'Resend'}</>
                           ) : (
-                            <><Mail className="w-3.5 h-3.5 mr-1" /> {sendingIdx === id ? 'Sending…' : 'Send reply'}</>
+                            <><Mail className="w-3.5 h-3.5 mr-1" /> {sendingIds.has(id) ? 'Sending…' : 'Send reply'}</>
                           )}
                         </button>
                         {sendErrors[id] && (

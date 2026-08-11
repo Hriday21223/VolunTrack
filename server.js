@@ -13,6 +13,7 @@ import organizationRoutes from './server/routes/organization.js'
 import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
 import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
+import { escapeHtml } from './server/html.js'
 
 dotenv.config()
 
@@ -101,11 +102,6 @@ function transporter() {
   }
 }
 
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]))
-}
 
 function missingVars({ host, user, pass }) {
   const missing = []

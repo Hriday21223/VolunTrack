@@ -5,6 +5,7 @@ import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
 import { sendEmail } from '../email.js'
+import { escapeHtml } from '../html.js'
 
 const router = express.Router()
 
@@ -27,12 +28,6 @@ const limiter = rateLimit({
 function requireDb(_req, res, next) {
   if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
   next()
-}
-
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]))
 }
 
 // Submit a contact-form message (public). Starts a new thread.

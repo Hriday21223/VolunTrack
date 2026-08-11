@@ -9,10 +9,11 @@ import { fmtDate, fmtHours } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
-const PARENT_TOUR_STEPS = [
-  { selector: '[data-tour="family-link"]', title: 'Link a child', description: 'Ask your child for a link code from their Settings → Family section, then enter it here to see their hours.' },
-  { selector: '[data-tour="child-card"]', title: "Your child's hours", description: 'Each linked child gets a card showing their total hours and every session they’ve logged, with its verification status.' },
-]
+// family-link and child-card render in mutually exclusive branches (no
+// children linked yet vs. at least one linked) — only one is ever on the
+// page at a time, so the tour must show whichever one currently applies.
+const PARENT_TOUR_STEP_NO_CHILDREN = { selector: '[data-tour="family-link"]', title: 'Link a child', description: 'Ask your child for a link code from their Settings → Family section, then enter it here to see their hours.' }
+const PARENT_TOUR_STEP_HAS_CHILDREN = { selector: '[data-tour="child-card"]', title: "Your child's hours", description: 'Each linked child gets a card showing their total hours and every session they’ve logged, with its verification status.' }
 
 export default function ParentDashboard() {
   const [children, setChildren] = useState([])
@@ -49,7 +50,12 @@ export default function ParentDashboard() {
 
   return (
     <AppLayout title="Family" subtitle="Your linked children's logged hours and verification status.">
-      {!loading && !error && <SpotlightTour storageKey="voluntrack:tour-seen:parent" steps={PARENT_TOUR_STEPS} />}
+      {!loading && !error && (
+        <SpotlightTour
+          storageKey="voluntrack:tour-seen:parent"
+          steps={[children.length === 0 ? PARENT_TOUR_STEP_NO_CHILDREN : PARENT_TOUR_STEP_HAS_CHILDREN]}
+        />
+      )}
       {loading ? (
         <Card><div className="text-sm text-earth-500 dark:text-earth-400">Loading…</div></Card>
       ) : error ? (

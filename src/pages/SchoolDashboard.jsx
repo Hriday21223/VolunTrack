@@ -13,8 +13,11 @@ const SCHOOL_TOUR_STEPS = [
   { selector: '[data-tour="tab-reports"]', title: 'Reports', description: 'Review the PDF proof documents students upload, and approve or reject each one.' },
   { selector: '[data-tour="tab-students"]', title: 'Students', description: 'See everyone linked to your school, and add students by email.' },
   { selector: '[data-tour="tab-chat"]', title: 'Chat', description: 'Send an announcement to every student linked to your school at once.' },
-  { selector: '[data-tour="tab-staff"]', title: 'Co-admins', description: 'Add up to 10 co-admins who can share the day-to-day work of reviewing uploads and managing students.' },
 ]
+
+// Co-admins tab is only rendered for the primary school-admin role, not
+// school_staff — so its tour step only applies there too.
+const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: 'Co-admins', description: 'Add up to 10 co-admins who can share the day-to-day work of reviewing uploads and managing students.' }
 
 export default function SchoolDashboard() {
   const { user, refreshUser } = useAuth()
@@ -384,7 +387,12 @@ export default function SchoolDashboard() {
         </div>
       }
     >
-      {isSchoolAdmin && <SpotlightTour storageKey="voluntrack:tour-seen:school" steps={SCHOOL_TOUR_STEPS} />}
+      {isSchoolAdmin && (
+        <SpotlightTour
+          storageKey="voluntrack:tour-seen:school"
+          steps={user?.role === 'school' ? [...SCHOOL_TOUR_STEPS, SCHOOL_ADMIN_ONLY_TOUR_STEP] : SCHOOL_TOUR_STEPS}
+        />
+      )}
       <div className="max-w-4xl mx-auto space-y-4">
         {adminNotifs.length > 0 && (
           <Card>
