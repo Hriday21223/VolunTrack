@@ -22,9 +22,9 @@ function generateDraft(contact) {
   const intro = intros[contact.sentAt ? contact.sentAt.length % intros.length : 0]
 
   const closings = [
-    '\n\nBest,\nHriday (VolunTrack)',
-    '\n\nTalk soon,\nHriday (VolunTrack)',
-    '\n\nThanks again,\nHriday (VolunTrack)',
+    '\n\nBest,\nVolunTrack',
+    '\n\nTalk soon,\nVolunTrack',
+    '\n\nThanks again,\nVolunTrack',
   ]
   const closing = closings[contact.sentAt ? contact.sentAt.length % closings.length : 0]
 
