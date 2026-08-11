@@ -203,7 +203,7 @@ export default function SyncLogin() {
                 <div className="mt-6 text-center text-sm text-slate-400">
                   {isMobile ? 'Open on your laptop to generate a PIN.' : "Don't have the mobile app?"}{' '}
                   {!isMobile && (
-                    <a href="https://github.com/hriday21223/VolunteerTrack" target="_blank" rel="noopener noreferrer" className="text-sky-200 font-semibold hover:text-white">
+                    <a href="https://github.com/Hriday21223/VolunTrack" target="_blank" rel="noopener noreferrer" className="text-sky-200 font-semibold hover:text-white">
                       Get VolunTrack mobile
                     </a>
                   )}

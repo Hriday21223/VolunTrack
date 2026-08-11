@@ -298,7 +298,7 @@ function Faq() {
         />
         <FaqItem
           question="I have a bug or feature request."
-          answer="Visit the Contact page to send us a message, or open an issue on GitHub: https://github.com/Hriday21223/VolunteerTrack/issues"
+          answer="Visit the Contact page to send us a message, or open an issue on GitHub: https://github.com/Hriday21223/VolunTrack/issues"
         />
       </div>
     </div>

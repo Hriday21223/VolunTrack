@@ -1,5 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, School, Hash } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -15,10 +15,29 @@ export default function SchoolRegister() {
   })
 
   const nav = useNavigate()
+  const [searchParams] = useSearchParams()
+  const inviteToken = searchParams.get('token')
   const [form, setForm] = useState({ name: '', email: '', password: '', pin: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
+  const [inviteLoaded, setInviteLoaded] = useState(!inviteToken)
+
+  useEffect(() => {
+    if (!inviteToken) return
+    (async () => {
+      try {
+        const res = await fetch(`${apiUrl}/school/invite/${inviteToken}`)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Invite link is invalid.')
+        setForm((f) => ({ ...f, name: data.name, email: data.email }))
+      } catch (e) {
+        setErr(e.message)
+      } finally {
+        setInviteLoaded(true)
+      }
+    })()
+  }, [inviteToken])
 
   const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
@@ -32,7 +51,7 @@ export default function SchoolRegister() {
       const res = await fetch(`${apiUrl}/school/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase() }),
+        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), inviteToken: inviteToken || undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')
@@ -55,22 +74,27 @@ export default function SchoolRegister() {
         </Link>
 
         <Card padded={false} className="p-7">
-          <h1 className="text-2xl font-bold mb-1">Register your school</h1>
-          <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">Create a school account to review student hours.</p>
+          <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your school' : 'Register your school'}</h1>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
+            {inviteToken ? 'You were invited by a VolunTrack admin — just set your password and school code.' : 'Create a school account to review student hours.'}
+          </p>
 
+          {!inviteLoaded ? (
+            <p className="text-sm text-earth-500 py-4">Loading invite…</p>
+          ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <label className="label">School name</label>
               <div className="relative">
                 <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                <input type="text" className="input pl-9" placeholder="Lincoln High School" value={form.name} onChange={onChange('name')} required />
+                <input type="text" className="input pl-9 disabled:opacity-60" placeholder="Lincoln High School" value={form.name} onChange={onChange('name')} disabled={!!inviteToken} required />
               </div>
             </div>
             <div>
               <label className="label">Admin email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                <input type="email" className="input pl-9" placeholder="admin@school.edu" value={form.email} onChange={onChange('email')} autoComplete="email" required />
+                <input type="email" className="input pl-9 disabled:opacity-60" placeholder="admin@school.edu" value={form.email} onChange={onChange('email')} autoComplete="email" disabled={!!inviteToken} required />
               </div>
             </div>
             <div>
@@ -95,6 +119,7 @@ export default function SchoolRegister() {
               {busy ? 'Registering…' : <>Register school <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
+          )}
 
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-6">
             Already have a school account?{' '}

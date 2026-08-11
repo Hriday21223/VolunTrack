@@ -2,7 +2,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
-import { uid } from '../ids.js'
+import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { sendEmail } from '../email.js'
 
@@ -41,12 +41,15 @@ async function requirePaidSchool(req, res, next) {
   }
 }
 
-// Register a school
+// Register a school. If `inviteToken` is present, it must reference a
+// pending, unexpired invite — consumed (marked 'completed') on success so
+// it can't be reused.
 router.post('/register', limiter, requireDb, async (req, res) => {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const password = req.body.password
   const pin = String(req.body.pin || '').trim().toLowerCase()
+  const inviteToken = req.body.inviteToken ? String(req.body.inviteToken).trim() : null
 
   if (!name || name.length > 100) return res.status(400).json({ error: 'School name is required.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
@@ -54,6 +57,15 @@ router.post('/register', limiter, requireDb, async (req, res) => {
   if (!pin || !/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
 
   try {
+    let invite = null
+    if (inviteToken) {
+      const { rows: inviteRows } = await query('SELECT * FROM school_invites WHERE token = $1', [inviteToken])
+      invite = inviteRows[0]
+      if (!invite || invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
+        return res.status(410).json({ error: 'This invite link has expired or was already used.' })
+      }
+    }
+
     const existing = await query('SELECT 1 FROM schools WHERE pin = $1', [pin])
     if (existing.rowCount > 0) return res.status(409).json({ error: 'That school code is already taken.' })
 
@@ -74,11 +86,34 @@ router.post('/register', limiter, requireDb, async (req, res) => {
        RETURNING *`,
       [userId, name, email, hash, schoolId],
     )
+
+    if (invite) {
+      await query(`UPDATE school_invites SET status = 'completed' WHERE id = $1`, [invite.id])
+    }
+
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, schoolId: rows[0].school_id, grade: rows[0].grade }
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     console.error('school register failed:', error)
     return res.status(500).json({ error: 'Could not register school.' })
+  }
+})
+
+// Look up a pending invite by token (public — the school clicks the emailed
+// link before they're authenticated). Returns just enough to pre-fill the
+// registration form.
+router.get('/invite/:token', limiter, requireDb, async (req, res) => {
+  try {
+    const { rows } = await query('SELECT name, email, status, expires_at FROM school_invites WHERE token = $1', [req.params.token])
+    if (rows.length === 0) return res.status(404).json({ error: 'Invite not found.' })
+    const invite = rows[0]
+    if (invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'This invite link has expired or was already used.' })
+    }
+    return res.json({ name: invite.name, email: invite.email })
+  } catch (error) {
+    console.error('invite lookup failed:', error)
+    return res.status(500).json({ error: 'Could not look up invite.' })
   }
 })
 
@@ -101,7 +136,7 @@ router.post('/join', limiter, requireDb, requireAuth(), async (req, res) => {
 })
 
 // Get students under this school (school admin only)
-router.get('/students', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
@@ -120,7 +155,7 @@ router.get('/students', limiter, requireDb, requireAuth('school'), requirePaidSc
 })
 
 // Add a student to the school by email (school admin only)
-router.post('/add-student', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+router.post('/add-student', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase()
   if (!email || !validator.isEmail(email)) return res.status(400).json({ error: 'Valid email required.' })
 
@@ -138,6 +173,86 @@ router.post('/add-student', limiter, requireDb, requireAuth('school'), requirePa
   } catch (error) {
     console.error('add-student failed:', error)
     return res.status(500).json({ error: 'Could not add student.' })
+  }
+})
+
+const MAX_CO_ADMINS = 10
+
+// List co-admins for the school (school admin or a co-admin can view)
+router.get('/staff', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
+
+    const { rows } = await query(
+      `SELECT id, name, email, created_at FROM users
+       WHERE school_id = $1 AND role = 'school_staff'
+       ORDER BY created_at DESC`,
+      [userRows[0].school_id],
+    )
+    return res.json({ staff: rows })
+  } catch (error) {
+    console.error('school staff list failed:', error)
+    return res.status(500).json({ error: 'Could not fetch staff.' })
+  }
+})
+
+// Add a co-admin (school admin only — co-admins cannot add other co-admins).
+// Capped at MAX_CO_ADMINS per school.
+router.post('/staff', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+  const name = String(req.body.name || '').trim()
+  const email = String(req.body.email || '').trim().toLowerCase()
+  const password = req.body.password
+
+  if (!name || name.length > 100) return res.status(400).json({ error: 'Name is required.' })
+  if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
+  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
+
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
+    const schoolId = userRows[0].school_id
+
+    const { rows: countRows } = await query(
+      `SELECT COUNT(*) FROM users WHERE school_id = $1 AND role = 'school_staff'`,
+      [schoolId],
+    )
+    if (Number(countRows[0].count) >= MAX_CO_ADMINS) {
+      return res.status(409).json({ error: `You've reached the limit of ${MAX_CO_ADMINS} co-admins.` })
+    }
+
+    const existingUser = await query('SELECT 1 FROM users WHERE email = $1', [email])
+    if (existingUser.rowCount > 0) return res.status(409).json({ error: 'An account with that email already exists.' })
+
+    const hash = await hashPassword(password)
+    const userId = uid('usr')
+    await query(
+      `INSERT INTO users (id, role, name, email, password_hash, school_id)
+       VALUES ($1, 'school_staff', $2, $3, $4, $5)`,
+      [userId, name, email, hash, schoolId],
+    )
+    return res.status(201).json({ ok: true })
+  } catch (error) {
+    console.error('add school staff failed:', error)
+    return res.status(500).json({ error: 'Could not add co-admin.' })
+  }
+})
+
+// Remove a co-admin (school admin only)
+router.delete('/staff/:id', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
+
+    const { rowCount } = await query(
+      `DELETE FROM users WHERE id = $1 AND school_id = $2 AND role = 'school_staff'`,
+      [req.params.id, userRows[0].school_id],
+    )
+    if (rowCount === 0) return res.status(404).json({ error: 'Co-admin not found.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('remove school staff failed:', error)
+    return res.status(500).json({ error: 'Could not remove co-admin.' })
   }
 })
 
@@ -220,7 +335,7 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 })
 
 // Approve or reject a PDF (school admin)
-router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const { status, notes } = req.body
   if (!status || !['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Status must be approved or rejected.' })
 
@@ -560,7 +675,7 @@ router.post('/submit-payment-confirmation', limiter, requireDb, requireAuth('sch
 router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.created_at,
+      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.created_at,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s ORDER BY s.created_at DESC`,
     )
@@ -568,6 +683,20 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
   } catch (error) {
     console.error('admin schools list failed:', error)
     return res.status(500).json({ error: 'Could not fetch schools.' })
+  }
+})
+
+// Set an internal admin-only note on a school. Never returned to the school
+// (see /info and the school-facing endpoints, which whitelist columns and
+// omit admin_notes).
+router.patch('/admin/:id/notes', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const note = String(req.body.note ?? '').trim()
+  try {
+    await query('UPDATE schools SET admin_notes = $1 WHERE id = $2', [note || null, req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('admin note update failed:', error)
+    return res.status(500).json({ error: 'Could not save note.' })
   }
 })
 
@@ -606,6 +735,17 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now() WHERE id = $3',
         [status, notes || null, req.params.id],
       )
+
+      const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
+      if (rows[0]?.contact_email) {
+        const id = uid('anot')
+        await sendEmail({
+          to: rows[0].contact_email,
+          subject: 'Payment confirmed — VolunTrack',
+          html: `<p>Your payment confirmation has been verified. Your school's account is now unlocked — student uploads and management are available.</p>`,
+          idempotencyKey: `payment-approved/${req.params.id}/${id}`,
+        })
+      }
     } else {
       await query(
         'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = NULL WHERE id = $3',
@@ -616,7 +756,8 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
     // Rejected payments notify the school so they know to resubmit.
     if (status === 'rejected') {
       const id = uid('anot')
-      const rejectMsg = `Your payment confirmation could not be verified: ${notes.trim()}. Please resubmit a valid bank confirmation number.`
+      const reason = notes.trim().replace(/\.+$/, '')
+      const rejectMsg = `Your payment confirmation could not be verified: ${reason}. Please resubmit a valid bank confirmation number.`
       await query(
         'INSERT INTO admin_notifications (id, school_id, message) VALUES ($1, $2, $3)',
         [id, req.params.id, rejectMsg],
@@ -637,6 +778,99 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
   } catch (error) {
     console.error('update payment failed:', error)
     return res.status(500).json({ error: 'Could not update payment.' })
+  }
+})
+
+const INVITE_TTL_DAYS = 3
+
+// Invite a school (admin only). Sends a signup link pre-filled with the
+// given name/email; the school sets their own password/code via
+// /school/register?token=... within INVITE_TTL_DAYS.
+router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const name = String(req.body.name || '').trim()
+  const email = String(req.body.email || '').trim().toLowerCase()
+
+  if (!name || name.length > 100) return res.status(400).json({ error: 'School name is required.' })
+  if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
+
+  try {
+    const id = uid('inv')
+    const token = generateToken()
+    await query(
+      `INSERT INTO school_invites (id, name, email, token, status, expires_at)
+       VALUES ($1, $2, $3, $4, 'pending', now() + interval '${INVITE_TTL_DAYS} days')`,
+      [id, name, email, token],
+    )
+
+    const link = `${process.env.FRONTEND_URL || ''}/school/register?token=${token}`
+    await sendEmail({
+      to: email,
+      subject: 'You’re invited to set up your school on VolunTrack',
+      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+      idempotencyKey: `school-invite/${id}`,
+    })
+
+    return res.status(201).json({ ok: true, id })
+  } catch (error) {
+    console.error('school invite failed:', error)
+    return res.status(500).json({ error: 'Could not send invite.' })
+  }
+})
+
+// List invites (admin only) — expired-but-unmarked rows are reported as
+// 'expired' without a write, since a background sweep isn't worth it here.
+router.get('/admin/invites', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, name, email, status, expires_at, created_at,
+         CASE WHEN status = 'pending' AND expires_at < now() THEN 'expired' ELSE status END AS effective_status
+       FROM school_invites ORDER BY created_at DESC`,
+    )
+    return res.json({ invites: rows })
+  } catch (error) {
+    console.error('list invites failed:', error)
+    return res.status(500).json({ error: 'Could not fetch invites.' })
+  }
+})
+
+// Resend an invite (admin only) — issues a fresh token/expiry so an old,
+// possibly-leaked link stops working.
+router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT * FROM school_invites WHERE id = $1', [req.params.id])
+    if (rows.length === 0) return res.status(404).json({ error: 'Invite not found.' })
+    const invite = rows[0]
+    if (invite.status === 'completed') return res.status(409).json({ error: 'This invite has already been used.' })
+
+    const token = generateToken()
+    await query(
+      `UPDATE school_invites SET token = $1, status = 'pending', expires_at = now() + interval '${INVITE_TTL_DAYS} days' WHERE id = $2`,
+      [token, req.params.id],
+    )
+
+    const link = `${process.env.FRONTEND_URL || ''}/school/register?token=${token}`
+    await sendEmail({
+      to: invite.email,
+      subject: 'You’re invited to set up your school on VolunTrack',
+      html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+      idempotencyKey: `school-invite-resend/${req.params.id}/${Date.now()}`,
+    })
+
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('resend invite failed:', error)
+    return res.status(500).json({ error: 'Could not resend invite.' })
+  }
+})
+
+// Delete an invite (admin only)
+router.delete('/admin/invite/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    await query('DELETE FROM school_invites WHERE id = $1', [req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('delete invite failed:', error)
+    return res.status(500).json({ error: 'Could not delete invite.' })
   }
 })
 
@@ -751,7 +985,7 @@ router.get('/admin/notifications', limiter, requireDb, requireAuth(), async (req
 // --- School chat (school admin → students) ---
 
 // Send a message (school admin only)
-router.post('/messages', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+router.post('/messages', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const { message } = req.body
   if (!message || typeof message !== 'string' || message.trim().length === 0 || message.length > 2000) {
     return res.status(400).json({ error: 'Message is required (max 2000 chars).' })
