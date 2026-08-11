@@ -4,9 +4,15 @@ import { Link } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
+import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+const PARENT_TOUR_STEPS = [
+  { selector: '[data-tour="family-link"]', title: 'Link a child', description: 'Ask your child for a link code from their Settings → Family section, then enter it here to see their hours.' },
+  { selector: '[data-tour="child-card"]', title: "Your child's hours", description: 'Each linked child gets a card showing their total hours and every session they’ve logged, with its verification status.' },
+]
 
 export default function ParentDashboard() {
   const [children, setChildren] = useState([])
@@ -43,6 +49,7 @@ export default function ParentDashboard() {
 
   return (
     <AppLayout title="Family" subtitle="Your linked children's logged hours and verification status.">
+      {!loading && !error && <SpotlightTour storageKey="voluntrack:tour-seen:parent" steps={PARENT_TOUR_STEPS} />}
       {loading ? (
         <Card><div className="text-sm text-earth-500 dark:text-earth-400">Loading…</div></Card>
       ) : error ? (
@@ -65,7 +72,7 @@ export default function ParentDashboard() {
             <ol className="text-sm text-earth-500 dark:text-earth-400 text-left max-w-sm mx-auto space-y-1.5 list-decimal list-inside">
               <li>Ask your child to open <span className="font-medium text-earth-800 dark:text-earth-100">Settings → Family</span> on their account.</li>
               <li>They&rsquo;ll generate a link code and share it with you.</li>
-              <li>Enter that code in <Link to="/settings" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">your own Settings → Family</Link> section.</li>
+              <li>Enter that code in <Link to="/settings" data-tour="family-link" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">your own Settings → Family</Link> section.</li>
             </ol>
           </div>
         </Card>
@@ -74,7 +81,7 @@ export default function ParentDashboard() {
           {children.map((child) => {
             const totalHours = child.logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
             return (
-              <Card key={child.id}>
+              <Card key={child.id} data-tour="child-card">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="font-display font-semibold">{child.name}</h3>
