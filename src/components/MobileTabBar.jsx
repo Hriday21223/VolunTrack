@@ -17,11 +17,7 @@ const CORE_ITEMS = {
     { to: '/settings',     label: 'Settings',      icon: Settings },
   ],
   volunteer: [
-    { to: '/',             label: 'Dashboard', icon: Home },
     { to: '/my-tasks',     label: 'Tasks',     icon: ClipboardList },
-    { to: '/log',          label: 'Log Hours',       icon: Clock },
-    { to: '/profile',      label: 'Profile',   icon: User },
-    { to: '/settings',     label: 'Settings',  icon: Settings },
   ],
   school: [
     { to: '/',             label: 'Dashboard', icon: Home },
@@ -52,6 +48,10 @@ const MORE_ITEMS = {
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   volunteer: [
+    { to: '/',             label: 'Dashboard',     icon: Home },
+    { to: '/log',          label: 'Log Hours',     icon: Clock },
+    { to: '/profile',      label: 'Profile',       icon: User },
+    { to: '/settings',     label: 'Settings',      icon: Settings },
     { to: '/calendar',     label: 'Calendar',      icon: Calendar },
     { to: '/achievements', label: 'Achievements',  icon: Trophy },
     { to: '/reports',      label: 'Reports',       icon: FileText },

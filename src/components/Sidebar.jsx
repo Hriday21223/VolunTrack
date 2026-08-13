@@ -16,8 +16,8 @@ const ROLE_ITEMS = {
     { to: '/status',       label: 'System Status',      icon: Activity },
   ],
   volunteer: [
-    { to: '/',             label: 'Dashboard',   icon: Home },
     { to: '/my-tasks',     label: 'My Tasks',    icon: ClipboardList },
+    { to: '/',             label: 'Dashboard',   icon: Home },
     { to: '/log',          label: 'Log Hours',   icon: Clock },
     { to: '/calendar',     label: 'Calendar',    icon: Calendar },
     { to: '/achievements', label: 'Achievements', icon: Trophy },

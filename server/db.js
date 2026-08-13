@@ -331,5 +331,10 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('role constraint migration failed:', error) }
 
+  // Attendance for public-task signups — a volunteer marks present/absent/excused
+  // for students approved on a task they posted. See POST /school/public-tasks/:taskId/attendance/:userId.
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS attendance_status TEXT CHECK (attendance_status IN ('present','absent','excused'))`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS attendance_marked_at TIMESTAMPTZ`) } catch {}
+
   return true
 }

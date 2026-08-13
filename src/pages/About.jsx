@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Instagram, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Gift, Zap } from 'lucide-react'
+import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Instagram, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Gift, Zap, Menu, X } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
@@ -113,6 +113,8 @@ function FaqItem({ q, a }) {
 }
 
 export default function About() {
+  const [navOpen, setNavOpen] = useState(false)
+
   // Rendered at both "/" and "/about" for logged-out visitors — canonicalize
   // to "/" so search engines don't treat them as duplicate pages.
   useSeo({
@@ -143,7 +145,7 @@ export default function About() {
     <div className="min-h-screen relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.22),transparent_28%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.18),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.2),transparent_22%),linear-gradient(180deg,#071017_0%,#0a1d25_40%,#0f1f15_100%)] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.08),transparent_14%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.18),transparent_18%),radial-gradient(circle_at_50%_80%,rgba(168,85,247,0.14),transparent_16%)]" />
       <div className="relative px-4 md:px-8 py-5">
-        <header className="flex flex-wrap items-center justify-between gap-3 animate-fade-in-up">
+        <header className="relative flex items-center justify-between gap-3 animate-fade-in-up">
           <Link to="/login" className="flex items-center gap-3">
             <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-11 h-11 object-contain" />
             <div>
@@ -151,13 +153,33 @@ export default function About() {
               <p className="font-display font-bold text-lg text-earth-900 dark:text-earth-100">Volunteer hour tracking</p>
             </div>
           </Link>
-          <div className="flex items-center gap-3">
+
+          <div className="hidden md:flex items-center gap-3">
             <Link to="/about" className="btn-ghost">About</Link>
             <Link to="/contact" className="btn-ghost">Contact</Link>
             <Link to="/status" className="btn-ghost">Status</Link>
             <Link to="/login" className="btn-ghost">Sign in</Link>
             <Link to="/register" className="btn-primary">Get started</Link>
           </div>
+
+          <button
+            onClick={() => setNavOpen((v) => !v)}
+            className="md:hidden btn-ghost p-2"
+            aria-label={navOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={navOpen}
+          >
+            {navOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+
+          {navOpen && (
+            <div className="md:hidden absolute top-full right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#0a1a14] shadow-xl z-50 flex flex-col p-2 gap-1">
+              <Link to="/about" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>About</Link>
+              <Link to="/contact" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Contact</Link>
+              <Link to="/status" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Status</Link>
+              <Link to="/login" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Sign in</Link>
+              <Link to="/register" className="btn-primary w-full justify-center" onClick={() => setNavOpen(false)}>Get started</Link>
+            </div>
+          )}
         </header>
 
         <main className="max-w-[1400px] mx-auto px-4 md:px-8 pb-20">

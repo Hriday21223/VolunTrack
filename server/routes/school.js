@@ -647,6 +647,98 @@ router.get('/public-tasks/:id/logs', limiter, requireDb, requireAuth(), async (r
   }
 })
 
+// List every student approved on a task I created, with their recent logs —
+// lets a volunteer review and approve/reject hours a student logged themselves,
+// not just log hours on the student's behalf (see log-hours/log-hours-batch above).
+router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows: students } = await query(
+      `SELECT DISTINCT u.id, u.name, u.email
+       FROM public_task_signups s
+       JOIN public_tasks t ON t.id = s.task_id
+       JOIN users u ON u.id = s.user_id
+       WHERE t.created_by = $1 AND s.status = 'approved'
+       ORDER BY u.name`,
+      [req.auth.sub],
+    )
+    if (students.length === 0) return res.json({ students: [] })
+
+    const studentIds = students.map((s) => s.id)
+    const { rows: logs } = await query(
+      `SELECT id, user_id, date, activity, category, hours, notes, verification_status, created_at
+       FROM logs WHERE user_id = ANY($1::text[])
+       ORDER BY created_at DESC`,
+      [studentIds],
+    )
+    const logsByStudent = {}
+    for (const log of logs) {
+      if (!logsByStudent[log.user_id]) logsByStudent[log.user_id] = []
+      logsByStudent[log.user_id].push(log)
+    }
+
+    return res.json({
+      students: students.map((s) => ({ ...s, logs: logsByStudent[s.id] || [] })),
+    })
+  } catch (error) {
+    console.error('my students failed:', error)
+    return res.status(500).json({ error: 'Could not fetch students.' })
+  }
+})
+
+// Approve or reject a specific log entry for a student approved on one of my tasks.
+router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requireAuth(), async (req, res) => {
+  const { status } = req.body
+  if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be approved or rejected.' })
+
+  try {
+    const { rows: relRows } = await query(
+      `SELECT 1 FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+       WHERE t.created_by = $1 AND s.user_id = $2 AND s.status = 'approved'`,
+      [req.auth.sub, req.params.studentId],
+    )
+    if (relRows.length === 0) return res.status(403).json({ error: 'This student is not approved on any of your tasks.' })
+
+    const { rows: logRows } = await query('SELECT 1 FROM logs WHERE id = $1 AND user_id = $2', [req.params.logId, req.params.studentId])
+    if (logRows.length === 0) return res.status(404).json({ error: 'Log not found.' })
+
+    await query(
+      'UPDATE logs SET verification_status = $1, verified_by = $2 WHERE id = $3',
+      [status, req.auth.sub, req.params.logId],
+    )
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('verify student log failed:', error)
+    return res.status(500).json({ error: 'Could not update log.' })
+  }
+})
+
+// Mark attendance for a signed-up student on one of my tasks.
+router.post('/public-tasks/:id/attendance/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
+  const { status } = req.body
+  if (!['present', 'absent', 'excused'].includes(status)) return res.status(400).json({ error: 'status must be present, absent, or excused.' })
+
+  try {
+    const { rows: taskRows } = await query('SELECT created_by FROM public_tasks WHERE id = $1', [req.params.id])
+    if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
+    if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can mark attendance.' })
+
+    const { rows: signupRows } = await query(
+      "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+      [req.params.id, req.params.userId],
+    )
+    if (signupRows.length === 0) return res.status(400).json({ error: 'Student is not an approved signup for this task.' })
+
+    await query(
+      'UPDATE public_task_signups SET attendance_status = $1, attendance_marked_at = now() WHERE task_id = $2 AND user_id = $3',
+      [status, req.params.id, req.params.userId],
+    )
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('mark attendance failed:', error)
+    return res.status(500).json({ error: 'Could not mark attendance.' })
+  }
+})
+
 // School admin submits their bank payment confirmation number after paying.
 // Puts the school into 'pending' until an admin verifies it against the
 // actual bank deposit — this does not unlock the school by itself.

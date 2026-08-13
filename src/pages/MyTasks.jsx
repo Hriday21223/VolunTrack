@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, Plus, Send } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -24,6 +24,8 @@ export default function MyTasks() {
   const [batchHours, setBatchHours] = useState({})
   const [batchDate, setBatchDate] = useState('')
   const [batchBusy, setBatchBusy] = useState(false)
+  const [students, setStudents] = useState([])
+  const [studentsLoading, setStudentsLoading] = useState(true)
 
   const loadTasks = useCallback(async () => {
     setLoading(true)
@@ -36,7 +38,46 @@ export default function MyTasks() {
     } catch {} finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { loadTasks() }, [loadTasks])
+  const loadStudents = useCallback(async () => {
+    setStudentsLoading(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/my-students`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) { const d = await res.json(); setStudents(d.students || []) }
+    } catch {} finally { setStudentsLoading(false) }
+  }, [])
+
+  useEffect(() => { loadTasks(); loadStudents() }, [loadTasks, loadStudents])
+
+  const handleVerifyLog = async (studentId, logId, status) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/students/${studentId}/logs/${logId}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      setToastMsg(status === 'approved' ? 'Hours approved' : 'Hours rejected'); setToast(true)
+      loadStudents()
+    } catch (e) { setToastMsg(e.message); setToast(true) }
+  }
+
+  const handleMarkAttendance = async (taskId, userId, status) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/attendance/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      setToastMsg(`Marked ${status}`); setToast(true)
+      loadTasks()
+    } catch (e) { setToastMsg(e.message); setToast(true) }
+  }
 
   const handleLogHours = async (e) => {
     e.preventDefault()
@@ -243,9 +284,25 @@ export default function MyTasks() {
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}
+                              {isApproved && s.attendance_status && (
+                                <p className={`text-xs mt-0.5 capitalize ${s.attendance_status === 'present' ? 'text-emerald-400' : s.attendance_status === 'absent' ? 'text-red-400' : 'text-amber-400'}`}>
+                                  Attendance: {s.attendance_status}
+                                </p>
+                              )}
                             </div>
                             {isApproved && (
                               <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="flex items-center gap-0.5" title="Mark attendance">
+                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'present')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'present' ? 'text-emerald-400' : 'text-earth-500'}`} title="Present">
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'absent')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'absent' ? 'text-red-400' : 'text-earth-500'}`} title="Absent">
+                                    <XCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'excused')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'excused' ? 'text-amber-400' : 'text-earth-500'}`} title="Excused">
+                                    <MinusCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                                 <input
                                   type="number"
                                   step="0.5"
@@ -307,6 +364,54 @@ export default function MyTasks() {
             </Card>
           )
         })}
+
+        <div className="pt-2">
+          <p className="text-xs font-medium text-earth-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <GraduationCap className="w-3.5 h-3.5" /> My Students
+          </p>
+          {studentsLoading ? (
+            <Card><p className="text-center text-earth-500 py-8">Loading…</p></Card>
+          ) : students.length === 0 ? (
+            <Card><p className="text-center text-earth-500 py-8">No approved students yet — approve a signup above to see them here.</p></Card>
+          ) : (
+            <div className="space-y-3">
+              {students.map((student) => (
+                <Card key={student.id} padded={false} className="p-4">
+                  <p className="text-sm font-medium">{student.name}</p>
+                  <p className="text-xs text-earth-400">{student.email}</p>
+                  {student.logs.length === 0 ? (
+                    <p className="text-xs text-earth-500 mt-2">No logged hours yet.</p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {student.logs.map((log) => (
+                        <div key={log.id} className="flex items-center gap-3 rounded-xl bg-white/5 p-2.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{log.activity} · {log.hours}h</p>
+                            <p className="text-xs text-earth-500">{new Date(log.date).toLocaleDateString()}</p>
+                          </div>
+                          {log.verification_status === 'approved' ? (
+                            <span className="text-xs text-emerald-400 shrink-0">Approved</span>
+                          ) : log.verification_status === 'rejected' ? (
+                            <span className="text-xs text-red-400 shrink-0">Rejected</span>
+                          ) : (
+                            <div className="flex gap-1.5 shrink-0">
+                              <button onClick={() => handleVerifyLog(student.id, log.id, 'approved')} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">
+                                <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                              </button>
+                              <button onClick={() => handleVerifyLog(student.id, log.id, 'rejected')} className="btn-sm text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-2 py-1">
+                                <XCircle className="w-3 h-3 mr-1" /> Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {showLogForm && (
