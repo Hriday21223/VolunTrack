@@ -13,6 +13,7 @@ import organizationRoutes from './server/routes/organization.js'
 import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
 import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
+import reviewsRoutes from './server/routes/reviews.js'
 import { escapeHtml } from './server/html.js'
 
 dotenv.config()
@@ -67,6 +68,7 @@ app.use('/api/organization', apiLimiter, organizationRoutes)
 app.use('/api/logs', apiLimiter, logsRoutes)
 app.use('/api/parent', apiLimiter, parentRoutes)
 app.use('/api/contact', apiLimiter, contactRoutes)
+app.use('/api/reviews', apiLimiter, reviewsRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
