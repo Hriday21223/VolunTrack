@@ -5,12 +5,19 @@ import { listLogs, createLog, updateLog, deleteLog,
 import { evaluateAchievements } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 import { syncCreateLog, syncUpdateLog, syncDeleteLog } from '@/lib/logSync.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const DataContext = createContext(null)
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export function DataProvider({ children }) {
+  const { user } = useAuth()
+  // Client-only (no-account) users have no `role` at all — only
+  // server-linked accounts do. The review prompt is meant for students
+  // logging their own hours, not school/parent/org/admin accounts that
+  // only ever view others' hours.
+  const isStudentLike = !user?.role || user.role === 'student'
   const [logs, setLogs] = useState(() => listLogs())
   const [goals, setGoals] = useState(() => listGoals())
   const [earned, setEarned] = useState(() => getEarned())
@@ -34,7 +41,7 @@ export function DataProvider({ children }) {
     const log = createLog(data)
     setLogs((prev) => {
       const next = [log, ...prev]
-      if (next.length >= 1 && getReviews().length === 0) {
+      if (isStudentLike && next.length >= 1 && getReviews().length === 0) {
         setShowReview(true)
       }
       return next
@@ -51,7 +58,7 @@ export function DataProvider({ children }) {
       return serverId
     })
     return { ...log, whenSynced }
-  }, [])
+  }, [isStudentLike])
   const editLog = useCallback((id, patch) => {
     const log = updateLog(id, patch)
     if (log) {
