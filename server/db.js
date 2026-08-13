@@ -221,6 +221,18 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 
 CREATE INDEX IF NOT EXISTS idx_contact_messages_thread ON contact_messages(thread_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_contact_messages_email ON contact_messages(email);
+
+-- App reviews (rating + optional comment), prompted after a user's first
+-- logged hour. Submitted by both server-backed and client-only (no
+-- account) users, so name/email are nullable.
+CREATE TABLE IF NOT EXISTS reviews (
+  id          TEXT PRIMARY KEY,
+  rating      INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment     TEXT,
+  name        TEXT,
+  email       TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
