@@ -61,15 +61,27 @@ router.post('/', submitLimiter, requireDb, async (req, res) => {
   }
 })
 
-// List threads (admin only) — one row per thread, showing its latest message.
+// List threads (admin only) — one row per thread. Shows the original
+// submitter's name/message (not whichever message is newest, which after a
+// reply would otherwise be the admin's own outbound text), alongside the
+// latest activity's direction/timestamp so the UI can flag "awaiting reply".
 router.get('/admin/threads', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(`
-      SELECT DISTINCT ON (thread_id)
-        thread_id, name, email, subject, message, direction, created_at,
-        (SELECT COUNT(*) FROM contact_messages m2 WHERE m2.thread_id = m1.thread_id) AS message_count
-      FROM contact_messages m1
-      ORDER BY thread_id, created_at DESC
+      SELECT
+        first.thread_id, first.name, first.email, first.subject, first.message,
+        latest.direction, latest.created_at,
+        (SELECT COUNT(*) FROM contact_messages m2 WHERE m2.thread_id = first.thread_id) AS message_count
+      FROM (
+        SELECT DISTINCT ON (thread_id) thread_id, name, email, subject, message
+        FROM contact_messages
+        ORDER BY thread_id, created_at ASC
+      ) first
+      JOIN (
+        SELECT DISTINCT ON (thread_id) thread_id, direction, created_at
+        FROM contact_messages
+        ORDER BY thread_id, created_at DESC
+      ) latest USING (thread_id)
     `)
     rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     return res.json({ threads: rows })
