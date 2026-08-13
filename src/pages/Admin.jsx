@@ -6,7 +6,6 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { getReviews } from '@/api/index.js'
 import { runAgent, updateIncidentStatus, getAgentLog, logAgentAction } from '@/lib/agent.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -67,6 +66,8 @@ export default function Admin() {
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [threads, setThreads] = useState([])
   const [loadingThreads, setLoadingThreads] = useState(false)
+  const [reviews, setReviews] = useState([])
+  const [loadingReviews, setLoadingReviews] = useState(false)
   const [drafts, setDrafts] = useState({})
   const [copiedIdx, setCopiedIdx] = useState(null)
   const [sendingIds, setSendingIds] = useState(() => new Set())
@@ -353,13 +354,29 @@ export default function Admin() {
     }
   }, [])
 
-  const reviews = useMemo(() => {
-    return getReviews().sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+  const loadReviews = useCallback(async () => {
+    setLoadingReviews(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      if (!token) return
+      const res = await fetch(`${apiUrl}/reviews/admin/list`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      setReviews(data.reviews || [])
+    } catch {} finally {
+      setLoadingReviews(false)
+    }
   }, [])
 
   useEffect(() => {
     loadSchools()
   }, [loadSchools])
+
+  useEffect(() => {
+    loadReviews()
+  }, [loadReviews])
 
   useEffect(() => {
     loadThreads()
@@ -490,7 +507,9 @@ export default function Admin() {
         <SpotlightTour storageKey="voluntrack:tour-seen:admin" steps={ADMIN_TOUR_STEPS} />
       )}
       {tab === 'reviews' ? (
-        reviews.length === 0 ? (
+        loadingReviews ? (
+          <Card><p className="text-center text-earth-400 py-8">Loading reviews…</p></Card>
+        ) : reviews.length === 0 ? (
           <Card>
             <div className="text-center py-12 text-earth-500">
               <Star className="w-10 h-10 mx-auto mb-3 opacity-50" />
@@ -510,7 +529,8 @@ export default function Admin() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-earth-500">{new Date(r.submittedAt).toLocaleString()}</span>
+                      {r.email && <span className="text-xs text-earth-400">{r.email}</span>}
+                      <span className="text-xs text-earth-500">{new Date(r.created_at).toLocaleString()}</span>
                     </div>
                     {r.comment && (
                       <p className="mt-2 text-sm text-earth-300 whitespace-pre-wrap">{r.comment}</p>
