@@ -8,6 +8,8 @@ import { syncCreateLog, syncUpdateLog, syncDeleteLog } from '@/lib/logSync.js'
 
 const DataContext = createContext(null)
 
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
 export function DataProvider({ children }) {
   const [logs, setLogs] = useState(() => listLogs())
   const [goals, setGoals] = useState(() => listGoals())
@@ -97,6 +99,18 @@ export function DataProvider({ children }) {
     saveReview({ rating, comment })
     setReviewSubmitted(true)
     setShowReview(false)
+    // Best-effort — the popup is already dismissed and won't reappear
+    // (gated by the local flag above) regardless of whether this succeeds.
+    // Works for client-only users too: no auth token is required.
+    const token = localStorage.getItem('voluntrack:auth_token')
+    fetch(`${apiUrl}/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ rating, comment }),
+    }).catch(() => {})
   }, [])
 
   return (
