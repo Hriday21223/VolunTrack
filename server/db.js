@@ -231,6 +231,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   comment     TEXT,
   name        TEXT,
   email       TEXT,
+  role        TEXT,
+  approved    BOOLEAN NOT NULL DEFAULT false,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 `
@@ -335,6 +337,12 @@ export async function initSchema() {
   // for students approved on a task they posted. See POST /school/public-tasks/:taskId/attendance/:userId.
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS attendance_status TEXT CHECK (attendance_status IN ('present','absent','excused'))`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS attendance_marked_at TIMESTAMPTZ`) } catch {}
+
+  // Reviews now require admin approval before appearing as public
+  // testimonials, and record the submitter's role so the site can display
+  // "VolunTrack Student" etc. instead of a real name unless they opt in.
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS role TEXT`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT false`) } catch {}
 
   return true
 }
