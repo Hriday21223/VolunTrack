@@ -11,7 +11,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 export default function OrganizationRegister() {
   useSeo({
     title: 'Register Your Organization',
-    description: 'Create a VolunTrack organization account to add and manage multiple schools.',
+    description: 'VolunTrack organization accounts, for managing multiple schools under one login, are set up by invitation — contact us to get started.',
     path: '/organization/register',
   })
 
@@ -76,9 +76,21 @@ export default function OrganizationRegister() {
         </Link>
 
         <Card padded={false} className="p-7">
-          <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your organization' : 'Register your organization'}</h1>
+          {!inviteToken ? (
+            <>
+              <h1 className="text-2xl font-bold mb-1">Organization accounts are by invitation</h1>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
+                To add and manage multiple schools under one account, reach out and we&apos;ll get you set up with an invite link.
+              </p>
+              <Link to="/contact" className="btn-primary w-full justify-center">
+                Contact us <ArrowRight className="w-4 h-4" />
+              </Link>
+            </>
+          ) : (
+          <>
+          <h1 className="text-2xl font-bold mb-1">Finish setting up your organization</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-            {inviteToken ? 'You were invited by a VolunTrack admin — just set your password.' : 'Add and manage multiple schools under one account.'}
+            You were invited by a VolunTrack admin — just set your password.
           </p>
 
           {!inviteLoaded ? (
@@ -113,6 +125,8 @@ export default function OrganizationRegister() {
               {busy ? 'Registering…' : <>Register organization <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
+          )}
+          </>
           )}
 
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-6">

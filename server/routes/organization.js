@@ -22,26 +22,25 @@ function requireDb(_req, res, next) {
 
 const INVITE_TTL_DAYS = 3
 
-// Register an organization (public — either self-service, or completing an
-// admin-sent invite via ?inviteToken). Mirrors POST /school/register.
+// Complete an organization signup from an admin-sent invite (public route,
+// but requires a valid ?inviteToken — organization accounts are no longer
+// open self-service). Mirrors POST /school/register.
 router.post('/register', limiter, requireDb, async (req, res) => {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const password = req.body.password
   const inviteToken = req.body.inviteToken ? String(req.body.inviteToken).trim() : null
 
+  if (!inviteToken) return res.status(403).json({ error: 'Organization accounts are set up by invitation only. Contact us to get started.' })
   if (!name || name.length > 100) return res.status(400).json({ error: 'Organization name is required.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
 
   try {
-    let invite = null
-    if (inviteToken) {
-      const { rows: inviteRows } = await query('SELECT * FROM organization_invites WHERE token = $1', [inviteToken])
-      invite = inviteRows[0]
-      if (!invite || invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
-        return res.status(410).json({ error: 'This invite link has expired or was already used.' })
-      }
+    const { rows: inviteRows } = await query('SELECT * FROM organization_invites WHERE token = $1', [inviteToken])
+    const invite = inviteRows[0]
+    if (!invite || invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'This invite link has expired or was already used.' })
     }
 
     const existingUser = await query('SELECT 1 FROM users WHERE email = $1', [email])
@@ -62,9 +61,7 @@ router.post('/register', limiter, requireDb, async (req, res) => {
       [userId, name, email, hash, orgId],
     )
 
-    if (invite) {
-      await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
-    }
+    await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
 
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, organizationId: rows[0].organization_id }
     return res.status(201).json({ token: signToken(user), user })
