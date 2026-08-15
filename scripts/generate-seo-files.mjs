@@ -44,6 +44,7 @@ const DISALLOWED_PATHS = [
   '/my-tasks',
   '/admin',
   '/school/dashboard',
+  '/organization/dashboard',
   // Backend API — not actually served on this domain in production
   // (VITE_API_URL points elsewhere), disallowed defensively anyway.
   '/api/',
@@ -56,6 +57,7 @@ const SITEMAP_ENTRIES = [
   { path: '/', changefreq: 'weekly', priority: '1.0' },
   { path: '/register', changefreq: 'monthly', priority: '0.8' },
   { path: '/school/register', changefreq: 'monthly', priority: '0.7' },
+  { path: '/organization/register', changefreq: 'monthly', priority: '0.7' },
   { path: '/contact', changefreq: 'monthly', priority: '0.6' },
   { path: '/login', changefreq: 'monthly', priority: '0.5' },
   { path: '/help', changefreq: 'monthly', priority: '0.5' },

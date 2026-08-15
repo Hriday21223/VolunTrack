@@ -16,6 +16,7 @@ Disallow: /settings
 Disallow: /my-tasks
 Disallow: /admin
 Disallow: /school/dashboard
+Disallow: /organization/dashboard
 Disallow: /api/
 
 Sitemap: http://localhost:5173/sitemap.xml
