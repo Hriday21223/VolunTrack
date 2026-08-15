@@ -132,6 +132,12 @@ export default function About() {
 
   useEffect(() => {
     window.scrollTo(0, 0)
+  }, [])
+
+  // Re-runs when testimonials load in, since that section is only mounted
+  // (and only then has a `[data-animate]` element for this observer to find)
+  // once the async fetch above resolves with at least one approved review.
+  useEffect(() => {
     const els = document.querySelectorAll('[data-animate]')
     const observer = new IntersectionObserver(
       (entries) => {
@@ -146,7 +152,7 @@ export default function About() {
     )
     els.forEach((el) => observer.observe(el))
     return () => observer.disconnect()
-  }, [])
+  }, [testimonials])
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.22),transparent_28%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.18),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.2),transparent_22%),linear-gradient(180deg,#071017_0%,#0a1d25_40%,#0f1f15_100%)] text-white">
