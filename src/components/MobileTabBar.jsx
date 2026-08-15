@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, School, Activity, MapPin, X, ChevronRight, Building2 } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
@@ -37,7 +37,14 @@ const CORE_ITEMS = {
     { to: '/parent',       label: 'Dashboard', icon: Home },
     { to: '/settings',     label: 'Settings',  icon: Settings },
   ],
+  org: [
+    { to: '/',             label: 'Dashboard', icon: Home },
+    { to: '/organization/dashboard', label: 'Org', icon: Building2 },
+    { to: '/profile',      label: 'Profile',   icon: User },
+    { to: '/settings',     label: 'Settings',  icon: Settings },
+  ],
 }
+CORE_ITEMS.school_staff = CORE_ITEMS.school
 
 const MORE_ITEMS = {
   student: [
@@ -73,7 +80,12 @@ const MORE_ITEMS = {
   parent: [
     { to: '/help',         label: 'Help',     icon: HelpCircle },
   ],
+  org: [
+    { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/status',       label: 'System Status', icon: Activity },
+  ],
 }
+MORE_ITEMS.school_staff = MORE_ITEMS.school
 
 export default function MobileTabBar() {
   const { pathname } = useLocation()

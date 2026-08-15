@@ -1,4 +1,4 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, School, Activity, Users } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, School, Activity, Users, Building2 } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -54,7 +54,16 @@ const ROLE_ITEMS = {
     { to: '/settings',     label: 'Settings',   icon: Settings },
     { to: '/help',         label: 'Help',       icon: HelpCircle },
   ],
+  org: [
+    { to: '/',             label: 'Dashboard',        icon: Home },
+    { to: '/organization/dashboard', label: 'Organization', icon: Building2 },
+    { to: '/profile',      label: 'Profile',          icon: User },
+    { to: '/settings',     label: 'Settings',         icon: Settings },
+    { to: '/help',         label: 'Help',             icon: HelpCircle },
+    { to: '/status',       label: 'System Status',           icon: Activity },
+  ],
 }
+ROLE_ITEMS.school_staff = ROLE_ITEMS.school
 
 export default function Sidebar() {
   const { user } = useAuth()
