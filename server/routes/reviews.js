@@ -3,6 +3,8 @@ import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
+import { sendEmail } from '../email.js'
+import { escapeHtml } from '../html.js'
 
 const router = express.Router()
 
@@ -82,12 +84,27 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
   }
 })
 
-// Approve or unapprove a review for public display (admin only).
+// Approve or unapprove a review for public display (admin only). Notifies
+// the reviewer by email the first time their review goes live — not on
+// every toggle, so re-approving after an accidental unapprove doesn't
+// re-send it.
 router.patch('/admin/:id/approve', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const approved = req.body.approved !== false
   try {
-    const { rowCount } = await query('UPDATE reviews SET approved = $1 WHERE id = $2', [approved, req.params.id])
-    if (rowCount === 0) return res.status(404).json({ error: 'Review not found.' })
+    const { rows } = await query('SELECT approved, email FROM reviews WHERE id = $1', [req.params.id])
+    if (rows.length === 0) return res.status(404).json({ error: 'Review not found.' })
+    const wasApproved = rows[0].approved
+
+    await query('UPDATE reviews SET approved = $1 WHERE id = $2', [approved, req.params.id])
+
+    if (approved && !wasApproved && rows[0].email) {
+      sendEmail({
+        to: rows[0].email,
+        subject: 'Your VolunTrack review is now live',
+        html: `<p>Thanks for sharing your feedback — your review has been approved and is now showing on the VolunTrack site. We appreciate you taking the time to write it.</p>`,
+      }).catch(() => {})
+    }
+
     return res.json({ ok: true })
   } catch (error) {
     console.error('approve review failed:', error)
