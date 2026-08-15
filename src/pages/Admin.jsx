@@ -370,6 +370,32 @@ export default function Admin() {
     }
   }, [])
 
+  const setReviewApproved = async (id, approved) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/reviews/admin/${id}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ approved }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, approved } : r)))
+    } catch { setToastMessage('Failed to update review'); setToast(true) }
+  }
+
+  const deleteReview = async (id) => {
+    if (!confirm('Delete this review permanently?')) return
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/reviews/admin/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Failed')
+      setReviews((prev) => prev.filter((r) => r.id !== id))
+    } catch { setToastMessage('Failed to delete review'); setToast(true) }
+  }
+
   useEffect(() => {
     loadSchools()
   }, [loadSchools])
@@ -529,8 +555,12 @@ export default function Admin() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {r.email && <span className="text-xs text-earth-400">{r.email}</span>}
+                      <span className="text-xs font-medium text-earth-300">{r.name || `Anonymous${r.role ? ` (${r.role})` : ''}`}</span>
+                      {r.email && <span className="text-xs text-earth-500">{r.email}</span>}
                       <span className="text-xs text-earth-500">{new Date(r.created_at).toLocaleString()}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.approved ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                        {r.approved ? 'Approved · public' : 'Pending approval'}
+                      </span>
                     </div>
                     {r.comment && (
                       <p className="mt-2 text-sm text-earth-300 whitespace-pre-wrap">{r.comment}</p>
@@ -538,6 +568,20 @@ export default function Admin() {
                     {!r.comment && (
                       <p className="mt-2 text-xs text-earth-500 italic">No comment left</p>
                     )}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {r.approved ? (
+                      <button onClick={() => setReviewApproved(r.id, false)} className="p-2 rounded-lg text-amber-400 hover:bg-amber-500/10" title="Unpublish">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button onClick={() => setReviewApproved(r.id, true)} className="p-2 rounded-lg text-emerald-400 hover:bg-emerald-500/10" title="Approve for public display">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={() => deleteReview(r.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-500/10" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </Card>
