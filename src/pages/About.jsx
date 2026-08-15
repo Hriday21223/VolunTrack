@@ -4,6 +4,21 @@ import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, 
 import Card from '@/components/Card.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// Reviewers who don't opt to sign their name are shown as "VolunTrack
+// <role>" instead — never a real name unless they explicitly added one.
+const ROLE_LABELS = {
+  student: 'Student',
+  volunteer: 'Volunteer',
+  school: 'School Admin',
+  school_staff: 'School Co-Admin',
+  parent: 'Parent',
+  org: 'Organization Admin',
+  admin: 'Team',
+}
+const roleLabel = (role) => ROLE_LABELS[role] || 'Volunteer'
+
 const FEATURES = [
   { icon: Calendar,  title: 'Simple hour logging', body: 'Log activity, time, location, and proof so your volunteer work is always ready to share.' },
   { icon: Target,    title: 'Goal progress', body: 'Set a target and watch the progress ring fill as your hours add up.' },
@@ -63,32 +78,16 @@ const AUDIENCES = [
   },
 ]
 
-const TESTIMONIALS = [
-  {
-    quote: 'VolunTrack made it so easy to keep track of my service hours for the National Honor Society. No more messy spreadsheets.',
-    name: 'Maya R.',
-    role: 'High school student',
-  },
-  {
-    quote: 'We rolled VolunTrack out across our entire youth program. The reporting features alone save us hours every month.',
-    name: 'David L.',
-    role: 'Program coordinator',
-  },
-  {
-    quote: 'I love that I can see my progress at a glance. The badges keep me motivated to volunteer more consistently.',
-    name: 'Aisha K.',
-    role: 'College volunteer',
-  },
-]
-
 const FAQS = [
   { q: 'Is VolunTrack free?', a: 'Yes, all features are completely free. There are no paid tiers or hidden costs.' },
   { q: 'Can I export my hours for school requirements?', a: 'Absolutely. You can export polished PDF reports, CSV files, and printable certificates with all your logged hours, supervisor details, and categories.' },
-  { q: 'Is my data private?', a: 'Yes. Your data is stored entirely in your browser\'s local storage. No data is sent to any server unless you explicitly submit a contact form. You are always in control.' },
-  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes! We have dedicated tools for schools and organizations to track volunteer hours across their members. Contact us to learn more about partnership options.' },
+  { q: 'Is my data private?', a: 'By default, your data is stored entirely in your browser\'s local storage and never leaves your device. If you create an account to sync across devices or link to a school, your data is stored in a secure database and protected by password authentication and optional two-factor authentication. We never sell or share your data.' },
+  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. Schools can create an account and share a join code so students link their hours to the school for review and approval. Organization accounts (for managing multiple schools) are set up by invitation — contact us to get started.' },
   { q: 'What if I forget to log a session?', a: 'You can log past sessions anytime. We also offer reminders so you never miss recording your volunteer work.' },
-  { q: 'Does VolunTrack work offline?', a: 'Since your data is stored locally in your browser, VolunTrack works even without an internet connection after the initial load.' },
-  { q: 'What if I switch devices?', a: 'Because data is stored locally, switching devices means starting fresh unless you use the demo sync login feature. We recommend sticking to one device for continuity.' },
+  { q: 'Does VolunTrack work offline?', a: 'Yes. VolunTrack is a Progressive Web App — after your first visit, it keeps working without an internet connection, and any local-mode data stays available offline.' },
+  { q: 'What if I switch devices?', a: 'If you\'re using local-only mode, your data stays on that device. To carry it over, create an account and generate a sync PIN in Settings on your first device, then enter that PIN on the login screen of your new device to pull your data across.' },
+  { q: 'Do I need to create an account?', a: 'No. VolunTrack works fully in your browser with no account required. Creating an account is only needed for cross-device sync, school/organization linking, or account recovery.' },
+  { q: 'Is there a mobile app?', a: 'There\'s no separate app to install from a store. VolunTrack is a Progressive Web App, so you can open it in your phone\'s browser and tap "Add to Home Screen" for an app-like experience.' },
 ]
 
 
@@ -114,6 +113,14 @@ function FaqItem({ q, a }) {
 
 export default function About() {
   const [navOpen, setNavOpen] = useState(false)
+  const [testimonials, setTestimonials] = useState([])
+
+  useEffect(() => {
+    fetch(`${apiUrl}/reviews/public`)
+      .then((r) => (r.ok ? r.json() : { reviews: [] }))
+      .then((d) => setTestimonials(d.reviews || []))
+      .catch(() => {})
+  }, [])
 
   // Rendered at both "/" and "/about" for logged-out visitors — canonicalize
   // to "/" so search engines don't treat them as duplicate pages.
@@ -326,28 +333,30 @@ export default function About() {
             </div>
           </section>
 
-          <section data-animate className="mt-20">
-            <div className="text-center">
-              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Testimonials</p>
-              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">What people are saying.</h2>
-            </div>
-            <div className="mt-10 grid gap-6 md:grid-cols-3">
-              {TESTIMONIALS.map(({ quote, name, role }, i) => (
-                <Card key={name} className="border border-white/10 bg-slate-900/70 text-white p-6" style={{ animationDelay: `${i * 100}ms` }}>
-                  <div className="flex gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-brand-400 text-brand-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm leading-7 text-slate-300 italic">&ldquo;{quote}&rdquo;</p>
-                  <div className="mt-6 pt-4 border-t border-white/10">
-                    <div className="font-semibold text-sm text-white">{name}</div>
-                    <div className="text-xs text-earth-400">{role}</div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
+          {testimonials.length > 0 && (
+            <section data-animate className="mt-20">
+              <div className="text-center">
+                <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Testimonials</p>
+                <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">What people are saying.</h2>
+              </div>
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
+                {testimonials.map(({ id, rating, comment, name, role }, i) => (
+                  <Card key={id} className="border border-white/10 bg-slate-900/70 text-white p-6" style={{ animationDelay: `${i * 100}ms` }}>
+                    <div className="flex gap-1 mb-4">
+                      {[...Array(5)].map((_, j) => (
+                        <Star key={j} className={`w-4 h-4 ${j < rating ? 'fill-brand-400 text-brand-400' : 'text-earth-700'}`} />
+                      ))}
+                    </div>
+                    <p className="text-sm leading-7 text-slate-300 italic">&ldquo;{comment}&rdquo;</p>
+                    <div className="mt-6 pt-4 border-t border-white/10">
+                      <div className="font-semibold text-sm text-white">{name || `VolunTrack ${roleLabel(role)}`}</div>
+                      {name && <div className="text-xs text-earth-400">{roleLabel(role)}</div>}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
 
 
           <section data-animate className="mt-20">
