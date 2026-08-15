@@ -9,6 +9,8 @@ export default function ReviewPopup() {
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
   const [comment, setComment] = useState('')
+  const [wantsName, setWantsName] = useState(false)
+  const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function ReviewPopup() {
   const onSubmit = () => {
     if (rating === 0) return
     setBusy(true)
-    submitReview(rating, comment.trim())
+    submitReview(rating, comment.trim(), wantsName ? name.trim() : null)
   }
 
   return (
@@ -87,10 +89,38 @@ export default function ReviewPopup() {
           />
         </div>
 
+        <div className="mt-4">
+          <label className="flex items-center gap-2 text-sm text-earth-300">
+            <input
+              type="checkbox"
+              checked={wantsName}
+              onChange={(e) => setWantsName(e.target.checked)}
+              className="w-4 h-4 rounded border-white/20 bg-slate-900/70 accent-brand-500"
+            />
+            Add my name if this is shown in the app
+          </label>
+          <p className="mt-1 text-xs text-earth-500">
+            If you leave this unchecked (or don&apos;t sign your name), we&apos;ll show it as &quot;VolunTrack {'{'}your role{'}'}&quot; instead — never your real name.
+          </p>
+          {wantsName && (
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2.5 text-sm text-white placeholder-earth-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+            />
+          )}
+        </div>
+
+        <p className="mt-4 text-xs text-earth-500 text-center">
+          Reviews are checked by our team before they appear anywhere in the app.
+        </p>
+
         <button
           onClick={onSubmit}
           disabled={rating === 0 || busy}
-          className="mt-5 w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="mt-3 w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {busy ? 'Submitting...' : 'Submit review'}
         </button>

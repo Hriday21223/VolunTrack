@@ -108,13 +108,15 @@ export function DataProvider({ children }) {
     setShowReview(false)
   }, [])
 
-  const submitReview = useCallback((rating, comment) => {
+  const submitReview = useCallback((rating, comment, name) => {
     saveReview({ rating, comment })
     setReviewSubmitted(true)
     setShowReview(false)
     // Best-effort — the popup is already dismissed and won't reappear
     // (gated by the local flag above) regardless of whether this succeeds.
-    // Works for client-only users too: no auth token is required.
+    // Works for client-only users too: no auth token is required. The
+    // review only appears publicly once an admin approves it (see
+    // GET /api/reviews/public and the Admin.jsx Reviews tab).
     const token = localStorage.getItem('voluntrack:auth_token')
     fetch(`${apiUrl}/reviews`, {
       method: 'POST',
@@ -122,7 +124,7 @@ export function DataProvider({ children }) {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ rating, comment }),
+      body: JSON.stringify({ rating, comment, name: name || null }),
     }).catch(() => {})
   }, [])
 
