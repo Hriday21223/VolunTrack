@@ -1,15 +1,22 @@
-import { useState } from 'react'
-import { Star, Heart } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Star, Heart, X } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 
 const LABELS = ['', 'Needs work', 'Okay', 'Pretty good', 'Great', 'Amazing!']
 
 export default function ReviewPopup() {
-  const { showReview, submitReview } = useData()
+  const { showReview, submitReview, dismissReview } = useData()
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (!showReview) return
+    const onKeyDown = (e) => { if (e.key === 'Escape') dismissReview() }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [showReview, dismissReview])
 
   if (!showReview) return null
 
@@ -20,15 +27,26 @@ export default function ReviewPopup() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1813] p-6 sm:p-8 shadow-soft text-white max-h-[85vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) dismissReview() }}
+    >
+      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1813] p-6 sm:p-8 shadow-soft text-white max-h-[85vh] overflow-y-auto">
+        <button
+          type="button"
+          onClick={dismissReview}
+          aria-label="Close"
+          className="absolute top-4 right-4 p-1 text-earth-400 hover:text-white transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
         <div className="text-center">
           <div className="w-14 h-14 rounded-full bg-brand-900/40 border border-brand-700/30 grid place-items-center mx-auto mb-4">
             <Heart className="w-7 h-7 text-brand-400" />
           </div>
           <h2 className="text-2xl font-bold">Love VolunTrack?</h2>
           <p className="mt-2 text-sm text-earth-400 leading-6">
-            You&apos;ve logged 10+ hours of volunteer work. We&apos;d love to hear how it&apos;s going for you!
+            You&apos;ve logged your first volunteer session. We&apos;d love to hear how it&apos;s going for you!
           </p>
         </div>
 

@@ -285,6 +285,14 @@ export function saveReview(data) {
   return review
 }
 
+export function isReviewDismissed() {
+  return read(keys.reviewDismissed, false)
+}
+
+export function dismissReview() {
+  write(keys.reviewDismissed, true)
+}
+
 /* ---------- Demo-only password "hash" ---------- */
 // djb2-style — not cryptographic. Documented as such above.
 export function hashPassword(pw) {

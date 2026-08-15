@@ -36,7 +36,11 @@ export default function SpotlightTour({ storageKey, steps }) {
     const tryFind = () => {
       const el = document.querySelector(step.selector)
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Instant, not smooth: the highlight box's position is measured
+        // right after this call, and a smooth scroll wouldn't have settled
+        // yet — that raced the highlight onto the previous step's element
+        // for the duration of the animation.
+        el.scrollIntoView({ behavior: 'instant', block: 'center' })
         setReady(true)
         return true
       }

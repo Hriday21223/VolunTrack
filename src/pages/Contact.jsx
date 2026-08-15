@@ -58,7 +58,11 @@ export default function Contact() {
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-9 h-9 object-contain" />
           <span className="font-display font-bold text-lg">VolunTrack</span>
         </Link>
-        <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
+        <div className="flex items-center gap-2">
+          <Link to="/about" className="btn-ghost hidden sm:inline-flex">About</Link>
+          <Link to="/help" className="btn-ghost hidden sm:inline-flex">Help</Link>
+          <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
+        </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 md:px-8 pb-20">

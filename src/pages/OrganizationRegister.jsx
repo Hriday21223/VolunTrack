@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowRight, Building2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -15,6 +16,7 @@ export default function OrganizationRegister() {
   })
 
   const nav = useNavigate()
+  const { refreshUser } = useAuth()
   const [searchParams] = useSearchParams()
   const inviteToken = searchParams.get('token')
   const [form, setForm] = useState({ name: '', email: '', password: '' })
@@ -55,6 +57,7 @@ export default function OrganizationRegister() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')
       localStorage.setItem('voluntrack:auth_token', data.token)
+      await refreshUser()
       setToast(true)
       setTimeout(() => nav('/organization/dashboard', { replace: true }), 600)
     } catch (e) {

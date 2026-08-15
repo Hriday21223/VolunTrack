@@ -11,6 +11,7 @@ export const keys = {
   reminders:    `${NS}reminders`,
   fired:        `${NS}fired-reminders`, // dedupe list of reminder ids that already fired this cycle
   reviews:      `${NS}reviews`,          // list of review submissions
+  reviewDismissed: `${NS}review-dismissed`, // set when the user closes the review prompt without submitting
 }
 
 export function read(key, fallback = null) {

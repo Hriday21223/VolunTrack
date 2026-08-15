@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { listLogs, createLog, updateLog, deleteLog,
          listGoals, upsertGoal, deleteGoal,
-         getEarned, markEarned, getReviews, saveReview } from '@/api/index.js'
+         getEarned, markEarned, getReviews, saveReview,
+         isReviewDismissed, dismissReview as dismissReviewApi } from '@/api/index.js'
 import { evaluateAchievements } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 import { syncCreateLog, syncUpdateLog, syncDeleteLog } from '@/lib/logSync.js'
@@ -41,7 +42,7 @@ export function DataProvider({ children }) {
     const log = createLog(data)
     setLogs((prev) => {
       const next = [log, ...prev]
-      if (isStudentLike && next.length >= 1 && getReviews().length === 0) {
+      if (isStudentLike && next.length >= 1 && getReviews().length === 0 && !isReviewDismissed()) {
         setShowReview(true)
       }
       return next
@@ -102,6 +103,11 @@ export function DataProvider({ children }) {
   const refreshLogs = useCallback(() => setLogs(listLogs()), [])
   const dismissBadges = useCallback(() => setPendingBadges([]), [])
 
+  const dismissReview = useCallback(() => {
+    dismissReviewApi()
+    setShowReview(false)
+  }, [])
+
   const submitReview = useCallback((rating, comment) => {
     saveReview({ rating, comment })
     setReviewSubmitted(true)
@@ -126,7 +132,7 @@ export function DataProvider({ children }) {
         logs, goals, earned, pendingBadges, dismissBadges,
         addLog, editLog, removeLog, refreshLogs,
         saveGoal, removeGoal,
-        showReview, reviewSubmitted, submitReview, totalHours,
+        showReview, reviewSubmitted, submitReview, dismissReview, totalHours,
       }}
     >
       {children}
