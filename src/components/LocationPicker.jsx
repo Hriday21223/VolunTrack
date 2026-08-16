@@ -45,6 +45,9 @@ function ClickToPlace({ onPick }) {
 export default function LocationPicker({ address, lat, lng, onChange, placeholder, required }) {
   const [query, setQuery] = useState(address || '')
   const [suggestions, setSuggestions] = useState([])
+  // Distinct from `suggestions.length === 0` so the "no matches" hint only
+  // shows once a search has actually completed, not while idle or typing.
+  const [noMatches, setNoMatches] = useState(false)
   const [open, setOpen] = useState(false)
   const [locating, setLocating] = useState(false)
   const [error, setError] = useState('')
@@ -72,11 +75,13 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
     clearTimeout(debounceRef.current)
     if (!text || text.trim().length < 3) {
       setSuggestions([])
+      setNoMatches(false)
       return
     }
     debounceRef.current = setTimeout(async () => {
       const results = await searchPlaces(text, biasRef.current)
       setSuggestions(results)
+      setNoMatches(results.length === 0)
     }, 400)
   }, [])
 
@@ -84,6 +89,7 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
     const value = e.target.value
     setQuery(value)
     setOpen(true)
+    setNoMatches(false)
     search(value)
     // Free-typed text (no pin yet) is still a valid location — keep it live
     // so the form's required-field check passes even without picking a pin.
@@ -169,6 +175,11 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
               </li>
             ))}
           </ul>
+        )}
+        {open && noMatches && suggestions.length === 0 && (
+          <div className="absolute z-[1000] left-0 right-0 mt-1 rounded-lg border border-earth-800 bg-white dark:bg-earth-900 shadow-lg px-3 py-2 text-xs text-earth-500 dark:text-earth-400">
+            No matches for "{query}". Business names aren't always mapped yet — try the full street address instead, or tap "Current" to pin your exact location.
+          </div>
         )}
       </div>
       {error && <div className="text-xs text-red-600 mt-1">{error}</div>}
