@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phon
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import LocationPicker from '@/components/LocationPicker.jsx'
 import { useData } from '@/hooks/useData.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -20,7 +21,6 @@ export default function MyTasks() {
   const [showPostTask, setShowPostTask] = useState(false)
   const [taskForm, setTaskForm] = useState({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null })
   const [taskBusy, setTaskBusy] = useState(false)
-  const [gettingLocation, setGettingLocation] = useState(false)
   const [batchHours, setBatchHours] = useState({})
   const [batchDate, setBatchDate] = useState('')
   const [batchBusy, setBatchBusy] = useState(false)
@@ -146,19 +146,6 @@ export default function MyTasks() {
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setBatchBusy(false) }
   }
 
-  const getLocation = () => {
-    if (!navigator.geolocation) return
-    setGettingLocation(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setTaskForm((f) => ({ ...f, latitude: pos.coords.latitude, longitude: pos.coords.longitude }))
-        setGettingLocation(false)
-      },
-      () => setGettingLocation(false),
-      { enableHighAccuracy: true, timeout: 10000 },
-    )
-  }
-
   const handlePostTask = async (e) => {
     e.preventDefault(); setTaskBusy(true)
     try {
@@ -175,14 +162,7 @@ export default function MyTasks() {
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
   }
 
-  const togglePostForm = () => {
-    if (!showPostTask) {
-      setShowPostTask(true)
-      getLocation()
-    } else {
-      setShowPostTask(false)
-    }
-  }
+  const togglePostForm = () => setShowPostTask((s) => !s)
 
   return (
     <AppLayout
@@ -201,7 +181,16 @@ export default function MyTasks() {
             <form onSubmit={handlePostTask} className="space-y-3">
               <input className="input" placeholder="Task title" value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
               <textarea className="input" rows={2} placeholder="Description — what volunteers will do" value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
-              <input className="input" placeholder="Location — where it happens" value={taskForm.location} onChange={(e) => setTaskForm({...taskForm, location: e.target.value})} required />
+              <div>
+                <label className="label text-xs">Location — where it happens *</label>
+                <LocationPicker
+                  address={taskForm.location}
+                  lat={taskForm.latitude}
+                  lng={taskForm.longitude}
+                  placeholder="Location — where it happens"
+                  onChange={({ address, lat, lng }) => setTaskForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
+                />
+              </div>
               <textarea className="input" rows={2} placeholder="Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)" value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
               <input className="input" type="tel" placeholder="Phone number — shown to approved volunteers" value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
               <div className="grid grid-cols-3 gap-2">
@@ -218,12 +207,8 @@ export default function MyTasks() {
                   <input type="number" className="input" min={1} placeholder="Slots" value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
                 </div>
               </div>
-              {taskForm.latitude && taskForm.longitude ? (
-                <p className="text-xs text-emerald-400">Location captured ✓</p>
-              ) : gettingLocation ? (
-                <p className="text-xs text-amber-400">Getting your location…</p>
-              ) : (
-                <p className="text-xs text-earth-500">Location not captured — tasks won't be sorted by distance</p>
+              {!(taskForm.latitude && taskForm.longitude) && (
+                <p className="text-xs text-earth-500">Pick a pin on the map above so this task can be sorted by distance.</p>
               )}
               <button type="submit" className="btn-primary w-full" disabled={taskBusy}>{taskBusy ? 'Posting…' : 'Post task — no paperwork needed'}</button>
             </form>
@@ -276,6 +261,7 @@ export default function MyTasks() {
                       <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Volunteers signed up</p>
                       {signups.map((s) => {
                         const isApproved = s.status === 'approved'
+                        const isAbsent = s.attendance_status === 'absent'
                         return (
                           <div key={s.id} className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
                             <div className="flex-1 min-w-0">
@@ -307,15 +293,18 @@ export default function MyTasks() {
                                   type="number"
                                   step="0.5"
                                   min="0.5"
-                                  className="input w-16 text-center text-xs py-1"
-                                  placeholder="hrs"
+                                  className="input w-16 text-center text-xs py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  placeholder={isAbsent ? 'absent' : 'hrs'}
                                   value={batchHours[s.id] || ''}
                                   onChange={(e) => setBatchHours((h) => ({ ...h, [s.id]: e.target.value }))}
+                                  disabled={isAbsent}
+                                  title={isAbsent ? 'Cannot log hours for a volunteer marked absent' : undefined}
                                 />
                                 <button
                                   onClick={() => openLogForm(t.id, s.id, t.date)}
-                                  className="text-xs text-earth-400 hover:text-white px-1.5 py-1 rounded-lg hover:bg-white/10 transition-colors"
-                                  title="Log specific hours"
+                                  className="text-xs text-earth-400 hover:text-white px-1.5 py-1 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                  title={isAbsent ? 'Cannot log hours for a volunteer marked absent' : 'Log specific hours'}
+                                  disabled={isAbsent}
                                 >
                                   <Clock className="w-3.5 h-3.5" />
                                 </button>

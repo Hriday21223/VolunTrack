@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -80,12 +80,26 @@ export default function Admin() {
   const [noteModal, setNoteModal] = useState(null) // school id
   const [noteDraft, setNoteDraft] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [priceModal, setPriceModal] = useState(null) // school id
+  const [priceAmountDraft, setPriceAmountDraft] = useState('')
+  const [pricePeriodDraft, setPricePeriodDraft] = useState('monthly')
+  const [savingPrice, setSavingPrice] = useState(false)
   const [toast, setToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
-  const [dueDate, setDueDate] = useState('')
+  const [dueDateModal, setDueDateModal] = useState(null) // school id
+  const [dueDateDraft, setDueDateDraft] = useState('')
+  const [savingDueDate, setSavingDueDate] = useState(false)
   const [notifyMsg, setNotifyMsg] = useState('')
-  const [showDueModal, setShowDueModal] = useState(false)
+  const [notifyAmount, setNotifyAmount] = useState('')
+  const [notifyBillingPeriod, setNotifyBillingPeriod] = useState('monthly')
   const [showNotifyModal, setShowNotifyModal] = useState(false)
+  const [orgPriceModal, setOrgPriceModal] = useState(null) // org id
+  const [orgPriceAmountDraft, setOrgPriceAmountDraft] = useState('')
+  const [orgPricePeriodDraft, setOrgPricePeriodDraft] = useState('monthly')
+  const [savingOrgPrice, setSavingOrgPrice] = useState(false)
+  const [orgDueDateModal, setOrgDueDateModal] = useState(null) // org id
+  const [orgDueDateDraft, setOrgDueDateDraft] = useState('')
+  const [savingOrgDueDate, setSavingOrgDueDate] = useState(false)
   const [notifySchoolId, setNotifySchoolId] = useState(null) // null = all schools, string = specific school
   const [invites, setInvites] = useState([])
   const [loadingInvites, setLoadingInvites] = useState(false)
@@ -277,6 +291,21 @@ export default function Admin() {
     } catch { setToastMessage('Failed to save note'); setToast(true) } finally { setSavingNote(false) }
   }
 
+  const savePrice = async (id) => {
+    setSavingPrice(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/admin/${id}/price`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount: priceAmountDraft.trim(), period: pricePeriodDraft }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setPriceModal(null); setPriceAmountDraft(''); setPricePeriodDraft('monthly'); loadSchools()
+      setToastMessage('Price saved'); setToast(true)
+    } catch { setToastMessage('Failed to save price'); setToast(true) } finally { setSavingPrice(false) }
+  }
+
   const deleteSchool = async (id, name) => {
     if (!confirm(`Delete "${name}" and unlink all its students?`)) return
     try {
@@ -302,21 +331,49 @@ export default function Admin() {
     URL.revokeObjectURL(url)
   }
 
-  const setGlobalDueDate = async () => {
-    if (!dueDate) return
+  const saveDueDate = async (id, value = dueDateDraft) => {
+    setSavingDueDate(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/school/admin/payment-due-date`, {
+      const res = await fetch(`${apiUrl}/school/admin/${id}/due-date`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ dueDate }),
+        body: JSON.stringify({ dueDate: value }),
       })
       if (!res.ok) throw new Error('Failed')
-      setShowDueModal(false)
-      loadSchools()
-      setToastMessage('Payment due date updated for all schools')
-      setToast(true)
-    } catch { setToastMessage('Failed to set due date'); setToast(true) }
+      setDueDateModal(null); setDueDateDraft(''); loadSchools()
+      setToastMessage(value ? 'Due date saved' : 'Due date cleared'); setToast(true)
+    } catch { setToastMessage('Failed to save due date'); setToast(true) } finally { setSavingDueDate(false) }
+  }
+
+  const saveOrgPrice = async (id) => {
+    setSavingOrgPrice(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/organization/admin/${id}/price`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount: orgPriceAmountDraft.trim(), period: orgPricePeriodDraft }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setOrgPriceModal(null); setOrgPriceAmountDraft(''); setOrgPricePeriodDraft('monthly'); loadOrganizations()
+      setToastMessage('Price saved'); setToast(true)
+    } catch { setToastMessage('Failed to save price'); setToast(true) } finally { setSavingOrgPrice(false) }
+  }
+
+  const saveOrgDueDate = async (id, value = orgDueDateDraft) => {
+    setSavingOrgDueDate(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/organization/admin/${id}/due-date`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ dueDate: value }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setOrgDueDateModal(null); setOrgDueDateDraft(''); loadOrganizations()
+      setToastMessage(value ? 'Due date saved' : 'Due date cleared'); setToast(true)
+    } catch { setToastMessage('Failed to save due date'); setToast(true) } finally { setSavingOrgDueDate(false) }
   }
 
   const sendNotify = async () => {
@@ -329,10 +386,14 @@ export default function Admin() {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: notifyMsg.trim() }),
+        body: JSON.stringify({
+          message: notifyMsg.trim(),
+          amount: notifyAmount.trim() || undefined,
+          billingPeriod: notifyAmount.trim() ? notifyBillingPeriod : undefined,
+        }),
       })
       if (!res.ok) throw new Error('Failed')
-      setShowNotifyModal(false); setNotifyMsg(''); setNotifySchoolId(null)
+      setShowNotifyModal(false); setNotifyMsg(''); setNotifyAmount(''); setNotifyBillingPeriod('monthly'); setNotifySchoolId(null)
       setToastMessage('Notification sent')
       setToast(true)
     } catch { setToastMessage('Failed to send notification'); setToast(true) }
@@ -604,25 +665,24 @@ export default function Admin() {
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2 mb-4">
               {(() => {
-                const dueRows = schools.filter((s) => s.payment_due_date)
-                if (dueRows.length > 0) {
-                  const daysLeft = Math.ceil((new Date(dueRows[0].payment_due_date) - new Date()) / (1000 * 60 * 60 * 24))
-                  if (daysLeft <= 10 && daysLeft >= 0) {
-                    return (
-                      <div className="w-full p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm mb-2">
-                        <Calendar className="w-4 h-4 inline mr-1" />
-                        Payment due in <strong>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>
-                      </div>
-                    )
-                  }
+                const upcoming = schools
+                  .filter((s) => s.payment_due_date)
+                  .map((s) => ({ ...s, daysLeft: Math.ceil((new Date(s.payment_due_date) - new Date()) / (1000 * 60 * 60 * 24)) }))
+                  .filter((s) => s.daysLeft >= 0 && s.daysLeft <= 10)
+                  .sort((a, b) => a.daysLeft - b.daysLeft)
+                if (upcoming.length > 0) {
+                  const soonest = upcoming[0]
+                  return (
+                    <div className="w-full p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm mb-2">
+                      <Calendar className="w-4 h-4 inline mr-1" />
+                      {upcoming.length} school{upcoming.length === 1 ? '' : 's'} with payment due within 10 days — soonest is <strong>{soonest.name}</strong> in <strong>{soonest.daysLeft} day{soonest.daysLeft === 1 ? '' : 's'}</strong>
+                    </div>
+                  )
                 }
                 return null
               })()}
               <button onClick={exportCsv} className="btn-sm btn-ghost">
                 <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
-              </button>
-              <button onClick={() => setShowDueModal(true)} className="btn-sm btn-ghost">
-                <Calendar className="w-3.5 h-3.5 mr-1" /> Set due date
               </button>
               <button onClick={() => { setNotifySchoolId(null); setShowNotifyModal(true) }} className="btn-sm btn-ghost">
                 <Bell className="w-3.5 h-3.5 mr-1" /> Notify all schools
@@ -659,6 +719,16 @@ export default function Admin() {
                         }`}>
                           {s.payment_status === 'paid' ? 'Paid' : s.payment_status === 'pending' ? 'Pending review' : s.payment_status === 'rejected' ? 'Rejected' : 'Unpaid'}
                         </span>
+                        {s.price_amount && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-400">
+                            {s.price_amount}{s.price_period === 'monthly' ? ' / month' : s.price_period === 'yearly' ? ' / year' : s.price_period === 'one_time' ? ' one-time' : ''}
+                          </span>
+                        )}
+                        {s.payment_due_date && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-earth-500/10 text-earth-400">
+                            Due {new Date(s.payment_due_date).toLocaleDateString()}
+                          </span>
+                        )}
                       </div>
                       {s.payment_confirmation_ref && s.payment_status === 'pending' && (
                         <p className="text-xs text-earth-500 mt-0.5">Ref: <span className="font-mono">{s.payment_confirmation_ref}</span></p>
@@ -678,6 +748,12 @@ export default function Admin() {
                     <button onClick={() => { setNoteModal(s.id); setNoteDraft(s.admin_notes || '') }} className={`p-2 ${s.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
                       <ShieldCheck className="w-4 h-4" />
                     </button>
+                    <button onClick={() => { setPriceModal(s.id); setPriceAmountDraft(s.price_amount || ''); setPricePeriodDraft(s.price_period || 'monthly') }} className={`p-2 ${s.price_amount ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this school's price">
+                      <DollarSign className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => { setDueDateModal(s.id); setDueDateDraft(s.payment_due_date ? String(s.payment_due_date).slice(0, 10) : '') }} className={`p-2 ${s.payment_due_date ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this school's payment due date">
+                      <Calendar className="w-4 h-4" />
+                    </button>
                     {s.payment_status === 'paid' ? (
                       <button onClick={() => markUnpaid(s.id)} className="text-amber-400 hover:text-amber-300 p-2" title="Mark as unpaid">
                         <CreditCard className="w-4 h-4" />
@@ -692,7 +768,7 @@ export default function Admin() {
                         <XCircle className="w-4 h-4" />
                       </button>
                     )}
-                    <button onClick={() => { setNotifySchoolId(s.id); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this school">
+                    <button onClick={() => { setNotifySchoolId(s.id); setNotifyAmount(s.price_amount || ''); setNotifyBillingPeriod(s.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this school">
                       <Bell className="w-4 h-4" />
                     </button>
                     <button onClick={() => deleteSchool(s.id, s.name)} className="text-red-400 hover:text-red-300 p-2" title="Delete school">
@@ -783,25 +859,47 @@ export default function Admin() {
             <div className="text-center py-12 text-earth-500">
               <Building2 className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p className="font-medium text-earth-900 dark:text-earth-100">No organizations yet</p>
-              <p className="text-sm mt-1">Organizations register themselves and add their own schools — this list is read-only.</p>
+              <p className="text-sm mt-1">Organizations register themselves and add their own schools — you set their price and payment due date here.</p>
             </div>
           </Card>
         ) : (
           <div className="space-y-3">
             {organizations.map((org) => (
               <Card key={org.id} padded={false} className="p-4">
-                <div className="flex items-center gap-3">
-                  <Building2 className="w-8 h-8 text-brand-600 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm">{org.name}</p>
-                    <p className="text-xs text-earth-400">
-                      {org.contact_email}
-                    </p>
-                    <span className="text-xs text-earth-500">
-                      <School className="w-3 h-3 inline mr-1" />
-                      {org.school_count} school{Number(org.school_count) === 1 ? '' : 's'} ·
-                      Joined {new Date(org.created_at).toLocaleDateString()}
-                    </span>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Building2 className="w-8 h-8 text-brand-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{org.name}</p>
+                      <p className="text-xs text-earth-400">
+                        {org.contact_email}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="text-xs text-earth-500">
+                          <School className="w-3 h-3 inline mr-1" />
+                          {org.school_count} school{Number(org.school_count) === 1 ? '' : 's'} ·
+                          Joined {new Date(org.created_at).toLocaleDateString()}
+                        </span>
+                        {org.price_amount && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-400">
+                            {org.price_amount}{org.price_period === 'monthly' ? ' / month' : org.price_period === 'yearly' ? ' / year' : org.price_period === 'one_time' ? ' one-time' : ''}
+                          </span>
+                        )}
+                        {org.payment_due_date && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-earth-500/10 text-earth-400">
+                            Due {new Date(org.payment_due_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => { setOrgPriceModal(org.id); setOrgPriceAmountDraft(org.price_amount || ''); setOrgPricePeriodDraft(org.price_period || 'monthly') }} className={`p-2 ${org.price_amount ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's price">
+                      <DollarSign className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => { setOrgDueDateModal(org.id); setOrgDueDateDraft(org.payment_due_date ? String(org.payment_due_date).slice(0, 10) : '') }} className={`p-2 ${org.payment_due_date ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's payment due date">
+                      <Calendar className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </Card>
@@ -1026,6 +1124,43 @@ export default function Admin() {
         </div>
       )}
 
+      {priceModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPriceModal(null)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2"><DollarSign className="w-4 h-4 text-brand-400" /> School price</h3>
+            <p className="text-sm text-earth-400 mb-4">Saved per school. Used as the default amount when you send this school a payment notice.</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Amount</label>
+                  <input
+                    type="text" className="input"
+                    placeholder="e.g. $200"
+                    value={priceAmountDraft} onChange={(e) => setPriceAmountDraft(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Billing period</label>
+                  <select
+                    className="input" value={pricePeriodDraft}
+                    onChange={(e) => setPricePeriodDraft(e.target.value)}
+                    disabled={!priceAmountDraft.trim()}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="one_time">One-time</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setPriceModal(null)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={() => savePrice(priceModal)} className="btn-primary flex-1" disabled={savingPrice}>{savingPrice ? 'Saving…' : 'Save price'}</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {noteModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -1046,16 +1181,71 @@ export default function Admin() {
         </div>
       )}
 
-      {showDueModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowDueModal(false)}>
+      {dueDateModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setDueDateModal(null); setDueDateDraft('') }}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-2">Set payment due date</h3>
-            <p className="text-sm text-earth-400 mb-4">This date applies to all schools.</p>
+            <h3 className="font-semibold mb-2">Payment due date</h3>
+            <p className="text-sm text-earth-400 mb-4">Saved for this school only.</p>
             <div className="space-y-3">
-              <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <input type="date" className="input" value={dueDateDraft} onChange={(e) => setDueDateDraft(e.target.value)} />
               <div className="flex gap-2">
-                <button onClick={() => setShowDueModal(false)} className="btn-ghost flex-1">Cancel</button>
-                <button onClick={setGlobalDueDate} className="btn-primary flex-1" disabled={!dueDate}>Save</button>
+                <button onClick={() => { setDueDateModal(null); setDueDateDraft('') }} className="btn-ghost flex-1">Cancel</button>
+                {dueDateDraft && <button onClick={() => saveDueDate(dueDateModal, '')} className="btn-ghost flex-1" disabled={savingDueDate}>Clear</button>}
+                <button onClick={() => saveDueDate(dueDateModal)} className="btn-primary flex-1" disabled={savingDueDate || !dueDateDraft}>{savingDueDate ? 'Saving…' : 'Save'}</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {orgPriceModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOrgPriceModal(null)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2"><DollarSign className="w-4 h-4 text-brand-400" /> Organization price</h3>
+            <p className="text-sm text-earth-400 mb-4">Saved for this organization only.</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Amount</label>
+                  <input
+                    type="text" className="input"
+                    placeholder="e.g. $2000"
+                    value={orgPriceAmountDraft} onChange={(e) => setOrgPriceAmountDraft(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Billing period</label>
+                  <select
+                    className="input" value={orgPricePeriodDraft}
+                    onChange={(e) => setOrgPricePeriodDraft(e.target.value)}
+                    disabled={!orgPriceAmountDraft.trim()}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="one_time">One-time</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setOrgPriceModal(null)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={() => saveOrgPrice(orgPriceModal)} className="btn-primary flex-1" disabled={savingOrgPrice}>{savingOrgPrice ? 'Saving…' : 'Save price'}</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {orgDueDateModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setOrgDueDateModal(null); setOrgDueDateDraft('') }}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2">Payment due date</h3>
+            <p className="text-sm text-earth-400 mb-4">Saved for this organization only.</p>
+            <div className="space-y-3">
+              <input type="date" className="input" value={orgDueDateDraft} onChange={(e) => setOrgDueDateDraft(e.target.value)} />
+              <div className="flex gap-2">
+                <button onClick={() => { setOrgDueDateModal(null); setOrgDueDateDraft('') }} className="btn-ghost flex-1">Cancel</button>
+                {orgDueDateDraft && <button onClick={() => saveOrgDueDate(orgDueDateModal, '')} className="btn-ghost flex-1" disabled={savingOrgDueDate}>Clear</button>}
+                <button onClick={() => saveOrgDueDate(orgDueDateModal)} className="btn-primary flex-1" disabled={savingOrgDueDate || !orgDueDateDraft}>{savingOrgDueDate ? 'Saving…' : 'Save'}</button>
               </div>
             </div>
           </Card>
@@ -1063,20 +1253,48 @@ export default function Admin() {
       )}
 
       {showNotifyModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setShowNotifyModal(false); setNotifySchoolId(null) }}>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setShowNotifyModal(false); setNotifySchoolId(null); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold mb-2">
               {notifySchoolId ? 'Notify this school' : 'Notify all schools'}
             </h3>
-            <p className="text-sm text-earth-400 mb-4">The notification will appear on the school dashboard.</p>
+            <p className="text-sm text-earth-400 mb-4">
+              Sent by email and shown on the school dashboard. The due date on file is included automatically.
+              {notifySchoolId ? ' Amount is prefilled from this school\'s saved price — edit it here to override just this email.' : ' Leave amount blank to use each school\'s own saved price; filling it in overrides every school for this send.'}
+            </p>
             <div className="space-y-3">
-              <textarea
-                className="input" rows={3}
-                placeholder="e.g. Annual subscription payment is due Jun 30"
-                value={notifyMsg} onChange={(e) => setNotifyMsg(e.target.value)}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Amount owed (optional)</label>
+                  <input
+                    type="text" className="input"
+                    placeholder="e.g. $500"
+                    value={notifyAmount} onChange={(e) => setNotifyAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Billing period</label>
+                  <select
+                    className="input" value={notifyBillingPeriod}
+                    onChange={(e) => setNotifyBillingPeriod(e.target.value)}
+                    disabled={!notifyAmount.trim()}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="one_time">One-time</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="label">Payment instructions</label>
+                <textarea
+                  className="input" rows={3}
+                  placeholder="e.g. Pay by bank transfer to Acct #1234, Routing #5678, memo: your school code"
+                  value={notifyMsg} onChange={(e) => setNotifyMsg(e.target.value)}
+                />
+              </div>
               <div className="flex gap-2">
-                <button onClick={() => setShowNotifyModal(false)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={() => { setShowNotifyModal(false); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={sendNotify} className="btn-primary flex-1" disabled={!notifyMsg.trim()}>Send</button>
               </div>
             </div>

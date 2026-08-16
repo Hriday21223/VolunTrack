@@ -13,6 +13,7 @@ const limiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
 })
 
 function requireDb(_req, res, next) {
@@ -179,6 +180,35 @@ router.delete('/admin/invite/:id', limiter, requireDb, requireAuth('admin'), asy
   } catch (error) {
     console.error('delete organization invite failed:', error)
     return res.status(500).json({ error: 'Could not delete invite.' })
+  }
+})
+
+// Set an organization's custom price (e.g. amount "$2000" billed "monthly"
+// or "yearly"). Mirrors PATCH /school/admin/:id/price.
+router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const amount = String(req.body.amount ?? '').trim()
+  const period = req.body.period ? String(req.body.period).trim() : null
+  if (period && !['monthly', 'yearly', 'one_time'].includes(period)) {
+    return res.status(400).json({ error: 'Invalid billing period.' })
+  }
+  try {
+    await query('UPDATE organizations SET price_amount = $1, price_period = $2 WHERE id = $3', [amount || null, amount ? period : null, req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('admin organization price update failed:', error)
+    return res.status(500).json({ error: 'Could not save price.' })
+  }
+})
+
+// Set an organization's payment due date. Mirrors PATCH /school/admin/:id/due-date.
+router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const dueDate = req.body.dueDate ? String(req.body.dueDate).trim() : null
+  try {
+    await query('UPDATE organizations SET payment_due_date = $1 WHERE id = $2', [dueDate || null, req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('admin organization due date update failed:', error)
+    return res.status(500).json({ error: 'Could not set due date.' })
   }
 })
 

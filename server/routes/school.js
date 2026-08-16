@@ -5,6 +5,7 @@ import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { sendEmail } from '../email.js'
+import { escapeHtml } from '../html.js'
 
 const router = express.Router()
 
@@ -13,6 +14,7 @@ const limiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
 })
 
 function requireDb(_req, res, next) {
@@ -529,7 +531,8 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
       `SELECT t.id, t.title, t.description, t.location, t.date, t.time, t.slots_total, t.status, t.phone, t.latitude, t.longitude, t.created_at,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
-                'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at
+                'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
+                'attendance_status', s.attendance_status, 'attendance_marked_at', s.attendance_marked_at
               ) ORDER BY s.signed_up_at), '[]'::json)
                FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups
        FROM public_tasks t WHERE t.created_by = $1
@@ -540,6 +543,27 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   } catch (error) {
     console.error('my tasks failed:', error)
     return res.status(500).json({ error: 'Could not fetch your tasks.' })
+  }
+})
+
+// List tasks the current user signed up for (as a participant), with their
+// signup + attendance status. Unlike GET /public-tasks, this isn't limited to
+// status = 'open' — closed/past tasks still show so attendance stays visible.
+router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT t.id, t.title, t.location, t.date, t.time, t.creator_name, t.status AS task_status,
+              s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at
+       FROM public_task_signups s
+       JOIN public_tasks t ON t.id = s.task_id
+       WHERE s.user_id = $1
+       ORDER BY t.date DESC, s.signed_up_at DESC`,
+      [req.auth.sub],
+    )
+    return res.json({ signups: rows })
+  } catch (error) {
+    console.error('my signups failed:', error)
+    return res.status(500).json({ error: 'Could not fetch your signups.' })
   }
 })
 
@@ -554,10 +578,11 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
     if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can log hours.' })
 
     const { rows: signupRows } = await query(
-      'SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
+      'SELECT attendance_status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
       [req.params.id, volunteerId],
     )
     if (signupRows.length === 0) return res.status(400).json({ error: 'Volunteer is not signed up for this task.' })
+    if (signupRows[0].attendance_status === 'absent') return res.status(400).json({ error: 'Cannot log hours for a volunteer marked absent.' })
 
     const lid = uid('log')
     await query(
@@ -592,7 +617,7 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
     if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can log hours.' })
 
     const { rows: approvedRows } = await query(
-      'SELECT user_id FROM public_task_signups WHERE task_id = $1 AND status = \'approved\'',
+      'SELECT user_id FROM public_task_signups WHERE task_id = $1 AND status = \'approved\' AND attendance_status IS DISTINCT FROM \'absent\'',
       [req.params.id],
     )
     const approvedIds = new Set(approvedRows.map((r) => r.user_id))
@@ -767,7 +792,7 @@ router.post('/submit-payment-confirmation', limiter, requireDb, requireAuth('sch
 router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.created_at,
+      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s ORDER BY s.created_at DESC`,
     )
@@ -778,13 +803,14 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
   }
 })
 
-// List organizations with an aggregate school count (admin only). Read-only —
-// the platform admin doesn't manage organizations directly; each org manages
-// its own schools via POST /organization/invite-school.
+// List organizations with an aggregate school count (admin only). The admin
+// doesn't manage an org's schools directly (each org adds its own via
+// POST /organization/invite-school) but does set the org's own price and
+// payment due date — see PATCH /organization/admin/:id/price and /due-date.
 router.get('/admin/organizations', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT o.id, o.name, o.contact_email, o.created_at,
+      `SELECT o.id, o.name, o.contact_email, o.created_at, o.price_amount, o.price_period, o.payment_due_date,
         COUNT(s.id) AS school_count
        FROM organizations o
        LEFT JOIN schools s ON s.organization_id = o.id
@@ -809,6 +835,23 @@ router.patch('/admin/:id/notes', limiter, requireDb, requireAuth('admin'), async
   } catch (error) {
     console.error('admin note update failed:', error)
     return res.status(500).json({ error: 'Could not save note.' })
+  }
+})
+
+// Set a school's custom price (e.g. amount "$200" billed "monthly" or
+// "yearly"). Used as the default when sending that school a payment notice.
+router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const amount = String(req.body.amount ?? '').trim()
+  const period = req.body.period ? String(req.body.period).trim() : null
+  if (period && !['monthly', 'yearly', 'one_time'].includes(period)) {
+    return res.status(400).json({ error: 'Invalid billing period.' })
+  }
+  try {
+    await query('UPDATE schools SET price_amount = $1, price_period = $2 WHERE id = $3', [amount || null, amount ? period : null, req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('admin price update failed:', error)
+    return res.status(500).json({ error: 'Could not save price.' })
   }
 })
 
@@ -998,12 +1041,11 @@ router.delete('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req
   }
 })
 
-// Set global payment due date (admin only)
-router.patch('/admin/payment-due-date', limiter, requireDb, requireAuth('admin'), async (req, res) => {
-  const { dueDate } = req.body
-  if (!dueDate) return res.status(400).json({ error: 'dueDate is required.' })
+// Set a single school's payment due date (admin only)
+router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const dueDate = req.body.dueDate ? String(req.body.dueDate).trim() : null
   try {
-    await query('UPDATE schools SET payment_due_date = $1', [dueDate])
+    await query('UPDATE schools SET payment_due_date = $1 WHERE id = $2', [dueDate || null, req.params.id])
     return res.json({ ok: true })
   } catch (error) {
     console.error('set payment due date failed:', error)
@@ -1011,9 +1053,31 @@ router.patch('/admin/payment-due-date', limiter, requireDb, requireAuth('admin')
   }
 })
 
+// Builds the HTML body for a payment-request email: school name, optional
+// amount owed, the school's due date on file (if any), free-text payment
+// instructions from the admin, and a link back to the school dashboard
+// where the admin submits their bank confirmation number.
+const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
+
+function paymentNoticeHtml({ schoolName, amount, billingPeriod, dueDate, message }) {
+  const dashboardLink = `${process.env.FRONTEND_URL || ''}/school/dashboard`
+  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
+  const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
+  return [
+    `<p>Hi ${escapeHtml(schoolName)},</p>`,
+    `<p>This is a payment notice for your school's VolunTrack account.</p>`,
+    `<table cellpadding="4" cellspacing="0">`,
+    amount ? `<tr><td><strong>Amount owed</strong></td><td>${escapeHtml(amount)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>` : '',
+    dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
+    `</table>`,
+    `<p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>`,
+    `<p>Once payment is complete, submit your bank confirmation or reference number from your school dashboard: <a href="${dashboardLink}">${dashboardLink}</a></p>`,
+  ].join('')
+}
+
 // Send payment notification to all schools (admin only)
 router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), async (req, res) => {
-  const { message } = req.body
+  const { message, amount, billingPeriod } = req.body
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return res.status(400).json({ error: 'Message is required.' })
   }
@@ -1024,11 +1088,17 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
       [id, message.trim()],
     )
 
-    const { rows: schools } = await query('SELECT id, contact_email FROM schools WHERE contact_email IS NOT NULL')
+    const { rows: schools } = await query('SELECT id, name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE contact_email IS NOT NULL')
     await Promise.all(schools.map((s) => sendEmail({
       to: s.contact_email,
       subject: 'Payment notice from VolunTrack',
-      html: `<p>${message.trim()}</p>`,
+      html: paymentNoticeHtml({
+        schoolName: s.name,
+        amount: amount || s.price_amount,
+        billingPeriod: amount ? billingPeriod : s.price_period,
+        dueDate: s.payment_due_date,
+        message: message.trim(),
+      }),
       idempotencyKey: `payment-notice/${s.id}/${id}`,
     })))
 
@@ -1041,7 +1111,7 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
 
 // Send notification to a specific school (admin only)
 router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('admin'), async (req, res) => {
-  const { message } = req.body
+  const { message, amount, billingPeriod } = req.body
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return res.status(400).json({ error: 'Message is required.' })
   }
@@ -1052,12 +1122,18 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
       [id, req.params.schoolId, message.trim()],
     )
 
-    const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.schoolId])
+    const { rows } = await query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE id = $1', [req.params.schoolId])
     if (rows[0]?.contact_email) {
       await sendEmail({
         to: rows[0].contact_email,
         subject: 'Payment notice from VolunTrack',
-        html: `<p>${message.trim()}</p>`,
+        html: paymentNoticeHtml({
+          schoolName: rows[0].name,
+          amount: amount || rows[0].price_amount,
+          billingPeriod: amount ? billingPeriod : rows[0].price_period,
+          dueDate: rows[0].payment_due_date,
+          message: message.trim(),
+        }),
         idempotencyKey: `payment-notice/${req.params.schoolId}/${id}`,
       })
     }

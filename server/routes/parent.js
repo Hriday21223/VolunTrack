@@ -11,6 +11,7 @@ const limiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
 })
 
 function requireDb(_req, res, next) {

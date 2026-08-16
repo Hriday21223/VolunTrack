@@ -60,6 +60,15 @@ function validateGrade(grade) {
   return trimmed
 }
 
+function validateStudentIdNumber(id) {
+  if (!id) return null
+  const trimmed = id.trim()
+  if (!validator.isLength(trimmed, { max: 40 })) {
+    return null
+  }
+  return trimmed
+}
+
 function validateSyncPin(pin) {
   if (!pin) return null
   const trimmed = pin.trim()
@@ -78,6 +87,7 @@ function publicUser(row) {
     schoolId: row.school_id,
     schoolPaymentStatus: row.school_payment_status ?? null,
     grade: row.grade,
+    studentIdNumber: row.student_id_number,
     syncPin: row.sync_pin,
     totpEnabled: row.totp_enabled,
     createdAt: row.created_at,
@@ -101,6 +111,7 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')
   const grade = validateGrade(req.body.grade || '')
+  const studentIdNumber = validateStudentIdNumber(req.body.studentIdNumber || '')
   const role = ['volunteer', 'parent'].includes(req.body.role) ? req.body.role : 'student'
 
   if (!name) {
@@ -121,10 +132,10 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
     const hash = await hashPassword(password)
     const id = uid('usr')
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, grade)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO users (id, role, name, email, password_hash, grade, student_id_number)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [id, role, name, email, hash, grade || null],
+      [id, role, name, email, hash, grade || null, studentIdNumber || null],
     )
     const user = publicUser(rows[0])
     return res.status(201).json({ token: signToken(user), user })
@@ -171,6 +182,35 @@ router.get('/me', requireDb, requireAuth(), async (req, res) => {
   } catch (error) {
     console.error('me failed:', error)
     return res.status(500).json({ error: 'Could not load account.' })
+  }
+})
+
+// Update the caller's own profile fields — narrow on purpose: name, grade,
+// and student ID number only. School linking has its own dedicated flow
+// (join codes / invites in server/routes/school.js) and isn't touched here.
+router.patch('/profile', requireDb, requireAuth(), async (req, res) => {
+  const name = req.body.name !== undefined ? validateName(req.body.name || '') : undefined
+  if (req.body.name !== undefined && !name) {
+    return res.status(400).json({ error: 'Name is required and must be valid.' })
+  }
+  const grade = req.body.grade !== undefined ? validateGrade(req.body.grade || '') : undefined
+  const studentIdNumber = req.body.studentIdNumber !== undefined ? validateStudentIdNumber(req.body.studentIdNumber || '') : undefined
+
+  try {
+    await query(
+      `UPDATE users SET
+         name = COALESCE($1, name),
+         grade = CASE WHEN $2::boolean THEN $3 ELSE grade END,
+         student_id_number = CASE WHEN $4::boolean THEN $5 ELSE student_id_number END
+       WHERE id = $6`,
+      [name || null, grade !== undefined, grade || null, studentIdNumber !== undefined, studentIdNumber || null, req.auth.sub],
+    )
+    const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [req.auth.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ user: publicUser(rows[0]) })
+  } catch (error) {
+    console.error('profile update failed:', error)
+    return res.status(500).json({ error: 'Could not update profile.' })
   }
 })
 

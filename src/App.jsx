@@ -35,6 +35,7 @@ const OrganizationDashboard = lazy(() => import('@/pages/OrganizationDashboard.j
 const OrganizationRegister = lazy(() => import('@/pages/OrganizationRegister.jsx'))
 const Help = lazy(() => import('@/pages/Help.jsx'))
 const MyTasks = lazy(() => import('@/pages/MyTasks.jsx'))
+const Attendance = lazy(() => import('@/pages/Attendance.jsx'))
 const Status = lazy(() => import('@/pages/Status.jsx'))
 const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
 const ParentDashboard = lazy(() => import('@/pages/ParentDashboard.jsx'))
@@ -108,6 +109,7 @@ function Shell() {
           <Route path="/settings"     element={<Protected><Settings /></Protected>} />
           <Route path="/help"         element={<Help />} />
           <Route path="/my-tasks"    element={<Protected><MyTasks /></Protected>} />
+          <Route path="/attendance"  element={<Protected><Attendance /></Protected>} />
           <Route path="/admin"        element={<AdminProtected><Admin /></AdminProtected>} />
           <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
           <Route path="/organization/dashboard" element={<Protected><OrganizationDashboard /></Protected>} />

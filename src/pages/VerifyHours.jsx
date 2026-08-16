@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, XCircle, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, XCircle, ShieldCheck, AlertTriangle, FileSignature } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import SignaturePad from '@/components/SignaturePad.jsx'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -69,6 +70,11 @@ export default function VerifyHours() {
   const token = searchParams.get('token') || ''
   const [state, setState] = useState({ loading: true, data: null, error: '' })
   const [busy, setBusy] = useState(false)
+  const [respondError, setRespondError] = useState('')
+  // 'review' (approve/reject buttons) or 'signing' (approval needs a
+  // signature first) — reject skips this step entirely.
+  const [mode, setMode] = useState('review')
+  const [signature, setSignature] = useState('')
 
   useEffect(() => {
     if (!token) {
@@ -84,14 +90,23 @@ export default function VerifyHours() {
     })
   }, [token])
 
-  const respond = async (action) => {
+  const respond = async (action, sig) => {
     setBusy(true)
+    setRespondError('')
     try {
-      const response = await fetch(`${apiUrl}/verify-hours/${encodeURIComponent(token)}/${action}`, { method: 'POST' })
+      const response = await fetch(`${apiUrl}/verify-hours/${encodeURIComponent(token)}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signature: sig || null }),
+      })
       const body = await response.json().catch(() => ({}))
       if (response.ok && body.status) {
         setState((s) => ({ ...s, data: { ...s.data, status: body.status } }))
+      } else {
+        setRespondError(body.error || 'Something went wrong — please try again.')
       }
+    } catch {
+      setRespondError('Something went wrong — please try again.')
     } finally {
       setBusy(false)
     }
@@ -114,7 +129,18 @@ export default function VerifyHours() {
               <p className="text-sm text-earth-500 dark:text-earth-400">{state.error}</p>
             </div>
           ) : (
-            <VerifyCard data={state.data} busy={busy} onRespond={respond} />
+            <VerifyCard
+              data={state.data}
+              busy={busy}
+              error={respondError}
+              mode={mode}
+              signature={signature}
+              onSign={setSignature}
+              onStartApproval={() => setMode('signing')}
+              onCancelApproval={() => { setMode('review'); setSignature('') }}
+              onReject={() => respond('reject', null)}
+              onConfirmApproval={() => respond('approve', signature)}
+            />
           )}
         </Card>
       </div>
@@ -122,7 +148,7 @@ export default function VerifyHours() {
   )
 }
 
-function VerifyCard({ data, busy, onRespond }) {
+function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApproval, onCancelApproval, onReject, onConfirmApproval }) {
   const thanksNote = useMemo(
     () => pickCombo(SUPERVISOR_THANKS_OPENERS, SUPERVISOR_THANKS_CLOSERS, data.studentName),
     [data.studentName],
@@ -172,14 +198,34 @@ function VerifyCard({ data, busy, onRespond }) {
           <span className="font-semibold">{data.hours}</span> hour(s) for "{data.activity}".
         </p>
       </div>
-      <div className="flex gap-3">
-        <button onClick={() => onRespond('approve')} disabled={busy} className="btn-primary flex-1 justify-center">
-          Approve
-        </button>
-        <button onClick={() => onRespond('reject')} disabled={busy} className="btn-ghost flex-1 justify-center border border-earth-200 dark:border-[#1f2e25]">
-          Reject
-        </button>
-      </div>
+
+      {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg mb-4">{error}</div>}
+
+      {mode === 'signing' ? (
+        <div>
+          <label className="label flex items-center gap-1.5"><FileSignature className="w-4 h-4" /> Your signature</label>
+          <SignaturePad value={signature} onChange={onSign} />
+          <div className="hint mb-4">Sign to confirm this work was completed as described — this is what makes the approval count.</div>
+          <div className="flex gap-3">
+            <button onClick={onConfirmApproval} disabled={busy || !signature} className="btn-primary flex-1 justify-center">
+              Confirm approval
+            </button>
+            <button onClick={onCancelApproval} disabled={busy} className="btn-ghost flex-1 justify-center border border-earth-200 dark:border-[#1f2e25]">
+              Back
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-3">
+          <button onClick={onStartApproval} disabled={busy} className="btn-primary flex-1 justify-center">
+            Approve
+          </button>
+          <button onClick={onReject} disabled={busy} className="btn-ghost flex-1 justify-center border border-earth-200 dark:border-[#1f2e25]">
+            Reject
+          </button>
+        </div>
+      )}
+
       <p className="text-xs text-earth-500 dark:text-earth-400 text-center mt-4">
         {standingNote}
       </p>

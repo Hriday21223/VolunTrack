@@ -256,6 +256,11 @@ export async function initSchema() {
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS admin_notes TEXT`) } catch {}
   try { await query(`ALTER TABLE schools DROP CONSTRAINT IF EXISTS schools_payment_status_check`) } catch {}
   try { await query(`ALTER TABLE schools ADD CONSTRAINT schools_payment_status_check CHECK (payment_status IN ('paid','unpaid','pending','rejected'))`) } catch {}
+  // Custom per-school price (e.g. "$200" billed "monthly" or "yearly") — set by admin, shown on payment notices.
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS price_amount TEXT`) } catch {}
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS price_period TEXT`) } catch {}
+  try { await query(`ALTER TABLE schools DROP CONSTRAINT IF EXISTS schools_price_period_check`) } catch {}
+  try { await query(`ALTER TABLE schools ADD CONSTRAINT schools_price_period_check CHECK (price_period IS NULL OR price_period IN ('monthly','yearly','one_time'))`) } catch {}
   try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS school_id TEXT REFERENCES schools(id) ON DELETE CASCADE`) } catch {}
   // 2FA columns
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT`) } catch {}
@@ -271,7 +276,27 @@ export async function initSchema() {
     await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none' CHECK (verification_status IN ('none','pending','approved','rejected'))`)
   } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS verification_token TEXT UNIQUE`) } catch {}
+
+  // Organization details schools require on a verification form, separate
+  // from the free-text "location" (where the service happened) — the org's
+  // own name/address/phone for their records.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS location TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_name TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_address TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_phone TEXT`) } catch {}
+  // Drawn signature (base64 PNG data URL from a canvas) — supersedes the
+  // typed-name version, which was never anything more than a text string.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_signature TEXT`) } catch {}
+
+  // A school-issued ID card number — distinct from `school_id`, which is an
+  // internal FK linking the account to a school record, not something a
+  // student would write on a paper verification form.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS student_id_number TEXT`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS log_id TEXT REFERENCES logs(id) ON DELETE SET NULL`) } catch {}
+  // Captured on the supervisor's own device when they approve, not by the
+  // student beforehand — kept alongside the token so it's available even
+  // when the log was never synced (client-only student).
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS supervisor_signature TEXT`) } catch {}
 
   // Widen the role CHECK constraint to allow 'parent'. This is the first
   // migration that modifies an existing constraint rather than adding a
@@ -316,6 +341,14 @@ export async function initSchema() {
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
   try { await query(`ALTER TABLE school_invites ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
+
+  // Custom per-organization price and payment due date — same shape as the
+  // per-school columns above, set independently by admins.
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_amount TEXT`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_period TEXT`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS payment_due_date DATE`) } catch {}
+  try { await query(`ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_price_period_check`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD CONSTRAINT organizations_price_period_check CHECK (price_period IS NULL OR price_period IN ('monthly','yearly','one_time'))`) } catch {}
 
   // Widen again to allow 'org' — an organization's own admin account.
   try {

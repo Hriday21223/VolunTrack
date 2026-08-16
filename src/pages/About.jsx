@@ -79,10 +79,10 @@ const AUDIENCES = [
 ]
 
 const FAQS = [
-  { q: 'Is VolunTrack free?', a: 'Yes, all features are completely free. There are no paid tiers or hidden costs.' },
+  { q: 'Is VolunTrack free?', a: 'It\'s free for individual students and volunteers — no paid tiers or hidden costs. Schools and organizations are on custom pricing; contact us for details.' },
   { q: 'Can I export my hours for school requirements?', a: 'Absolutely. You can export polished PDF reports, CSV files, and printable certificates with all your logged hours, supervisor details, and categories.' },
   { q: 'Is my data private?', a: 'By default, your data is stored entirely in your browser\'s local storage and never leaves your device. If you create an account to sync across devices or link to a school, your data is stored in a secure database and protected by password authentication and optional two-factor authentication. We never sell or share your data.' },
-  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. Schools can create an account and share a join code so students link their hours to the school for review and approval. Organization accounts (for managing multiple schools) are set up by invitation — contact us to get started.' },
+  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. Schools can create an account and share a join code so students link their hours to the school for review and approval. Organization accounts (for managing multiple schools) are set up by invitation, on custom pricing — contact us to get started.' },
   { q: 'What if I forget to log a session?', a: 'You can log past sessions anytime. We also offer reminders so you never miss recording your volunteer work.' },
   { q: 'Does VolunTrack work offline?', a: 'Yes. VolunTrack is a Progressive Web App — after your first visit, it keeps working without an internet connection, and any local-mode data stays available offline.' },
   { q: 'What if I switch devices?', a: 'If you\'re using local-only mode, your data stays on that device. To carry it over, create an account and generate a sync PIN in Settings on your first device, then enter that PIN on the login screen of your new device to pull your data across.' },

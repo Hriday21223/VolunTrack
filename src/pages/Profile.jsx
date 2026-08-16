@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Camera, Save, School, GraduationCap, User as UserIcon, Mail } from 'lucide-react'
+import { Camera, Save, School, GraduationCap, User as UserIcon, Mail, Hash } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -10,7 +10,7 @@ import { fmtHours } from '@/utils/date.js'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function Profile() {
-  const { user, updateProfile } = useAuth()
+  const { user, updateProfile, refreshUser } = useAuth()
   const { logs } = useData()
   const fileRef = useRef(null)
   const [form, setForm] = useState({
@@ -18,6 +18,7 @@ export default function Profile() {
     email: user?.email || '',
     school: user?.school || '',
     grade: user?.grade || '',
+    studentIdNumber: user?.studentIdNumber || '',
     avatar: user?.avatar || '',
   })
   const [toast, setToast] = useState(false)
@@ -34,7 +35,7 @@ export default function Profile() {
     reader.readAsDataURL(file)
   }
 
-  const onSave = (e) => {
+  const onSave = async (e) => {
     e.preventDefault()
     setError('')
     if (!form.name.trim()) { setError('Please enter your name.'); return }
@@ -42,8 +43,25 @@ export default function Profile() {
       name: form.name.trim(),
       school: form.school.trim(),
       grade: form.grade.trim(),
+      studentIdNumber: form.studentIdNumber.trim(),
       avatar: form.avatar,
     })
+    // Server-backed accounts also need the durable fields written through —
+    // updateProfile() above only touches the local cache. Avatar/school stay
+    // local-only for now (school linking has its own dedicated flow).
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (token) {
+      try {
+        const res = await fetch(`${apiUrl}/auth/profile`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ name: form.name.trim(), grade: form.grade.trim(), studentIdNumber: form.studentIdNumber.trim() }),
+        })
+        if (res.ok) await refreshUser()
+      } catch {
+        // best-effort — the local save above already went through
+      }
+    }
     setToastMsg('Profile saved')
     setToast(true)
   }
@@ -84,6 +102,7 @@ export default function Profile() {
             <Field icon={Mail}          label="Email"     value={form.email} onChange={onChange('email')} disabled />
             <Field icon={School}        label="School / Organization" value={form.school} onChange={onChange('school')} />
             <Field icon={GraduationCap} label="Grade or Role"        value={form.grade}  onChange={onChange('grade')} />
+            <Field icon={Hash}          label="Student ID number"    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />
             {error && <div className="sm:col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{error}</div>}
             <div className="sm:col-span-2">
               <button className="btn-primary" type="submit">

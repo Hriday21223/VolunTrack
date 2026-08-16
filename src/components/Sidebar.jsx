@@ -1,4 +1,4 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, School, Activity, Users, Building2 } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, Users, Building2 } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -18,6 +18,7 @@ const ROLE_ITEMS = {
   volunteer: [
     { to: '/my-tasks',     label: 'My Tasks',    icon: ClipboardList },
     { to: '/',             label: 'Dashboard',   icon: Home },
+    { to: '/attendance',   label: 'Attendance',  icon: ClipboardCheck },
     { to: '/log',          label: 'Log Hours',   icon: Clock },
     { to: '/calendar',     label: 'Calendar',    icon: Calendar },
     { to: '/achievements', label: 'Achievements', icon: Trophy },

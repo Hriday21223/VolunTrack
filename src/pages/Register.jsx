@@ -38,7 +38,7 @@ export default function Register() {
   const nav = useNavigate()
   const apiUrl = import.meta.env.VITE_API_URL || '/api'
   const [role, setRole] = useState('student')
-  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', schoolCode: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', studentIdNumber: '', schoolCode: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
@@ -146,6 +146,9 @@ export default function Register() {
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
                   <Field icon={GraduationCap} label="Grade or Role" value={form.grade} onChange={onChange('grade')} placeholder="11th grade / Volunteer lead" />
+                </div>
+                <div className="animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+                  <Field icon={Hash} label="Student ID number (optional)" value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />
                 </div>
               </>
             )}

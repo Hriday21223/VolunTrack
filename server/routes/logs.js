@@ -11,6 +11,7 @@ const limiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
 })
 
 function requireDb(_req, res, next) {
@@ -23,17 +24,23 @@ function requireDb(_req, res, next) {
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, supervisorName, supervisorEmail } = req.body
+  const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature } = req.body
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
   }
+  // A drawn signature is a base64 PNG data URL — cap it well under the
+  // global 1MB JSON body limit so one oversized field can't eat the whole
+  // request budget for the rest of the payload.
+  if (supervisorSignature && supervisorSignature.length > 200_000) {
+    return res.status(400).json({ error: 'Signature image is too large.' })
+  }
   try {
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, supervisor_name, supervisor_email)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, supervisorName || null, supervisorEmail || null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -48,7 +55,10 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Log not found.' })
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
 
-    const { date, activity, category, hours, notes, supervisorName, supervisorEmail } = req.body
+    const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature } = req.body
+    if (supervisorSignature && supervisorSignature.length > 200_000) {
+      return res.status(400).json({ error: 'Signature image is too large.' })
+    }
     await query(
       `UPDATE logs SET
          date = COALESCE($1, date),
@@ -56,10 +66,15 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          category = COALESCE($3, category),
          hours = COALESCE($4, hours),
          notes = COALESCE($5, notes),
-         supervisor_name = COALESCE($6, supervisor_name),
-         supervisor_email = COALESCE($7, supervisor_email)
-       WHERE id = $8`,
-      [date || null, activity || null, category || null, hours != null ? Number(hours) : null, notes || null, supervisorName || null, supervisorEmail || null, req.params.id],
+         location = COALESCE($6, location),
+         org_name = COALESCE($7, org_name),
+         org_address = COALESCE($8, org_address),
+         org_phone = COALESCE($9, org_phone),
+         supervisor_name = COALESCE($10, supervisor_name),
+         supervisor_email = COALESCE($11, supervisor_email),
+         supervisor_signature = COALESCE($12, supervisor_signature)
+       WHERE id = $13`,
+      [date || null, activity || null, category || null, hours != null ? Number(hours) : null, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, req.params.id],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -96,7 +111,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
     }
 
     const { rows } = await query(
-      `SELECT id, date, activity, category, hours, notes, supervisor_name, supervisor_email, verification_status, created_at
+      `SELECT id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, created_at
        FROM logs WHERE user_id = $1 ORDER BY date DESC, created_at DESC`,
       [userId],
     )

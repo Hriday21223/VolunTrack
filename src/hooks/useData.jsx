@@ -28,6 +28,19 @@ export function DataProvider({ children }) {
 
   const totalHours = useMemo(() => logs.reduce((s, l) => s + (Number(l.hours) || 0), 0), [logs])
 
+  // Local logs/goals/achievements live under one global localStorage key,
+  // not scoped per account (see clearUserData() in useAuth.jsx's logout).
+  // Since this provider doesn't unmount across a logout/login in the same
+  // SPA session, its state must be re-read here whenever the signed-in
+  // account changes — otherwise the previous account's in-memory logs stay
+  // on screen after switching to a different account in the same browser.
+  useEffect(() => {
+    setLogs(listLogs())
+    setGoals(listGoals())
+    setEarned(getEarned())
+    setReviewSubmitted(getReviews().length > 0)
+  }, [user?.id])
+
   // Re-evaluate achievements whenever logs/goals change.
   useEffect(() => {
     const { newly } = evaluateAchievements(logs, goals, earned)
@@ -79,7 +92,11 @@ export function DataProvider({ children }) {
     pending.forEach(async (l) => {
       const result = await getVerificationStatus(l.verificationToken)
       if (result && (result.status === 'approved' || result.status === 'rejected')) {
-        const log = updateLog(l.id, { verificationStatus: result.status, verified: result.status === 'approved' })
+        const log = updateLog(l.id, {
+          verificationStatus: result.status,
+          verified: result.status === 'approved',
+          ...(result.supervisorSignature ? { supervisorSignature: result.supervisorSignature } : {}),
+        })
         if (log) setLogs((prev) => prev.map((x) => (x.id === l.id ? log : x)))
       }
     })

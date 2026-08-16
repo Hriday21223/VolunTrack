@@ -13,7 +13,8 @@ export function exportLogsPDF({ user, logs, returnBlob }) {
   doc.setFont('helvetica', 'normal').setFontSize(11)
   doc.setTextColor(90)
   doc.text(user?.name || 'Volunteer', 40, 70)
-  if (user?.school) doc.text(user.school, 40, 86)
+  const idLine = [user?.school, user?.studentIdNumber ? `ID: ${user.studentIdNumber}` : null].filter(Boolean).join('  •  ')
+  if (idLine) doc.text(idLine, 40, 86)
   doc.text(`Generated ${new Date().toLocaleDateString()}`, 40, 102)
   doc.setTextColor(0)
   doc.setFont('helvetica', 'bold').setFontSize(13)
@@ -21,17 +22,32 @@ export function exportLogsPDF({ user, logs, returnBlob }) {
 
   autoTable(doc, {
     startY: 120,
-    head: [['Date', 'Activity', 'Category', 'Hours', 'Supervisor']],
+    head: [['Date', 'Activity', 'Category', 'Hours', 'Organization', 'Supervisor', 'Signature']],
     body: logs.map((l) => [
       fmtDate(l.date),
       l.activity || '',
       l.category || '',
       fmtHours(Number(l.hours) || 0),
+      l.orgName || '',
       l.supervisorName || '',
+      '', // filled in by didDrawCell below — autoTable can't take an image as cell content directly
     ]),
     headStyles: { fillColor: [63, 131, 68] },
-    styles: { fontSize: 10, cellPadding: 6 },
+    styles: { fontSize: 10, cellPadding: 6, minCellHeight: 28 },
     alternateRowStyles: { fillColor: [241, 248, 241] },
+    columnStyles: { 6: { cellWidth: 70 } },
+    didDrawCell: (data) => {
+      if (data.section !== 'body' || data.column.index !== 6) return
+      const sig = logs[data.row.index]?.supervisorSignature
+      if (!sig) return
+      try {
+        const h = data.cell.height - 8
+        const w = h * (400 / 150) // matches SignaturePad's fixed export aspect ratio
+        doc.addImage(sig, 'PNG', data.cell.x + 4, data.cell.y + 4, Math.min(w, data.cell.width - 8), h)
+      } catch {
+        // best-effort — a malformed data URL just leaves the cell blank
+      }
+    },
   })
 
   if (returnBlob) {
@@ -43,7 +59,7 @@ export function exportLogsPDF({ user, logs, returnBlob }) {
 /** Build a CSV string from the user's logs. */
 export function exportLogsCSV(logs) {
   const rows = [
-    ['Date', 'Activity', 'Category', 'Hours', 'Start', 'End', 'Location', 'Supervisor', 'Verified', 'Notes'],
+    ['Date', 'Activity', 'Category', 'Hours', 'Start', 'End', 'Location', 'Organization', 'Org Address', 'Org Phone', 'Supervisor', 'Signed', 'Verified', 'Notes'],
     ...logs.map((l) => [
       l.date || '',
       (l.activity || '').replaceAll(',', ' '),
@@ -52,7 +68,11 @@ export function exportLogsCSV(logs) {
       l.startTime || '',
       l.endTime || '',
       (l.location || '').replaceAll(',', ' '),
+      (l.orgName || '').replaceAll(',', ' '),
+      (l.orgAddress || '').replaceAll(',', ' '),
+      (l.orgPhone || '').replaceAll(',', ' '),
       (l.supervisorName || '').replaceAll(',', ' '),
+      l.supervisorSignature ? 'yes' : 'no',
       l.verified ? 'yes' : 'no',
       (l.notes || '').replaceAll(/\n/g, ' ').replaceAll(',', ' '),
     ]),

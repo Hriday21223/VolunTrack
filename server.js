@@ -405,7 +405,7 @@ app.get('/api/verify-hours/:token', async (req, res) => {
   const { token } = req.params
   try {
     const { rows } = await query(
-      'SELECT student_name, supervisor_name, activity, hours, status FROM supervisor_verifications WHERE token = $1',
+      'SELECT student_name, supervisor_name, activity, hours, status, supervisor_signature FROM supervisor_verifications WHERE token = $1',
       [token],
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Verification link not found.' })
@@ -416,6 +416,7 @@ app.get('/api/verify-hours/:token', async (req, res) => {
       activity: row.activity,
       hours: Number(row.hours),
       status: row.status,
+      supervisorSignature: row.supervisor_signature || null,
     })
   } catch (error) {
     console.error('Fetch verification failed:', error)
@@ -426,8 +427,15 @@ app.get('/api/verify-hours/:token', async (req, res) => {
 app.post('/api/verify-hours/:token/:action', async (req, res) => {
   if (!hasDatabase()) return res.status(404).json({ error: 'Not available.' })
   const { token, action } = req.params
+  const { signature } = req.body || {}
   if (action !== 'approve' && action !== 'reject') {
     return res.status(400).json({ error: 'Invalid action.' })
+  }
+  // A rejection needs no signature — only an approval vouches for the work.
+  if (action === 'approve') {
+    if (!signature || typeof signature !== 'string' || signature.length > 200_000) {
+      return res.status(400).json({ error: 'A signature is required to approve these hours.' })
+    }
   }
   try {
     const { rows } = await query(
@@ -442,14 +450,18 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
     }
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected'
+    const sig = action === 'approve' ? signature : null
     await query(
-      'UPDATE supervisor_verifications SET status = $1, responded_at = now() WHERE token = $2',
-      [newStatus, token],
+      'UPDATE supervisor_verifications SET status = $1, responded_at = now(), supervisor_signature = $2 WHERE token = $3',
+      [newStatus, sig, token],
     )
     // No-op if this token was never linked to a synced log (e.g. the
     // student wasn't signed into a server-backed account when they logged
     // the hours) — a parent simply won't see the status for that log.
-    await query('UPDATE logs SET verification_status = $1 WHERE verification_token = $2', [newStatus, token])
+    await query(
+      'UPDATE logs SET verification_status = $1, supervisor_signature = COALESCE($2, supervisor_signature) WHERE verification_token = $3',
+      [newStatus, sig, token],
+    )
 
     // Best-effort: let the student know the outcome. Never fails the response.
     const row = rows[0]

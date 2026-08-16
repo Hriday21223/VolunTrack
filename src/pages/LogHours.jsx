@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, Trash2, Upload, Mail, User, FileSignature, ShieldCheck, MapPin, Navigation } from 'lucide-react'
+import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import FileDrop from '@/components/FileDrop.jsx'
 import Toast from '@/components/Toast.jsx'
+import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import { hoursBetween, fmtHours } from '@/utils/date.js'
 import { notifySupervisor } from '@/lib/supervisorNotify.js'
@@ -54,7 +55,12 @@ const blank = () => ({
   startTime: '',
   endTime: '',
   location: '',
+  latitude: null,
+  longitude: null,
   notes: '',
+  orgName: '',
+  orgAddress: '',
+  orgPhone: '',
   supervisorName: '',
   supervisorEmail: '',
   supervisorSignature: '',
@@ -71,8 +77,6 @@ export default function LogHours({ editId, onCloseEdit }) {
   const [form, setForm] = useState(blank())
   const [toast, setToast] = useState(false)
   const [error, setError] = useState('')
-  const [locating, setLocating] = useState(false)
-  const [locError, setLocError] = useState('')
   // Re-rolled per log entry (editId/verificationToken), not on every
   // render — the picker itself doesn't read these, it just gates when a
   // fresh random note should be picked.
@@ -99,6 +103,8 @@ export default function LogHours({ editId, onCloseEdit }) {
     if (!form.activity.trim()) { setError('Please enter an activity name.'); return }
     if (!form.location.trim()) { setError('Please enter a location or use the button below to detect it.'); return }
     if (hours <= 0)             { setError('End time must be after start time.'); return }
+    if (!form.supervisorName.trim()) { setError("Please enter your supervisor's name."); return }
+    if (!form.supervisorEmail.trim()) { setError("Please enter your supervisor's email."); return }
 
     try {
       const payload = { ...form, hours }
@@ -129,51 +135,6 @@ export default function LogHours({ editId, onCloseEdit }) {
       }
     } catch (err) {
       setError('Could not save — your proof file might be too large. Try a smaller image.')
-    }
-  }
-
-  const getCurrentLocation = async () => {
-    setLocating(true)
-    setLocError('')
-    try {
-      if (!navigator.geolocation) {
-        throw new Error('Geolocation is not supported by your browser.')
-      }
-      const getPosition = (options) => new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, options)
-      })
-      let position
-      try {
-        // Standard accuracy first — fast, and works on desktops without GPS
-        // hardware (Wi-Fi/IP based). High accuracy alone often times out on
-        // those devices while it waits for a GPS fix that never comes.
-        position = await getPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 })
-      } catch {
-        position = await getPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
-      }
-
-      const { latitude, longitude } = position.coords
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'Accept-Language': 'en',
-            'User-Agent': 'VolunTrack/1.0',
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to look up address.')
-      }
-
-      const data = await response.json()
-      const address = data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
-      setForm((f) => ({ ...f, location: address }))
-    } catch (err) {
-      setLocError(err.message || 'Could not get your location.')
-    } finally {
-      setLocating(false)
     }
   }
 
@@ -233,30 +194,33 @@ export default function LogHours({ editId, onCloseEdit }) {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Location *</label>
-                <div className="flex gap-2">
-                  <input
-                    className="input flex-1"
-                    placeholder="123 Main St, Library, Online, etc."
-                    value={form.location}
-                    onChange={onChange('location')}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={getCurrentLocation}
-                    disabled={locating}
-                    className="btn-ghost inline-flex items-center gap-1.5 whitespace-nowrap"
-                    title="Use current location"
-                  >
-                    <Navigation className={`w-4 h-4 ${locating ? 'animate-spin' : ''}`} />
-                    {locating ? 'Locating…' : 'Current'}
-                  </button>
-                </div>
-                {locError && <div className="text-xs text-red-600 mt-1">{locError}</div>}
+                <LocationPicker
+                  address={form.location}
+                  lat={form.latitude}
+                  lng={form.longitude}
+                  placeholder="123 Main St, Library, Online, etc."
+                  required
+                  onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
+                />
               </div>
               <div>
                 <label className="label">Notes</label>
                 <textarea className="input min-h-[100px] resize-y" placeholder="Anything worth remembering…" value={form.notes} onChange={onChange('notes')} />
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle icon={Building2}>Organization</SectionTitle>
+            <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
+              The nonprofit or group you volunteered with — many schools require this on a verification form.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field icon={Building2} label="Organization name" value={form.orgName} onChange={onChange('orgName')} placeholder="Riverside Food Bank" />
+              <Field icon={Phone}     label="Organization phone" value={form.orgPhone} onChange={onChange('orgPhone')} placeholder="(555) 123-4567" type="tel" />
+              <div className="sm:col-span-2">
+                <label className="label flex items-center gap-1.5"><MapPin className="w-4 h-4" /> Organization address</label>
+                <input className="input" placeholder="123 Main St, Springfield, IL" value={form.orgAddress} onChange={onChange('orgAddress')} />
               </div>
             </div>
           </Card>
@@ -267,31 +231,31 @@ export default function LogHours({ editId, onCloseEdit }) {
               Capture who can vouch for this work. Schools typically require a name and email.
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field icon={User}        label="Supervisor name"  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder="Mr. Johnson" />
-              <Field icon={Mail}        label="Supervisor email" value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder="johnson@school.edu" type="email" />
-              <div className="sm:col-span-2">
-                <label className="label flex items-center gap-1.5"><FileSignature className="w-4 h-4" /> Digital signature (typed name)</label>
-                <input className="input" placeholder="Type your full name to sign" value={form.supervisorSignature} onChange={onChange('supervisorSignature')} />
-                <div className="hint">By typing your name, you confirm this work was completed as described.</div>
-              </div>
+              <Field icon={User}        label="Supervisor name *"  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder="Mr. Johnson" required />
+              <Field icon={Mail}        label="Supervisor email *" value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder="johnson@school.edu" type="email" required />
               {form.supervisorEmail?.trim() ? (
                 <div className="sm:col-span-2">
                   <VerificationBadge status={form.verificationStatus} />
                   {(!form.verificationStatus || form.verificationStatus === 'none') && (
                     <p className="text-xs text-earth-400 mt-1">
-                      Verification is set by your supervisor, not by you — they'll get an email with an approve/reject link once you save. This usually takes a day or two.
+                      Your supervisor will get an email with a link to review these hours. If they approve, they'll sign right there to confirm it — if they reject, no signature is needed. This usually takes a day or two.
                     </p>
                   )}
                   {form.verificationStatus === 'approved' && (
-                    <p className="text-xs text-brand-600 dark:text-brand-400 mt-1 font-medium">
-                      {studentThanksNote}
-                    </p>
+                    <>
+                      {form.supervisorSignature && (
+                        <img src={form.supervisorSignature} alt="Supervisor signature" className="mt-2 h-16 rounded-lg border border-earth-200 dark:border-[#1f2e25] bg-white" />
+                      )}
+                      <p className="text-xs text-brand-600 dark:text-brand-400 mt-1 font-medium">
+                        {studentThanksNote}
+                      </p>
+                    </>
                   )}
                 </div>
               ) : (
                 <div className="sm:col-span-2">
                   <p className="text-xs text-amber-500">
-                    No supervisor listed — this entry won't be verified. Add a supervisor email above if you need it verified.
+                    Supervisor name and email are required so this entry can be verified.
                   </p>
                 </div>
               )}

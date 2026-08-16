@@ -285,6 +285,10 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     remove(SESSION_KEY)
     localStorage.removeItem('voluntrack:auth_token')
+    // Local logs/goals/achievements are stored under one global key, not
+    // scoped per account — without this, the next account signed into on
+    // this browser would see the previous account's cached local data.
+    clearUserData()
     setUser(null)
   }, [])
 

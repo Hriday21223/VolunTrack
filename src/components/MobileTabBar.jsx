@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, School, Activity, MapPin, X, ChevronRight, Building2 } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, MapPin, X, ChevronRight, Building2 } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
@@ -56,6 +56,7 @@ const MORE_ITEMS = {
   ],
   volunteer: [
     { to: '/',             label: 'Dashboard',     icon: Home },
+    { to: '/attendance',   label: 'Attendance',    icon: ClipboardCheck },
     { to: '/log',          label: 'Log Hours',     icon: Clock },
     { to: '/profile',      label: 'Profile',       icon: User },
     { to: '/settings',     label: 'Settings',      icon: Settings },

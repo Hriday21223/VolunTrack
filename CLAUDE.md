@@ -22,30 +22,19 @@ To run the full backend locally, copy `.env.example` to `.env` and set `DATABASE
 This app has two parallel, loosely-coupled data layers, and most nontrivial changes touch the boundary between them:
 
 1. **Client-only mode (default)**: all state lives in `localStorage` under the `voluntrack:` namespace (`voluntrack:user`, `voluntrack:logs`, `voluntrack:goals`, `voluntrack:achievements`, `voluntrack:theme`). `src/api/index.js` is the data-access layer over localStorage; `src/lib/storage.js` defines the read/write rules and `src/lib/achievements.js` defines badge-earning logic. The app is fully usable with no backend running.
-2. **Server-backed mode (optional)**: when `DATABASE_URL` is set, `server.js` boots a Postgres-backed Express API for accounts and school dashboards. `server/db.js` owns the schema (`users`, `schools`, `logs`, `goals`) and connection; `server/auth.js` handles JWT signing/verification and bcrypt password hashing; `server/routes/{auth,school,logs,parent}.js` are the route handlers; `server/ids.js` generates IDs/tokens.
+2. **Server-backed mode (optional)**: when `DATABASE_URL` is set, `server.js` boots a Postgres-backed Express API for accounts, school/organization dashboards, public volunteer tasks, and review moderation. `server/db.js` owns the schema and connection — beyond the core `users`/`schools`/`logs`/`goals` tables, it also covers `organizations` (multi-school orgs), `public_tasks`/`public_task_signups` (with attendance tracking), `supervisor_verifications` (hour-verification workflow), `parent_child_links`, `school_invites`/`organization_invites`, `contact_messages`, and `reviews` (moderation queue for the public testimonials on `About.jsx`); most migrations are additive `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements run on boot rather than a migration tool. `server/auth.js` handles JWT signing/verification and bcrypt password hashing; `server/routes/{auth,school,organization,logs,parent,contact,reviews}.js` are the route handlers; `server/ids.js` generates IDs/tokens.
 
 `src/lib/logSync.js` and `src/lib/agent.js` bridge the two: logs authored locally can sync to the server side. When editing sync logic, check both the localStorage shape (`storage.js`) and the Postgres schema (`db.js`) stay compatible — this is not enforced by types.
 
-### Server request flow
+Request-handling flow, middleware order, and the auth-gating pattern for `server/` are in `server/CLAUDE.md`.
 
-`server.js` wires: `helmet` → `cors` (allowlist includes `FRONTEND_URL` env + localhost) → `express.json` (1MB limit) → a global rate limiter (`apiLimiter`, 100 req/15min) → `authenticate` middleware (JWT, from `server/auth.js`) applied globally → route mounts under `/api/auth`, `/api/school`, `/api/logs`, `/api/parent` (each with an additional `apiLimiter`). Password/PIN recovery email sending (`POST /api/send-reset-email`, defined inline in `server.js`) has its own stricter `emailLimiter` (20/hour) and falls back to an in-memory dev code log (`devCodeLog`) when SMTP env vars are unset.
+### Roles
 
-### Frontend structure
-
-```
-src/
-  api/         # data layer over localStorage (src/api/index.js)
-  components/  # reusable UI (cards, buttons, charts)
-  hooks/       # shared React hooks (useLocalStorage, useTheme, etc.)
-  lib/         # pure utilities: achievements, date math, PDF/CSV export, log sync, recovery codes
-  pages/       # route-level pages (one per route in App.jsx / React Router)
-  utils/       # small helpers (cn, format)
-```
-
-Path alias `@` → `src/` (configured in `vite.config.js` and `jsconfig.json`).
+Six roles gate routes and dashboards: `student`, `volunteer`, `parent`, `school`, `school_staff`, `org`, `admin` (see `users_role_check` constraints in `server/db.js` and `requireAuth(...)` calls in `server/routes/*.js`). `organizations` can own multiple `schools` (`schools.organization_id`); `org` accounts manage their schools' invites, `school`/`school_staff` manage their own students/staff, `parent` accounts link to student accounts via `parent_child_links`, and `admin` has cross-cutting access (school/org approval, payment status, review moderation, contact-message replies).
 
 ### Notable conventions
 
+- Path alias `@` → `src/` (configured in `vite.config.js` and `jsconfig.json`).
 - Dark mode is opt-in per device, persisted at `voluntrack:theme`.
 - Drag-and-drop proof uploads are read via `FileReader` and stored as base64 in localStorage — keep proof files under ~1MB, since this inflates localStorage.
 - Backend security posture (see `SECURITY.md`): rate limiting, input validation, parameterized Postgres queries via `pg`. Preserve parameterized queries when touching `server/db.js` or route handlers — no string-concatenated SQL.

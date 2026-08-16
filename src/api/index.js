@@ -56,7 +56,7 @@ export function updateSyncPin(userId, syncPin) {
   return users[idx]
 }
 
-export function createUser({ name, email, password, pin = '', school = '', grade = '', role = 'student' }) {
+export function createUser({ name, email, password, pin = '', school = '', grade = '', studentIdNumber = '', role = 'student' }) {
   const users = getUsers()
   if (findUserByEmail(email)) {
     throw new Error('An account with that email already exists.')
@@ -69,6 +69,7 @@ export function createUser({ name, email, password, pin = '', school = '', grade
     email: email.trim().toLowerCase(),
     school: school.trim(),
     grade: grade.trim(),
+    studentIdNumber: studentIdNumber.trim(),
     role: role.trim(),
     passwordHash: hashPassword(password),
     pinHash: pin ? hashPin(pin) : null,

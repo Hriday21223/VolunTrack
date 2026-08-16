@@ -22,8 +22,13 @@ export async function syncCreateLog(log) {
         category: log.category,
         hours: log.hours,
         notes: log.notes,
+        location: log.location || null,
+        orgName: log.orgName || null,
+        orgAddress: log.orgAddress || null,
+        orgPhone: log.orgPhone || null,
         supervisorName: log.supervisorName || null,
         supervisorEmail: log.supervisorEmail || null,
+        supervisorSignature: log.supervisorSignature || null,
       }),
     })
     if (!res.ok) return null
