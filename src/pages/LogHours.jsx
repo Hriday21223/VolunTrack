@@ -105,6 +105,7 @@ export default function LogHours({ editId, onCloseEdit }) {
     if (hours <= 0)             { setError('End time must be after start time.'); return }
     if (!form.supervisorName.trim()) { setError("Please enter your supervisor's name."); return }
     if (!form.supervisorEmail.trim()) { setError("Please enter your supervisor's email."); return }
+    if (!form.proof)                  { setError('Please upload proof — a sign-in sheet, thank-you email, or other supporting document.'); return }
 
     try {
       const payload = { ...form, hours }
@@ -265,7 +266,7 @@ export default function LogHours({ editId, onCloseEdit }) {
 
         <div className="space-y-5">
           <Card>
-            <SectionTitle icon={Upload}>Proof</SectionTitle>
+            <SectionTitle icon={Upload}>Proof *</SectionTitle>
             <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
               Upload a photo of a sign-in sheet, a thank-you email, or any supporting document.
             </p>

@@ -4,7 +4,7 @@ import { fmtDate, fmtHours, hoursBetween } from '@/utils/date.js'
 
 /** Generate a printable PDF report for the user's logs. When `returnBlob` is true, returns the PDF blob instead of downloading. */
 export function exportLogsPDF({ user, logs, returnBlob }) {
-  const doc = new jsPDF({ unit: 'pt' })
+  const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   const total = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
 
   // Header
@@ -22,22 +22,28 @@ export function exportLogsPDF({ user, logs, returnBlob }) {
 
   autoTable(doc, {
     startY: 120,
-    head: [['Date', 'Activity', 'Category', 'Hours', 'Organization', 'Supervisor', 'Signature']],
+    head: [['Date', 'Activity', 'Category', 'Time', 'Hours', 'Location', 'Organization', 'Org Phone', 'Org Address', 'Supervisor', 'Supervisor Email', 'Notes', 'Signature']],
     body: logs.map((l) => [
       fmtDate(l.date),
       l.activity || '',
       l.category || '',
+      l.startTime && l.endTime ? `${l.startTime}–${l.endTime}` : '',
       fmtHours(Number(l.hours) || 0),
+      l.location || '',
       l.orgName || '',
+      l.orgPhone || '',
+      l.orgAddress || '',
       l.supervisorName || '',
+      l.supervisorEmail || '',
+      l.notes || '',
       '', // filled in by didDrawCell below — autoTable can't take an image as cell content directly
     ]),
-    headStyles: { fillColor: [63, 131, 68] },
-    styles: { fontSize: 10, cellPadding: 6, minCellHeight: 28 },
+    headStyles: { fillColor: [63, 131, 68], fontSize: 8 },
+    styles: { fontSize: 7.5, cellPadding: 4, minCellHeight: 28, overflow: 'linebreak' },
     alternateRowStyles: { fillColor: [241, 248, 241] },
-    columnStyles: { 6: { cellWidth: 70 } },
+    columnStyles: { 12: { cellWidth: 65 } },
     didDrawCell: (data) => {
-      if (data.section !== 'body' || data.column.index !== 6) return
+      if (data.section !== 'body' || data.column.index !== 12) return
       const sig = logs[data.row.index]?.supervisorSignature
       if (!sig) return
       try {
