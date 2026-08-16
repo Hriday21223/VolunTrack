@@ -677,8 +677,8 @@ router.get('/public-tasks/:id/logs', limiter, requireDb, requireAuth(), async (r
 // not just log hours on the student's behalf (see log-hours/log-hours-batch above).
 router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows: students } = await query(
-      `SELECT DISTINCT u.id, u.name, u.email
+    const { rows: signups } = await query(
+      `SELECT DISTINCT u.id, u.name, u.email, t.title AS task_title
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
        JOIN users u ON u.id = s.user_id
@@ -686,9 +686,17 @@ router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) =
        ORDER BY u.name`,
       [req.auth.sub],
     )
-    if (students.length === 0) return res.json({ students: [] })
+    if (signups.length === 0) return res.json({ students: [] })
 
-    const studentIds = students.map((s) => s.id)
+    const students = {}
+    const titlesByStudent = {}
+    for (const row of signups) {
+      if (!students[row.id]) students[row.id] = { id: row.id, name: row.name, email: row.email }
+      if (!titlesByStudent[row.id]) titlesByStudent[row.id] = new Set()
+      titlesByStudent[row.id].add(row.task_title)
+    }
+
+    const studentIds = Object.keys(students)
     const { rows: logs } = await query(
       `SELECT id, user_id, date, activity, category, hours, notes, verification_status, created_at
        FROM logs WHERE user_id = ANY($1::text[])
@@ -697,12 +705,15 @@ router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) =
     )
     const logsByStudent = {}
     for (const log of logs) {
+      // Only surface hours logged for a task this host actually created —
+      // a student's other self-logged activities aren't this host's to review.
+      if (!titlesByStudent[log.user_id]?.has(log.activity)) continue
       if (!logsByStudent[log.user_id]) logsByStudent[log.user_id] = []
       logsByStudent[log.user_id].push(log)
     }
 
     return res.json({
-      students: students.map((s) => ({ ...s, logs: logsByStudent[s.id] || [] })),
+      students: studentIds.map((id) => ({ ...students[id], logs: logsByStudent[id] || [] })),
     })
   } catch (error) {
     console.error('my students failed:', error)
@@ -717,14 +728,16 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
 
   try {
     const { rows: relRows } = await query(
-      `SELECT 1 FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+      `SELECT t.title FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
        WHERE t.created_by = $1 AND s.user_id = $2 AND s.status = 'approved'`,
       [req.auth.sub, req.params.studentId],
     )
     if (relRows.length === 0) return res.status(403).json({ error: 'This student is not approved on any of your tasks.' })
+    const myTaskTitles = new Set(relRows.map((r) => r.title))
 
-    const { rows: logRows } = await query('SELECT 1 FROM logs WHERE id = $1 AND user_id = $2', [req.params.logId, req.params.studentId])
+    const { rows: logRows } = await query('SELECT activity FROM logs WHERE id = $1 AND user_id = $2', [req.params.logId, req.params.studentId])
     if (logRows.length === 0) return res.status(404).json({ error: 'Log not found.' })
+    if (!myTaskTitles.has(logRows[0].activity)) return res.status(403).json({ error: 'This log is not for one of your tasks.' })
 
     await query(
       'UPDATE logs SET verification_status = $1, verified_by = $2 WHERE id = $3',
