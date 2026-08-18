@@ -438,5 +438,39 @@ export async function initSchema() {
     `)
   } catch {}
 
+  // Real, shared incident history for the public /status page and the
+  // Admin Incidents tab — replaces a previous per-browser localStorage
+  // implementation. See server/routes/status.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS incidents (
+        id           TEXT PRIMARY KEY,
+        service      TEXT NOT NULL,
+        detail       TEXT,
+        status       TEXT NOT NULL DEFAULT 'detected',
+        source       TEXT NOT NULL DEFAULT 'auto',
+        detected_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        resolved_at  TIMESTAMPTZ
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_incidents_detected ON incidents(detected_at DESC)`) } catch {}
+
+  // Visitors who opt in on /status to get emailed when an incident is
+  // logged. Double opt-in (confirmed starts false) so this can't be used to
+  // spam-subscribe someone else's address; the same token both confirms and
+  // later unsubscribes. See server/routes/status.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS status_subscribers (
+        id           TEXT PRIMARY KEY,
+        email        TEXT NOT NULL UNIQUE,
+        token        TEXT NOT NULL UNIQUE,
+        confirmed    BOOLEAN NOT NULL DEFAULT false,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
   return true
 }
