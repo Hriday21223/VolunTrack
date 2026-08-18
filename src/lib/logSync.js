@@ -29,6 +29,7 @@ export async function syncCreateLog(log) {
         supervisorName: log.supervisorName || null,
         supervisorEmail: log.supervisorEmail || null,
         supervisorSignature: log.supervisorSignature || null,
+        taskId: log.taskId || null,
       }),
     })
     if (!res.ok) return null

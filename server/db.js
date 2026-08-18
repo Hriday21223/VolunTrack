@@ -288,6 +288,12 @@ export async function initSchema() {
   // typed-name version, which was never anything more than a text string.
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_signature TEXT`) } catch {}
 
+  // Links a log to the public task it was earned under, when applicable —
+  // lets a task's host review/verify a student's self-logged hours by actual
+  // task ownership instead of matching free-text activity against task title.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS task_id TEXT REFERENCES public_tasks(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_logs_task_id ON logs(task_id)`) } catch {}
+
   // A school-issued ID card number — distinct from `school_id`, which is an
   // internal FK linking the account to a school record, not something a
   // student would write on a paper verification form.
