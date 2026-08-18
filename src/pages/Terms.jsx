@@ -42,7 +42,7 @@ export default function Terms() {
           </Section>
 
           <Section title="Your Account">
-            <p>You're responsible for the accuracy of the information you provide and for keeping your login credentials confidential. You must be old enough to use this app under the laws of your location, or have permission from a parent, guardian, or supervising school/organization.</p>
+            <p>You're responsible for the accuracy of the information you provide and for keeping your login credentials confidential. You must be old enough to use this app under the laws of your location, or have permission from a parent, guardian, or supervising school/organization. If you are under 13, you must have parental, guardian, or school/teacher consent to create an account.</p>
           </Section>
 
           <Section title="Accurate Logging">

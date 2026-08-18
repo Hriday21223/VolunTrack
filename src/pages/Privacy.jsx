@@ -28,7 +28,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: July 7, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: August 18, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -61,11 +61,15 @@ export default function Privacy() {
           </Section>
 
           <Section title="Third-Party Sharing">
-            <p>We do not sell, trade, or share your personal data with third parties.</p>
+            <p>We do not sell or trade your personal data. We share it only with the schools, organizations, or linked parent accounts you explicitly connect to (for example, via a school code or family link code), and only for the purpose of hour tracking and verification.</p>
+          </Section>
+
+          <Section title="Service Providers">
+            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
           </Section>
 
           <Section title="Children's Privacy">
-            <p>VolunTrack is used by students and volunteers of all ages. We only collect information that is necessary for the service. If you believe a child has provided more information than necessary, please contact us.</p>
+            <p>VolunTrack is used by students and volunteers of all ages. We only collect information that is necessary for the service. If you are under 13, you must have parental, guardian, or school/teacher consent to create an account. If you believe a child has provided more information than necessary, please contact us.</p>
           </Section>
 
           <Section title="Changes to This Policy">
