@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2 } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -49,6 +50,7 @@ export default function SchoolDashboard() {
   const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '' })
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffErr, setStaffErr] = useState('')
+  const [invoices, setInvoices] = useState([])
 
   useEffect(() => {
     if (!user) return
@@ -150,6 +152,11 @@ export default function SchoolDashboard() {
         if (staffRes.ok) {
           const data = await staffRes.json()
           setStaff(data.staff || [])
+        }
+        const invoiceRes = await fetch(`${apiUrl}/invoices/mine`, { headers })
+        if (invoiceRes.ok) {
+          const data = await invoiceRes.json()
+          setInvoices(data.invoices || [])
         }
       }
     } catch (e) {
@@ -419,6 +426,49 @@ export default function SchoolDashboard() {
           }
           return null
         })()}
+        {isSchoolAdmin && invoices.length > 0 && (
+          <Card>
+            <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" /> Invoices</h3>
+            <div className="space-y-2">
+              {invoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between gap-3 text-sm p-3 rounded-xl bg-earth-500/5">
+                  <div className="min-w-0">
+                    <p className="font-medium">{inv.invoice_number} <span className="text-earth-500 font-normal">${Number(inv.amount).toFixed(2)}</span></p>
+                    <p className="text-xs text-earth-500 mt-0.5">
+                      {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      inv.status === 'paid'
+                        ? 'bg-emerald-500/20 text-emerald-600'
+                        : inv.status === 'void'
+                        ? 'bg-earth-500/20 text-earth-500'
+                        : 'bg-amber-500/20 text-amber-600'
+                    }`}>
+                      {inv.status === 'paid' ? 'Paid' : inv.status === 'void' ? 'Void' : 'Sent'}
+                    </span>
+                    <button
+                      onClick={() => generateInvoicePDF({
+                        invoiceNumber: inv.invoice_number,
+                        entityName: schoolInfo?.name,
+                        amount: inv.amount,
+                        billingPeriod: inv.billing_period,
+                        description: inv.description,
+                        dueDate: inv.due_date,
+                        createdAt: inv.created_at,
+                      })}
+                      className="p-1.5 text-earth-400 hover:text-earth-300"
+                      title="Download PDF"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
         {tab === 'chat' && isSchoolAdmin && (
           <div className="space-y-4">
             <Card>

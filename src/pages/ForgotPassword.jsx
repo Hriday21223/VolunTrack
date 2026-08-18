@@ -138,7 +138,7 @@ export default function ForgotPassword() {
                 </div>
               )}
 
-              <Link to="/reset-password" state={{ email, code }} className="btn-primary mt-6 inline-flex w-full justify-center animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+              <Link to="/reset-password" state={{ email }} className="btn-primary mt-6 inline-flex w-full justify-center animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                 Continue to reset <ArrowRight className="w-4 h-4" />
               </Link>
             </div>

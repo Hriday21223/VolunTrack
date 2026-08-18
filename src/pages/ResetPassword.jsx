@@ -10,7 +10,10 @@ export default function ResetPassword() {
   const location = useLocation()
   const nav = useNavigate()
   const [email, setEmail] = useState(location.state?.email || '')
-  const [code, setCode] = useState(location.state?.code || '')
+  // Deliberately not pre-filled from anywhere, even when the code was shown
+  // on-screen as a delivery fallback — the user must read and type it in
+  // themselves rather than have it silently carried over.
+  const [code, setCode] = useState('')
   const [pw1, setPw1] = useState('')
   const [pw2, setPw2] = useState('')
   const [done, setDone] = useState(false)

@@ -30,7 +30,6 @@ export default function ResetPin() {
     try {
       const generated = await requestPinReset(email)
       setSentCode(generated)
-      setCode(generated)
 
       // If the backend isn't reachable at all (e.g. static GitHub Pages host),
       // skip the email + dev-code round trips and just show the code locally.
@@ -48,7 +47,6 @@ export default function ResetPin() {
       if (!result.ok && result.missingVars?.length) {
         const dev = await fetchDevRecoveryCode(email)
         if (dev.ok) {
-          setCode(dev.code)
           setSentCode(dev.code)
           finalResult = { ok: true, viaDev: true }
         }

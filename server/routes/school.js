@@ -9,9 +9,14 @@ import { escapeHtml } from '../html.js'
 
 const router = express.Router()
 
+// Shared across every route in this file, including reads (a single
+// dashboard load fires several parallel GETs: pdfs, tasks, info,
+// notifications, students, staff, invoices) — needs headroom above what a
+// write-focused limiter would use, or ordinary browsing exhausts the budget
+// before an admin gets to an action like sending a payment notice.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
@@ -903,6 +908,10 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now() WHERE id = $3',
         [status, notes || null, req.params.id],
       )
+      await query(
+        `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, 'status_paid', $3)`,
+        [uid('pev'), req.params.id, notes || null],
+      )
 
       const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
       if (rows[0]?.contact_email) {
@@ -918,6 +927,10 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
       await query(
         'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = NULL WHERE id = $3',
         [status, notes || null, req.params.id],
+      )
+      await query(
+        `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, $3, $4)`,
+        [uid('pev'), req.params.id, status === 'unpaid' ? 'status_unpaid' : 'status_rejected', notes || null],
       )
     }
 

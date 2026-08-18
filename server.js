@@ -14,6 +14,8 @@ import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
 import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
 import reviewsRoutes from './server/routes/reviews.js'
+import invoicesRoutes from './server/routes/invoices.js'
+import settingsRoutes from './server/routes/settings.js'
 import { escapeHtml } from './server/html.js'
 
 dotenv.config()
@@ -23,10 +25,15 @@ const port = process.env.PORT || 10000
 
 
 
-// General rate limiting for API endpoints
+// General rate limiting for API endpoints. Applied globally ahead of every
+// route (see app.use(apiLimiter) below), so it's a blanket cap shared across
+// all /api/* traffic from one IP — a single dashboard load already fires
+// several parallel fetches, so this needs real headroom above the per-feature
+// limiters (emailLimiter, and the per-router `limiter`s) to avoid throttling
+// normal interactive use, especially on a shared/NAT IP.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per windowMs
+  max: 600, // 600 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
@@ -62,13 +69,16 @@ app.use(apiLimiter)
 app.use(authenticate)
 
 // Server-backed accounts & (later) school dashboards.
-app.use('/api/auth', apiLimiter, authRoutes)
-app.use('/api/school', apiLimiter, schoolRoutes)
-app.use('/api/organization', apiLimiter, organizationRoutes)
-app.use('/api/logs', apiLimiter, logsRoutes)
-app.use('/api/parent', apiLimiter, parentRoutes)
-app.use('/api/contact', apiLimiter, contactRoutes)
-app.use('/api/reviews', apiLimiter, reviewsRoutes)
+// apiLimiter is already applied globally above, ahead of every route.
+app.use('/api/auth', authRoutes)
+app.use('/api/school', schoolRoutes)
+app.use('/api/organization', organizationRoutes)
+app.use('/api/logs', logsRoutes)
+app.use('/api/parent', parentRoutes)
+app.use('/api/contact', contactRoutes)
+app.use('/api/reviews', reviewsRoutes)
+app.use('/api/invoices', invoicesRoutes)
+app.use('/api/settings', settingsRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the

@@ -377,5 +377,60 @@ export async function initSchema() {
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS role TEXT`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT false`) } catch {}
 
+  // Admin-issued invoices for schools/organizations, plus a unified
+  // payment_events timeline (invoice lifecycle + the existing manual
+  // paid/unpaid/rejected status changes) so the admin dashboard can show one
+  // history per entity. See server/routes/invoices.js.
+  try { await query(`CREATE SEQUENCE IF NOT EXISTS invoice_number_seq`) } catch {}
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id              TEXT PRIMARY KEY,
+        invoice_number  TEXT NOT NULL UNIQUE,
+        entity_type     TEXT NOT NULL CHECK (entity_type IN ('school','organization')),
+        entity_id       TEXT NOT NULL,
+        amount          NUMERIC(10,2) NOT NULL,
+        billing_period  TEXT CHECK (billing_period IN ('monthly','yearly','one_time')),
+        description     TEXT,
+        due_date        DATE,
+        status          TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent','paid','void')),
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        paid_at         TIMESTAMPTZ
+      )
+    `)
+  } catch {}
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS payment_events (
+        id          TEXT PRIMARY KEY,
+        entity_type TEXT NOT NULL CHECK (entity_type IN ('school','organization')),
+        entity_id   TEXT NOT NULL,
+        event_type  TEXT NOT NULL CHECK (event_type IN (
+          'invoice_sent','invoice_paid','invoice_void',
+          'status_paid','status_unpaid','status_rejected'
+        )),
+        amount      NUMERIC(10,2),
+        notes       TEXT,
+        invoice_id  TEXT REFERENCES invoices(id) ON DELETE SET NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_payment_events_entity ON payment_events(entity_type, entity_id, created_at DESC)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_invoices_entity ON invoices(entity_type, entity_id, created_at DESC)`) } catch {}
+
+  // Small admin-editable key/value store for site-wide content, e.g. the
+  // "office hours" block shown on the public Contact page. See
+  // server/routes/settings.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        key         TEXT PRIMARY KEY,
+        value       TEXT NOT NULL,
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
   return true
 }

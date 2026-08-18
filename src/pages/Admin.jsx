@@ -1,12 +1,13 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { runAgent, updateIncidentStatus, getAgentLog, logAgentAction } from '@/lib/agent.js'
+import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -101,6 +102,19 @@ export default function Admin() {
   const [orgDueDateDraft, setOrgDueDateDraft] = useState('')
   const [savingOrgDueDate, setSavingOrgDueDate] = useState(false)
   const [notifySchoolId, setNotifySchoolId] = useState(null) // null = all schools, string = specific school
+  const [invoiceModal, setInvoiceModal] = useState(null) // { entityType, entityId, entityName }
+  const [invoiceAmountDraft, setInvoiceAmountDraft] = useState('')
+  const [invoiceBillingPeriodDraft, setInvoiceBillingPeriodDraft] = useState('monthly')
+  const [invoiceDescriptionDraft, setInvoiceDescriptionDraft] = useState('')
+  const [invoiceDueDateDraft, setInvoiceDueDateDraft] = useState('')
+  const [sendingInvoice, setSendingInvoice] = useState(false)
+  const [historyModal, setHistoryModal] = useState(null) // { entityType, entityId, entityName }
+  const [historyEvents, setHistoryEvents] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [invoiceActionId, setInvoiceActionId] = useState(null)
+  const [officeHoursDraft, setOfficeHoursDraft] = useState({ days: '', hours: '', note: '' })
+  const [loadingOfficeHours, setLoadingOfficeHours] = useState(false)
+  const [savingOfficeHours, setSavingOfficeHours] = useState(false)
   const [invites, setInvites] = useState([])
   const [loadingInvites, setLoadingInvites] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -399,6 +413,104 @@ export default function Admin() {
     } catch { setToastMessage('Failed to send notification'); setToast(true) }
   }
 
+  const openInvoiceModal = (entityType, entity) => {
+    const numericAmount = (entity.price_amount || '').replace(/[^0-9.]/g, '')
+    setInvoiceModal({ entityType, entityId: entity.id, entityName: entity.name })
+    setInvoiceAmountDraft(numericAmount)
+    setInvoiceBillingPeriodDraft(entity.price_period || 'monthly')
+    setInvoiceDescriptionDraft('')
+    setInvoiceDueDateDraft(entity.payment_due_date ? String(entity.payment_due_date).slice(0, 10) : '')
+  }
+
+  const sendInvoice = async () => {
+    if (!invoiceModal || !invoiceAmountDraft.trim()) return
+    setSendingInvoice(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/invoices/admin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          entityType: invoiceModal.entityType,
+          entityId: invoiceModal.entityId,
+          amount: invoiceAmountDraft.trim(),
+          billingPeriod: invoiceBillingPeriodDraft,
+          description: invoiceDescriptionDraft.trim() || undefined,
+          dueDate: invoiceDueDateDraft || undefined,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft('')
+      setToastMessage('Invoice sent'); setToast(true)
+    } catch { setToastMessage('Failed to send invoice'); setToast(true) } finally { setSendingInvoice(false) }
+  }
+
+  const openHistory = async (entityType, entity) => {
+    setHistoryModal({ entityType, entityId: entity.id, entityName: entity.name })
+    setLoadingHistory(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/invoices/admin/${entityType}/${entity.id}/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = res.ok ? await res.json() : { events: [] }
+      setHistoryEvents(data.events || [])
+    } catch { setHistoryEvents([]) } finally { setLoadingHistory(false) }
+  }
+
+  const resolveInvoice = async (invoiceId, status) => {
+    setInvoiceActionId(invoiceId)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/invoices/admin/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      if (historyModal) await openHistory(historyModal.entityType, { id: historyModal.entityId, name: historyModal.entityName })
+      if (historyModal?.entityType === 'school') loadSchools(); else loadOrganizations()
+      setToastMessage(status === 'paid' ? 'Invoice marked paid' : 'Invoice voided'); setToast(true)
+    } catch { setToastMessage('Failed to update invoice'); setToast(true) } finally { setInvoiceActionId(null) }
+  }
+
+  const downloadInvoicePdf = (event) => {
+    generateInvoicePDF({
+      invoiceNumber: event.invoice_number,
+      entityName: historyModal?.entityName,
+      amount: event.amount,
+      billingPeriod: event.billing_period,
+      description: event.description,
+      dueDate: event.due_date,
+      createdAt: event.created_at,
+    })
+  }
+
+  const loadOfficeHours = useCallback(async () => {
+    setLoadingOfficeHours(true)
+    try {
+      const res = await fetch(`${apiUrl}/settings/office-hours`)
+      if (res.ok) setOfficeHoursDraft(await res.json())
+    } catch {} finally {
+      setLoadingOfficeHours(false)
+    }
+  }, [])
+
+  const saveOfficeHours = async () => {
+    if (!officeHoursDraft.days.trim() || !officeHoursDraft.hours.trim()) return
+    setSavingOfficeHours(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/office-hours`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(officeHoursDraft),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setToastMessage('Office hours updated'); setToast(true)
+    } catch { setToastMessage('Failed to update office hours'); setToast(true) } finally { setSavingOfficeHours(false) }
+  }
+
   const loadThreads = useCallback(async () => {
     setLoadingThreads(true)
     try {
@@ -562,8 +674,8 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : 'Manage schools'}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Public contact page content' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -586,6 +698,9 @@ export default function Admin() {
             {incidents.length > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{incidents.length > 9 ? '9+' : incidents.length}</span>
             )}
+          </button>
+          <button onClick={() => { setTab('settings'); loadOfficeHours() }} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Wrench className="w-3.5 h-3.5 mr-1" /> Settings
           </button>
         </div>
       }
@@ -771,6 +886,12 @@ export default function Admin() {
                     <button onClick={() => { setNotifySchoolId(s.id); setNotifyAmount(s.price_amount || ''); setNotifyBillingPeriod(s.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this school">
                       <Bell className="w-4 h-4" />
                     </button>
+                    <button onClick={() => openInvoiceModal('school', s)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
+                      <Receipt className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => openHistory('school', s)} className="text-earth-400 hover:text-earth-300 p-2" title="Payment history">
+                      <History className="w-4 h-4" />
+                    </button>
                     <button onClick={() => deleteSchool(s.id, s.name)} className="text-red-400 hover:text-red-300 p-2" title="Delete school">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -900,6 +1021,12 @@ export default function Admin() {
                     <button onClick={() => { setOrgDueDateModal(org.id); setOrgDueDateDraft(org.payment_due_date ? String(org.payment_due_date).slice(0, 10) : '') }} className={`p-2 ${org.payment_due_date ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's payment due date">
                       <Calendar className="w-4 h-4" />
                     </button>
+                    <button onClick={() => openInvoiceModal('organization', org)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
+                      <Receipt className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => openHistory('organization', org)} className="text-earth-400 hover:text-earth-300 p-2" title="Payment history">
+                      <History className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </Card>
@@ -992,6 +1119,52 @@ export default function Admin() {
             )}
           </Card>
         </>
+      ) : tab === 'settings' ? (
+        <Card>
+          <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-brand-600" /> Office hours
+          </h3>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">Shown on the public Contact page.</p>
+          {loadingOfficeHours ? (
+            <p className="text-sm text-earth-400 py-4">Loading…</p>
+          ) : (
+            <div className="space-y-3 max-w-sm">
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Days</label>
+                <input
+                  type="text"
+                  value={officeHoursDraft.days}
+                  onChange={(e) => setOfficeHoursDraft({ ...officeHoursDraft, days: e.target.value })}
+                  placeholder="Monday – Friday"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Hours</label>
+                <input
+                  type="text"
+                  value={officeHoursDraft.hours}
+                  onChange={(e) => setOfficeHoursDraft({ ...officeHoursDraft, hours: e.target.value })}
+                  placeholder="9:00 AM – 5:00 PM (CT)"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Note</label>
+                <input
+                  type="text"
+                  value={officeHoursDraft.note}
+                  onChange={(e) => setOfficeHoursDraft({ ...officeHoursDraft, note: e.target.value })}
+                  placeholder="Replies may take up to 48 hours."
+                  className="input mt-1"
+                />
+              </div>
+              <button onClick={saveOfficeHours} disabled={savingOfficeHours} className="btn-primary btn-sm">
+                {savingOfficeHours ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          )}
+        </Card>
       ) : loadingThreads ? (
         <Card><p className="text-center text-earth-400 py-8">Loading messages…</p></Card>
       ) : threads.length === 0 ? (
@@ -1297,6 +1470,107 @@ export default function Admin() {
                 <button onClick={() => { setShowNotifyModal(false); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={sendNotify} className="btn-primary flex-1" disabled={!notifyMsg.trim()}>Send</button>
               </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {invoiceModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setInvoiceModal(null)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2"><Receipt className="w-4 h-4 text-brand-400" /> Send invoice</h3>
+            <p className="text-sm text-earth-400 mb-4">To {invoiceModal.entityName}. Emailed immediately and added to their payment history.</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Amount</label>
+                  <input
+                    type="number" step="0.01" min="0" className="input"
+                    placeholder="e.g. 200"
+                    value={invoiceAmountDraft} onChange={(e) => setInvoiceAmountDraft(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Billing period</label>
+                  <select className="input" value={invoiceBillingPeriodDraft} onChange={(e) => setInvoiceBillingPeriodDraft(e.target.value)}>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="one_time">One-time</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="label">Description (optional)</label>
+                <textarea
+                  className="input" rows={2}
+                  placeholder="e.g. VolunTrack subscription — fall semester"
+                  value={invoiceDescriptionDraft} onChange={(e) => setInvoiceDescriptionDraft(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Due date (optional)</label>
+                <input type="date" className="input" value={invoiceDueDateDraft} onChange={(e) => setInvoiceDueDateDraft(e.target.value)} />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setInvoiceModal(null)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={sendInvoice} className="btn-primary flex-1" disabled={sendingInvoice || !invoiceAmountDraft.trim()}>
+                  {sendingInvoice ? 'Sending…' : 'Send invoice'}
+                </button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {historyModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setHistoryModal(null)}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2"><History className="w-4 h-4 text-earth-400" /> Payment history</h3>
+            <p className="text-sm text-earth-400 mb-4">{historyModal.entityName}</p>
+            {loadingHistory ? (
+              <p className="text-sm text-earth-400 py-4 text-center">Loading…</p>
+            ) : historyEvents.length === 0 ? (
+              <p className="text-sm text-earth-400 py-4 text-center">No invoices or payment changes yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {historyEvents.map((ev) => (
+                  <div key={ev.id} className="p-2.5 rounded-lg bg-earth-500/5 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {ev.event_type === 'invoice_sent' && `Invoice ${ev.invoice_number} sent`}
+                        {ev.event_type === 'invoice_paid' && `Invoice ${ev.invoice_number} paid`}
+                        {ev.event_type === 'invoice_void' && `Invoice ${ev.invoice_number} voided`}
+                        {ev.event_type === 'status_paid' && 'Marked paid'}
+                        {ev.event_type === 'status_unpaid' && 'Marked unpaid'}
+                        {ev.event_type === 'status_rejected' && 'Payment rejected'}
+                      </span>
+                      {ev.amount != null && <span className="text-earth-400">${Number(ev.amount).toFixed(2)}</span>}
+                    </div>
+                    <p className="text-xs text-earth-400 mt-0.5">{new Date(ev.created_at).toLocaleString()}</p>
+                    {ev.notes && <p className="text-xs text-earth-500 mt-1">{ev.notes}</p>}
+                    {ev.event_type === 'invoice_sent' && (
+                      <div className="flex gap-1 mt-2">
+                        <button onClick={() => downloadInvoicePdf(ev)} className="btn-sm btn-ghost">
+                          <Download className="w-3.5 h-3.5 mr-1" /> PDF
+                        </button>
+                        {ev.invoice_status === 'sent' && (
+                          <>
+                            <button onClick={() => resolveInvoice(ev.invoice_id, 'paid')} disabled={invoiceActionId === ev.invoice_id} className="btn-sm btn-primary">
+                              Mark paid
+                            </button>
+                            <button onClick={() => resolveInvoice(ev.invoice_id, 'void')} disabled={invoiceActionId === ev.invoice_id} className="btn-sm btn-ghost text-red-400">
+                              <Ban className="w-3.5 h-3.5 mr-1" /> Void
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setHistoryModal(null)} className="btn-ghost flex-1">Close</button>
             </div>
           </Card>
         </div>

@@ -2,14 +2,40 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { fmtDate, fmtHours, hoursBetween } from '@/utils/date.js'
 
+// The VolunTrack logo is fetched once and cached as a data URL so every PDF
+// (service log, invoice) can stamp it in the header — keep this on every
+// export, never drop it even when reworking the header layout.
+let logoDataUrlPromise = null
+function getLogoDataUrl() {
+  if (!logoDataUrlPromise) {
+    logoDataUrlPromise = fetch(`${import.meta.env.BASE_URL}logo.png`)
+      .then((res) => res.blob())
+      .then((blob) => new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      }))
+      .catch(() => null)
+  }
+  return logoDataUrlPromise
+}
+
+const LOGO_W = 34
+const LOGO_H = 30 // matches logo.png's 384x338 aspect ratio
+
 /** Generate a printable PDF report for the user's logs. When `returnBlob` is true, returns the PDF blob instead of downloading. */
-export function exportLogsPDF({ user, logs, returnBlob }) {
+export async function exportLogsPDF({ user, logs, returnBlob }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   const total = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
+  const logo = await getLogoDataUrl()
 
   // Header
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', 40, 20, LOGO_W, LOGO_H) } catch { /* malformed data URL — skip logo, keep header text */ }
+  }
   doc.setFont('helvetica', 'bold').setFontSize(20)
-  doc.text('Volunteer Service Log', 40, 50)
+  doc.text('Volunteer Service Log', logo ? 40 + LOGO_W + 10 : 40, 50)
   doc.setFont('helvetica', 'normal').setFontSize(11)
   doc.setTextColor(90)
   doc.text(user?.name || 'Volunteer', 40, 70)
@@ -60,6 +86,56 @@ export function exportLogsPDF({ user, logs, returnBlob }) {
     return doc.output('blob')
   }
   doc.save('volunteer-log.pdf')
+}
+
+const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
+
+/** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
+export async function generateInvoicePDF({ invoiceNumber, entityName, amount, billingPeriod, description, dueDate, createdAt, returnBlob }) {
+  const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
+  const logo = await getLogoDataUrl()
+
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', 40, 20, LOGO_W, LOGO_H) } catch { /* malformed data URL — skip logo, keep header text */ }
+  }
+  doc.setFont('helvetica', 'bold').setFontSize(20)
+  doc.text('VolunTrack', logo ? 40 + LOGO_W + 10 : 40, 50)
+  doc.setFont('helvetica', 'normal').setFontSize(11)
+  doc.setTextColor(90)
+  doc.text('INVOICE', 40, 70)
+  doc.setTextColor(0)
+
+  doc.setFont('helvetica', 'bold').setFontSize(13)
+  doc.text(invoiceNumber, 400, 50, { align: 'left' })
+  doc.setFont('helvetica', 'normal').setFontSize(10)
+  doc.setTextColor(90)
+  doc.text(`Issued ${createdAt ? new Date(createdAt).toLocaleDateString() : new Date().toLocaleDateString()}`, 400, 66)
+  if (dueDate) doc.text(`Due ${new Date(dueDate).toLocaleDateString()}`, 400, 80)
+  doc.setTextColor(0)
+
+  doc.setFont('helvetica', 'bold').setFontSize(12)
+  doc.text('Bill to', 40, 110)
+  doc.setFont('helvetica', 'normal').setFontSize(11)
+  doc.text(entityName || '', 40, 126)
+
+  const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
+  autoTable(doc, {
+    startY: 150,
+    head: [['Description', 'Amount']],
+    body: [[description || 'VolunTrack subscription', `$${Number(amount).toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`]],
+    headStyles: { fillColor: [63, 131, 68] },
+    styles: { fontSize: 10, cellPadding: 8 },
+    columnStyles: { 1: { halign: 'right' } },
+  })
+
+  const finalY = doc.lastAutoTable.finalY + 24
+  doc.setFont('helvetica', 'bold').setFontSize(12)
+  doc.text(`Total: $${Number(amount).toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`, 400, finalY, { align: 'left' })
+
+  if (returnBlob) {
+    return doc.output('blob')
+  }
+  doc.save(`${invoiceNumber}.pdf`)
 }
 
 /** Build a CSV string from the user's logs. */
@@ -117,6 +193,7 @@ export function printCertificate({ user, totalHours, goalReached }) {
     </style></head>
     <body>
       <div class="frame">
+        <img src="${window.location.origin}${import.meta.env.BASE_URL}logo.png" alt="VolunTrack" style="width:64px;height:auto;margin:0 auto 12px;display:block;" />
         <div class="sub">Certificate of Service</div>
         <h1>VolunTrack</h1>
         <div class="body">This certifies that</div>

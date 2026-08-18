@@ -8,9 +8,11 @@ import { sendEmail } from '../email.js'
 
 const router = express.Router()
 
+// Shared across every route in this file, including reads — see the same
+// note in school.js's `limiter`.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
