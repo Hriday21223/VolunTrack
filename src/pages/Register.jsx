@@ -43,6 +43,7 @@ export default function Register() {
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [agreed, setAgreed] = useState(false)
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
@@ -59,6 +60,7 @@ export default function Register() {
     setErr('')
     if (form.password.length < 6) { setErr('Password must be at least 6 characters.'); return }
     if (form.pin && !/^[0-9]{4}$/.test(form.pin)) { setErr('PIN must be exactly 4 digits.'); return }
+    if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     setBusy(true)
     try {
       const user = await register({ ...form, role })
@@ -153,9 +155,24 @@ export default function Register() {
               </>
             )}
 
+            <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+              <input
+                type="checkbox"
+                className="mt-0.5 w-4 h-4 rounded border-earth-300 dark:border-earth-700 text-brand-600 focus:ring-brand-500"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+              />
+              <span>
+                I agree to the{' '}
+                <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Terms of Service</Link>
+                {' '}and{' '}
+                <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Privacy Policy</Link>.
+              </span>
+            </label>
+
             {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
 
-            <button type="submit" className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '800ms' }} disabled={busy}>
+            <button type="submit" className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '800ms' }} disabled={busy || !agreed}>
               {busy ? 'Creating account…' : <>Create account <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>

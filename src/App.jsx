@@ -20,6 +20,8 @@ const ResetPassword = lazy(() => import('@/pages/ResetPassword.jsx'))
 const ResetPin = lazy(() => import('@/pages/ResetPin.jsx'))
 const SyncLogin = lazy(() => import('@/pages/SyncLogin.jsx'))
 const Contact = lazy(() => import('@/pages/Contact.jsx'))
+const Terms = lazy(() => import('@/pages/Terms.jsx'))
+const Privacy = lazy(() => import('@/pages/Privacy.jsx'))
 const Dashboard = lazy(() => import('@/pages/Dashboard.jsx'))
 const LogHours = lazy(() => import('@/pages/LogHours.jsx'))
 const CalendarView = lazy(() => import('@/pages/CalendarView.jsx'))
@@ -95,6 +97,8 @@ function Shell() {
           <Route path="/organization/register" element={<OrganizationRegister />} />
           <Route path="/about"           element={<About />} />
           <Route path="/contact"         element={<Contact />} />
+          <Route path="/terms"           element={<Terms />} />
+          <Route path="/privacy"         element={<Privacy />} />
           <Route path="/status"         element={<Status />} />
           <Route path="/verify-hours"   element={<VerifyHours />} />
 

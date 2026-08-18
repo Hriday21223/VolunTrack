@@ -24,6 +24,7 @@ export default function SchoolRegister() {
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
   const [inviteLoaded, setInviteLoaded] = useState(!inviteToken)
+  const [agreed, setAgreed] = useState(false)
 
   useEffect(() => {
     if (!inviteToken) return
@@ -48,6 +49,7 @@ export default function SchoolRegister() {
     setErr('')
     if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
     if (!form.pin || !/^[a-zA-Z]+-?\d{3,5}$/.test(form.pin)) { setErr('School code must be letters followed by digits (e.g. cisd-12345).'); return }
+    if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     setBusy(true)
     try {
       const res = await fetch(`${apiUrl}/school/register`, {
@@ -116,9 +118,24 @@ export default function SchoolRegister() {
               <p className="text-xs text-earth-400 mt-1">Students will use this code to link their accounts.</p>
             </div>
 
+            <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300">
+              <input
+                type="checkbox"
+                className="mt-0.5 w-4 h-4 rounded border-earth-300 dark:border-earth-700 text-brand-600 focus:ring-brand-500"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+              />
+              <span>
+                I agree to the{' '}
+                <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Terms of Service</Link>
+                {' '}and{' '}
+                <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Privacy Policy</Link>.
+              </span>
+            </label>
+
             {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{err}</div>}
 
-            <button type="submit" className="btn-primary w-full" disabled={busy}>
+            <button type="submit" className="btn-primary w-full" disabled={busy || !agreed}>
               {busy ? 'Registering…' : <>Register school <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
