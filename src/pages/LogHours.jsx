@@ -48,8 +48,11 @@ function pickComboSimple(openers, closers) {
   return `${opener} — ${closer}`
 }
 
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
 const blank = () => ({
   activity: '',
+  taskId: '',
   category: ACTIVITY_CATEGORIES[0],
   date: format(new Date(), 'yyyy-MM-dd'),
   startTime: '',
@@ -77,6 +80,16 @@ export default function LogHours({ editId, onCloseEdit }) {
   const [form, setForm] = useState(blank())
   const [toast, setToast] = useState(false)
   const [error, setError] = useState('')
+  const [myTasks, setMyTasks] = useState([])
+
+  useEffect(() => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    fetch(`${apiUrl}/school/public-tasks/signups/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : { signups: [] }))
+      .then((d) => setMyTasks((d.signups || []).filter((s) => s.signup_status === 'approved')))
+      .catch(() => setMyTasks([]))
+  }, [])
   // Re-rolled per log entry (editId/verificationToken), not on every
   // render — the picker itself doesn't read these, it just gates when a
   // fresh random note should be picked.
@@ -167,6 +180,20 @@ export default function LogHours({ editId, onCloseEdit }) {
                 </div>
               </div>
             </div>
+            {myTasks.length > 0 && (
+              <div className="mt-4">
+                <label className="label">Link to a task you're approved for (optional)</label>
+                <select className="input" value={form.taskId} onChange={onChange('taskId')}>
+                  <option value="">Not linked to a task</option>
+                  {myTasks.map((t) => (
+                    <option key={t.id} value={t.id}>{t.title}{t.date ? ` — ${t.date}` : ''}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-earth-400 mt-1">
+                  Linking lets the task's organizer review and verify this entry directly.
+                </p>
+              </div>
+            )}
           </Card>
 
           <Card>

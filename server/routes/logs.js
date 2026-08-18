@@ -24,7 +24,7 @@ function requireDb(_req, res, next) {
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature } = req.body
+  const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature, taskId } = req.body
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
@@ -36,11 +36,21 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
     return res.status(400).json({ error: 'Signature image is too large.' })
   }
   try {
+    // Only allow linking to a task the caller is actually an approved
+    // volunteer on — this is what the task's host later relies on to review
+    // the log, so it must be a real ownership check, not caller-supplied trust.
+    if (taskId) {
+      const { rows: signupRows } = await query(
+        "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+        [taskId, req.auth.sub],
+      )
+      if (signupRows.length === 0) return res.status(400).json({ error: 'You must be an approved volunteer on this task to link it.' })
+    }
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, task_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -55,9 +65,16 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Log not found.' })
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
 
-    const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature } = req.body
+    const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature, taskId } = req.body
     if (supervisorSignature && supervisorSignature.length > 200_000) {
       return res.status(400).json({ error: 'Signature image is too large.' })
+    }
+    if (taskId) {
+      const { rows: signupRows } = await query(
+        "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+        [taskId, req.auth.sub],
+      )
+      if (signupRows.length === 0) return res.status(400).json({ error: 'You must be an approved volunteer on this task to link it.' })
     }
     await query(
       `UPDATE logs SET
@@ -72,9 +89,10 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          org_phone = COALESCE($9, org_phone),
          supervisor_name = COALESCE($10, supervisor_name),
          supervisor_email = COALESCE($11, supervisor_email),
-         supervisor_signature = COALESCE($12, supervisor_signature)
-       WHERE id = $13`,
-      [date || null, activity || null, category || null, hours != null ? Number(hours) : null, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, req.params.id],
+         supervisor_signature = COALESCE($12, supervisor_signature),
+         task_id = COALESCE($13, task_id)
+       WHERE id = $14`,
+      [date || null, activity || null, category || null, hours != null ? Number(hours) : null, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, req.params.id],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -111,7 +129,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
     }
 
     const { rows } = await query(
-      `SELECT id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, created_at
+      `SELECT id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, task_id, created_at
        FROM logs WHERE user_id = $1 ORDER BY date DESC, created_at DESC`,
       [userId],
     )
