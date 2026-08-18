@@ -677,18 +677,18 @@ export default function Admin() {
       title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : 'Manage schools'}
       subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Public contact page content' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
             <MessageSquare className="w-3.5 h-3.5 mr-1" /> Inbox
           </button>
           <button onClick={() => setTab('reviews')} className={`btn-sm ${tab === 'reviews' ? 'btn-primary' : 'btn-ghost'}`}>
             <Star className="w-3.5 h-3.5 mr-1" /> Reviews
           </button>
-          <button data-tour="admin-schools" onClick={() => { setTab('schools'); loadSchools() }} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
-            <School className="w-3.5 h-3.5 mr-1" /> Schools
-          </button>
           <button onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
+          </button>
+          <button data-tour="admin-schools" onClick={() => { setTab('schools'); loadSchools() }} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
+            <School className="w-3.5 h-3.5 mr-1" /> Schools
           </button>
           <button onClick={() => { setTab('organizations'); loadOrganizations() }} className={`btn-sm ${tab === 'organizations' ? 'btn-primary' : 'btn-ghost'}`}>
             <Building2 className="w-3.5 h-3.5 mr-1" /> Organizations
