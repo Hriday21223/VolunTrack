@@ -36,7 +36,7 @@ export default function Reports() {
   const submitToSchool = async () => {
     setSubmitting(true)
     try {
-      const blob = exportLogsPDF({ user, logs: filtered, returnBlob: true })
+      const blob = await exportLogsPDF({ user, logs: filtered, returnBlob: true })
       const reader = new FileReader()
       reader.onload = async () => {
         const base64 = reader.result.split(',')[1]

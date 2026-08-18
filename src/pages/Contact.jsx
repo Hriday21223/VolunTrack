@@ -17,6 +17,19 @@ export default function Contact() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [sendErr, setSendErr] = useState('')
+  const [officeHours, setOfficeHours] = useState({
+    days: 'Monday – Friday',
+    hours: '9:00 AM – 5:00 PM (CT)',
+    note: 'Replies may take up to 48 hours.',
+  })
+
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    fetch(`${apiUrl}/settings/office-hours`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data) setOfficeHours(data) })
+      .catch(() => {})
+  }, [])
 
   const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
@@ -131,9 +144,9 @@ export default function Contact() {
                 <MessageSquare className="w-4 h-4 text-brand-600" /> Office hours
               </h3>
               <div className="text-sm text-earth-700 dark:text-earth-200">
-                Monday – Friday<br />9:00 AM – 5:00 PM (ET)
+                {officeHours.days}<br />{officeHours.hours}
               </div>
-              <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">Replies may take up to 48 hours.</p>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{officeHours.note}</p>
             </Card>
 
             <Card>
