@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer'
+import { escapeHtml } from './html.js'
 
 // Gmail SMTP (already used for password/PIN recovery — see server.js) can
 // deliver to any address with no domain-verification step, unlike Resend's
@@ -41,6 +42,30 @@ export function emailFooterHtml() {
 
 export function emailFooterText() {
   return `This is an automated message — please don't reply to this email. Contact us if you run into any problems: ${contactLink()}`
+}
+
+const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
+
+// Builds the HTML body for a payment-request email: recipient name, optional
+// amount owed, the due date on file (if any), free-text payment instructions
+// from the admin, and (for schools, which have a self-service confirmation
+// flow) a link back to the dashboard where they submit their bank
+// confirmation number. Shared by school and organization notify routes.
+export function paymentNoticeHtml({ recipientName, entityLabel = 'school', amount, billingPeriod, dueDate, message, includeDashboardLink = true }) {
+  const dashboardLink = `${process.env.FRONTEND_URL || ''}/school/dashboard`
+  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
+  const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
+  return [
+    `<p>Hi ${escapeHtml(recipientName)},</p>`,
+    `<p>This is a payment notice for your ${entityLabel}'s VolunTrack account.</p>`,
+    `<table cellpadding="4" cellspacing="0">`,
+    amount ? `<tr><td><strong>Amount owed</strong></td><td>${escapeHtml(amount)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>` : '',
+    dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
+    `</table>`,
+    `<p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>`,
+    includeDashboardLink ? `<p>Once payment is complete, submit your bank confirmation or reference number from your school dashboard: <a href="${dashboardLink}">${dashboardLink}</a></p>` : '',
+    emailFooterHtml(),
+  ].join('')
 }
 
 // Fire-and-log: a failed send should never break the admin/school flow that

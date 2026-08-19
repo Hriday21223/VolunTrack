@@ -4,8 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml } from '../email.js'
-import { escapeHtml } from '../html.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 
 const router = express.Router()
 
@@ -239,17 +238,10 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
     return res.status(400).json({ error: 'Status must be paid or unpaid.' })
   }
   try {
-    if (status === 'paid') {
-      await query(
-        'UPDATE organizations SET payment_status = $1, payment_notes = $2, paid_at = now() WHERE id = $3',
-        [status, notes || null, req.params.id],
-      )
-    } else {
-      await query(
-        'UPDATE organizations SET payment_status = $1, payment_notes = $2, paid_at = NULL WHERE id = $3',
-        [status, notes || null, req.params.id],
-      )
-    }
+    await query(
+      `UPDATE organizations SET payment_status = $1, payment_notes = $2, paid_at = CASE WHEN $1 = 'paid' THEN now() ELSE NULL END WHERE id = $3`,
+      [status, notes || null, req.params.id],
+    )
     await query(
       `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'organization', $2, $3, $4)`,
       [uid('pev'), req.params.id, status === 'paid' ? 'status_paid' : 'status_unpaid', notes || null],
@@ -270,29 +262,26 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
   }
   try {
     const id = uid('anot')
-    await query(
-      'INSERT INTO admin_notifications (id, organization_id, message) VALUES ($1, $2, $3)',
-      [id, req.params.organizationId, message.trim()],
-    )
-
-    const { rows } = await query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM organizations WHERE id = $1', [req.params.organizationId])
+    const [, { rows }] = await Promise.all([
+      query(
+        'INSERT INTO admin_notifications (id, organization_id, message) VALUES ($1, $2, $3)',
+        [id, req.params.organizationId, message.trim()],
+      ),
+      query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM organizations WHERE id = $1', [req.params.organizationId]),
+    ])
     if (rows[0]?.contact_email) {
-      const dueDateStr = rows[0].payment_due_date ? new Date(rows[0].payment_due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
-      const effectiveAmount = amount || rows[0].price_amount
-      const periodLabel = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }[amount ? billingPeriod : rows[0].price_period] || ''
-      const html = [
-        `<p>Hi ${escapeHtml(rows[0].name)},</p>`,
-        `<p>This is a payment notice for your organization's VolunTrack account.</p>`,
-        `<table cellpadding="4" cellspacing="0">`,
-        effectiveAmount ? `<tr><td><strong>Amount owed</strong></td><td>${escapeHtml(effectiveAmount)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>` : '',
-        dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
-        `</table>`,
-        `<p>${escapeHtml(message.trim()).replace(/\n/g, '<br>')}</p>`,
-      ].join('')
       await sendEmail({
         to: rows[0].contact_email,
         subject: 'Payment notice from VolunTrack',
-        html,
+        html: paymentNoticeHtml({
+          recipientName: rows[0].name,
+          entityLabel: 'organization',
+          amount: amount || rows[0].price_amount,
+          billingPeriod: amount ? billingPeriod : rows[0].price_period,
+          dueDate: rows[0].payment_due_date,
+          message: message.trim(),
+          includeDashboardLink: false,
+        }),
         idempotencyKey: `org-payment-notice/${req.params.organizationId}/${id}`,
       })
     }

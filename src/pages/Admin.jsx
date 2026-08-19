@@ -72,7 +72,6 @@ export default function Admin() {
   const [drafts, setDrafts] = useState({})
   const [expandedThreadId, setExpandedThreadId] = useState(null)
   const [threadMessages, setThreadMessages] = useState({})
-  const [loadingThreadMessages, setLoadingThreadMessages] = useState(false)
   const [copiedIdx, setCopiedIdx] = useState(null)
   const [sendingIds, setSendingIds] = useState(() => new Set())
   const [sendErrors, setSendErrors] = useState({})
@@ -457,31 +456,18 @@ export default function Admin() {
     } catch { setToastMessage('Failed to save note'); setToast(true) } finally { setSavingOrgNote(false) }
   }
 
-  const markOrgPaid = async (id) => {
+  const updateOrgPayment = async (id, status, notes) => {
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/organization/admin/${id}/payment`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: 'paid', notes: orgPayNotes }),
+        body: JSON.stringify({ status, notes }),
       })
       if (!res.ok) throw new Error('Failed')
-      setOrgPayModal(null); setOrgPayNotes(''); loadOrganizations()
-      setToastMessage('Organization marked as paid'); setToast(true)
-    } catch { setToastMessage('Failed to update payment'); setToast(true) }
-  }
-
-  const markOrgUnpaid = async (id) => {
-    try {
-      const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/organization/admin/${id}/payment`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: 'unpaid' }),
-      })
-      if (!res.ok) throw new Error('Failed')
+      if (status === 'paid') { setOrgPayModal(null); setOrgPayNotes('') }
       loadOrganizations()
-      setToastMessage('Organization marked as unpaid'); setToast(true)
+      setToastMessage(`Organization marked as ${status}`); setToast(true)
     } catch { setToastMessage('Failed to update payment'); setToast(true) }
   }
 
@@ -709,7 +695,6 @@ export default function Admin() {
     }
     setExpandedThreadId(threadId)
     if (threadMessages[threadId]) return
-    setLoadingThreadMessages(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/contact/admin/threads/${threadId}/messages`, {
@@ -722,8 +707,6 @@ export default function Admin() {
       setToastMessage('Could not load full conversation')
       setToast(true)
       setExpandedThreadId(null)
-    } finally {
-      setLoadingThreadMessages(false)
     }
   }
 
@@ -1149,7 +1132,7 @@ export default function Admin() {
                       <Calendar className="w-4 h-4" />
                     </button>
                     {org.payment_status === 'paid' ? (
-                      <button onClick={() => markOrgUnpaid(org.id)} className="text-amber-400 hover:text-amber-300 p-2" title="Mark as unpaid">
+                      <button onClick={() => updateOrgPayment(org.id, 'unpaid')} className="text-amber-400 hover:text-amber-300 p-2" title="Mark as unpaid">
                         <CreditCard className="w-4 h-4" />
                       </button>
                     ) : (
@@ -1333,7 +1316,7 @@ export default function Admin() {
                   <p className="mt-2 text-sm text-earth-800 dark:text-earth-200 whitespace-pre-wrap">{c.message}</p>
                   {expandedThreadId === id && (
                     <div className="mt-3 space-y-2 border-l-2 border-earth-200 dark:border-earth-700 pl-3">
-                      {loadingThreadMessages && !threadMessages[id] ? (
+                      {expandedThreadId === id && !threadMessages[id] ? (
                         <p className="text-xs text-earth-500">Loading conversation…</p>
                       ) : (
                         (threadMessages[id] || []).map((m) => (
@@ -1543,7 +1526,7 @@ export default function Admin() {
               />
               <div className="flex gap-2">
                 <button onClick={() => setOrgPayModal(null)} className="btn-ghost flex-1">Cancel</button>
-                <button onClick={() => markOrgPaid(orgPayModal)} className="btn-primary flex-1">Mark as paid</button>
+                <button onClick={() => updateOrgPayment(orgPayModal, 'paid', orgPayNotes)} className="btn-primary flex-1">Mark as paid</button>
               </div>
             </div>
           </Card>
