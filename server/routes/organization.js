@@ -5,6 +5,7 @@ import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml } from '../email.js'
+import { escapeHtml } from '../html.js'
 
 const router = express.Router()
 
@@ -212,6 +213,107 @@ router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), as
   } catch (error) {
     console.error('admin organization due date update failed:', error)
     return res.status(500).json({ error: 'Could not set due date.' })
+  }
+})
+
+// Set an internal admin-only note on an organization. Mirrors
+// PATCH /school/admin/:id/notes.
+router.patch('/admin/:id/notes', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const note = String(req.body.note ?? '').trim()
+  try {
+    await query('UPDATE organizations SET admin_notes = $1 WHERE id = $2', [note || null, req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('admin organization note update failed:', error)
+    return res.status(500).json({ error: 'Could not save note.' })
+  }
+})
+
+// Manually mark an organization paid/unpaid (admin's own bookkeeping —
+// organizations have no self-service payment-confirmation flow, so unlike
+// schools there's no 'pending'/'rejected' status to reject here). Mirrors
+// PATCH /school/admin/:id/payment.
+router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const { status, notes } = req.body
+  if (!status || !['paid', 'unpaid'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be paid or unpaid.' })
+  }
+  try {
+    if (status === 'paid') {
+      await query(
+        'UPDATE organizations SET payment_status = $1, payment_notes = $2, paid_at = now() WHERE id = $3',
+        [status, notes || null, req.params.id],
+      )
+    } else {
+      await query(
+        'UPDATE organizations SET payment_status = $1, payment_notes = $2, paid_at = NULL WHERE id = $3',
+        [status, notes || null, req.params.id],
+      )
+    }
+    await query(
+      `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'organization', $2, $3, $4)`,
+      [uid('pev'), req.params.id, status === 'paid' ? 'status_paid' : 'status_unpaid', notes || null],
+    )
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('update organization payment failed:', error)
+    return res.status(500).json({ error: 'Could not update payment.' })
+  }
+})
+
+// Send a payment/general notice to a specific organization (admin only).
+// Mirrors POST /school/admin/notify-school/:schoolId.
+router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const { message, amount, billingPeriod } = req.body
+  if (!message || typeof message !== 'string' || message.trim().length === 0) {
+    return res.status(400).json({ error: 'Message is required.' })
+  }
+  try {
+    const id = uid('anot')
+    await query(
+      'INSERT INTO admin_notifications (id, organization_id, message) VALUES ($1, $2, $3)',
+      [id, req.params.organizationId, message.trim()],
+    )
+
+    const { rows } = await query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM organizations WHERE id = $1', [req.params.organizationId])
+    if (rows[0]?.contact_email) {
+      const dueDateStr = rows[0].payment_due_date ? new Date(rows[0].payment_due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
+      const effectiveAmount = amount || rows[0].price_amount
+      const periodLabel = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }[amount ? billingPeriod : rows[0].price_period] || ''
+      const html = [
+        `<p>Hi ${escapeHtml(rows[0].name)},</p>`,
+        `<p>This is a payment notice for your organization's VolunTrack account.</p>`,
+        `<table cellpadding="4" cellspacing="0">`,
+        effectiveAmount ? `<tr><td><strong>Amount owed</strong></td><td>${escapeHtml(effectiveAmount)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>` : '',
+        dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
+        `</table>`,
+        `<p>${escapeHtml(message.trim()).replace(/\n/g, '<br>')}</p>`,
+      ].join('')
+      await sendEmail({
+        to: rows[0].contact_email,
+        subject: 'Payment notice from VolunTrack',
+        html,
+        idempotencyKey: `org-payment-notice/${req.params.organizationId}/${id}`,
+      })
+    }
+
+    return res.status(201).json({ ok: true, id })
+  } catch (error) {
+    console.error('notify organization failed:', error)
+    return res.status(500).json({ error: 'Could not send notification.' })
+  }
+})
+
+// Delete an organization (admin only). Schools/users linked via
+// organization_id are unlinked automatically (ON DELETE SET NULL) rather
+// than deleted — the org is just a grouping, not the schools' owner.
+router.delete('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    await query('DELETE FROM organizations WHERE id = $1', [req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('admin delete organization failed:', error)
+    return res.status(500).json({ error: 'Could not delete organization.' })
   }
 })
 

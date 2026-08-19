@@ -832,6 +832,7 @@ router.get('/admin/organizations', limiter, requireDb, requireAuth('admin'), asy
   try {
     const { rows } = await query(
       `SELECT o.id, o.name, o.contact_email, o.created_at, o.price_amount, o.price_period, o.payment_due_date,
+        o.admin_notes, o.payment_status, o.payment_notes, o.paid_at,
         COUNT(s.id) AS school_count
        FROM organizations o
        LEFT JOIN schools s ON s.organization_id = o.id
