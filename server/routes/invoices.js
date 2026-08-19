@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
-import { sendEmail } from '../email.js'
+import { sendEmail, emailFooterHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
 
 const router = express.Router()
@@ -42,6 +42,7 @@ function invoiceNoticeHtml({ entityType, entityName, invoiceNumber, amount, bill
     `</table>`,
     description ? `<p>${escapeHtml(description).replace(/\n/g, '<br>')}</p>` : '',
     `<p>View your account and submit payment confirmation from your dashboard: <a href="${dashboardLink}">${dashboardLink}</a></p>`,
+    emailFooterHtml(),
   ].join('')
 }
 

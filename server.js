@@ -16,7 +16,9 @@ import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
 import reviewsRoutes from './server/routes/reviews.js'
 import invoicesRoutes from './server/routes/invoices.js'
 import settingsRoutes from './server/routes/settings.js'
+import statusRoutes from './server/routes/status.js'
 import { escapeHtml } from './server/html.js'
+import { emailFooterHtml, emailFooterText } from './server/email.js'
 
 dotenv.config()
 
@@ -79,6 +81,7 @@ app.use('/api/contact', contactRoutes)
 app.use('/api/reviews', reviewsRoutes)
 app.use('/api/invoices', invoicesRoutes)
 app.use('/api/settings', settingsRoutes)
+app.use('/api/status', statusRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
@@ -208,8 +211,8 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
   const subject = type === 'pin'
     ? 'VolunTrack PIN recovery code'
     : 'VolunTrack password recovery code'
-  const text = `Your VolunTrack recovery code is ${code}. It expires in 15 minutes.`
-  const html = `<p>Your VolunTrack recovery code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>`
+  const text = `Your VolunTrack recovery code is ${code}. It expires in 15 minutes. ${emailFooterText()}`
+  const html = `<p>Your VolunTrack recovery code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>${emailFooterHtml()}`
 
   try {
     await transport.sendMail({
@@ -261,7 +264,7 @@ app.post('/api/send-report', async (req, res) => {
     .map((e) => `  ${e.date || ''}  ${e.activity || ''} (${e.category || '-'}) — ${Number(e.hours) || 0}h`)
     .join('\n')
   const text = `Volunteer report for ${student}${school ? ` (${school})` : ''}\n`
-    + `Total hours: ${total}\nSessions: ${rows.length}\n\n${textRows}`
+    + `Total hours: ${total}\nSessions: ${rows.length}\n\n${textRows}\n\n${emailFooterText()}`
 
   const htmlRows = rows
     .map((e) => `<tr><td>${escapeHtml(e.date)}</td><td>${escapeHtml(e.activity)}</td>`
@@ -273,7 +276,8 @@ app.post('/api/send-report', async (req, res) => {
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:14px">
       <thead><tr><th>Date</th><th>Activity</th><th>Category</th><th>Hours</th></tr></thead>
       <tbody>${htmlRows}</tbody>
-    </table>`
+    </table>
+    ${emailFooterHtml()}`
 
   try {
     await transport.sendMail({
@@ -382,7 +386,7 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
     + (verifyUrl
       ? `Please review and approve or reject these hours: ${verifyUrl}\n\n`
       : '')
-    + `Sign up for a free VolunTrack account: ${signupUrl}`
+    + `Sign up for a free VolunTrack account: ${signupUrl}\n\n${emailFooterText()}`
 
   const html = `
     <p>${greeting}</p>
@@ -393,7 +397,8 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
     </p>` : ''}
     <p style="margin-top:16px">
       <a href="${safeSignupUrl}" style="color:#3f8344;font-weight:600">Or sign up for your own VolunTrack account</a>
-    </p>`
+    </p>
+    ${emailFooterHtml()}`
 
   try {
     await transport.sendMail({
@@ -485,8 +490,8 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
           from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
           to: row.student_email,
           subject: `Your supervisor ${verb} your VolunTrack hours`,
-          text: `${row.supervisor_name || 'Your supervisor'} ${verb} the ${row.hours} hour(s) you logged for "${row.activity}".`,
-          html: `<p><strong>${who}</strong> ${verb} the <strong>${row.hours}</strong> hour(s) you logged for "${safeActivity}".</p>`,
+          text: `${row.supervisor_name || 'Your supervisor'} ${verb} the ${row.hours} hour(s) you logged for "${row.activity}".\n\n${emailFooterText()}`,
+          html: `<p><strong>${who}</strong> ${verb} the <strong>${row.hours}</strong> hour(s) you logged for "${safeActivity}".</p>${emailFooterHtml()}`,
         }).catch((error) => console.error('Student outcome email failed:', error))
       }
     }

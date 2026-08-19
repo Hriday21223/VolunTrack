@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
-import { sendEmail } from '../email.js'
+import { sendEmail, emailFooterHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
 
 const router = express.Router()
@@ -103,7 +103,7 @@ router.patch('/admin/:id/approve', limiter, requireDb, requireAuth('admin'), asy
       sendEmail({
         to: rows[0].email,
         subject: 'Your VolunTrack review is now live',
-        html: `<p>Thanks for sharing your feedback — your review has been approved and is now showing on the VolunTrack site. We appreciate you taking the time to write it.</p>`,
+        html: `<p>Thanks for sharing your feedback — your review has been approved and is now showing on the VolunTrack site. We appreciate you taking the time to write it.</p>${emailFooterHtml()}`,
       }).catch(() => {})
     }
 
