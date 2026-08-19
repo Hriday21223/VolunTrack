@@ -70,6 +70,9 @@ export default function Admin() {
   const [reviews, setReviews] = useState([])
   const [loadingReviews, setLoadingReviews] = useState(false)
   const [drafts, setDrafts] = useState({})
+  const [expandedThreadId, setExpandedThreadId] = useState(null)
+  const [threadMessages, setThreadMessages] = useState({})
+  const [loadingThreadMessages, setLoadingThreadMessages] = useState(false)
   const [copiedIdx, setCopiedIdx] = useState(null)
   const [sendingIds, setSendingIds] = useState(() => new Set())
   const [sendErrors, setSendErrors] = useState({})
@@ -101,7 +104,13 @@ export default function Admin() {
   const [orgDueDateModal, setOrgDueDateModal] = useState(null) // org id
   const [orgDueDateDraft, setOrgDueDateDraft] = useState('')
   const [savingOrgDueDate, setSavingOrgDueDate] = useState(false)
+  const [orgNoteModal, setOrgNoteModal] = useState(null) // org id
+  const [orgNoteDraft, setOrgNoteDraft] = useState('')
+  const [savingOrgNote, setSavingOrgNote] = useState(false)
+  const [orgPayModal, setOrgPayModal] = useState(null) // org id
+  const [orgPayNotes, setOrgPayNotes] = useState('')
   const [notifySchoolId, setNotifySchoolId] = useState(null) // null = all schools, string = specific school
+  const [notifyOrgId, setNotifyOrgId] = useState(null) // string = specific organization (org notify has no "all" broadcast)
   const [invoiceModal, setInvoiceModal] = useState(null) // { entityType, entityId, entityName }
   const [invoiceAmountDraft, setInvoiceAmountDraft] = useState('')
   const [invoiceBillingPeriodDraft, setInvoiceBillingPeriodDraft] = useState('monthly')
@@ -412,7 +421,9 @@ export default function Admin() {
     if (!notifyMsg.trim()) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
-      const url = notifySchoolId
+      const url = notifyOrgId
+        ? `${apiUrl}/organization/admin/notify-org/${notifyOrgId}`
+        : notifySchoolId
         ? `${apiUrl}/school/admin/notify-school/${notifySchoolId}`
         : `${apiUrl}/school/admin/notify-payment`
       const res = await fetch(url, {
@@ -425,10 +436,66 @@ export default function Admin() {
         }),
       })
       if (!res.ok) throw new Error('Failed')
-      setShowNotifyModal(false); setNotifyMsg(''); setNotifyAmount(''); setNotifyBillingPeriod('monthly'); setNotifySchoolId(null)
+      setShowNotifyModal(false); setNotifyMsg(''); setNotifyAmount(''); setNotifyBillingPeriod('monthly'); setNotifySchoolId(null); setNotifyOrgId(null)
       setToastMessage('Notification sent')
       setToast(true)
     } catch { setToastMessage('Failed to send notification'); setToast(true) }
+  }
+
+  const saveOrgNote = async (id) => {
+    setSavingOrgNote(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/organization/admin/${id}/notes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note: orgNoteDraft }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setOrgNoteModal(null); setOrgNoteDraft(''); loadOrganizations()
+      setToastMessage('Internal note saved'); setToast(true)
+    } catch { setToastMessage('Failed to save note'); setToast(true) } finally { setSavingOrgNote(false) }
+  }
+
+  const markOrgPaid = async (id) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/organization/admin/${id}/payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 'paid', notes: orgPayNotes }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setOrgPayModal(null); setOrgPayNotes(''); loadOrganizations()
+      setToastMessage('Organization marked as paid'); setToast(true)
+    } catch { setToastMessage('Failed to update payment'); setToast(true) }
+  }
+
+  const markOrgUnpaid = async (id) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/organization/admin/${id}/payment`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 'unpaid' }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      loadOrganizations()
+      setToastMessage('Organization marked as unpaid'); setToast(true)
+    } catch { setToastMessage('Failed to update payment'); setToast(true) }
+  }
+
+  const deleteOrganization = async (id, name) => {
+    if (!confirm(`Delete "${name}"? Its schools will be unlinked, not deleted.`)) return
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/organization/admin/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Failed')
+      loadOrganizations()
+    } catch {}
   }
 
   const openInvoiceModal = (entityType, entity) => {
@@ -633,6 +700,31 @@ export default function Admin() {
       }
       return next
     })
+  }
+
+  const toggleThreadMessages = async (threadId) => {
+    if (expandedThreadId === threadId) {
+      setExpandedThreadId(null)
+      return
+    }
+    setExpandedThreadId(threadId)
+    if (threadMessages[threadId]) return
+    setLoadingThreadMessages(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/contact/admin/threads/${threadId}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Failed to load conversation')
+      const data = await res.json()
+      setThreadMessages((prev) => ({ ...prev, [threadId]: data.messages || [] }))
+    } catch {
+      setToastMessage('Could not load full conversation')
+      setToast(true)
+      setExpandedThreadId(null)
+    } finally {
+      setLoadingThreadMessages(false)
+    }
   }
 
   const copyDraft = async (threadId) => {
@@ -1029,21 +1121,53 @@ export default function Admin() {
                             Due {new Date(org.payment_due_date).toLocaleDateString()}
                           </span>
                         )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          org.payment_status === 'paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
+                        }`}>
+                          {org.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                        </span>
                       </div>
+                      {org.payment_notes && (
+                        <p className="text-xs text-earth-500 mt-0.5">{org.payment_notes}</p>
+                      )}
+                      {org.admin_notes && (
+                        <p className="text-xs text-amber-500/80 mt-0.5 flex items-start gap-1">
+                          <ShieldCheck className="w-3 h-3 mt-0.5 shrink-0" />
+                          <span><span className="font-medium">Internal note (admin only):</span> {org.admin_notes}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <button onClick={() => { setOrgNoteModal(org.id); setOrgNoteDraft(org.admin_notes || '') }} className={`p-2 ${org.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
+                      <ShieldCheck className="w-4 h-4" />
+                    </button>
                     <button onClick={() => { setOrgPriceModal(org.id); setOrgPriceAmountDraft(org.price_amount || ''); setOrgPricePeriodDraft(org.price_period || 'monthly') }} className={`p-2 ${org.price_amount ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's price">
                       <DollarSign className="w-4 h-4" />
                     </button>
                     <button onClick={() => { setOrgDueDateModal(org.id); setOrgDueDateDraft(org.payment_due_date ? String(org.payment_due_date).slice(0, 10) : '') }} className={`p-2 ${org.payment_due_date ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's payment due date">
                       <Calendar className="w-4 h-4" />
                     </button>
+                    {org.payment_status === 'paid' ? (
+                      <button onClick={() => markOrgUnpaid(org.id)} className="text-amber-400 hover:text-amber-300 p-2" title="Mark as unpaid">
+                        <CreditCard className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button onClick={() => { setOrgPayModal(org.id); setOrgPayNotes('') }} className="text-emerald-400 hover:text-emerald-300 p-2" title="Mark as paid">
+                        <CreditCard className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button onClick={() => { setNotifyOrgId(org.id); setNotifyAmount(org.price_amount || ''); setNotifyBillingPeriod(org.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this organization">
+                      <Bell className="w-4 h-4" />
+                    </button>
                     <button onClick={() => openInvoiceModal('organization', org)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
                       <Receipt className="w-4 h-4" />
                     </button>
                     <button onClick={() => openHistory('organization', org)} className="text-earth-400 hover:text-earth-300 p-2" title="Payment history">
                       <History className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => deleteOrganization(org.id, org.name)} className="text-red-400 hover:text-red-300 p-2" title="Delete organization">
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -1195,13 +1319,35 @@ export default function Admin() {
                     <a href={`mailto:${c.email}`} className="text-brand-700 dark:text-brand-300 hover:underline text-sm break-all">{c.email}</a>
                     <span className="text-xs text-earth-500 whitespace-nowrap">{new Date(c.created_at).toLocaleString()}</span>
                     {Number(c.message_count) > 1 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-300 font-medium">{c.message_count} messages</span>
+                      <button
+                        onClick={() => toggleThreadMessages(id)}
+                        className="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-300 font-medium hover:bg-brand-500/20"
+                      >
+                        {c.message_count} messages{expandedThreadId === id ? ' · hide' : ' · view conversation'}
+                      </button>
                     )}
                   </div>
                   <div className="mt-1 text-xs font-medium uppercase tracking-wide text-earth-600 dark:text-earth-300">
                     {c.subject || 'General question'} {c.direction === 'outbound' && <span className="text-brand-500 normal-case">· awaiting their reply</span>}
                   </div>
                   <p className="mt-2 text-sm text-earth-800 dark:text-earth-200 whitespace-pre-wrap">{c.message}</p>
+                  {expandedThreadId === id && (
+                    <div className="mt-3 space-y-2 border-l-2 border-earth-200 dark:border-earth-700 pl-3">
+                      {loadingThreadMessages && !threadMessages[id] ? (
+                        <p className="text-xs text-earth-500">Loading conversation…</p>
+                      ) : (
+                        (threadMessages[id] || []).map((m) => (
+                          <div key={m.id}>
+                            <div className="text-xs font-semibold text-earth-600 dark:text-earth-300">
+                              {m.direction === 'outbound' ? 'VolunTrack' : c.name || 'Them'}
+                              <span className="ml-2 font-normal text-earth-500">{new Date(m.created_at).toLocaleString()}</span>
+                            </div>
+                            <p className="text-sm text-earth-800 dark:text-earth-200 whitespace-pre-wrap">{m.message}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                   {drafts[id] && (
                     <div className="mt-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800">
                       <div className="flex items-center justify-between mb-1">
@@ -1218,7 +1364,11 @@ export default function Admin() {
                           )}
                         </button>
                       </div>
-                      <p className="text-sm text-earth-700 dark:text-earth-300 whitespace-pre-wrap">{drafts[id]}</p>
+                      <textarea
+                        className="input w-full text-sm text-earth-700 dark:text-earth-300 min-h-[160px] resize-y"
+                        value={drafts[id]}
+                        onChange={(e) => setDrafts((prev) => ({ ...prev, [id]: e.target.value }))}
+                      />
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <button
                           onClick={() => { if (sendErrors[id] || confirm(`Send this reply to ${c.email}?`)) sendDraft(id) }}
@@ -1360,6 +1510,46 @@ export default function Admin() {
         </div>
       )}
 
+      {orgNoteModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOrgNoteModal(null)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-amber-400" /> Internal note</h3>
+            <p className="text-sm text-earth-400 mb-4">Only visible to admins — the organization never sees this.</p>
+            <div className="space-y-3">
+              <textarea
+                className="input" rows={4}
+                placeholder="e.g. Called 6/1, they're waiting on district approval for the wire"
+                value={orgNoteDraft} onChange={(e) => setOrgNoteDraft(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setOrgNoteModal(null)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={() => saveOrgNote(orgNoteModal)} className="btn-primary flex-1" disabled={savingOrgNote}>{savingOrgNote ? 'Saving…' : 'Save note'}</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {orgPayModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOrgPayModal(null)}>
+          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2">Mark organization as paid</h3>
+            <p className="text-sm text-earth-400 mb-4">Record how they paid (wire, check, etc.)</p>
+            <div className="space-y-3">
+              <textarea
+                className="input" rows={3}
+                placeholder="e.g. Paid via wire on June 1"
+                value={orgPayNotes} onChange={(e) => setOrgPayNotes(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setOrgPayModal(null)} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={() => markOrgPaid(orgPayModal)} className="btn-primary flex-1">Mark as paid</button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {dueDateModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setDueDateModal(null); setDueDateDraft('') }}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -1432,14 +1622,18 @@ export default function Admin() {
       )}
 
       {showNotifyModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setShowNotifyModal(false); setNotifySchoolId(null); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }}>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => { setShowNotifyModal(false); setNotifySchoolId(null); setNotifyOrgId(null); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold mb-2">
-              {notifySchoolId ? 'Notify this school' : 'Notify all schools'}
+              {notifyOrgId ? 'Notify this organization' : notifySchoolId ? 'Notify this school' : 'Notify all schools'}
             </h3>
             <p className="text-sm text-earth-400 mb-4">
-              Sent by email and shown on the school dashboard. The due date on file is included automatically.
-              {notifySchoolId ? ' Amount is prefilled from this school\'s saved price — edit it here to override just this email.' : ' Leave amount blank to use each school\'s own saved price; filling it in overrides every school for this send.'}
+              {notifyOrgId
+                ? 'Sent by email to the organization\'s contact address. The due date on file is included automatically. Amount is prefilled from this organization\'s saved price — edit it here to override just this email.'
+                : <>
+                    Sent by email and shown on the school dashboard. The due date on file is included automatically.
+                    {notifySchoolId ? ' Amount is prefilled from this school\'s saved price — edit it here to override just this email.' : ' Leave amount blank to use each school\'s own saved price; filling it in overrides every school for this send.'}
+                  </>}
             </p>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -1473,7 +1667,7 @@ export default function Admin() {
                 />
               </div>
               <div className="flex gap-2">
-                <button onClick={() => { setShowNotifyModal(false); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }} className="btn-ghost flex-1">Cancel</button>
+                <button onClick={() => { setShowNotifyModal(false); setNotifySchoolId(null); setNotifyOrgId(null); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={sendNotify} className="btn-primary flex-1" disabled={!notifyMsg.trim()}>Send</button>
               </div>
             </div>

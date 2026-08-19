@@ -356,6 +356,20 @@ export async function initSchema() {
   try { await query(`ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_price_period_check`) } catch {}
   try { await query(`ALTER TABLE organizations ADD CONSTRAINT organizations_price_period_check CHECK (price_period IS NULL OR price_period IN ('monthly','yearly','one_time'))`) } catch {}
 
+  // Internal admin note + manual payment tracking for organizations —
+  // same shape as the per-school columns above. Organizations have no
+  // self-service payment-confirmation flow (only schools submit a
+  // confirmation ref), so there's no 'pending'/'rejected' status here —
+  // just a manual paid/unpaid toggle for the admin's own bookkeeping.
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS admin_notes TEXT`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'unpaid'`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS payment_notes TEXT`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_payment_status_check`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD CONSTRAINT organizations_payment_status_check CHECK (payment_status IN ('paid','unpaid'))`) } catch {}
+  // Lets notify-organization broadcast a single org (mirrors admin_notifications.school_id).
+  try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE`) } catch {}
+
   // Widen again to allow 'org' — an organization's own admin account.
   try {
     await query(`
