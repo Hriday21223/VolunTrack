@@ -27,15 +27,20 @@ export function hasEmail() {
 }
 
 // Appended to every automated email (this repo has no monitored reply
-// inbox) so recipients know where to actually go for help.
+// inbox) so recipients know where to actually go for help. Falls back to
+// the live production URL rather than a bare "/contact" path, which would
+// be unclickable outside a browser tab already on the site.
+function contactLink() {
+  return `${process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app'}/contact`
+}
+
 export function emailFooterHtml() {
-  const contactLink = `${process.env.FRONTEND_URL || ''}/contact`
-  return `<p>This is an automated message — please don't reply to this email. Contact us if you run into any problems: <a href="${contactLink}">${contactLink}</a></p>`
+  const link = contactLink()
+  return `<p>This is an automated message — please don't reply to this email. Contact us if you run into any problems: <a href="${link}">${link}</a></p>`
 }
 
 export function emailFooterText() {
-  const contactLink = `${process.env.FRONTEND_URL || ''}/contact`
-  return `This is an automated message — please don't reply to this email. Contact us if you run into any problems: ${contactLink}`
+  return `This is an automated message — please don't reply to this email. Contact us if you run into any problems: ${contactLink()}`
 }
 
 // Fire-and-log: a failed send should never break the admin/school flow that
