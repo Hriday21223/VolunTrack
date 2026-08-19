@@ -4,7 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
-import { sendEmail } from '../email.js'
+import { sendEmail, sendWelcomeEmail } from '../email.js'
 
 const router = express.Router()
 
@@ -67,6 +67,7 @@ router.post('/register', limiter, requireDb, async (req, res) => {
     await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
 
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, organizationId: rows[0].organization_id }
+    await sendWelcomeEmail({ to: user.email, name: user.name })
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     console.error('organization register failed:', error)
