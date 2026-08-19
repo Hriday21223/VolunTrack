@@ -26,6 +26,23 @@ export function hasEmail() {
   return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
 }
 
+// Appended to every automated email (this repo has no monitored reply
+// inbox) so recipients know where to actually go for help. Falls back to
+// the live production URL rather than a bare "/contact" path, which would
+// be unclickable outside a browser tab already on the site.
+function contactLink() {
+  return `${process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app'}/contact`
+}
+
+export function emailFooterHtml() {
+  const link = contactLink()
+  return `<p>This is an automated message — please don't reply to this email. Contact us if you run into any problems: <a href="${link}">${link}</a></p>`
+}
+
+export function emailFooterText() {
+  return `This is an automated message — please don't reply to this email. Contact us if you run into any problems: ${contactLink()}`
+}
+
 // Fire-and-log: a failed send should never break the admin/school flow that
 // triggered it — admin_notifications already gives an in-app fallback.
 export async function sendEmail({ to, subject, html }) {
@@ -46,4 +63,18 @@ export async function sendEmail({ to, subject, html }) {
     console.error('SMTP send failed:', error.message)
     return { sent: false, error: error.message }
   }
+}
+
+// Shared by every signup path (student/volunteer/parent, school, organization)
+// so the greeting stays consistent no matter how someone joins.
+export async function sendWelcomeEmail({ to, name }) {
+  return sendEmail({
+    to,
+    subject: 'Welcome to VolunTrack!',
+    html: `<p>Hi ${name},</p>
+<p>Thank you for choosing VolunTrack! We're glad to have you on board.</p>
+<p>VolunTrack makes it easy to log volunteer hours, track progress toward your goals, and earn achievements along the way. Schools and organizations can verify hours, and parents can follow their student's progress — all in one place.</p>
+<p>— The VolunTrack Team</p>
+${emailFooterHtml()}`,
+  })
 }

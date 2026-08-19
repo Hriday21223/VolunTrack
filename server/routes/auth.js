@@ -7,6 +7,7 @@ import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth } from '../auth.js'
+import { sendWelcomeEmail } from '../email.js'
 
 const router = express.Router()
 
@@ -138,6 +139,7 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
       [id, role, name, email, hash, grade || null, studentIdNumber || null],
     )
     const user = publicUser(rows[0])
+    await sendWelcomeEmail({ to: user.email, name: user.name })
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     console.error('register failed:', error)

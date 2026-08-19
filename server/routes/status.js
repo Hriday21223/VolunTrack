@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { uid, generateToken } from '../ids.js'
-import { sendEmail } from '../email.js'
+import { sendEmail, emailFooterHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
 
 function frontendUrl() {
@@ -39,7 +39,7 @@ async function notifyIncident({ service, detail, source }) {
       sendEmail({
         to: sub.email,
         subject: `VolunTrack incident: ${service}`,
-        html: `${bodyHtml}<p style="margin-top:16px;font-size:12px;color:#888"><a href="${unsubscribeUrl}">Unsubscribe from status updates</a></p>`,
+        html: `${bodyHtml}<p style="margin-top:16px;font-size:12px;color:#888"><a href="${unsubscribeUrl}">Unsubscribe from status updates</a></p>${emailFooterHtml()}`,
       }).catch(() => {})
     })
   } catch (error) {
@@ -208,7 +208,8 @@ router.post('/subscribe', limiter, requireDb, async (req, res) => {
       subject: 'Confirm your VolunTrack status subscription',
       html: `<p>Click below to confirm you want email updates when VolunTrack has an incident.</p>`
         + `<p><a href="${confirmUrl}">Confirm subscription</a></p>`
-        + `<p style="font-size:12px;color:#888">If you didn't request this, you can ignore this email.</p>`,
+        + `<p style="font-size:12px;color:#888">If you didn't request this, you can ignore this email.</p>`
+        + emailFooterHtml(),
     })
     return res.json({ ok: true })
   } catch (error) {
