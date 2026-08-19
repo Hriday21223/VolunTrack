@@ -4,7 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
-import { sendEmail, sendWelcomeEmail } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
 
 const router = express.Router()
@@ -922,7 +922,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         await sendEmail({
           to: rows[0].contact_email,
           subject: 'Payment confirmed — VolunTrack',
-          html: `<p>Your payment confirmation has been verified. Your school's account is now unlocked — student uploads and management are available.</p>`,
+          html: `<p>Your payment confirmation has been verified. Your school's account is now unlocked — student uploads and management are available.</p>${emailFooterHtml()}`,
           idempotencyKey: `payment-approved/${req.params.id}/${id}`,
         })
       }
@@ -952,7 +952,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         await sendEmail({
           to: rows[0].contact_email,
           subject: 'Payment confirmation rejected — VolunTrack',
-          html: `<p>${rejectMsg}</p>`,
+          html: `<p>${rejectMsg}</p>${emailFooterHtml()}`,
           idempotencyKey: `payment-rejected/${req.params.id}/${id}`,
         })
       }
@@ -990,7 +990,7 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
     await sendEmail({
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite/${id}`,
     })
 
@@ -1036,7 +1036,7 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
     await sendEmail({
       to: invite.email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+      html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
@@ -1101,6 +1101,7 @@ function paymentNoticeHtml({ schoolName, amount, billingPeriod, dueDate, message
     `</table>`,
     `<p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>`,
     `<p>Once payment is complete, submit your bank confirmation or reference number from your school dashboard: <a href="${dashboardLink}">${dashboardLink}</a></p>`,
+    emailFooterHtml(),
   ].join('')
 }
 

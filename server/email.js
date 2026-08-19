@@ -26,6 +26,18 @@ export function hasEmail() {
   return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
 }
 
+// Appended to every automated email (this repo has no monitored reply
+// inbox) so recipients know where to actually go for help.
+export function emailFooterHtml() {
+  const contactLink = `${process.env.FRONTEND_URL || ''}/contact`
+  return `<p>This is an automated message — please don't reply to this email. Contact us if you run into any problems: <a href="${contactLink}">${contactLink}</a></p>`
+}
+
+export function emailFooterText() {
+  const contactLink = `${process.env.FRONTEND_URL || ''}/contact`
+  return `This is an automated message — please don't reply to this email. Contact us if you run into any problems: ${contactLink}`
+}
+
 // Fire-and-log: a failed send should never break the admin/school flow that
 // triggered it — admin_notifications already gives an in-app fallback.
 export async function sendEmail({ to, subject, html }) {
@@ -57,7 +69,7 @@ export async function sendWelcomeEmail({ to, name }) {
     html: `<p>Hi ${name},</p>
 <p>Thank you for choosing VolunTrack! We're glad to have you on board.</p>
 <p>VolunTrack makes it easy to log volunteer hours, track progress toward your goals, and earn achievements along the way. Schools and organizations can verify hours, and parents can follow their student's progress — all in one place.</p>
-<p>This is an automated message — please don't reply to this email.</p>
-<p>— The VolunTrack Team</p>`,
+<p>— The VolunTrack Team</p>
+${emailFooterHtml()}`,
   })
 }

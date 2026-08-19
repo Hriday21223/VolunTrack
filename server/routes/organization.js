@@ -4,7 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
-import { sendEmail, sendWelcomeEmail } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml } from '../email.js'
 
 const router = express.Router()
 
@@ -119,7 +119,7 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
     await sendEmail({
       to: email,
       subject: 'You’re invited to set up your organization on VolunTrack',
-      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `organization-invite/${id}`,
     })
 
@@ -164,7 +164,7 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
     await sendEmail({
       to: invite.email,
       subject: 'You’re invited to set up your organization on VolunTrack',
-      html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+      html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `organization-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
@@ -244,7 +244,7 @@ router.post('/invite-school', limiter, requireDb, requireAuth('org'), async (req
     await sendEmail({
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>`,
+      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `org-school-invite/${id}`,
     })
 
