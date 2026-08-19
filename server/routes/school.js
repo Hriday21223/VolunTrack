@@ -4,7 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
 
 const router = express.Router()
@@ -1083,29 +1083,6 @@ router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), as
   }
 })
 
-// Builds the HTML body for a payment-request email: school name, optional
-// amount owed, the school's due date on file (if any), free-text payment
-// instructions from the admin, and a link back to the school dashboard
-// where the admin submits their bank confirmation number.
-const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
-
-function paymentNoticeHtml({ schoolName, amount, billingPeriod, dueDate, message }) {
-  const dashboardLink = `${process.env.FRONTEND_URL || ''}/school/dashboard`
-  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
-  const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
-  return [
-    `<p>Hi ${escapeHtml(schoolName)},</p>`,
-    `<p>This is a payment notice for your school's VolunTrack account.</p>`,
-    `<table cellpadding="4" cellspacing="0">`,
-    amount ? `<tr><td><strong>Amount owed</strong></td><td>${escapeHtml(amount)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>` : '',
-    dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
-    `</table>`,
-    `<p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>`,
-    `<p>Once payment is complete, submit your bank confirmation or reference number from your school dashboard: <a href="${dashboardLink}">${dashboardLink}</a></p>`,
-    emailFooterHtml(),
-  ].join('')
-}
-
 // Send payment notification to all schools (admin only)
 router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const { message, amount, billingPeriod } = req.body
@@ -1124,7 +1101,7 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
       to: s.contact_email,
       subject: 'Payment notice from VolunTrack',
       html: paymentNoticeHtml({
-        schoolName: s.name,
+        recipientName: s.name,
         amount: amount || s.price_amount,
         billingPeriod: amount ? billingPeriod : s.price_period,
         dueDate: s.payment_due_date,
@@ -1159,7 +1136,7 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
         to: rows[0].contact_email,
         subject: 'Payment notice from VolunTrack',
         html: paymentNoticeHtml({
-          schoolName: rows[0].name,
+          recipientName: rows[0].name,
           amount: amount || rows[0].price_amount,
           billingPeriod: amount ? billingPeriod : rows[0].price_period,
           dueDate: rows[0].payment_due_date,
