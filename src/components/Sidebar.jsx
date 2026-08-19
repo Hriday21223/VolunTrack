@@ -1,4 +1,4 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, Users, Building2 } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, Users, Building2, MapPin } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 const ROLE_ITEMS = {
   student: [
     { to: '/',             label: 'Dashboard',   icon: Home },
+    { to: '/opportunities', label: 'Opportunities', icon: MapPin },
     { to: '/log',          label: 'Log Hours',   icon: Clock },
     { to: '/calendar',     label: 'Calendar',    icon: Calendar },
     { to: '/achievements', label: 'Achievements', icon: Trophy },

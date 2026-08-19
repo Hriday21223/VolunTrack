@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Bot, Loader2, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { runAgent, updateIncidentStatus, getAgentLog, logAgentAction } from '@/lib/agent.js'
+import { getIncidents, createIncident, resolveIncident } from '@/lib/status.js'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -14,7 +14,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const ADMIN_TOUR_STEPS = [
   { selector: '[data-tour="admin-inbox"]', title: 'Inbox', description: 'Contact-form messages land here, threaded by conversation, with AI-drafted replies you can send or copy.' },
   { selector: '[data-tour="admin-schools"]', title: 'Schools', description: 'Verify payments, leave internal-only notes, and manage every school on the platform.' },
-  { selector: '[data-tour="admin-incidents"]', title: 'Incidents', description: 'Detected issues show up here, with an AI agent log and one-click approve-fix workflow.' },
+  { selector: '[data-tour="admin-incidents"]', title: 'Incidents', description: 'Real backend/database health checks show up here — resolve them, or log one yourself.' },
 ]
 
 function generateDraft(contact) {
@@ -125,18 +125,36 @@ export default function Admin() {
   const [organizations, setOrganizations] = useState([])
   const [loadingOrganizations, setLoadingOrganizations] = useState(false)
   const [incidents, setIncidents] = useState([])
-  const [agentLog, setAgentLog] = useState([])
-  const [fixing, setFixing] = useState(null)
-  useEffect(() => {
-    try { setIncidents(JSON.parse(localStorage.getItem('voluntrack:incidents') || '[]')) } catch { setIncidents([]) }
-    try { setAgentLog(JSON.parse(localStorage.getItem('voluntrack:agent_log') || '[]')) } catch { setAgentLog([]) }
-    const handler = () => {
-      try { setIncidents(JSON.parse(localStorage.getItem('voluntrack:incidents') || '[]')) } catch { setIncidents([]) }
-      try { setAgentLog(JSON.parse(localStorage.getItem('voluntrack:agent_log') || '[]')) } catch { setAgentLog([]) }
-    }
-    window.addEventListener('storage', handler)
-    return () => window.removeEventListener('storage', handler)
+  const [loadingIncidents, setLoadingIncidents] = useState(false)
+  const [resolvingId, setResolvingId] = useState(null)
+  const [newIncident, setNewIncident] = useState({ service: '', detail: '' })
+  const [loggingIncident, setLoggingIncident] = useState(false)
+
+  const loadIncidents = useCallback(async () => {
+    setLoadingIncidents(true)
+    try { setIncidents(await getIncidents()) } finally { setLoadingIncidents(false) }
   }, [])
+
+  useEffect(() => { loadIncidents() }, [loadIncidents])
+
+  const submitIncident = async () => {
+    if (!newIncident.service.trim()) return
+    setLoggingIncident(true)
+    try {
+      await createIncident(newIncident)
+      setNewIncident({ service: '', detail: '' })
+      await loadIncidents()
+      setToastMessage('Incident logged'); setToast(true)
+    } catch { setToastMessage('Failed to log incident'); setToast(true) } finally { setLoggingIncident(false) }
+  }
+
+  const resolveOne = async (id) => {
+    setResolvingId(id)
+    try {
+      await resolveIncident(id)
+      await loadIncidents()
+    } catch { setToastMessage('Failed to resolve incident'); setToast(true) } finally { setResolvingId(null) }
+  }
 
   useEffect(() => {
     setIsAuthorized(user?.role === 'admin')
@@ -693,7 +711,7 @@ export default function Admin() {
           <button onClick={() => { setTab('organizations'); loadOrganizations() }} className={`btn-sm ${tab === 'organizations' ? 'btn-primary' : 'btn-ghost'}`}>
             <Building2 className="w-3.5 h-3.5 mr-1" /> Organizations
           </button>
-          <button data-tour="admin-incidents" onClick={() => setTab('incidents')} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
+          <button data-tour="admin-incidents" onClick={() => { setTab('incidents'); loadIncidents() }} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
             <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Incidents
             {incidents.length > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{incidents.length > 9 ? '9+' : incidents.length}</span>
@@ -1035,7 +1053,9 @@ export default function Admin() {
         )
       ) : tab === 'incidents' ? (
         <>
-          {incidents.filter((i) => i.status !== 'resolved').length === 0 ? (
+          {loadingIncidents ? (
+            <Card><p className="text-sm text-earth-400 py-4">Loading…</p></Card>
+          ) : incidents.filter((i) => i.status !== 'resolved').length === 0 ? (
             <Card>
               <div className="text-center py-12 text-earth-500">
                 <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-50" />
@@ -1045,78 +1065,64 @@ export default function Admin() {
             </Card>
           ) : (
             <div className="space-y-3 mb-6">
-                {incidents.filter((i) => i.status !== 'resolved').map((inc) => {
-                  const statusColors = {
-                    detected: 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800',
-                    investigating: 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800',
-                    fixing: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800',
-                    resolved: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800',
-                    failed: 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800',
-                  }
-                  const statusIcons = {
-                    detected: <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />,
-                    investigating: <Loader2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0 animate-spin" />,
-                    fixing: <Wrench className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />,
-                    resolved: <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />,
-                    failed: <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />,
-                  }
-                  const isRunning = fixing === inc.id
-                  return (
-                    <Card key={inc.id} padded={false} className={`p-4 border ${statusColors[inc.status] || statusColors.detected}`}>
-                      <div className="flex items-start gap-3">
-                        {statusIcons[inc.status] || statusIcons.detected}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm text-earth-800 dark:text-earth-200">{inc.service}</p>
-                            <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${
-                              inc.status === 'resolved' ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30' :
-                              inc.status === 'failed' ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30' :
-                              inc.status === 'investigating' || inc.status === 'fixing' ? 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30' :
-                              'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30'
-                            }`}>{inc.status}</span>
-                          </div>
-                          <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{inc.detail}</p>
-                          <p className="text-xs text-earth-400 dark:text-earth-500 mt-0.5">{new Date(inc.detectedAt).toLocaleString()}</p>
-                          {inc.status === 'detected' && (
-                            <div className="flex gap-2 mt-2">
-                              <button onClick={async () => { setFixing(inc.id); await runAgent(inc.service, inc.id); setFixing(null); try { setIncidents(JSON.parse(localStorage.getItem('voluntrack:incidents') || '[]')) } catch {} }} disabled={isRunning} className="text-xs font-semibold px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600 disabled:opacity-50">
-                                {isRunning ? 'Fixing...' : 'Approve Fix'}
-                              </button>
-                              <button onClick={() => { updateIncidentStatus(inc.id, 'failed'); logAgentAction(`Fix for ${inc.service} rejected by admin`, 'error'); try { setIncidents(JSON.parse(localStorage.getItem('voluntrack:incidents') || '[]')) } catch {} }} className="text-xs font-semibold px-2.5 py-1 rounded bg-red-500/20 text-red-600 hover:bg-red-500/30">Reject</button>
-                            </div>
+                {incidents.filter((i) => i.status !== 'resolved').map((inc) => (
+                  <Card key={inc.id} padded={false} className="p-4 border bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
+                    <div className="flex items-start gap-3">
+                      <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm text-earth-800 dark:text-earth-200">{inc.service}</p>
+                          <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30">{inc.status}</span>
+                          {inc.source === 'admin' && (
+                            <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-earth-600 dark:text-earth-300 bg-earth-100 dark:bg-earth-800">manual</span>
                           )}
                         </div>
+                        {inc.detail && <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{inc.detail}</p>}
+                        <p className="text-xs text-earth-400 dark:text-earth-500 mt-0.5">{new Date(inc.detectedAt).toLocaleString()}</p>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => resolveOne(inc.id)} disabled={resolvingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600 disabled:opacity-50">
+                            {resolvingId === inc.id ? 'Resolving...' : 'Resolve'}
+                          </button>
+                        </div>
                       </div>
-                    </Card>
-                  )
-                })}
+                    </div>
+                  </Card>
+                ))}
             </div>
           )}
 
           <Card>
             <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
-              <Bot className="w-4 h-4 text-brand-600" /> AI Agent Log
+              <AlertTriangle className="w-4 h-4 text-brand-600" /> Log an incident
             </h3>
-            {agentLog.length === 0 ? (
-              <p className="text-sm text-earth-500 dark:text-earth-400">No agent activity yet.</p>
-            ) : (
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {agentLog.map((entry) => {
-                  const typeColors = {
-                    info: 'text-blue-600 dark:text-blue-400',
-                    fixing: 'text-amber-600 dark:text-amber-400',
-                    success: 'text-green-600 dark:text-green-400',
-                    error: 'text-red-600 dark:text-red-400',
-                  }
-                  return (
-                    <div key={entry.id} className="flex items-start gap-2 text-xs">
-                      <span className="text-earth-400 dark:text-earth-500 shrink-0 w-16">{new Date(entry.timestamp).toLocaleTimeString()}</span>
-                      <span className={typeColors[entry.type] || 'text-earth-600 dark:text-earth-300'}>{entry.message}</span>
-                    </div>
-                  )
-                })}
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+              Manually flag something not caught by the automated database health check (e.g. a third-party outage).
+            </p>
+            <div className="space-y-3 max-w-sm">
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Service</label>
+                <input
+                  type="text"
+                  value={newIncident.service}
+                  onChange={(e) => setNewIncident({ ...newIncident, service: e.target.value })}
+                  placeholder="e.g. Payment provider"
+                  className="input mt-1"
+                />
               </div>
-            )}
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Detail</label>
+                <input
+                  type="text"
+                  value={newIncident.detail}
+                  onChange={(e) => setNewIncident({ ...newIncident, detail: e.target.value })}
+                  placeholder="Optional details"
+                  className="input mt-1"
+                />
+              </div>
+              <button onClick={submitIncident} disabled={loggingIncident || !newIncident.service.trim()} className="btn-primary btn-sm">
+                {loggingIncident ? 'Logging…' : 'Log incident'}
+              </button>
+            </div>
           </Card>
         </>
       ) : tab === 'settings' ? (

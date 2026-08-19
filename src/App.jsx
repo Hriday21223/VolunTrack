@@ -23,6 +23,7 @@ const Contact = lazy(() => import('@/pages/Contact.jsx'))
 const Terms = lazy(() => import('@/pages/Terms.jsx'))
 const Privacy = lazy(() => import('@/pages/Privacy.jsx'))
 const Dashboard = lazy(() => import('@/pages/Dashboard.jsx'))
+const Opportunities = lazy(() => import('@/pages/Opportunities.jsx'))
 const LogHours = lazy(() => import('@/pages/LogHours.jsx'))
 const CalendarView = lazy(() => import('@/pages/CalendarView.jsx'))
 const Achievements = lazy(() => import('@/pages/Achievements.jsx'))
@@ -103,6 +104,7 @@ function Shell() {
           <Route path="/verify-hours"   element={<VerifyHours />} />
 
           <Route path="/"             element={<Home />} />
+          <Route path="/opportunities" element={<Protected><Opportunities /></Protected>} />
           <Route path="/parent"       element={<Protected><ParentDashboard /></Protected>} />
           <Route path="/log"          element={<Protected><LogHours /></Protected>} />
           <Route path="/calendar"     element={<Protected><CalendarView /></Protected>} />
