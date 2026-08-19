@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 const CORE_ITEMS = {
   student: [
     { to: '/',             label: 'Dashboard',     icon: Home },
-    { to: '/?view=nearby', label: 'Opportunities', icon: MapPin },
+    { to: '/opportunities', label: 'Opportunities', icon: MapPin },
     { to: '/log',          label: 'Log Hours',           icon: Clock },
     { to: '/profile',      label: 'Profile',       icon: User },
     { to: '/settings',     label: 'Settings',      icon: Settings },
