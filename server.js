@@ -16,6 +16,7 @@ import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
 import reviewsRoutes from './server/routes/reviews.js'
 import invoicesRoutes from './server/routes/invoices.js'
 import settingsRoutes from './server/routes/settings.js'
+import statusRoutes from './server/routes/status.js'
 import { escapeHtml } from './server/html.js'
 
 dotenv.config()
@@ -79,6 +80,7 @@ app.use('/api/contact', contactRoutes)
 app.use('/api/reviews', reviewsRoutes)
 app.use('/api/invoices', invoicesRoutes)
 app.use('/api/settings', settingsRoutes)
+app.use('/api/status', statusRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
