@@ -210,8 +210,8 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
   const subject = type === 'pin'
     ? 'VolunTrack PIN recovery code'
     : 'VolunTrack password recovery code'
-  const text = `Your VolunTrack recovery code is ${code}. It expires in 15 minutes.`
-  const html = `<p>Your VolunTrack recovery code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>`
+  const text = `Your VolunTrack recovery code is ${code}. It expires in 15 minutes. This is an automated message — please don't reply to this email.`
+  const html = `<p>Your VolunTrack recovery code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p><p>This is an automated message — please don't reply to this email.</p>`
 
   try {
     await transport.sendMail({
