@@ -135,7 +135,7 @@ export default function Admin() {
   const [incidents, setIncidents] = useState([])
   const [loadingIncidents, setLoadingIncidents] = useState(false)
   const [resolvingId, setResolvingId] = useState(null)
-  const [newIncident, setNewIncident] = useState({ service: '', detail: '' })
+  const [newIncident, setNewIncident] = useState({ service: '', detail: '', issueUrl: '' })
   const [loggingIncident, setLoggingIncident] = useState(false)
 
   const loadIncidents = useCallback(async () => {
@@ -150,10 +150,10 @@ export default function Admin() {
     setLoggingIncident(true)
     try {
       await createIncident(newIncident)
-      setNewIncident({ service: '', detail: '' })
+      setNewIncident({ service: '', detail: '', issueUrl: '' })
       await loadIncidents()
       setToastMessage('Incident logged'); setToast(true)
-    } catch { setToastMessage('Failed to log incident'); setToast(true) } finally { setLoggingIncident(false) }
+    } catch (error) { setToastMessage(error.message || 'Failed to log incident'); setToast(true) } finally { setLoggingIncident(false) }
   }
 
   const resolveOne = async (id) => {
@@ -1186,6 +1186,11 @@ export default function Admin() {
                         </div>
                         {inc.detail && <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{inc.detail}</p>}
                         <p className="text-xs text-earth-400 dark:text-earth-500 mt-0.5">{new Date(inc.detectedAt).toLocaleString()}</p>
+                        {inc.issueUrl && (
+                          <a href={inc.issueUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline mt-0.5 inline-block">
+                            GitHub issue ↗
+                          </a>
+                        )}
                         <div className="flex gap-2 mt-2">
                           <button onClick={() => resolveOne(inc.id)} disabled={resolvingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600 disabled:opacity-50">
                             {resolvingId === inc.id ? 'Resolving...' : 'Resolve'}
@@ -1223,6 +1228,16 @@ export default function Admin() {
                   value={newIncident.detail}
                   onChange={(e) => setNewIncident({ ...newIncident, detail: e.target.value })}
                   placeholder="Optional details"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">GitHub issue</label>
+                <input
+                  type="url"
+                  value={newIncident.issueUrl}
+                  onChange={(e) => setNewIncident({ ...newIncident, issueUrl: e.target.value })}
+                  placeholder="https://github.com/org/repo/issues/123"
                   className="input mt-1"
                 />
               </div>

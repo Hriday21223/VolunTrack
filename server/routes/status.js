@@ -128,6 +128,7 @@ router.get('/incidents', limiter, requireDb, async (_req, res) => {
       source: r.source,
       detectedAt: r.detected_at,
       resolvedAt: r.resolved_at,
+      issueUrl: r.issue_url,
     })))
   } catch (error) {
     console.error('list incidents failed:', error)
@@ -140,15 +141,19 @@ router.get('/incidents', limiter, requireDb, async (_req, res) => {
 router.post('/incidents', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const service = String(req.body.service || '').trim()
   const detail = String(req.body.detail || '').trim()
+  const issueUrl = String(req.body.issueUrl || '').trim()
 
   if (!service || service.length > 200) return res.status(400).json({ error: 'Invalid service.' })
   if (detail.length > 1000) return res.status(400).json({ error: 'Invalid detail.' })
+  if (issueUrl && (issueUrl.length > 500 || !/^https:\/\/github\.com\//.test(issueUrl))) {
+    return res.status(400).json({ error: 'Issue link must be an https://github.com/... URL.' })
+  }
 
   try {
     const id = uid('inc')
     await query(
-      `INSERT INTO incidents (id, service, detail, status, source) VALUES ($1, $2, $3, 'detected', 'admin')`,
-      [id, service, detail || null],
+      `INSERT INTO incidents (id, service, detail, status, source, issue_url) VALUES ($1, $2, $3, 'detected', 'admin', $4)`,
+      [id, service, detail || null, issueUrl || null],
     )
     await notifyIncident({ service, detail, source: 'admin' })
     return res.status(201).json({ id })

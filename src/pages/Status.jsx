@@ -396,6 +396,11 @@ export default function Status() {
                         </div>
                         {inc.detail && <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{inc.detail}</p>}
                         <p className="text-xs text-earth-400 dark:text-earth-500 mt-0.5">{new Date(inc.detectedAt).toLocaleString()}</p>
+                        {inc.issueUrl && (
+                          <a href={inc.issueUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline mt-0.5 inline-block">
+                            GitHub issue ↗
+                          </a>
+                        )}
                       </div>
                     </div>
                   )
