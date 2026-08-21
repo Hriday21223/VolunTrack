@@ -1,5 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { uid, generateToken } from '../ids.js'
@@ -247,5 +248,79 @@ router.get('/subscribe/unsubscribe/:token', limiter, requireDb, async (req, res)
     return res.status(500).json({ error: 'Could not unsubscribe.' })
   }
 })
+
+// Real sync with GitHub Issues: opening an issue creates an incident,
+// closing it resolves that incident, reopening it reopens that incident.
+// Disabled until GITHUB_WEBHOOK_SECRET is set (the webhook is registered
+// on the repo separately, pointed at this endpoint).
+//
+// NOT mounted on this router: it needs the raw request body for HMAC
+// signature verification, so it's registered directly on the app in
+// server.js, ahead of the global express.json() parser — same pattern as
+// the Resend inbound webhook in server/routes/contact.js.
+export async function handleGithubWebhook(req, res) {
+  if (!hasDatabase()) return res.status(200).send('OK')
+
+  const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET
+  if (!webhookSecret) {
+    console.log('[dev] GitHub webhook hit but GITHUB_WEBHOOK_SECRET not set — ignoring.')
+    return res.status(200).send('OK')
+  }
+
+  const signature = req.headers['x-hub-signature-256']
+  if (typeof signature !== 'string' || !signature.startsWith('sha256=')) {
+    return res.status(401).send('Missing signature')
+  }
+  const expected = `sha256=${createHmac('sha256', webhookSecret).update(req.body).digest('hex')}`
+  const sigBuf = Buffer.from(signature)
+  const expectedBuf = Buffer.from(expected)
+  if (sigBuf.length !== expectedBuf.length || !timingSafeEqual(sigBuf, expectedBuf)) {
+    return res.status(401).send('Invalid signature')
+  }
+
+  if (req.headers['x-github-event'] !== 'issues') return res.status(200).send('OK')
+
+  let payload
+  try {
+    payload = JSON.parse(req.body.toString())
+  } catch {
+    return res.status(400).send('Bad payload')
+  }
+
+  const { action, issue } = payload || {}
+  if (!issue?.html_url) return res.status(200).send('OK')
+
+  try {
+    if (action === 'opened') {
+      const { rows } = await query(
+        `SELECT id FROM incidents WHERE issue_url = $1 AND status = 'detected' LIMIT 1`,
+        [issue.html_url],
+      )
+      if (rows.length === 0) {
+        const service = String(issue.title || 'GitHub issue').slice(0, 200)
+        const detail = String(issue.body || '').slice(0, 1000)
+        await query(
+          `INSERT INTO incidents (id, service, detail, status, source, issue_url) VALUES ($1, $2, $3, 'detected', 'github', $4)`,
+          [uid('inc'), service, detail || null, issue.html_url],
+        )
+        await notifyIncident({ service, detail, source: 'github' })
+      }
+    } else if (action === 'closed') {
+      await query(
+        `UPDATE incidents SET status = 'resolved', resolved_at = now() WHERE issue_url = $1 AND status = 'detected'`,
+        [issue.html_url],
+      )
+    } else if (action === 'reopened') {
+      await query(
+        `UPDATE incidents SET status = 'detected', resolved_at = NULL WHERE issue_url = $1 AND status = 'resolved'`,
+        [issue.html_url],
+      )
+    }
+    return res.status(200).send('OK')
+  } catch (error) {
+    console.error('github webhook failed:', error)
+    return res.status(500).send('Error')
+  }
+}
 
 export default router
