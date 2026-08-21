@@ -16,9 +16,9 @@
 // /about, /terms, /privacy, which are crawlable but intentionally excluded
 // from the sitemap — see comments there).
 import { createServer } from 'http'
-import { readFile, writeFile, mkdir, stat } from 'fs/promises'
+import { readFile, writeFile, mkdir, realpath, stat } from 'fs/promises'
 import { fileURLToPath } from 'url'
-import { dirname, extname, join, resolve } from 'path'
+import { dirname, extname, join, resolve, sep } from 'path'
 import puppeteer from 'puppeteer'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -44,12 +44,22 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ico': 'image/x-icon',
 }
 
-async function fileExists(path) {
+// Resolves a request path to a real file confined to DIST_DIR, resolving
+// symlinks and rejecting anything that escapes it (e.g. "../"). Returns null
+// for anything outside DIST_DIR, a directory, or a path that doesn't exist,
+// so callers fall back to the SPA's index.html rather than ever passing
+// tainted input to readFile.
+async function resolveWithinDist(urlPath) {
+  let target
   try {
-    return (await stat(path)).isFile()
+    target = await realpath(resolve(DIST_DIR, `.${urlPath}`))
   } catch {
-    return false
+    return null
   }
+  if (target !== DIST_DIR && !target.startsWith(DIST_DIR + sep)) return null
+  const info = await stat(target).catch(() => null)
+  if (!info?.isFile()) return null
+  return target
 }
 
 // Minimal static server with SPA fallback, mirroring vercel.json's
@@ -61,10 +71,7 @@ function startServer() {
   return new Promise((resolvePromise) => {
     const server = createServer(async (req, res) => {
       const urlPath = decodeURIComponent(req.url.split('?')[0])
-      let filePath = resolve(join(DIST_DIR, urlPath))
-      if (!filePath.startsWith(DIST_DIR + '/') || !(await fileExists(filePath))) {
-        filePath = join(DIST_DIR, 'index.html')
-      }
+      const filePath = (await resolveWithinDist(urlPath)) ?? join(DIST_DIR, 'index.html')
       try {
         const body = await readFile(filePath)
         res.writeHead(200, { 'Content-Type': MIME_TYPES[extname(filePath)] || 'application/octet-stream' })
