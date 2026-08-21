@@ -54,13 +54,15 @@ async function fileExists(path) {
 
 // Minimal static server with SPA fallback, mirroring vercel.json's
 // catch-all rewrite to index.html so client-side routing works when
-// Puppeteer navigates straight to e.g. /about.
+// Puppeteer navigates straight to e.g. /about. Only ever reached by our own
+// Puppeteer instance on 127.0.0.1, but confine resolved paths to DIST_DIR
+// regardless, since req.url is attacker-controllable input in general.
 function startServer() {
   return new Promise((resolvePromise) => {
     const server = createServer(async (req, res) => {
       const urlPath = decodeURIComponent(req.url.split('?')[0])
-      let filePath = join(DIST_DIR, urlPath)
-      if (!(await fileExists(filePath))) {
+      let filePath = resolve(join(DIST_DIR, urlPath))
+      if (!filePath.startsWith(DIST_DIR + '/') || !(await fileExists(filePath))) {
         filePath = join(DIST_DIR, 'index.html')
       }
       try {
