@@ -19,4 +19,4 @@ Disallow: /school/dashboard
 Disallow: /organization/dashboard
 Disallow: /api/
 
-Sitemap: http://localhost:5173/sitemap.xml
+Sitemap: https://volunteer-track-two.vercel.app/sitemap.xml
