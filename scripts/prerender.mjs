@@ -84,7 +84,15 @@ function outputPathFor(route) {
 async function main() {
   const server = await startServer()
   const port = server.address().port
-  const browser = await puppeteer.launch({ headless: true })
+  // --no-sandbox is required in CI containers (GitHub Actions, Docker, most
+  // build environments) where Chromium's setuid sandbox can't get the
+  // privileges it needs and otherwise crashes with "No usable sandbox!".
+  // Safe here since this only renders our own trusted build output, not
+  // untrusted/remote content.
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  })
 
   try {
     for (const route of ROUTES) {
