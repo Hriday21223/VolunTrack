@@ -1,12 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Shield, ArrowRight, Smartphone, Monitor, Scan, Camera, CameraOff } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Shield, ArrowRight, Smartphone, Monitor, Scan, Camera, CameraOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import { useSeo } from '@/hooks/useSeo.js'
 import { Html5Qrcode } from 'html5-qrcode'
 
 export default function SyncLogin() {
+  useSeo({
+    title: 'Sync Your Device',
+    description: 'Enter your 5-digit sync PIN or scan a QR code to bring your VolunTrack account to a new device.',
+    path: '/sync-login',
+  })
+
   const { loginWithSyncPin } = useAuth()
   const nav = useNavigate()
   const [syncPin, setSyncPin] = useState('')
@@ -131,6 +138,10 @@ export default function SyncLogin() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.18),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,95,0.18),transparent_18%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.16),transparent_18%),linear-gradient(180deg,#08161b_0%,#0b1c24_45%,#0f1e16_100%)] text-white px-4 py-8">
       <div className="mx-auto max-w-md">
+        <Link to="/login" className="btn-ghost mb-6 inline-flex items-center gap-2 text-sm text-slate-300 hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Back to sign in
+        </Link>
+
         <div className="mb-8 text-center">
           <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-brand-100 shadow-soft backdrop-blur">
             {isMobile ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
@@ -143,7 +154,7 @@ export default function SyncLogin() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <p className="text-sm text-brand-200 uppercase tracking-[0.3em]">Sync your device</p>
-                <h2 className="text-3xl font-bold text-white">Enter sync PIN</h2>
+                <h1 className="text-3xl font-bold text-white">Enter sync PIN</h1>
               </div>
               <Shield className="w-12 h-12 text-brand-400" />
             </div>
@@ -207,6 +218,12 @@ export default function SyncLogin() {
                       Get VolunTrack mobile
                     </a>
                   )}
+                </div>
+
+                <div className="mt-4 flex items-center justify-center gap-4 text-sm text-slate-400">
+                  <Link to="/register" className="text-sky-200 font-semibold hover:text-white">Create an account</Link>
+                  <span className="text-slate-600">·</span>
+                  <Link to="/help" className="text-sky-200 font-semibold hover:text-white">Need help?</Link>
                 </div>
               </>
             )}

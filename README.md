@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Hriday21223/VolunteerTrack/actions/workflows/ci.yml/badge.svg)](https://github.com/Hriday21223/VolunteerTrack/actions/workflows/ci.yml)
 [![Dependabot](https://github.com/Hriday21223/VolunteerTrack/security/dependabot)](https://github.com/Hriday21223/VolunteerTrack/security/dependabot)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/1d7fb983-2255-4867-87c8-bdcff8572a41/deploy-status)](https://app.netlify.com/projects/volunteertrackorg/deploys)
 
 **Live demo:** hosted on Netlify — update this link once the site is deployed (see [DEPLOYMENT.md](DEPLOYMENT.md))
 
