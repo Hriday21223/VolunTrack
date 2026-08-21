@@ -29,13 +29,13 @@ export async function getIncidents() {
   }
 }
 
-export async function createIncident({ service, detail }) {
+export async function createIncident({ service, detail, issueUrl }) {
   const res = await fetch(`${apiUrl()}/status/incidents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ service, detail }),
+    body: JSON.stringify({ service, detail, issueUrl }),
   })
-  if (!res.ok) throw new Error('Failed to create incident')
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Failed to create incident')
   return res.json()
 }
 

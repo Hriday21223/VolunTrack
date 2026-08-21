@@ -469,6 +469,7 @@ export async function initSchema() {
     `)
   } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_incidents_detected ON incidents(detected_at DESC)`) } catch {}
+  try { await query(`ALTER TABLE incidents ADD COLUMN IF NOT EXISTS issue_url TEXT`) } catch {}
 
   // Visitors who opt in on /status to get emailed when an incident is
   // logged. Double opt-in (confirmed starts false) so this can't be used to

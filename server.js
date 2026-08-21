@@ -16,7 +16,7 @@ import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
 import reviewsRoutes from './server/routes/reviews.js'
 import invoicesRoutes from './server/routes/invoices.js'
 import settingsRoutes from './server/routes/settings.js'
-import statusRoutes from './server/routes/status.js'
+import statusRoutes, { handleGithubWebhook } from './server/routes/status.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 
@@ -65,6 +65,10 @@ app.use(cors({
 // verification needs the raw request body, which express.json() would
 // otherwise already have consumed by the time a router saw it.
 app.post('/api/contact/inbound', express.raw({ type: 'application/json' }), handleInboundWebhook)
+
+// Real GitHub Issues sync (see handleGithubWebhook) — also needs the raw
+// body for HMAC signature verification, so it's registered here too.
+app.post('/api/status/github-webhook', express.raw({ type: 'application/json' }), handleGithubWebhook)
 
 app.use(express.json({ limit: '1mb' }))
 app.use(apiLimiter)
