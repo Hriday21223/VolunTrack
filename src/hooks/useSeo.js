@@ -29,12 +29,34 @@ function setCanonicalLink(href) {
   el.setAttribute('href', href)
 }
 
+const JSON_LD_ATTR = 'data-seo-jsonld'
+
+// Route-specific structured data lives in a script tag tagged with
+// data-seo-jsonld so it can be swapped/removed on unmount without touching
+// the static SoftwareApplication block in index.html.
+function setJsonLd(data) {
+  let el = document.querySelector(`script[${JSON_LD_ATTR}]`)
+  if (!data) {
+    el?.remove()
+    return
+  }
+  if (!el) {
+    el = document.createElement('script')
+    el.type = 'application/ld+json'
+    el.setAttribute(JSON_LD_ATTR, 'true')
+    document.head.appendChild(el)
+  }
+  el.textContent = JSON.stringify(data)
+}
+
 /**
  * Sets document title, meta description, OG/Twitter tags, and canonical link
  * for the current route. Pass canonicalPath to point at a different URL
  * (e.g. duplicate-content pages that should canonicalize to the primary one).
+ * Pass jsonLd (a schema.org object, or an array for multiple schemas) to
+ * inject page-specific structured data — e.g. FAQPage, AggregateRating.
  */
-export function useSeo({ title, description, path, canonicalPath } = {}) {
+export function useSeo({ title, description, path, canonicalPath, jsonLd } = {}) {
   useEffect(() => {
     const fullTitle = title ? `${title} · VolunTrack` : DEFAULT_TITLE
     const desc = description || DEFAULT_DESCRIPTION
@@ -48,6 +70,7 @@ export function useSeo({ title, description, path, canonicalPath } = {}) {
     setMetaTag('name', 'twitter:title', fullTitle)
     setMetaTag('name', 'twitter:description', desc)
     setCanonicalLink(canonicalUrl)
+    setJsonLd(jsonLd)
 
     return () => {
       document.title = DEFAULT_TITLE
@@ -58,6 +81,7 @@ export function useSeo({ title, description, path, canonicalPath } = {}) {
       setMetaTag('name', 'twitter:title', DEFAULT_TITLE)
       setMetaTag('name', 'twitter:description', DEFAULT_DESCRIPTION)
       setCanonicalLink(DEFAULT_CANONICAL_URL)
+      setJsonLd(null)
     }
-  }, [title, description, path, canonicalPath])
+  }, [title, description, path, canonicalPath, jsonLd])
 }

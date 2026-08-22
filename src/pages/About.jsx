@@ -122,12 +122,46 @@ export default function About() {
       .catch(() => {})
   }, [])
 
+  // Patches the static SoftwareApplication schema in index.html (rather than
+  // adding a second script tag) so AI/search crawlers see one consistent
+  // entity — enriched with a real aggregateRating once genuine reviews load,
+  // and cleared again if none are approved. Never fabricates a count.
+  useEffect(() => {
+    const script = document.getElementById('ld-software-app')
+    if (!script) return
+    const data = JSON.parse(script.textContent)
+    if (testimonials.length > 0) {
+      const avg = testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length
+      data.aggregateRating = {
+        '@type': 'AggregateRating',
+        ratingValue: Math.round(avg * 10) / 10,
+        reviewCount: testimonials.length,
+      }
+    } else {
+      delete data.aggregateRating
+    }
+    script.textContent = JSON.stringify(data)
+  }, [testimonials])
+
+  // FAQPage structured data generated from the same FAQS content rendered
+  // below, so AI answer engines can cite question/answer pairs directly.
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQS.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  }
+
   // Rendered at both "/" and "/about" for logged-out visitors — canonicalize
   // to "/" so search engines don't treat them as duplicate pages.
   useSeo({
     title: 'Volunteer Hour Tracker for Students & Schools',
     description: 'VolunTrack is a calm volunteer hour tracker. Log hours, set goals, earn badges, and generate reports for school or community service.',
     canonicalPath: '/',
+    jsonLd: faqJsonLd,
   })
 
   useEffect(() => {
@@ -224,9 +258,9 @@ export default function About() {
 
           <section data-animate className="mt-16 text-center">
             <p className="text-sm uppercase tracking-[0.35em] text-brand-600">How it works</p>
-            <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">Get started in four simple steps.</h2>
-            <p className="mt-3 text-earth-400 max-w-xl mx-auto">
-              From signing up to exporting your first report — VolunTrack makes volunteer tracking effortless.
+            <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">How do you start tracking volunteer hours?</h2>
+            <p className="mt-3 text-earth-300 max-w-xl mx-auto font-semibold">
+              Create a free account, log your hours, track progress toward a goal, and export a report — no credit card, in under five minutes.
             </p>
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {STEPS.map(({ icon: Icon, title, body }, i) => (
@@ -266,7 +300,10 @@ export default function About() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Core features</p>
-                <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">Everything you need to manage service hours and showcase impact.</h2>
+                <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">What can you do with VolunTrack?</h2>
+                <p className="mt-3 text-earth-300 font-semibold max-w-xl">
+                  Log hours with proof, track progress toward a goal, earn achievement badges, and export polished PDF/CSV reports and certificates.
+                </p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300"><ShieldCheck className="w-4 h-4" /> Private & stores in your local storage</span>
