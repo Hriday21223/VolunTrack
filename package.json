@@ -12,7 +12,7 @@
     "start": "node server.js",
     "prebuild": "node scripts/generate-seo-files.mjs",
     "build": "vite build",
-    "postbuild": "node scripts/prerender.mjs",
+    "postbuild": "npx puppeteer browsers install chrome && node scripts/prerender.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
   },
