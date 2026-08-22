@@ -105,11 +105,28 @@ async function main() {
 
   try {
     for (const route of ROUTES) {
-      const page = await browser.newPage()
-      await page.goto(`http://127.0.0.1:${port}${route}`, { waitUntil: 'networkidle0' })
-      await page.waitForSelector('h1', { timeout: 8000 }).catch(() => {})
-      const html = await page.content()
-      await page.close()
+      const url = `http://127.0.0.1:${port}${route}`
+      // 'networkidle0' has intermittently hung past its 30s default on slower
+      // build machines (Netlify), likely due to the PWA's own service-worker
+      // registration/analytics keeping a connection open past the idle
+      // window. 'domcontentloaded' is faster and avoids that hang; one retry
+      // absorbs any remaining transient navigation timeout. The h1 wait is
+      // still best-effort only — not every route (e.g. /help) has one.
+      let html
+      for (let attempt = 1; ; attempt++) {
+        const page = await browser.newPage()
+        try {
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 })
+          await page.waitForSelector('h1', { timeout: 8000 }).catch(() => {})
+          html = await page.content()
+          break
+        } catch (err) {
+          if (attempt >= 2) throw err
+          console.warn(`[prerender] ${route} attempt ${attempt} failed (${err.message}), retrying`)
+        } finally {
+          await page.close()
+        }
+      }
 
       const outPath = outputPathFor(route)
       await mkdir(dirname(outPath), { recursive: true })
