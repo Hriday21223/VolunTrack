@@ -189,8 +189,8 @@ export default function About() {
   }, [testimonials])
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.22),transparent_28%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.18),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.2),transparent_22%),linear-gradient(180deg,#071017_0%,#0a1d25_40%,#0f1f15_100%)] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.08),transparent_14%),radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.18),transparent_18%),radial-gradient(circle_at_50%_80%,rgba(168,85,247,0.14),transparent_16%)]" />
+    <div className="min-h-screen relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(63,131,68,0.24),transparent_28%),radial-gradient(circle_at_top_right,rgba(160,124,68,0.18),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(39,84,45,0.22),transparent_22%),linear-gradient(180deg,#0a130d_0%,#0f1f15_40%,#151f10_100%)] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.08),transparent_14%),radial-gradient(circle_at_80%_20%,rgba(184,149,93,0.18),transparent_18%),radial-gradient(circle_at_50%_80%,rgba(63,131,68,0.16),transparent_16%)]" />
       <div className="relative px-4 md:px-8 py-5">
         <header className="relative flex items-center justify-between gap-3 animate-fade-in-up">
           <Link to="/login" className="flex items-center gap-3">
