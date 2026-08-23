@@ -1,0 +1,22 @@
+name: Keep backend warm
+
+# Render's free tier spins the web service down after ~15 min of
+# inactivity, and a cold boot takes longer than GitHub's webhook delivery
+# timeout (~10s). That silently drops GitHub Issues -> incidents sync
+# (handleGithubWebhook in server/routes/status.js), since GitHub doesn't
+# retry failed deliveries. Pinging a lightweight health endpoint well
+# inside that 15-min window keeps the backend warm so webhook deliveries
+# land on a live process. See #44.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          curl -sf --max-time 30 https://voluntrack-backend-frrh.onrender.com/api/status/health
