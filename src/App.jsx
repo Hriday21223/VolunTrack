@@ -116,7 +116,7 @@ function Shell() {
           <Route path="/help"         element={<Help />} />
           <Route path="/my-tasks"    element={<Protected><MyTasks /></Protected>} />
           <Route path="/attendance"  element={<Protected><Attendance /></Protected>} />
-          <Route path="/admin"        element={<AdminProtected><Admin /></AdminProtected>} />
+          <Route path="/admin/:tab?"  element={<AdminProtected><Admin /></AdminProtected>} />
           <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
           <Route path="/organization/dashboard" element={<Protected><OrganizationDashboard /></Protected>} />
 

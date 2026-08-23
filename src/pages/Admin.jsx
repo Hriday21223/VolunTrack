@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -61,8 +61,11 @@ function generateDraft(contact) {
   return intro + '\n\n' + body + closing
 }
 
+const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings']
+
 export default function Admin() {
   const nav = useNavigate()
+  const { tab: tabParam } = useParams()
   const { user } = useAuth()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [threads, setThreads] = useState([])
@@ -77,7 +80,8 @@ export default function Admin() {
   const [copiedIdx, setCopiedIdx] = useState(null)
   const [sendingIds, setSendingIds] = useState(() => new Set())
   const [sendErrors, setSendErrors] = useState({})
-  const [tab, setTab] = useState('inbox')
+  const tab = ADMIN_TABS.includes(tabParam) ? tabParam : 'inbox'
+  const setTab = (t) => nav(`/admin/${t}`)
   const [schools, setSchools] = useState([])
   const [loadingSchools, setLoadingSchools] = useState(false)
   const [payModal, setPayModal] = useState(null) // school id
@@ -169,6 +173,10 @@ export default function Admin() {
   useEffect(() => {
     setIsAuthorized(user?.role === 'admin')
   }, [user?.role])
+
+  useEffect(() => {
+    if (!ADMIN_TABS.includes(tabParam)) nav('/admin/inbox', { replace: true })
+  }, [tabParam, nav])
 
   const loadSchools = useCallback(async () => {
     setLoadingSchools(true)
@@ -569,6 +577,15 @@ export default function Admin() {
     }
   }, [])
 
+  // Loads whichever tab's data is lazy-fetched — runs on mount for a
+  // deep link (e.g. /admin/schools) and again on every tab switch.
+  useEffect(() => {
+    if (tab === 'schools') loadSchools()
+    else if (tab === 'invites') loadInvites()
+    else if (tab === 'organizations') loadOrganizations()
+    else if (tab === 'settings') loadOfficeHours()
+  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours])
+
   const saveOfficeHours = async () => {
     if (!officeHoursDraft.days.trim() || !officeHoursDraft.hours.trim()) return
     setSavingOfficeHours(true)
@@ -806,13 +823,13 @@ export default function Admin() {
           <button onClick={() => setTab('reviews')} className={`btn-sm ${tab === 'reviews' ? 'btn-primary' : 'btn-ghost'}`}>
             <Star className="w-3.5 h-3.5 mr-1" /> Reviews
           </button>
-          <button data-tour="admin-schools" onClick={() => { setTab('schools'); loadSchools() }} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="admin-schools" onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" /> Schools
           </button>
-          <button onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button onClick={() => setTab('invites')} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
-          <button onClick={() => { setTab('organizations'); loadOrganizations() }} className={`btn-sm ${tab === 'organizations' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button onClick={() => setTab('organizations')} className={`btn-sm ${tab === 'organizations' ? 'btn-primary' : 'btn-ghost'}`}>
             <Building2 className="w-3.5 h-3.5 mr-1" /> Organizations
           </button>
           <button data-tour="admin-incidents" onClick={() => { setTab('incidents'); loadIncidents() }} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
@@ -821,7 +838,7 @@ export default function Admin() {
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{incidents.length > 9 ? '9+' : incidents.length}</span>
             )}
           </button>
-          <button onClick={() => { setTab('settings'); loadOfficeHours() }} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button onClick={() => setTab('settings')} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
             <Wrench className="w-3.5 h-3.5 mr-1" /> Settings
           </button>
         </div>
