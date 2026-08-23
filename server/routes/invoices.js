@@ -59,6 +59,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
   if (!table) return res.status(400).json({ error: 'entityType must be school or organization.' })
   if (!entityId) return res.status(400).json({ error: 'entityId is required.' })
   if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'A valid amount is required.' })
+  if (!description) return res.status(400).json({ error: 'A description is required.' })
   if (billingPeriod && !['monthly', 'yearly', 'one_time'].includes(billingPeriod)) {
     return res.status(400).json({ error: 'Invalid billing period.' })
   }
