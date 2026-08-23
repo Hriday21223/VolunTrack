@@ -83,17 +83,20 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
       [uid('pev'), entityType, entityId, amount, id],
     )
 
-    if (entity.contact_email) {
-      await sendEmail({
+    const hasContactEmail = Boolean(entity.contact_email)
+    let emailSent = false
+    if (hasContactEmail) {
+      const result = await sendEmail({
         to: entity.contact_email,
         subject: `Invoice ${invoiceNumber} from VolunTrack`,
         html: invoiceNoticeHtml({ entityType, entityName: entity.name, invoiceNumber, amount, billingPeriod, dueDate, description }),
         idempotencyKey: `invoice/${id}`,
       })
+      emailSent = result.sent
     }
 
     return res.status(201).json({
-      invoice: { id, invoiceNumber, entityType, entityId, amount, billingPeriod, description, dueDate, status: 'sent' },
+      invoice: { id, invoiceNumber, entityType, entityId, amount, billingPeriod, description, dueDate, status: 'sent', emailSent, hasContactEmail },
     })
   } catch (error) {
     console.error('create invoice failed:', error)

@@ -939,6 +939,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
     }
 
     // Rejected payments notify the school so they know to resubmit.
+    let emailSent = null
     if (status === 'rejected') {
       const id = uid('anot')
       const reason = notes.trim().replace(/\.+$/, '')
@@ -949,17 +950,19 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
       )
 
       const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
+      emailSent = false
       if (rows[0]?.contact_email) {
-        await sendEmail({
+        const result = await sendEmail({
           to: rows[0].contact_email,
           subject: 'Payment confirmation rejected — VolunTrack',
           html: `<p>${rejectMsg}</p>${emailFooterHtml()}`,
           idempotencyKey: `payment-rejected/${req.params.id}/${id}`,
         })
+        emailSent = result.sent
       }
     }
 
-    return res.json({ ok: true })
+    return res.json({ ok: true, emailSent })
   } catch (error) {
     console.error('update payment failed:', error)
     return res.status(500).json({ error: 'Could not update payment.' })
@@ -988,14 +991,14 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
     )
 
     const link = `${process.env.FRONTEND_URL || ''}/school/register?token=${token}`
-    await sendEmail({
+    const { sent: emailSent } = await sendEmail({
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite/${id}`,
     })
 
-    return res.status(201).json({ ok: true, id })
+    return res.status(201).json({ ok: true, id, emailSent })
   } catch (error) {
     console.error('school invite failed:', error)
     return res.status(500).json({ error: 'Could not send invite.' })
@@ -1034,14 +1037,14 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
     )
 
     const link = `${process.env.FRONTEND_URL || ''}/school/register?token=${token}`
-    await sendEmail({
+    const { sent: emailSent } = await sendEmail({
       to: invite.email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
-    return res.json({ ok: true })
+    return res.json({ ok: true, emailSent })
   } catch (error) {
     console.error('resend invite failed:', error)
     return res.status(500).json({ error: 'Could not resend invite.' })
@@ -1097,7 +1100,7 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
     )
 
     const { rows: schools } = await query('SELECT id, name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE contact_email IS NOT NULL')
-    await Promise.all(schools.map((s) => sendEmail({
+    const results = await Promise.all(schools.map((s) => sendEmail({
       to: s.contact_email,
       subject: 'Payment notice from VolunTrack',
       html: paymentNoticeHtml({
@@ -1109,8 +1112,9 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
       }),
       idempotencyKey: `payment-notice/${s.id}/${id}`,
     })))
+    const emailsSent = results.filter((r) => r.sent).length
 
-    return res.status(201).json({ ok: true, id })
+    return res.status(201).json({ ok: true, id, emailsSent, emailsTotal: schools.length })
   } catch (error) {
     console.error('notify payment failed:', error)
     return res.status(500).json({ error: 'Could not send notification.' })
@@ -1131,8 +1135,10 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
     )
 
     const { rows } = await query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE id = $1', [req.params.schoolId])
-    if (rows[0]?.contact_email) {
-      await sendEmail({
+    const hasContactEmail = Boolean(rows[0]?.contact_email)
+    let emailSent = false
+    if (hasContactEmail) {
+      const result = await sendEmail({
         to: rows[0].contact_email,
         subject: 'Payment notice from VolunTrack',
         html: paymentNoticeHtml({
@@ -1144,9 +1150,10 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
         }),
         idempotencyKey: `payment-notice/${req.params.schoolId}/${id}`,
       })
+      emailSent = result.sent
     }
 
-    return res.status(201).json({ ok: true, id })
+    return res.status(201).json({ ok: true, id, emailSent, hasContactEmail })
   } catch (error) {
     console.error('notify school failed:', error)
     return res.status(500).json({ error: 'Could not send notification.' })

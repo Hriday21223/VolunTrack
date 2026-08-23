@@ -95,7 +95,8 @@ export default function OrganizationDashboard() {
       if (!res.ok) throw new Error(data.error || 'Failed')
       setShowInviteModal(false); setInviteName(''); setInviteEmail('')
       loadInvites()
-      setToastMessage('Invite sent'); setToast(true)
+      setToastMessage(data.emailSent === false ? 'Invite created, but the email failed to send — check email settings' : 'Invite sent')
+      setToast(true)
     } catch (e) { setToastMessage(e.message || 'Failed to send invite'); setToast(true) } finally { setSendingInvite(false) }
   }
 

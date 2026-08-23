@@ -116,14 +116,14 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
     )
 
     const link = `${process.env.FRONTEND_URL || ''}/organization/register?token=${token}`
-    await sendEmail({
+    const { sent: emailSent } = await sendEmail({
       to: email,
       subject: 'You’re invited to set up your organization on VolunTrack',
       html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `organization-invite/${id}`,
     })
 
-    return res.status(201).json({ ok: true, id })
+    return res.status(201).json({ ok: true, id, emailSent })
   } catch (error) {
     console.error('organization invite failed:', error)
     return res.status(500).json({ error: 'Could not send invite.' })
@@ -161,14 +161,14 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
     )
 
     const link = `${process.env.FRONTEND_URL || ''}/organization/register?token=${token}`
-    await sendEmail({
+    const { sent: emailSent } = await sendEmail({
       to: invite.email,
       subject: 'You’re invited to set up your organization on VolunTrack',
       html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `organization-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
-    return res.json({ ok: true })
+    return res.json({ ok: true, emailSent })
   } catch (error) {
     console.error('resend organization invite failed:', error)
     return res.status(500).json({ error: 'Could not resend invite.' })
@@ -269,8 +269,10 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
       ),
       query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM organizations WHERE id = $1', [req.params.organizationId]),
     ])
-    if (rows[0]?.contact_email) {
-      await sendEmail({
+    const hasContactEmail = Boolean(rows[0]?.contact_email)
+    let emailSent = false
+    if (hasContactEmail) {
+      const result = await sendEmail({
         to: rows[0].contact_email,
         subject: 'Payment notice from VolunTrack',
         html: paymentNoticeHtml({
@@ -284,9 +286,10 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
         }),
         idempotencyKey: `org-payment-notice/${req.params.organizationId}/${id}`,
       })
+      emailSent = result.sent
     }
 
-    return res.status(201).json({ ok: true, id })
+    return res.status(201).json({ ok: true, id, emailSent, hasContactEmail })
   } catch (error) {
     console.error('notify organization failed:', error)
     return res.status(500).json({ error: 'Could not send notification.' })
@@ -332,14 +335,14 @@ router.post('/invite-school', limiter, requireDb, requireAuth('org'), async (req
     )
 
     const link = `${process.env.FRONTEND_URL || ''}/school/register?token=${token}`
-    await sendEmail({
+    const { sent: emailSent } = await sendEmail({
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `org-school-invite/${id}`,
     })
 
-    return res.status(201).json({ ok: true, id })
+    return res.status(201).json({ ok: true, id, emailSent })
   } catch (error) {
     console.error('organization invite-school failed:', error)
     return res.status(500).json({ error: 'Could not send invite.' })
