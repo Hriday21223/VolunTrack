@@ -17,6 +17,24 @@ const ADMIN_TOUR_STEPS = [
   { selector: '[data-tour="admin-incidents"]', title: 'Incidents', description: 'Real backend/database health checks show up here — resolve them, or log one yourself.' },
 ]
 
+// Deterministic-but-varied invoice description, seeded by entity name so the
+// same school doesn't always get the exact same wording (mirrors generateDraft above).
+function generateInvoiceDescription({ entityName, billingPeriod }) {
+  const now = new Date()
+  const year = now.getFullYear()
+  const semester = now.getMonth() >= 6 ? `fall ${year}` : `spring ${year}`
+  const periodLabel = billingPeriod === 'yearly' ? 'annual' : billingPeriod === 'one_time' ? 'one-time' : 'monthly'
+  const name = entityName || 'this account'
+
+  const seed = String(entityName ?? '').split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
+  const templates = [
+    `VolunTrack ${periodLabel} subscription — ${semester} semester for ${name}.`,
+    `${name}'s VolunTrack ${periodLabel} plan, covering the ${semester} semester.`,
+    `VolunTrack subscription (${periodLabel}) for ${name} — ${semester} semester.`,
+  ]
+  return templates[seed % templates.length]
+}
+
 function generateDraft(contact) {
   const subject = contact.subject || 'General question'
   const name = contact.name || 'there'
@@ -504,7 +522,7 @@ export default function Admin() {
   }
 
   const sendInvoice = async () => {
-    if (!invoiceModal || !invoiceAmountDraft.trim()) return
+    if (!invoiceModal || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()) return
     setSendingInvoice(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
@@ -1788,7 +1806,16 @@ export default function Admin() {
                 </div>
               </div>
               <div>
-                <label className="label">Description (optional)</label>
+                <div className="flex items-center justify-between">
+                  <label className="label">Description</label>
+                  <button
+                    type="button"
+                    onClick={() => setInvoiceDescriptionDraft(generateInvoiceDescription({ entityName: invoiceModal.entityName, billingPeriod: invoiceBillingPeriodDraft }))}
+                    className="text-xs text-brand-400 hover:text-brand-300 inline-flex items-center gap-1 mb-1"
+                  >
+                    <Sparkles className="w-3 h-3" /> Generate with AI
+                  </button>
+                </div>
                 <textarea
                   className="input" rows={2}
                   placeholder="e.g. VolunTrack subscription — fall semester"
@@ -1801,7 +1828,7 @@ export default function Admin() {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setInvoiceModal(null)} className="btn-ghost flex-1">Cancel</button>
-                <button onClick={sendInvoice} className="btn-primary flex-1" disabled={sendingInvoice || !invoiceAmountDraft.trim()}>
+                <button onClick={sendInvoice} className="btn-primary flex-1" disabled={sendingInvoice || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()}>
                   {sendingInvoice ? 'Sending…' : 'Send invoice'}
                 </button>
               </div>
