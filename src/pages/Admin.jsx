@@ -253,7 +253,8 @@ export default function Admin() {
       if (!res.ok) throw new Error(data.error || 'Failed')
       setShowInviteModal(false); setInviteName(''); setInviteEmail('')
       loadInvites()
-      setToastMessage('Invite sent'); setToast(true)
+      setToastMessage(data.emailSent === false ? 'Invite created, but the email failed to send — check email settings' : 'Invite sent')
+      setToast(true)
     } catch (e) { setToastMessage(e.message || 'Failed to send invite'); setToast(true) } finally { setSendingInvite(false) }
   }
 
@@ -267,7 +268,8 @@ export default function Admin() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
       loadInvites()
-      setToastMessage('Invite resent'); setToast(true)
+      setToastMessage(data.emailSent === false ? 'Invite updated, but the email failed to send — check email settings' : 'Invite resent')
+      setToast(true)
     } catch (e) { setToastMessage(e.message || 'Failed to resend invite'); setToast(true) }
   }
 
@@ -324,9 +326,11 @@ export default function Admin() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'rejected', notes: reason.trim() }),
       })
+      const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       loadSchools()
-      setToastMessage('Payment rejected — school notified'); setToast(true)
+      setToastMessage(data.emailSent === false ? 'Payment rejected, but the school could not be emailed — check email settings' : 'Payment rejected — school notified')
+      setToast(true)
     } catch { setToastMessage('Failed to reject payment'); setToast(true) }
   }
 
@@ -462,9 +466,18 @@ export default function Admin() {
           billingPeriod: notifyAmount.trim() ? notifyBillingPeriod : undefined,
         }),
       })
+      const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       setShowNotifyModal(false); setNotifyMsg(''); setNotifyAmount(''); setNotifyBillingPeriod('monthly'); setNotifySchoolId(null); setNotifyOrgId(null)
-      setToastMessage('Notification sent')
+      if ('emailsTotal' in data) {
+        setToastMessage(data.emailsSent === data.emailsTotal ? `Notification sent to all ${data.emailsTotal} schools` : `Notification sent to ${data.emailsSent}/${data.emailsTotal} schools — some emails failed`)
+      } else if (data.hasContactEmail === false) {
+        setToastMessage('Notification saved — no contact email on file, nothing was emailed')
+      } else if (data.emailSent === false) {
+        setToastMessage('Notification saved, but the email failed to send — check email settings')
+      } else {
+        setToastMessage('Notification sent')
+      }
       setToast(true)
     } catch { setToastMessage('Failed to send notification'); setToast(true) }
   }
@@ -538,9 +551,17 @@ export default function Admin() {
           dueDate: invoiceDueDateDraft || undefined,
         }),
       })
+      const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft('')
-      setToastMessage('Invoice sent'); setToast(true)
+      if (data.invoice?.hasContactEmail === false) {
+        setToastMessage('Invoice created — no contact email on file, nothing was emailed')
+      } else if (data.invoice?.emailSent === false) {
+        setToastMessage('Invoice created, but the email failed to send — check email settings')
+      } else {
+        setToastMessage('Invoice sent')
+      }
+      setToast(true)
     } catch { setToastMessage('Failed to send invoice'); setToast(true) } finally { setSendingInvoice(false) }
   }
 
