@@ -45,7 +45,7 @@ export async function resolveIncident(id, status = 'resolved') {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ status }),
   })
-  if (!res.ok) throw new Error('Failed to update incident')
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Failed to update incident')
   return res.json()
 }
 

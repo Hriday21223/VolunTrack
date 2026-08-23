@@ -185,7 +185,7 @@ export default function Admin() {
     try {
       await resolveIncident(id)
       await loadIncidents()
-    } catch { setToastMessage('Failed to resolve incident'); setToast(true) } finally { setResolvingId(null) }
+    } catch (error) { setToastMessage(error.message || 'Failed to resolve incident'); setToast(true) } finally { setResolvingId(null) }
   }
 
   useEffect(() => {
