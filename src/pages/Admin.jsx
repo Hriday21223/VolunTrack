@@ -964,7 +964,7 @@ export default function Admin() {
             <div className="flex flex-wrap gap-2 mb-4">
               {(() => {
                 const upcoming = schools
-                  .filter((s) => s.payment_due_date)
+                  .filter((s) => s.payment_due_date && s.payment_status !== 'paid')
                   .map((s) => ({ ...s, daysLeft: Math.ceil((new Date(s.payment_due_date) - new Date()) / (1000 * 60 * 60 * 24)) }))
                   .filter((s) => s.daysLeft >= 0 && s.daysLeft <= 10)
                   .sort((a, b) => a.daysLeft - b.daysLeft)
