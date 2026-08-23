@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import { cn } from '@/utils/cn.js'
 import Sidebar from './Sidebar.jsx'
 import ReviewPopup from './ReviewPopup.jsx'
+import ReviewConsentPrompt from './ReviewConsentPrompt.jsx'
 
 export default function AppLayout({ children, title, subtitle, action }) {
   const { user, logout } = useAuth()
@@ -85,6 +86,7 @@ export default function AppLayout({ children, title, subtitle, action }) {
       </div>
 
       <ReviewPopup />
+      <ReviewConsentPrompt />
     </div>
   )
 }

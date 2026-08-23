@@ -226,14 +226,22 @@ CREATE INDEX IF NOT EXISTS idx_contact_messages_email ON contact_messages(email)
 -- logged hour. Submitted by both server-backed and client-only (no
 -- account) users, so name/email are nullable.
 CREATE TABLE IF NOT EXISTS reviews (
-  id          TEXT PRIMARY KEY,
-  rating      INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
-  comment     TEXT,
-  name        TEXT,
-  email       TEXT,
-  role        TEXT,
-  approved    BOOLEAN NOT NULL DEFAULT false,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                        TEXT PRIMARY KEY,
+  rating                    INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment                   TEXT,
+  name                      TEXT,
+  email                     TEXT,
+  role                      TEXT,
+  user_id                   TEXT,
+  approved                  BOOLEAN NOT NULL DEFAULT false,
+  pending_consent_choice    TEXT CHECK (pending_consent_choice IN ('yes','no')),
+  consent_choice            TEXT CHECK (consent_choice IN ('yes','no')),
+  consent_pin_hash          TEXT,
+  consent_pin_expires_at    TIMESTAMPTZ,
+  consent_pin_attempts      INTEGER NOT NULL DEFAULT 0,
+  publish_at                TIMESTAMPTZ,
+  expires_at                TIMESTAMPTZ,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 `
 
@@ -396,6 +404,21 @@ export async function initSchema() {
   // "VolunTrack Student" etc. instead of a real name unless they opt in.
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS role TEXT`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT false`) } catch {}
+
+  // Reviewer consent gate (PIN-verified) + admin publish scheduling — a
+  // review only becomes approvable once the submitter confirms they want it
+  // featured, and once approved it shows only within an admin-chosen
+  // [publish_at, expires_at) window rather than indefinitely. See
+  // server/routes/reviews.js (/mine/:id/consent, /mine/:id/confirm) and the
+  // PATCH /admin/:id/approve schedule params.
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id TEXT`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pending_consent_choice TEXT CHECK (pending_consent_choice IN ('yes','no'))`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_choice TEXT CHECK (consent_choice IN ('yes','no'))`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_pin_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_pin_expires_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_pin_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`) } catch {}
 
   // Admin-issued invoices for schools/organizations, plus a unified
   // payment_events timeline (invoice lifecycle + the existing manual

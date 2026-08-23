@@ -69,6 +69,8 @@ export default function Admin() {
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [reviews, setReviews] = useState([])
   const [loadingReviews, setLoadingReviews] = useState(false)
+  const [schedulingId, setSchedulingId] = useState(null)
+  const [scheduleDraft, setScheduleDraft] = useState({ publishAt: '', removeAfterDays: 30 })
   const [drafts, setDrafts] = useState({})
   const [expandedThreadId, setExpandedThreadId] = useState(null)
   const [threadMessages, setThreadMessages] = useState({})
@@ -614,17 +616,44 @@ export default function Admin() {
     }
   }, [])
 
-  const setReviewApproved = async (id, approved) => {
+  const unpublishReview = async (id) => {
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/reviews/admin/${id}/approve`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ approved }),
+        body: JSON.stringify({ approved: false }),
       })
       if (!res.ok) throw new Error('Failed')
-      setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, approved } : r)))
+      await loadReviews()
     } catch { setToastMessage('Failed to update review'); setToast(true) }
+  }
+
+  const openSchedule = (r) => {
+    setSchedulingId(r.id)
+    setScheduleDraft({
+      publishAt: r.publish_at ? r.publish_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      removeAfterDays: 30,
+    })
+  }
+
+  const confirmSchedule = async (id) => {
+    const removeAfterDays = Number(scheduleDraft.removeAfterDays)
+    if (!Number.isInteger(removeAfterDays) || removeAfterDays < 1 || removeAfterDays > 365) {
+      setToastMessage('Remove-after must be 1–365 days'); setToast(true); return
+    }
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/reviews/admin/${id}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ publishAt: scheduleDraft.publishAt, removeAfterDays }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setSchedulingId(null)
+      await loadReviews()
+    } catch (e) { setToastMessage(e.message || 'Failed to schedule review'); setToast(true) }
   }
 
   const deleteReview = async (id) => {
@@ -814,47 +843,91 @@ export default function Admin() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {reviews.map((r) => (
-              <Card key={r.id} padded={false} className="p-5">
-                <div className="flex items-start gap-4">
-                  <div className="flex gap-1 shrink-0">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <Star key={n} className={`w-5 h-5 ${n <= r.rating ? 'fill-brand-400 text-brand-400' : 'text-earth-600'}`} />
-                    ))}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-earth-300">{r.name || `Anonymous${r.role ? ` (${r.role})` : ''}`}</span>
-                      {r.email && <span className="text-xs text-earth-500">{r.email}</span>}
-                      <span className="text-xs text-earth-500">{new Date(r.created_at).toLocaleString()}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.approved ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                        {r.approved ? 'Approved · public' : 'Pending approval'}
-                      </span>
+            {reviews.map((r) => {
+              const status = r.status || (r.approved ? 'live' : 'pending')
+              const STATUS_STYLE = {
+                pending: { label: 'Awaiting reviewer', cls: 'bg-amber-500/10 text-amber-400' },
+                declined: { label: 'Declined by reviewer', cls: 'bg-red-500/10 text-red-400' },
+                awaiting_admin: { label: 'Ready for approval', cls: 'bg-blue-500/10 text-blue-400' },
+                scheduled: { label: 'Scheduled', cls: 'bg-amber-500/10 text-amber-400' },
+                live: { label: 'Live · public', cls: 'bg-emerald-500/10 text-emerald-400' },
+                expired: { label: 'Expired', cls: 'bg-earth-500/10 text-earth-400' },
+              }[status]
+              const canSchedule = status === 'awaiting_admin' || status === 'scheduled' || status === 'expired'
+              return (
+                <Card key={r.id} padded={false} className="p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex gap-1 shrink-0">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star key={n} className={`w-5 h-5 ${n <= r.rating ? 'fill-brand-400 text-brand-400' : 'text-earth-600'}`} />
+                      ))}
                     </div>
-                    {r.comment && (
-                      <p className="mt-2 text-sm text-earth-300 whitespace-pre-wrap">{r.comment}</p>
-                    )}
-                    {!r.comment && (
-                      <p className="mt-2 text-xs text-earth-500 italic">No comment left</p>
-                    )}
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    {r.approved ? (
-                      <button onClick={() => setReviewApproved(r.id, false)} className="p-2 rounded-lg text-amber-400 hover:bg-amber-500/10" title="Unpublish">
-                        <XCircle className="w-4 h-4" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium text-earth-300">{r.name || `Anonymous${r.role ? ` (${r.role})` : ''}`}</span>
+                        {r.email && <span className="text-xs text-earth-500">{r.email}</span>}
+                        <span className="text-xs text-earth-500">{new Date(r.created_at).toLocaleString()}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE.cls}`}>
+                          {STATUS_STYLE.label}
+                        </span>
+                        {(status === 'live' || status === 'scheduled' || status === 'expired') && r.publish_at && r.expires_at && (
+                          <span className="text-xs text-earth-500">
+                            {new Date(r.publish_at).toLocaleDateString()} – {new Date(r.expires_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      {r.comment && (
+                        <p className="mt-2 text-sm text-earth-300 whitespace-pre-wrap">{r.comment}</p>
+                      )}
+                      {!r.comment && (
+                        <p className="mt-2 text-xs text-earth-500 italic">No comment left</p>
+                      )}
+                      {schedulingId === r.id && (
+                        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                          <label className="text-xs text-earth-400">
+                            Show starting
+                            <input
+                              type="date"
+                              value={scheduleDraft.publishAt}
+                              onChange={(e) => setScheduleDraft((d) => ({ ...d, publishAt: e.target.value }))}
+                              className="mt-1 block rounded-lg border border-white/10 bg-slate-900/70 px-2 py-1.5 text-sm text-white"
+                            />
+                          </label>
+                          <label className="text-xs text-earth-400">
+                            Remove after (days)
+                            <input
+                              type="number"
+                              min={1}
+                              max={365}
+                              value={scheduleDraft.removeAfterDays}
+                              onChange={(e) => setScheduleDraft((d) => ({ ...d, removeAfterDays: e.target.value }))}
+                              className="mt-1 block w-24 rounded-lg border border-white/10 bg-slate-900/70 px-2 py-1.5 text-sm text-white"
+                            />
+                          </label>
+                          <button onClick={() => confirmSchedule(r.id)} className="btn-sm btn-primary">Confirm</button>
+                          <button onClick={() => setSchedulingId(null)} className="btn-sm btn-ghost">Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {(status === 'live' || status === 'scheduled') && (
+                        <button onClick={() => unpublishReview(r.id)} className="p-2 rounded-lg text-amber-400 hover:bg-amber-500/10" title="Unpublish">
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      {canSchedule && (
+                        <button onClick={() => openSchedule(r)} className="p-2 rounded-lg text-emerald-400 hover:bg-emerald-500/10" title={status === 'expired' ? 'Reschedule' : 'Approve & schedule'}>
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={() => deleteReview(r.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-500/10" title="Delete">
+                        <Trash2 className="w-4 h-4" />
                       </button>
-                    ) : (
-                      <button onClick={() => setReviewApproved(r.id, true)} className="p-2 rounded-lg text-emerald-400 hover:bg-emerald-500/10" title="Approve for public display">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button onClick={() => deleteReview(r.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-500/10" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              )
+            })}
           </div>
         )
       ) : tab === 'schools' ? (
