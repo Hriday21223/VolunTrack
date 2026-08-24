@@ -85,6 +85,27 @@ Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 6. Deploy. Note the assigned site URL (e.g., `https://your-site.netlify.app`).
 7. Back in Render, set `FRONTEND_URL` on the backend service to that Netlify URL so CORS allows it.
 
+## Step 4b: Deploy Frontend to Cloudflare Pages (alternative)
+
+Cloudflare Pages works the same way as Netlify — connect the repo and set env vars:
+
+1. Go to the [Cloudflare dashboard](https://dash.cloudflare.com) → Workers & Pages → Create → Pages → Connect to Git
+2. Select the `VolunTrack` repository
+3. Configure the build:
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+4. Add environment variables (Settings → Environment variables):
+
+   ```bash
+   VITE_API_URL=https://voluntrack-backend.onrender.com/api
+   VITE_SITE_URL=https://your-project.pages.dev
+   ```
+
+5. Deploy. Note the assigned `*.pages.dev` URL (or your custom domain).
+6. Back in Render, set `FRONTEND_URL` on the backend service to that Cloudflare Pages URL so CORS allows it.
+
+Client-side routing is handled by `public/_redirects` (Cloudflare Pages doesn't read `netlify.toml`/`vercel.json`). Cloudflare Pages' build image, like Vercel's, is missing shared libraries Puppeteer's Chrome needs — `scripts/prerender.mjs` detects this (`CF_PAGES=1`, set automatically by Cloudflare) and skips SEO prerendering rather than hanging the build, falling back to a plain client-rendered SPA.
+
 ## Step 5: Test Cross-Device Sync
 
 1. **Desktop**: Go to your Netlify site URL
@@ -113,7 +134,7 @@ Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 
 ## Architecture
 
-- **Frontend**: Netlify (static React app)
+- **Frontend**: Netlify, Vercel, or Cloudflare Pages (static React app)
 - **Backend**: Render (Node.js + Express)
 - **Database**: Neon (PostgreSQL)
 - **Auth**: JWT tokens stored in localStorage
@@ -123,6 +144,6 @@ Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 
 - **Render**: Free tier (750 hours/month)
 - **Neon**: Free tier (0.5GB storage, ~200 hours compute)
-- **Netlify**: Free tier
+- **Netlify / Vercel / Cloudflare Pages**: Free tier
 
 Total: **$0/month** for hobby usage!
