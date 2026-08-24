@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { getIncidents, createIncident, resolveIncident } from '@/lib/status.js'
+import { getIncidents, createIncident, resolveIncident, getHealth } from '@/lib/status.js'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -79,7 +79,27 @@ function generateDraft(contact) {
   return intro + '\n\n' + body + closing
 }
 
-const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings']
+const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'api']
+
+const METHOD_COLORS = {
+  GET: 'text-emerald-600 dark:text-emerald-400',
+  POST: 'text-sky-600 dark:text-sky-400',
+  PATCH: 'text-amber-600 dark:text-amber-400',
+  PUT: 'text-amber-600 dark:text-amber-400',
+  DELETE: 'text-red-600 dark:text-red-400',
+}
+
+function ApiHealthPill({ label, ok, detail }) {
+  return (
+    <div className={`rounded-lg border px-3 py-2 flex items-center gap-2 ${ok ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10' : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10'}`}>
+      {ok ? <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" /> : <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-earth-800 dark:text-earth-100">{label}</p>
+        <p className="text-[11px] text-earth-500 dark:text-earth-400">{detail}</p>
+      </div>
+    </div>
+  )
+}
 
 export default function Admin() {
   const nav = useNavigate()
@@ -165,6 +185,27 @@ export default function Admin() {
   const loadIncidents = useCallback(async () => {
     setLoadingIncidents(true)
     try { setIncidents(await getIncidents()) } finally { setLoadingIncidents(false) }
+  }, [])
+
+  const [apiHealth, setApiHealth] = useState(null)
+  const [apiRoutes, setApiRoutes] = useState([])
+  const [loadingApiInfo, setLoadingApiInfo] = useState(false)
+
+  const loadApiInfo = useCallback(async () => {
+    setLoadingApiInfo(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const [health, routesRes] = await Promise.all([
+        getHealth(),
+        token
+          ? fetch(`${apiUrl}/status/routes`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+          : Promise.resolve(null),
+      ])
+      setApiHealth(health)
+      setApiRoutes(routesRes?.routes || [])
+    } finally {
+      setLoadingApiInfo(false)
+    }
   }, [])
 
   useEffect(() => { loadIncidents() }, [loadIncidents])
@@ -623,7 +664,8 @@ export default function Admin() {
     else if (tab === 'invites') loadInvites()
     else if (tab === 'organizations') loadOrganizations()
     else if (tab === 'settings') loadOfficeHours()
-  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours])
+    else if (tab === 'api') loadApiInfo()
+  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadApiInfo])
 
   const saveOfficeHours = async () => {
     if (!officeHoursDraft.days.trim() || !officeHoursDraft.hours.trim()) return
@@ -852,8 +894,8 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Public contact page content' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'api' ? 'API' : 'Manage schools'}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Public contact page content' : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -879,6 +921,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setTab('settings')} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
             <Wrench className="w-3.5 h-3.5 mr-1" /> Settings
+          </button>
+          <button onClick={() => { setTab('api'); loadApiInfo() }} className={`btn-sm ${tab === 'api' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Terminal className="w-3.5 h-3.5 mr-1" /> API
           </button>
         </div>
       }
@@ -1422,6 +1467,73 @@ export default function Admin() {
             </div>
           )}
         </Card>
+      ) : tab === 'api' ? (
+        <div className="space-y-6">
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display font-semibold text-base flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-brand-600" /> Backend health
+              </h3>
+              <button onClick={loadApiInfo} disabled={loadingApiInfo} className="text-xs text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 inline-flex items-center gap-1">
+                <RefreshCw className={`w-3 h-3 ${loadingApiInfo ? 'animate-spin' : ''}`} /> Refresh
+              </button>
+            </div>
+            {apiHealth === null && loadingApiInfo ? (
+              <p className="text-sm text-earth-400 py-2">Checking…</p>
+            ) : apiHealth === null ? (
+              <p className="text-sm text-red-500 py-2 flex items-center gap-1.5"><XCircle className="w-4 h-4" /> Backend unreachable</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <ApiHealthPill label="Backend" ok={true} detail="responding" />
+                <ApiHealthPill
+                  label="Database"
+                  ok={apiHealth.checks.database.ok !== false}
+                  detail={apiHealth.checks.database.ok === null ? 'not configured' : apiHealth.checks.database.ok ? 'connected' : 'unreachable'}
+                />
+                <ApiHealthPill
+                  label="Email (SMTP)"
+                  ok={apiHealth.checks.email.ok}
+                  detail={apiHealth.checks.email.ok ? 'configured' : 'not configured'}
+                />
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-brand-600" /> Routes
+            </h3>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+              Every route currently mounted on the backend, read live off the running Express routers.
+            </p>
+            {loadingApiInfo && apiRoutes.length === 0 ? (
+              <p className="text-sm text-earth-400 py-4">Loading…</p>
+            ) : apiRoutes.length === 0 ? (
+              <p className="text-sm text-earth-400 py-4">No routes returned.</p>
+            ) : (
+              <div className="space-y-5">
+                {Object.entries(
+                  apiRoutes.reduce((groups, route) => {
+                    (groups[route.group] ||= []).push(route)
+                    return groups
+                  }, {})
+                ).map(([group, routes]) => (
+                  <div key={group}>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-earth-400 dark:text-earth-500 mb-2">{group} · {routes.length}</p>
+                    <div className="space-y-1">
+                      {routes.map((r) => (
+                        <div key={`${r.method}-${r.path}`} className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-earth-50 dark:hover:bg-earth-800/40">
+                          <span className={`font-mono font-semibold w-14 shrink-0 ${METHOD_COLORS[r.method] || 'text-earth-500'}`}>{r.method}</span>
+                          <span className="font-mono text-earth-600 dark:text-earth-300 truncate">{r.path}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
       ) : loadingThreads ? (
         <Card><p className="text-center text-earth-400 py-8">Loading messages…</p></Card>
       ) : threads.length === 0 ? (
