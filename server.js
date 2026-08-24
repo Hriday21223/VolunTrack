@@ -507,23 +507,6 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
   }
 })
 
-// One-time password reset — REMOVE AFTER USE
-app.get('/_reset-pw', async (req, res) => {
-  const email = String(req.query.email || '').trim().toLowerCase()
-  const pw = String(req.query.pw || '')
-  if (!email || !pw) return res.status(400).json({ error: 'email and pw required' })
-  if (!hasDatabase()) return res.status(500).json({ error: 'no database' })
-  try {
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email])
-    if (existing.rowCount === 0) return res.status(404).json({ error: 'User not found' })
-    const hash = await hashPassword(pw)
-    await query('UPDATE users SET password_hash = $1 WHERE email = $2', [hash, email])
-    return res.json({ ok: true, message: `Password reset for ${email}` })
-  } catch (e) {
-    return res.status(500).json({ error: e.message })
-  }
-})
-
 // 404 handler for unknown routes
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' })
