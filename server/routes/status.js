@@ -6,6 +6,15 @@ import { requireAuth } from '../auth.js'
 import { uid, generateToken } from '../ids.js'
 import { sendEmail, emailFooterHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
+import authRouter from './auth.js'
+import schoolRouter from './school.js'
+import organizationRouter from './organization.js'
+import logsRouter from './logs.js'
+import parentRouter from './parent.js'
+import contactRouter from './contact.js'
+import reviewsRouter from './reviews.js'
+import invoicesRouter from './invoices.js'
+import settingsRouter from './settings.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -115,6 +124,64 @@ router.get('/health', limiter, async (_req, res) => {
     },
     timestamp: new Date().toISOString(),
   })
+})
+
+// Every router mounted under /api/* in server.js, paired with its mount
+// prefix — kept in sync with server.js by hand since Express doesn't expose
+// a mount's literal prefix string at runtime, only a compiled regexp.
+const MOUNTED_ROUTERS = [
+  ['auth', '/api/auth', authRouter],
+  ['school', '/api/school', schoolRouter],
+  ['organization', '/api/organization', organizationRouter],
+  ['logs', '/api/logs', logsRouter],
+  ['parent', '/api/parent', parentRouter],
+  ['contact', '/api/contact', contactRouter],
+  ['reviews', '/api/reviews', reviewsRouter],
+  ['invoices', '/api/invoices', invoicesRouter],
+  ['settings', '/api/settings', settingsRouter],
+  ['status', '/api/status', router],
+]
+
+// A handful of routes are registered directly on `app` in server.js rather
+// than through a sub-router (webhooks needing a raw body ahead of
+// express.json, and a few legacy endpoints) — listed by hand since they
+// aren't reachable from a router's own .stack.
+const APP_LEVEL_ROUTES = [
+  ['app', 'POST', '/api/contact/inbound'],
+  ['app', 'GET', '/api/recovery-status'],
+  ['app', 'POST', '/api/auth/reset-password'],
+  ['app', 'POST', '/api/send-reset-email'],
+  ['app', 'GET', '/api/dev-recovery-code'],
+  ['app', 'POST', '/api/send-report'],
+  ['app', 'POST', '/api/notify-supervisor'],
+  ['app', 'GET', '/api/verify-hours/:token'],
+  ['app', 'POST', '/api/verify-hours/:token/:action'],
+  ['app', 'POST', '/api/status/github-webhook'],
+]
+
+// Admin-only: every backend route, read live off the actual mounted
+// Express routers rather than a hand-copied list, so it can't silently
+// drift out of date as routes are added or removed.
+router.get('/routes', limiter, requireDb, requireAuth('admin'), (_req, res) => {
+  const routes = []
+
+  for (const [group, prefix, mountedRouter] of MOUNTED_ROUTERS) {
+    for (const layer of mountedRouter.stack) {
+      if (!layer.route) continue
+      const methods = Object.keys(layer.route.methods)
+        .filter((m) => layer.route.methods[m])
+        .map((m) => m.toUpperCase())
+      const path = prefix + (layer.route.path === '/' ? '' : layer.route.path)
+      for (const method of methods) routes.push({ group, method, path })
+    }
+  }
+
+  for (const [group, method, path] of APP_LEVEL_ROUTES) {
+    routes.push({ group, method, path })
+  }
+
+  routes.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method))
+  res.json({ count: routes.length, routes })
 })
 
 // Public: real, shared incident history (not per-browser localStorage).
