@@ -98,10 +98,29 @@ async function main() {
   // privileges it needs and otherwise crashes with "No usable sandbox!".
   // Safe here since this only renders our own trusted build output, not
   // untrusted/remote content.
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  })
+  let browser
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    })
+  } catch (err) {
+    // Vercel's and Cloudflare Pages' build images are missing shared
+    // libraries Puppeteer's Chrome needs (e.g. libnspr4.so), so launch()
+    // throws there. Leaving `server` open past this point hangs the whole
+    // build indefinitely — its listening socket keeps the event loop alive
+    // with nothing left to close it — until the platform's build-time
+    // ceiling kills the deployment. Close it and degrade to a plain
+    // (non-prerendered) SPA build on those platforms; keep failing hard
+    // everywhere else (Netlify/local/CI), where Chrome does launch and
+    // prerendering is expected to work.
+    server.close()
+    if (process.env.VERCEL || process.env.CF_PAGES) {
+      console.warn(`[prerender] skipped (no usable Chromium): ${err.message}`)
+      return
+    }
+    throw err
+  }
 
   try {
     for (const route of ROUTES) {

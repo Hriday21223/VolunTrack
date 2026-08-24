@@ -39,4 +39,4 @@ Six roles gate routes and dashboards: `student`, `volunteer`, `parent`, `school`
 - Drag-and-drop proof uploads are read via `FileReader` and stored as base64 in localStorage — keep proof files under ~1MB, since this inflates localStorage.
 - Backend security posture (see `SECURITY.md`): rate limiting, input validation, parameterized Postgres queries via `pg`. Preserve parameterized queries when touching `server/db.js` or route handlers — no string-concatenated SQL.
 - `scripts/generate-seo-files.mjs` runs as `prebuild` and generates SEO-related static files consumed by `index.html` (`%VITE_SITE_URL%` placeholders) — `scripts/site-url.mjs` resolves the site URL from env for both this script and `vite.config.js`.
-- Deployment targets: Render (`render.yaml`) for the backend, Netlify (`netlify.toml`) or Vercel (`vercel.json`) for the frontend — see `DEPLOYMENT.md` for details.
+- Deployment targets: Render (`render.yaml`) for the backend, Netlify (`netlify.toml`), Vercel (`vercel.json`), or Cloudflare Pages (`public/_redirects`) for the frontend — see `DEPLOYMENT.md` for details.
