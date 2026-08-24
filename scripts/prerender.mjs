@@ -93,15 +93,34 @@ function outputPathFor(route) {
 async function main() {
   const server = await startServer()
   const port = server.address().port
-  // --no-sandbox is required in CI containers (GitHub Actions, Docker, most
-  // build environments) where Chromium's setuid sandbox can't get the
-  // privileges it needs and otherwise crashes with "No usable sandbox!".
-  // Safe here since this only renders our own trusted build output, not
-  // untrusted/remote content.
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  })
+
+  let browser
+  try {
+    // --no-sandbox is required in CI containers (GitHub Actions, Docker, most
+    // build environments) where Chromium's setuid sandbox can't get the
+    // privileges it needs and otherwise crashes with "No usable sandbox!".
+    // Safe here since this only renders our own trusted build output, not
+    // untrusted/remote content.
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    })
+  } catch (err) {
+    // Vercel's build image is missing shared libraries Puppeteer's Chrome
+    // needs (e.g. libnspr4.so), so launch() always throws there. Leaving
+    // `server` open past this point hangs the whole build indefinitely —
+    // its listening socket keeps the event loop alive with nothing left to
+    // close it — until Vercel's build-time ceiling kills the deployment.
+    // Close it and degrade to a plain (non-prerendered) SPA build on
+    // Vercel; keep failing hard everywhere else (Netlify/local/CI), where
+    // Chrome does launch and prerendering is expected to work.
+    server.close()
+    if (process.env.VERCEL) {
+      console.warn(`[prerender] skipped on Vercel build (no usable Chromium): ${err.message}`)
+      return
+    }
+    throw err
+  }
 
   try {
     for (const route of ROUTES) {
