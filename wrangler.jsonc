@@ -1,0 +1,11 @@
+{
+  // Static site — no Worker script needed. The app calls its API on a
+  // separate Render-hosted backend (see DEPLOYMENT.md), not through this
+  // Worker, so this config only serves the built client assets.
+  "name": "voluntrack",
+  "compatibility_date": "2026-08-24",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
