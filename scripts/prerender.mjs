@@ -105,17 +105,19 @@ async function main() {
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     })
   } catch (err) {
-    // Vercel's and Cloudflare Pages' build images are missing shared
-    // libraries Puppeteer's Chrome needs (e.g. libnspr4.so), so launch()
-    // throws there. Leaving `server` open past this point hangs the whole
-    // build indefinitely — its listening socket keeps the event loop alive
-    // with nothing left to close it — until the platform's build-time
-    // ceiling kills the deployment. Close it and degrade to a plain
+    // Vercel's and Cloudflare's build images are missing shared libraries
+    // Puppeteer's Chrome needs (e.g. libnspr4.so), so launch() throws there.
+    // Leaving `server` open past this point hangs the whole build
+    // indefinitely — its listening socket keeps the event loop alive with
+    // nothing left to close it — until the platform's build-time ceiling
+    // kills the deployment. Close it and degrade to a plain
     // (non-prerendered) SPA build on those platforms; keep failing hard
     // everywhere else (Netlify/local/CI), where Chrome does launch and
     // prerendering is expected to work.
     server.close()
-    if (process.env.VERCEL || process.env.CF_PAGES) {
+    // VERCEL: Vercel. CF_PAGES: classic Cloudflare Pages. WORKERS_CI: Cloudflare
+    // Workers Builds (the CI/CD path for the Workers Static Assets deploy target).
+    if (process.env.VERCEL || process.env.CF_PAGES || process.env.WORKERS_CI) {
       console.warn(`[prerender] skipped (no usable Chromium): ${err.message}`)
       return
     }

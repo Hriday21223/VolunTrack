@@ -9,3 +9,5 @@ _site
 dev-dist
 .vercel
 .env*
+.wrangler
+.dev.vars*

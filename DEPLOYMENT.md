@@ -85,26 +85,38 @@ Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
 6. Deploy. Note the assigned site URL (e.g., `https://your-site.netlify.app`).
 7. Back in Render, set `FRONTEND_URL` on the backend service to that Netlify URL so CORS allows it.
 
-## Step 4b: Deploy Frontend to Cloudflare Pages (alternative)
+## Step 4b: Deploy Frontend to Cloudflare Workers (alternative)
 
-Cloudflare Pages works the same way as Netlify — connect the repo and set env vars:
+Cloudflare now recommends **Workers Static Assets** over classic Pages for new
+projects (Pages still works, but new features target Workers). `wrangler.jsonc`
+in the repo root already configures this as a static-asset-only Worker (no
+server-side Worker script — the app calls its API on the separate Render
+backend, not through this Worker).
 
-1. Go to the [Cloudflare dashboard](https://dash.cloudflare.com) → Workers & Pages → Create → Pages → Connect to Git
+1. Go to the [Cloudflare dashboard](https://dash.cloudflare.com) → Compute (Workers) → Create → Import a repository (this is "Workers Builds", Cloudflare's Git-connected CI/CD)
 2. Select the `VolunTrack` repository
-3. Configure the build:
+3. Cloudflare should detect `wrangler.jsonc` automatically. Confirm the build config:
    - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. Add environment variables (Settings → Environment variables):
+   - **Deploy command**: `npx wrangler deploy` (default)
+4. Add environment variables (Worker → Settings → Environment variables):
 
    ```bash
    VITE_API_URL=https://voluntrack-backend.onrender.com/api
-   VITE_SITE_URL=https://your-project.pages.dev
+   VITE_SITE_URL=https://your-worker.workers.dev
    ```
 
-5. Deploy. Note the assigned `*.pages.dev` URL (or your custom domain).
-6. Back in Render, set `FRONTEND_URL` on the backend service to that Cloudflare Pages URL so CORS allows it.
+5. Deploy. Note the assigned `*.workers.dev` URL (or your custom domain).
+6. Back in Render, set `FRONTEND_URL` on the backend service to that Workers URL so CORS allows it.
 
-Client-side routing is handled by `public/_redirects` (Cloudflare Pages doesn't read `netlify.toml`/`vercel.json`). Cloudflare Pages' build image, like Vercel's, is missing shared libraries Puppeteer's Chrome needs — `scripts/prerender.mjs` detects this (`CF_PAGES=1`, set automatically by Cloudflare) and skips SEO prerendering rather than hanging the build, falling back to a plain client-rendered SPA.
+Client-side SPA routing is handled by `assets.not_found_handling` in
+`wrangler.jsonc` (`public/_redirects` also ships in `dist/` and works the same
+way, for parity with Netlify). Cloudflare's Workers Builds image, like
+Vercel's, is missing shared libraries Puppeteer's Chrome needs —
+`scripts/prerender.mjs` detects this (`WORKERS_CI=1`, set automatically by
+Workers Builds) and skips SEO prerendering rather than hanging the build,
+falling back to a plain client-rendered SPA.
+
+To deploy manually instead of via Git CI: `npm run build && npx wrangler deploy` (requires `npx wrangler login` once).
 
 ## Step 5: Test Cross-Device Sync
 
@@ -134,7 +146,7 @@ Client-side routing is handled by `public/_redirects` (Cloudflare Pages doesn't 
 
 ## Architecture
 
-- **Frontend**: Netlify, Vercel, or Cloudflare Pages (static React app)
+- **Frontend**: Netlify, Vercel, or Cloudflare Workers (static React app)
 - **Backend**: Render (Node.js + Express)
 - **Database**: Neon (PostgreSQL)
 - **Auth**: JWT tokens stored in localStorage
@@ -144,6 +156,6 @@ Client-side routing is handled by `public/_redirects` (Cloudflare Pages doesn't 
 
 - **Render**: Free tier (750 hours/month)
 - **Neon**: Free tier (0.5GB storage, ~200 hours compute)
-- **Netlify / Vercel / Cloudflare Pages**: Free tier
+- **Netlify / Vercel / Cloudflare Workers**: Free tier
 
 Total: **$0/month** for hobby usage!
