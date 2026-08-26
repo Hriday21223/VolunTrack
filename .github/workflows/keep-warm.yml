@@ -19,4 +19,4 @@ jobs:
     steps:
       - name: Ping backend health endpoint
         run: |
-          curl -sf --max-time 30 https://voluntrack-backend-frrh.onrender.com/api/status/health
+          curl -sf --max-time 60 https://voluntrack-backend-frrh.onrender.com/api/status/health
