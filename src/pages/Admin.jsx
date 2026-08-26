@@ -10,6 +10,7 @@ import { getIncidents, createIncident, resolveIncident, getHealth } from '@/lib/
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
 
 const ADMIN_TOUR_STEPS = [
   { selector: '[data-tour="admin-inbox"]', title: 'Inbox', description: 'Contact-form messages land here, threaded by conversation, with AI-drafted replies you can send or copy.' },
@@ -190,6 +191,7 @@ export default function Admin() {
   const [apiHealth, setApiHealth] = useState(null)
   const [apiRoutes, setApiRoutes] = useState([])
   const [loadingApiInfo, setLoadingApiInfo] = useState(false)
+  const [apiCopied, setApiCopied] = useState('')
 
   const loadApiInfo = useCallback(async () => {
     setLoadingApiInfo(true)
@@ -848,6 +850,17 @@ export default function Admin() {
     }
   }
 
+  const copyApiText = async (text, key) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setApiCopied(key)
+      setTimeout(() => setApiCopied((cur) => (cur === key ? '' : cur)), 2000)
+    } catch {
+      setToastMessage('Could not copy — select and copy the text manually.')
+      setToast(true)
+    }
+  }
+
   const removeThread = async (threadId) => {
     if (!confirm('Delete this entire conversation?')) return
     try {
@@ -1478,6 +1491,24 @@ export default function Admin() {
                 <RefreshCw className={`w-3 h-3 ${loadingApiInfo ? 'animate-spin' : ''}`} /> Refresh
               </button>
             </div>
+            <div className="flex items-center gap-2 mb-4 text-xs">
+              <a
+                href={RESOLVED_API_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-brand-600 dark:text-brand-400 hover:underline truncate"
+                title="Open the backend base URL"
+              >
+                {RESOLVED_API_URL}
+              </a>
+              <button
+                onClick={() => copyApiText(RESOLVED_API_URL, 'url')}
+                className="shrink-0 text-earth-400 hover:text-earth-600 dark:hover:text-earth-200"
+                title="Copy backend URL"
+              >
+                {apiCopied === 'url' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
             {apiHealth === null && loadingApiInfo ? (
               <p className="text-sm text-earth-400 py-2">Checking…</p>
             ) : apiHealth === null ? (
@@ -1532,6 +1563,38 @@ export default function Admin() {
                 ))}
               </div>
             )}
+          </Card>
+
+          <Card>
+            <h3 className="font-display font-semibold text-base mb-1 flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-brand-600" /> Example request
+            </h3>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+              Uses your own signed-in session token.
+            </p>
+            {(() => {
+              const token = localStorage.getItem('voluntrack:auth_token') || ''
+              const maskedToken = token ? `${token.slice(0, 8)}…` : '<not signed in>'
+              const maskedCurl = `curl -H "Authorization: Bearer ${maskedToken}" \\\n  ${RESOLVED_API_URL}/status/health`
+              const realCurl = `curl -H "Authorization: Bearer ${token}" \\\n  ${RESOLVED_API_URL}/status/health`
+              return (
+                <div className="relative">
+                  <pre className="text-xs font-mono bg-earth-50 dark:bg-earth-800/40 border border-earth-200 dark:border-earth-700 rounded-lg p-3 pr-20 overflow-x-auto whitespace-pre-wrap">{maskedCurl}</pre>
+                  <button
+                    onClick={() => copyApiText(realCurl, 'curl')}
+                    disabled={!token}
+                    className="absolute top-2 right-2 flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-300 hover:text-brand-900 dark:hover:text-brand-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Copy a working curl command"
+                  >
+                    {apiCopied === 'curl' ? (
+                      <><Check className="w-3.5 h-3.5" /> Copied</>
+                    ) : (
+                      <><Copy className="w-3.5 h-3.5" /> Copy</>
+                    )}
+                  </button>
+                </div>
+              )
+            })()}
           </Card>
         </div>
       ) : loadingThreads ? (
