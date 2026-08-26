@@ -1,0 +1,60 @@
+name: Notify CI failure fix
+
+# The scheduled "CI watch" cloud routines (see #58) open a GitHub issue, or
+# comment on an existing PR, labeled `ci-failure-auto` the moment they find a
+# new Actions failure — then wait for a human "ok" reply before pushing a
+# fix. Those routines run in an isolated environment with no way to hold
+# SMTP credentials, so this workflow sends the actual notification email
+# (via scripts/notify-ci-failure.mjs, reusing server/email.js) using repo
+# secrets instead.
+
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check this is a ci-failure-auto alert
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LABELS_JSON: ${{ toJSON(github.event.issue.labels) }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          if ! echo "$LABELS_JSON" | jq -e 'any(.[]; .name == "ci-failure-auto")' >/dev/null; then
+            echo "send=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$EVENT_NAME" = "issue_comment" ] && ! echo "$COMMENT_BODY" | grep -qi "found the issue"; then
+            echo "send=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "send=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.send == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.send == 'true'
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        if: steps.gate.outputs.send == 'true'
+        run: npm ci
+      - name: Send notification email
+        if: steps.gate.outputs.send == 'true'
+        env:
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_SECURE: ${{ secrets.EMAIL_SECURE }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          NOTIFY_TO: karnatamhriday@gmail.com
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          IS_PR: ${{ github.event.issue.pull_request != null }}
+        run: node scripts/notify-ci-failure.mjs
