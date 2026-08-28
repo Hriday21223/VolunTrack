@@ -335,13 +335,20 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'PDF not found.' })
 
     const pdf = rows[0]
-    if (req.auth.role === 'student' && pdf.user_id !== req.auth.sub) {
-      return res.status(403).json({ error: 'Not allowed.' })
+    // Default-deny: only the owning student, an admin, or staff at the
+    // owning school may read a PDF (which includes its base64 file data).
+    // Any other role falls through to a 403 rather than being allowed by omission.
+    const { role, sub } = req.auth
+    let allowed = false
+    if (role === 'admin') {
+      allowed = true
+    } else if (role === 'student') {
+      allowed = pdf.user_id === sub
+    } else if (role === 'school' || role === 'school_staff') {
+      const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [sub])
+      allowed = Boolean(userRows[0]?.school_id) && pdf.school_id === userRows[0].school_id
     }
-    if (req.auth.role === 'school') {
-      const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
-      if (pdf.school_id !== userRows[0]?.school_id) return res.status(403).json({ error: 'Not allowed.' })
-    }
+    if (!allowed) return res.status(403).json({ error: 'Not allowed.' })
 
     return res.json({ pdf: { id: pdf.id, filename: pdf.filename, fileData: pdf.file_data, fileType: pdf.file_type, status: pdf.status, notes: pdf.notes, createdAt: pdf.created_at } })
   } catch (error) {
@@ -442,19 +449,17 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
          ELSE NULL END AS distance`
       : 'NULL AS distance'
 
-    const havingClause = useDist && maxDistance && !isNaN(maxDistance)
-      ? `HAVING CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN
-           6371 * 2 * ASIN(SQRT(
-             POWER(SIN(RADIANS(t.latitude - $${params.length + 1}) / 2), 2) +
-             COS(RADIANS($${params.length + 1})) * COS(RADIANS(t.latitude)) *
-             POWER(SIN(RADIANS(t.longitude - $${params.length + 2}) / 2), 2)
-           ))
-         ELSE 999999 END <= $${useDist ? params.length + 3 : params.length + 1}`
-      : ''
-
     const selectParams = useDist ? [...params, lat, lng] : [...params]
-    const havingParams = useDist && maxDistance ? [lat, lng, maxDistance] : []
-    const orderParams = useDist ? [lat, lng] : []
+
+    // Radius filter runs against `sub.distance` (the column already computed
+    // in the inner SELECT) — the `t` alias is out of scope at this outer
+    // level. `sub.distance` is NULL for tasks with no coordinates, which are
+    // excluded from a radius-filtered result.
+    const filterByRadius = useDist && maxDistance && !isNaN(maxDistance)
+    const filterClause = filterByRadius
+      ? `WHERE sub.distance IS NOT NULL AND sub.distance <= $${selectParams.length + 1}`
+      : ''
+    const filterParams = filterByRadius ? [maxDistance] : []
 
     const { rows } = await query(
       `SELECT * FROM (
@@ -467,9 +472,9 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
         FROM public_tasks t
         WHERE t.status = 'open'
        ) sub
-       ${havingClause}
+       ${filterClause}
        ${useDist ? `ORDER BY distance ASC NULLS LAST, date ASC, created_at DESC` : 'ORDER BY date ASC, created_at DESC'}`,
-      [...selectParams, ...havingParams],
+      [...selectParams, ...filterParams],
     )
     return res.json({ tasks: rows })
   } catch (error) {
@@ -584,7 +589,10 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
 // Log hours for a volunteer on a task (task creator only, no approval needed)
 router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), async (req, res) => {
   const { volunteerId, hours, date } = req.body
-  if (!volunteerId || !hours) return res.status(400).json({ error: 'volunteerId and hours required.' })
+  const hoursNum = Number(hours)
+  if (!volunteerId || !Number.isFinite(hoursNum) || hoursNum <= 0) {
+    return res.status(400).json({ error: 'volunteerId and positive hours are required.' })
+  }
 
   try {
     const { rows: taskRows } = await query('SELECT * FROM public_tasks WHERE id = $1', [req.params.id])
@@ -608,7 +616,7 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
         date || taskRows[0].date,
         taskRows[0].title,
         'volunteer',
-        Number(hours),
+        hoursNum,
         `Logged by task organizer (${taskRows[0].title})`,
         req.auth.sub,
         req.params.id,
@@ -639,7 +647,8 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
 
     let logged = 0
     for (const entry of entries) {
-      if (!entry.volunteerId || !entry.hours) continue
+      const entryHours = Number(entry.hours)
+      if (!entry.volunteerId || !Number.isFinite(entryHours) || entryHours <= 0) continue
       if (!approvedIds.has(entry.volunteerId)) continue
 
       const lid = uid('log')
@@ -652,7 +661,7 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
           date || taskRows[0].date,
           taskRows[0].title,
           'volunteer',
-          Number(entry.hours),
+          entryHours,
           `Logged by task organizer (${taskRows[0].title})`,
           req.auth.sub,
           req.params.id,
