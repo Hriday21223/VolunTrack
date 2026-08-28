@@ -327,13 +327,20 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'PDF not found.' })
 
     const pdf = rows[0]
-    if (req.auth.role === 'student' && pdf.user_id !== req.auth.sub) {
-      return res.status(403).json({ error: 'Not allowed.' })
+    // Default-deny: only the owning student, an admin, or staff at the
+    // owning school may read a PDF (which includes its base64 file data).
+    // Any other role falls through to a 403 rather than being allowed by omission.
+    const { role, sub } = req.auth
+    let allowed = false
+    if (role === 'admin') {
+      allowed = true
+    } else if (role === 'student') {
+      allowed = pdf.user_id === sub
+    } else if (role === 'school' || role === 'school_staff') {
+      const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [sub])
+      allowed = Boolean(userRows[0]?.school_id) && pdf.school_id === userRows[0].school_id
     }
-    if (req.auth.role === 'school') {
-      const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
-      if (pdf.school_id !== userRows[0]?.school_id) return res.status(403).json({ error: 'Not allowed.' })
-    }
+    if (!allowed) return res.status(403).json({ error: 'Not allowed.' })
 
     return res.json({ pdf: { id: pdf.id, filename: pdf.filename, fileData: pdf.file_data, fileType: pdf.file_type, status: pdf.status, notes: pdf.notes, createdAt: pdf.created_at } })
   } catch (error) {
