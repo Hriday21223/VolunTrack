@@ -13,7 +13,12 @@ const subject = process.env.SCAN_SUBJECT || 'VolunTrack daily bug & feature scan
 const summary = process.env.SCAN_SUMMARY || '(no summary provided)'
 const issueUrl = process.env.SCAN_ISSUE_URL || ''
 
-const issueLine = issueUrl
+// Only render the link when it actually points at a GitHub issue — a manual
+// test dispatch (or a routine run that skipped opening the summary issue)
+// can pass an empty value or a bare repo URL, which would otherwise show as
+// a "Summary issue" link that just goes to the repo homepage.
+const isIssueUrl = /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+/.test(issueUrl)
+const issueLine = isIssueUrl
   ? `<p>Summary issue: <a href="${escapeHtml(issueUrl)}">${escapeHtml(issueUrl)}</a></p>`
   : ''
 
