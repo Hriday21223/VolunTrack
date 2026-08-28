@@ -1,7 +1,8 @@
 name: Notify daily scan
 
-# The "VolunTrack daily bug & feature scan" cloud routine (see #64) reviews
-# the codebase once a day for bugs and new-feature ideas, files GitHub
+# The "VolunTrack daily bug & feature scan" cloud routine
+# (trig_01Bnpa2aX1pa8TVv4hAGmKN2, see #64) reviews the codebase once a day
+# for bugs and new-feature ideas, files GitHub
 # issues (labels `daily-scan` / `daily-scan-bug`), then fires this
 # repository_dispatch event with its summary. That routine runs in an
 # isolated environment with no way to hold SMTP credentials, so this
