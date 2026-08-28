@@ -1,12 +1,13 @@
-name: Notify CI-watch daily check-in
+name: Notify daily scan
 
-# The daily CI-watch check-in cloud routine (trig_01XHUmStGFsjHzb3aBeiMGnY,
-# see #61) reports routine health, DST cron status, and any stale
-# ci-failure-auto issues/PRs once a day. That routine runs in an isolated
-# environment with no way to hold SMTP credentials, so it triggers this
-# workflow with its summary and this workflow sends the actual email (via
-# scripts/notify-ci-watch-checkin.mjs, reusing server/email.js) using repo
-# secrets instead.
+# The "VolunTrack daily bug & feature scan" cloud routine
+# (trig_01Bnpa2aX1pa8TVv4hAGmKN2, see #64) reviews the codebase once a day
+# for bugs and new-feature ideas, files GitHub
+# issues (labels `daily-scan` / `daily-scan-bug`), then triggers this
+# workflow with its summary. That routine runs in an isolated environment
+# with no way to hold SMTP credentials, so this workflow sends the actual
+# email (via scripts/notify-daily-scan.mjs, reusing server/email.js) using
+# repo secrets instead.
 #
 # The routine triggers it via workflow_dispatch (inputs.*) — repository_dispatch
 # is blocked for the routine's CCR session type (see #72). repository_dispatch
@@ -14,7 +15,7 @@ name: Notify CI-watch daily check-in
 
 on:
   repository_dispatch:
-    types: [ci-watch-daily-checkin]
+    types: [daily-bug-feature-scan]
   workflow_dispatch:
     inputs:
       subject:
@@ -22,6 +23,9 @@ on:
         required: false
       summary:
         description: Plain-text summary body
+        required: false
+      issue_url:
+        description: URL of the run's summary issue (optional)
         required: false
 
 jobs:
@@ -35,7 +39,7 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Send check-in email
+      - name: Send daily scan email
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
           EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
@@ -44,6 +48,7 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           NOTIFY_TO: karnatamhriday@gmail.com
-          CHECKIN_SUBJECT: ${{ github.event.client_payload.subject || github.event.inputs.subject }}
-          CHECKIN_SUMMARY: ${{ github.event.client_payload.summary || github.event.inputs.summary }}
-        run: node scripts/notify-ci-watch-checkin.mjs
+          SCAN_SUBJECT: ${{ github.event.client_payload.subject || github.event.inputs.subject }}
+          SCAN_SUMMARY: ${{ github.event.client_payload.summary || github.event.inputs.summary }}
+          SCAN_ISSUE_URL: ${{ github.event.client_payload.issue_url || github.event.inputs.issue_url }}
+        run: node scripts/notify-daily-scan.mjs
