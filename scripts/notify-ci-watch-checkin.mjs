@@ -14,6 +14,7 @@ const summary = process.env.CHECKIN_SUMMARY || '(no summary provided)'
 const html = `
 <p>Daily check-in on the VolunTrack CI-watch routines:</p>
 <pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(summary)}</pre>
+<p>This is an automated message from the VolunTrack CI-watch daily check-in routine — please don't reply to this email.</p>
 `
 
 const result = await sendEmail({ to, subject, html })
