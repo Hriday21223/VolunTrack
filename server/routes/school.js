@@ -276,7 +276,15 @@ router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), asyn
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     let schoolId = userRows[0]?.school_id
-    if (!schoolId && req.body.schoolId) schoolId = req.body.schoolId
+    if (!schoolId && req.body.schoolId) {
+      // Only the admin branch reaches here (a student always has school_id).
+      // The target school id comes from the request body, so confirm it
+      // actually exists before attaching an upload to it rather than
+      // relying on the FK constraint to reject bad input.
+      const { rows: schoolRows } = await query('SELECT 1 FROM schools WHERE id = $1', [req.body.schoolId])
+      if (schoolRows.length === 0) return res.status(400).json({ error: 'That school does not exist.' })
+      schoolId = req.body.schoolId
+    }
     if (!schoolId) return res.status(400).json({ error: 'No school linked to your account.' })
 
     const id = uid('pdf')
