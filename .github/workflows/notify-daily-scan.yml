@@ -1,0 +1,39 @@
+name: Notify daily scan
+
+# The "VolunTrack daily bug & feature scan" cloud routine
+# (trig_01Bnpa2aX1pa8TVv4hAGmKN2, see #64) reviews the codebase once a day
+# for bugs and new-feature ideas, files GitHub
+# issues (labels `daily-scan` / `daily-scan-bug`), then fires this
+# repository_dispatch event with its summary. That routine runs in an
+# isolated environment with no way to hold SMTP credentials, so this
+# workflow sends the actual email (via scripts/notify-daily-scan.mjs,
+# reusing server/email.js) using repo secrets instead.
+
+on:
+  repository_dispatch:
+    types: [daily-bug-feature-scan]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Send daily scan email
+        env:
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_SECURE: ${{ secrets.EMAIL_SECURE }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          NOTIFY_TO: karnatamhriday@gmail.com
+          SCAN_SUBJECT: ${{ github.event.client_payload.subject }}
+          SCAN_SUMMARY: ${{ github.event.client_payload.summary }}
+          SCAN_ISSUE_URL: ${{ github.event.client_payload.issue_url }}
+        run: node scripts/notify-daily-scan.mjs
