@@ -3,14 +3,26 @@ name: Notify CI-watch daily check-in
 # The daily CI-watch check-in cloud routine (trig_01XHUmStGFsjHzb3aBeiMGnY,
 # see #61) reports routine health, DST cron status, and any stale
 # ci-failure-auto issues/PRs once a day. That routine runs in an isolated
-# environment with no way to hold SMTP credentials, so it fires this
-# repository_dispatch event with its summary and this workflow sends the
-# actual email (via scripts/notify-ci-watch-checkin.mjs, reusing
-# server/email.js) using repo secrets instead.
+# environment with no way to hold SMTP credentials, so it triggers this
+# workflow with its summary and this workflow sends the actual email (via
+# scripts/notify-ci-watch-checkin.mjs, reusing server/email.js) using repo
+# secrets instead.
+#
+# The routine triggers it via workflow_dispatch (inputs.*) — repository_dispatch
+# is blocked for the routine's CCR session type (see #72). repository_dispatch
+# (client_payload.*) is kept for manual/local testing with `gh`.
 
 on:
   repository_dispatch:
     types: [ci-watch-daily-checkin]
+  workflow_dispatch:
+    inputs:
+      subject:
+        description: Email subject line
+        required: false
+      summary:
+        description: Plain-text summary body
+        required: false
 
 jobs:
   notify:
@@ -32,6 +44,6 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           NOTIFY_TO: karnatamhriday@gmail.com
-          CHECKIN_SUBJECT: ${{ github.event.client_payload.subject }}
-          CHECKIN_SUMMARY: ${{ github.event.client_payload.summary }}
+          CHECKIN_SUBJECT: ${{ github.event.client_payload.subject || github.event.inputs.subject }}
+          CHECKIN_SUMMARY: ${{ github.event.client_payload.summary || github.event.inputs.summary }}
         run: node scripts/notify-ci-watch-checkin.mjs
