@@ -1,0 +1,37 @@
+name: Notify CI-watch daily check-in
+
+# The daily CI-watch check-in cloud routine (trig_01XHUmStGFsjHzb3aBeiMGnY,
+# see #61) reports routine health, DST cron status, and any stale
+# ci-failure-auto issues/PRs once a day. That routine runs in an isolated
+# environment with no way to hold SMTP credentials, so it fires this
+# repository_dispatch event with its summary and this workflow sends the
+# actual email (via scripts/notify-ci-watch-checkin.mjs, reusing
+# server/email.js) using repo secrets instead.
+
+on:
+  repository_dispatch:
+    types: [ci-watch-daily-checkin]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Send check-in email
+        env:
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_SECURE: ${{ secrets.EMAIL_SECURE }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          NOTIFY_TO: karnatamhriday@gmail.com
+          CHECKIN_SUBJECT: ${{ github.event.client_payload.subject }}
+          CHECKIN_SUMMARY: ${{ github.event.client_payload.summary }}
+        run: node scripts/notify-ci-watch-checkin.mjs
