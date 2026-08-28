@@ -434,19 +434,17 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
          ELSE NULL END AS distance`
       : 'NULL AS distance'
 
-    const havingClause = useDist && maxDistance && !isNaN(maxDistance)
-      ? `HAVING CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN
-           6371 * 2 * ASIN(SQRT(
-             POWER(SIN(RADIANS(t.latitude - $${params.length + 1}) / 2), 2) +
-             COS(RADIANS($${params.length + 1})) * COS(RADIANS(t.latitude)) *
-             POWER(SIN(RADIANS(t.longitude - $${params.length + 2}) / 2), 2)
-           ))
-         ELSE 999999 END <= $${useDist ? params.length + 3 : params.length + 1}`
-      : ''
-
     const selectParams = useDist ? [...params, lat, lng] : [...params]
-    const havingParams = useDist && maxDistance ? [lat, lng, maxDistance] : []
-    const orderParams = useDist ? [lat, lng] : []
+
+    // Radius filter runs against `sub.distance` (the column already computed
+    // in the inner SELECT) — the `t` alias is out of scope at this outer
+    // level. `sub.distance` is NULL for tasks with no coordinates, which are
+    // excluded from a radius-filtered result.
+    const filterByRadius = useDist && maxDistance && !isNaN(maxDistance)
+    const filterClause = filterByRadius
+      ? `WHERE sub.distance IS NOT NULL AND sub.distance <= $${selectParams.length + 1}`
+      : ''
+    const filterParams = filterByRadius ? [maxDistance] : []
 
     const { rows } = await query(
       `SELECT * FROM (
@@ -459,9 +457,9 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
         FROM public_tasks t
         WHERE t.status = 'open'
        ) sub
-       ${havingClause}
+       ${filterClause}
        ${useDist ? `ORDER BY distance ASC NULLS LAST, date ASC, created_at DESC` : 'ORDER BY date ASC, created_at DESC'}`,
-      [...selectParams, ...havingParams],
+      [...selectParams, ...filterParams],
     )
     return res.json({ tasks: rows })
   } catch (error) {
