@@ -581,7 +581,10 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
 // Log hours for a volunteer on a task (task creator only, no approval needed)
 router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), async (req, res) => {
   const { volunteerId, hours, date } = req.body
-  if (!volunteerId || !hours) return res.status(400).json({ error: 'volunteerId and hours required.' })
+  const hoursNum = Number(hours)
+  if (!volunteerId || !Number.isFinite(hoursNum) || hoursNum <= 0) {
+    return res.status(400).json({ error: 'volunteerId and positive hours are required.' })
+  }
 
   try {
     const { rows: taskRows } = await query('SELECT * FROM public_tasks WHERE id = $1', [req.params.id])
@@ -605,7 +608,7 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
         date || taskRows[0].date,
         taskRows[0].title,
         'volunteer',
-        Number(hours),
+        hoursNum,
         `Logged by task organizer (${taskRows[0].title})`,
         req.auth.sub,
         req.params.id,
@@ -636,7 +639,8 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
 
     let logged = 0
     for (const entry of entries) {
-      if (!entry.volunteerId || !entry.hours) continue
+      const entryHours = Number(entry.hours)
+      if (!entry.volunteerId || !Number.isFinite(entryHours) || entryHours <= 0) continue
       if (!approvedIds.has(entry.volunteerId)) continue
 
       const lid = uid('log')
@@ -649,7 +653,7 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
           date || taskRows[0].date,
           taskRows[0].title,
           'volunteer',
-          Number(entry.hours),
+          entryHours,
           `Logged by task organizer (${taskRows[0].title})`,
           req.auth.sub,
           req.params.id,
