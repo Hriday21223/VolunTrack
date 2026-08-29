@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import Footer from '@/components/Footer.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
 export default function Terms() {
@@ -76,6 +77,8 @@ export default function Terms() {
           </Section>
         </Card>
       </main>
+
+      <Footer />
     </div>
   )
 }
