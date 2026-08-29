@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, School, Globe, Clock, Calendar, Trophy, FileText, User, Settings, MapPin, Users, CheckCircle, HelpCircle, ArrowRight, Mail, Shield, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap } from 'lucide-react'
+import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
-import Card from '@/components/Card.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const TABS = [
   { id: 'quickstart', label: 'Quick Start', icon: Zap },
   { id: 'student', label: 'Student', icon: BookOpen },
+  { id: 'parent', label: 'Parent', icon: Users },
   { id: 'volunteer', label: 'Volunteer', icon: Hand },
   { id: 'school', label: 'School', icon: School },
+  { id: 'organization', label: 'Organization', icon: Building2 },
+  { id: 'admin', label: 'Admin', icon: ShieldCheck },
   { id: 'faq', label: 'FAQ', icon: HelpCircle },
 ]
 
@@ -49,22 +51,30 @@ function FaqItem({ question, answer }) {
   )
 }
 
+function HandbookIntro({ title, children }) {
+  return (
+    <div className="mb-8">
+      <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
+      <p className="text-sm text-earth-400">{children}</p>
+    </div>
+  )
+}
+
 // ── Quick Start ──────────────────────────────────────────────────────────────
 
 function QuickStart() {
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">Quick Start</h2>
-        <p className="text-sm text-earth-400">Get up and running in 60 seconds. Follow these steps and you'll be tracking hours in no time.</p>
-      </div>
+    <div>
+      <HandbookIntro title="Quick Start">
+        Get up and running in a couple of minutes. Follow these steps and you'll be tracking hours in no time.
+      </HandbookIntro>
 
       <Section title="1. Create your account">
-        <p>Go to the <Link to="/register" className="text-brand-400 hover:underline">Sign Up</Link> page. Enter your name, email, and a password. Choose <strong>Student</strong> if you're logging your own hours, or <strong>Volunteer Task Maker</strong> if you're organizing events for others.</p>
+        <p>Go to the <Link to="/register" className="text-brand-400 hover:underline">Sign Up</Link> page and pick a role: <strong>Student</strong> if you're logging your own hours, <strong>Volunteer Task Maker</strong> if you're organizing events for others, or <strong>Parent</strong> if you want to follow a student's hours. Schools and multi-school organizations have their own signup pages (linked from the login screen).</p>
       </Section>
 
       <Section title="2. Join your school (optional)">
-        <p>If your school uses VolunTrack, ask your administrator for a school code. Go to <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>, scroll to "School partnership," and enter the code. This links your account so you can submit reports directly to your school.</p>
+        <p>If your school uses VolunTrack, ask an administrator for a school code. Open <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>, find "Join school," and enter the code. Your school can also add you directly by email — in that case you'll already be linked when you log in.</p>
       </Section>
 
       <Section title="3. Log your first hours">
@@ -73,9 +83,10 @@ function QuickStart() {
           <Step icon={Calendar} label="Date" description="When you volunteered." />
           <Step icon={Clock} label="Hours" description="How long you volunteered." />
           <Step icon={ClipboardList} label="Activity" description="What you did (e.g. 'Food bank sorting')." />
-          <Step icon={BookOpen} label="Category" description="Pick from: Education, Environment, Health, Community, etc." />
+          <Step icon={BookOpen} label="Category" description="Education, Environment, Health, Community, and more." />
+          <Step icon={UserCheck} label="Supervisor email (optional)" description="Add one and they'll get a link to verify these hours." />
         </div>
-        <p className="mt-3">Click Save and you're done! Your hours appear on the dashboard, calendar, and reports instantly.</p>
+        <p className="mt-3">Click Save and you're done. Your hours appear on the dashboard, calendar, and reports instantly.</p>
       </Section>
 
       <Section title="4. Set a goal">
@@ -90,7 +101,7 @@ function QuickStart() {
         <div className="mt-3 space-y-2">
           <Step icon={Trophy} label="Earn badges" description="Hit milestones like 10, 25, 50 hours to unlock achievements." />
           <Step icon={FileText} label="Generate reports" description="Export a PDF of all your hours for school or scholarships." />
-          <Step icon={ShieldCheck} label="Enable 2FA" description="Go to Settings → Two-Factor Authentication for extra security." />
+          <Step icon={ShieldCheck} label="Enable 2FA" description="Settings → Two-Factor Authentication for extra security." />
         </div>
       </Section>
     </div>
@@ -101,19 +112,28 @@ function QuickStart() {
 
 function StudentHandbook() {
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">Student Handbook</h2>
-        <p className="text-sm text-earth-400">Track volunteer hours, earn badges, find nearby tasks, and stay connected with your school.</p>
-      </div>
+    <div>
+      <HandbookIntro title="Student Handbook">
+        Track volunteer hours, get them verified, earn badges, find nearby tasks, and stay connected with your school.
+      </HandbookIntro>
 
       <Section title="Dashboard Overview">
-        <p>Your dashboard shows everything at a glance: total hours, goal progress, weekly activity chart, recent badges, and your latest volunteer sessions. If you're linked to a school, you'll also see school announcements and payment notices.</p>
+        <p>Your dashboard shows everything at a glance: total hours, goal progress, weekly activity chart, recent badges, and your latest volunteer sessions. If you're linked to a school, you'll also see school announcements and any payment notices.</p>
       </Section>
 
       <Section title="Logging Hours">
-        <p>Use the Log Hours page to record every volunteer session. Fill in the date, activity name, category, hours, and optional notes or location. You can also add supervisor contact information for verification.</p>
+        <p>Use the Log Hours page to record every volunteer session. Fill in the date, activity name, category, hours, and optional notes or location. You can also add a supervisor's email so those hours can be verified.</p>
         <p className="mt-2">All logs are saved securely and appear instantly on your dashboard, calendar, and reports.</p>
+      </Section>
+
+      <Section title="Supervisor Verification">
+        <p>When you add a supervisor's email to a log entry, that person gets a one-time email link to approve or reject those specific hours — no account needed on their end.</p>
+        <p className="mt-2">Each log then shows a status badge:</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={Clock} label="Pending" description="The request has been sent and is waiting on your supervisor." />
+          <Step icon={CheckCircle} label="Verified" description="Your supervisor confirmed the hours. These are the hours schools and parents can rely on." />
+          <Step icon={XCircle} label="Rejected" description="Your supervisor declined. Check the details with them and re-log if needed." />
+        </div>
       </Section>
 
       <Section title="Calendar View">
@@ -121,11 +141,11 @@ function StudentHandbook() {
       </Section>
 
       <Section title="Achievements & Badges">
-        <p>As you log hours, you'll earn badges for milestones like your first log, hitting weekly goals, or reaching total hour thresholds. Badges appear as celebratory toasts and are collected on the Achievements page.</p>
+        <p>As you log hours, you'll earn badges for milestones like your first log, hitting weekly goals, or reaching total-hour thresholds. Badges appear as celebratory toasts and are collected on the Achievements page.</p>
       </Section>
 
       <Section title="Reports">
-        <p>Generate a PDF report of all your logged hours from the Reports page. You can preview, download, or print the report. If you're linked to a school, you can submit the report directly for review.</p>
+        <p>Generate a PDF report of all your logged hours from the Reports page. You can preview, download, or print it. If you're linked to a school, you can submit the report directly for review, and see its approve/reject status there.</p>
       </Section>
 
       <Section title="Volunteer Opportunities">
@@ -142,51 +162,58 @@ function StudentHandbook() {
         <p className="mt-2">Only hours logged from the moment you generate the code onward are visible to them; earlier entries stay private. Your parent can only view your hours — they can't edit or delete anything.</p>
       </Section>
 
+      <Section title="Signing in on another device">
+        <div className="mt-3 space-y-2">
+          <Step icon={Link2} label="Sync PIN" description="Settings → generate a sync PIN on one device, then on the login page choose 'Use sync PIN' on the other. Your data syncs automatically." />
+          <Step icon={Lock} label="App unlock PIN" description="An optional PIN that locks the app on a device. Separate from your password and 2FA — it just stops someone casually opening the app." />
+        </div>
+      </Section>
+
       <Section title="Two-Factor Authentication (2FA)">
-        <p>For extra security, you can enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>. Choose either an authenticator app (like Google Authenticator or Authy) or a code texted to your phone — only one method can be active at a time. Once enabled, you'll need to enter that 6-digit code every time you sign in.</p>
-        <p className="mt-2">If you use the authenticator app method, setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
+        <p>For extra security, enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>. Choose either an authenticator app (like Google Authenticator or Authy) or a code texted to your phone — only one method can be active at a time. Once enabled, you'll enter that 6-digit code every time you sign in.</p>
+        <p className="mt-2">If you use the authenticator-app method, setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
       </Section>
 
       <Section title="Profile & Settings">
-        <p>Your Profile page shows your account info, total hours, and earned badges. In Settings you can change your password, manage your school link, set goals, enable 2FA, and manage reminders.</p>
+        <p>Your Profile page shows your account info, total hours, and earned badges. In Settings you can change your password, manage your school link, set goals, enable 2FA, set a sync or app-unlock PIN, and manage reminders.</p>
       </Section>
     </div>
   )
 }
 
-// ── School Handbook ──────────────────────────────────────────────────────────
+// ── Parent Handbook ──────────────────────────────────────────────────────────
 
-function SchoolHandbook() {
+function ParentHandbook() {
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">School Handbook</h2>
-        <p className="text-sm text-earth-400">Manage your school dashboard, review student submissions, send announcements, and track billing.</p>
-      </div>
+    <div>
+      <HandbookIntro title="Parent Handbook">
+        A parent account is view-only. You can follow your linked children's logged hours and verification status — you can't add, edit, or delete anything.
+      </HandbookIntro>
 
-      <Section title="School Dashboard Overview">
-        <p>Your school dashboard has tabs for Reports, Students, Chat, and Volunteer. Navigate between them to manage each area. Your payment status and admin notices are shown at the top.</p>
+      <Section title="Getting Started">
+        <p>Sign up on the <Link to="/register" className="text-brand-400 hover:underline">register</Link> page and choose <strong>"I'm a Parent"</strong>. Once you're in, your first task is to link a child.</p>
       </Section>
 
-      <Section title="Managing Students">
-        <p>The Students tab shows all students linked to your school. Share your school code with students — they enter it in their Settings page to join.</p>
-      </Section>
-
-      <Section title="Reviewing PDF Submissions">
-        <p>When students submit reports, they appear in the Reports tab. Each shows the student's name, date, and status.</p>
+      <Section title="Linking a Child">
         <div className="mt-3 space-y-2">
-          <Step icon={FileText} label="View submission" description="Click 'View' to open the PDF." />
-          <Step icon={CheckCircle} label="Approve or reject" description="Mark as approved or rejected with optional notes." />
-          <Step icon={Mail} label="Student sees status" description="The student can check their submission status on their Reports page." />
+          <Step icon={Users} label="1. Ask your child for a code" description="They open Settings → Family on their account and generate a link code." />
+          <Step icon={Link2} label="2. Enter it in your Settings" description="Go to your own Settings → Family and enter that code." />
+          <Step icon={CheckCircle} label="3. Their card appears" description="You can link more than one child — each gets its own card on your Family dashboard." />
         </div>
+        <p className="mt-3">Only hours logged from the moment the code is generated onward are visible to you; anything earlier stays private.</p>
       </Section>
 
-      <Section title="Chat (Announcements)">
-        <p>The Chat tab lets you send announcements to all your students. Type a message and click Send. It appears instantly on every student's dashboard.</p>
+      <Section title="The Family Dashboard">
+        <p>Each linked child gets a card showing their total hours and a table of every session: date, activity, verification status, and hours. Use the verification badges to see which hours a supervisor has confirmed.</p>
+        <p className="mt-2">If the dashboard can't load, that's almost always a temporary connection issue — use "Try again" rather than assuming something is wrong with the link.</p>
       </Section>
 
-      <Section title="Payment & Billing">
-        <p>Your payment status is shown at the top of the dashboard. The system admin may send payment notices. If a due date is set, a countdown banner appears within 10 days of the deadline.</p>
+      <Section title="What you can't do">
+        <p>Parent accounts can't edit or delete logs, message the school, or see entries from before linking. If something needs to change, ask your child or their school to make the change.</p>
+      </Section>
+
+      <Section title="Unlinking">
+        <p>Either side can unlink at any time from Settings → Family. Unlinking stops any further sharing immediately.</p>
       </Section>
     </div>
   )
@@ -196,11 +223,10 @@ function SchoolHandbook() {
 
 function VolunteerHandbook() {
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">Volunteer Task Maker Handbook</h2>
-        <p className="text-sm text-earth-400">Post volunteer opportunities, manage signups, log hours for your team, and track tasks by location.</p>
-      </div>
+    <div>
+      <HandbookIntro title="Volunteer Task Maker Handbook">
+        Post volunteer opportunities, manage signups, log hours for your team, and track tasks by location.
+      </HandbookIntro>
 
       <Section title="Getting Started">
         <p>When you create an account, choose <strong>"I'm a Volunteer Task Maker"</strong>. You'll skip school-related fields and go straight to posting tasks.</p>
@@ -226,7 +252,7 @@ function VolunteerHandbook() {
         <div className="mt-3 space-y-2">
           <Step icon={CheckCircle} label="Approve" description="Accepts the volunteer and reveals your phone number to them." />
           <Step icon={XCircle} label="Reject" description="Declines the volunteer. They'll see the status." />
-          <Step icon={Clock} label="Log hours" description="Once approved, log hours for the volunteer — saved to their account." />
+          <Step icon={Clock} label="Log hours" description="Once approved, log hours for the volunteer — saved to their account with your task as the source." />
         </div>
       </Section>
 
@@ -237,15 +263,170 @@ function VolunteerHandbook() {
   )
 }
 
+// ── School Handbook ──────────────────────────────────────────────────────────
+
+function SchoolHandbook() {
+  return (
+    <div>
+      <HandbookIntro title="School Handbook">
+        Manage your school dashboard, review student submissions, verify hours, send announcements, add co-admins, and track billing.
+      </HandbookIntro>
+
+      <Section title="School Dashboard Overview">
+        <p>The school dashboard has tabs for <strong>Reports</strong>, <strong>Students</strong>, <strong>Chat</strong>, <strong>Staff</strong>, and <strong>Volunteer</strong>. Your payment status and any admin notices show at the top. Co-admins see a reduced view (My Documents) with just Reports and Volunteer.</p>
+      </Section>
+
+      <Section title="Getting Your School Set Up">
+        <p>Either register on the school signup page, or accept an invite email from your organization or the VolunTrack admin. The invite link lets you set a password and pick your school code; it expires after 3 days.</p>
+      </Section>
+
+      <Section title="Managing Students">
+        <p>The Students tab shows everyone linked to your school. There are two ways to add students:</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={School} label="Share your school code" description="Students enter it in Settings → Join school." />
+          <Step icon={Mail} label="Add by email" description="Invite a student directly from the Students tab." />
+        </div>
+      </Section>
+
+      <Section title="Reviewing Report Submissions">
+        <p>When students submit reports, they appear in the Reports tab with the student's name, date, and status.</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={FileText} label="View submission" description="Open the PDF to check it." />
+          <Step icon={CheckCircle} label="Approve or reject" description="Mark it approved or rejected, with optional notes." />
+          <Step icon={Mail} label="Student sees status" description="They can check their submission status on their own Reports page." />
+        </div>
+        <p className="mt-3">Schools can also upload their own verification documents from the same tab.</p>
+      </Section>
+
+      <Section title="Chat (Announcements)">
+        <p>The Chat tab lets you send announcements to all your students. Type a message and click Send — it appears instantly on every student's dashboard. Previously sent announcements are listed below the composer.</p>
+      </Section>
+
+      <Section title="Co-admins (Staff)">
+        <p>The primary school account can add co-admins by email from the <strong>Staff</strong> tab. Co-admins help manage the dashboard — reviewing reports, students, and announcements — but can't add or remove other co-admins. Remove a co-admin any time from the same tab.</p>
+      </Section>
+
+      <Section title="Posting Volunteer Tasks">
+        <p>The Volunteer tab lets your school post public volunteer tasks, the same way individual organizers do. Students browsing opportunities will see them sorted by distance.</p>
+      </Section>
+
+      <Section title="Payment & Billing">
+        <p>Your payment status is shown at the top of the dashboard. Pricing is set by the VolunTrack admin based on your school's size and usage.</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={Bell} label="Payment notices" description="The admin may send notices with an amount and due date." />
+          <Step icon={CreditCard} label="Invoices" description="Invoices arrive by email; download each as a PDF from the dashboard." />
+          <Step icon={Calendar} label="Due-date countdown" description="A banner appears within 10 days of a set deadline." />
+        </div>
+        <p className="mt-3">If an account is unpaid and locked, the dashboard stays restricted until the admin verifies payment.</p>
+      </Section>
+    </div>
+  )
+}
+
+// ── Organization Handbook ────────────────────────────────────────────────────
+
+function OrganizationHandbook() {
+  return (
+    <div>
+      <HandbookIntro title="Organization Handbook">
+        An organization account sits above multiple schools. It's deliberately minimal — it adds schools and tracks their status. Everything else happens on each school's own dashboard.
+      </HandbookIntro>
+
+      <Section title="Getting Started">
+        <p>Register on the organization signup page (linked from the login screen). Once you're in, the dashboard has two tabs: <strong>Schools</strong> and <strong>Invites</strong>.</p>
+      </Section>
+
+      <Section title="Adding Schools">
+        <p>On the Schools tab, click <strong>Add a school</strong> and enter the school's name and an admin email. They get an email with a link — expiring in 3 days — to set their own password and school code.</p>
+      </Section>
+
+      <Section title="Your Schools List">
+        <p>Each school you've added shows its code, contact email, student count, date added, and payment status:</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={CreditCard} label="Unpaid / Pending review / Paid / Rejected" description="Payment status is managed by the VolunTrack admin, not the organization." />
+          <Step icon={Users} label="Student count" description="How many students have linked to that school so far." />
+        </div>
+      </Section>
+
+      <Section title="Invites Tab">
+        <p>Track the invites you've sent: <strong>Pending</strong> (not set up yet), <strong>Set up</strong> (the school finished onboarding), or <strong>Expired</strong> (the link lapsed — send a new one).</p>
+      </Section>
+
+      <Section title="Invoices">
+        <p>Invoices from the VolunTrack admin appear on the Schools tab. Download each as a PDF for your records.</p>
+      </Section>
+
+      <Section title="What the org dashboard doesn't do">
+        <p>No student lists, no PDF review, no announcements, no co-admin management. For any of that, open the individual school's own dashboard.</p>
+      </Section>
+    </div>
+  )
+}
+
+// ── Admin Handbook ───────────────────────────────────────────────────────────
+
+function AdminHandbook() {
+  return (
+    <div>
+      <HandbookIntro title="Admin Handbook">
+        The admin dashboard lives at <code className="text-brand-300">/admin</code> and is restricted to accounts with the admin role. It has eight tabs.
+      </HandbookIntro>
+
+      <Section title="Inbox">
+        <p>Contact-form messages land here, threaded by conversation. Each thread comes with an AI-drafted reply you can edit, copy, or send by email. You can also delete an entire conversation.</p>
+      </Section>
+
+      <Section title="Reviews">
+        <p>The moderation queue for the public testimonials on the About page.</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={Star} label="Approve & schedule" description="Set a start date and an auto-remove window (1–365 days) for a review to go public." />
+          <Step icon={XCircle} label="Unpublish" description="Pull a live or scheduled review back out of public view." />
+          <Step icon={AlertTriangle} label="Delete" description="Remove a review permanently." />
+        </div>
+      </Section>
+
+      <Section title="Schools">
+        <p>Every school on the platform, with full billing and account controls:</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={CreditCard} label="Verify payments" description="Mark paid, reject with a reason (emailed to the school), or reset to unpaid." />
+          <Step icon={FileText} label="Price, due date & invoices" description="Set a price and billing period, set a due date, and send an emailed invoice with a PDF." />
+          <Step icon={Bell} label="Notices" description="Send a payment notice to one school or broadcast to all." />
+          <Step icon={MessageSquare} label="Internal notes & history" description="Leave admin-only notes and review each school's payment history." />
+          <Step icon={Terminal} label="Export / delete" description="Export the list as CSV, or delete a school (which unlinks its students)." />
+        </div>
+      </Section>
+
+      <Section title="Invites">
+        <p>Create school or organization invites, resend them, or delete them. These are the same invite emails the organization dashboard sends.</p>
+      </Section>
+
+      <Section title="Organizations">
+        <p>Every organization, with the same payment, notes, price, due-date, invoice, and history tools as Schools. Deleting an organization unlinks its schools rather than deleting them.</p>
+      </Section>
+
+      <Section title="Incidents">
+        <p>Backend and database health checks surface here automatically. Resolve an incident once it's fixed, or log one manually. This feeds the public status page.</p>
+      </Section>
+
+      <Section title="Settings">
+        <p>Edits the office-hours text shown on the public Contact page (days, hours, and an optional note).</p>
+      </Section>
+
+      <Section title="API">
+        <p>Live backend health checks plus a list of every registered API route currently serving traffic.</p>
+      </Section>
+    </div>
+  )
+}
+
 // ── FAQ ──────────────────────────────────────────────────────────────────────
 
 function Faq() {
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">Frequently Asked Questions</h2>
-        <p className="text-sm text-earth-400">Quick answers to common questions.</p>
-      </div>
+    <div>
+      <HandbookIntro title="Frequently Asked Questions">
+        Quick answers to common questions.
+      </HandbookIntro>
 
       <div className="space-y-3">
         <FaqItem
@@ -253,28 +434,52 @@ function Faq() {
           answer="Yes. Your volunteer logs, goals, and profile are stored locally on your device. If you create a server account, your data is stored in a secure database. We never sell or share your data."
         />
         <FaqItem
-          question="How do I enable two-factor authentication (2FA)?"
-          answer="Go to Settings and find the 2FA card. Click Enable 2FA, scan the QR code with an app like Google Authenticator or Authy, enter the 6-digit code to confirm, and save your backup codes. You'll need to enter a code each time you sign in."
+          question="Can I use VolunTrack without an account?"
+          answer="Yes. The app works entirely in your browser using local storage — no account is needed to log hours, set goals, or earn badges. You won't have cross-device sync, school integration, or cloud backup."
         />
         <FaqItem
-          question="I lost my authenticator — how do I log in?"
-          answer="On the login screen, after entering your password, click 'Use a backup code instead' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don't have backup codes, use the password reset flow from the login page."
+          question="How does supervisor verification work?"
+          answer="When you log hours, add your supervisor's email. They get a one-time link to approve or reject those specific hours — no account needed. Each log then shows a status: Pending, Verified, or Rejected. Verified hours are the ones your school and linked parents can rely on."
+        />
+        <FaqItem
+          question="How do I let a parent see my hours?"
+          answer="In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. They'll only see hours logged from that point onward, and they can't change anything."
+        />
+        <FaqItem
+          question="What's the difference between a school account and an organization account?"
+          answer="A school account manages one school's students, report reviews, announcements, and co-admins. An organization account sits above multiple schools: it adds them and tracks their setup and payment status, but each school still runs its own dashboard."
+        />
+        <FaqItem
+          question="Can more than one person manage a school account?"
+          answer="Yes. The primary school account can add co-admins by email from the Staff tab. Co-admins help review reports, students, and announcements, but can't add or remove other co-admins."
+        />
+        <FaqItem
+          question="Who sets the price for a school or organization account?"
+          answer="The VolunTrack admin, based on your size and how you'll use it. You'll get a quote with your invite, and invoices arrive by email with a downloadable PDF."
         />
         <FaqItem
           question="How do I join a school?"
-          answer="Ask your school administrator for their school code. Go to Settings → School partnership (or scroll down on the Settings page) and enter the code. Your account will be linked immediately."
-        />
-        <FaqItem
-          question="Can I use VolunTrack without an account?"
-          answer="Yes! The app works entirely in your browser using local storage. No account is needed to log hours, set goals, or earn badges. However, you won't have cross-device sync, school integration, or cloud backup."
+          answer="Ask your school administrator for their school code. Go to Settings → Join school and enter it — your account links immediately. A school can also add you directly by email."
         />
         <FaqItem
           question="How do I sync across devices?"
-          answer="Create a server account (register with email + password). On your first device, go to Settings → Mobile/Laptop sync PIN → Generate PIN. On your second device, go to the login page → Use sync PIN → Enter the 5-digit code. Your data will sync automatically."
+          answer="Create a server account (register with email + password). On your first device, go to Settings → sync PIN → Generate PIN. On your second device, go to the login page → Use sync PIN → enter the 5-digit code. Your data syncs automatically."
+        />
+        <FaqItem
+          question="What's the app unlock PIN?"
+          answer="An optional PIN, set in Settings, that locks the app on your device. It's separate from your password and from 2FA — it just stops someone casually opening the app on an unlocked phone."
+        />
+        <FaqItem
+          question="How do I enable two-factor authentication (2FA)?"
+          answer="Go to Settings and find the 2FA card. Choose an authenticator app or SMS (only one can be active), confirm with a 6-digit code, and save your backup codes. You'll enter a code each time you sign in."
+        />
+        <FaqItem
+          question="I lost my authenticator — how do I log in?"
+          answer="On the login screen, after entering your password, click 'Use a backup code instead' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don't have any, use the password reset flow from the login page."
         />
         <FaqItem
           question="How do I generate a PDF report?"
-          answer="Go to the Reports page and click 'Generate Report.' You can preview the PDF, download it, or print it. If you're linked to a school, you can also submit it directly."
+          answer="Go to the Reports page and click 'Generate Report.' You can preview the PDF, download it, or print it. If you're linked to a school, you can also submit it directly and track its approve/reject status."
         />
         <FaqItem
           question="Can I undo a deleted log entry?"
@@ -282,11 +487,11 @@ function Faq() {
         />
         <FaqItem
           question="How do I change my password?"
-          answer="Go to Settings → Change password. Enter your current password and your new password (at least 8 characters). Click 'Update password.'"
+          answer="Go to Settings → Change password. Enter your current password and a new one (at least 8 characters for server accounts). Click 'Update password.'"
         />
         <FaqItem
           question="What categories can I use when logging hours?"
-          answer="Categories include: Education, Environment, Health, Community, Animals, Arts, Sports, Technology, Religion, and Other. Pick the one that best fits your volunteer activity."
+          answer="Education, Environment, Health, Community, Animals, Arts, Sports, Technology, Religion, and Other. Pick the one that best fits your activity."
         />
         <FaqItem
           question="How do volunteer badges work?"
@@ -307,41 +512,54 @@ function Faq() {
 
 // ── Main Help Component ──────────────────────────────────────────────────────
 
+const PANELS = {
+  quickstart: QuickStart,
+  student: StudentHandbook,
+  parent: ParentHandbook,
+  volunteer: VolunteerHandbook,
+  school: SchoolHandbook,
+  organization: OrganizationHandbook,
+  admin: AdminHandbook,
+  faq: Faq,
+}
+
 export default function Help() {
   useSeo({
     title: 'Help & Handbooks',
-    description: 'Guides, FAQs, and handbooks for students, volunteers, and schools using VolunTrack.',
+    description: 'Guides, FAQs, and handbooks for students, parents, volunteers, schools, organizations, and admins using VolunTrack.',
     path: '/help',
   })
 
   const [tab, setTab] = useState('quickstart')
+  const Panel = PANELS[tab] || QuickStart
 
   return (
-    <AppLayout
-      title="Help & Handbooks"
-      subtitle="Guides, FAQs, and handbooks for every role"
-      action={
-        <div className="flex gap-1 bg-white/5 rounded-xl p-1 overflow-x-auto">
+    <AppLayout title="Help & Handbooks" subtitle="Guides, FAQs, and handbooks for every role">
+      <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
+        <nav
+          aria-label="Handbook sections"
+          className="flex gap-1 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:pb-0 lg:flex-col lg:overflow-visible lg:sticky lg:top-24 lg:self-start"
+        >
+          <p className="hidden lg:block px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-earth-500">Handbooks</p>
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                tab === t.id ? 'bg-brand-600 text-white' : 'text-earth-400 hover:text-white'
+              aria-current={tab === t.id ? 'page' : undefined}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition whitespace-nowrap shrink-0 lg:w-full ${
+                tab === t.id ? 'bg-brand-600 text-white' : 'text-earth-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <t.icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{t.label}</span>
+              <t.icon className="w-3.5 h-3.5 shrink-0" />
+              {t.label}
             </button>
           ))}
+        </nav>
+
+        <div className="min-w-0 mt-6 lg:mt-0">
+          <Panel />
         </div>
-      }
-    >
-      {tab === 'quickstart' && <QuickStart />}
-      {tab === 'student' && <StudentHandbook />}
-      {tab === 'volunteer' && <VolunteerHandbook />}
-      {tab === 'school' && <SchoolHandbook />}
-      {tab === 'faq' && <Faq />}
+      </div>
     </AppLayout>
   )
 }
