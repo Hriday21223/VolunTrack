@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, Clock, Database, Cpu, Monitor, Eye, AlertTriangle, Bell, Server, List, Mail } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import Footer from '@/components/Footer.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { getHealth, getIncidents, subscribeToStatus, confirmSubscription, unsubscribeFromStatus } from '@/lib/status.js'
 
@@ -410,6 +411,8 @@ export default function Status() {
           </Card>
         )}
       </main>
+
+      <Footer />
     </div>
   )
 }
