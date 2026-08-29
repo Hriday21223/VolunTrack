@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Instagram, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Gift, Zap, Menu, X } from 'lucide-react'
+import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Gift, Zap, Menu, X } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import Footer from '@/components/Footer.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -457,27 +458,7 @@ export default function About() {
           </section>
         </main>
 
-        <footer data-animate className="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-earth-500 dark:text-earth-400">
-          <span>&copy; VolunTrack 2026</span>
-          <div className="flex items-center gap-4">
-            <Link to="/about" className="hover:text-white">About</Link>
-            <Link to="/contact" className="hover:text-white">Contact</Link>
-            <Link to="/status" className="hover:text-white">Status</Link>
-            <Link to="/help" className="hover:text-white">Help</Link>
-            <Link to="/terms" className="hover:text-white">Terms</Link>
-            <Link to="/privacy" className="hover:text-white">Privacy</Link>
-            <a
-              href="https://www.instagram.com/volunteertrackofficial/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 hover:text-white"
-              aria-label="Instagram"
-            >
-              <Instagram className="w-4 h-4" />
-              @volunteertrackofficial
-            </a>
-          </div>
-        </footer>
+        <Footer tone="dark" className="mt-16" />
       </div>
     </div>
   )

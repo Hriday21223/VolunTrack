@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, Instagram } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import Footer from '@/components/Footer.jsx'
 import Toast from '@/components/Toast.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
@@ -158,6 +159,8 @@ export default function Contact() {
           </div>
         </div>
       </main>
+
+      <Footer />
 
       <Toast open={done} onClose={() => setDone(false)} variant="success">
         Message sent! We'll be in touch.
