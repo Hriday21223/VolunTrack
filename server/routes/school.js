@@ -385,7 +385,11 @@ router.get('/info', limiter, requireDb, async (req, res) => {
   const id = String(req.query.id || '').trim()
   if (!pin && !id) return res.status(400).json({ error: 'School code or id required.' })
   try {
-    const cols = 'id, name, pin, payment_status, payment_notes, paid_at, payment_due_date, payment_confirmation_ref'
+    // This route is unauthenticated (a public join pin is enough), so it must
+    // not expose the bank/payment confirmation reference the school submitted.
+    // payment_notes is kept — the school's own dashboard shows it as the
+    // "confirmation could not be verified" message (SchoolDashboard.jsx).
+    const cols = 'id, name, pin, payment_status, payment_notes, paid_at, payment_due_date'
     let rows
     if (pin) {
       const r = await query(`SELECT ${cols} FROM schools WHERE pin = $1`, [pin])
@@ -395,7 +399,7 @@ router.get('/info', limiter, requireDb, async (req, res) => {
       rows = r.rows
     }
     if (rows.length === 0) return res.status(404).json({ error: 'No school found.' })
-    return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date, paymentConfirmationRef: rows[0].payment_confirmation_ref } })
+    return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
   }
