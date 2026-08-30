@@ -7,6 +7,7 @@ import {
   sendPasswordResetCode, isResetPasswordCodeValid, clearPasswordResetCode,
   findUserBySyncPin, updateSyncPin,
 } from '@/api/index.js'
+import { syncPullLogs } from '@/lib/logSync.js'
 
 const AuthContext = createContext(null)
 
@@ -230,6 +231,11 @@ export function AuthProvider({ children }) {
 
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', data.token)
+
+      // Bring this account's server-side logs onto the new device before the
+      // session goes live, so DataProvider's user-change effect re-reads them
+      // in the same pass. Best-effort — never blocks the sync from succeeding.
+      await syncPullLogs(data.user.id)
 
       // Store user session
       write(SESSION_KEY, data.user)
