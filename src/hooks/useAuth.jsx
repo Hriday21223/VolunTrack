@@ -120,12 +120,12 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  const verifyBackupCode = useCallback(async (email, code) => {
+  const verifyBackupCode = useCallback(async (tempToken, code) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/backup-recovery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code }),
+      body: JSON.stringify({ tempToken, code }),
     })
     if (!response.ok) {
       const err = await response.json()
