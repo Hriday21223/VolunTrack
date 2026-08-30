@@ -245,10 +245,19 @@ app.get('/api/dev-recovery-code', (req, res) => {
   return res.json({ code: hit.code, type: hit.type, at: hit.at })
 })
 
-app.post('/api/send-report', async (req, res) => {
+app.post('/api/send-report', emailLimiter, async (req, res) => {
   const { to, school, student, totalHours, entries } = req.body
-  if (!to || !student) {
-    return res.status(400).json({ error: 'Missing recipient or student.' })
+  if (!to || typeof to !== 'string' || !to.includes('@') || to.length > 254) {
+    return res.status(400).json({ error: 'Valid recipient email is required.' })
+  }
+  if (!student || typeof student !== 'string' || student.length > 200) {
+    return res.status(400).json({ error: 'Student name is required.' })
+  }
+  if (school != null && (typeof school !== 'string' || school.length > 200)) {
+    return res.status(400).json({ error: 'Invalid school name.' })
+  }
+  if (entries != null && (!Array.isArray(entries) || entries.length > 1000)) {
+    return res.status(400).json({ error: 'Invalid entries.' })
   }
 
   const { transport, missing } = transporter()
