@@ -412,6 +412,11 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
+  // A negative or non-integer slot count is truthy and numeric, so it would
+  // slip past the `|| 1` default below and permanently lock the task as full.
+  if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1)) {
+    return res.status(400).json({ error: 'Slots must be a positive whole number.' })
+  }
 
   try {
     const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [req.auth.sub])
