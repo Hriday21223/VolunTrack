@@ -1,0 +1,26 @@
+# VolunTrack
+
+> VolunTrack is a free volunteer hour tracker for students, parents, volunteers, schools, and organizations. Log hours, set goals, earn badges, get supervisor verification by email, and export PDF/CSV reports and certificates for school and community-service requirements.
+
+## Core pages
+
+- [Home / overview](https://volunteer-track-two.vercel.app/): what VolunTrack is, features, pricing, and FAQ
+- [Help & Handbooks](https://volunteer-track-two.vercel.app/help): role-by-role guides and a full FAQ for students, parents, volunteers, schools, organizations, and admins
+- [Sign up](https://volunteer-track-two.vercel.app/register): create a free student, parent, or volunteer account
+- [School sign up](https://volunteer-track-two.vercel.app/school/register): create a school account to manage students and report reviews
+- [Organization sign up](https://volunteer-track-two.vercel.app/organization/register): manage multiple schools under one organization
+- [Contact](https://volunteer-track-two.vercel.app/contact): support and feedback
+- [System status](https://volunteer-track-two.vercel.app/status): live service status
+
+## Key facts
+
+- Free for individual students and volunteers; schools and organizations are on custom pricing
+- Works with no account, entirely in the browser; an optional server account adds cross-device sync, school linking, and two-factor authentication
+- Progressive Web App — installable and works offline after the first visit
+- Supervisor verification uses a one-time email link; the supervisor needs no account
+- Exports: PDF reports, CSV, and printable service certificates
+
+## Policies
+
+- [Privacy](https://volunteer-track-two.vercel.app/privacy)
+- [Terms](https://volunteer-track-two.vercel.app/terms)

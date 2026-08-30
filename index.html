@@ -33,13 +33,49 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "VolunTrack",
+        "url": "%VITE_SITE_URL%/",
         "applicationCategory": "LifestyleApplication",
+        "applicationSubCategory": "Volunteer hour tracker",
         "operatingSystem": "Web",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
         "description": "VolunTrack is a calm volunteer hour tracker. Log hours, set goals, earn badges, and generate reports for school or community service.",
+        "featureList": [
+          "Log volunteer hours with activity, category, location, and notes",
+          "Supervisor verification by one-time email link (no account needed)",
+          "Goals with dashboard progress tracking",
+          "Automatic achievement badges",
+          "PDF reports, CSV export, and printable service certificates",
+          "School and multi-school organization dashboards",
+          "Parent accounts linked to a student's hours",
+          "Cross-device sync, two-factor authentication, offline PWA"
+        ],
         "offers": {
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD"
+        },
+        "publisher": { "@id": "%VITE_SITE_URL%/#organization" }
+      }
+    </script>
+
+    <script type="application/ld+json" id="ld-organization">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "%VITE_SITE_URL%/#organization",
+        "name": "VolunTrack",
+        "url": "%VITE_SITE_URL%/",
+        "logo": "%VITE_SITE_URL%/logo.png",
+        "description": "VolunTrack is a free volunteer hour tracker for students, parents, schools, and organizations — log hours, get supervisor verification, and export reports for school and community-service requirements.",
+        "sameAs": [
+          "https://www.instagram.com/volunteertrackofficial/",
+          "https://github.com/Hriday21223/VolunTrack"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "email": "volunteertrackinfo@gmail.com",
+          "url": "%VITE_SITE_URL%/contact"
         }
       }
     </script>
