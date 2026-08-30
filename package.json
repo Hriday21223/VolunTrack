@@ -2,6 +2,8 @@
   "name": "volunteertrack",
   "private": true,
   "version": "0.1.0",
+  "license": "UNLICENSED",
+  "author": "Hriday Karnatam",
   "type": "module",
   "engines": {
     "node": "24.x"

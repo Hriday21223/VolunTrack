@@ -27,7 +27,7 @@ export default function Footer({ tone = 'auto', className }) {
       )}
     >
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 flex flex-wrap items-center justify-between gap-4">
-        <span>&copy; VolunTrack {new Date().getFullYear()}</span>
+        <span>&copy; {new Date().getFullYear()} VolunTrack. All rights reserved.</span>
         <div className="flex flex-wrap items-center gap-4">
           {LINKS.map((l) => (
             <Link

@@ -127,3 +127,13 @@ server.js      # Express server entry point
 - Drag-and-drop proof uploads read files via `FileReader` and store as base64 — convenient, but it does inflate `localStorage`. Keep proof files under ~1 MB.
 - Dark mode is opt-in per device; the choice is persisted in `voluntrack:theme`.
 - **Security**: Backend includes rate limiting, input validation, and parameterized queries. See SECURITY.md for details.
+
+## License
+
+Copyright (c) 2026 Hriday Karnatam. **All rights reserved.**
+
+This project is proprietary. The source is visible here for reference only —
+it is **not** open source. You may not use, copy, modify, redistribute, host,
+or deploy this software or any part of it without prior written permission.
+See [LICENSE](LICENSE) for the full terms. Permission requests:
+volunteertrackinfo@gmail.com
