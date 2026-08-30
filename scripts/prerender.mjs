@@ -18,7 +18,7 @@
 import { createServer } from 'http'
 import { readFile, writeFile, mkdir, realpath, stat } from 'fs/promises'
 import { fileURLToPath } from 'url'
-import { dirname, extname, join, resolve, sep } from 'path'
+import { dirname, extname, isAbsolute, join, normalize, resolve, sep } from 'path'
 import puppeteer from 'puppeteer'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -50,12 +50,13 @@ const MIME_TYPES = {
 // so callers fall back to the SPA's index.html rather than ever passing
 // tainted input to readFile.
 async function resolveWithinDist(urlPath) {
-  // Confine the resolved path to DIST_DIR *before* it reaches the filesystem,
-  // rejecting "../" traversal and NUL bytes up front so tainted input never
-  // flows into realpath().
+  // Normalize to a relative path under DIST_DIR and reject NUL bytes, "../"
+  // traversal, and absolute paths *before* anything reaches the filesystem,
+  // so tainted input never flows into realpath().
   if (urlPath.includes('\0')) return null
-  const candidate = resolve(DIST_DIR, `.${urlPath}`)
-  if (candidate !== DIST_DIR && !candidate.startsWith(DIST_DIR + sep)) return null
+  const rel = normalize(urlPath.replace(/^\/+/, ''))
+  if (rel.startsWith('..') || isAbsolute(rel)) return null
+  const candidate = join(DIST_DIR, rel)
   let target
   try {
     target = await realpath(candidate)

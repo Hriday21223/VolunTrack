@@ -27,10 +27,10 @@ export function hasEmail() {
   return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
 }
 
-// Strip CR/LF (and other control chars) so caller-supplied values can't forge
-// extra lines when interpolated into a log message.
+// Strip CR/LF so a caller-supplied value can't forge extra log lines when
+// interpolated into a log message.
 function forLog(value) {
-  return String(value).replace(/[\u0000-\u001f\u007f]+/g, ' ')
+  return String(value).replace(/[\r\n]/g, ' ')
 }
 
 // Appended to every automated email (this repo has no monitored reply
