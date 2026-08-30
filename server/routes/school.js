@@ -1186,24 +1186,18 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
   }
 })
 
-// Get admin notifications (any auth user). If schoolId query param provided,
-// returns notifications for that school + broadcast ones (school_id IS NULL).
+// Get admin notifications for the caller's own school plus broadcast ones
+// (school_id IS NULL). The school is derived from the authenticated user —
+// a client-supplied schoolId is ignored so one tenant can't read another's
+// notifications (see /messages below for the same pattern).
 router.get('/admin/notifications', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { schoolId } = req.query
-    let rows
-    if (schoolId) {
-      const r = await query(
-        'SELECT id, message, created_at FROM admin_notifications WHERE school_id IS NULL OR school_id = $1 ORDER BY created_at DESC LIMIT 50',
-        [schoolId],
-      )
-      rows = r.rows
-    } else {
-      const r = await query(
-        'SELECT id, message, created_at FROM admin_notifications ORDER BY created_at DESC LIMIT 50',
-      )
-      rows = r.rows
-    }
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id || null
+    const { rows } = await query(
+      'SELECT id, message, created_at FROM admin_notifications WHERE school_id IS NULL OR school_id = $1 ORDER BY created_at DESC LIMIT 50',
+      [schoolId],
+    )
     return res.json({ notifications: rows })
   } catch (error) {
     console.error('get notifications failed:', error)
