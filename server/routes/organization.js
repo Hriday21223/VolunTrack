@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
+import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
 
@@ -29,7 +30,7 @@ const INVITE_TTL_DAYS = 3
 // Complete an organization signup from an admin-sent invite (public route,
 // but requires a valid ?inviteToken — organization accounts are no longer
 // open self-service). Mirrors POST /school/register.
-router.post('/register', limiter, requireDb, async (req, res) => {
+router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res) => {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const password = req.body.password

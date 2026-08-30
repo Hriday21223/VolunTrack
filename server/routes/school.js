@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
+import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
 
@@ -51,7 +52,7 @@ async function requirePaidSchool(req, res, next) {
 // Register a school. If `inviteToken` is present, it must reference a
 // pending, unexpired invite — consumed (marked 'completed') on success so
 // it can't be reused.
-router.post('/register', limiter, requireDb, async (req, res) => {
+router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res) => {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const password = req.body.password

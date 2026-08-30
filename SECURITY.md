@@ -25,6 +25,11 @@ Please use GitHub Security Advisories or the repository security settings for re
 - **General API**: 100 requests per 15 minutes for general API usage
 - **Standard Headers**: Includes standard rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, etc.)
 
+### Bot Protection
+- **Cloudflare Turnstile**: Optional proof-of-humanity check on the public, unauthenticated write endpoints (`POST /api/contact`, `POST /api/auth/register`, `POST /api/school/register`, `POST /api/organization/register`) — closes the gap where a bot rotating IPs bypasses per-IP rate limits
+- **Opt-in**: Enabled only when `TURNSTILE_SECRET_KEY` (server) and `VITE_TURNSTILE_SITE_KEY` (client) are set; a no-op otherwise, so local dev and the client-only demo are unaffected
+- **Server-side verification**: Tokens are verified against Cloudflare's `siteverify` API in `server/turnstile.js` before the route handler runs — the client-side widget alone is never trusted
+
 ### Input Validation & Sanitization
 - **Email Validation**: Uses validator library with RFC 5322 compliance and length limits (max 254 chars)
 - **Name Validation**: Unicode-safe regex allowing letters, spaces, hyphens, and apostrophes (max 100 chars)

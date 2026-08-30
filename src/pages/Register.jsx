@@ -4,6 +4,8 @@ import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, 
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import Turnstile from '@/components/Turnstile.jsx'
+import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const ROLES = [
@@ -44,6 +46,10 @@ export default function Register() {
   const [toast, setToast] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [agreed, setAgreed] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  // Turnstile tokens are single-use — bump this to remount the widget for a
+  // fresh token after a failed attempt.
+  const [captchaKey, setCaptchaKey] = useState(0)
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
@@ -61,9 +67,10 @@ export default function Register() {
     if (form.password.length < 6) { setErr('Password must be at least 6 characters.'); return }
     if (form.pin && !/^[0-9]{4}$/.test(form.pin)) { setErr('PIN must be exactly 4 digits.'); return }
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
+    if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
     try {
-      const user = await register({ ...form, role })
+      const user = await register({ ...form, role, turnstileToken: captchaToken })
       if (role === 'student' && form.schoolCode && user) {
         const token = localStorage.getItem('voluntrack:auth_token')
         if (token) {
@@ -78,6 +85,8 @@ export default function Register() {
       setTimeout(() => nav('/', { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
+      setCaptchaToken('')
+      setCaptchaKey((k) => k + 1)
     } finally {
       setBusy(false)
     }
@@ -172,7 +181,9 @@ export default function Register() {
 
             {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
 
-            <button type="submit" className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '800ms' }} disabled={busy || !agreed}>
+            <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="register" className="animate-fade-in-up" />
+
+            <button type="submit" className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '800ms' }} disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
               {busy ? 'Creating account…' : <>Create account <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>

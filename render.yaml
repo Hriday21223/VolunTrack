@@ -26,3 +26,8 @@ services:
         value: "587"
       - key: EMAIL_FROM
         value: volunteertrack@googlegroups.com
+      # Cloudflare Turnstile secret for bot protection on public forms.
+      # Optional — set it in the dashboard (paired with VITE_TURNSTILE_SITE_KEY
+      # on the frontend host) to enable the checks; leave unset to disable.
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
