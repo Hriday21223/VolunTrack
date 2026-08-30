@@ -69,6 +69,15 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (supervisorSignature && supervisorSignature.length > 200_000) {
       return res.status(400).json({ error: 'Signature image is too large.' })
     }
+    // Match POST's validation — an update must not be able to slip a
+    // non-positive or non-numeric value past the check the insert enforces.
+    let hoursNum = null
+    if (hours != null) {
+      hoursNum = Number(hours)
+      if (!Number.isFinite(hoursNum) || hoursNum <= 0) {
+        return res.status(400).json({ error: 'Hours must be a positive number.' })
+      }
+    }
     if (taskId) {
       const { rows: signupRows } = await query(
         "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
@@ -92,7 +101,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          supervisor_signature = COALESCE($12, supervisor_signature),
          task_id = COALESCE($13, task_id)
        WHERE id = $14`,
-      [date || null, activity || null, category || null, hours != null ? Number(hours) : null, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, req.params.id],
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, req.params.id],
     )
     return res.json({ ok: true })
   } catch (error) {
