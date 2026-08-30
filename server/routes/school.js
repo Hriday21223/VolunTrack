@@ -968,7 +968,12 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
     let emailSent = null
     if (status === 'rejected') {
       const id = uid('anot')
-      const reason = notes.trim().replace(/\.+$/, '')
+      // Trim trailing periods without a regex — `/\.+$/` on caller-supplied
+      // text backtracks quadratically (ReDoS).
+      let reason = notes.trim()
+      let reasonEnd = reason.length
+      while (reasonEnd > 0 && reason[reasonEnd - 1] === '.') reasonEnd--
+      reason = reason.slice(0, reasonEnd)
       const rejectMsg = `Your payment confirmation could not be verified: ${reason}. Please resubmit a valid bank confirmation number.`
       await query(
         'INSERT INTO admin_notifications (id, school_id, message) VALUES ($1, $2, $3)',

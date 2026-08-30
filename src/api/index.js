@@ -97,6 +97,20 @@ export function verifyPin(user, pin) {
   return user && user.pinHash && user.pinHash === hashPin(pin)
 }
 
+// 6-digit recovery code from the platform CSPRNG. Rejection-sampled so the
+// value is uniform over 100000–999999 (a bare `% 900000` would skew low).
+function generateRecoveryCode() {
+  const max = 900000
+  const limit = Math.floor(0x100000000 / max) * max
+  const buf = new Uint32Array(1)
+  let n
+  do {
+    crypto.getRandomValues(buf)
+    n = buf[0]
+  } while (n >= limit)
+  return String(100000 + (n % max))
+}
+
 export function isResetPinCodeValid(user, code) {
   if (!user || !user.resetPinCode || !user.resetPinCodeExpiresAt) return false
   return user.resetPinCode === code && Date.now() <= user.resetPinCodeExpiresAt
@@ -110,7 +124,7 @@ export function isResetPasswordCodeValid(user, code) {
 export function sendPasswordResetCode(email) {
   const user = findUserByEmail(email)
   if (!user) return null
-  const code = String(Math.floor(100000 + Math.random() * 900000))
+  const code = generateRecoveryCode()
   const expiresAt = Date.now() + 1000 * 60 * 15
   return updateUser(user.id, { resetPasswordCode: code, resetPasswordCodeExpiresAt: expiresAt })
 }
@@ -131,7 +145,7 @@ export function updateUser(id, patch) {
 export function sendPinResetCode(email) {
   const user = findUserByEmail(email)
   if (!user) return null
-  const code = String(Math.floor(100000 + Math.random() * 900000))
+  const code = generateRecoveryCode()
   const expiresAt = Date.now() + 1000 * 60 * 15
   return updateUser(user.id, { resetPinCode: code, resetPinCodeExpiresAt: expiresAt })
 }

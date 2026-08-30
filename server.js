@@ -50,6 +50,17 @@ const emailLimiter = rateLimit({
   message: { error: 'Too many email requests. Please try again later.' },
 })
 
+// The raw-body webhook routes below are mounted ahead of the global
+// apiLimiter, so they need their own cap. Legitimate senders (Resend, GitHub)
+// deliver at a low rate; anything past this from one IP is abuse.
+const webhookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+})
+
 app.set('trust proxy', 1)
 app.use(helmet())
 app.use(cors({
@@ -64,11 +75,11 @@ app.use(cors({
 // Registered ahead of express.json() — Resend webhook signature
 // verification needs the raw request body, which express.json() would
 // otherwise already have consumed by the time a router saw it.
-app.post('/api/contact/inbound', express.raw({ type: 'application/json' }), handleInboundWebhook)
+app.post('/api/contact/inbound', webhookLimiter, express.raw({ type: 'application/json' }), handleInboundWebhook)
 
 // Real GitHub Issues sync (see handleGithubWebhook) — also needs the raw
 // body for HMAC signature verification, so it's registered here too.
-app.post('/api/status/github-webhook', express.raw({ type: 'application/json' }), handleGithubWebhook)
+app.post('/api/status/github-webhook', webhookLimiter, express.raw({ type: 'application/json' }), handleGithubWebhook)
 
 app.use(express.json({ limit: '1mb' }))
 app.use(apiLimiter)
