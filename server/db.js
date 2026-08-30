@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS schools (
 
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
-  role          TEXT NOT NULL CHECK (role IN ('admin','school','school_staff','student','volunteer','parent')),
+  role          TEXT NOT NULL CHECK (role IN ('admin','school','school_staff','student','volunteer','parent','org')),
   name          TEXT NOT NULL,
   email         TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
@@ -312,43 +312,6 @@ export async function initSchema() {
   // when the log was never synced (client-only student).
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS supervisor_signature TEXT`) } catch {}
 
-  // Widen the role CHECK constraint to allow 'parent'. This is the first
-  // migration that modifies an existing constraint rather than adding a
-  // column, so the constraint name is looked up dynamically instead of
-  // assumed, then dropped and recreated — idempotent across boots.
-  try {
-    await query(`
-      DO $$
-      DECLARE cname text;
-      BEGIN
-        SELECT conname INTO cname FROM pg_constraint
-          WHERE conrelid = 'users'::regclass AND contype = 'c'
-            AND pg_get_constraintdef(oid) ILIKE '%role%IN%';
-        IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
-        ALTER TABLE users ADD CONSTRAINT users_role_check
-          CHECK (role IN ('admin','school','student','volunteer','parent'));
-      END $$;
-    `)
-  } catch (error) { console.error('role constraint migration failed:', error) }
-
-  // Widen again to allow 'school_staff' — school co-admins (up to 10 per
-  // school, see POST /school/staff) who share day-to-day dashboard access
-  // but not billing/account-deletion actions.
-  try {
-    await query(`
-      DO $$
-      DECLARE cname text;
-      BEGIN
-        SELECT conname INTO cname FROM pg_constraint
-          WHERE conrelid = 'users'::regclass AND contype = 'c'
-            AND pg_get_constraintdef(oid) ILIKE '%role%IN%';
-        IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
-        ALTER TABLE users ADD CONSTRAINT users_role_check
-          CHECK (role IN ('admin','school','school_staff','student','volunteer','parent'));
-      END $$;
-    `)
-  } catch (error) { console.error('role constraint migration failed:', error) }
-
   // Organizations — an entity above schools (e.g. a district or nonprofit
   // running multiple schools/chapters) that can add schools under itself
   // without going through the platform admin. See server/routes/organization.js.
@@ -378,7 +341,14 @@ export async function initSchema() {
   // Lets notify-organization broadcast a single org (mirrors admin_notifications.school_id).
   try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE`) } catch {}
 
-  // Widen again to allow 'org' — an organization's own admin account.
+  // Reconcile the role CHECK constraint to the full current role set. This is
+  // the single source of truth for widening it — earlier incremental versions
+  // ('parent', then 'school_staff') were removed because, once 'org' accounts
+  // existed, each older step re-added a narrower list that ADD CONSTRAINT then
+  // rejected against those rows, failing every boot with nothing gained. The
+  // constraint name is looked up dynamically rather than assumed, then dropped
+  // and recreated inside a DO block (atomic — a failed ADD rolls the DROP back
+  // too), so this is idempotent across boots.
   try {
     await query(`
       DO $$
