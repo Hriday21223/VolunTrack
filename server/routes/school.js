@@ -303,7 +303,7 @@ router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), asyn
 // Get PDFs for a student (school admin can see all, student can see own)
 router.get('/pdfs', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    if (req.auth.role === 'school') {
+    if (req.auth.role === 'school' || req.auth.role === 'school_staff') {
       const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
       if (!userRows[0]?.school_id) return res.status(404).json({ error: 'School not found.' })
       const { rows } = await query(
