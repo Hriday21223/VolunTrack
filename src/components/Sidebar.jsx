@@ -114,7 +114,7 @@ export default function Sidebar() {
           <Link to="/contact" className="text-earth-300 hover:text-white">Contact</Link>
           <Link to="/status" className="text-earth-300 hover:text-white">System Status</Link>
         </div>
-        <div className="mt-4 text-earth-500">© VolunTrack 2026</div>
+        <div className="mt-4 text-earth-500">© {new Date().getFullYear()} VolunTrack. All rights reserved.</div>
       </div>
     </aside>
   )

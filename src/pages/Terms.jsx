@@ -54,6 +54,10 @@ export default function Terms() {
             <p>Schools and organizations may access student-submitted logs, proof uploads, and hour totals for the purpose of review and verification. Parents may link to a student account, in read-only form, with the student's consent via a link code.</p>
           </Section>
 
+          <Section title="Intellectual Property">
+            <p>VolunTrack, including its source code, design, branding, name, and logo, is owned by Hriday Karnatam and protected by copyright and other laws. All rights are reserved. You are granted a limited, personal, non-transferable right to use the app as offered. You may not copy, modify, reverse engineer, redistribute, host, resell, or create derivative works from any part of the app or its code without prior written permission.</p>
+          </Section>
+
           <Section title="Acceptable Use">
             <p>Don't use VolunTrack to upload harmful content, attempt to access accounts or data that aren't yours, interfere with the service's operation, or use it for anything unlawful.</p>
           </Section>
