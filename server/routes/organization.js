@@ -5,6 +5,7 @@ import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
+import { escapeHtml } from '../html.js'
 
 const router = express.Router()
 
@@ -338,7 +339,7 @@ router.post('/invite-school', limiter, requireDb, requireAuth('org'), async (req
     const { sent: emailSent } = await sendEmail({
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
+      html: `<p>${escapeHtml(name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `org-school-invite/${id}`,
     })
 

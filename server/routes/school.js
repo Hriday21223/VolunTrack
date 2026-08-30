@@ -1020,7 +1020,7 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
     const { sent: emailSent } = await sendEmail({
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
+      html: `<p>${escapeHtml(name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite/${id}`,
     })
 
@@ -1066,7 +1066,7 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
     const { sent: emailSent } = await sendEmail({
       to: invite.email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
+      html: `<p>${escapeHtml(invite.name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
