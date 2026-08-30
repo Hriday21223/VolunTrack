@@ -89,7 +89,7 @@ export default function Login() {
     setErr('')
     setBusy(true)
     try {
-      await verifyBackupCode(email, backupCode)
+      await verifyBackupCode(tempToken, backupCode)
       setToast(true)
       setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
     } catch (e) {

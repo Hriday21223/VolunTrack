@@ -303,7 +303,7 @@ router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), asyn
 // Get PDFs for a student (school admin can see all, student can see own)
 router.get('/pdfs', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    if (req.auth.role === 'school') {
+    if (req.auth.role === 'school' || req.auth.role === 'school_staff') {
       const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
       if (!userRows[0]?.school_id) return res.status(404).json({ error: 'School not found.' })
       const { rows } = await query(
@@ -385,7 +385,11 @@ router.get('/info', limiter, requireDb, async (req, res) => {
   const id = String(req.query.id || '').trim()
   if (!pin && !id) return res.status(400).json({ error: 'School code or id required.' })
   try {
-    const cols = 'id, name, pin, payment_status, payment_notes, paid_at, payment_due_date, payment_confirmation_ref'
+    // This route is unauthenticated (a public join pin is enough), so it must
+    // not expose the bank/payment confirmation reference the school submitted.
+    // payment_notes is kept — the school's own dashboard shows it as the
+    // "confirmation could not be verified" message (SchoolDashboard.jsx).
+    const cols = 'id, name, pin, payment_status, payment_notes, paid_at, payment_due_date'
     let rows
     if (pin) {
       const r = await query(`SELECT ${cols} FROM schools WHERE pin = $1`, [pin])
@@ -395,7 +399,7 @@ router.get('/info', limiter, requireDb, async (req, res) => {
       rows = r.rows
     }
     if (rows.length === 0) return res.status(404).json({ error: 'No school found.' })
-    return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date, paymentConfirmationRef: rows[0].payment_confirmation_ref } })
+    return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
   }
@@ -408,6 +412,11 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
+  // A negative or non-integer slot count is truthy and numeric, so it would
+  // slip past the `|| 1` default below and permanently lock the task as full.
+  if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1)) {
+    return res.status(400).json({ error: 'Slots must be a positive whole number.' })
+  }
 
   try {
     const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [req.auth.sub])
@@ -1011,7 +1020,7 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
     const { sent: emailSent } = await sendEmail({
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
+      html: `<p>${escapeHtml(name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite/${id}`,
     })
 
@@ -1057,7 +1066,7 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
     const { sent: emailSent } = await sendEmail({
       to: invite.email,
       subject: 'You’re invited to set up your school on VolunTrack',
-      html: `<p>${invite.name} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
+      html: `<p>${escapeHtml(invite.name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
       idempotencyKey: `school-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
@@ -1177,24 +1186,18 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
   }
 })
 
-// Get admin notifications (any auth user). If schoolId query param provided,
-// returns notifications for that school + broadcast ones (school_id IS NULL).
+// Get admin notifications for the caller's own school plus broadcast ones
+// (school_id IS NULL). The school is derived from the authenticated user —
+// a client-supplied schoolId is ignored so one tenant can't read another's
+// notifications (see /messages below for the same pattern).
 router.get('/admin/notifications', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { schoolId } = req.query
-    let rows
-    if (schoolId) {
-      const r = await query(
-        'SELECT id, message, created_at FROM admin_notifications WHERE school_id IS NULL OR school_id = $1 ORDER BY created_at DESC LIMIT 50',
-        [schoolId],
-      )
-      rows = r.rows
-    } else {
-      const r = await query(
-        'SELECT id, message, created_at FROM admin_notifications ORDER BY created_at DESC LIMIT 50',
-      )
-      rows = r.rows
-    }
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id || null
+    const { rows } = await query(
+      'SELECT id, message, created_at FROM admin_notifications WHERE school_id IS NULL OR school_id = $1 ORDER BY created_at DESC LIMIT 50',
+      [schoolId],
+    )
     return res.json({ notifications: rows })
   } catch (error) {
     console.error('get notifications failed:', error)

@@ -521,17 +521,27 @@ router.post('/totp/disable', authLimiter, requireDb, requireAuth(), async (req, 
   }
 })
 
-// POST /api/auth/totp/backup-recovery — use a backup code to log in
+// POST /api/auth/totp/backup-recovery — use a backup code in place of the
+// TOTP code during login. Like /totp/challenge, this requires a valid
+// tempToken from a successful password login: a backup code only ever
+// substitutes for the second factor, never for the password.
 router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) => {
-  const email = validateEmail(req.body.email || '')
+  const { tempToken } = req.body
   const code = String(req.body.code || '').trim().toLowerCase()
 
-  if (!email) return res.status(400).json({ error: 'Enter a valid email address.' })
+  if (!tempToken || typeof tempToken !== 'string') {
+    return res.status(400).json({ error: 'Session expired. Please log in again.' })
+  }
   if (!code) return res.status(400).json({ error: 'Backup code is required.' })
 
+  const payload = verifyTempToken(tempToken)
+  if (!payload) {
+    return res.status(401).json({ error: 'Session expired. Please log in again.' })
+  }
+
   try {
-    const { rows } = await query('SELECT * FROM users WHERE email = $1', [email])
-    if (rows.length === 0) return res.status(404).json({ error: 'No account with that email.' })
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
     const row = rows[0]
 
     if (!row.totp_enabled || !row.backup_codes) {
