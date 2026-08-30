@@ -15,6 +15,40 @@ const TABS = [
   { id: 'faq', label: 'FAQ', icon: HelpCircle },
 ]
 
+// Single source for the FAQ accordion below and the FAQPage structured data
+// injected via useSeo() — so an AI answer engine can cite these verbatim and
+// the page never drifts from its schema.
+const FAQ_ITEMS = [
+  { q: 'Is my data private?', a: 'Yes. Your volunteer logs, goals, and profile are stored locally on your device. If you create a server account, your data is stored in a secure database. We never sell or share your data.' },
+  { q: 'Can I use VolunTrack without an account?', a: 'Yes. The app works entirely in your browser using local storage — no account is needed to log hours, set goals, or earn badges. You won\'t have cross-device sync, school integration, or cloud backup.' },
+  { q: 'How does supervisor verification work?', a: 'When you log hours, add your supervisor\'s email. They get a one-time link to approve or reject those specific hours — no account needed. Each log then shows a status: Pending, Verified, or Rejected. Verified hours are the ones your school and linked parents can rely on.' },
+  { q: 'How do I let a parent see my hours?', a: 'In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. They\'ll only see hours logged from that point onward, and they can\'t change anything.' },
+  { q: 'What\'s the difference between a school account and an organization account?', a: 'A school account manages one school\'s students, report reviews, announcements, and co-admins. An organization account sits above multiple schools: it adds them and tracks their setup and payment status, but each school still runs its own dashboard.' },
+  { q: 'Can more than one person manage a school account?', a: 'Yes. The primary school account can add co-admins by email from the Staff tab. Co-admins help review reports, students, and announcements, but can\'t add or remove other co-admins.' },
+  { q: 'Who sets the price for a school or organization account?', a: 'The VolunTrack admin, based on your size and how you\'ll use it. You\'ll get a quote with your invite, and invoices arrive by email with a downloadable PDF.' },
+  { q: 'How do I join a school?', a: 'Ask your school administrator for their school code. Go to Settings → Join school and enter it — your account links immediately. A school can also add you directly by email.' },
+  { q: 'How do I sync across devices?', a: 'Create a server account (register with email + password). On your first device, go to Settings → sync PIN → Generate PIN. On your second device, go to the login page → Use sync PIN → enter the 5-digit code. Your data syncs automatically.' },
+  { q: 'What\'s the app unlock PIN?', a: 'An optional PIN, set in Settings, that locks the app on your device. It\'s separate from your password and from 2FA — it just stops someone casually opening the app on an unlocked phone.' },
+  { q: 'How do I enable two-factor authentication (2FA)?', a: 'Go to Settings and find the 2FA card. Choose an authenticator app or SMS (only one can be active), confirm with a 6-digit code, and save your backup codes. You\'ll enter a code each time you sign in.' },
+  { q: 'I lost my authenticator — how do I log in?', a: 'On the login screen, after entering your password, click \'Use a backup code instead\' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don\'t have any, use the password reset flow from the login page.' },
+  { q: 'How do I generate a PDF report?', a: 'Go to the Reports page and click \'Generate Report.\' You can preview the PDF, download it, or print it. If you\'re linked to a school, you can also submit it directly and track its approve/reject status.' },
+  { q: 'Can I undo a deleted log entry?', a: 'No — once a log entry is deleted, it cannot be recovered. Make sure you really want to delete it before confirming.' },
+  { q: 'How do I change my password?', a: 'Go to Settings → Change password. Enter your current password and a new one (at least 8 characters for server accounts). Click \'Update password.\'' },
+  { q: 'What categories can I use when logging hours?', a: 'Education, Environment, Health, Community, Animals, Arts, Sports, Technology, Religion, and Other. Pick the one that best fits your activity.' },
+  { q: 'How do volunteer badges work?', a: 'You earn badges automatically as you log hours. Milestones include your first log, 10, 25, 50, 100, and 200 hours, plus weekly streaks. Check the Achievements page to see your progress.' },
+  { q: 'Is there a mobile app?', a: 'VolunTrack is a Progressive Web App (PWA). Open it in your phone\'s browser and tap \'Add to Home Screen\' to install it like a native app. It works offline after the first visit.' },
+  { q: 'I have a bug or feature request.', a: 'Visit the Contact page to send us a message, or open an issue on GitHub: https://github.com/Hriday21223/VolunTrack/issues' },
+]
+
+// Drives the Quick Start panel below and the HowTo structured data.
+const QUICKSTART_STEPS = [
+  { name: 'Create your account', text: 'Go to the Sign Up page and pick a role: Student if you\'re logging your own hours, Volunteer Task Maker if you\'re organizing events for others, or Parent if you want to follow a student\'s hours. Schools and multi-school organizations have their own signup pages.' },
+  { name: 'Join your school (optional)', text: 'If your school uses VolunTrack, ask an administrator for a school code. Open Settings, find "Join school," and enter the code. Your school can also add you directly by email.' },
+  { name: 'Log your first hours', text: 'Click Log Hours (or the + button on mobile). Fill in the date, hours, activity, and category, and optionally a supervisor email so they can verify the hours. Click Save — your hours appear on the dashboard, calendar, and reports instantly.' },
+  { name: 'Set a goal', text: 'Go to Settings and scroll to Goals. Set a target (e.g. "50 hours by June") to track your progress with a visual ring on the dashboard.' },
+  { name: 'Explore your dashboard', text: 'Return to Home to see your total hours, goal progress, weekly chart, recent activity, and earned badges — all in one place.' },
+]
+
 function Section({ title, children }) {
   return (
     <div className="mb-6">
@@ -429,82 +463,9 @@ function Faq() {
       </HandbookIntro>
 
       <div className="space-y-3">
-        <FaqItem
-          question="Is my data private?"
-          answer="Yes. Your volunteer logs, goals, and profile are stored locally on your device. If you create a server account, your data is stored in a secure database. We never sell or share your data."
-        />
-        <FaqItem
-          question="Can I use VolunTrack without an account?"
-          answer="Yes. The app works entirely in your browser using local storage — no account is needed to log hours, set goals, or earn badges. You won't have cross-device sync, school integration, or cloud backup."
-        />
-        <FaqItem
-          question="How does supervisor verification work?"
-          answer="When you log hours, add your supervisor's email. They get a one-time link to approve or reject those specific hours — no account needed. Each log then shows a status: Pending, Verified, or Rejected. Verified hours are the ones your school and linked parents can rely on."
-        />
-        <FaqItem
-          question="How do I let a parent see my hours?"
-          answer="In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. They'll only see hours logged from that point onward, and they can't change anything."
-        />
-        <FaqItem
-          question="What's the difference between a school account and an organization account?"
-          answer="A school account manages one school's students, report reviews, announcements, and co-admins. An organization account sits above multiple schools: it adds them and tracks their setup and payment status, but each school still runs its own dashboard."
-        />
-        <FaqItem
-          question="Can more than one person manage a school account?"
-          answer="Yes. The primary school account can add co-admins by email from the Staff tab. Co-admins help review reports, students, and announcements, but can't add or remove other co-admins."
-        />
-        <FaqItem
-          question="Who sets the price for a school or organization account?"
-          answer="The VolunTrack admin, based on your size and how you'll use it. You'll get a quote with your invite, and invoices arrive by email with a downloadable PDF."
-        />
-        <FaqItem
-          question="How do I join a school?"
-          answer="Ask your school administrator for their school code. Go to Settings → Join school and enter it — your account links immediately. A school can also add you directly by email."
-        />
-        <FaqItem
-          question="How do I sync across devices?"
-          answer="Create a server account (register with email + password). On your first device, go to Settings → sync PIN → Generate PIN. On your second device, go to the login page → Use sync PIN → enter the 5-digit code. Your data syncs automatically."
-        />
-        <FaqItem
-          question="What's the app unlock PIN?"
-          answer="An optional PIN, set in Settings, that locks the app on your device. It's separate from your password and from 2FA — it just stops someone casually opening the app on an unlocked phone."
-        />
-        <FaqItem
-          question="How do I enable two-factor authentication (2FA)?"
-          answer="Go to Settings and find the 2FA card. Choose an authenticator app or SMS (only one can be active), confirm with a 6-digit code, and save your backup codes. You'll enter a code each time you sign in."
-        />
-        <FaqItem
-          question="I lost my authenticator — how do I log in?"
-          answer="On the login screen, after entering your password, click 'Use a backup code instead' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don't have any, use the password reset flow from the login page."
-        />
-        <FaqItem
-          question="How do I generate a PDF report?"
-          answer="Go to the Reports page and click 'Generate Report.' You can preview the PDF, download it, or print it. If you're linked to a school, you can also submit it directly and track its approve/reject status."
-        />
-        <FaqItem
-          question="Can I undo a deleted log entry?"
-          answer="No — once a log entry is deleted, it cannot be recovered. Make sure you really want to delete it before confirming."
-        />
-        <FaqItem
-          question="How do I change my password?"
-          answer="Go to Settings → Change password. Enter your current password and a new one (at least 8 characters for server accounts). Click 'Update password.'"
-        />
-        <FaqItem
-          question="What categories can I use when logging hours?"
-          answer="Education, Environment, Health, Community, Animals, Arts, Sports, Technology, Religion, and Other. Pick the one that best fits your activity."
-        />
-        <FaqItem
-          question="How do volunteer badges work?"
-          answer="You earn badges automatically as you log hours. Milestones include your first log, 10, 25, 50, 100, and 200 hours, plus weekly streaks. Check the Achievements page to see your progress."
-        />
-        <FaqItem
-          question="Is there a mobile app?"
-          answer="VolunTrack is a Progressive Web App (PWA). Open it in your phone's browser and tap 'Add to Home Screen' to install it like a native app. It works offline after the first visit."
-        />
-        <FaqItem
-          question="I have a bug or feature request."
-          answer="Visit the Contact page to send us a message, or open an issue on GitHub: https://github.com/Hriday21223/VolunTrack/issues"
-        />
+        {FAQ_ITEMS.map(({ q, a }) => (
+          <FaqItem key={q} question={q} answer={a} />
+        ))}
       </div>
     </div>
   )
@@ -523,11 +484,41 @@ const PANELS = {
   faq: Faq,
 }
 
+// FAQPage + HowTo structured data, built from the same content rendered on
+// this page so answer engines (ChatGPT, Perplexity, Google AI Overviews)
+// can lift the question/answer pairs and the step-by-step directly. Module
+// constant — it never changes, so useSeo's effect stays stable across the
+// tab switches that re-render this component.
+const HELP_JSON_LD = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ_ITEMS.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to track volunteer hours with VolunTrack',
+    description: 'Set up VolunTrack and log your first verified volunteer hours in a few minutes.',
+    step: QUICKSTART_STEPS.map(({ name, text }, i) => ({
+      '@type': 'HowToStep',
+      position: i + 1,
+      name,
+      text,
+    })),
+  },
+]
+
 export default function Help() {
   useSeo({
     title: 'Help & Handbooks',
     description: 'Guides, FAQs, and handbooks for students, parents, volunteers, schools, organizations, and admins using VolunTrack.',
     path: '/help',
+    jsonLd: HELP_JSON_LD,
   })
 
   const [tab, setTab] = useState('quickstart')

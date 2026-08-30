@@ -64,11 +64,62 @@ const SITEMAP_ENTRIES = [
   { path: '/status', changefreq: 'daily', priority: '0.3' },
 ]
 
+// AI / LLM crawlers we explicitly welcome so the marketing pages can be read,
+// summarised, and cited by answer engines. A named User-agent group is the
+// most specific match for that bot, so each one has to repeat the Disallow
+// list — otherwise the bot would ignore the `*` group's rules and reach the
+// token-bearing / authenticated routes.
+const AI_CRAWLERS = [
+  'GPTBot', 'ChatGPT-User', 'OAI-SearchBot',        // OpenAI
+  'ClaudeBot', 'Claude-Web', 'anthropic-ai',        // Anthropic
+  'PerplexityBot', 'Perplexity-User',               // Perplexity
+  'Google-Extended',                                // Gemini / Vertex
+  'Applebot-Extended',                              // Apple Intelligence
+  'CCBot',                                          // Common Crawl
+  'Amazonbot', 'Bytespider', 'Meta-ExternalAgent', 'cohere-ai',
+]
+
+const disallowBlock = DISALLOWED_PATHS.map((p) => `Disallow: ${p}`).join('\n')
+
 const robotsTxt = `User-agent: *
 Allow: /
-${DISALLOWED_PATHS.map((p) => `Disallow: ${p}`).join('\n')}
+${disallowBlock}
+
+${AI_CRAWLERS.map((ua) => `User-agent: ${ua}`).join('\n')}
+Allow: /
+${disallowBlock}
 
 Sitemap: ${SITE_URL}/sitemap.xml
+`
+
+// llms.txt — an at-a-glance map of the site for LLMs, following the
+// llmstxt.org convention: an H1, a one-line summary, then curated links.
+const llmsTxt = `# VolunTrack
+
+> VolunTrack is a free volunteer hour tracker for students, parents, volunteers, schools, and organizations. Log hours, set goals, earn badges, get supervisor verification by email, and export PDF/CSV reports and certificates for school and community-service requirements.
+
+## Core pages
+
+- [Home / overview](${SITE_URL}/): what VolunTrack is, features, pricing, and FAQ
+- [Help & Handbooks](${SITE_URL}/help): role-by-role guides and a full FAQ for students, parents, volunteers, schools, organizations, and admins
+- [Sign up](${SITE_URL}/register): create a free student, parent, or volunteer account
+- [School sign up](${SITE_URL}/school/register): create a school account to manage students and report reviews
+- [Organization sign up](${SITE_URL}/organization/register): manage multiple schools under one organization
+- [Contact](${SITE_URL}/contact): support and feedback
+- [System status](${SITE_URL}/status): live service status
+
+## Key facts
+
+- Free for individual students and volunteers; schools and organizations are on custom pricing
+- Works with no account, entirely in the browser; an optional server account adds cross-device sync, school linking, and two-factor authentication
+- Progressive Web App — installable and works offline after the first visit
+- Supervisor verification uses a one-time email link; the supervisor needs no account
+- Exports: PDF reports, CSV, and printable service certificates
+
+## Policies
+
+- [Privacy](${SITE_URL}/privacy)
+- [Terms](${SITE_URL}/terms)
 `
 
 const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -83,5 +134,6 @@ ${SITEMAP_ENTRIES.map(({ path, changefreq, priority }) => `  <url>
 
 writeFileSync(resolve(PUBLIC_DIR, 'robots.txt'), robotsTxt)
 writeFileSync(resolve(PUBLIC_DIR, 'sitemap.xml'), sitemapXml)
+writeFileSync(resolve(PUBLIC_DIR, 'llms.txt'), llmsTxt)
 
-console.log(`[generate-seo-files] wrote public/robots.txt and public/sitemap.xml for ${SITE_URL}`)
+console.log(`[generate-seo-files] wrote public/robots.txt, public/sitemap.xml and public/llms.txt for ${SITE_URL}`)
