@@ -4,6 +4,8 @@ import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, Instagram } from 'l
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import Toast from '@/components/Toast.jsx'
+import Turnstile from '@/components/Turnstile.jsx'
+import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 
 export default function Contact() {
@@ -18,6 +20,9 @@ export default function Contact() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [sendErr, setSendErr] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  // Bumped after a successful send to remount the widget for a fresh token.
+  const [captchaKey, setCaptchaKey] = useState(0)
   const [officeHours, setOfficeHours] = useState({
     days: 'Monday – Friday',
     hours: '9:00 AM – 5:00 PM (CT)',
@@ -41,6 +46,10 @@ export default function Contact() {
     if (!form.message.trim() || !form.name.trim() || !form.email.trim()) {
       return
     }
+    if (turnstileEnabled && !captchaToken) {
+      setSendErr('Please complete the CAPTCHA below.')
+      return
+    }
     setBusy(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -52,12 +61,15 @@ export default function Contact() {
           email: form.email,
           subject: form.subject,
           message: form.message,
+          turnstileToken: captchaToken,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send message.')
       setDone(true)
       setForm({ name: '', email: '', subject: 'General question', message: '' })
+      setCaptchaToken('')
+      setCaptchaKey((k) => k + 1)
     } catch (e) {
       setSendErr(e.message || 'Failed to send message. Please try again.')
     } finally {
@@ -123,7 +135,8 @@ export default function Contact() {
                 />
               </div>
               {sendErr && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{sendErr}</div>}
-              <button className="btn-primary" disabled={busy}>
+              <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="contact" />
+              <button className="btn-primary" disabled={busy || (turnstileEnabled && !captchaToken)}>
                 {busy ? 'Sending…' : <>Send message <Send className="w-4 h-4" /></>}
               </button>
             </form>

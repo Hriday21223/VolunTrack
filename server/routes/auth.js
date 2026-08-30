@@ -7,6 +7,7 @@ import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth } from '../auth.js'
+import { verifyTurnstile } from '../turnstile.js'
 import { sendWelcomeEmail } from '../email.js'
 
 const router = express.Router()
@@ -107,7 +108,7 @@ function requireDb(_req, res, next) {
   next()
 }
 
-router.post('/register', authLimiter, requireDb, async (req, res) => {
+router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
   const name = validateName(req.body.name || '')
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')

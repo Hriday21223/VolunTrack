@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, School, Hash } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import Turnstile from '@/components/Turnstile.jsx'
+import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
@@ -25,6 +27,8 @@ export default function SchoolRegister() {
   const [toast, setToast] = useState(false)
   const [inviteLoaded, setInviteLoaded] = useState(!inviteToken)
   const [agreed, setAgreed] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaKey, setCaptchaKey] = useState(0)
 
   useEffect(() => {
     if (!inviteToken) return
@@ -50,12 +54,13 @@ export default function SchoolRegister() {
     if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
     if (!form.pin || !/^[a-zA-Z]+-?\d{3,5}$/.test(form.pin)) { setErr('School code must be letters followed by digits (e.g. cisd-12345).'); return }
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
+    if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
     try {
       const res = await fetch(`${apiUrl}/school/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), inviteToken: inviteToken || undefined }),
+        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), inviteToken: inviteToken || undefined, turnstileToken: captchaToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')
@@ -65,6 +70,8 @@ export default function SchoolRegister() {
       setTimeout(() => nav('/school/dashboard', { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
+      setCaptchaToken('')
+      setCaptchaKey((k) => k + 1)
     } finally {
       setBusy(false)
     }
@@ -135,7 +142,9 @@ export default function SchoolRegister() {
 
             {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{err}</div>}
 
-            <button type="submit" className="btn-primary w-full" disabled={busy || !agreed}>
+            <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="school-register" />
+
+            <button type="submit" className="btn-primary w-full" disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
               {busy ? 'Registering…' : <>Register school <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>

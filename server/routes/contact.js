@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
+import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 
@@ -33,7 +34,7 @@ function requireDb(_req, res, next) {
 }
 
 // Submit a contact-form message (public). Starts a new thread.
-router.post('/', submitLimiter, requireDb, async (req, res) => {
+router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) => {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const subject = String(req.body.subject || '').trim() || 'General question'
