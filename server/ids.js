@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto'
+import { randomBytes, randomInt } from 'crypto'
 
 // Prefixed, reasonably-unique ids that mirror the client's uid() style.
 export function uid(prefix = 'id') {
@@ -16,8 +16,9 @@ export function generateToken() {
 // (0/O, 1/I/L).
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 export function generateChildLinkCode() {
-  const bytes = randomBytes(8)
+  // randomInt() is rejection-sampled, so every character is equally likely —
+  // `randomBytes()[i] % 30` would skew toward the start of the alphabet.
   let s = ''
-  for (let i = 0; i < 8; i++) s += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length]
+  for (let i = 0; i < 8; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
   return `${s.slice(0, 4)}-${s.slice(4)}`
 }

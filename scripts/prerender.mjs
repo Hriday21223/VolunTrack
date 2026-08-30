@@ -50,12 +50,19 @@ const MIME_TYPES = {
 // so callers fall back to the SPA's index.html rather than ever passing
 // tainted input to readFile.
 async function resolveWithinDist(urlPath) {
+  // Confine the resolved path to DIST_DIR *before* it reaches the filesystem,
+  // rejecting "../" traversal and NUL bytes up front so tainted input never
+  // flows into realpath().
+  if (urlPath.includes('\0')) return null
+  const candidate = resolve(DIST_DIR, `.${urlPath}`)
+  if (candidate !== DIST_DIR && !candidate.startsWith(DIST_DIR + sep)) return null
   let target
   try {
-    target = await realpath(resolve(DIST_DIR, `.${urlPath}`))
+    target = await realpath(candidate)
   } catch {
     return null
   }
+  // Re-check after realpath in case a symlink inside dist/ points outside it.
   if (target !== DIST_DIR && !target.startsWith(DIST_DIR + sep)) return null
   const info = await stat(target).catch(() => null)
   if (!info?.isFile()) return null

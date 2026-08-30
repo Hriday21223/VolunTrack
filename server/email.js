@@ -27,6 +27,12 @@ export function hasEmail() {
   return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
 }
 
+// Strip CR/LF (and other control chars) so caller-supplied values can't forge
+// extra lines when interpolated into a log message.
+function forLog(value) {
+  return String(value).replace(/[\u0000-\u001f\u007f]+/g, ' ')
+}
+
 // Appended to every automated email (this repo has no monitored reply
 // inbox) so recipients know where to actually go for help. Falls back to
 // the live production URL rather than a bare "/contact" path, which would
@@ -73,7 +79,7 @@ export function paymentNoticeHtml({ recipientName, entityLabel = 'school', amoun
 export async function sendEmail({ to, subject, html }) {
   const t = smtpTransport()
   if (!t) {
-    console.log(`[dev] EMAIL_HOST/EMAIL_USER/EMAIL_PASSWORD not set — would have emailed ${to}: ${subject}`)
+    console.log(`[dev] EMAIL_HOST/EMAIL_USER/EMAIL_PASSWORD not set — would have emailed ${forLog(to)}: ${forLog(subject)}`)
     return { sent: false }
   }
   try {
