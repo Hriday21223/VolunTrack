@@ -202,40 +202,48 @@ export function AuthProvider({ children }) {
   }, [])
 
   const loginWithSyncPin = useCallback(async (syncPin) => {
-    // Try backend API first
+    // Mirrors login()/register(): only a genuinely unreachable backend (the
+    // fetch itself throwing) falls back to the local-only account. A real
+    // backend response (invalid/expired PIN) must surface as an error rather
+    // than silently "succeeding" against a local account.
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    let response
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/auth/sync-login`, {
+      response = await fetch(`${apiUrl}/auth/sync-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ syncPin })
       })
-      
+    } catch {
+      response = null
+    }
+
+    if (response) {
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json().catch(() => ({}))
         throw new Error(error.error || 'Invalid sync PIN')
       }
-      
+
       const data = await response.json()
 
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', data.token)
-      
+
       // Store user session
       write(SESSION_KEY, data.user)
       setUser(data.user)
       return data.user
-    } catch {
-      // Fallback to local storage for demo mode
-      const account = findUserBySyncPin(syncPin)
-      if (!account) throw new Error('Invalid sync PIN.')
-      const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = account
-      write(SESSION_KEY, safe)
-      setUser(safe)
-      return safe
     }
+
+    // Backend unreachable — fall back to local storage for demo mode.
+    const account = findUserBySyncPin(syncPin)
+    if (!account) throw new Error('Invalid sync PIN.')
+    const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = account
+    write(SESSION_KEY, safe)
+    setUser(safe)
+    return safe
   }, [])
 
   const register = useCallback(async (data) => {
@@ -359,41 +367,49 @@ export function AuthProvider({ children }) {
     if (!user) throw new Error('You must be logged in to set a sync PIN.')
     if (!/^\d{5}$/.test(pin)) throw new Error('Sync PIN must be exactly 5 digits.')
     
-    // Try backend API first
-    try {
-      const token = localStorage.getItem('voluntrack:auth_token')
-      if (!token) throw new Error('No auth token found')
-      
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/auth/sync-pin`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ syncPin: pin })
-      })
-      
+    // Mirrors login()/register(): only a genuinely unreachable backend (or no
+    // auth token at all — demo mode) falls back to the local-only update. A
+    // real backend response (e.g. 409 "This sync PIN is already in use") must
+    // surface as an error rather than being silently masked by a local write.
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const token = localStorage.getItem('voluntrack:auth_token')
+    let response
+    if (token) {
+      try {
+        response = await fetch(`${apiUrl}/auth/sync-pin`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ syncPin: pin })
+        })
+      } catch {
+        response = null
+      }
+    }
+
+    if (response) {
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json().catch(() => ({}))
         throw new Error(error.error || 'Failed to update sync PIN')
       }
-      
+
       const data = await response.json()
 
       // Update the user session with the sync PIN
       write(SESSION_KEY, data.user)
       setUser(data.user)
       return data.user
-    } catch {
-      // Fallback to local storage for demo mode
-      const updated = updateSyncPin(user.id, pin)
-      if (!updated) throw new Error('Failed to update sync PIN.')
-      const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = updated
-      write(SESSION_KEY, safe)
-      setUser(safe)
-      return safe
     }
+
+    // No auth token (demo mode) or backend unreachable — fall back to local storage.
+    const updated = updateSyncPin(user.id, pin)
+    if (!updated) throw new Error('Failed to update sync PIN.')
+    const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = updated
+    write(SESSION_KEY, safe)
+    setUser(safe)
+    return safe
   }, [user])
 
   return (
