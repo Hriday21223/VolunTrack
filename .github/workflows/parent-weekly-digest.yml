@@ -27,8 +27,13 @@ jobs:
     steps:
       - name: Trigger the weekly digest endpoint
         run: |
+          # The endpoint sends synchronously, so give it a long ceiling rather
+          # than retrying a request that may still be running server-side.
+          # --retry (no --retry-all-errors) covers a Render cold-start
+          # connection failure only; the backend's parent_digest_sends
+          # stale-guard makes an accidental re-send idempotent regardless.
           curl -fsS -X POST \
-            --retry 4 --retry-all-errors --retry-delay 15 --max-time 180 \
+            --connect-timeout 30 --retry 2 --retry-delay 30 --max-time 900 \
             -H "x-cron-key: ${{ secrets.CRON_SECRET }}" \
             -H 'content-type: application/json' \
             -d '{"dryRun": ${{ github.event.inputs.dry_run || false }} }' \

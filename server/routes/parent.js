@@ -12,9 +12,19 @@ const router = express.Router()
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  // 60 to match status.js — the public unsubscribe GET can see bursts from
-  // many parents behind one school NAT, plus mail-client link prefetch.
-  max: 60,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+})
+
+// Separate, looser bucket for the digest routes so raising their cap doesn't
+// also loosen brute-force protection on POST /link (child link-code guessing).
+// The unsubscribe GET/POST can see bursts from many parents behind one school
+// NAT, plus mail-client link prefetch.
+const digestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
@@ -130,7 +140,7 @@ function checkCronKey(req) {
 
 // Cron entrypoint — hit weekly by .github/workflows/parent-weekly-digest.yml.
 // Always the just-finished Mon–Sun week, every opted-in parent.
-router.post('/internal/run-weekly-digest', limiter, requireDb, async (req, res) => {
+router.post('/internal/run-weekly-digest', digestLimiter, requireDb, async (req, res) => {
   const denied = checkCronKey(req)
   if (denied) return res.status(denied.code).json({ error: denied.error })
 
@@ -150,12 +160,18 @@ router.post('/internal/run-weekly-digest', limiter, requireDb, async (req, res) 
 // Admin manual trigger / testing. { weekStart?, parentId?, force?, dryRun? }.
 // `force` overrides the parent_digest_sends idempotency table only — never the
 // opt-out filter (applied inside buildParentDigests).
-router.post('/admin/send-weekly-digest', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+router.post('/admin/send-weekly-digest', digestLimiter, requireDb, requireAuth('admin'), async (req, res) => {
   const { weekStart, parentId, force, dryRun } = req.body || {}
   const isDryRun = dryRun === true
   if (!hasEmail() && !isDryRun) return res.status(503).json({ error: 'Email is not configured.' })
-  if (weekStart !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(String(weekStart))) {
-    return res.status(400).json({ error: 'weekStart must be in YYYY-MM-DD format.' })
+  if (weekStart !== undefined) {
+    const s = String(weekStart)
+    // Reject well-formed-but-impossible dates ('2025-02-30', '2025-13-01') too —
+    // JS rolls them over, so round-trip through Date and compare.
+    const d = new Date(`${s}T00:00:00Z`)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) {
+      return res.status(400).json({ error: 'weekStart must be a valid YYYY-MM-DD date.' })
+    }
   }
 
   try {
@@ -173,14 +189,46 @@ router.post('/admin/send-weekly-digest', limiter, requireDb, requireAuth('admin'
   }
 })
 
+const UNSUB_STYLE = 'font-family:system-ui,-apple-system,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5'
+
 function unsubPage(message) {
-  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="font-family:system-ui,-apple-system,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5"><p>${escapeHtml(message)}</p></body></html>`
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${UNSUB_STYLE}"><p>${escapeHtml(message)}</p></body></html>`
 }
 
-// Public one-click unsubscribe from the digest email. The 64-hex token is the
-// credential (no auth). Renders its own page — there is no frontend route for
-// this. Idempotent: a repeat hit still matches the row and returns success.
-router.get('/digest/unsubscribe/:token', limiter, requireDb, async (req, res) => {
+function unsubConfirmPage(token) {
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${UNSUB_STYLE}"><p>Unsubscribe from the VolunTrack weekly progress digest emails?</p><form method="post" action="/api/parent/digest/unsubscribe/${escapeHtml(token)}"><button type="submit" style="font-size:1rem;padding:0.5rem 1rem">Unsubscribe</button></form></body></html>`
+}
+
+// Public unsubscribe from the digest email. The 64-hex token is the credential
+// (no auth). Two-step on purpose: the GET only renders a confirm button, so
+// email-security link scanners and client prefetch can't opt a parent out with
+// no user action; the POST does the state change. Renders its own pages — there
+// is no frontend route for this.
+router.get('/digest/unsubscribe/:token', digestLimiter, requireDb, async (req, res) => {
+  const token = String(req.params.token || '')
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    return res.status(400).type('html').send(unsubPage('This link is not valid.'))
+  }
+  try {
+    const { rows } = await query(
+      `SELECT weekly_digest_opt_out FROM users WHERE digest_unsub_token = $1 AND role = 'parent'`,
+      [token],
+    )
+    if (rows.length === 0) {
+      return res.status(404).type('html').send(unsubPage('This unsubscribe link is invalid or expired.'))
+    }
+    if (rows[0].weekly_digest_opt_out) {
+      return res.status(200).type('html').send(unsubPage("You're already unsubscribed from the weekly progress digest emails."))
+    }
+    return res.status(200).type('html').send(unsubConfirmPage(token))
+  } catch (error) {
+    console.error('digest unsubscribe (GET) failed:', error)
+    return res.status(500).type('html').send(unsubPage('Something went wrong. Please try again later.'))
+  }
+})
+
+// Idempotent: a repeat POST still matches the row and returns success.
+router.post('/digest/unsubscribe/:token', digestLimiter, requireDb, async (req, res) => {
   const token = String(req.params.token || '')
   if (!/^[a-f0-9]{64}$/.test(token)) {
     return res.status(400).type('html').send(unsubPage('This link is not valid.'))
@@ -195,7 +243,7 @@ router.get('/digest/unsubscribe/:token', limiter, requireDb, async (req, res) =>
     }
     return res.status(200).type('html').send(unsubPage("You've been unsubscribed from the weekly progress digest emails."))
   } catch (error) {
-    console.error('digest unsubscribe failed:', error)
+    console.error('digest unsubscribe (POST) failed:', error)
     return res.status(500).type('html').send(unsubPage('Something went wrong. Please try again later.'))
   }
 })

@@ -19,6 +19,11 @@ import { generateToken } from './ids.js'
 export const SKIP_IF_NO_ACTIVITY = true
 // Cap the per-child entry table; overflow shows as a "…and N more" line.
 export const MAX_ENTRIES_PER_CHILD = 20
+// A claimed-but-not-delivered row (email_ok NULL/false) is only re-attempted
+// once it's this old — long enough that any concurrent run that claimed it has
+// certainly finished or crashed, so a client retry (the workflow's curl
+// --retry) or an overlapping admin trigger can't fire a duplicate mid-send.
+const RETRY_AFTER_MS = 15 * 60 * 1000
 
 const STATUS_LABEL = { none: 'Unverified', pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }
 
@@ -87,7 +92,7 @@ function windowFromStartDate(weekStartDate) {
 // Opted-out parents are excluded here and nowhere else. All dates compared in
 // SQL (::date) and formatted in SQL (to_char) so a raw pg DATE is never
 // JSON-serialised (which would shift the day by the server's UTC offset).
-export async function buildParentDigests({ weekStart, weekEnd, parentId = null }) {
+export async function buildParentDigests({ weekStart, weekEnd, parentId = null, force = false }) {
   const { rows: parents } = await query(
     `SELECT id, name, email FROM users
      WHERE role = 'parent' AND weekly_digest_opt_out = false
@@ -98,6 +103,29 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null }
 
   const digests = []
   for (const parent of parents) {
+    // Weekly batch: a cheap existence check so parents with nothing to report
+    // this week don't trigger the per-child aggregate queries below. Skipped
+    // when a specific parent is targeted (an admin may pass force to send a
+    // digest even for an inactive week).
+    if (!parentId && !force) {
+      const { rows: any } = await query(
+        `SELECT 1
+         FROM logs l
+         JOIN parent_child_links pcl ON pcl.child_id = l.user_id
+         WHERE pcl.parent_id = $1 AND l.date >= $2::date AND l.date < $3::date
+         LIMIT 1`,
+        [parent.id, weekStart, weekEnd],
+      )
+      if (any.length === 0) {
+        digests.push({
+          parent: { id: parent.id, name: parent.name, email: parent.email },
+          children: [],
+          hasActivity: false,
+        })
+        continue
+      }
+    }
+
     const { rows: children } = await query(
       `SELECT u.id, u.name
        FROM parent_child_links pcl
@@ -229,7 +257,10 @@ export async function deliverDigest({ digest, weekStart, startLabel, endLabel, f
 
   if (dryRun) {
     const { subject, html } = renderDigestEmail({ ...digest, startLabel, endLabel, unsubToken: 'DRYRUN'.padEnd(64, '0') })
-    console.log(`[digest dry-run] to=${digest.parent.email} subject=${JSON.stringify(subject)}`)
+    // Strip CR/LF from the interpolated address so a stored value can't forge
+    // extra log lines (same reason server/email.js sanitises before logging).
+    const safeTo = String(digest.parent.email).replace(/[\r\n]/g, '')
+    console.log(`[digest dry-run] to=${safeTo} subject=${JSON.stringify(subject)}`)
     console.log(html)
     return { status: 'sent' }
   }
@@ -244,11 +275,19 @@ export async function deliverDigest({ digest, weekStart, startLabel, endLabel, f
   )
   if (claim.rowCount === 0 && !force) {
     const { rows } = await query(
-      `SELECT email_ok FROM parent_digest_sends WHERE parent_id = $1 AND week_start = $2::date`,
+      `SELECT email_ok, sent_at FROM parent_digest_sends WHERE parent_id = $1 AND week_start = $2::date`,
       [digest.parent.id, weekStart],
     )
-    if (rows[0]?.email_ok === true) return { status: 'skipped' }
-    // else: a prior attempt is in flight or failed — fall through and retry.
+    const row = rows[0]
+    // Already delivered.
+    if (row?.email_ok === true) return { status: 'skipped' }
+    // Claimed recently — another run may still be mid-send. Don't risk a
+    // duplicate; only re-attempt a row whose last try is old enough that the
+    // other run has certainly finished or crashed.
+    if (row && Date.now() - new Date(row.sent_at).getTime() < RETRY_AFTER_MS) {
+      return { status: 'skipped' }
+    }
+    // else: a prior attempt failed or stalled long ago — fall through and retry.
   }
 
   const unsubToken = await ensureDigestUnsubToken(digest.parent.id)
@@ -269,12 +308,21 @@ export async function deliverDigest({ digest, weekStart, startLabel, endLabel, f
 // Build + deliver for every matching parent. Both routes call this.
 // `window` is a previousWeekWindow() / weekWindowFromStart() result.
 export async function runWeeklyDigest({ weekStart, weekEnd, startLabel, endLabel, parentId = null, force = false, dryRun = false }) {
-  const digests = await buildParentDigests({ weekStart, weekEnd, parentId })
+  const digests = await buildParentDigests({ weekStart, weekEnd, parentId, force })
   let emailsSent = 0
   let skipped = 0
   let failed = 0
   for (const digest of digests) {
-    const r = await deliverDigest({ digest, weekStart, startLabel, endLabel, force, dryRun })
+    let r
+    try {
+      r = await deliverDigest({ digest, weekStart, startLabel, endLabel, force, dryRun })
+    } catch (error) {
+      // One parent's failure must not abort the batch — the others still get
+      // their digest, and the failed one is retried next run (its row, if any,
+      // stays email_ok != true).
+      console.error(`digest delivery failed for parent ${digest.parent.id}:`, error)
+      r = { status: 'failed' }
+    }
     if (r.status === 'sent') emailsSent += 1
     else if (r.status === 'skipped') skipped += 1
     else failed += 1
