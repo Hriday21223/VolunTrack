@@ -640,11 +640,14 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
     if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
     if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can log hours.' })
 
+    // Only approved signups may have hours logged — mirrors the WHERE clause of
+    // the log-hours-batch sibling below. Without the status check a task creator
+    // could log (and thereby verify) hours for a pending or rejected volunteer.
     const { rows: signupRows } = await query(
-      'SELECT attendance_status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
+      "SELECT attendance_status FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
       [req.params.id, volunteerId],
     )
-    if (signupRows.length === 0) return res.status(400).json({ error: 'Volunteer is not signed up for this task.' })
+    if (signupRows.length === 0) return res.status(400).json({ error: 'Volunteer is not an approved signup for this task.' })
     if (signupRows[0].attendance_status === 'absent') return res.status(400).json({ error: 'Cannot log hours for a volunteer marked absent.' })
 
     const lid = uid('log')
