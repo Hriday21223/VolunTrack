@@ -62,6 +62,21 @@ After creating the service, add these environment variables in Render:
 - `ADMIN_EMAIL`: Your admin email
 - `ADMIN_PASSWORD`: Strong password for admin
 
+### Optional — Parent weekly progress digest:
+- `CRON_SECRET`: long random value; the digest cron endpoint
+  (`POST /api/parent/internal/run-weekly-digest`) rejects any request whose
+  `x-cron-key` header doesn't match. Leave unset to disable the endpoint.
+- `PUBLIC_BACKEND_URL`: this backend's public origin (e.g.
+  `https://voluntrack-backend-frrh.onrender.com`), used for the unsubscribe
+  link in digest emails.
+
+Then, in the GitHub repo (Settings → Secrets and variables → Actions): add a
+**secret** `CRON_SECRET` (same value as above) and a **variable**
+`PUBLIC_BACKEND_URL` (same origin). The `.github/workflows/parent-weekly-digest.yml`
+workflow runs Mondays ~13:00 UTC and `curl`s the endpoint; requires `EMAIL_*`
+set on the backend to actually send. Trigger it manually from the Actions tab
+(with `dry_run: true` to preview without sending).
+
 ## Step 4: Deploy Frontend to Netlify
 
 Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):

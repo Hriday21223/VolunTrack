@@ -1,0 +1,35 @@
+name: Parent weekly digest
+
+# Render's free tier has no cron and sleeps after ~15 min idle, so scheduled
+# work runs from GitHub Actions instead (same pattern as keep-warm.yml and
+# notify-daily-scan.yml). This job just POSTs to a shared-secret backend
+# endpoint — the digest is built and sent by server/digest.js on the backend,
+# which already holds DATABASE_URL and EMAIL_*. The only secret here is an
+# opaque CRON_SECRET; no database credentials in CI.
+#
+# Setup: add repo secret CRON_SECRET (matching the backend's env var) and repo
+# variable PUBLIC_BACKEND_URL (e.g. https://voluntrack-backend-frrh.onrender.com).
+
+on:
+  schedule:
+    # Mondays ~13:00 UTC (~8–9am US Eastern) — covers the just-finished Mon–Sun.
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Log the emails on the backend instead of sending them
+        type: boolean
+        default: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the weekly digest endpoint
+        run: |
+          curl -fsS -X POST \
+            --retry 4 --retry-all-errors --retry-delay 15 --max-time 180 \
+            -H "x-cron-key: ${{ secrets.CRON_SECRET }}" \
+            -H 'content-type: application/json' \
+            -d '{"dryRun": ${{ github.event.inputs.dry_run || false }} }' \
+            "${{ vars.PUBLIC_BACKEND_URL }}/api/parent/internal/run-weekly-digest"

@@ -480,5 +480,27 @@ export async function initSchema() {
     `)
   } catch {}
 
+  // Parent weekly progress digest — opt-out flag + unguessable unsubscribe
+  // token (lazily filled the first time a digest is sent for that parent),
+  // mirroring the status_subscribers opt-out pattern. See server/digest.js.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS digest_unsub_token TEXT UNIQUE`) } catch {}
+
+  // One row per (parent, week) once that week's digest has been attempted —
+  // makes the cron endpoint and the admin manual trigger idempotent and safe
+  // to re-run. email_ok: NULL while a send is in flight, true on success,
+  // false on a failed send that a later run should retry.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS parent_digest_sends (
+        parent_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        week_start DATE NOT NULL,
+        sent_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        email_ok   BOOLEAN,
+        PRIMARY KEY (parent_id, week_start)
+      )
+    `)
+  } catch {}
+
   return true
 }
