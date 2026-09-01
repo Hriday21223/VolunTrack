@@ -31,3 +31,12 @@ services:
       # on the frontend host) to enable the checks; leave unset to disable.
       - key: TURNSTILE_SECRET_KEY
         sync: false
+      # This service's own public origin — used to build the unsubscribe link
+      # in the parent weekly digest emails (server/digest.js).
+      - key: PUBLIC_BACKEND_URL
+        value: https://voluntrack-backend-frrh.onrender.com
+      # Shared secret for the parent-digest cron endpoint (x-cron-key header).
+      # Set it in the dashboard and add a matching GitHub Actions repo secret
+      # named CRON_SECRET; leave unset to disable the endpoint.
+      - key: CRON_SECRET
+        sync: false
