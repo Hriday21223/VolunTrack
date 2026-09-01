@@ -82,12 +82,15 @@ export function DataProvider({ children }) {
     return log
   }, [])
 
-  // Once per session, check any logs still awaiting a supervisor's response
-  // and pick up their approve/reject decision.
-  const checkedVerifications = useRef(false)
+  // Once per signed-in account, check any logs still awaiting a supervisor's
+  // response and pick up their approve/reject decision. Keyed on user?.id: this
+  // provider doesn't unmount across a logout/login in the same tab, so a plain
+  // run-once guard would skip every account after the first one used.
+  const checkedVerificationsFor = useRef(null)
   useEffect(() => {
-    if (checkedVerifications.current) return
-    checkedVerifications.current = true
+    const account = user?.id ?? null
+    if (checkedVerificationsFor.current === account) return
+    checkedVerificationsFor.current = account
     const pending = listLogs().filter((l) => l.verificationStatus === 'pending' && l.verificationToken)
     pending.forEach(async (l) => {
       const result = await getVerificationStatus(l.verificationToken)
@@ -100,7 +103,7 @@ export function DataProvider({ children }) {
         if (log) setLogs((prev) => prev.map((x) => (x.id === l.id ? log : x)))
       }
     })
-  }, [])
+  }, [user?.id])
   const removeLog = useCallback((id) => {
     const target = logs.find((l) => l.id === id)
     deleteLog(id)
