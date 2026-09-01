@@ -180,10 +180,19 @@ app.post('/api/auth/reset-password', emailLimiter, async (req, res) => {
       return res.status(404).json({ error: 'No account with that email.' })
     }
 
-    // Try to match the code from the ring buffer.
+    // Try to match the code from the ring buffer. Enforce the same 15-minute
+    // TTL the recovery email advertises ("It expires in 15 minutes") and that
+    // the client's isResetPasswordCodeValid() applies — otherwise a stale code
+    // pulled from browser history or an old inbox stays a valid credential
+    // until it ages out of the 25-entry buffer.
+    const RESET_CODE_TTL_MS = 15 * 60 * 1000
     const trimmedEmail = email.trim().toLowerCase()
     const match = devCodeLog.find(
-      (entry) => entry.email.toLowerCase() === trimmedEmail && entry.code === code && entry.type === 'password'
+      (entry) =>
+        entry.email.toLowerCase() === trimmedEmail &&
+        entry.code === code &&
+        entry.type === 'password' &&
+        Date.now() - new Date(entry.at).getTime() <= RESET_CODE_TTL_MS
     )
     if (!match) {
       return res.status(401).json({ error: 'Invalid or expired recovery code.' })

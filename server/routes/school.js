@@ -1,7 +1,7 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
-import { query, hasDatabase } from '../db.js'
+import { query, hasDatabase, getPool } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
@@ -495,23 +495,54 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
 
 // Sign up for a public task
 router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async (req, res) => {
+  // The capacity check and the insert must be atomic, or two concurrent
+  // requests both read COUNT(*) = slots_total - 1 and both insert, pushing the
+  // task past slots_total. Run them in one transaction and take a row lock on
+  // the parent public_tasks row (SELECT ... FOR UPDATE) so signups for the same
+  // task serialize: the second request blocks until the first commits, then its
+  // fresh COUNT(*) reflects the row the first one added.
+  const client = await getPool().connect()
   try {
-    const { rows } = await query('SELECT * FROM public_tasks WHERE id = $1', [req.params.id])
-    if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (rows[0].status === 'closed') return res.status(400).json({ error: 'Task is closed.' })
+    await client.query('BEGIN')
+    const { rows } = await client.query('SELECT status, slots_total FROM public_tasks WHERE id = $1 FOR UPDATE', [req.params.id])
+    if (rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Task not found.' })
+    }
+    if (rows[0].status === 'closed') {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Task is closed.' })
+    }
 
-    const { rows: signups } = await query('SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1', [req.params.id])
-    if (Number(signups[0].cnt) >= rows[0].slots_total) return res.status(400).json({ error: 'Task is full.' })
+    // Already signed up: return the existing row instead of reporting "full".
+    const { rows: existing } = await client.query(
+      'SELECT id FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
+      [req.params.id, req.auth.sub],
+    )
+    if (existing.length > 0) {
+      await client.query('COMMIT')
+      return res.json({ ok: true, id: existing[0].id })
+    }
+
+    const { rows: signups } = await client.query('SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1', [req.params.id])
+    if (Number(signups[0].cnt) >= rows[0].slots_total) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Task is full.' })
+    }
 
     const sid = uid('psig')
-    await query(
+    await client.query(
       'INSERT INTO public_task_signups (id, task_id, user_id, status) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
       [sid, req.params.id, req.auth.sub, 'pending'],
     )
+    await client.query('COMMIT')
     return res.json({ ok: true, id: sid })
   } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
     console.error('public task signup failed:', error)
     return res.status(500).json({ error: 'Could not sign up.' })
+  } finally {
+    client.release()
   }
 })
 
@@ -609,11 +640,14 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
     if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
     if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can log hours.' })
 
+    // Only approved signups may have hours logged — mirrors the WHERE clause of
+    // the log-hours-batch sibling below. Without the status check a task creator
+    // could log (and thereby verify) hours for a pending or rejected volunteer.
     const { rows: signupRows } = await query(
-      'SELECT attendance_status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
+      "SELECT attendance_status FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
       [req.params.id, volunteerId],
     )
-    if (signupRows.length === 0) return res.status(400).json({ error: 'Volunteer is not signed up for this task.' })
+    if (signupRows.length === 0) return res.status(400).json({ error: 'Volunteer is not an approved signup for this task.' })
     if (signupRows[0].attendance_status === 'absent') return res.status(400).json({ error: 'Cannot log hours for a volunteer marked absent.' })
 
     const lid = uid('log')
