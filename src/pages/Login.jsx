@@ -1,6 +1,6 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff, Building2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 import Card from '@/components/Card.jsx'
@@ -14,10 +14,11 @@ export default function Login() {
     path: '/login',
   })
 
-  const { login, verifyTotp, verifyBackupCode, loginWithPin, user } = useAuth()
+  const { login, verifyTotp, verifyBackupCode, loginWithPin, user, ssoDiscover, ssoStart } = useAuth()
   const isAdmin = user?.role === 'admin'
   const nav = useNavigate()
   const loc = useLocation()
+  const [searchParams] = useSearchParams()
   const [mode, setMode] = useState('password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,6 +35,11 @@ export default function Login() {
   const [totpCode, setTotpCode] = useState('')
   const [backupMode, setBackupMode] = useState(false)
   const [backupCode, setBackupCode] = useState('')
+  // School SSO offered for this email domain, if any. forcePassword is the
+  // escape hatch for a school account that still signs in with a password
+  // even though its students use SSO.
+  const [sso, setSso] = useState(null)
+  const [forcePassword, setForcePassword] = useState(false)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
     setIsMobile(mq.matches)
@@ -41,6 +47,31 @@ export default function Login() {
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
+
+  // The SSO callback bounces failures back here with a reason rather than
+  // dumping the user on a blank page.
+  useEffect(() => {
+    const ssoError = searchParams.get('sso_error')
+    if (ssoError) setErr(ssoError)
+  }, [searchParams])
+
+  // Email-first routing: once the address looks complete, ask the backend
+  // whether its domain belongs to a school with SSO. Debounced so we aren't
+  // firing a request per keystroke.
+  useEffect(() => {
+    if (mode !== 'password' || !email.includes('@')) {
+      setSso(null)
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(async () => {
+      const found = await ssoDiscover(email)
+      if (!cancelled) setSso(found)
+    }, 400)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [email, mode, ssoDiscover])
+
+  const ssoActive = Boolean(sso) && mode === 'password' && !isAdmin && !forcePassword
 
   const onSubmit = async (e) => {
     e.preventDefault()
@@ -100,13 +131,14 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.18),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.18),transparent_18%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.16),transparent_18%),linear-gradient(180deg,#08161b_0%,#0b1c24_45%,#0f1e16_100%)] text-white px-4 py-8">
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.2fr_0.8fr] items-center">
+    <div className="min-h-screen relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(63,131,68,0.24),transparent_28%),radial-gradient(circle_at_top_right,rgba(160,124,68,0.18),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(39,84,45,0.22),transparent_22%),linear-gradient(180deg,#0a130d_0%,#0f1f15_40%,#151f10_100%)] text-white px-4 py-8">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.08),transparent_14%),radial-gradient(circle_at_80%_20%,rgba(184,149,93,0.18),transparent_18%),radial-gradient(circle_at_50%_80%,rgba(63,131,68,0.16),transparent_16%)]" />
+      <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.2fr_0.8fr] items-center">
         <div className="space-y-8 animate-fade-in-up">
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-brand-100 shadow-soft backdrop-blur">
+          <Link to="/" className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-brand-100 shadow-soft backdrop-blur transition hover:bg-slate-800/60 hover:text-white">
             <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-5 h-5 object-contain" />
             VolunTrack login
-          </div>
+          </Link>
 
           <div className="space-y-4">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-white animate-fade-in-up" style={{ animationDelay: '100ms' }}>Welcome back to the volunteer dashboard.</h1>
@@ -227,7 +259,29 @@ export default function Login() {
                     />
                   </div>
                 </div>
-                {isAdmin && mode === 'password' ? (
+                {ssoActive && (
+                  <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                    <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                      Your school uses single sign-on — no VolunTrack password needed.
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-primary w-full py-3 text-sm font-semibold"
+                      onClick={() => ssoStart(sso.connectionId, loc.state?.from?.pathname || '/dashboard')}
+                    >
+                      <Building2 className="w-4 h-4" /> Continue with {sso.displayName}
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full text-center text-sm text-sky-200 hover:text-white"
+                      onClick={() => setForcePassword(true)}
+                    >
+                      Use a VolunTrack password instead
+                    </button>
+                  </div>
+                )}
+
+                {ssoActive ? null : isAdmin && mode === 'password' ? (
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                     Admin — click Sign in to continue (no password needed).
                   </div>
@@ -268,9 +322,11 @@ export default function Login() {
 
                 {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
 
-                <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold animate-fade-in-up" style={{ animationDelay: '400ms' }} disabled={busy}>
-                  {busy ? (mode === 'pin' ? 'Unlocking…' : 'Signing in…') : (mode === 'pin' ? <>Unlock <ArrowRight className="w-4 h-4" /></> : <>Sign in <ArrowRight className="w-4 h-4" /></>)}
-                </button>
+                {!ssoActive && (
+                  <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold animate-fade-in-up" style={{ animationDelay: '400ms' }} disabled={busy}>
+                    {busy ? (mode === 'pin' ? 'Unlocking…' : 'Signing in…') : (mode === 'pin' ? <>Unlock <ArrowRight className="w-4 h-4" /></> : <>Sign in <ArrowRight className="w-4 h-4" /></>)}
+                  </button>
+                )}
               </form>
               )}
 

@@ -296,6 +296,50 @@ export function AuthProvider({ children }) {
     return safe
   }, [])
 
+  // --- School SSO -------------------------------------------------------
+  // Email-first routing: ask whether this address belongs to a school with SSO
+  // configured. Returns { connectionId, displayName } or null. Never throws —
+  // a failure here just means the normal password form stays visible.
+  const ssoDiscover = useCallback(async (email) => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    try {
+      const res = await fetch(`${apiUrl}/auth/sso/discover?email=${encodeURIComponent(email)}`)
+      if (!res.ok) return null
+      const data = await res.json()
+      return data.sso || null
+    } catch {
+      return null
+    }
+  }, [])
+
+  // Full-page navigation, not fetch — the IdP needs to own the browser for the
+  // redirect dance (and may need to show its own login/consent screens).
+  const ssoStart = useCallback((connectionId, returnTo = '/dashboard') => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const url = `${apiUrl}/auth/sso/${encodeURIComponent(connectionId)}/start?returnTo=${encodeURIComponent(returnTo)}`
+    window.location.assign(url.startsWith('http') ? url : `${window.location.origin}${url}`)
+  }, [])
+
+  // Redeems the single-use code the callback handed back, producing the same
+  // token/session as a password login.
+  const ssoExchange = useCallback(async (code) => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const response = await fetch(`${apiUrl}/auth/sso/exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err.error || 'Could not complete sign-in.')
+    }
+    const data = await response.json()
+    localStorage.setItem('voluntrack:auth_token', data.token)
+    write(SESSION_KEY, data.user)
+    setUser(data.user)
+    return data.user
+  }, [])
+
   const logout = useCallback(() => {
     remove(SESSION_KEY)
     localStorage.removeItem('voluntrack:auth_token')
@@ -419,7 +463,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, login, verifyTotp, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser }}>
+    <AuthContext.Provider value={{ user, login, verifyTotp, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
       {children}
     </AuthContext.Provider>
   )

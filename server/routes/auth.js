@@ -80,7 +80,7 @@ function validateSyncPin(pin) {
   return trimmed
 }
 
-function publicUser(row) {
+export function publicUser(row) {
   return {
     id: row.id,
     role: row.role,
@@ -96,7 +96,7 @@ function publicUser(row) {
   }
 }
 
-const USER_WITH_SCHOOL_SELECT = `
+export const USER_WITH_SCHOOL_SELECT = `
   SELECT u.*, s.payment_status AS school_payment_status
   FROM users u LEFT JOIN schools s ON s.id = u.school_id
 `

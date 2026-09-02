@@ -8,6 +8,7 @@ import { initSchema, hasDatabase, query } from './server/db.js'
 import { authenticate, hashPassword } from './server/auth.js'
 import { uid, generateToken } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
+import authSsoRoutes from './server/routes/authSso.js'
 import schoolRoutes from './server/routes/school.js'
 import organizationRoutes from './server/routes/organization.js'
 import logsRoutes from './server/routes/logs.js'
@@ -87,6 +88,9 @@ app.use(authenticate)
 
 // Server-backed accounts & (later) school dashboards.
 // apiLimiter is already applied globally above, ahead of every route.
+// Mounted ahead of /api/auth so the SSO sub-routes are matched by their own
+// router rather than falling through the password-auth one.
+app.use('/api/auth/sso', authSsoRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/school', schoolRoutes)
 app.use('/api/organization', organizationRoutes)

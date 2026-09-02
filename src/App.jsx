@@ -19,6 +19,7 @@ const ForgotPassword = lazy(() => import('@/pages/ForgotPassword.jsx'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword.jsx'))
 const ResetPin = lazy(() => import('@/pages/ResetPin.jsx'))
 const SyncLogin = lazy(() => import('@/pages/SyncLogin.jsx'))
+const SsoReturn = lazy(() => import('@/pages/SsoReturn.jsx'))
 const Contact = lazy(() => import('@/pages/Contact.jsx'))
 const Terms = lazy(() => import('@/pages/Terms.jsx'))
 const Privacy = lazy(() => import('@/pages/Privacy.jsx'))
@@ -94,6 +95,10 @@ function Shell() {
           <Route path="/reset-password"  element={<PublicOnly><ResetPassword /></PublicOnly>} />
           <Route path="/reset-pin"       element={<PublicOnly><ResetPin /></PublicOnly>} />
           <Route path="/sync-login"      element={<PublicOnly><SyncLogin /></PublicOnly>} />
+          {/* Deliberately not wrapped in PublicOnly — the exchange signs the
+              user in mid-render, and PublicOnly would bounce them to "/"
+              before this page can honour its own returnTo. */}
+          <Route path="/auth/sso/return" element={<SsoReturn />} />
           <Route path="/school/register" element={<SchoolRegister />} />
           <Route path="/organization/register" element={<OrganizationRegister />} />
           <Route path="/about"           element={<About />} />
