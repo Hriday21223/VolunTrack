@@ -502,5 +502,109 @@ export async function initSchema() {
     `)
   } catch {}
 
+  // ---------------------------------------------------------------------
+  // School SSO (OIDC). A school configures a connection to its own IdP
+  // (Google Workspace / Microsoft Entra / generic OIDC) and its students sign
+  // in there instead of with a VolunTrack password. See server/routes/authSso.js.
+  // ---------------------------------------------------------------------
+
+  // SSO users have no password, so password_hash can no longer be NOT NULL.
+  // Every read path already tolerates a null hash (verifyPassword returns
+  // false for a falsy hash), so this only relaxes the write path.
+  try { await query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`) } catch {}
+
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS sso_connections (
+        id                     TEXT PRIMARY KEY,
+        school_id              TEXT REFERENCES schools(id) ON DELETE CASCADE,
+        organization_id        TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+        provider               TEXT NOT NULL DEFAULT 'oidc'
+                                 CHECK (provider IN ('google','microsoft','oidc')),
+        display_name           TEXT NOT NULL,
+        oidc_issuer            TEXT NOT NULL,
+        oidc_client_id         TEXT NOT NULL,
+        oidc_client_secret_enc TEXT NOT NULL,
+        default_role           TEXT NOT NULL DEFAULT 'student'
+                                 CHECK (default_role IN ('student','school_staff')),
+        jit_enabled            BOOLEAN NOT NULL DEFAULT true,
+        enabled                BOOLEAN NOT NULL DEFAULT false,
+        last_test_at           TIMESTAMPTZ,
+        last_test_ok           BOOLEAN,
+        last_test_error        TEXT,
+        created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
+  // Email domains a connection may provision accounts for. proof_method
+  // records how ownership was established: Google's `hd` and Entra's `tid`
+  // claims are issued by the IdP for domains/tenants it controls, so they are
+  // proof on their own; generic OIDC has no equivalent and falls back to a
+  // DNS TXT record. UNIQUE(domain) stops two tenants claiming the same one.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS sso_email_domains (
+        id            TEXT PRIMARY KEY,
+        connection_id TEXT NOT NULL REFERENCES sso_connections(id) ON DELETE CASCADE,
+        domain        TEXT NOT NULL,
+        proof_method  TEXT NOT NULL DEFAULT 'dns_txt'
+                        CHECK (proof_method IN ('google_hd','entra_tid','dns_txt')),
+        verify_token  TEXT,
+        verified_at   TIMESTAMPTZ,
+        UNIQUE (domain)
+      )
+    `)
+  } catch {}
+
+  // In-flight authorization requests, keyed by the OIDC `state`. This lives in
+  // Postgres rather than process memory because the backend sleeps on Render's
+  // free tier — a restart between /start and /callback would otherwise drop
+  // every login in flight with an unexplained "invalid state" error.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS sso_auth_states (
+        state         TEXT PRIMARY KEY,
+        connection_id TEXT NOT NULL REFERENCES sso_connections(id) ON DELETE CASCADE,
+        code_verifier TEXT NOT NULL,
+        nonce         TEXT NOT NULL,
+        return_to     TEXT,
+        -- 'login' is a real sign-in; 'test' is a school admin verifying a
+        -- connection before enabling it, which also auto-verifies their email
+        -- domain from the resulting ID token.
+        purpose       TEXT NOT NULL DEFAULT 'login' CHECK (purpose IN ('login','test')),
+        initiated_by  TEXT REFERENCES users(id) ON DELETE CASCADE,
+        expires_at    TIMESTAMPTZ NOT NULL,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
+  // Single-use, short-lived handoff from the IdP redirect back to the SPA, so
+  // the app JWT never travels in a URL (where it would leak via history and
+  // Referer). Mirrors the TOTP temp-token step in server/routes/auth.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS sso_login_codes (
+        code       TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at    TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_connection_id TEXT REFERENCES sso_connections(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_subject TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'password'`) } catch {}
+  try { await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_auth_provider_check`) } catch {}
+  try { await query(`ALTER TABLE users ADD CONSTRAINT users_auth_provider_check CHECK (auth_provider IN ('password','sso'))`) } catch {}
+
+  // One IdP subject maps to at most one account per connection.
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_sso ON users (sso_connection_id, sso_subject) WHERE sso_subject IS NOT NULL`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_sso_domains_connection ON sso_email_domains(connection_id)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_sso_connections_school ON sso_connections(school_id)`) } catch {}
+
   return true
 }

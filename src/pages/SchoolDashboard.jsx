@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import SsoSettings from '@/components/SsoSettings.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -386,6 +387,11 @@ export default function SchoolDashboard() {
                   <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
                 </button>
               )}
+              {user?.role === 'school' && (
+                <button onClick={() => setTab('sso')} className={`btn-sm ${tab === 'sso' ? 'btn-primary' : 'btn-ghost'}`}>
+                  <KeyRound className="w-3.5 h-3.5 mr-1" /> Sign-in
+                </button>
+              )}
             </>
           )}
           <button onClick={() => setTab('volunteer')} className={`btn-sm ${tab === 'volunteer' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -581,6 +587,16 @@ export default function SchoolDashboard() {
               </Card>
             )}
           </>
+        )}
+
+        {tab === 'sso' && user?.role === 'school' && (
+          <Card>
+            <h2 className="text-lg font-semibold mb-1">Single sign-on</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Let students sign in with your school&apos;s Google or Microsoft account instead of a VolunTrack password.
+            </p>
+            <SsoSettings />
+          </Card>
         )}
 
         {tab === 'staff' && user?.role === 'school' && (
