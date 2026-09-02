@@ -12,6 +12,19 @@ const DataContext = createContext(null)
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
+// The facts a supervisor's approval actually attests to. Editing anything else
+// (location, org contact details, proof) leaves the sign-off meaningful.
+const VERIFIED_FACTS = ['date', 'activity', 'category', 'hours', 'notes']
+
+function changesVerifiedFacts(before, patch) {
+  if (!before || before.verificationStatus === 'none' || !before.verificationStatus) return false
+  return VERIFIED_FACTS.some((k) => {
+    if (!(k in patch)) return false
+    if (k === 'hours') return Number(patch[k]) !== Number(before[k])
+    return (patch[k] ?? '') !== (before[k] ?? '')
+  })
+}
+
 export function DataProvider({ children }) {
   const { user } = useAuth()
   // Client-only (no-account) users have no `role` at all — only
@@ -74,10 +87,19 @@ export function DataProvider({ children }) {
     return { ...log, whenSynced }
   }, [isStudentLike])
   const editLog = useCallback((id, patch) => {
-    const log = updateLog(id, patch)
+    // The edit form pre-fills from the existing log, so it resubmits the
+    // verification fields untouched. Mirror the server's rule (PATCH
+    // /api/logs/:id): if any fact a supervisor actually vouched for changes,
+    // the sign-off no longer describes this log — drop it, signature included,
+    // rather than leave rewritten hours wearing an "approved" badge.
+    const before = listLogs().find((l) => l.id === id)
+    const effective = before && changesVerifiedFacts(before, patch)
+      ? { ...patch, verified: false, verificationStatus: 'none', verificationToken: null, supervisorSignature: '' }
+      : patch
+    const log = updateLog(id, effective)
     if (log) {
       setLogs((prev) => prev.map((l) => (l.id === id ? log : l)))
-      if (log.serverId) syncUpdateLog(log.serverId, patch)
+      if (log.serverId) syncUpdateLog(log.serverId, effective)
     }
     return log
   }, [])

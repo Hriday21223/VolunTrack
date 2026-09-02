@@ -85,6 +85,19 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       )
       if (signupRows.length === 0) return res.status(400).json({ error: 'You must be an approved volunteer on this task to link it.' })
     }
+    // A supervisor or school signed off on a specific date/activity/hours —
+    // editing any of those facts means the sign-off no longer describes this
+    // log, so the verification (and the signature that backs it, which the PDF
+    // export renders) is dropped and has to be requested again. Clearing
+    // verification_token also orphans any still-open supervisor link, so a late
+    // click on it can't re-approve the rewritten values.
+    const VERIFICATION_STALE = `(
+      COALESCE($1, date) IS DISTINCT FROM date
+      OR COALESCE($2, activity) IS DISTINCT FROM activity
+      OR COALESCE($3, category) IS DISTINCT FROM category
+      OR COALESCE($4, hours) IS DISTINCT FROM hours
+      OR COALESCE($5, notes) IS DISTINCT FROM notes
+    )`
     await query(
       `UPDATE logs SET
          date = COALESCE($1, date),
@@ -98,8 +111,13 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          org_phone = COALESCE($9, org_phone),
          supervisor_name = COALESCE($10, supervisor_name),
          supervisor_email = COALESCE($11, supervisor_email),
-         supervisor_signature = COALESCE($12, supervisor_signature),
-         task_id = COALESCE($13, task_id)
+         supervisor_signature = CASE WHEN ${VERIFICATION_STALE}
+                                     THEN NULL
+                                     ELSE COALESCE($12, supervisor_signature) END,
+         task_id = COALESCE($13, task_id),
+         verification_status = CASE WHEN ${VERIFICATION_STALE} THEN 'none' ELSE verification_status END,
+         verification_token  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verification_token END,
+         verified_by         = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verified_by END
        WHERE id = $14`,
       [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, req.params.id],
     )
