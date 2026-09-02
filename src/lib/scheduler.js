@@ -12,7 +12,7 @@ import { addDays, addWeeks, addMonths, isAfter, isBefore, parseISO, set, startOf
 export function computeNextAt(r, now = new Date()) {
   if (!r.enabled) return null
   const start = r.startDate ? startOfDay(parseISO(r.startDate)) : null
-  if (start && isBefore(now, start)) return combineDateTime(start, r.time)
+  if (start && isBefore(now, start)) return combineDateTime(start, r.time).toISOString()
 
   if (r.endDate) {
     const end = startOfDay(parseISO(r.endDate))
@@ -61,14 +61,18 @@ function daysInMonth(d) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
 }
 
-/** Find reminders that should fire right now (between lastCheck and now). */
+/** Find reminders that should fire right now (in the window (lastCheck, now]). */
 export function dueReminders(reminders, lastCheck, now = new Date()) {
   const out = []
   for (const r of reminders) {
-    const next = computeNextAt(r, now)
+    // computeNextAt() always returns the next occurrence *strictly after* its
+    // reference time, so it has to be anchored at lastCheck. Anchoring it at
+    // `now` would roll a just-elapsed occurrence forward to the next one — the
+    // moment we're trying to catch would be skipped and nothing ever fires.
+    const next = computeNextAt(r, lastCheck)
     if (!next) continue
     const nextDate = parseISO(next)
-    if (isAfter(nextDate, lastCheck) && !isAfter(nextDate, now)) {
+    if (!isAfter(nextDate, now)) {
       out.push({ reminder: r, fireAt: next })
     }
   }
