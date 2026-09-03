@@ -11,3 +11,6 @@ dev-dist
 .env*
 .wrangler
 .dev.vars*
+
+# Local Netlify folder
+.netlify

@@ -93,9 +93,9 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center px-4 py-8 bg-gradient-to-br from-brand-50 via-earth-50 to-earth-100 dark:from-[#0f1813] dark:via-[#0f1813] dark:to-[#14201a]">
+    <div className="min-h-screen grid place-items-center px-4 py-8 page-shell">
       <div className="w-full max-w-lg">
-        <Link to="/about" className="flex items-center gap-2.5 justify-center mb-6 animate-fade-in-up">
+        <Link to="/" className="flex items-center gap-2.5 justify-center mb-6 animate-fade-in-up">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-10 h-10 object-contain" />
           <span className="font-display font-bold text-2xl">VolunTrack</span>
         </Link>

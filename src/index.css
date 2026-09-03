@@ -72,6 +72,21 @@
   .chip-brand { @apply chip bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200; }
   .chip-earth { @apply chip bg-earth-100 text-earth-800 dark:bg-[#243529] dark:text-earth-200; }
   .chip-amber { @apply chip bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200; }
+
+  /* Shared page background: soft brand/earth wash in light mode, the same
+     green/earth radial field as the "/" landing + auth pages in dark mode. */
+  .page-shell { @apply bg-gradient-to-br from-brand-50 via-earth-50 to-earth-100; }
+}
+
+/* The green/earth radial field shared by "/", the auth pages (dark mode), and
+   the authenticated app's scrolling content (`AppLayout` <main>, always dark). */
+.dark .page-shell,
+.app-shell-bg {
+  background-image:
+    radial-gradient(circle at top left, rgba(63, 131, 68, 0.24), transparent 28%),
+    radial-gradient(circle at top right, rgba(160, 124, 68, 0.18), transparent 20%),
+    radial-gradient(circle at bottom left, rgba(39, 84, 45, 0.22), transparent 22%),
+    linear-gradient(180deg, #0a130d 0%, #0f1f15 40%, #151f10 100%);
 }
 
 /* Drag-over visual for file drop zones */
