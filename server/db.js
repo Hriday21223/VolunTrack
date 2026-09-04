@@ -695,6 +695,17 @@ export async function initSchema() {
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_storage_school ON tenant_storage(school_id) WHERE school_id IS NOT NULL`) } catch {}
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_storage_org ON tenant_storage(organization_id) WHERE organization_id IS NOT NULL`) } catch {}
 
+  // Pointer to a proof-of-service file in the tenant's own bucket (#143). The
+  // bytes live there, never here — proof_storage_id records *which* config it
+  // was written through, deliberately rather than resolving the student's
+  // school at read time: a transfer or a bucket rotation must not orphan every
+  // historical log. ON DELETE SET NULL keeps the log if the config is removed,
+  // leaving a key that simply no longer resolves.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_storage_id TEXT REFERENCES tenant_storage(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_key TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_mime TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_bytes INTEGER`) } catch {}
+
   // ---------------------------------------------------------------------
   // Append-only audit trail. VolunTrack records *decisions* in several places
   // (logs.verified_by, pdf_uploads.reviewed_by, supervisor_verifications

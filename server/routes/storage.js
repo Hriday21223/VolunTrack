@@ -5,7 +5,8 @@ import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { uid } from '../ids.js'
-import { checkRoundTrip, checkCors, trimSlashes } from '../storage/s3.js'
+import { checkRoundTrip, checkCors, trimSlashes, presign, withPrefix } from '../storage/s3.js'
+import { recordAudit, AUDIT } from '../audit.js'
 
 const router = express.Router()
 
@@ -281,5 +282,205 @@ router.delete('/config', limiter, requireDb, requireAuth('school', 'org'), async
     return res.status(500).json({ error: 'Could not remove the storage configuration.' })
   }
 })
+
+// ---------------------------------------------------------------------------
+// Proof uploads (#143 step 2)
+// ---------------------------------------------------------------------------
+
+// Minting a URL is cheap for us but hands out a credential, so it gets a
+// tighter budget than reading config.
+const mintLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many upload requests. Please try again later.' },
+})
+
+// The extension is chosen by us from the declared type, never taken from the
+// client's filename — so a student cannot land a .html or .svg in their
+// school's bucket and have it served back as active content.
+const ALLOWED_TYPES = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/heic': 'heic',
+  'application/pdf': 'pdf',
+}
+
+function maxUploadBytes() {
+  const raw = Number(process.env.STORAGE_MAX_UPLOAD_BYTES)
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 10 * 1024 * 1024
+}
+
+// Which config a given student's uploads go through: their school's if it has
+// one, otherwise their school's parent organization's. Only 'active' configs
+// are ever returned, so a bucket we have never written to successfully can
+// never receive a student's file.
+async function resolveStorageForUser(userId) {
+  const { rows } = await query(
+    `SELECT u.school_id, s.organization_id
+       FROM users u
+       LEFT JOIN schools s ON s.id = u.school_id
+      WHERE u.id = $1`,
+    [userId],
+  )
+  const me = rows[0]
+  if (!me || (!me.school_id && !me.organization_id)) return null
+
+  const { rows: configs } = await query(
+    `SELECT * FROM tenant_storage
+      WHERE status = 'active'
+        AND (($1::text IS NOT NULL AND school_id = $1)
+          OR ($2::text IS NOT NULL AND organization_id = $2))
+      -- A school's own config wins over the organization's.
+      ORDER BY (school_id IS NOT NULL) DESC
+      LIMIT 1`,
+    [me.school_id, me.organization_id],
+  )
+  return configs[0] || null
+}
+
+// Turns a stored row into the shape presign() wants, decrypting the secret.
+function usableConfig(row) {
+  return {
+    bucket: row.bucket,
+    region: row.region,
+    endpoint: row.endpoint,
+    prefix: row.prefix,
+    accessKeyId: row.access_key_id,
+    secretAccessKey: decryptSecret(row.secret_encrypted),
+  }
+}
+
+// Object keys are namespaced per student, which is what lets a later claim be
+// checked without tracking pending uploads in a table.
+function proofKeyFor(config, userId, ext) {
+  return withPrefix(config.prefix, `students/${userId}/${uid('proof')}.${ext}`)
+}
+
+// POST /api/storage/upload-url { contentType, bytes }
+// Returns a presigned PUT the browser uses to send the file straight to the
+// tenant's bucket. The bytes never pass through us.
+router.post('/upload-url', mintLimiter, requireDb, requireKey, requireAuth(), async (req, res) => {
+  const contentType = String(req.body.contentType || '').trim().toLowerCase()
+  const bytes = Number(req.body.bytes)
+  const ext = ALLOWED_TYPES[contentType]
+
+  if (!ext) return res.status(400).json({ error: 'Proof must be a JPEG, PNG, WebP, HEIC, or PDF.' })
+  if (!Number.isInteger(bytes) || bytes <= 0) return res.status(400).json({ error: 'A file size is required.' })
+  if (bytes > maxUploadBytes()) {
+    return res.status(413).json({ error: `That file is too large (limit ${Math.floor(maxUploadBytes() / 1024 / 1024)}MB).` })
+  }
+
+  try {
+    const row = await resolveStorageForUser(req.auth.sub)
+    // Not an error: a student with no school, or a school that has not set up
+    // storage, keeps the existing local-only behaviour.
+    if (!row) return res.json({ available: false })
+
+    const config = usableConfig(row)
+    const key = proofKeyFor(config, req.auth.sub, ext)
+
+    // content-length is signed, so the upload is pinned to exactly the size
+    // declared here — a client that sends more fails the signature at S3
+    // rather than filling the school's bucket.
+    const url = presign(config, {
+      method: 'PUT',
+      key,
+      expiresIn: 300,
+      headers: { 'content-length': String(bytes) },
+    })
+
+    return res.json({ available: true, url, key, storageId: row.id, expiresIn: 300 })
+  } catch (error) {
+    console.error('mint upload url failed:', error)
+    return res.status(500).json({ error: 'Could not prepare the upload.' })
+  }
+})
+
+// GET /api/storage/download-url/:logId
+// Mints a short-lived GET for a log's proof file. This is the audited moment:
+// once the URL is handed out it works for whoever holds it, and the object
+// store only ever sees our access key — so this call is the only place the
+// requesting person's identity exists.
+router.get('/download-url/:logId', mintLimiter, requireDb, requireKey, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT l.id, l.user_id, l.proof_storage_id, l.proof_key, l.proof_mime,
+              u.school_id, s.organization_id
+         FROM logs l
+         JOIN users u ON u.id = l.user_id
+         LEFT JOIN schools s ON s.id = u.school_id
+        WHERE l.id = $1`,
+      [req.params.logId],
+    )
+    const log = rows[0]
+    if (!log) return res.status(404).json({ error: 'Log not found.' })
+    if (!log.proof_key || !log.proof_storage_id) {
+      return res.status(404).json({ error: 'That log has no stored proof file.' })
+    }
+
+    const allowed = await canReadProof(req.auth, log)
+    if (!allowed) {
+      recordAudit(req, {
+        action: AUDIT.PROOF_URL_MINTED,
+        outcome: 'denied',
+        subjectUserId: log.user_id,
+        schoolId: log.school_id,
+        organizationId: log.organization_id,
+        objectType: 'log_proof',
+        objectId: log.id,
+      })
+      return res.status(403).json({ error: 'Not allowed.' })
+    }
+
+    const { rows: configs } = await query('SELECT * FROM tenant_storage WHERE id = $1', [log.proof_storage_id])
+    if (!configs[0]) return res.status(410).json({ error: 'The storage this file was written to is no longer configured.' })
+
+    const expiresIn = 300
+    const url = presign(usableConfig(configs[0]), { method: 'GET', key: log.proof_key, expiresIn })
+
+    // Record the key and expiry — never the URL, which is itself a live grant.
+    recordAudit(req, {
+      action: AUDIT.PROOF_URL_MINTED,
+      subjectUserId: log.user_id,
+      schoolId: log.school_id,
+      organizationId: log.organization_id,
+      objectType: 'log_proof',
+      objectId: log.id,
+      meta: { key: log.proof_key, expiresIn, storageId: log.proof_storage_id },
+    })
+
+    return res.json({ url, expiresIn, mime: log.proof_mime })
+  } catch (error) {
+    console.error('mint download url failed:', error)
+    return res.status(500).json({ error: 'Could not prepare the download.' })
+  }
+})
+
+// Default-deny, matching GET /api/school/pdf/:id: every allowed role is
+// listed explicitly and anything else falls through to false.
+async function canReadProof(auth, log) {
+  if (auth.role === 'admin') return true
+  if (auth.sub === log.user_id) return true
+
+  if (auth.role === 'school' || auth.role === 'school_staff') {
+    const { rows } = await query('SELECT school_id FROM users WHERE id = $1', [auth.sub])
+    return Boolean(log.school_id) && rows[0]?.school_id === log.school_id
+  }
+  if (auth.role === 'org') {
+    const { rows } = await query('SELECT organization_id FROM users WHERE id = $1', [auth.sub])
+    return Boolean(log.organization_id) && rows[0]?.organization_id === log.organization_id
+  }
+  if (auth.role === 'parent') {
+    const { rows } = await query(
+      'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
+      [auth.sub, log.user_id],
+    )
+    return rows.length > 0
+  }
+  return false
+}
 
 export default router

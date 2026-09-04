@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { uid } from '../ids.js'
+import { keyBelongsTo } from '../storage/s3.js'
 
 const router = express.Router()
 
@@ -24,7 +25,7 @@ function requireDb(_req, res, next) {
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature, taskId } = req.body
+  const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature, taskId, proofKey, proofStorageId, proofMime, proofBytes } = req.body
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
@@ -46,11 +47,31 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
       )
       if (signupRows.length === 0) return res.status(400).json({ error: 'You must be an approved volunteer on this task to link it.' })
     }
+    // A proof pointer is caller-supplied, so it is verified rather than
+    // trusted: the key must live under this student's own namespace in the
+    // named config. Otherwise a student could attach another student's
+    // document — whose key they would have to guess, but guessing is not the
+    // control we want to be relying on.
+    let storageId = null
+    let storageKey = null
+    if (proofKey || proofStorageId) {
+      const { rows: cfgRows } = await query(
+        `SELECT id, prefix FROM tenant_storage WHERE id = $1 AND status = 'active'`,
+        [proofStorageId],
+      )
+      const cfg = cfgRows[0]
+      if (!cfg || !keyBelongsTo(cfg, proofKey, req.auth.sub)) {
+        return res.status(400).json({ error: 'That proof file reference is not valid.' })
+      }
+      storageId = cfg.id
+      storageKey = String(proofKey)
+    }
+
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, task_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -156,11 +177,16 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
     }
 
     const { rows } = await query(
-      `SELECT id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, task_id, created_at
+      // proof_key itself is never returned: it is only useful with a minted
+      // URL, and every mint is audited. Callers just need to know one exists.
+      `SELECT id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, task_id, created_at,
+               (proof_key IS NOT NULL) AS has_proof, proof_mime
        FROM logs WHERE user_id = $1 ORDER BY date DESC, created_at DESC`,
       [userId],
     )
-    return res.json({ logs: rows })
+    return res.json({
+      logs: rows.map(({ has_proof, proof_mime, ...log }) => ({ ...log, hasProof: has_proof, proofMime: proof_mime })),
+    })
   } catch (error) {
     console.error('log fetch failed:', error)
     return res.status(500).json({ error: 'Could not fetch logs.' })
