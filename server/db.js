@@ -312,6 +312,15 @@ export async function initSchema() {
   // when the log was never synced (client-only student).
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS supervisor_signature TEXT`) } catch {}
 
+  // 'superseded' = the task organizer resolved this log through the school
+  // dashboard while the emailed supervisor link was still pending. The
+  // supervisor never answered, so recording their outcome as approved or
+  // rejected would be a lie; this marks the link spent so a late click can't
+  // silently flip the organizer's decision. See the verify routes in
+  // server/routes/school.js and server.js.
+  try { await query(`ALTER TABLE supervisor_verifications DROP CONSTRAINT IF EXISTS supervisor_verifications_status_check`) } catch {}
+  try { await query(`ALTER TABLE supervisor_verifications ADD CONSTRAINT supervisor_verifications_status_check CHECK (status IN ('pending','approved','rejected','superseded'))`) } catch {}
+
   // Organizations — an entity above schools (e.g. a district or nonprofit
   // running multiple schools/chapters) that can add schools under itself
   // without going through the platform admin. See server/routes/organization.js.
