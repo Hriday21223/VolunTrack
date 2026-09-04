@@ -8,6 +8,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
+import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -388,6 +389,9 @@ export default function SchoolDashboard() {
                   <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
                 </button>
               )}
+              <button onClick={() => setTab('hours')} className={`btn-sm ${tab === 'hours' ? 'btn-primary' : 'btn-ghost'}`}>
+                <Download className="w-3.5 h-3.5 mr-1" /> Hours
+              </button>
               {user?.role === 'school' && (
                 <button onClick={() => setTab('sso')} className={`btn-sm ${tab === 'sso' ? 'btn-primary' : 'btn-ghost'}`}>
                   <KeyRound className="w-3.5 h-3.5 mr-1" /> Sign-in
@@ -588,6 +592,17 @@ export default function SchoolDashboard() {
               </Card>
             )}
           </>
+        )}
+
+        {tab === 'hours' && isSchoolAdmin && (
+          <Card>
+            <h2 className="text-lg font-semibold mb-1">Hour reports</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Export every student's logged hours for a date range — for administrators,
+              service-hour compliance, or grant reporting.
+            </p>
+            <HoursReportPanel title="Volunteer hours report" />
+          </Card>
         )}
 
         {tab === 'sso' && user?.role === 'school' && (
