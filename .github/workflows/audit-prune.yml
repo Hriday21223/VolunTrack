@@ -1,0 +1,31 @@
+name: Prune audit trail
+
+# Retention for audit_events (#146). Render's free tier has no cron, so this
+# runs from GitHub Actions and just POSTs to a shared-secret backend endpoint
+# — same pattern as parent-weekly-digest.yml. The only secret here is an
+# opaque CRON_SECRET; no database credentials in CI.
+#
+# The window itself is the backend's AUDIT_RETENTION_DAYS (default 400 days),
+# not a value set here, so retention stays one decision in one place.
+#
+# Setup: repo secret CRON_SECRET (matching the backend's env var) and repo
+# variable PUBLIC_BACKEND_URL.
+
+on:
+  schedule:
+    # Sundays ~04:00 UTC — quiet, and well away from the Monday digest.
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the audit prune endpoint
+        run: |
+          # Deleting by age is idempotent, so a retry after a Render cold-start
+          # connection failure is always safe.
+          curl -fsS -X POST \
+            --connect-timeout 30 --retry 2 --retry-delay 30 --max-time 300 \
+            -H "x-cron-key: ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.PUBLIC_BACKEND_URL }}/api/audit/internal/prune"
