@@ -412,18 +412,32 @@ async function handleTestCallback(res, connection, claims, email, stateRow) {
     }
   }
 
+  // Whether the domain is now actually claimed by *this* connection. The
+  // upsert below can legitimately do nothing, and that case must not be
+  // reported as success.
+  let domainConflict = false
+
   if (proofMethod) {
     // ON CONFLICT on the unique domain: re-running a test refreshes proof for
-    // a domain this connection already owns, but must not let one tenant steal
-    // a domain already verified by another.
-    await query(
+    // a domain this connection already owns, but the WHERE guard must not let
+    // one tenant steal a domain already verified by another.
+    //
+    // RETURNING is what makes the blocked case visible: when the guard rejects
+    // the update, no row comes back. Without it a blocked claim is
+    // indistinguishable from a successful one, and the admin is told their
+    // domain is verified while no row exists for their connection — then hits
+    // "Verify at least one email domain before enabling SSO" with no
+    // explanation of why.
+    const { rows } = await query(
       `INSERT INTO sso_email_domains (id, connection_id, domain, proof_method, verified_at)
        VALUES ($1,$2,$3,$4,now())
        ON CONFLICT (domain) DO UPDATE
          SET proof_method = EXCLUDED.proof_method, verified_at = now()
-       WHERE sso_email_domains.connection_id = EXCLUDED.connection_id`,
+       WHERE sso_email_domains.connection_id = EXCLUDED.connection_id
+       RETURNING id`,
       [uid('ssod'), connection.id, domain, proofMethod],
     )
+    domainConflict = rows.length === 0
   }
 
   await query(
@@ -434,7 +448,14 @@ async function handleTestCallback(res, connection, claims, email, stateRow) {
   const target = new URL(`${frontendUrl()}${safeReturnTo(stateRow.return_to)}`)
   target.searchParams.set('sso_test', 'ok')
   target.searchParams.set('sso_email', email)
-  if (!proofMethod) {
+  // The connection itself is proven working either way — last_test_ok stays
+  // true — but the admin still can't enable without a verified domain, so say
+  // which of the two reasons applies.
+  if (domainConflict) {
+    // The ID token proved ownership, but another connection already holds this
+    // domain. Mirrors the 409 the manual add-domain route returns.
+    target.searchParams.set('sso_domain_conflict', domain || '')
+  } else if (!proofMethod) {
     // The round trip worked but we couldn't prove domain ownership from the
     // token, so the admin still has to verify by DNS before enabling.
     target.searchParams.set('sso_domain_unverified', domain || '')
