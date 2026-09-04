@@ -19,6 +19,7 @@ import invoicesRoutes from './server/routes/invoices.js'
 import settingsRoutes from './server/routes/settings.js'
 import statusRoutes, { handleGithubWebhook } from './server/routes/status.js'
 import tenantRoutes from './server/routes/tenant.js'
+import storageRoutes from './server/routes/storage.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 
@@ -103,6 +104,7 @@ app.use('/api/invoices', invoicesRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/status', statusRoutes)
 app.use('/api/tenant', tenantRoutes)
+app.use('/api/storage', storageRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
