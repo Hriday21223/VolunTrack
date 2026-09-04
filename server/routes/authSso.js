@@ -5,6 +5,7 @@ import * as oidc from 'openid-client'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { signToken, requireAuth } from '../auth.js'
+import { recordAudit, AUDIT } from '../audit.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { publicUser, USER_WITH_SCHOOL_SELECT } from './auth.js'
 
@@ -597,6 +598,16 @@ router.post('/connections', requireDb, requireAuth('school', 'school_staff', 'or
     )
 
     const { rows } = await query('SELECT * FROM sso_connections WHERE id = $1', [id])
+    // Whoever controls the IdP controls who can sign in as this tenant's
+    // students, so every change to one is recorded.
+    recordAudit(req, {
+      action: AUDIT.SSO_CONFIG_CHANGED,
+      schoolId: rows[0].school_id,
+      organizationId: rows[0].organization_id,
+      objectType: 'sso_connection',
+      objectId: id,
+      meta: { change: 'created', provider: rows[0].provider },
+    })
     return res.status(201).json({ connection: publicConnection(rows[0], []) })
   } catch (error) {
     console.error('sso create connection failed:', error)
@@ -658,6 +669,15 @@ router.patch('/connections/:id', requireDb, requireAuth('school', 'school_staff'
 
     const { rows } = await query('SELECT * FROM sso_connections WHERE id = $1', [connection.id])
     const { rows: domains } = await query('SELECT * FROM sso_email_domains WHERE connection_id = $1', [connection.id])
+    recordAudit(req, {
+      action: AUDIT.SSO_CONFIG_CHANGED,
+      schoolId: rows[0].school_id,
+      organizationId: rows[0].organization_id,
+      objectType: 'sso_connection',
+      objectId: connection.id,
+      // Field names only — never the values, which include a client secret.
+      meta: { change: 'updated', fields: Object.keys(req.body || {}) },
+    })
     return res.json({ connection: publicConnection(rows[0], domains) })
   } catch (error) {
     console.error('sso update connection failed:', error)
@@ -677,6 +697,14 @@ router.delete('/connections/:id', requireDb, requireAuth('school', 'school_staff
     await query(`UPDATE users SET auth_provider = 'password', sso_subject = NULL WHERE sso_connection_id = $1`, [connection.id])
     await query('DELETE FROM sso_connections WHERE id = $1', [connection.id])
     invalidateConfig(connection.id)
+    recordAudit(req, {
+      action: AUDIT.SSO_CONFIG_CHANGED,
+      schoolId: connection.school_id,
+      organizationId: connection.organization_id,
+      objectType: 'sso_connection',
+      objectId: connection.id,
+      meta: { change: 'deleted' },
+    })
     return res.json({ ok: true })
   } catch (error) {
     console.error('sso delete connection failed:', error)
