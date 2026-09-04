@@ -35,6 +35,19 @@ function encodeKey(key) {
   return String(key).split('/').map(rfc3986).join('/')
 }
 
+// Character-wise slash trimming. Deliberately not a regex: /^\/+|\/+$/ and
+// /\/+$/ backtrack quadratically on a long run of slashes, which CodeQL
+// flagged as js/polynomial-redos (high) on the route that feeds this module.
+// Object keys here become attacker-supplied in #143 step 2, so the pattern is
+// kept out of this file entirely rather than relying on a caller's bound.
+export function trimSlashes(value, { leading = true, trailing = true } = {}) {
+  let start = 0
+  let end = value.length
+  if (leading) while (start < end && value[start] === '/') start += 1
+  if (trailing) while (end > start && value[end - 1] === '/') end -= 1
+  return value.slice(start, end)
+}
+
 function sha256Hex(value) {
   return createHash('sha256').update(value).digest('hex')
 }
@@ -58,7 +71,7 @@ function resolveTarget(config, key) {
 
   if (endpoint) {
     const base = new URL(endpoint.startsWith('http') ? endpoint : `https://${endpoint}`)
-    const basePath = base.pathname.replace(/\/+$/, '')
+    const basePath = trimSlashes(base.pathname, { leading: false })
     return {
       host: base.host,
       origin: base.origin,
@@ -133,8 +146,11 @@ export function signQuery({
 // Joins the tenant's configured prefix to a key without producing '//' or
 // letting a caller escape the prefix with '..'.
 export function withPrefix(prefix, key) {
-  const clean = String(prefix || '').replace(/^\/+|\/+$/g, '')
-  const safe = String(key).replace(/\.\.+/g, '.').replace(/^\/+/, '')
+  const clean = trimSlashes(String(prefix || ''))
+  // /\.\.+/ is linear (no ambiguous nesting) so it stays a regex — and it must,
+  // since replaceAll('..', '.') is NOT equivalent: it leaves '...' as '..',
+  // preserving the traversal sequence this is here to neutralise.
+  const safe = trimSlashes(String(key).replace(/\.\.+/g, '.'), { trailing: false })
   return clean ? `${clean}/${safe}` : safe
 }
 

@@ -5,7 +5,7 @@ import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { uid } from '../ids.js'
-import { checkRoundTrip, checkCors } from '../storage/s3.js'
+import { checkRoundTrip, checkCors, trimSlashes } from '../storage/s3.js'
 
 const router = express.Router()
 
@@ -63,16 +63,6 @@ function assertSafeEndpoint(raw) {
     throw new Error('That endpoint is not a public storage host.')
   }
   return `${url.origin}${trimSlashes(url.pathname, { leading: false })}`
-}
-
-// Strips slashes character-wise. A regex like /^\/+|\/+$/ is polynomial on a
-// long run of slashes, and these inputs are attacker-supplied.
-function trimSlashes(value, { leading = true, trailing = true } = {}) {
-  let start = 0
-  let end = value.length
-  if (leading) while (start < end && value[start] === '/') start += 1
-  if (trailing) while (end > start && value[end - 1] === '/') end -= 1
-  return value.slice(start, end)
 }
 
 // S3 bucket naming: lowercase letters, digits, hyphens and dots, 3-63 chars.
