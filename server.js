@@ -496,7 +496,10 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Verification link not found.' })
 
-    // Idempotent: the first response wins, further clicks/reopens don't change it.
+    // Idempotent: the first response wins, further clicks/reopens don't change
+    // it. 'superseded' lands here too — the task organizer resolved this log
+    // from the school dashboard while this link was still outstanding, so the
+    // link is spent and must not overwrite their decision.
     if (rows[0].status !== 'pending') {
       return res.json({ status: rows[0].status })
     }

@@ -172,6 +172,25 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
       </div>
     )
   }
+  // The organizer resolved these hours from the school dashboard before this
+  // link was used. Without this branch the page would fall through to the
+  // review form and invite a decision that the server will refuse.
+  if (data.status === 'superseded') {
+    return (
+      <div className="text-center">
+        <ShieldCheck className="w-12 h-12 text-earth-400 mx-auto mb-3" />
+        <h1 className="text-xl font-bold">Already reviewed</h1>
+        <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">
+          The {data.hours} hour(s) {data.studentName} logged for &quot;{data.activity}&quot; were
+          already reviewed by the organizer running this activity, so there is nothing left
+          for you to confirm.
+        </p>
+        <p className="text-sm text-earth-500 dark:text-earth-400 mt-3">
+          No action is needed. If that looks wrong, contact the school directly.
+        </p>
+      </div>
+    )
+  }
   if (data.status === 'rejected') {
     return (
       <div className="text-center">

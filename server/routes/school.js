@@ -652,8 +652,13 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
 
     const lid = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      // verification_status is set explicitly: the task organizer entering these
+      // hours *is* the verifying authority, so leaving it at the 'none' default
+      // made trusted entries look unverified everywhere the app distinguishes
+      // the two — the parent digest's approved-hours total, PDF exports, school
+      // reporting, and the Approve/Reject buttons in MyTasks.
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
       [
         lid,
         volunteerId,
@@ -697,8 +702,13 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
 
       const lid = uid('log')
       await query(
-        `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        // verification_status is set explicitly: the task organizer entering these
+        // hours *is* the verifying authority, so leaving it at the 'none' default
+        // made trusted entries look unverified everywhere the app distinguishes
+        // the two — the parent digest's approved-hours total, PDF exports, school
+        // reporting, and the Approve/Reject buttons in MyTasks.
+        `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
         [
           lid,
           entry.volunteerId,
@@ -808,11 +818,40 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
     )
     if (ownsTask.length === 0) return res.status(403).json({ error: 'This log is not for one of your tasks.' })
 
+    // What (if anything) had already been recorded, so the caller can tell
+    // this was a change rather than a first decision.
+    const { rows: beforeRows } = await query(
+      'SELECT verification_status, verification_token FROM logs WHERE id = $1',
+      [req.params.logId],
+    )
+    const previousStatus = beforeRows[0]?.verification_status ?? 'none'
+
     await query(
       'UPDATE logs SET verification_status = $1, verified_by = $2 WHERE id = $3',
       [status, req.auth.sub, req.params.logId],
     )
-    return res.json({ ok: true })
+
+    // Spend any still-pending supervisor link for this log. Without this the
+    // emailed link stays 'pending', so a supervisor clicking it days later
+    // passes the token route's idempotency check and overwrites the decision
+    // just made here — with nobody on either side told it happened.
+    //
+    // Only 'pending' rows are touched: a supervisor who already answered keeps
+    // their recorded outcome and signature.
+    const { rows: superseded } = await query(
+      `UPDATE supervisor_verifications
+          SET status = 'superseded', responded_at = now()
+        WHERE status = 'pending'
+          AND (log_id = $1 OR ($2::text IS NOT NULL AND token = $2))
+        RETURNING id`,
+      [req.params.logId, beforeRows[0]?.verification_token ?? null],
+    )
+
+    return res.json({
+      ok: true,
+      previousStatus,
+      supersededSupervisorLinks: superseded.length,
+    })
   } catch (error) {
     console.error('verify student log failed:', error)
     return res.status(500).json({ error: 'Could not update log.' })
