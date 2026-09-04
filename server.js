@@ -19,6 +19,8 @@ import invoicesRoutes from './server/routes/invoices.js'
 import settingsRoutes from './server/routes/settings.js'
 import statusRoutes, { handleGithubWebhook } from './server/routes/status.js'
 import tenantRoutes from './server/routes/tenant.js'
+import auditRoutes from './server/routes/audit.js'
+import { isAllowedTenantOrigin } from './server/tenantOrigins.js'
 import storageRoutes from './server/routes/storage.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
@@ -66,12 +68,26 @@ const webhookLimiter = rateLimit({
 
 app.set('trust proxy', 1)
 app.use(helmet())
+// Static allowlist plus any active tenant hostname (a school on its own
+// domain calls this API cross-origin). isAllowedTenantOrigin checks a cached
+// set of known hostnames — it never reflects the incoming Origin back, which
+// would hand any site credentialed access.
+const STATIC_ORIGINS = [
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  'http://localhost:5173',
+  'http://localhost:10000',
+]
+
 app.use(cors({
-  origin: [
-    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
-    'http://localhost:5173',
-    'http://localhost:10000',
-  ],
+  origin: (origin, callback) => {
+    // No Origin header: same-origin, curl, server-to-server. Unchanged from
+    // the previous array form, which also allowed these.
+    if (!origin) return callback(null, true)
+    if (STATIC_ORIGINS.includes(origin)) return callback(null, true)
+    isAllowedTenantOrigin(origin)
+      .then((ok) => callback(null, ok))
+      .catch(() => callback(null, false))
+  },
   credentials: true,
 }))
 
@@ -104,6 +120,7 @@ app.use('/api/invoices', invoicesRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/status', statusRoutes)
 app.use('/api/tenant', tenantRoutes)
+app.use('/api/audit', auditRoutes)
 app.use('/api/storage', storageRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
