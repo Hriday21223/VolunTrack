@@ -113,7 +113,7 @@ export default function VerifyHours() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center px-4 py-8 bg-gradient-to-br from-brand-50 via-earth-50 to-earth-100 dark:from-[#0f1813] dark:via-[#0f1813] dark:to-[#14201a] text-earth-900 dark:text-earth-100">
+    <div className="min-h-screen grid place-items-center px-4 py-8 page-shell text-earth-900 dark:text-earth-100">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-6">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-10 h-10 object-contain" />

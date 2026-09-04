@@ -79,7 +79,7 @@ export default function AppLayout({ children, title, subtitle, action }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 md:px-8 py-8 pb-24 w-full mx-auto">
+          <main className="app-shell-bg flex-1 px-4 md:px-8 py-8 pb-24 w-full mx-auto">
             {children}
           </main>
         </div>

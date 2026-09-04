@@ -652,8 +652,13 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
 
     const lid = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      // verification_status is set explicitly: the task organizer entering these
+      // hours *is* the verifying authority, so leaving it at the 'none' default
+      // made trusted entries look unverified everywhere the app distinguishes
+      // the two — the parent digest's approved-hours total, PDF exports, school
+      // reporting, and the Approve/Reject buttons in MyTasks.
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
       [
         lid,
         volunteerId,
@@ -697,8 +702,13 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
 
       const lid = uid('log')
       await query(
-        `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        // verification_status is set explicitly: the task organizer entering these
+        // hours *is* the verifying authority, so leaving it at the 'none' default
+        // made trusted entries look unverified everywhere the app distinguishes
+        // the two — the parent digest's approved-hours total, PDF exports, school
+        // reporting, and the Approve/Reject buttons in MyTasks.
+        `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
         [
           lid,
           entry.volunteerId,

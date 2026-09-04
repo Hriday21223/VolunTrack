@@ -1,15 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import { listReminders, markFired, createReminder, deleteReminder,
+import { listReminders, getFired, markFired, createReminder, deleteReminder,
          updateReminder } from '@/api/index.js'
 import { dueReminders } from '@/lib/scheduler.js'
+
+/**
+ * Identifies a single *occurrence*, not a reminder. Recurring reminders
+ * (daily/weekly/monthly) legitimately fire again later, so keying the
+ * already-fired list on reminder.id alone would silence every recurrence
+ * after the first.
+ */
+const occurrenceKey = (reminderId, fireAt) => `${reminderId}@${fireAt}`
 
 /**
  * Polls the reminder list every minute. When a reminder crosses its fire time,
  * it dispatches a browser notification (if permission granted) and surfaces
  * an in-app toast via the `fired` state.
  *
- * The hook deduplicates by reminder id within a single cycle, so a reminder
- * won't spam toasts if the tab is opened across reloads within the same minute.
+ * Deduplication is persisted (`getFired`/`markFired`) rather than held in
+ * memory: `lastCheck` resets to now-60s on every mount, so a reload within
+ * that window would otherwise re-evaluate — and re-fire — an occurrence that
+ * has already been shown.
  */
 export function useReminderRunner() {
   const [fired, setFired] = useState([])
@@ -21,13 +31,16 @@ export function useReminderRunner() {
       const reminders = listReminders()
       const due = dueReminders(reminders, new Date(lastCheck.current), now)
       if (due.length) {
+        const alreadyFired = new Set(getFired())
         const newFired = []
-        for (const { reminder } of due) {
-          markFired(reminder.id)
+        for (const { reminder, fireAt } of due) {
+          const key = occurrenceKey(reminder.id, fireAt)
+          if (alreadyFired.has(key)) continue
+          markFired(key)
           newFired.push(reminder)
           fireBrowserNotification(reminder)
         }
-        setFired((prev) => [...prev, ...newFired])
+        if (newFired.length) setFired((prev) => [...prev, ...newFired])
       }
       lastCheck.current = now.getTime()
     }
