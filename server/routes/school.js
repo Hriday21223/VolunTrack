@@ -826,6 +826,33 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
     )
     const previousStatus = beforeRows[0]?.verification_status ?? 'none'
 
+    // A supervisor who rejected these hours is the person who was there to
+    // witness the work (or didn't see it happen), so that decision is final:
+    // an organizer cannot flip it to approved. Checked before the write, so a
+    // refused request changes nothing.
+    //
+    // Still allowed, deliberately: agreeing with the rejection (status
+    // 'rejected'), and acting on a log whose supervisor link is absent,
+    // 'pending' or 'superseded'.
+    const { rows: rejectedBySupervisor } = await query(
+      `SELECT supervisor_name, responded_at
+         FROM supervisor_verifications
+        WHERE status = 'rejected'
+          AND (log_id = $1 OR ($2::text IS NOT NULL AND token = $2))
+        LIMIT 1`,
+      [req.params.logId, beforeRows[0]?.verification_token ?? null],
+    )
+    if (rejectedBySupervisor[0] && status === 'approved') {
+      const who = rejectedBySupervisor[0].supervisor_name || 'The supervisor'
+      const when = rejectedBySupervisor[0].responded_at
+        ? new Date(rejectedBySupervisor[0].responded_at).toISOString().slice(0, 10)
+        : null
+      return res.status(409).json({
+        error: `${who} rejected these hours${when ? ` on ${when}` : ''}. A supervisor's rejection is final, so these hours cannot be approved here.`,
+        supervisorStatus: 'rejected',
+      })
+    }
+
     await query(
       'UPDATE logs SET verification_status = $1, verified_by = $2 WHERE id = $3',
       [status, req.auth.sub, req.params.logId],
