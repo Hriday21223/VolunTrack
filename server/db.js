@@ -615,5 +615,46 @@ export async function initSchema() {
   try { await query(`CREATE INDEX IF NOT EXISTS idx_sso_domains_connection ON sso_email_domains(connection_id)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_sso_connections_school ON sso_connections(school_id)`) } catch {}
 
+  // ---------------------------------------------------------------------
+  // Per-tenant hostnames. A school reaches VolunTrack on its own hostname
+  // and the SPA resolves which tenant that is from window.location.hostname
+  // (GET /api/tenant/by-host). See server/routes/tenant.js.
+  //
+  // 'vanity'  = a subdomain of our own zone, e.g. lincoln.voluntrack.app
+  // 'custom'  = customer-owned, e.g. volunteer.lincolnhs.edu, which needs
+  //             on-demand TLS (Cloudflare for SaaS) — cf_hostname_id and
+  //             tls_status mirror that provisioning and stay NULL until it
+  //             is wired up. Tracked on #124.
+  // ---------------------------------------------------------------------
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS tenant_domains (
+        id              TEXT PRIMARY KEY,
+        school_id       TEXT REFERENCES schools(id) ON DELETE CASCADE,
+        organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+        hostname        TEXT UNIQUE NOT NULL,
+        kind            TEXT NOT NULL DEFAULT 'custom' CHECK (kind IN ('vanity','custom')),
+        -- Only 'active' rows are ever served. Everything else is a hostname
+        -- someone has claimed but not yet proven or provisioned.
+        status          TEXT NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('pending','verifying','active','disabled')),
+        verify_token    TEXT,
+        cf_hostname_id  TEXT,
+        tls_status      TEXT,
+        verified_at     TIMESTAMPTZ,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_tenant_domains_school ON tenant_domains(school_id)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_tenant_domains_org ON tenant_domains(organization_id)`) } catch {}
+
+  // Light white-label branding shown on a tenant's login page.
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
+
   return true
 }
