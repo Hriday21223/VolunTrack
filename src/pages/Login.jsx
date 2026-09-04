@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
+import { resolveTenant } from '@/lib/tenant.js'
 
 export default function Login() {
   useSeo({
@@ -40,6 +41,16 @@ export default function Login() {
   // even though its students use SSO.
   const [sso, setSso] = useState(null)
   const [forcePassword, setForcePassword] = useState(false)
+
+  // The school/org this hostname belongs to, if any. On the canonical domain
+  // this stays null and the page renders exactly as it always has.
+  const [tenant, setTenant] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    resolveTenant().then((t) => { if (!cancelled) setTenant(t) })
+    return () => { cancelled = true }
+  }, [])
+
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
     setIsMobile(mq.matches)
@@ -71,7 +82,20 @@ export default function Login() {
     return () => { cancelled = true; clearTimeout(t) }
   }, [email, mode, ssoDiscover])
 
-  const ssoActive = Boolean(sso) && mode === 'password' && !isAdmin && !forcePassword
+  // A tenant hostname advertises its SSO up front, so a student never has to
+  // type an email to discover it. Falls back to the email-domain lookup on the
+  // canonical domain, where there is no tenant to key off.
+  // Only http(s) is allowed through to an <img src>. The value comes from a
+  // DB column an admin controls, so it should never be interpolated blind.
+  const tenantLogo = /^https?:\/\//i.test(tenant?.branding?.logoUrl || '')
+    ? tenant.branding.logoUrl
+    : null
+  const logoSrc = tenantLogo || `${import.meta.env.BASE_URL}logo-icon.webp`
+  const logoAlt = tenantLogo ? tenant.name : 'VolunTrack'
+
+  const tenantSso = tenant?.sso?.[0] || null
+  const offeredSso = tenantSso || sso
+  const ssoActive = Boolean(offeredSso) && mode === 'password' && !isAdmin && !forcePassword
 
   const onSubmit = async (e) => {
     e.preventDefault()
@@ -136,8 +160,8 @@ export default function Login() {
       <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.2fr_0.8fr] items-center">
         <div className="space-y-8 animate-fade-in-up">
           <Link to="/" className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-brand-100 shadow-soft backdrop-blur transition hover:bg-slate-800/60 hover:text-white">
-            <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-5 h-5 object-contain" />
-            VolunTrack login
+            <img src={logoSrc} alt={logoAlt} className="w-5 h-5 object-contain" />
+            {tenant ? `${tenant.name} · VolunTrack` : 'VolunTrack login'}
           </Link>
 
           <div className="space-y-4">
@@ -166,7 +190,7 @@ export default function Login() {
                   <p className="text-sm text-brand-200 uppercase tracking-[0.3em]">Secure sign in</p>
                   <h2 className="text-3xl font-bold text-white">Welcome back</h2>
                 </div>
-                <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-12 h-12 object-contain" />
+                <img src={logoSrc} alt={logoAlt} className="w-12 h-12 object-contain" />
               </div>
 
               <div className="mb-4 inline-flex rounded-full bg-white/10 p-1 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
@@ -267,9 +291,9 @@ export default function Login() {
                     <button
                       type="button"
                       className="btn-primary w-full py-3 text-sm font-semibold"
-                      onClick={() => ssoStart(sso.connectionId, loc.state?.from?.pathname || '/dashboard')}
+                      onClick={() => ssoStart(offeredSso.connectionId, loc.state?.from?.pathname || '/dashboard')}
                     >
-                      <Building2 className="w-4 h-4" /> Continue with {sso.displayName}
+                      <Building2 className="w-4 h-4" /> Continue with {offeredSso.displayName}
                     </button>
                     <button
                       type="button"
