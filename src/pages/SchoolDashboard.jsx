@@ -7,6 +7,7 @@ import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
+import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -596,6 +597,16 @@ export default function SchoolDashboard() {
               Let students sign in with your school&apos;s Google or Microsoft account instead of a VolunTrack password.
             </p>
             <SsoSettings />
+          </Card>
+        )}
+
+        {tab === 'sso' && user?.role === 'school' && (
+          <Card className="mt-6">
+            <h2 className="text-lg font-semibold mb-1">Custom domain</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Serve VolunTrack to your students on your own web address instead of the shared one.
+            </p>
+            <TenantDomainSettings />
           </Card>
         )}
 
