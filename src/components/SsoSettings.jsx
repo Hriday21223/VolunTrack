@@ -87,12 +87,22 @@ export default function SsoSettings() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('sso_test') === 'ok') {
+      const email = params.get('sso_email')
       const unverified = params.get('sso_domain_unverified')
-      setNotice(
-        unverified
-          ? `Connection works (signed in as ${params.get('sso_email')}), but we could not automatically prove you own "${unverified}". Add it below and verify by DNS.`
-          : `Connection works — signed in as ${params.get('sso_email')}, and your email domain is verified. You can enable SSO now.`,
-      )
+      const conflict = params.get('sso_domain_conflict')
+      if (conflict) {
+        // The sign-in itself worked, but the domain belongs to someone else —
+        // say so here rather than letting the admin discover it as an
+        // unexplained refusal when they try to enable.
+        setErr(`Connection works (signed in as ${email}), but "${conflict}" is already claimed by another organization, so it could not be verified for this connection. Contact support to sort out who owns it.`)
+        setNotice('')
+      } else {
+        setNotice(
+          unverified
+            ? `Connection works (signed in as ${email}), but we could not automatically prove you own "${unverified}". Add it below and verify by DNS.`
+            : `Connection works — signed in as ${email}, and your email domain is verified. You can enable SSO now.`,
+        )
+      }
       window.history.replaceState({}, '', window.location.pathname)
       load()
     }
