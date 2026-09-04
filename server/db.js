@@ -656,5 +656,69 @@ export async function initSchema() {
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
 
+
+  // ---------------------------------------------------------------------
+  // Web Push reminders (#147). localStorage stays the source of truth for
+  // reminders — the app must keep working with no backend, per CLAUDE.md.
+  // These tables exist only for signed-in users who opt into push, so the
+  // server knows when to send while every tab is closed.
+  // ---------------------------------------------------------------------
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint   TEXT UNIQUE NOT NULL,
+        p256dh     TEXT NOT NULL,
+        auth       TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_sent_at TIMESTAMPTZ
+      )
+    `)
+  } catch {}
+
+  // Server mirror of the client's reminder shape. Replaced wholesale on each
+  // sync — the client owns this data, the server only needs enough to know
+  // when to fire.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS reminders (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title       TEXT NOT NULL,
+        body        TEXT,
+        kind        TEXT NOT NULL CHECK (kind IN ('one-off','daily','weekly','monthly')),
+        time        TEXT NOT NULL,
+        weekday     INTEGER,
+        day_of_month INTEGER,
+        start_date  DATE,
+        end_date    DATE,
+        enabled     BOOLEAN NOT NULL DEFAULT true,
+        -- IANA zone captured at sync time. Without it a 09:00 reminder would
+        -- fire at the server's 09:00 (UTC) rather than the user's.
+        timezone    TEXT NOT NULL DEFAULT 'UTC',
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
+  // One row per occurrence actually pushed, so a re-run of the cron cannot
+  // notify the same occurrence twice. Same occurrence-key idea as the
+  // client-side dedupe in src/hooks/useReminders.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS reminder_sends (
+        reminder_id TEXT NOT NULL REFERENCES reminders(id) ON DELETE CASCADE,
+        fire_at     TIMESTAMPTZ NOT NULL,
+        sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (reminder_id, fire_at)
+      )
+    `)
+  } catch {}
+
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id)`) } catch {}
+
   return true
 }
