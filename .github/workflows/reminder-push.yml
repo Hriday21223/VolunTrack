@@ -1,0 +1,61 @@
+name: Reminder push
+
+# Render's free tier has no cron and sleeps when idle, so scheduled work runs
+# from GitHub Actions — same pattern as parent-weekly-digest.yml. This job only
+# POSTs to a shared-secret backend endpoint; the sending is done by
+# server/routes/reminders.js, which already holds DATABASE_URL and the VAPID
+# keys. No credentials in CI beyond the opaque CRON_SECRET.
+#
+# Setup: repo secret CRON_SECRET (matching the backend) and repo variable
+# PUBLIC_BACKEND_URL (e.g. https://voluntrack-backend-frrh.onrender.com).
+
+on:
+  schedule:
+    # Every 15 minutes. Reminders have minute precision, so this is the
+    # granularity users actually feel; the endpoint's own 1-hour lookback plus
+    # the reminder_sends table make a missed or repeated run harmless.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report what would be sent without sending it
+        type: boolean
+        default: false
+
+# A long run must not overlap the next tick and double-send. reminder_sends
+# already makes that safe, but not queueing is cheaper than deduping.
+concurrency:
+  group: reminder-push
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger due reminders
+        run: |
+          BACKEND="${{ vars.PUBLIC_BACKEND_URL }}"
+          if [ -z "$BACKEND" ]; then
+            echo "PUBLIC_BACKEND_URL repo variable is not set — nothing to call."
+            exit 0
+          fi
+
+          # The backend may be cold on Render's free tier; allow for a spin-up.
+          code=$(curl -sS -o /tmp/out.json -w '%{http_code}' \
+            --max-time 120 --retry 2 --retry-connrefused \
+            -X POST "$BACKEND/api/reminders/internal/run-due" \
+            -H 'Content-Type: application/json' \
+            -H "x-cron-key: ${{ secrets.CRON_SECRET }}" \
+            -d '{"dryRun": ${{ inputs.dry_run == true }} }') || true
+
+          echo "HTTP $code"
+          cat /tmp/out.json || true
+          echo
+
+          # 503 means push or CRON_SECRET isn't configured yet — that is an
+          # expected state before rollout, not a failure worth alerting on.
+          if [ "$code" = "503" ]; then
+            echo "Backend reports push not configured; skipping."
+            exit 0
+          fi
+          [ "$code" = "200" ] || exit 1
