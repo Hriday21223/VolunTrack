@@ -197,7 +197,7 @@ export default function About() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.08),transparent_14%),radial-gradient(circle_at_80%_20%,rgba(184,149,93,0.18),transparent_18%),radial-gradient(circle_at_50%_80%,rgba(63,131,68,0.16),transparent_16%)]" />
       <div className="relative px-4 md:px-8 py-5">
         <header className="relative flex items-center justify-between gap-3 animate-fade-in-up">
-          <Link to="/login" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-11 h-11 object-contain" />
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-earth-500 dark:text-earth-400">VolunTrack</p>
@@ -206,7 +206,7 @@ export default function About() {
           </Link>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/about" className="btn-ghost">About</Link>
+            <Link to="/" className="btn-ghost">Home</Link>
             <Link to="/contact" className="btn-ghost">Contact</Link>
             <Link to="/status" className="btn-ghost">Status</Link>
             <Link to="/login" className="btn-ghost">Sign in</Link>
@@ -224,7 +224,7 @@ export default function About() {
 
           {navOpen && (
             <div className="md:hidden absolute top-full right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#0a1a14] shadow-xl z-50 flex flex-col p-2 gap-1">
-              <Link to="/about" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>About</Link>
+              <Link to="/" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Home</Link>
               <Link to="/contact" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Contact</Link>
               <Link to="/status" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Status</Link>
               <Link to="/login" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Sign in</Link>

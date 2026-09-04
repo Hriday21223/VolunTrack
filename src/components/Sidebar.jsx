@@ -1,4 +1,4 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, Users, Building2, MapPin } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -57,8 +57,7 @@ const ROLE_ITEMS = {
     { to: '/help',         label: 'Help',       icon: HelpCircle },
   ],
   org: [
-    { to: '/',             label: 'Dashboard',        icon: Home },
-    { to: '/organization/dashboard', label: 'Organization', icon: Building2 },
+    { to: '/organization/dashboard', label: 'Dashboard', icon: Home },
     { to: '/profile',      label: 'Profile',          icon: User },
     { to: '/settings',     label: 'Settings',         icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
