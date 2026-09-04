@@ -650,6 +650,51 @@ export async function initSchema() {
   try { await query(`CREATE INDEX IF NOT EXISTS idx_tenant_domains_school ON tenant_domains(school_id)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_tenant_domains_org ON tenant_domains(organization_id)`) } catch {}
 
+  // ---------------------------------------------------------------------
+  // Tenant-provided object storage ("bring your own bucket"). A school or
+  // organization attaches its own S3-compatible bucket and proof-of-service
+  // files are uploaded straight from the student's browser to it via a
+  // presigned URL — the bytes never touch our server or this database, so we
+  // never hold a minor's documents. VolunTrack stores only a pointer. See #143.
+  //
+  // Credentials are AES-256-GCM encrypted through server/secrets.js, exactly
+  // like SSO client secrets, so these routes are inert without
+  // APP_ENCRYPTION_KEY.
+  //
+  // Like sso_connections, a config is owned by exactly one school OR one
+  // organization, and only reaches 'active' after a passing round-trip test.
+  // ---------------------------------------------------------------------
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS tenant_storage (
+        id               TEXT PRIMARY KEY,
+        school_id        TEXT REFERENCES schools(id) ON DELETE CASCADE,
+        organization_id  TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+        provider         TEXT NOT NULL DEFAULT 's3'
+                           CHECK (provider IN ('s3','r2','gcs','azure_blob')),
+        bucket           TEXT NOT NULL,
+        region           TEXT NOT NULL DEFAULT 'us-east-1',
+        endpoint         TEXT,
+        prefix           TEXT NOT NULL DEFAULT '',
+        access_key_id    TEXT,
+        secret_encrypted TEXT,
+        status           TEXT NOT NULL DEFAULT 'unverified'
+                           CHECK (status IN ('unverified','active','disabled')),
+        last_test_at     TIMESTAMPTZ,
+        last_test_ok     BOOLEAN,
+        last_test_error  TEXT,
+        cors_ok          BOOLEAN,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CHECK ((school_id IS NULL) <> (organization_id IS NULL))
+      )
+    `)
+  } catch {}
+
+  // One config per owner — a second PUT updates the existing row rather than
+  // leaving two candidates for resolution to pick between.
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_storage_school ON tenant_storage(school_id) WHERE school_id IS NOT NULL`) } catch {}
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_storage_org ON tenant_storage(organization_id) WHERE organization_id IS NOT NULL`) } catch {}
+
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
