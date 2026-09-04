@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } fr
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
+import { recordAudit, AUDIT } from '../audit.js'
 
 const router = express.Router()
 
@@ -156,6 +157,12 @@ router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'
        ORDER BY created_at DESC`,
       [userRows[0].school_id],
     )
+    recordAudit(req, {
+      action: AUDIT.STUDENT_LIST_READ,
+      schoolId: userRows[0].school_id,
+      objectType: 'student_list',
+      meta: { count: rows.length },
+    })
     return res.json({ students: rows })
   } catch (error) {
     console.error('school students failed:', error)
@@ -240,6 +247,14 @@ router.post('/staff', limiter, requireDb, requireAuth('school'), requirePaidScho
        VALUES ($1, 'school_staff', $2, $3, $4, $5)`,
       [userId, name, email, hash, schoolId],
     )
+    // A new co-admin can read every student at this school from here on.
+    recordAudit(req, {
+      action: AUDIT.STAFF_ADDED,
+      subjectUserId: userId,
+      schoolId,
+      objectType: 'user',
+      objectId: userId,
+    })
     return res.status(201).json({ ok: true })
   } catch (error) {
     console.error('add school staff failed:', error)
@@ -258,6 +273,12 @@ router.delete('/staff/:id', limiter, requireDb, requireAuth('school'), requirePa
       [req.params.id, userRows[0].school_id],
     )
     if (rowCount === 0) return res.status(404).json({ error: 'Co-admin not found.' })
+    recordAudit(req, {
+      action: AUDIT.STAFF_REMOVED,
+      schoolId: userRows[0].school_id,
+      objectType: 'user',
+      objectId: req.params.id,
+    })
     return res.json({ ok: true })
   } catch (error) {
     console.error('remove school staff failed:', error)
@@ -349,7 +370,29 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [sub])
       allowed = Boolean(userRows[0]?.school_id) && pdf.school_id === userRows[0].school_id
     }
-    if (!allowed) return res.status(403).json({ error: 'Not allowed.' })
+    if (!allowed) {
+      // An attempt is as interesting as a success.
+      recordAudit(req, {
+        action: AUDIT.PDF_READ,
+        outcome: 'denied',
+        subjectUserId: pdf.user_id,
+        schoolId: pdf.school_id,
+        objectType: 'pdf_upload',
+        objectId: pdf.id,
+      })
+      return res.status(403).json({ error: 'Not allowed.' })
+    }
+
+    // This response carries the document itself (base64 file_data), so the
+    // read is exactly the kind that must leave a trace.
+    recordAudit(req, {
+      action: AUDIT.PDF_READ,
+      subjectUserId: pdf.user_id,
+      schoolId: pdf.school_id,
+      objectType: 'pdf_upload',
+      objectId: pdf.id,
+      meta: { filename: pdf.filename },
+    })
 
     return res.json({ pdf: { id: pdf.id, filename: pdf.filename, fileData: pdf.file_data, fileType: pdf.file_type, status: pdf.status, notes: pdf.notes, createdAt: pdf.created_at } })
   } catch (error) {
@@ -373,6 +416,14 @@ router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'schoo
       'UPDATE pdf_uploads SET status = $1, notes = $2, reviewed_by = $3, reviewed_at = now() WHERE id = $4',
       [status, notes || null, req.auth.sub, req.params.id],
     )
+    recordAudit(req, {
+      action: AUDIT.PDF_REVIEWED,
+      subjectUserId: rows[0].user_id,
+      schoolId: rows[0].school_id,
+      objectType: 'pdf_upload',
+      objectId: req.params.id,
+      meta: { status },
+    })
     return res.json({ ok: true })
   } catch (error) {
     console.error('pdf review failed:', error)
