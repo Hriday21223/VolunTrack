@@ -274,11 +274,17 @@ export function getFired() {
   return read(keys.fired, [])
 }
 
+// Entries are occurrence keys ("<reminderId>@<ISO fireAt>"), not bare
+// reminder ids — see useReminderRunner. Bounded because only occurrences
+// inside a runner's (lastCheck, now] window can still be checked against;
+// anything older is dead weight that would grow localStorage forever.
+const FIRED_LIMIT = 100
+
 export function markFired(id) {
   const f = getFired()
   if (!f.includes(id)) {
     f.push(id)
-    write(keys.fired, f)
+    write(keys.fired, f.slice(-FIRED_LIMIT))
   }
 }
 
