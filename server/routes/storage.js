@@ -62,7 +62,17 @@ function assertSafeEndpoint(raw) {
   if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.')) {
     throw new Error('That endpoint is not a public storage host.')
   }
-  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+  return `${url.origin}${trimSlashes(url.pathname, { leading: false })}`
+}
+
+// Strips slashes character-wise. A regex like /^\/+|\/+$/ is polynomial on a
+// long run of slashes, and these inputs are attacker-supplied.
+function trimSlashes(value, { leading = true, trailing = true } = {}) {
+  let start = 0
+  let end = value.length
+  if (leading) while (start < end && value[start] === '/') start += 1
+  if (trailing) while (end > start && value[end - 1] === '/') end -= 1
+  return value.slice(start, end)
 }
 
 // S3 bucket naming: lowercase letters, digits, hyphens and dots, 3-63 chars.
@@ -145,7 +155,10 @@ router.put(
     const provider = String(req.body.provider || 's3').trim().toLowerCase()
     const bucket = String(req.body.bucket || '').trim().toLowerCase()
     const region = String(req.body.region || 'us-east-1').trim()
-    const prefix = String(req.body.prefix || '').trim().replace(/^\/+|\/+$/g, '')
+    // Length-checked before any stripping: the previous order ran a regex
+    // over the raw body first, so a 1MB run of '/' backtracked quadratically
+    // and blocked the event loop (CodeQL js/polynomial-redos).
+    const rawPrefix = String(req.body.prefix || '').trim()
     const accessKeyId = String(req.body.accessKeyId || '').trim()
     const secretAccessKey = String(req.body.secretAccessKey || '').trim()
 
@@ -154,7 +167,9 @@ router.put(
     }
     if (!validBucket(bucket)) return res.status(400).json({ error: 'That is not a valid bucket name.' })
     if (!/^[a-z0-9-]{1,32}$/.test(region)) return res.status(400).json({ error: 'That is not a valid region.' })
-    if (prefix.length > 200) return res.status(400).json({ error: 'The prefix is too long.' })
+    if (rawPrefix.length > 200) return res.status(400).json({ error: 'The prefix is too long.' })
+    // Bounded input, and character-wise rather than a backtracking regex.
+    const prefix = trimSlashes(rawPrefix)
     if (!accessKeyId || accessKeyId.length > 200) return res.status(400).json({ error: 'An access key ID is required.' })
 
     let endpoint
