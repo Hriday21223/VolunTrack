@@ -91,7 +91,7 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
 const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
 
 /** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
-export async function generateInvoicePDF({ invoiceNumber, entityName, amount, billingPeriod, description, dueDate, createdAt, returnBlob }) {
+export async function generateInvoicePDF({ invoiceNumber, entityName, accountCode, amount, billingPeriod, description, dueDate, createdAt, returnBlob }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
 
@@ -117,10 +117,15 @@ export async function generateInvoicePDF({ invoiceNumber, entityName, amount, bi
   doc.text('Bill to', 40, 110)
   doc.setFont('helvetica', 'normal').setFontSize(11)
   doc.text(entityName || '', 40, 126)
+  if (accountCode) {
+    doc.setFontSize(10).setTextColor(90)
+    doc.text(`Account ID: ${accountCode}`, 40, 140)
+    doc.setFontSize(11).setTextColor(0)
+  }
 
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
   autoTable(doc, {
-    startY: 150,
+    startY: accountCode ? 164 : 150,
     head: [['Description', 'Amount']],
     body: [[description || 'VolunTrack subscription', `$${Number(amount).toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`]],
     headStyles: { fillColor: [63, 131, 68] },

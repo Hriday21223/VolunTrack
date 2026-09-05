@@ -29,12 +29,11 @@ const ROLE_ITEMS = {
     { to: '/help',         label: 'Help',             icon: HelpCircle },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
+  // A school account never logs its own hours, so the personal Dashboard /
+  // Log Hours / Calendar / Reports entries don't apply — the school's own
+  // reporting lives inside School Dashboard. Mirrors the org list below.
   school: [
-    { to: '/',             label: 'Dashboard',        icon: Home },
     { to: '/school/dashboard', label: 'School Dashboard', icon: School },
-    { to: '/log',          label: 'Log Hours',        icon: Clock },
-    { to: '/calendar',     label: 'Calendar',         icon: Calendar },
-    { to: '/reports',      label: 'Reports',          icon: FileText },
     { to: '/profile',      label: 'Profile',          icon: User },
     { to: '/settings',     label: 'Settings',         icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
@@ -65,6 +64,17 @@ const ROLE_ITEMS = {
   ],
 }
 ROLE_ITEMS.school_staff = ROLE_ITEMS.school
+
+// The default blurb describes device-local hour tracking, which is only true
+// for accounts that log their own hours. An institution or parent account
+// stores everything server-side, so it gets copy that matches what it holds.
+const STORAGE_NOTE = {
+  school: "Your students' uploads and hour records are stored on our servers, visible only to your school's admins and co-admins.",
+  org: "Your organization's schools, invites and billing records are stored on our servers.",
+  parent: "Your linked children's hour records are stored on our servers so you can follow their progress.",
+}
+STORAGE_NOTE.school_staff = STORAGE_NOTE.school
+const DEFAULT_STORAGE_NOTE = 'Your hours are stored on this device. Creating an account also stores some data (Family sharing, school linking, sync) on our server.'
 
 export default function Sidebar() {
   const { user } = useAuth()
@@ -106,7 +116,7 @@ export default function Sidebar() {
 
       <div className="px-5 pb-6 pt-4 text-xs text-earth-400 border-t border-earth-900/80">
         <div className="rounded-3xl bg-white/5 p-3 text-earth-300">
-          Your hours are stored on this device. Creating an account also stores some data (Family sharing, school linking, sync) on our server.
+          {STORAGE_NOTE[role] || DEFAULT_STORAGE_NOTE}
         </div>
         <div className="mt-4 flex gap-3">
           <Link to="/about" className="text-earth-300 hover:text-white">About</Link>

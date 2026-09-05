@@ -1,11 +1,12 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
-import { query, hasDatabase, getPool } from '../db.js'
+import { query, hasDatabase, getPool, nextAccountCode } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
+import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 
 const router = express.Router()
@@ -82,8 +83,8 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
 
     const schoolId = uid('sch')
     await query(
-      'INSERT INTO schools (id, name, pin, contact_email, organization_id) VALUES ($1, $2, $3, $4, $5)',
-      [schoolId, name, pin, email, invite?.organization_id || null],
+      'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code) VALUES ($1, $2, $3, $4, $5, $6)',
+      [schoolId, name, pin, email, invite?.organization_id || null, await nextAccountCode('schools')],
     )
 
     const hash = await hashPassword(password)
@@ -127,7 +128,12 @@ router.get('/invite/:token', limiter, requireDb, async (req, res) => {
 })
 
 // Join a school (student enters school code)
-router.post('/join', limiter, requireDb, requireAuth(), async (req, res) => {
+// Students are the only role that joins a school by code. This was
+// requireAuth() with no roles, so a volunteer, parent or org account that
+// typed a code into the Settings join box had schools.id written onto its own
+// user row — an org is meant to own schools, a parent reaches a child's hours
+// through parent_child_links, and a volunteer isn't enrolled anywhere.
+router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res) => {
   const pin = String(req.body.pin || '').trim().toLowerCase()
 
   if (!pin) return res.status(400).json({ error: 'School code is required.' })
@@ -403,6 +409,39 @@ router.get('/info', limiter, requireDb, async (req, res) => {
     return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
+  }
+})
+
+// Change this school's join code (school admin only — not school_staff, who
+// can review hours but shouldn't be able to invalidate the code students are
+// being handed). Rotating is safe: /join copies the school id onto the user
+// row, so already-linked students keep their link when the code changes.
+router.patch('/code', limiter, requireDb, requireAuth('school'), async (req, res) => {
+  const pin = String(req.body.pin || '').trim().toLowerCase()
+
+  if (!pin) return res.status(400).json({ error: 'School code is required.' })
+  if (!/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
+
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    const { rows: current } = await query('SELECT pin FROM schools WHERE id = $1', [schoolId])
+    if (current.length === 0) return res.status(404).json({ error: 'School not found.' })
+    if (current[0].pin === pin) return res.json({ ok: true, pin })
+
+    // Pre-checked for a friendly message; the UNIQUE index on schools.pin is
+    // what actually prevents two schools racing onto the same code.
+    const existing = await query('SELECT 1 FROM schools WHERE pin = $1', [pin])
+    if (existing.rowCount > 0) return res.status(409).json({ error: 'That school code is already taken.' })
+
+    await query('UPDATE schools SET pin = $1 WHERE id = $2', [pin, schoolId])
+    return res.json({ ok: true, pin })
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'That school code is already taken.' })
+    console.error('school code change failed:', error)
+    return res.status(500).json({ error: 'Could not update school code.' })
   }
 })
 
@@ -940,7 +979,7 @@ router.post('/submit-payment-confirmation', limiter, requireDb, requireAuth('sch
 router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at,
+      `SELECT s.id, s.name, s.pin, s.account_code, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s ORDER BY s.created_at DESC`,
     )
@@ -958,7 +997,7 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
 router.get('/admin/organizations', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT o.id, o.name, o.contact_email, o.created_at, o.price_amount, o.price_period, o.payment_due_date,
+      `SELECT o.id, o.name, o.account_code, o.contact_email, o.created_at, o.price_amount, o.price_period, o.payment_due_date,
         o.admin_notes, o.payment_status, o.payment_notes, o.paid_at,
         COUNT(s.id) AS school_count
        FROM organizations o
@@ -1231,12 +1270,15 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
       [id, message.trim()],
     )
 
-    const { rows: schools } = await query('SELECT id, name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE contact_email IS NOT NULL')
+    const paymentInstructions = await getPaymentInstructions()
+    const { rows: schools } = await query('SELECT id, name, account_code, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE contact_email IS NOT NULL')
     const results = await Promise.all(schools.map((s) => sendEmail({
       to: s.contact_email,
       subject: 'Payment notice from VolunTrack',
       html: paymentNoticeHtml({
         recipientName: s.name,
+        accountCode: s.account_code,
+        paymentInstructions,
         amount: amount || s.price_amount,
         billingPeriod: amount ? billingPeriod : s.price_period,
         dueDate: s.payment_due_date,
@@ -1266,7 +1308,7 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
       [id, req.params.schoolId, message.trim()],
     )
 
-    const { rows } = await query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE id = $1', [req.params.schoolId])
+    const { rows } = await query('SELECT name, account_code, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE id = $1', [req.params.schoolId])
     const hasContactEmail = Boolean(rows[0]?.contact_email)
     let emailSent = false
     if (hasContactEmail) {
@@ -1275,6 +1317,8 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
         subject: 'Payment notice from VolunTrack',
         html: paymentNoticeHtml({
           recipientName: rows[0].name,
+          accountCode: rows[0].account_code,
+          paymentInstructions: await getPaymentInstructions(),
           amount: amount || rows[0].price_amount,
           billingPeriod: amount ? billingPeriod : rows[0].price_period,
           dueDate: rows[0].payment_due_date,
