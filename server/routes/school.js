@@ -128,7 +128,12 @@ router.get('/invite/:token', limiter, requireDb, async (req, res) => {
 })
 
 // Join a school (student enters school code)
-router.post('/join', limiter, requireDb, requireAuth(), async (req, res) => {
+// Students are the only role that joins a school by code. This was
+// requireAuth() with no roles, so a volunteer, parent or org account that
+// typed a code into the Settings join box had schools.id written onto its own
+// user row — an org is meant to own schools, a parent reaches a child's hours
+// through parent_child_links, and a volunteer isn't enrolled anywhere.
+router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res) => {
   const pin = String(req.body.pin || '').trim().toLowerCase()
 
   if (!pin) return res.status(400).json({ error: 'School code is required.' })
@@ -404,6 +409,39 @@ router.get('/info', limiter, requireDb, async (req, res) => {
     return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
+  }
+})
+
+// Change this school's join code (school admin only — not school_staff, who
+// can review hours but shouldn't be able to invalidate the code students are
+// being handed). Rotating is safe: /join copies the school id onto the user
+// row, so already-linked students keep their link when the code changes.
+router.patch('/code', limiter, requireDb, requireAuth('school'), async (req, res) => {
+  const pin = String(req.body.pin || '').trim().toLowerCase()
+
+  if (!pin) return res.status(400).json({ error: 'School code is required.' })
+  if (!/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
+
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    const { rows: current } = await query('SELECT pin FROM schools WHERE id = $1', [schoolId])
+    if (current.length === 0) return res.status(404).json({ error: 'School not found.' })
+    if (current[0].pin === pin) return res.json({ ok: true, pin })
+
+    // Pre-checked for a friendly message; the UNIQUE index on schools.pin is
+    // what actually prevents two schools racing onto the same code.
+    const existing = await query('SELECT 1 FROM schools WHERE pin = $1', [pin])
+    if (existing.rowCount > 0) return res.status(409).json({ error: 'That school code is already taken.' })
+
+    await query('UPDATE schools SET pin = $1 WHERE id = $2', [pin, schoolId])
+    return res.json({ ok: true, pin })
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'That school code is already taken.' })
+    console.error('school code change failed:', error)
+    return res.status(500).json({ error: 'Could not update school code.' })
   }
 })
 

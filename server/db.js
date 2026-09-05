@@ -397,6 +397,35 @@ export async function initSchema() {
   try { await backfillAccountCodes('schools') } catch (error) { console.error('school account_code backfill failed:', error) }
   try { await backfillAccountCodes('organizations') } catch (error) { console.error('organization account_code backfill failed:', error) }
 
+  // An account code is printed on invoices and quoted on bank transfers, so it
+  // must never change or be cleared once issued — a renamed code would orphan
+  // every payment reference already in the wild. Enforced in the database
+  // rather than by convention, so no future route (or a hand-run UPDATE) can
+  // break it. Assigning a code to a row that has none is still allowed, which
+  // is what the backfill above does.
+  try {
+    await query(`
+      CREATE OR REPLACE FUNCTION account_code_is_immutable() RETURNS trigger AS $$
+      BEGIN
+        IF OLD.account_code IS NOT NULL AND NEW.account_code IS DISTINCT FROM OLD.account_code THEN
+          RAISE EXCEPTION 'account_code is immutable (% cannot become %)', OLD.account_code, NEW.account_code;
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql
+    `)
+  } catch (error) { console.error('account_code trigger function failed:', error) }
+  for (const table of Object.keys(ACCOUNT_CODE_TABLES)) {
+    try { await query(`DROP TRIGGER IF EXISTS ${table}_account_code_immutable ON ${table}`) } catch {}
+    try {
+      await query(`
+        CREATE TRIGGER ${table}_account_code_immutable
+        BEFORE UPDATE ON ${table}
+        FOR EACH ROW EXECUTE FUNCTION account_code_is_immutable()
+      `)
+    } catch (error) { console.error(`account_code trigger on ${table} failed:`, error) }
+  }
+
   // Lets notify-organization broadcast a single org (mirrors admin_notifications.school_id).
   try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE`) } catch {}
 
