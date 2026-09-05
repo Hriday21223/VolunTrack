@@ -84,6 +84,18 @@ export function AuthProvider({ children }) {
         return { requiresTotp: true, tempToken: data.tempToken }
       }
 
+      // Privileged account past its MFA deadline. There is deliberately no
+      // session token here — the enrolment token opens only the TOTP setup
+      // routes, so the user must finish enrolling to get in.
+      if (data.requiresMfaEnrollment) {
+        return {
+          requiresMfaEnrollment: true,
+          enrollmentToken: data.enrollmentToken,
+          deadline: data.deadline,
+          user: data.user,
+        }
+      }
+
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', data.token)
 
@@ -139,8 +151,10 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  const setupTotp = useCallback(async () => {
-    const token = localStorage.getItem('voluntrack:auth_token')
+  // `enrollmentToken` is passed when the user has no session yet because
+  // login forced them into enrolment.
+  const setupTotp = useCallback(async (enrollmentToken) => {
+    const token = enrollmentToken || localStorage.getItem('voluntrack:auth_token')
     if (!token) throw new Error('Not authenticated')
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/setup`, {
@@ -154,8 +168,8 @@ export function AuthProvider({ children }) {
     return response.json()
   }, [])
 
-  const verifyTotpSetup = useCallback(async (code) => {
-    const token = localStorage.getItem('voluntrack:auth_token')
+  const verifyTotpSetup = useCallback(async (code, enrollmentToken) => {
+    const token = enrollmentToken || localStorage.getItem('voluntrack:auth_token')
     if (!token) throw new Error('Not authenticated')
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/verify-setup`, {
@@ -168,6 +182,10 @@ export function AuthProvider({ children }) {
       throw new Error(err.error || 'Invalid code')
     }
     const data = await response.json()
+    // Enrolment completed with no prior session: the server issues the real
+    // token here, which is what turns forced enrolment into a way in rather
+    // than a dead end.
+    if (data.token) localStorage.setItem('voluntrack:auth_token', data.token)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
