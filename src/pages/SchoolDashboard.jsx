@@ -11,6 +11,7 @@ import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
+import PaymentDetails from '@/components/PaymentDetails.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -55,6 +56,7 @@ export default function SchoolDashboard() {
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffErr, setStaffErr] = useState('')
   const [invoices, setInvoices] = useState([])
+  const [accountCode, setAccountCode] = useState(null)
   // Invoice currently open in the preview overlay, or null.
   const [previewInvoice, setPreviewInvoice] = useState(null)
 
@@ -163,6 +165,7 @@ export default function SchoolDashboard() {
         if (invoiceRes.ok) {
           const data = await invoiceRes.json()
           setInvoices(data.invoices || [])
+          setAccountCode(data.accountCode || null)
         }
       }
     } catch (e) {
@@ -333,8 +336,9 @@ export default function SchoolDashboard() {
               <p className="text-sm text-red-500 mb-3">{schoolInfo?.paymentNotes || 'Your confirmation could not be verified.'} Please double-check the number and resubmit.</p>
             )}
             {paymentStatus === 'unpaid' && (
-              <p className="text-sm text-earth-500 mb-3">Please complete payment using the instructions sent to your school's email, then enter the bank confirmation number below.</p>
+              <p className="text-sm text-earth-500 mb-3">Please complete payment using the details below, then enter the bank confirmation number.</p>
             )}
+            <PaymentDetails accountCode={accountCode} className="mb-3 text-left" />
             {paymentStatus !== 'pending' && user?.role === 'school' && (
               <form onSubmit={handleSubmitConfirmation} className="space-y-3">
                 <label htmlFor="confirmRef" className="text-sm text-earth-500">Please enter your bank confirmation / reference number</label>
@@ -440,6 +444,11 @@ export default function SchoolDashboard() {
           }
           return null
         })()}
+        {isSchoolAdmin && accountCode && (
+          <Card>
+            <PaymentDetails accountCode={accountCode} />
+          </Card>
+        )}
         {isSchoolAdmin && invoices.length > 0 && (
           <Card>
             <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" /> Invoices</h3>
@@ -473,6 +482,7 @@ export default function SchoolDashboard() {
                       onClick={() => generateInvoicePDF({
                         invoiceNumber: inv.invoice_number,
                         entityName: schoolInfo?.name,
+                        accountCode,
                         amount: inv.amount,
                         billingPeriod: inv.billing_period,
                         description: inv.description,
@@ -836,6 +846,7 @@ export default function SchoolDashboard() {
           getBlob={() => generateInvoicePDF({
             invoiceNumber: previewInvoice.invoice_number,
             entityName: schoolInfo?.name,
+            accountCode,
             amount: previewInvoice.amount,
             billingPeriod: previewInvoice.billing_period,
             description: previewInvoice.description,

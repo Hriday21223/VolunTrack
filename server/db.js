@@ -1,4 +1,5 @@
 import pg from 'pg'
+import { generateAccountCode } from './ids.js'
 
 const { Pool } = pg
 
@@ -246,6 +247,41 @@ CREATE TABLE IF NOT EXISTS reviews (
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
+// The two tables that carry a customer account_code, and the tag that goes in
+// the middle of the code so an admin can tell from a bank reference alone what
+// kind of account paid. Used to build SQL below — a fixed map, never user input.
+const ACCOUNT_CODE_TABLES = { schools: 'SCH', organizations: 'ORG' }
+
+// An unused account code for `table`. Pre-checks for a collision the same way
+// server/routes/school.js pre-checks a school pin; the UNIQUE index on the
+// column is the actual guarantee.
+export async function nextAccountCode(table) {
+  const kind = ACCOUNT_CODE_TABLES[table]
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateAccountCode(kind)
+    const { rows } = await query(`SELECT 1 FROM ${table} WHERE account_code = $1`, [code])
+    if (rows.length === 0) return code
+  }
+  return generateAccountCode(kind)
+}
+
+// Give every pre-existing row a code. Runs on boot and is idempotent — once a
+// row has a code the WHERE clause skips it, so a restart is a no-op.
+async function backfillAccountCodes(table) {
+  const { rows } = await query(`SELECT id FROM ${table} WHERE account_code IS NULL`)
+  for (const row of rows) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const code = await nextAccountCode(table)
+        await query(`UPDATE ${table} SET account_code = $1 WHERE id = $2 AND account_code IS NULL`, [code, row.id])
+        break
+      } catch (error) {
+        if (error?.code !== '23505') throw error
+      }
+    }
+  }
+}
+
 export async function initSchema() {
   if (!hasDatabase()) return false
   await query(SCHEMA)
@@ -347,6 +383,20 @@ export async function initSchema() {
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_payment_status_check`) } catch {}
   try { await query(`ALTER TABLE organizations ADD CONSTRAINT organizations_payment_status_check CHECK (payment_status IN ('paid','unpaid'))`) } catch {}
+  // Permanent billing identifier per customer ("VT-SCH-4F2K9A"/"VT-ORG-…"),
+  // quoted on invoices and bank transfers. Deliberately NOT schools.pin — that
+  // is the student join code, user-chosen and shared publicly. Existing rows
+  // are backfilled below, so the column stays nullable.
+  // Optional account code a partnership enquiry can quote on the public
+  // contact form. Free text from an unauthenticated form — a hint for the
+  // admin, never proof of identity, so nothing is gated on it.
+  try { await query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS account_code TEXT`) } catch {}
+
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_code TEXT UNIQUE`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS account_code TEXT UNIQUE`) } catch {}
+  try { await backfillAccountCodes('schools') } catch (error) { console.error('school account_code backfill failed:', error) }
+  try { await backfillAccountCodes('organizations') } catch (error) { console.error('organization account_code backfill failed:', error) }
+
   // Lets notify-organization broadcast a single org (mirrors admin_notifications.school_id).
   try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE`) } catch {}
 
