@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -10,6 +10,7 @@ import SsoSettings from '@/components/SsoSettings.jsx'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
+import PdfPreview from '@/components/PdfPreview.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -54,6 +55,8 @@ export default function SchoolDashboard() {
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffErr, setStaffErr] = useState('')
   const [invoices, setInvoices] = useState([])
+  // Invoice currently open in the preview overlay, or null.
+  const [previewInvoice, setPreviewInvoice] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -460,6 +463,13 @@ export default function SchoolDashboard() {
                       {inv.status === 'paid' ? 'Paid' : inv.status === 'void' ? 'Void' : 'Sent'}
                     </span>
                     <button
+                      onClick={() => setPreviewInvoice(inv)}
+                      className="p-1.5 text-earth-400 hover:text-earth-300"
+                      title="Preview invoice"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
                       onClick={() => generateInvoicePDF({
                         invoiceNumber: inv.invoice_number,
                         entityName: schoolInfo?.name,
@@ -818,6 +828,24 @@ export default function SchoolDashboard() {
       </div>
 
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
+
+      {previewInvoice && (
+        <PdfPreview
+          title={`Invoice ${previewInvoice.invoice_number}`}
+          filename={`${previewInvoice.invoice_number}.pdf`}
+          getBlob={() => generateInvoicePDF({
+            invoiceNumber: previewInvoice.invoice_number,
+            entityName: schoolInfo?.name,
+            amount: previewInvoice.amount,
+            billingPeriod: previewInvoice.billing_period,
+            description: previewInvoice.description,
+            dueDate: previewInvoice.due_date,
+            createdAt: previewInvoice.created_at,
+            returnBlob: true,
+          })}
+          onClose={() => setPreviewInvoice(null)}
+        />
+      )}
     </AppLayout>
   )
 }

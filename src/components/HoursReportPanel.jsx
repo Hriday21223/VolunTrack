@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react'
+import { Download, FileSpreadsheet, FileText, Eye, Loader2 } from 'lucide-react'
 import { schoolHoursCSV, schoolSummaryCSV, schoolHoursPDF } from '@/lib/export.js'
 import { fmtHours } from '@/utils/date.js'
+import PdfPreview from '@/components/PdfPreview.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -47,6 +48,8 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
   const [approvedOnly, setApprovedOnly] = useState(false)
   const [report, setReport] = useState(null)
   const [busy, setBusy] = useState(false)
+  // True while the summary PDF is open in the preview overlay.
+  const [preview, setPreview] = useState(false)
   const [err, setErr] = useState('')
 
   const run = async () => {
@@ -125,6 +128,12 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
                 <FileSpreadsheet className="h-3.5 w-3.5" /> Summary CSV
               </button>
               <button
+                type="button" className="btn-sm btn-ghost" disabled={busy}
+                onClick={() => setPreview(true)}
+              >
+                <Eye className="h-3.5 w-3.5" /> Preview
+              </button>
+              <button
                 type="button" className="btn-sm btn-primary" disabled={busy}
                 onClick={async () => {
                   setBusy(true)
@@ -174,6 +183,17 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
             </div>
           )}
         </div>
+      )}
+
+      {preview && report && (
+        <PdfPreview
+          title={`${title} — hours summary`}
+          filename="voluntrack-hours-summary.pdf"
+          getBlob={() => schoolHoursPDF({
+            title, range: report.range, students: report.students, totals: report.totals, returnBlob: true,
+          })}
+          onClose={() => setPreview(false)}
+        />
       )}
     </div>
   )
