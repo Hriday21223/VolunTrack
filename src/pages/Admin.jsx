@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -165,7 +165,10 @@ export default function Admin() {
   const [historyEvents, setHistoryEvents] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [invoiceActionId, setInvoiceActionId] = useState(null)
+  const [customerSearch, setCustomerSearch] = useState('')
   const [officeHoursDraft, setOfficeHoursDraft] = useState({ days: '', hours: '', note: '' })
+  const [paymentDraft, setPaymentDraft] = useState({ bankName: '', accountName: '', accountNumber: '', routingNumber: '', swift: '', reference: '', notes: '' })
+  const [savingPaymentInfo, setSavingPaymentInfo] = useState(false)
   const [loadingOfficeHours, setLoadingOfficeHours] = useState(false)
   const [savingOfficeHours, setSavingOfficeHours] = useState(false)
   const [invites, setInvites] = useState([])
@@ -435,9 +438,9 @@ export default function Admin() {
   }
 
   const exportCsv = () => {
-    const header = 'Name,Code,Contact Email,Payment Status,Payment Notes,Students,Joined\n'
+    const header = 'Name,Account ID,Code,Contact Email,Payment Status,Payment Notes,Students,Joined\n'
     const rows = schools.map((s) =>
-      `"${s.name}","${s.pin}","${s.contact_email || ''}","${s.payment_status}","${s.payment_notes || ''}",${s.student_count},"${new Date(s.created_at).toLocaleDateString()}"`
+      `"${s.name}","${s.account_code || ''}","${s.pin}","${s.contact_email || ''}","${s.payment_status}","${s.payment_notes || ''}",${s.student_count},"${new Date(s.created_at).toLocaleDateString()}"`
     ).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -570,7 +573,7 @@ export default function Admin() {
 
   const openInvoiceModal = (entityType, entity) => {
     const numericAmount = (entity.price_amount || '').replace(/[^0-9.]/g, '')
-    setInvoiceModal({ entityType, entityId: entity.id, entityName: entity.name })
+    setInvoiceModal({ entityType, entityId: entity.id, entityName: entity.name, accountCode: entity.account_code })
     setInvoiceAmountDraft(numericAmount)
     setInvoiceBillingPeriodDraft(entity.price_period || 'monthly')
     setInvoiceDescriptionDraft('')
@@ -609,7 +612,7 @@ export default function Admin() {
   }
 
   const openHistory = async (entityType, entity) => {
-    setHistoryModal({ entityType, entityId: entity.id, entityName: entity.name })
+    setHistoryModal({ entityType, entityId: entity.id, entityName: entity.name, accountCode: entity.account_code })
     setLoadingHistory(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
@@ -631,7 +634,7 @@ export default function Admin() {
         body: JSON.stringify({ status }),
       })
       if (!res.ok) throw new Error('Failed')
-      if (historyModal) await openHistory(historyModal.entityType, { id: historyModal.entityId, name: historyModal.entityName })
+      if (historyModal) await openHistory(historyModal.entityType, { id: historyModal.entityId, name: historyModal.entityName, account_code: historyModal.accountCode })
       if (historyModal?.entityType === 'school') loadSchools(); else loadOrganizations()
       setToastMessage(status === 'paid' ? 'Invoice marked paid' : 'Invoice voided'); setToast(true)
     } catch { setToastMessage('Failed to update invoice'); setToast(true) } finally { setInvoiceActionId(null) }
@@ -641,12 +644,38 @@ export default function Admin() {
     generateInvoicePDF({
       invoiceNumber: event.invoice_number,
       entityName: historyModal?.entityName,
+      accountCode: historyModal?.accountCode,
       amount: event.amount,
       billingPeriod: event.billing_period,
       description: event.description,
       dueDate: event.due_date,
       createdAt: event.created_at,
     })
+  }
+
+  const loadPaymentInstructions = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/payment-instructions`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) {
+        const data = await res.json()
+        setPaymentDraft((prev) => ({ ...prev, ...data }))
+      }
+    } catch {}
+  }, [])
+
+  const savePaymentInstructions = async () => {
+    setSavingPaymentInfo(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/payment-instructions`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(paymentDraft),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setToastMessage('Payment instructions updated'); setToast(true)
+    } catch { setToastMessage('Failed to update payment instructions'); setToast(true) } finally { setSavingPaymentInfo(false) }
   }
 
   const loadOfficeHours = useCallback(async () => {
@@ -662,12 +691,24 @@ export default function Admin() {
   // Loads whichever tab's data is lazy-fetched — runs on mount for a
   // deep link (e.g. /admin/schools) and again on every tab switch.
   useEffect(() => {
+    // The box is shared by the Schools and Organizations tabs; a query left
+    // over from the other tab would silently hide every row.
+    setCustomerSearch('')
     if (tab === 'schools') loadSchools()
     else if (tab === 'invites') loadInvites()
     else if (tab === 'organizations') loadOrganizations()
-    else if (tab === 'settings') loadOfficeHours()
+    else if (tab === 'settings') { loadOfficeHours(); loadPaymentInstructions() }
     else if (tab === 'api') loadApiInfo()
-  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadApiInfo])
+  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadApiInfo])
+
+  // One box filters both customer lists — name, contact email, or the account
+  // ID an admin has just read off an incoming bank transfer.
+  const matchesCustomerSearch = (entity) => {
+    const q = customerSearch.trim().toLowerCase()
+    if (!q) return true
+    return [entity.name, entity.contact_email, entity.account_code, entity.pin]
+      .some((field) => String(field || '').toLowerCase().includes(q))
+  }
 
   const saveOfficeHours = async () => {
     if (!officeHoursDraft.days.trim() || !officeHoursDraft.hours.trim()) return
@@ -908,7 +949,7 @@ export default function Admin() {
   return (
     <AppLayout
       title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'api' ? 'API' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Public contact page content' : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -1086,7 +1127,19 @@ export default function Admin() {
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Invite school
               </button>
             </div>
-            {schools.map((s) => (
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-earth-400 shrink-0" />
+              <input
+                className="input flex-1"
+                placeholder="Search by name, email, or account ID…"
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+              />
+            </div>
+            {customerSearch.trim() && schools.filter(matchesCustomerSearch).length === 0 && (
+              <p className="text-sm text-earth-500 text-center py-8">No schools match “{customerSearch.trim()}”.</p>
+            )}
+            {schools.filter(matchesCustomerSearch).map((s) => (
               <Card key={s.id} padded={false} className="p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1094,6 +1147,7 @@ export default function Admin() {
                     <div className="min-w-0">
                       <p className="font-medium text-sm">{s.name}</p>
                       <p className="text-xs text-earth-400">
+                        {s.account_code && <>Account ID: <span className="font-mono">{s.account_code}</span> · </>}
                         Code: <span className="font-mono">{s.pin}</span>
                         {s.contact_email && ` · ${s.contact_email}`}
                       </p>
@@ -1265,7 +1319,19 @@ export default function Admin() {
           </Card>
         ) : (
           <div className="space-y-3">
-            {organizations.map((org) => (
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-earth-400 shrink-0" />
+              <input
+                className="input flex-1"
+                placeholder="Search by name, email, or account ID…"
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+              />
+            </div>
+            {customerSearch.trim() && organizations.filter(matchesCustomerSearch).length === 0 && (
+              <p className="text-sm text-earth-500 text-center py-8">No organizations match “{customerSearch.trim()}”.</p>
+            )}
+            {organizations.filter(matchesCustomerSearch).map((org) => (
               <Card key={org.id} padded={false} className="p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1273,6 +1339,7 @@ export default function Admin() {
                     <div className="min-w-0">
                       <p className="font-medium text-sm">{org.name}</p>
                       <p className="text-xs text-earth-400">
+                        {org.account_code && <>Account ID: <span className="font-mono">{org.account_code}</span> · </>}
                         {org.contact_email}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -1435,6 +1502,7 @@ export default function Admin() {
           </Card>
         </>
       ) : tab === 'settings' ? (
+        <div className="space-y-6">
         <Card>
           <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-brand-600" /> Office hours
@@ -1480,6 +1548,91 @@ export default function Admin() {
             </div>
           )}
         </Card>
+        <Card>
+          <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-brand-600" /> Payment instructions
+          </h3>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+            How schools and organizations pay you. Shown on their dashboards next to their account ID, and included in
+            invoice emails and payment notices. Leave a field blank to hide it.
+          </p>
+          <div className="space-y-3 max-w-sm">
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Bank name</label>
+                <input
+                  type="text"
+                  value={paymentDraft.bankName || ''}
+                  onChange={(e) => setPaymentDraft({ ...paymentDraft, bankName: e.target.value })}
+                  placeholder="First National Bank"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Account name</label>
+                <input
+                  type="text"
+                  value={paymentDraft.accountName || ''}
+                  onChange={(e) => setPaymentDraft({ ...paymentDraft, accountName: e.target.value })}
+                  placeholder="VolunTrack LLC"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Account number</label>
+                <input
+                  type="text"
+                  value={paymentDraft.accountNumber || ''}
+                  onChange={(e) => setPaymentDraft({ ...paymentDraft, accountNumber: e.target.value })}
+                  placeholder="000123456789"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Routing number</label>
+                <input
+                  type="text"
+                  value={paymentDraft.routingNumber || ''}
+                  onChange={(e) => setPaymentDraft({ ...paymentDraft, routingNumber: e.target.value })}
+                  placeholder="021000021"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">SWIFT / BIC</label>
+                <input
+                  type="text"
+                  value={paymentDraft.swift || ''}
+                  onChange={(e) => setPaymentDraft({ ...paymentDraft, swift: e.target.value })}
+                  placeholder="FNBAUS33"
+                  className="input mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Payment reference</label>
+                <input
+                  type="text"
+                  value={paymentDraft.reference || ''}
+                  onChange={(e) => setPaymentDraft({ ...paymentDraft, reference: e.target.value })}
+                  placeholder="Use your Account ID as the reference"
+                  className="input mt-1"
+                />
+              </div>
+            <div>
+              <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Other notes</label>
+              <textarea
+                rows={3}
+                value={paymentDraft.notes || ''}
+                onChange={(e) => setPaymentDraft({ ...paymentDraft, notes: e.target.value })}
+                placeholder="Cheques payable to VolunTrack LLC, 123 Main St…"
+                className="input mt-1"
+              />
+            </div>
+            <button onClick={savePaymentInstructions} disabled={savingPaymentInfo} className="btn-primary btn-sm">
+              {savingPaymentInfo ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </Card>
+        </div>
       ) : tab === 'api' ? (
         <div className="space-y-6">
           <Card>
@@ -1632,6 +1785,12 @@ export default function Admin() {
                   <div className="mt-1 text-xs font-medium uppercase tracking-wide text-earth-600 dark:text-earth-300">
                     {c.subject || 'General question'} {c.direction === 'outbound' && <span className="text-brand-500 normal-case">· awaiting their reply</span>}
                   </div>
+                  {c.account_code && (
+                    <div className="mt-1 text-xs text-earth-500">
+                      Customer ID: <span className="font-mono">{c.account_code}</span>
+                      {c.account_name ? ` · ${c.account_name}` : ' · no matching account'}
+                    </div>
+                  )}
                   <p className="mt-2 text-sm text-earth-800 dark:text-earth-200 whitespace-pre-wrap">{c.message}</p>
                   {expandedThreadId === id && (
                     <div className="mt-3 space-y-2 border-l-2 border-earth-200 dark:border-earth-700 pl-3">

@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { Camera, Save, School, GraduationCap, User as UserIcon, Mail, Hash } from 'lucide-react'
+import { useRef, useState, useEffect } from 'react'
+import { Camera, Save, School, GraduationCap, User as UserIcon, Mail, Hash, Lock, Copy, Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -8,6 +8,14 @@ import Toast from '@/components/Toast.jsx'
 import { fmtHours } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// Shown under the name for accounts that don't have a school/grade of their own.
+const ROLE_LABEL = {
+  school: 'School account',
+  school_staff: 'School co-admin',
+  org: 'Organization account',
+  parent: 'Parent account',
+}
 
 export default function Profile() {
   const { user, updateProfile, refreshUser } = useAuth()
@@ -24,6 +32,36 @@ export default function Profile() {
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('Profile saved')
   const [error, setError] = useState('')
+  // Billing account code, for the institution roles that have one. Read-only
+  // and issued once — see the account_code immutability trigger in server/db.js.
+  const [accountCode, setAccountCode] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const isBilledAccount = ['school', 'school_staff', 'org'].includes(user?.role)
+  // Grade, student ID and "School / Organization" only mean something for
+  // someone who logs their own hours. An institution or a parent account has
+  // none of them, so the fields are hidden rather than sitting there empty and
+  // confusing — a school being asked which school it belongs to, and so on.
+  const isVolunteerProfile = !['school', 'school_staff', 'org', 'parent'].includes(user?.role)
+
+  useEffect(() => {
+    if (!isBilledAccount) return
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    let cancelled = false
+    fetch(`${apiUrl}/invoices/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled && data?.accountCode) setAccountCode(data.accountCode) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [isBilledAccount])
+
+  const copyAccountCode = async () => {
+    try {
+      await navigator.clipboard.writeText(accountCode)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch { /* clipboard blocked — the code is selectable on screen anyway */ }
+  }
 
   const onChange = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
@@ -41,9 +79,9 @@ export default function Profile() {
     if (!form.name.trim()) { setError('Please enter your name.'); return }
     updateProfile({
       name: form.name.trim(),
-      school: form.school.trim(),
-      grade: form.grade.trim(),
-      studentIdNumber: form.studentIdNumber.trim(),
+      school: isVolunteerProfile ? form.school.trim() : '',
+      grade: isVolunteerProfile ? form.grade.trim() : '',
+      studentIdNumber: isVolunteerProfile ? form.studentIdNumber.trim() : '',
       avatar: form.avatar,
     })
     // Server-backed accounts also need the durable fields written through —
@@ -55,7 +93,12 @@ export default function Profile() {
         const res = await fetch(`${apiUrl}/auth/profile`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: form.name.trim(), grade: form.grade.trim(), studentIdNumber: form.studentIdNumber.trim() }),
+          body: JSON.stringify({
+            name: form.name.trim(),
+            ...(isVolunteerProfile
+              ? { grade: form.grade.trim(), studentIdNumber: form.studentIdNumber.trim() }
+              : {}),
+          }),
         })
         if (res.ok) await refreshUser()
       } catch {
@@ -91,8 +134,14 @@ export default function Profile() {
             />
           </div>
           <div className="mt-3 font-display font-semibold text-lg">{form.name || 'Volunteer'}</div>
-          <div className="text-sm text-earth-500 dark:text-earth-400">{form.school || 'No school set'}</div>
-          <div className="text-xs text-earth-500 dark:text-earth-400">{form.grade}</div>
+          {isVolunteerProfile ? (
+            <>
+              <div className="text-sm text-earth-500 dark:text-earth-400">{form.school || 'No school set'}</div>
+              <div className="text-xs text-earth-500 dark:text-earth-400">{form.grade}</div>
+            </>
+          ) : (
+            <div className="text-sm text-earth-500 dark:text-earth-400">{ROLE_LABEL[user?.role]}</div>
+          )}
         </Card>
 
         <Card className="lg:col-span-2">
@@ -100,9 +149,27 @@ export default function Profile() {
           <form onSubmit={onSave} className="grid sm:grid-cols-2 gap-4">
             <Field icon={UserIcon}      label="Full name" value={form.name}  onChange={onChange('name')} required />
             <Field icon={Mail}          label="Email"     value={form.email} onChange={onChange('email')} disabled />
-            <Field icon={School}        label="School / Organization" value={form.school} onChange={onChange('school')} />
-            <Field icon={GraduationCap} label="Grade or Role"        value={form.grade}  onChange={onChange('grade')} />
-            <Field icon={Hash}          label="Student ID number"    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />
+            {isVolunteerProfile && (
+              <>
+                <Field icon={School}        label="School / Organization" value={form.school} onChange={onChange('school')} />
+                <Field icon={GraduationCap} label="Grade or Role"        value={form.grade}  onChange={onChange('grade')} />
+                <Field icon={Hash}          label="Student ID number"    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />
+              </>
+            )}
+            {accountCode && (
+              <div className="sm:col-span-2">
+                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" /> Customer ID</label>
+                <div className="flex items-center gap-2">
+                  <input className="input font-mono flex-1" value={accountCode} readOnly disabled />
+                  <button type="button" onClick={copyAccountCode} className="btn-ghost btn-sm shrink-0" title="Copy customer ID">
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-earth-500 mt-1">
+                  Issued once and permanent — it can't be changed or removed. Quote it on payments and when you contact us.
+                </p>
+              </div>
+            )}
             {error && <div className="sm:col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{error}</div>}
             <div className="sm:col-span-2">
               <button className="btn-primary" type="submit">

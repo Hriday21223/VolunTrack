@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Hash, Copy, Check } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -11,18 +11,19 @@ import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
+import PaymentDetails from '@/components/PaymentDetails.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 const SCHOOL_TOUR_STEPS = [
-  { selector: '[data-tour="tab-reports"]', title: 'Reports', description: 'Review the PDF proof documents students upload, and approve or reject each one.' },
   { selector: '[data-tour="tab-students"]', title: 'Students', description: 'See everyone linked to your school, and add students by email.' },
-  { selector: '[data-tour="tab-chat"]', title: 'Chat', description: 'Send an announcement to every student linked to your school at once.' },
+  { selector: '[data-tour="tab-reports"]', title: 'Reports', description: 'Review the PDF proof documents students upload and approve or reject each one — and export every student\'s hours for a date range.' },
+  { selector: '[data-tour="tab-chat"]', title: 'Announcements', description: 'Send a message to every student linked to your school at once.' },
 ]
 
-// Co-admins tab is only rendered for the primary school-admin role, not
+// School setup is only rendered for the primary school-admin role, not
 // school_staff — so its tour step only applies there too.
-const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: 'Co-admins', description: 'Add up to 10 co-admins who can share the day-to-day work of reviewing uploads and managing students.' }
+const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: 'School setup', description: 'Add co-admins, let students sign in with your school\'s Google or Microsoft account, and serve VolunTrack on your own domain.' }
 
 export default function SchoolDashboard() {
   const { user, refreshUser } = useAuth()
@@ -41,12 +42,18 @@ export default function SchoolDashboard() {
   const [adding, setAdding] = useState(false)
   const [addErr, setAddErr] = useState('')
   const [subTab, setSubTab] = useState('reports')
+  // Reports and School setup each group what used to be their own top-level
+  // tabs, so they carry their own sub-tab state rather than sharing subTab
+  // (which the students list/add toggle already owns).
+  const [reportTab, setReportTab] = useState('documents')
+  const [setupTab, setSetupTab] = useState('staff')
   const [taskForm, setTaskForm] = useState({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '' })
   const [taskBusy, setTaskBusy] = useState(false)
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [sendingMsg, setSendingMsg] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState(null)
+  const [codeCopied, setCodeCopied] = useState(false)
   const [adminNotifs, setAdminNotifs] = useState([])
   const [confirmRef, setConfirmRef] = useState('')
   const [confirmBusy, setConfirmBusy] = useState(false)
@@ -55,6 +62,7 @@ export default function SchoolDashboard() {
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffErr, setStaffErr] = useState('')
   const [invoices, setInvoices] = useState([])
+  const [accountCode, setAccountCode] = useState(null)
   // Invoice currently open in the preview overlay, or null.
   const [previewInvoice, setPreviewInvoice] = useState(null)
 
@@ -163,6 +171,7 @@ export default function SchoolDashboard() {
         if (invoiceRes.ok) {
           const data = await invoiceRes.json()
           setInvoices(data.invoices || [])
+          setAccountCode(data.accountCode || null)
         }
       }
     } catch (e) {
@@ -170,6 +179,15 @@ export default function SchoolDashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const copyCode = async () => {
+    if (!schoolInfo?.pin) return
+    try {
+      await navigator.clipboard.writeText(schoolInfo.pin)
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
+    } catch { /* clipboard blocked — the code is selectable on screen */ }
   }
 
   const handleSubmitConfirmation = async (e) => {
@@ -307,6 +325,7 @@ export default function SchoolDashboard() {
   // login/me and refreshed via loadData below) — NOT the /school/info fetch.
   // That fetch can fail (network error, rate limit) and must never fail the
   // gate open; schoolInfo is only used below for supplementary display.
+  const billingTab = tab === 'setup' && setupTab === 'billing' && user?.role === 'school'
   const paymentStatus = user?.schoolPaymentStatus
   if (isSchoolAdmin && paymentStatus && paymentStatus !== 'paid') {
     return (
@@ -333,8 +352,9 @@ export default function SchoolDashboard() {
               <p className="text-sm text-red-500 mb-3">{schoolInfo?.paymentNotes || 'Your confirmation could not be verified.'} Please double-check the number and resubmit.</p>
             )}
             {paymentStatus === 'unpaid' && (
-              <p className="text-sm text-earth-500 mb-3">Please complete payment using the instructions sent to your school's email, then enter the bank confirmation number below.</p>
+              <p className="text-sm text-earth-500 mb-3">Please complete payment using the details below, then enter the bank confirmation number.</p>
             )}
+            <PaymentDetails accountCode={accountCode} className="mb-3 text-left" />
             {paymentStatus !== 'pending' && user?.role === 'school' && (
               <form onSubmit={handleSubmitConfirmation} className="space-y-3">
                 <label htmlFor="confirmRef" className="text-sm text-earth-500">Please enter your bank confirmation / reference number</label>
@@ -380,31 +400,31 @@ export default function SchoolDashboard() {
       }
       action={
         <div className="flex gap-2">
-          <button data-tour="tab-reports" onClick={() => setTab('pdfs')} className={`btn-sm ${tab === 'pdfs' ? 'btn-primary' : 'btn-ghost'}`}>Reports</button>
           {isSchoolAdmin && (
-            <>
-              <button data-tour="tab-students" onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>Students</button>
-              <button data-tour="tab-chat" onClick={() => { setTab('chat'); loadMessages() }} className={`btn-sm ${tab === 'chat' ? 'btn-primary' : 'btn-ghost'}`}>
-                <MessageSquare className="w-3.5 h-3.5 mr-1" /> Chat
-              </button>
-              {user?.role === 'school' && (
-                <button data-tour="tab-staff" onClick={() => setTab('staff')} className={`btn-sm ${tab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
-                  <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
-                </button>
-              )}
-              <button onClick={() => setTab('hours')} className={`btn-sm ${tab === 'hours' ? 'btn-primary' : 'btn-ghost'}`}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Hours
-              </button>
-              {user?.role === 'school' && (
-                <button onClick={() => setTab('sso')} className={`btn-sm ${tab === 'sso' ? 'btn-primary' : 'btn-ghost'}`}>
-                  <KeyRound className="w-3.5 h-3.5 mr-1" /> Sign-in
-                </button>
-              )}
-            </>
+            <button data-tour="tab-students" onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>Students</button>
           )}
+          <button data-tour="tab-reports" onClick={() => setTab('pdfs')} className={`btn-sm ${tab === 'pdfs' ? 'btn-primary' : 'btn-ghost'}`}>Reports</button>
           <button onClick={() => setTab('volunteer')} className={`btn-sm ${tab === 'volunteer' ? 'btn-primary' : 'btn-ghost'}`}>
             <Users className="w-3.5 h-3.5 mr-1" /> Volunteer
           </button>
+          {user?.role === 'school' && (
+            <button data-tour="tab-staff" onClick={() => setTab('setup')} className={`btn-sm ${tab === 'setup' ? 'btn-primary' : 'btn-ghost'}`}>
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> School setup
+            </button>
+          )}
+          {/* Announcements are a quick action, not a section of the dashboard —
+              an icon keeps the tab row down to the four places you actually work. */}
+          {isSchoolAdmin && (
+            <button
+              data-tour="tab-chat"
+              onClick={() => { setTab('chat'); loadMessages() }}
+              className={`btn-sm ${tab === 'chat' ? 'btn-primary' : 'btn-ghost'}`}
+              title="Announcements"
+              aria-label="Announcements"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       }
     >
@@ -415,7 +435,38 @@ export default function SchoolDashboard() {
         />
       )}
       <div className="max-w-4xl mx-auto space-y-4">
-        {adminNotifs.length > 0 && (
+        {/* Billing used to render on every tab, which buried whichever tab you
+            were actually on. It lives under School setup -> Billing now. */}
+        {/* Each sub-tab bar sits at the top of the tab it belongs to. */}
+        {tab === 'pdfs' && isSchoolAdmin && (
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setReportTab('documents')} className={`btn-sm ${reportTab === 'documents' ? 'btn-primary' : 'btn-ghost'}`}>
+              <FileText className="w-3.5 h-3.5 mr-1" /> Documents
+            </button>
+            <button onClick={() => setReportTab('hours')} className={`btn-sm ${reportTab === 'hours' ? 'btn-primary' : 'btn-ghost'}`}>
+              <Download className="w-3.5 h-3.5 mr-1" /> Hours
+            </button>
+          </div>
+        )}
+
+        {tab === 'setup' && user?.role === 'school' && (
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setSetupTab('staff')} className={`btn-sm ${setupTab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
+            </button>
+            <button onClick={() => setSetupTab('sso')} className={`btn-sm ${setupTab === 'sso' ? 'btn-primary' : 'btn-ghost'}`}>
+              <KeyRound className="w-3.5 h-3.5 mr-1" /> Sign-in
+            </button>
+            <button onClick={() => setSetupTab('domain')} className={`btn-sm ${setupTab === 'domain' ? 'btn-primary' : 'btn-ghost'}`}>
+              <Globe className="w-3.5 h-3.5 mr-1" /> Domain
+            </button>
+            <button onClick={() => setSetupTab('billing')} className={`btn-sm ${setupTab === 'billing' ? 'btn-primary' : 'btn-ghost'}`}>
+              <Receipt className="w-3.5 h-3.5 mr-1" /> Billing
+            </button>
+          </div>
+        )}
+
+        {billingTab && adminNotifs.length > 0 && (
           <Card>
             <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Bell className="w-4 h-4 text-brand-600" /> Payment notices</h3>
             <div className="space-y-2">
@@ -428,7 +479,7 @@ export default function SchoolDashboard() {
             </div>
           </Card>
         )}
-        {schoolInfo?.paymentDueDate && (() => {
+        {billingTab && schoolInfo?.paymentDueDate && (() => {
           const daysLeft = Math.ceil((new Date(schoolInfo.paymentDueDate) - new Date()) / (1000 * 60 * 60 * 24))
           if (daysLeft <= 10 && daysLeft >= 0) {
             return (
@@ -440,7 +491,12 @@ export default function SchoolDashboard() {
           }
           return null
         })()}
-        {isSchoolAdmin && invoices.length > 0 && (
+        {billingTab && accountCode && (
+          <Card>
+            <PaymentDetails accountCode={accountCode} />
+          </Card>
+        )}
+        {billingTab && invoices.length > 0 && (
           <Card>
             <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" /> Invoices</h3>
             <div className="space-y-2">
@@ -473,6 +529,7 @@ export default function SchoolDashboard() {
                       onClick={() => generateInvoicePDF({
                         invoiceNumber: inv.invoice_number,
                         entityName: schoolInfo?.name,
+                        accountCode,
                         amount: inv.amount,
                         billingPeriod: inv.billing_period,
                         description: inv.description,
@@ -541,6 +598,26 @@ export default function SchoolDashboard() {
 
         {tab === 'students' && isSchoolAdmin && (
           <>
+            {schoolInfo?.pin && (
+              <Card className="mb-4">
+                <h3 className="font-semibold mb-1 flex items-center gap-2"><Hash className="w-4 h-4 text-brand-600" /> School code</h3>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+                  Students enter this in Settings → Join school to link themselves to you.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 overflow-x-auto rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{schoolInfo.pin}</code>
+                  <button type="button" onClick={copyCode} className="btn-sm btn-ghost shrink-0" title="Copy school code">
+                    {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                {user?.role === 'school' && (
+                  <p className="text-xs text-earth-500 dark:text-earth-400 mt-2">
+                    To change it, go to <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>.
+                  </p>
+                )}
+              </Card>
+            )}
+
             <div className="flex gap-2 mb-4">
               <button onClick={() => setSubTab('list')} className={`btn-sm ${subTab === 'list' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Search className="w-3.5 h-3.5 mr-1" /> Student list ({students.length})
@@ -604,7 +681,7 @@ export default function SchoolDashboard() {
           </>
         )}
 
-        {tab === 'hours' && isSchoolAdmin && (
+        {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && (
           <Card>
             <h2 className="text-lg font-semibold mb-1">Hour reports</h2>
             <p className="text-sm text-slate-500 mb-4">
@@ -615,7 +692,7 @@ export default function SchoolDashboard() {
           </Card>
         )}
 
-        {tab === 'sso' && user?.role === 'school' && (
+        {tab === 'setup' && setupTab === 'sso' && user?.role === 'school' && (
           <Card>
             <h2 className="text-lg font-semibold mb-1">Single sign-on</h2>
             <p className="text-sm text-slate-500 mb-4">
@@ -625,8 +702,8 @@ export default function SchoolDashboard() {
           </Card>
         )}
 
-        {tab === 'sso' && user?.role === 'school' && (
-          <Card className="mt-6">
+        {tab === 'setup' && setupTab === 'domain' && user?.role === 'school' && (
+          <Card>
             <h2 className="text-lg font-semibold mb-1">Custom domain</h2>
             <p className="text-sm text-slate-500 mb-4">
               Serve VolunTrack to your students on your own web address instead of the shared one.
@@ -635,7 +712,7 @@ export default function SchoolDashboard() {
           </Card>
         )}
 
-        {tab === 'staff' && user?.role === 'school' && (
+        {tab === 'setup' && setupTab === 'staff' && user?.role === 'school' && (
           <div className="space-y-4">
             <Card>
               <h3 className="font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Add a co-admin</h3>
@@ -785,7 +862,7 @@ export default function SchoolDashboard() {
           </div>
         )}
 
-        {tab === 'pdfs' && (
+        {tab === 'pdfs' && reportTab === 'documents' && (
         <div className="space-y-3">
           {loading ? (
             <p className="text-center text-earth-400 py-8">Loading…</p>
@@ -836,6 +913,7 @@ export default function SchoolDashboard() {
           getBlob={() => generateInvoicePDF({
             invoiceNumber: previewInvoice.invoice_number,
             entityName: schoolInfo?.name,
+            accountCode,
             amount: previewInvoice.amount,
             billingPeriod: previewInvoice.billing_period,
             description: previewInvoice.description,

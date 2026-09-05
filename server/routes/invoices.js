@@ -3,7 +3,8 @@ import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
-import { sendEmail, emailFooterHtml } from '../email.js'
+import { sendEmail, emailFooterHtml, paymentInstructionsHtml } from '../email.js'
+import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 
 const router = express.Router()
@@ -28,7 +29,7 @@ const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 
 
 // Mirrors paymentNoticeHtml in server/routes/school.js, but for a single
 // numbered invoice rather than a free-text payment notice.
-function invoiceNoticeHtml({ entityType, entityName, invoiceNumber, amount, billingPeriod, dueDate, description }) {
+function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, amount, billingPeriod, dueDate, description, paymentInstructions }) {
   const dashboardLink = `${process.env.FRONTEND_URL || ''}${entityType === 'organization' ? '/organization/dashboard' : '/school/dashboard'}`
   const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
@@ -37,10 +38,12 @@ function invoiceNoticeHtml({ entityType, entityName, invoiceNumber, amount, bill
     `<p>You have a new invoice from VolunTrack.</p>`,
     `<table cellpadding="4" cellspacing="0">`,
     `<tr><td><strong>Invoice</strong></td><td>${escapeHtml(invoiceNumber)}</td></tr>`,
+    accountCode ? `<tr><td><strong>Account ID</strong></td><td>${escapeHtml(accountCode)}</td></tr>` : '',
     `<tr><td><strong>Amount</strong></td><td>$${Number(amount).toFixed(2)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>`,
     dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
     `</table>`,
     description ? `<p>${escapeHtml(description).replace(/\n/g, '<br>')}</p>` : '',
+    paymentInstructionsHtml(paymentInstructions, accountCode),
     `<p>View your account and submit payment confirmation from your dashboard: <a href="${dashboardLink}">${dashboardLink}</a></p>`,
     emailFooterHtml(),
   ].join('')
@@ -65,7 +68,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
   }
 
   try {
-    const { rows: entityRows } = await query(`SELECT name, contact_email FROM ${table} WHERE id = $1`, [entityId])
+    const { rows: entityRows } = await query(`SELECT name, contact_email, account_code FROM ${table} WHERE id = $1`, [entityId])
     if (entityRows.length === 0) return res.status(404).json({ error: 'Not found.' })
     const entity = entityRows[0]
 
@@ -89,7 +92,17 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
       const result = await sendEmail({
         to: entity.contact_email,
         subject: `Invoice ${invoiceNumber} from VolunTrack`,
-        html: invoiceNoticeHtml({ entityType, entityName: entity.name, invoiceNumber, amount, billingPeriod, dueDate, description }),
+        html: invoiceNoticeHtml({
+          entityType,
+          entityName: entity.name,
+          accountCode: entity.account_code,
+          invoiceNumber,
+          amount,
+          billingPeriod,
+          dueDate,
+          description,
+          paymentInstructions: await getPaymentInstructions(),
+        }),
         idempotencyKey: `invoice/${id}`,
       })
       emailSent = result.sent
@@ -171,15 +184,19 @@ router.get('/mine', limiter, requireDb, requireAuth('school', 'school_staff', 'o
     const column = entityType === 'organization' ? 'organization_id' : 'school_id'
     const { rows: userRows } = await query(`SELECT ${column} FROM users WHERE id = $1`, [req.auth.sub])
     const entityId = userRows[0]?.[column]
-    if (!entityId) return res.json({ invoices: [], entityName: null })
+    if (!entityId) return res.json({ invoices: [], entityName: null, accountCode: null })
 
-    const { rows: entityRows } = await query(`SELECT name FROM ${table} WHERE id = $1`, [entityId])
+    const { rows: entityRows } = await query(`SELECT name, account_code FROM ${table} WHERE id = $1`, [entityId])
     const { rows } = await query(
       `SELECT id, invoice_number, amount, billing_period, description, due_date, status, created_at, paid_at
        FROM invoices WHERE entity_type = $1 AND entity_id = $2 ORDER BY created_at DESC LIMIT 50`,
       [entityType, entityId],
     )
-    return res.json({ invoices: rows, entityName: entityRows[0]?.name || null })
+    return res.json({
+      invoices: rows,
+      entityName: entityRows[0]?.name || null,
+      accountCode: entityRows[0]?.account_code || null,
+    })
   } catch (error) {
     console.error('list own invoices failed:', error)
     return res.status(500).json({ error: 'Could not fetch invoices.' })

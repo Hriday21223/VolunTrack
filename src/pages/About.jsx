@@ -70,7 +70,7 @@ const AUDIENCES = [
   {
     icon: Building, title: 'Schools & districts',
     body: 'Adopt VolunTrack across your entire school or district. Give students a standardized way to log, verify, and report service hours.',
-    perks: ['District-wide tracking', 'Admin dashboards', 'Partnership support'],
+    perks: ['District-wide tracking', 'Admin & co-admin dashboards', 'Partnership support'],
   },
   {
     icon: Globe, title: 'Nonprofits & community groups',
@@ -84,7 +84,7 @@ const FAQS = [
   { q: 'Can I export my hours for school requirements?', a: 'Absolutely. From the Reports page you can download a formatted PDF, export a CSV for spreadsheets, or print a certificate of service. Every entry carries its date, hours, activity, category, supervisor, and verification status. If you\'re linked to a school, you can also submit a report to them directly and track whether it\'s approved.' },
   { q: 'How does supervisor verification work?', a: 'Add your supervisor\'s email when you log the hours. They get a one-time link to review that specific entry and approve it with a signature, or reject it — no account required. The log then shows as Pending, Verified, or Rejected, and verified hours are the ones your school and linked parents can rely on.' },
   { q: 'Is my data private?', a: 'By default, your data is stored entirely in your browser\'s local storage and never leaves your device. If you create an account to sync across devices or link to a school, your data is stored in a secure database and protected by password authentication, optional two-factor authentication, and an optional app unlock PIN. We never sell or share your data.' },
-  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. Schools can create an account and share a join code so students link their hours to the school for review and approval, with dashboards for reports, students, announcements, and co-admins. Organization accounts (for managing multiple schools) are set up by invitation, on custom pricing — contact us to get started.' },
+  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. Schools can create an account and share a join code so students link their hours to the school for review and approval, with dashboards for reports, students, and announcements. Up to 10 co-admins can share a school\'s dashboard, so the work isn\'t stuck with one login. Organization accounts (for managing multiple schools) are set up by invitation, on custom pricing — contact us to get started.' },
   { q: 'Can a parent follow my hours?', a: 'Only if you invite them. In Settings, generate a family link code and share it with your parent, who enters it in their own account. They get a read-only view of hours logged from that point onward — they can\'t edit or delete anything — plus an optional weekly progress email they can unsubscribe from at any time.' },
   { q: 'Where can I find volunteer opportunities?', a: 'The Opportunities page lists public tasks posted by schools and organizations, sorted by distance if you share your location. Sign up in one click; once the organizer approves you and marks you present, you can log those hours straight from the task.' },
   { q: 'What if I forget to log a session?', a: 'You can log past sessions anytime — just set the date when you add the entry. The Reminders page also lets you schedule recurring nudges so sessions don\'t pile up unrecorded.' },

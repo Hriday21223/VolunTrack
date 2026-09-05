@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
+import PaymentDetails from '@/components/PaymentDetails.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -37,6 +38,7 @@ export default function OrganizationDashboard() {
   // Invoice currently open in the preview overlay, or null.
   const [previewInvoice, setPreviewInvoice] = useState(null)
   const [orgName, setOrgName] = useState('')
+  const [accountCode, setAccountCode] = useState(null)
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -46,6 +48,7 @@ export default function OrganizationDashboard() {
       const data = await res.json()
       setInvoices(data.invoices || [])
       if (data.entityName) setOrgName(data.entityName)
+      setAccountCode(data.accountCode || null)
     } catch {}
   }, [])
 
@@ -135,6 +138,11 @@ export default function OrganizationDashboard() {
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
       )}
+      {tab === 'schools' && accountCode && (
+        <Card className="mb-4">
+          <PaymentDetails accountCode={accountCode} />
+        </Card>
+      )}
       {tab === 'schools' && invoices.length > 0 && (
         <Card className="mb-4">
           <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" /> Invoices</h3>
@@ -168,6 +176,7 @@ export default function OrganizationDashboard() {
                     onClick={() => generateInvoicePDF({
                       invoiceNumber: inv.invoice_number,
                       entityName: orgName,
+                      accountCode,
                       amount: inv.amount,
                       billingPeriod: inv.billing_period,
                       description: inv.description,
@@ -324,6 +333,7 @@ export default function OrganizationDashboard() {
           getBlob={() => generateInvoicePDF({
             invoiceNumber: previewInvoice.invoice_number,
             entityName: orgName,
+            accountCode,
             amount: previewInvoice.amount,
             billingPeriod: previewInvoice.billing_period,
             description: previewInvoice.description,

@@ -1,11 +1,12 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
-import { query, hasDatabase } from '../db.js'
+import { query, hasDatabase, nextAccountCode } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
+import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 
 const router = express.Router()
@@ -53,8 +54,8 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
 
     const orgId = uid('org')
     await query(
-      'INSERT INTO organizations (id, name, contact_email) VALUES ($1, $2, $3)',
-      [orgId, name, email],
+      'INSERT INTO organizations (id, name, contact_email, account_code) VALUES ($1, $2, $3, $4)',
+      [orgId, name, email, await nextAccountCode('organizations')],
     )
 
     const hash = await hashPassword(password)
@@ -269,7 +270,7 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
         'INSERT INTO admin_notifications (id, organization_id, message) VALUES ($1, $2, $3)',
         [id, req.params.organizationId, message.trim()],
       ),
-      query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM organizations WHERE id = $1', [req.params.organizationId]),
+      query('SELECT name, account_code, contact_email, payment_due_date, price_amount, price_period FROM organizations WHERE id = $1', [req.params.organizationId]),
     ])
     const hasContactEmail = Boolean(rows[0]?.contact_email)
     let emailSent = false
@@ -280,6 +281,8 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
         html: paymentNoticeHtml({
           recipientName: rows[0].name,
           entityLabel: 'organization',
+          accountCode: rows[0].account_code,
+          paymentInstructions: await getPaymentInstructions(),
           amount: amount || rows[0].price_amount,
           billingPeriod: amount ? billingPeriod : rows[0].price_period,
           dueDate: rows[0].payment_due_date,
