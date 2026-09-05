@@ -720,5 +720,38 @@ export async function initSchema() {
   try { await query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id)`) } catch {}
 
+
+  // ---------------------------------------------------------------------
+  // Mandatory MFA for privileged roles (#149). A phished school password
+  // otherwise reaches every student record at that school; an admin one
+  // reaches every tenant.
+  //
+  // mfa_required_at is the deadline, not a flag: existing accounts get a
+  // grace window to enrol rather than being locked out on deploy.
+  // ---------------------------------------------------------------------
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_required_at TIMESTAMPTZ`) } catch {}
+
+  // Per-account TOTP throttling. authLimiter is per-IP, so a 6-digit code is
+  // brute-forceable from a botnet spreading attempts across addresses; these
+  // bind the limit to the account being attacked instead.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_failed_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMPTZ`) } catch {}
+
+  // Backfill privileged password accounts that have no deadline yet.
+  // Deliberately excludes auth_provider='sso': those users have no VolunTrack
+  // password, MFA is their school IdP's responsibility, and pushing them into
+  // an enrolment flow they cannot complete would lock them out.
+  try {
+    await query(
+      `UPDATE users
+          SET mfa_required_at = now() + ($1 || ' days')::interval
+        WHERE role IN ('admin','school','school_staff','org')
+          AND mfa_required_at IS NULL
+          AND totp_enabled = false
+          AND auth_provider <> 'sso'`,
+      [String(Number(process.env.MFA_GRACE_DAYS || 21))],
+    )
+  } catch {}
+
   return true
 }

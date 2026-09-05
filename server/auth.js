@@ -51,6 +51,51 @@ export function verifyTempToken(token) {
   }
 }
 
+// Issued when a privileged account is past its MFA deadline but has no TOTP
+// configured. It is deliberately NOT a session: authenticate() rejects any
+// token carrying a `purpose`, so this only opens the two enrolment routes
+// that explicitly opt in via requireEnrollmentToken().
+export function signEnrollmentToken(user) {
+  return jwt.sign(
+    { sub: user.id, role: user.role, email: user.email, purpose: 'mfa_enroll' },
+    secret(),
+    { expiresIn: '20m' },
+  )
+}
+
+export function verifyEnrollmentToken(token) {
+  try {
+    const payload = jwt.verify(token, secret())
+    if (payload.purpose !== 'mfa_enroll') return null
+    return payload
+  } catch {
+    return null
+  }
+}
+
+// Accepts either a normal session (already on req.auth) or an enrolment
+// token. Only the TOTP setup routes may use this — anything else must stay
+// behind requireAuth, or the enrolment token would become a full session.
+export function requireAuthOrEnrollment(req, res, next) {
+  if (req.auth) return next()
+  const header = req.headers.authorization || ''
+  const [scheme, token] = header.split(' ')
+  const payload = scheme === 'Bearer' && token ? verifyEnrollmentToken(token) : null
+  if (!payload) return res.status(401).json({ error: 'Authentication required.' })
+  req.auth = { sub: payload.sub, role: payload.role, email: payload.email }
+  req.enrolling = true
+  next()
+}
+
+// Roles whose access is broad enough that a phished password alone is not an
+// acceptable control: admin reaches every tenant, school/org can read student
+// documents and repoint where proof files are stored.
+export const MFA_REQUIRED_ROLES = ['admin', 'school', 'school_staff', 'org']
+
+export function mfaRequiredForRole(role) {
+  return MFA_REQUIRED_ROLES.includes(role)
+}
+
 export function verifyToken(token) {
   try {
     return jwt.verify(token, secret())
