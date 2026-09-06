@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, CheckCircle2, Shield, AlertTriangle, Inbox, RefreshCw, Settings } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { sendRecoveryEmail, getRecoveryStatus, fetchDevRecoveryCode } from '@/lib/recovery.js'
+import { sendRecoveryEmail, getRecoveryStatus } from '@/lib/recovery.js'
 
 export default function ResetPin() {
   const { requestPinReset, completePinReset } = useAuth()
@@ -32,7 +32,7 @@ export default function ResetPin() {
       setSentCode(generated)
 
       // If the backend isn't reachable at all (e.g. static GitHub Pages host),
-      // skip the email + dev-code round trips and just show the code locally.
+      // skip the email round trip and just show the code locally.
       const status = await getRecoveryStatus()
       setServerInfo(status)
       if (!status.backendAvailable) {
@@ -43,19 +43,10 @@ export default function ResetPin() {
 
       const result = await sendRecoveryEmail({ email, code: generated, type: 'pin' })
 
-      let finalResult = result
-      if (!result.ok && result.missingVars?.length) {
-        const dev = await fetchDevRecoveryCode(email)
-        if (dev.ok) {
-          setSentCode(dev.code)
-          finalResult = { ok: true, viaDev: true }
-        }
-      }
-
       setDelivery(
-        finalResult.ok
+        result.ok
           ? { status: 'sent', reason: '', missingVars: [] }
-          : { status: 'fallback', reason: finalResult.reason, missingVars: finalResult.missingVars || [] }
+          : { status: 'fallback', reason: result.reason, missingVars: result.missingVars || [] }
       )
       setStage('verify')
     } catch (error) {

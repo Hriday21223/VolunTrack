@@ -276,6 +276,13 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS backup_codes TEXT`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS student_email TEXT`) } catch {}
 
+  // Password reset. The code itself is never stored — only a bcrypt hash of
+  // the server-generated code, so a database read can't be turned into a
+  // reset. reset_code_attempts caps guessing against the 6-digit space.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
+
   // Parent portal
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS child_link_code TEXT UNIQUE`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_name TEXT`) } catch {}

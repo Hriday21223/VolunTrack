@@ -1,6 +1,11 @@
 // Single source of truth for talking to the email backend during
-// password / PIN recovery. Both pages use this so the user always
-// sees the same delivery status, error, and fallback behavior.
+// password / PIN recovery, so both pages show the same delivery status,
+// error, and fallback behavior.
+//
+// The two flows are not symmetric: a PIN is a local-only credential, so its
+// code is generated in the browser and relayed by sendRecoveryEmail. A
+// password guards the server account, so its code is minted by the backend
+// via requestPasswordReset and only ever reaches the user by email.
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -18,7 +23,7 @@ function reasonLooksLikeMissingBackend(reason) {
 }
 
 /**
- * Ask the backend to email a recovery code to `email`.
+ * Ask the backend to email a client-generated PIN recovery code to `email`.
  *
  * Resolves to an object describing what happened:
  *   - { ok: true }                       - the backend accepted the email
@@ -93,32 +98,46 @@ export async function getRecoveryStatus() {
 }
 
 /**
- * Dev-only helper used by the live demo: when the backend is reachable the
- * most recently generated code can be pulled from /api/dev-recovery-code so
- * the user isn't blocked. When the backend isn't reachable at all (e.g. the
- * GitHub Pages static host), this returns `backendAvailable: false` and the
- * page renders the on-screen code path instead.
+ * Ask the backend to mint and email a password recovery code.
+ *
+ * The code is generated server-side and only its hash is stored, so nothing
+ * the client sends here can become a valid code. Resolves to:
+ *   - { ok: true, emailed: true }            - emailed to the account holder
+ *   - { ok: true, emailed: false, code }     - no SMTP outside production;
+ *                                              the backend hands the code back
+ *   - { ok: false, reason, missingVars, backendAvailable }
+ *
+ * Never throws, and never reveals whether the address has an account.
  */
-export async function fetchDevRecoveryCode(email) {
+export async function requestPasswordReset(email) {
   if (!email) return { ok: false, reason: 'Missing email.', backendAvailable: false }
   try {
-    const response = await fetch(`${apiUrl}/dev-recovery-code?email=${encodeURIComponent(email)}`)
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}))
-      const backendAvailable = response.status !== 404
-      return {
-        ok: false,
-        reason: body?.error || `Backend returned ${response.status}.`,
-        backendAvailable,
-      }
+    const controller = new AbortController()
+    // Same 25s budget as sendRecoveryEmail — a cold SMTP handshake is slow.
+    const timer = setTimeout(() => controller.abort(), 25000)
+    const response = await fetch(`${apiUrl}/auth/request-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+
+    const body = await response.json().catch(() => ({}))
+    if (response.ok) {
+      return { ok: true, emailed: Boolean(body.emailed), code: body.code || null, backendAvailable: true }
     }
-    const body = await response.json()
-    return { ok: true, code: body.code, type: body.type, backendAvailable: true }
+
+    const reason = body?.error || `Email backend returned ${response.status}.`
+    const missingVars = Array.isArray(body?.missingVars) ? body.missingVars : null
+    const backendAvailable = response.status !== 404 && !reasonLooksLikeMissingBackend(reason)
+    // A backend running without DATABASE_URL has no accounts to reset — that
+    // is the localStorage-only setup, not a broken server.
+    const noAccountsApi = response.status === 503 && /database/i.test(reason)
+    return { ok: false, reason, missingVars, backendAvailable, noAccountsApi }
   } catch (err) {
-    return {
-      ok: false,
-      reason: err?.message || 'Could not reach the email server.',
-      backendAvailable: false,
-    }
+    const isTimeout = err?.name === 'AbortError'
+    const reason = isTimeout ? 'Email timed out.' : err?.message || 'Could not reach the email server.'
+    return { ok: false, reason, backendAvailable: !isTimeout }
   }
 }

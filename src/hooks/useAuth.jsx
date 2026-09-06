@@ -8,6 +8,7 @@ import {
   findUserBySyncPin, updateSyncPin,
 } from '@/api/index.js'
 import { syncPullLogs } from '@/lib/logSync.js'
+import { requestPasswordReset as requestServerPasswordReset } from '@/lib/recovery.js'
 
 const AuthContext = createContext(null)
 
@@ -103,7 +104,7 @@ export function AuthProvider({ children }) {
     return safe
   }, [])
 
-  const verifyTotp = useCallback(async (tempToken, code) => {
+  const verifyTotp = useCallback(async (tempToken, code, { pullLogs = false } = {}) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/challenge`, {
       method: 'POST',
@@ -116,12 +117,15 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
+    // The sync-PIN path finishes here rather than at /sync-login, so the
+    // server-side logs still have to land before the session goes live.
+    if (pullLogs) await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
   }, [])
 
-  const verifyBackupCode = useCallback(async (tempToken, code) => {
+  const verifyBackupCode = useCallback(async (tempToken, code, { pullLogs = false } = {}) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/backup-recovery`, {
       method: 'POST',
@@ -134,6 +138,7 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
+    if (pullLogs) await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
@@ -228,6 +233,12 @@ export function AuthProvider({ children }) {
       }
 
       const data = await response.json()
+
+      // A sync PIN replaces the password, not the second factor — the caller
+      // has to finish the TOTP challenge before there's a session.
+      if (data.requiresTotp) {
+        return { requiresTotp: true, tempToken: data.tempToken }
+      }
 
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', data.token)
@@ -383,33 +394,64 @@ export function AuthProvider({ children }) {
     return updated
   }, [])
 
+  // Ask the backend to mint and email a recovery code. Only when there is no
+  // backend at all (the static-host demo) does the browser generate its own
+  // code against the local account — on a server-backed deployment a
+  // client-chosen code is never accepted, so it must not be offered either.
   const requestPasswordReset = useCallback(async (email) => {
+    const result = await requestServerPasswordReset(email)
+
+    if (result.ok) {
+      return { emailed: result.emailed, code: result.code, backendAvailable: true }
+    }
+    if (result.backendAvailable && !result.noAccountsApi) {
+      throw new Error(result.reason || 'Could not send a recovery code.')
+    }
+
     const updated = sendPasswordResetCode(email)
     if (!updated) throw new Error('No account with that email.')
-    return updated.resetPasswordCode
+    return { emailed: false, code: updated.resetPasswordCode, backendAvailable: false }
   }, [])
 
   const completePasswordReset = useCallback(async (email, code, password) => {
-    // Update local storage first
     const account = findUserByEmail(email)
-    if (!account) throw new Error('No account with that email.')
-    if (!isResetPasswordCodeValid(account, code)) throw new Error('Invalid or expired code.')
-    const updated = persistUser(account.id, { passwordHash: hashPassword(password), resetPasswordCode: null, resetPasswordCodeExpiresAt: null })
-    if (!updated) throw new Error('Failed to update password.')
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
-    // Also try to update the database password via the new API endpoint
+    // The server owns the verdict: it holds the hash of the code it emailed.
+    // A local account (if this browser has one) is updated to match only
+    // after the server has accepted the reset.
+    let response
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
-      await fetch(`${apiUrl}/auth/reset-password`, {
+      response = await fetch(`${apiUrl}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, newPassword: password }),
       })
-      // Non-blocking — user flow continues either way
     } catch {
-      // Backend may not have this endpoint yet
+      response = null
     }
 
+    // 404 (no API at this URL) and a database-less 503 both mean there is no
+    // server account to reset, so those fall through to the local path.
+    const serverHasAccounts = response && response.status !== 404 && response.status !== 503
+
+    if (serverHasAccounts) {
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        throw new Error(body.error || 'Invalid or expired code.')
+      }
+      if (account) {
+        persistUser(account.id, { passwordHash: hashPassword(password), resetPasswordCode: null, resetPasswordCodeExpiresAt: null })
+      }
+      return account || null
+    }
+
+    // Backend unreachable — local-only mode, where the code was generated in
+    // this browser and the account lives in localStorage.
+    if (!account) throw new Error('No account with that email.')
+    if (!isResetPasswordCodeValid(account, code)) throw new Error('Invalid or expired code.')
+    const updated = persistUser(account.id, { passwordHash: hashPassword(password), resetPasswordCode: null, resetPasswordCodeExpiresAt: null })
+    if (!updated) throw new Error('Failed to update password.')
     return updated
   }, [])
 

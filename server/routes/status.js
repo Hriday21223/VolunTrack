@@ -149,9 +149,9 @@ const MOUNTED_ROUTERS = [
 const APP_LEVEL_ROUTES = [
   ['app', 'POST', '/api/contact/inbound'],
   ['app', 'GET', '/api/recovery-status'],
+  ['app', 'POST', '/api/auth/request-password-reset'],
   ['app', 'POST', '/api/auth/reset-password'],
   ['app', 'POST', '/api/send-reset-email'],
-  ['app', 'GET', '/api/dev-recovery-code'],
   ['app', 'POST', '/api/send-report'],
   ['app', 'POST', '/api/notify-supervisor'],
   ['app', 'GET', '/api/verify-hours/:token'],

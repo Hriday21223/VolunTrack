@@ -14,7 +14,7 @@ export default function SyncLogin() {
     path: '/sync-login',
   })
 
-  const { loginWithSyncPin } = useAuth()
+  const { loginWithSyncPin, verifyTotp, verifyBackupCode } = useAuth()
   const nav = useNavigate()
   const [syncPin, setSyncPin] = useState('')
   const [busy, setBusy] = useState(false)
@@ -22,6 +22,11 @@ export default function SyncLogin() {
   const [toast, setToast] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [scanning, setScanning] = useState(false)
+  // The PIN is spent as soon as it matches; if the account has 2FA the server
+  // hands back a temp token instead of a session and this step finishes it.
+  const [tempToken, setTempToken] = useState('')
+  const [totpCode, setTotpCode] = useState('')
+  const [useBackupCode, setUseBackupCode] = useState(false)
   const scannerRef = useRef(null)
   const scannerInstance = useRef(null)
 
@@ -41,14 +46,40 @@ export default function SyncLogin() {
     }
   }, [])
 
+  const finishSync = () => {
+    setToast(true)
+    setTimeout(() => nav('/', { replace: true }), 600)
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
     setBusy(true)
     try {
-      await loginWithSyncPin(syncPin)
-      setToast(true)
-      setTimeout(() => nav('/', { replace: true }), 600)
+      const result = await loginWithSyncPin(syncPin)
+      if (result?.requiresTotp) {
+        setTempToken(result.tempToken)
+        return
+      }
+      finishSync()
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onTotpSubmit = async (e) => {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      if (useBackupCode) {
+        await verifyBackupCode(tempToken, totpCode, { pullLogs: true })
+      } else {
+        await verifyTotp(tempToken, totpCode, { pullLogs: true })
+      }
+      finishSync()
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -112,9 +143,13 @@ export default function SyncLogin() {
       if (pin.length === 5) {
         setSyncPin(pin)
         scannerInstance.current = null
-        await loginWithSyncPin(pin)
-        setToast(true)
-        setTimeout(() => nav('/', { replace: true }), 600)
+        const result = await loginWithSyncPin(pin)
+        if (result?.requiresTotp) {
+          setTempToken(result.tempToken)
+          setBusy(false)
+          return
+        }
+        finishSync()
       } else {
         setErr('Invalid QR code — no 5-digit PIN found.')
         setBusy(false)
@@ -161,7 +196,45 @@ export default function SyncLogin() {
             </div>
 
             <div id="qr-reader-file" className="hidden" />
-            {scanning ? (
+            {tempToken ? (
+              <form onSubmit={onTotpSubmit} className="space-y-5">
+                <p className="text-sm text-slate-300">
+                  This account uses two-factor authentication.{' '}
+                  {useBackupCode
+                    ? 'Enter one of your saved backup codes.'
+                    : 'Enter the 6-digit code from your authenticator app.'}
+                </p>
+                <div>
+                  <label className="label text-slate-300" htmlFor="totpCode">
+                    {useBackupCode ? 'Backup code' : 'Authenticator code'}
+                  </label>
+                  <input
+                    id="totpCode"
+                    type="text"
+                    required
+                    autoFocus
+                    autoComplete="one-time-code"
+                    inputMode={useBackupCode ? 'text' : 'numeric'}
+                    maxLength={useBackupCode ? 32 : 6}
+                    className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-widest font-mono"
+                    placeholder={useBackupCode ? 'backup-code' : '123456'}
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(useBackupCode ? e.target.value.trim() : e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                  />
+                </div>
+                <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy || !totpCode}>
+                  {busy ? 'Verifying…' : <>Verify and sync <ArrowRight className="w-4 h-4" /></>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setUseBackupCode(!useBackupCode); setTotpCode(''); setErr('') }}
+                  className="btn-ghost w-full text-sm"
+                >
+                  {useBackupCode ? 'Use your authenticator app instead' : 'Use a backup code instead'}
+                </button>
+                {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{err}</div>}
+              </form>
+            ) : scanning ? (
               <div className="space-y-4">
                 <div id="qr-reader" ref={scannerRef} className="w-full overflow-hidden rounded-xl" />
                 <div className="border-t border-white/10 pt-4">

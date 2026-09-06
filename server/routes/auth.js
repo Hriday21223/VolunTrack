@@ -148,6 +148,23 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
   }
 })
 
+// Verify a 6-digit TOTP code against a user row. Shared by every route that
+// completes a sign-in, so a new entry point can't quietly skip the second
+// factor the way /sync-login and /sync-pin-auth used to.
+function verifyTotpCode(row, code) {
+  if (!code || typeof code !== 'string' || !/^\d{6}$/.test(code.trim())) return false
+  if (!row.totp_secret) return false
+  const totp = new OTPAuth.TOTP({
+    issuer: 'VolunTrack',
+    label: row.email,
+    algorithm: 'SHA1',
+    digits: 6,
+    period: 30,
+    secret: OTPAuth.Secret.fromBase32(row.totp_secret),
+  })
+  return totp.validate({ token: code.trim(), window: 1 }) !== null
+}
+
 router.post('/login', authLimiter, requireDb, async (req, res) => {
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')
@@ -292,6 +309,18 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
     const ok = await verifyPassword(password, rows[0].password_hash)
     if (!ok) return res.status(403).json({ error: 'Password is incorrect.' })
 
+    // This route hands back a full session token, so it owes the same second
+    // factor /login does — otherwise 2FA is optional for anyone who knows the
+    // password and posts here instead.
+    if (rows[0].totp_enabled) {
+      if (!req.body.totpCode) {
+        return res.status(401).json({ requiresTotp: true, error: 'Enter the 6-digit code from your authenticator app.' })
+      }
+      if (!verifyTotpCode(rows[0], String(req.body.totpCode))) {
+        return res.status(401).json({ requiresTotp: true, error: 'Invalid code. Try again.' })
+      }
+    }
+
     const existing = await query('SELECT 1 FROM users WHERE sync_pin = $1 AND id != $2', [syncPin, rows[0].id])
     if (existing.rowCount > 0) return res.status(409).json({ error: 'This sync PIN is already in use.' })
 
@@ -321,8 +350,14 @@ router.post('/sync-login', authLimiter, requireDb, async (req, res) => {
       return res.status(401).json({ error: 'Invalid sync PIN.' })
     }
     const user = publicUser(rows[0])
-    // Clear the sync PIN so it can't be reused
+    // The PIN is single-use either way: it's spent the moment it matches,
+    // whether or not a second factor still has to be cleared.
     await query('UPDATE users SET sync_pin = NULL WHERE id = $1', [rows[0].id])
+    // A sync PIN stands in for the password, never for 2FA — hand back the
+    // same temp token /login does and let the TOTP challenge finish the job.
+    if (rows[0].totp_enabled) {
+      return res.json({ requiresTotp: true, tempToken: signTempToken(user) })
+    }
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('sync-login failed:', error)
@@ -469,17 +504,7 @@ router.post('/totp/challenge', authLimiter, requireDb, async (req, res) => {
       return res.status(400).json({ error: '2FA is not enabled on this account.' })
     }
 
-    const totp = new OTPAuth.TOTP({
-      issuer: 'VolunTrack',
-      label: row.email,
-      algorithm: 'SHA1',
-      digits: 6,
-      period: 30,
-      secret: OTPAuth.Secret.fromBase32(row.totp_secret),
-    })
-
-    const delta = totp.validate({ token: code.trim(), window: 1 })
-    if (delta === null) {
+    if (!verifyTotpCode(row, code)) {
       return res.status(401).json({ error: 'Invalid code. Try again.' })
     }
 

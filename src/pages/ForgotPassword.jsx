@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Mail, ArrowRight, CheckCircle2, AlertTriangle, Inbox, RefreshCw, Settings } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { sendRecoveryEmail, getRecoveryStatus, fetchDevRecoveryCode } from '@/lib/recovery.js'
+import { getRecoveryStatus } from '@/lib/recovery.js'
 
 export default function ForgotPassword() {
   const { requestPasswordReset } = useAuth()
@@ -16,18 +16,24 @@ export default function ForgotPassword() {
 
   useEffect(() => { getRecoveryStatus().then(setServerInfo) }, [])
 
-  const attemptDelivery = async ({ email, code, type }) => {
+  // The code is minted and emailed by the backend — this page never sees it
+  // unless there is no mail server at all (local dev, or the static-host demo
+  // where the account lives only in this browser).
+  const deliver = async () => {
     const status = await getRecoveryStatus()
     setServerInfo(status)
-    if (!status.backendAvailable) {
-      return { ok: false, reason: 'no-backend', backendAvailable: false }
+
+    const result = await requestPasswordReset(email)
+    setCode(result.code || '')
+    if (result.emailed) {
+      setDelivery({ status: 'sent', reason: '', missingVars: [] })
+      return
     }
-    const result = await sendRecoveryEmail({ email, code, type })
-    if (!result.ok && result.missingVars?.length) {
-      const dev = await fetchDevRecoveryCode(email)
-      if (dev.ok) return { ok: true, code: dev.code, viaDev: true }
-    }
-    return result
+    setDelivery({
+      status: 'fallback',
+      reason: result.backendAvailable ? '' : 'no-backend',
+      missingVars: status.missingVars || [],
+    })
   }
 
   const onSubmit = async (e) => {
@@ -36,17 +42,7 @@ export default function ForgotPassword() {
     setDelivery({ status: 'sending', reason: '', missingVars: [] })
 
     try {
-      const generated = await requestPasswordReset(email)
-      setCode(generated)
-
-      const result = await attemptDelivery({ email, code: generated, type: 'password' })
-      if (result.ok && result.code) setCode(result.code)
-
-      setDelivery(
-        result.ok
-          ? { status: 'sent', reason: '', missingVars: [] }
-          : { status: 'fallback', reason: result.reason, missingVars: result.missingVars || [] }
-      )
+      await deliver()
     } catch (error) {
       setDelivery({ status: 'idle', reason: '', missingVars: [] })
       setErr(error.message)
@@ -55,13 +51,12 @@ export default function ForgotPassword() {
 
   const resend = async () => {
     setRetrying(true)
-    const result = await attemptDelivery({ email, code, type: 'password' })
-    if (result.ok && result.code) setCode(result.code)
-    setDelivery(
-      result.ok
-        ? { status: 'sent', reason: '', missingVars: [] }
-        : { status: 'fallback', reason: result.reason, missingVars: result.missingVars || serverInfo.missingVars || [] }
-    )
+    setErr('')
+    try {
+      await deliver()
+    } catch (error) {
+      setErr(error.message)
+    }
     setRetrying(false)
   }
 
