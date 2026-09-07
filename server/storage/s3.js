@@ -88,14 +88,14 @@ function resolveTarget(config, key) {
  * Build a presigned URL for a single object operation.
  * Only `host` is signed, so the caller may send any headers it likes.
  */
-export function presign(config, { method = 'GET', key, expiresIn = 900, now = new Date() }) {
+export function presign(config, { method = 'GET', key, expiresIn = 900, headers = null, now = new Date() }) {
   if (!config?.bucket) throw new Error('Storage config is missing a bucket.')
   if (!config?.accessKeyId || !config?.secretAccessKey) {
     throw new Error('Storage config is missing credentials.')
   }
   if (!key) throw new Error('An object key is required.')
 
-  return signQuery({ ...resolveTarget(config, key), ...config, method, expiresIn, now })
+  return signQuery({ ...resolveTarget(config, key), ...config, method, expiresIn, headers, now })
 }
 
 /**
@@ -104,7 +104,7 @@ export function presign(config, { method = 'GET', key, expiresIn = 900, now = ne
  */
 export function signQuery({
   host, origin, canonicalUri, region, accessKeyId, secretAccessKey,
-  method = 'GET', expiresIn = 900, now = new Date(),
+  method = 'GET', expiresIn = 900, headers = null, now = new Date(),
 }) {
   const expires = Math.min(Math.max(Number(expiresIn) || 900, 1), MAX_EXPIRES)
   const { full, short } = amzDate(now)
@@ -116,19 +116,34 @@ export function signQuery({
     'X-Amz-Credential': `${accessKeyId}/${scope}`,
     'X-Amz-Date': full,
     'X-Amz-Expires': String(expires),
-    'X-Amz-SignedHeaders': 'host',
+    'X-Amz-SignedHeaders': ['host', ...Object.keys(headers || {}).map((n) => n.toLowerCase())]
+      .filter((n, i, all) => all.indexOf(n) === i)
+      .sort()
+      .join(';'),
   }
   const canonicalQuery = Object.keys(params)
     .sort()
     .map((name) => `${rfc3986(name)}=${rfc3986(params[name])}`)
     .join('&')
 
+  // Any header signed here must be sent, byte-identical, by the client — S3
+  // recomputes the signature from the real request. Signing 'content-length'
+  // is what pins an upload to the exact size it declared: a client that sends
+  // more (or less) simply fails the signature. Header names are lowercased
+  // and sorted, per SigV4.
+  const extra = Object.entries(headers || {})
+    .map(([name, value]) => [String(name).toLowerCase(), String(value).trim()])
+    .filter(([name]) => name !== 'host')
+  const allHeaders = [['host', host], ...extra].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+  const signedHeaderNames = allHeaders.map(([name]) => name).join(';')
+  const canonicalHeaders = allHeaders.map(([name, value]) => `${name}:${value}\n`).join('')
+
   const canonicalRequest = [
     String(method).toUpperCase(),
     canonicalUri,
     canonicalQuery,
-    `host:${host}\n`,
-    'host',
+    canonicalHeaders,
+    signedHeaderNames,
     'UNSIGNED-PAYLOAD',
   ].join('\n')
 
@@ -152,6 +167,26 @@ export function withPrefix(prefix, key) {
   // preserving the traversal sequence this is here to neutralise.
   const safe = trimSlashes(String(key).replace(/\.\.+/g, '.'), { trailing: false })
   return clean ? `${clean}/${safe}` : safe
+}
+
+/**
+ * Whether `key` is one this user could have been issued. The random component
+ * is unguessable, but this stops a student claiming a key under another
+ * student's namespace — which would attach someone else's document to their
+ * own log.
+ */
+export function keyBelongsTo(config, key, userId) {
+  const prefix = trimSlashes(String(config.prefix || ''))
+  let rest = String(key || '')
+  if (prefix) {
+    if (!rest.startsWith(`${prefix}/`)) return false
+    rest = rest.slice(prefix.length + 1)
+  }
+  const expected = `students/${userId}/`
+  if (!rest.startsWith(expected)) return false
+  const name = rest.slice(expected.length)
+  // Exactly one path segment, no traversal, from our own alphabet.
+  return /^[A-Za-z0-9_-]+\.[a-z0-9]{2,5}$/.test(name)
 }
 
 /**

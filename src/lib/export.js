@@ -228,3 +228,99 @@ function escapeHtml(s) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]))
 }
+
+/* ---------- Bulk school/organization hour reports (#142) ---------- */
+
+/**
+ * Detail CSV — one row per log, for spreadsheets. Uses the same csvCell
+ * escaping as exportLogsCSV so a comma in an activity name can't shift
+ * columns.
+ */
+export function schoolHoursCSV(logs) {
+  const rows = [
+    ['School', 'Student', 'Email', 'Grade', 'Date', 'Activity', 'Category', 'Hours', 'Status', 'Organization', 'Supervisor', 'Location', 'Notes'],
+    ...logs.map((l) => [
+      l.schoolName || '',
+      l.studentName || '',
+      l.studentEmail || '',
+      l.grade || '',
+      l.date || '',
+      l.activity || '',
+      l.category || '',
+      l.hours ?? '',
+      l.verificationStatus || '',
+      l.orgName || '',
+      l.supervisorName || '',
+      l.location || '',
+      String(l.notes || '').replaceAll('\n', ' '),
+    ]),
+  ]
+  return rows.map((r) => r.map(csvCell).join(',')).join('\n')
+}
+
+/** Summary CSV — one row per student. */
+export function schoolSummaryCSV(students) {
+  const rows = [
+    ['School', 'Student', 'Email', 'Grade', 'Logs', 'Approved Hours', 'Pending Hours', 'Total Hours', 'Rejected Hours'],
+    ...students.map((s) => [
+      s.schoolName || '', s.name || '', s.email || '', s.grade || '',
+      s.logCount ?? 0, s.approvedHours ?? 0, s.pendingHours ?? 0, s.totalHours ?? 0, s.rejectedHours ?? 0,
+    ]),
+  ]
+  return rows.map((r) => r.map(csvCell).join(',')).join('\n')
+}
+
+/**
+ * Per-student summary PDF — the version handed to an administrator, so it
+ * leads with the totals and keeps approved and pending in separate columns
+ * rather than presenting one blended number.
+ */
+export async function schoolHoursPDF({ title, range, students, totals, returnBlob }) {
+  const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
+  const logo = await getLogoDataUrl()
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', 40, 28, LOGO_W, LOGO_H) } catch { /* logo optional */ }
+  }
+
+  doc.setFontSize(16)
+  doc.text(title || 'Volunteer hours report', logo ? 84 : 40, 48)
+  doc.setFontSize(10)
+  doc.setTextColor(90)
+  doc.text(
+    `${fmtDate(range.from)} — ${fmtDate(range.to)}${range.approvedOnly ? '  ·  approved hours only' : ''}`,
+    logo ? 84 : 40, 64,
+  )
+  doc.text(
+    `${totals.students} students  ·  ${totals.logs} entries  ·  ${fmtHours(totals.approvedHours)} approved + ${fmtHours(totals.pendingHours)} pending = ${fmtHours(totals.totalHours)} total${totals.rejectedHours ? `  ·  ${fmtHours(totals.rejectedHours)} rejected (excluded)` : ''}`,
+    logo ? 84 : 40, 78,
+  )
+  doc.setTextColor(0)
+
+  autoTable(doc, {
+    startY: 96,
+    head: [['School', 'Student', 'Grade', 'Entries', 'Approved', 'Pending', 'Total', 'Rejected']],
+    body: students.map((s) => [
+      s.schoolName || '',
+      s.name || '',
+      s.grade || '',
+      String(s.logCount ?? 0),
+      fmtHours(s.approvedHours),
+      fmtHours(s.pendingHours),
+      fmtHours(s.totalHours),
+      fmtHours(s.rejectedHours),
+    ]),
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [63, 131, 68] },
+    foot: [[
+      'Total', '', '', String(totals.logs),
+      fmtHours(totals.approvedHours), fmtHours(totals.pendingHours),
+      fmtHours(totals.totalHours), fmtHours(totals.rejectedHours),
+    ]],
+    footStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
+  })
+
+  const filename = `voluntrack-hours-${range.from}-to-${range.to}.pdf`
+  if (returnBlob) return doc.output('blob')
+  doc.save(filename)
+  return null
+}

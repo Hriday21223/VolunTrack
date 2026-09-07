@@ -695,6 +695,61 @@ export async function initSchema() {
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_storage_school ON tenant_storage(school_id) WHERE school_id IS NOT NULL`) } catch {}
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_storage_org ON tenant_storage(organization_id) WHERE organization_id IS NOT NULL`) } catch {}
 
+  // Pointer to a proof-of-service file in the tenant's own bucket (#143). The
+  // bytes live there, never here — proof_storage_id records *which* config it
+  // was written through, deliberately rather than resolving the student's
+  // school at read time: a transfer or a bucket rotation must not orphan every
+  // historical log. ON DELETE SET NULL keeps the log if the config is removed,
+  // leaving a key that simply no longer resolves.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_storage_id TEXT REFERENCES tenant_storage(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_key TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_mime TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_bytes INTEGER`) } catch {}
+
+  // ---------------------------------------------------------------------
+  // Append-only audit trail. VolunTrack records *decisions* in several places
+  // (logs.verified_by, pdf_uploads.reviewed_by, supervisor_verifications
+  // .responded_at) but nothing recorded who merely *looked* at a student's
+  // data. This table does. See #146 and server/audit.js.
+  //
+  // Nothing in the app may ever UPDATE or DELETE a row here except the
+  // retention prune, which deletes only by age.
+  //
+  // The actor FKs are ON DELETE SET NULL so an account deletion can't erase
+  // the history of what that account did; actor_role and actor_hash survive,
+  // so events stay attributable ("a school_staff at Lincoln, the same one
+  // across these 40 events") without retaining the identity itself.
+  // ---------------------------------------------------------------------
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS audit_events (
+        id              TEXT PRIMARY KEY,
+        actor_id        TEXT REFERENCES users(id) ON DELETE SET NULL,
+        actor_role      TEXT NOT NULL,
+        actor_hash      TEXT,
+        action          TEXT NOT NULL,
+        outcome         TEXT NOT NULL DEFAULT 'allowed'
+                          CHECK (outcome IN ('allowed','denied')),
+        subject_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        school_id       TEXT REFERENCES schools(id) ON DELETE SET NULL,
+        organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL,
+        object_type     TEXT,
+        object_id       TEXT,
+        ip              TEXT,
+        user_agent      TEXT,
+        meta            JSONB,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_audit_subject ON audit_events(subject_user_id, created_at DESC)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_audit_school ON audit_events(school_id, created_at DESC)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_audit_org ON audit_events(organization_id, created_at DESC)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_events(actor_id, created_at DESC)`) } catch {}
+  // The retention prune scans by age alone.
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_events(created_at)`) } catch {}
+
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}

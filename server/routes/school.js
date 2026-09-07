@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } fr
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
+import { recordAudit, AUDIT } from '../audit.js'
 
 const router = express.Router()
 
@@ -156,6 +157,12 @@ router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'
        ORDER BY created_at DESC`,
       [userRows[0].school_id],
     )
+    recordAudit(req, {
+      action: AUDIT.STUDENT_LIST_READ,
+      schoolId: userRows[0].school_id,
+      objectType: 'student_list',
+      meta: { count: rows.length },
+    })
     return res.json({ students: rows })
   } catch (error) {
     console.error('school students failed:', error)
@@ -240,6 +247,14 @@ router.post('/staff', limiter, requireDb, requireAuth('school'), requirePaidScho
        VALUES ($1, 'school_staff', $2, $3, $4, $5)`,
       [userId, name, email, hash, schoolId],
     )
+    // A new co-admin can read every student at this school from here on.
+    recordAudit(req, {
+      action: AUDIT.STAFF_ADDED,
+      subjectUserId: userId,
+      schoolId,
+      objectType: 'user',
+      objectId: userId,
+    })
     return res.status(201).json({ ok: true })
   } catch (error) {
     console.error('add school staff failed:', error)
@@ -258,6 +273,12 @@ router.delete('/staff/:id', limiter, requireDb, requireAuth('school'), requirePa
       [req.params.id, userRows[0].school_id],
     )
     if (rowCount === 0) return res.status(404).json({ error: 'Co-admin not found.' })
+    recordAudit(req, {
+      action: AUDIT.STAFF_REMOVED,
+      schoolId: userRows[0].school_id,
+      objectType: 'user',
+      objectId: req.params.id,
+    })
     return res.json({ ok: true })
   } catch (error) {
     console.error('remove school staff failed:', error)
@@ -349,7 +370,29 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [sub])
       allowed = Boolean(userRows[0]?.school_id) && pdf.school_id === userRows[0].school_id
     }
-    if (!allowed) return res.status(403).json({ error: 'Not allowed.' })
+    if (!allowed) {
+      // An attempt is as interesting as a success.
+      recordAudit(req, {
+        action: AUDIT.PDF_READ,
+        outcome: 'denied',
+        subjectUserId: pdf.user_id,
+        schoolId: pdf.school_id,
+        objectType: 'pdf_upload',
+        objectId: pdf.id,
+      })
+      return res.status(403).json({ error: 'Not allowed.' })
+    }
+
+    // This response carries the document itself (base64 file_data), so the
+    // read is exactly the kind that must leave a trace.
+    recordAudit(req, {
+      action: AUDIT.PDF_READ,
+      subjectUserId: pdf.user_id,
+      schoolId: pdf.school_id,
+      objectType: 'pdf_upload',
+      objectId: pdf.id,
+      meta: { filename: pdf.filename },
+    })
 
     return res.json({ pdf: { id: pdf.id, filename: pdf.filename, fileData: pdf.file_data, fileType: pdf.file_type, status: pdf.status, notes: pdf.notes, createdAt: pdf.created_at } })
   } catch (error) {
@@ -373,6 +416,14 @@ router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'schoo
       'UPDATE pdf_uploads SET status = $1, notes = $2, reviewed_by = $3, reviewed_at = now() WHERE id = $4',
       [status, notes || null, req.auth.sub, req.params.id],
     )
+    recordAudit(req, {
+      action: AUDIT.PDF_REVIEWED,
+      subjectUserId: rows[0].user_id,
+      schoolId: rows[0].school_id,
+      objectType: 'pdf_upload',
+      objectId: req.params.id,
+      meta: { status },
+    })
     return res.json({ ok: true })
   } catch (error) {
     console.error('pdf review failed:', error)
@@ -1351,5 +1402,190 @@ router.get('/messages', limiter, requireDb, requireAuth(), async (req, res) => {
     return res.status(500).json({ error: 'Could not fetch messages.' })
   }
 })
+
+
+// ---------------------------------------------------------------------------
+// Bulk hour reports (#142)
+// ---------------------------------------------------------------------------
+
+// One request must not be able to pull an unbounded number of rows. Callers
+// are told when they hit this so they can narrow the range rather than
+// silently getting a partial export.
+const REPORT_ROW_CAP = 20000
+
+function validDate(value) {
+  const s = String(value || '').trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) ? s : null
+}
+
+// Which schools the caller may report on. Returns null when the caller has no
+// valid scope, so the handler can 403 without leaking whether ids exist.
+async function reportScope(auth, body) {
+  if (auth.role === 'school' || auth.role === 'school_staff') {
+    const { rows } = await query('SELECT school_id FROM users WHERE id = $1', [auth.sub])
+    const schoolId = rows[0]?.school_id
+    if (!schoolId) return null
+    // Mirrors requirePaidSchool, which can't be used as middleware here
+    // because org/admin callers have no school of their own.
+    const { rows: paid } = await query('SELECT payment_status FROM schools WHERE id = $1', [schoolId])
+    if (paid[0]?.payment_status !== 'paid') return { unpaid: true }
+    return { schoolIds: [schoolId] }
+  }
+
+  if (auth.role === 'org') {
+    const { rows } = await query('SELECT organization_id FROM users WHERE id = $1', [auth.sub])
+    const orgId = rows[0]?.organization_id
+    if (!orgId) return null
+    const { rows: schools } = await query('SELECT id FROM schools WHERE organization_id = $1', [orgId])
+    return { schoolIds: schools.map((s) => s.id) }
+  }
+
+  if (auth.role === 'admin') {
+    if (body.schoolId) return { schoolIds: [String(body.schoolId)] }
+    if (body.organizationId) {
+      const { rows: schools } = await query('SELECT id FROM schools WHERE organization_id = $1', [String(body.organizationId)])
+      return { schoolIds: schools.map((s) => s.id) }
+    }
+    return null
+  }
+
+  return null
+}
+
+// GET /api/school/reports/hours?from=&to=&approvedOnly=
+// Every student in scope with their logs in the range. Students with no logs
+// are included deliberately — "who has logged nothing yet" is one of the
+// questions this report exists to answer.
+router.get('/reports/hours', limiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+  const from = validDate(req.query.from)
+  const to = validDate(req.query.to)
+  if (!from || !to) return res.status(400).json({ error: 'from and to are required, as YYYY-MM-DD.' })
+  if (from > to) return res.status(400).json({ error: 'from must be on or before to.' })
+
+  const approvedOnly = req.query.approvedOnly === 'true'
+
+  try {
+    const scope = await reportScope(req.auth, req.query)
+    if (!scope) return res.status(403).json({ error: 'Your account is not linked to a school or organization.' })
+    if (scope.unpaid) {
+      return res.status(403).json({ error: 'This school has not completed payment yet. Reports are paused until payment is verified.' })
+    }
+    if (scope.schoolIds.length === 0) return res.json({ students: [], logs: [], totals: emptyTotals(), truncated: false, range: { from, to } })
+
+    const { rows } = await query(
+      `SELECT u.id  AS student_id, u.name AS student_name, u.email AS student_email,
+              u.grade, u.school_id, sc.name AS school_name,
+              l.id   AS log_id, l.date, l.activity, l.category, l.hours,
+              l.verification_status, l.org_name, l.supervisor_name, l.location, l.notes
+         FROM users u
+         JOIN schools sc ON sc.id = u.school_id
+         LEFT JOIN logs l
+           ON l.user_id = u.id
+          AND l.date BETWEEN $2 AND $3
+          AND ($4::bool = false OR l.verification_status = 'approved')
+        WHERE u.role = 'student' AND u.school_id = ANY($1)
+        ORDER BY sc.name, u.name, l.date
+        LIMIT $5`,
+      [scope.schoolIds, from, to, approvedOnly, REPORT_ROW_CAP + 1],
+    )
+
+    const truncated = rows.length > REPORT_ROW_CAP
+    const kept = truncated ? rows.slice(0, REPORT_ROW_CAP) : rows
+
+    // Roll up per student. The LEFT JOIN yields one row per student even when
+    // they have no logs, so guard on log_id rather than assuming a log exists.
+    const byStudent = new Map()
+    const logs = []
+    for (const r of kept) {
+      let s = byStudent.get(r.student_id)
+      if (!s) {
+        s = {
+          studentId: r.student_id,
+          name: r.student_name,
+          email: r.student_email,
+          grade: r.grade || null,
+          schoolId: r.school_id,
+          schoolName: r.school_name,
+          logCount: 0,
+          totalHours: 0,
+          approvedHours: 0,
+          pendingHours: 0,
+          rejectedHours: 0,
+        }
+        byStudent.set(r.student_id, s)
+      }
+      if (!r.log_id) continue
+
+      const hours = Number(r.hours) || 0
+      s.logCount += 1
+      // Keep approved and pending distinct — #128 and #136 exist because
+      // collapsing them misreports a school's real verified total. Rejected
+      // hours are tracked separately and deliberately excluded from the
+      // total, so approved + pending == total and the columns an
+      // administrator reads actually reconcile.
+      if (r.verification_status === 'approved') {
+        s.approvedHours += hours
+        s.totalHours += hours
+      } else if (r.verification_status === 'rejected') {
+        s.rejectedHours += hours
+      } else {
+        s.pendingHours += hours
+        s.totalHours += hours
+      }
+
+      logs.push({
+        logId: r.log_id,
+        studentId: r.student_id,
+        studentName: r.student_name,
+        studentEmail: r.student_email,
+        grade: r.grade || '',
+        schoolName: r.school_name,
+        date: r.date,
+        activity: r.activity || '',
+        category: r.category || '',
+        hours,
+        verificationStatus: r.verification_status,
+        orgName: r.org_name || '',
+        supervisorName: r.supervisor_name || '',
+        location: r.location || '',
+        notes: r.notes || '',
+      })
+    }
+
+    const students = [...byStudent.values()].map(round2)
+    const totals = students.reduce((acc, s) => ({
+      students: acc.students + 1,
+      logs: acc.logs + s.logCount,
+      totalHours: acc.totalHours + s.totalHours,
+      approvedHours: acc.approvedHours + s.approvedHours,
+      pendingHours: acc.pendingHours + s.pendingHours,
+      rejectedHours: acc.rejectedHours + s.rejectedHours,
+    }), emptyTotals())
+
+    return res.json({
+      range: { from, to, approvedOnly },
+      students,
+      logs,
+      totals: round2(totals),
+      truncated,
+      rowCap: REPORT_ROW_CAP,
+    })
+  } catch (error) {
+    console.error('hours report failed:', error)
+    return res.status(500).json({ error: 'Could not build the report.' })
+  }
+})
+
+function emptyTotals() {
+  return { students: 0, logs: 0, totalHours: 0, approvedHours: 0, pendingHours: 0, rejectedHours: 0 }
+}
+
+// Hours are NUMERIC and summed in JS, so trim float drift before display.
+function round2(o) {
+  for (const k of ['totalHours', 'approvedHours', 'pendingHours', 'rejectedHours']) {
+    if (typeof o[k] === 'number') o[k] = Math.round(o[k] * 100) / 100
+  }
+  return o
+}
 
 export default router

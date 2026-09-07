@@ -5,6 +5,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -109,12 +110,25 @@ export default function OrganizationDashboard() {
           <button data-tour="org-schools-tab" onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" /> Schools
           </button>
+          <button onClick={() => setTab('hours')} className={`btn-sm ${tab === 'hours' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Hours
+          </button>
           <button data-tour="org-invites-tab" onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
         </div>
       }
     >
+      {tab === 'hours' && (
+        <Card>
+          <h2 className="text-lg font-semibold mb-1">Hour reports</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Export logged hours across every school in your organization for a date range.
+          </p>
+          <HoursReportPanel title="Organization volunteer hours report" />
+        </Card>
+      )}
+
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
       )}
