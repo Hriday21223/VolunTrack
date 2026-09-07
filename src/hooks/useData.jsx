@@ -64,6 +64,16 @@ export function DataProvider({ children }) {
     }
   }, [logs, goals, earned])
 
+  // A log's server id only arrives after syncCreateLog resolves. An edit made
+  // in that window has nothing to PATCH against, so it used to be applied
+  // locally and silently never sent — leaving parents and school reports on
+  // the pre-edit values forever. Park those edits here and replay them once
+  // the id lands. Keyed by local log id; the Set marks creates still in
+  // flight, so a genuinely unsynced local log (logged out, or predating this
+  // feature) isn't queued for a flush that will never come.
+  const creatingLogsRef = useRef(new Set())
+  const pendingEditsRef = useRef(new Map())
+
   const addLog = useCallback((data) => {
     const log = createLog(data)
     setLogs((prev) => {
@@ -77,12 +87,21 @@ export function DataProvider({ children }) {
     // parent can see it. Best-effort — a pre-existing local log created
     // before this synced never gets a serverId, and that's fine (no
     // backfill of history predating this feature).
+    creatingLogsRef.current.add(log.id)
     const whenSynced = syncCreateLog(log).then((serverId) => {
       if (serverId) {
         updateLog(log.id, { serverId }) // raw local write, doesn't re-trigger sync
         setLogs((prev) => prev.map((l) => (l.id === log.id ? { ...l, serverId } : l)))
       }
+      creatingLogsRef.current.delete(log.id)
+      const queued = pendingEditsRef.current.get(log.id)
+      pendingEditsRef.current.delete(log.id)
+      if (serverId && queued) syncUpdateLog(serverId, queued)
       return serverId
+    }).catch(() => {
+      creatingLogsRef.current.delete(log.id)
+      pendingEditsRef.current.delete(log.id)
+      return null
     })
     return { ...log, whenSynced }
   }, [isStudentLike])
@@ -100,6 +119,10 @@ export function DataProvider({ children }) {
     if (log) {
       setLogs((prev) => prev.map((l) => (l.id === id ? log : l)))
       if (log.serverId) syncUpdateLog(log.serverId, effective)
+      else if (creatingLogsRef.current.has(id)) {
+        // Merge, so several quick edits all survive the flush.
+        pendingEditsRef.current.set(id, { ...(pendingEditsRef.current.get(id) || {}), ...effective })
+      }
     }
     return log
   }, [])

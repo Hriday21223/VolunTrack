@@ -4,7 +4,7 @@ import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, S
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
-import { hashPin, sendPasswordResetCode, clearPasswordResetCode, createLog } from '@/api/index.js'
+import { hashPin, createLog } from '@/api/index.js'
 import { buildDemoLogs, buildDemoGoals, buildDemoReminders } from '@/lib/demoData.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -30,7 +30,7 @@ function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children })
 
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
-  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp } = useAuth()
+  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp } = useAuth()
   const { goals, saveGoal, removeGoal, logs } = useData()
   const nav = useNavigate()
   const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, primary: false })
@@ -46,6 +46,10 @@ export default function Settings() {
   const [showSyncPasswordPrompt, setShowSyncPasswordPrompt] = useState(false)
   const [showPwText, setShowPwText] = useState(false)
   const [syncPasswordBusy, setSyncPasswordBusy] = useState(false)
+  // Set when linking hits an account with 2FA on: the password alone no longer
+  // buys a session, so the PIN isn't written until the code checks out either.
+  const [syncTotpTempToken, setSyncTotpTempToken] = useState('')
+  const [syncTotpCode, setSyncTotpCode] = useState('')
   const [schoolCode, setSchoolCode] = useState('')
   const [schoolName, setSchoolName] = useState('')
   const [schoolBusy, setSchoolBusy] = useState(false)
@@ -349,56 +353,44 @@ export default function Settings() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Failed to link account')
 
+      // 2FA is on: the server withheld both the session and the PIN write
+      // until the second factor is verified. Finish in confirmSyncTotp().
+      if (data.requiresTotp) {
+        setSyncTotpTempToken(data.tempToken)
+        setSyncPassword('')
+        return
+      }
+
       localStorage.setItem('voluntrack:auth_token', data.token)
       setShowSyncPin(true)
       setShowSyncPasswordPrompt(false)
       setSyncPassword('')
       setToastMessage('Account linked! Sync PIN generated.')
       setToast(true)
-      return
     } catch (error) {
-      // If password is incorrect, try to sync the database password
-      // using a locally-generated recovery code
-      if (error.message === 'Password is incorrect.') {
-        try {
-          const updated = sendPasswordResetCode(user.email)
-          if (updated && updated.resetPasswordCode) {
-            const code = updated.resetPasswordCode
-            const sendRes = await fetch(`${apiUrl}/send-reset-email`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: user.email, code, type: 'password' }),
-            })
-            if (sendRes.ok || sendRes.status === 500 || sendRes.status === 503) {
-              const resetRes = await fetch(`${apiUrl}/auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: user.email, code, newPassword: syncPassword }),
-              })
-              if (resetRes.ok) {
-                clearPasswordResetCode(user.email)
-                const retryRes = await fetch(`${apiUrl}/auth/sync-pin-auth`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email: user.email, password: syncPassword, syncPin: displaySyncPin }),
-                })
-                const retryData = await retryRes.json()
-                if (retryRes.ok) {
-                  localStorage.setItem('voluntrack:auth_token', retryData.token)
-                  setShowSyncPin(true)
-                  setShowSyncPasswordPrompt(false)
-                  setSyncPassword('')
-                  setToastMessage('Password synced! Sync PIN generated.')
-                  setToast(true)
-                  return
-                }
-              }
-            }
-          }
-        } catch {
-          // fall through to error message below
-        }
-      }
+      setToastMessage(error.message || 'Failed to link account')
+      setToast(true)
+    } finally {
+      setSyncPasswordBusy(false)
+    }
+  }
+
+  // Second half of the linking flow for 2FA accounts: the TOTP challenge
+  // issues the session, and the PIN is then written through the ordinary
+  // authenticated PUT /api/auth/sync-pin.
+  const confirmSyncTotp = async () => {
+    if (!syncTotpCode.trim()) return
+    setSyncPasswordBusy(true)
+    try {
+      await verifyTotp(syncTotpTempToken, syncTotpCode.trim())
+      await setSyncPinAuth(displaySyncPin)
+      setSyncTotpTempToken('')
+      setSyncTotpCode('')
+      setShowSyncPin(true)
+      setShowSyncPasswordPrompt(false)
+      setToastMessage('Account linked! Sync PIN generated.')
+      setToast(true)
+    } catch (error) {
       setToastMessage(error.message || 'Failed to link account')
       setToast(true)
     } finally {
@@ -679,7 +671,39 @@ export default function Settings() {
                 ? 'Generate a 5-digit PIN to sync your account with your laptop. Share this PIN with your computer to access your data.'
                 : 'Generate a 5-digit PIN to sync your account with the mobile app. Share this PIN with your mobile device to access your data.'}
             </p>
-            {showSyncPasswordPrompt ? (
+            {showSyncPasswordPrompt && syncTotpTempToken ? (
+              <div className="space-y-3">
+                <div className="p-4 bg-slate-900/80 rounded-xl border border-amber-500/30">
+                  <p className="text-xs text-amber-300 mb-2">
+                    This account uses two-factor authentication. Enter the current code from your
+                    authenticator app to finish linking.
+                  </p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    value={syncTotpCode}
+                    onChange={(e) => setSyncTotpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="input w-full bg-slate-900/80 text-white border-white/10 text-center tracking-widest font-mono"
+                  />
+                </div>
+                <button
+                  onClick={confirmSyncTotp}
+                  disabled={syncTotpCode.length !== 6 || syncPasswordBusy}
+                  className="btn-primary w-full"
+                >
+                  {syncPasswordBusy ? 'Verifying…' : 'Verify & generate PIN'}
+                </button>
+                <button
+                  onClick={() => { setShowSyncPasswordPrompt(false); setSyncTotpTempToken(''); setSyncTotpCode('') }}
+                  className="btn-ghost w-full text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : showSyncPasswordPrompt ? (
               <div className="space-y-3">
                 <div className="p-4 bg-slate-900/80 rounded-xl border border-amber-500/30">
                   <p className="text-xs text-amber-300 mb-2">

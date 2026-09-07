@@ -343,7 +343,8 @@ async function handleLoginCallback(res, connection, claims, email, subject, stat
     if (candidate) {
       const linkable =
         ['student', 'volunteer', 'school_staff'].includes(candidate.role) &&
-        (connection.school_id ? candidate.school_id === connection.school_id : true)
+        (connection.school_id ? candidate.school_id === connection.school_id : true) &&
+        (connection.organization_id ? candidate.organization_id === connection.organization_id : true)
       if (!linkable) {
         return failRedirect(res, 'An account with this email already exists. Sign in with your password instead.')
       }
