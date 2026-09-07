@@ -41,10 +41,6 @@ export default function ForgotPassword() {
 
       const result = await attemptDelivery({ email, code: generated, type: 'password' })
       if (result.ok && result.code) setCode(result.code)
-      // The server issued its own code for this account (see
-      // /api/send-reset-email). Ours is not the one that was emailed, so it
-      // must not stay on screen pretending to be usable.
-      else if (result.serverGenerated) setCode('')
 
       setDelivery(
         result.ok
@@ -61,7 +57,6 @@ export default function ForgotPassword() {
     setRetrying(true)
     const result = await attemptDelivery({ email, code, type: 'password' })
     if (result.ok && result.code) setCode(result.code)
-    else if (result.serverGenerated) setCode('')
     setDelivery(
       result.ok
         ? { status: 'sent', reason: '', missingVars: [] }

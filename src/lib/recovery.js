@@ -48,29 +48,21 @@ export async function sendRecoveryEmail({ email, code, type }) {
       signal: controller.signal,
     })
     clearTimeout(timer)
-    // `serverGenerated` means the backend minted its own code for a
-    // server-backed account and ignored `code` — the caller must stop showing
-    // the local one, because it is not what landed in the inbox.
-    if (response.ok) {
-      const body = await response.json().catch(() => ({}))
-      return { ok: true, backendAvailable: true, serverGenerated: Boolean(body?.serverGenerated) }
-    }
+    if (response.ok) return { ok: true, backendAvailable: true }
 
     let reason = `Email backend returned ${response.status}.`
     let missingVars = null
-    let serverGenerated = false
     try {
       const body = await response.json()
       if (body?.error) reason = body.error
       if (Array.isArray(body?.missingVars)) missingVars = body.missingVars
-      serverGenerated = Boolean(body?.serverGenerated)
     } catch {
       // body wasn't JSON; keep the status-based reason.
     }
 
     // 404 / network error on a static host = no backend at this URL.
     const backendAvailable = response.status !== 404 && !reasonLooksLikeMissingBackend(reason)
-    return { ok: false, reason, missingVars, backendAvailable, serverGenerated }
+    return { ok: false, reason, missingVars, backendAvailable }
   } catch (err) {
     const isTimeout = err?.name === 'AbortError'
     const reason = isTimeout ? 'Email timed out.' : err?.message || 'Could not reach the email server.'

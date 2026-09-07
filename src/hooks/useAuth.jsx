@@ -115,10 +115,7 @@ export function AuthProvider({ children }) {
     return safe
   }, [])
 
-  // `pullLogs` is for the sync-PIN path: that flow exists to bring an account's
-  // server-side logs onto a new device, and the TOTP step now sits between the
-  // PIN and the session, so the pull has to happen here instead.
-  const verifyTotp = useCallback(async (tempToken, code, { pullLogs = false } = {}) => {
+  const verifyTotp = useCallback(async (tempToken, code) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/challenge`, {
       method: 'POST',
@@ -131,13 +128,12 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
-    if (pullLogs) await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
   }, [])
 
-  const verifyBackupCode = useCallback(async (tempToken, code, { pullLogs = false } = {}) => {
+  const verifyBackupCode = useCallback(async (tempToken, code) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/backup-recovery`, {
       method: 'POST',
@@ -150,7 +146,6 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
-    if (pullLogs) await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
@@ -251,12 +246,6 @@ export function AuthProvider({ children }) {
       }
 
       const data = await response.json()
-
-      // 2FA required — the PIN has already been spent server-side; the caller
-      // finishes with verifyTotp(tempToken, code, { pullLogs: true }).
-      if (data.requiresTotp) {
-        return { requiresTotp: true, tempToken: data.tempToken }
-      }
 
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', data.token)
@@ -419,43 +408,26 @@ export function AuthProvider({ children }) {
   }, [])
 
   const completePasswordReset = useCallback(async (email, code, password) => {
-    // The server is asked first, because for a server-backed account it owns
-    // the code (see /api/send-reset-email) and the local copy in this browser
-    // is not the one that was emailed. The local check is the fallback for
-    // client-only mode and for an account that exists only in this browser.
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    let serverOk = false
-    let serverError = null
+    // Update local storage first
+    const account = findUserByEmail(email)
+    if (!account) throw new Error('No account with that email.')
+    if (!isResetPasswordCodeValid(account, code)) throw new Error('Invalid or expired code.')
+    const updated = persistUser(account.id, { passwordHash: hashPassword(password), resetPasswordCode: null, resetPasswordCodeExpiresAt: null })
+    if (!updated) throw new Error('Failed to update password.')
+
+    // Also try to update the database password via the new API endpoint
     try {
-      const res = await fetch(`${apiUrl}/auth/reset-password`, {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      await fetch(`${apiUrl}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, newPassword: password }),
       })
-      if (res.ok) {
-        serverOk = true
-      } else if (res.status !== 503 && res.status !== 404) {
-        // 503 = no server database, 404 = no such server account: both mean
-        // "this account is local-only", so fall through. Anything else is the
-        // server rejecting the code, and must not be papered over locally.
-        const body = await res.json().catch(() => ({}))
-        serverError = new Error(body.error || 'Invalid or expired code.')
-      }
+      // Non-blocking — user flow continues either way
     } catch {
-      // Backend unreachable — fall through to the local-only path.
+      // Backend may not have this endpoint yet
     }
-    if (serverError) throw serverError
 
-    const account = findUserByEmail(email)
-    if (!account) {
-      if (serverOk) return null
-      throw new Error('No account with that email.')
-    }
-    if (!serverOk && !isResetPasswordCodeValid(account, code)) {
-      throw new Error('Invalid or expired code.')
-    }
-    const updated = persistUser(account.id, { passwordHash: hashPassword(password), resetPasswordCode: null, resetPasswordCodeExpiresAt: null })
-    if (!updated) throw new Error('Failed to update password.')
     return updated
   }, [])
 

@@ -760,14 +760,6 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_failed_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMPTZ`) } catch {}
 
-  // Password-reset codes are generated and stored server-side, hashed like a
-  // password. They used to be whatever the client sent to /api/send-reset-email,
-  // which meant anyone could pick a code for someone else's account and then
-  // redeem it. See POST /api/send-reset-email and /api/auth/reset-password.
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_hash TEXT`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ`) } catch {}
-  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
-
   // Backfill privileged password accounts that have no deadline yet.
   // Deliberately excludes auth_provider='sso': those users have no VolunTrack
   // password, MFA is their school IdP's responsibility, and pushing them into

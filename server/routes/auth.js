@@ -302,28 +302,6 @@ router.put('/sync-pin', requireDb, requireAuth(), async (req, res) => {
   }
 })
 
-// Both PIN routes below issue a session the same way /login does, so they
-// have to respect the same second-factor gates — otherwise TOTP (and the
-// mandatory-MFA requirement for privileged roles) is simply routed around.
-// Returns a response body to send instead of a session, or null to proceed.
-function secondFactorGate(row) {
-  const user = publicUser(row)
-  if (row.totp_enabled) {
-    return { status: 200, body: { requiresTotp: true, tempToken: signTempToken(user) } }
-  }
-  // Past its enrolment deadline, a privileged account gets no session at all.
-  // /login hands back an enrolment token for its setup flow; these routes have
-  // no such flow, so they send the user to the normal sign-in page instead.
-  const needsMfa = mfaRequiredForRole(row.role) && row.auth_provider !== 'sso'
-  if (needsMfa && row.mfa_required_at && new Date(row.mfa_required_at) <= new Date()) {
-    return {
-      status: 403,
-      body: { error: 'This account must finish two-factor setup. Sign in with your email and password.' },
-    }
-  }
-  return null
-}
-
 // Set sync PIN using email + password (no JWT required — for users whose
 // browser session doesn't have a token due to localStorage-only login).
 router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
@@ -341,12 +319,6 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
 
     const ok = await verifyPassword(password, rows[0].password_hash)
     if (!ok) return res.status(403).json({ error: 'Password is incorrect.' })
-
-    // Gate before the PIN is written: a PIN set on a password alone would be
-    // a standing second-factor bypass for POST /sync-login. The client
-    // finishes the TOTP challenge and then sets the PIN via PUT /sync-pin.
-    const gate = secondFactorGate(rows[0])
-    if (gate) return res.status(gate.status).json(gate.body)
 
     const existing = await query('SELECT 1 FROM users WHERE sync_pin = $1 AND id != $2', [syncPin, rows[0].id])
     if (existing.rowCount > 0) return res.status(409).json({ error: 'This sync PIN is already in use.' })
@@ -377,13 +349,8 @@ router.post('/sync-login', authLimiter, requireDb, async (req, res) => {
       return res.status(401).json({ error: 'Invalid sync PIN.' })
     }
     const user = publicUser(rows[0])
-    // Clear the sync PIN so it can't be reused — including when a second
-    // factor is still outstanding, since the PIN has now been spent.
+    // Clear the sync PIN so it can't be reused
     await query('UPDATE users SET sync_pin = NULL WHERE id = $1', [rows[0].id])
-
-    const gate = secondFactorGate(rows[0])
-    if (gate) return res.status(gate.status).json(gate.body)
-
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('sync-login failed:', error)
