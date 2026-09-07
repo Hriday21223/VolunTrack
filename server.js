@@ -6,7 +6,7 @@ import dotenv from 'dotenv'
 import nodemailer from 'nodemailer'
 import { initSchema, hasDatabase, query } from './server/db.js'
 import { authenticate, hashPassword, verifyPassword } from './server/auth.js'
-import { uid, generateToken } from './server/ids.js'
+import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import authSsoRoutes from './server/routes/authSso.js'
 import schoolRoutes from './server/routes/school.js'
@@ -268,7 +268,7 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     try {
       const { rows } = await query('SELECT id FROM users WHERE email = $1', [normalizedEmail])
       if (rows.length > 0) {
-        code = String(Math.floor(100000 + Math.random() * 900000))
+        code = generateNumericCode(6)
         const codeHash = await hashPassword(code)
         await query(
           `UPDATE users
