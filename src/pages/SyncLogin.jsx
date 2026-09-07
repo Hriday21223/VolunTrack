@@ -14,7 +14,7 @@ export default function SyncLogin() {
     path: '/sync-login',
   })
 
-  const { loginWithSyncPin } = useAuth()
+  const { loginWithSyncPin, verifyTotp, verifyBackupCode } = useAuth()
   const nav = useNavigate()
   const [syncPin, setSyncPin] = useState('')
   const [busy, setBusy] = useState(false)
@@ -22,6 +22,11 @@ export default function SyncLogin() {
   const [toast, setToast] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [scanning, setScanning] = useState(false)
+  // Set when the account has 2FA on: the PIN is spent, but no session is
+  // issued until the second factor is verified too.
+  const [totpTempToken, setTotpTempToken] = useState('')
+  const [totpCode, setTotpCode] = useState('')
+  const [useBackupCode, setUseBackupCode] = useState(false)
   const scannerRef = useRef(null)
   const scannerInstance = useRef(null)
 
@@ -46,7 +51,28 @@ export default function SyncLogin() {
     setErr('')
     setBusy(true)
     try {
-      await loginWithSyncPin(syncPin)
+      const result = await loginWithSyncPin(syncPin)
+      if (result?.requiresTotp) {
+        setTotpTempToken(result.tempToken)
+        setSyncPin('')
+        return
+      }
+      setToast(true)
+      setTimeout(() => nav('/', { replace: true }), 600)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onSubmitTotp = async (e) => {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      const verify = useBackupCode ? verifyBackupCode : verifyTotp
+      await verify(totpTempToken, totpCode.trim(), { pullLogs: true })
       setToast(true)
       setTimeout(() => nav('/', { replace: true }), 600)
     } catch (e) {
@@ -175,6 +201,50 @@ export default function SyncLogin() {
                   <CameraOff className="w-4 h-4 mr-2" /> Cancel
                 </button>
               </div>
+            ) : totpTempToken ? (
+              <>
+                <p className="text-sm text-slate-300 mb-6">
+                  This account uses two-factor authentication. Enter the current code from your
+                  authenticator app to finish syncing.
+                </p>
+
+                <form onSubmit={onSubmitTotp} className="space-y-5">
+                  <div>
+                    <label className="label text-slate-300" htmlFor="totpCode">
+                      {useBackupCode ? 'Backup code' : '6-digit code'}
+                    </label>
+                    <input
+                      id="totpCode"
+                      type="text"
+                      required
+                      autoFocus
+                      autoComplete="one-time-code"
+                      inputMode={useBackupCode ? 'text' : 'numeric'}
+                      maxLength={useBackupCode ? 32 : 6}
+                      className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-widest font-mono"
+                      placeholder={useBackupCode ? 'backup code' : '123456'}
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(
+                        useBackupCode ? e.target.value : e.target.value.replace(/[^0-9]/g, '').slice(0, 6),
+                      )}
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
+                    {busy ? 'Verifying…' : <>Verify and sync <ArrowRight className="w-4 h-4" /></>}
+                  </button>
+                </form>
+
+                {err && <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{err}</div>}
+
+                <button
+                  type="button"
+                  onClick={() => { setUseBackupCode((v) => !v); setTotpCode(''); setErr('') }}
+                  className="mt-4 w-full text-center text-sm text-sky-200 font-semibold hover:text-white"
+                >
+                  {useBackupCode ? 'Use your authenticator app instead' : 'Use a backup code instead'}
+                </button>
+              </>
             ) : (
               <>
                 <p className="text-sm text-slate-300 mb-6">

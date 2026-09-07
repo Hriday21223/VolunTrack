@@ -472,6 +472,29 @@ export async function initSchema() {
   } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_incidents_detected ON incidents(detected_at DESC)`) } catch {}
   try { await query(`ALTER TABLE incidents ADD COLUMN IF NOT EXISTS issue_url TEXT`) } catch {}
+  // /api/status/health auto-logs a 'Database' incident, and concurrent health
+  // checks used to race between its SELECT and its INSERT, opening duplicate
+  // incidents and double-sending the notification email. This index makes
+  // "one open auto incident per service" a database rule so the INSERT's
+  // ON CONFLICT DO NOTHING can settle the race. Admin- and GitHub-sourced
+  // incidents are deliberately out of scope — they are created deliberately.
+  try {
+    await query(`
+      UPDATE incidents SET status = 'resolved', resolved_at = COALESCE(resolved_at, now())
+       WHERE status = 'detected' AND source = 'auto'
+         AND id NOT IN (
+           SELECT DISTINCT ON (service) id FROM incidents
+            WHERE status = 'detected' AND source = 'auto'
+            ORDER BY service, detected_at DESC
+         )
+    `)
+  } catch {}
+  try {
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_incidents_one_open_auto
+        ON incidents (service) WHERE status = 'detected' AND source = 'auto'
+    `)
+  } catch {}
 
   // Visitors who opt in on /status to get emailed when an incident is
   // logged. Double opt-in (confirmed starts false) so this can't be used to
@@ -736,6 +759,14 @@ export async function initSchema() {
   // bind the limit to the account being attacked instead.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_failed_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMPTZ`) } catch {}
+
+  // Password-reset codes are generated and stored server-side, hashed like a
+  // password. They used to be whatever the client sent to /api/send-reset-email,
+  // which meant anyone could pick a code for someone else's account and then
+  // redeem it. See POST /api/send-reset-email and /api/auth/reset-password.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
 
   // Backfill privileged password accounts that have no deadline yet.
   // Deliberately excludes auth_provider='sso': those users have no VolunTrack
