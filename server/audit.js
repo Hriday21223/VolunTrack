@@ -28,6 +28,10 @@ export const AUDIT = {
   PDF_REVIEWED: 'pdf.reviewed',
   SSO_CONFIG_CHANGED: 'sso.config_changed',
   STORAGE_CONFIG_CHANGED: 'storage.config_changed',
+  // A signed transcript is a portable copy of a student's whole record that
+  // outlives the request, so issuing one is recorded like a download URL.
+  TRANSCRIPT_ISSUED: 'transcript.issued',
+  TRANSCRIPT_IMPORTED: 'transcript.imported',
 }
 
 // Correlates events by the same person after their account is deleted (the

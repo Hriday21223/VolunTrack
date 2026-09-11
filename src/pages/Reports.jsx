@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { FileText, Download, Printer, FileDown, Filter, Send, School } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { FileText, Download, Printer, FileDown, Filter, Send, School, ShieldCheck, Upload } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -10,6 +11,8 @@ import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { categoryColor } from '@/lib/categories.js'
 import { deriveAchievementState } from '@/lib/achievements.js'
+import { downloadSignedTranscript, hasAccountSession, importTranscript, readTranscriptFile } from '@/lib/transcript.js'
+import { syncPullLogs } from '@/lib/logSync.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -85,7 +88,8 @@ export default function Reports() {
       subtitle="Export your record or print a certificate of service."
     >
       <div className="grid lg:grid-cols-3 gap-5">
-        <Card className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-5">
+        <Card>
           <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Filter className="w-4 h-4 text-brand-600" /> Filter</h3>
           <div className="space-y-3">
             <div>
@@ -122,6 +126,8 @@ export default function Reports() {
             </div>
           </div>
         </Card>
+        <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
+        </div>
 
         <div className="lg:col-span-2 space-y-5">
           <div className="grid sm:grid-cols-3 gap-4">
@@ -193,6 +199,71 @@ export default function Reports() {
       </div>
       <Toast open={toastOpen} onClose={() => setToastOpen(false)}>{toastMsg}</Toast>
     </AppLayout>
+  )
+}
+
+// Signed transcript export/import (#143). Server-backed student and volunteer
+// accounts only: the server can only vouch for logs it holds, so there is
+// nothing to sign for a client-only account.
+function TranscriptCard({ notify }) {
+  const { user } = useAuth()
+  const { refreshLogs } = useData()
+  const [busy, setBusy] = useState('')
+  const fileRef = useRef(null)
+
+  if (!hasAccountSession() || !['student', 'volunteer'].includes(user?.role)) return null
+
+  const onDownload = async () => {
+    setBusy('download')
+    try {
+      await downloadSignedTranscript()
+      notify('Signed transcript downloaded.')
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  const onImport = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBusy('import')
+    try {
+      const doc = await readTranscriptFile(file)
+      const { imported, skipped } = await importTranscript(doc)
+      if (imported > 0) {
+        await syncPullLogs(user.id)
+        refreshLogs()
+      }
+      notify(imported === 0
+        ? 'Every entry in that transcript is already on your account.'
+        : `Imported ${imported} ${imported === 1 ? 'entry' : 'entries'}${skipped ? ` (${skipped} already on your account)` : ''}.`)
+    } catch (err) {
+      notify(err.message)
+    } finally {
+      setBusy('')
+    }
+  }
+
+  return (
+    <Card>
+      <h3 className="font-display font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Verified transcript</h3>
+      <p className="text-xs text-earth-500 dark:text-earth-400 mb-3">
+        A signed copy of every entry saved to your account, ignoring the filters above. A new school can import it with
+        approvals intact, and anyone can check it at <Link to="/verify-transcript" className="underline">verify-transcript</Link>.
+      </p>
+      <div className="space-y-2">
+        <button className="btn-secondary w-full" onClick={onDownload} disabled={Boolean(busy)}>
+          <Download className="w-4 h-4" /> {busy === 'download' ? 'Signing…' : 'Download signed transcript'}
+        </button>
+        <button className="btn-ghost w-full" onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>
+          <Upload className="w-4 h-4" /> {busy === 'import' ? 'Importing…' : 'Import a transcript'}
+        </button>
+        <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={onImport} />
+      </div>
+    </Card>
   )
 }
 

@@ -42,6 +42,7 @@ const MyTasks = lazy(() => import('@/pages/MyTasks.jsx'))
 const Attendance = lazy(() => import('@/pages/Attendance.jsx'))
 const Status = lazy(() => import('@/pages/Status.jsx'))
 const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
+const VerifyTranscript = lazy(() => import('@/pages/VerifyTranscript.jsx'))
 const ParentDashboard = lazy(() => import('@/pages/ParentDashboard.jsx'))
 
 function RouteFallback() {
@@ -110,6 +111,7 @@ function Shell() {
           <Route path="/privacy"         element={<Privacy />} />
           <Route path="/status"         element={<Status />} />
           <Route path="/verify-hours"   element={<VerifyHours />} />
+          <Route path="/verify-transcript" element={<VerifyTranscript />} />
 
           <Route path="/"             element={<Home />} />
           <Route path="/opportunities" element={<Protected><Opportunities /></Protected>} />

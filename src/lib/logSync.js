@@ -124,6 +124,7 @@ export async function syncPullLogs(userId) {
       verificationStatus: row.verification_status ?? 'none',
       verified: row.verification_status === 'approved',
       taskId: row.task_id ?? '',
+      importedTranscriptId: row.importedTranscriptId ?? '',
       createdAt: row.created_at ?? new Date().toISOString(),
     })
   }
