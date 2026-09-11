@@ -73,8 +73,9 @@ export default function Privacy() {
           </Section>
 
           <Section title="Account Deletion">
-            <p>You can delete your account from the Settings page in the app. You will be prompted to confirm by typing &quot;delete&quot; before the action completes.</p>
-            <p className="mt-2"><strong>This clears VolunTrack data from the device you are using.</strong> Erasing the copy held on our servers is not yet automatic: email us at the address below and we will delete it, subject to the exceptions under <em>Data Retention</em>. We are working on making this happen automatically.</p>
+            <p>You can delete your account from the Settings page in the app. You will be prompted to type &quot;delete&quot; and re-enter your password before the action completes.</p>
+            <p className="mt-2">This erases your account and everything attached to it — volunteer logs, goals, reminders, documents you uploaded to a school, and any parent link — from our servers as well as from the device you are using. It cannot be undone, and the exceptions under <em>Data Retention</em> still apply.</p>
+            <p className="mt-2">School, organization, and administrator accounts cannot be deleted this way, because doing so would remove records other people rely on. Contact us and we will close or transfer the account properly.</p>
           </Section>
 
           <Section title="Third-Party Sharing">
