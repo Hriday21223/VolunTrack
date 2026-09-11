@@ -73,6 +73,10 @@ export function DataProvider({ children }) {
   // feature) isn't queued for a flush that will never come.
   const creatingLogsRef = useRef(new Set())
   const pendingEditsRef = useRef(new Map())
+  // Same window, for deletes: with no server id yet there is nothing to
+  // DELETE, and the create would still land — an orphaned row that the next
+  // sync-pull brings back. Remember the delete and send it once the id lands.
+  const pendingDeletesRef = useRef(new Set())
 
   const addLog = useCallback((data) => {
     const log = createLog(data)
@@ -89,18 +93,23 @@ export function DataProvider({ children }) {
     // backfill of history predating this feature).
     creatingLogsRef.current.add(log.id)
     const whenSynced = syncCreateLog(log).then((serverId) => {
+      creatingLogsRef.current.delete(log.id)
+      const queued = pendingEditsRef.current.get(log.id)
+      pendingEditsRef.current.delete(log.id)
+      if (pendingDeletesRef.current.delete(log.id)) {
+        if (serverId) syncDeleteLog(serverId)
+        return null
+      }
       if (serverId) {
         updateLog(log.id, { serverId }) // raw local write, doesn't re-trigger sync
         setLogs((prev) => prev.map((l) => (l.id === log.id ? { ...l, serverId } : l)))
       }
-      creatingLogsRef.current.delete(log.id)
-      const queued = pendingEditsRef.current.get(log.id)
-      pendingEditsRef.current.delete(log.id)
       if (serverId && queued) syncUpdateLog(serverId, queued)
       return serverId
     }).catch(() => {
       creatingLogsRef.current.delete(log.id)
       pendingEditsRef.current.delete(log.id)
+      pendingDeletesRef.current.delete(log.id)
       return null
     })
     return { ...log, whenSynced }
@@ -154,6 +163,7 @@ export function DataProvider({ children }) {
     deleteLog(id)
     setLogs((prev) => prev.filter((l) => l.id !== id))
     if (target?.serverId) syncDeleteLog(target.serverId)
+    else if (creatingLogsRef.current.has(id)) pendingDeletesRef.current.add(id)
   }, [logs])
 
   const saveGoal = useCallback((g) => {

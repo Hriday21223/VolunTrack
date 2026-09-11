@@ -413,6 +413,21 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
+  // Only the global 1MB body limit bounded these before, and GET /public-tasks
+  // returns them to every visitor — cap each one like /messages does.
+  const textLimits = [
+    ['Title', title, 200],
+    ['Description', description, 5000],
+    ['Location', location, 300],
+    ['Phone number', phone, 30],
+    ['Time', time, 20],
+    ['Important info', importantInfo, 2000],
+  ]
+  for (const [label, value, max] of textLimits) {
+    if (value != null && (typeof value !== 'string' || value.length > max)) {
+      return res.status(400).json({ error: `${label} must be text of at most ${max} characters.` })
+    }
+  }
   // A negative or non-integer slot count is truthy and numeric, so it would
   // slip past the `|| 1` default below and permanently lock the task as full.
   if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1)) {
@@ -1034,31 +1049,42 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
   }
 
   try {
+    // A double-click or retried request must not email the school twice or log
+    // a second payment event, so each branch only goes on when its UPDATE
+    // actually changed the row. Approval compares status alone (re-approving
+    // shouldn't re-confirm); unpaid/rejected also compare notes, since a new
+    // rejection reason is worth sending.
+    let school
     if (status === 'paid') {
-      await query(
-        'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now() WHERE id = $3',
+      const { rows } = await query(
+        `UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now()
+         WHERE id = $3 AND payment_status IS DISTINCT FROM $1
+         RETURNING contact_email`,
         [status, notes || null, req.params.id],
       )
+      school = rows[0]
+      if (!school) return res.json({ ok: true, emailSent: null, unchanged: true })
       await query(
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, 'status_paid', $3)`,
         [uid('pev'), req.params.id, notes || null],
       )
 
-      const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
-      if (rows[0]?.contact_email) {
-        const id = uid('anot')
+      if (school.contact_email) {
         await sendEmail({
-          to: rows[0].contact_email,
+          to: school.contact_email,
           subject: 'Payment confirmed — VolunTrack',
           html: `<p>Your payment confirmation has been verified. Your school's account is now unlocked — student uploads and management are available.</p>${emailFooterHtml()}`,
-          idempotencyKey: `payment-approved/${req.params.id}/${id}`,
         })
       }
     } else {
-      await query(
-        'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = NULL WHERE id = $3',
+      const { rows } = await query(
+        `UPDATE schools SET payment_status = $1, payment_notes = $2::text, paid_at = NULL
+         WHERE id = $3 AND (payment_status, COALESCE(payment_notes, '')) IS DISTINCT FROM ($1, COALESCE($2::text, ''))
+         RETURNING contact_email`,
         [status, notes || null, req.params.id],
       )
+      school = rows[0]
+      if (!school) return res.json({ ok: true, emailSent: null, unchanged: true })
       await query(
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, $3, $4)`,
         [uid('pev'), req.params.id, status === 'unpaid' ? 'status_unpaid' : 'status_rejected', notes || null],
@@ -1081,14 +1107,12 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         [id, req.params.id, rejectMsg],
       )
 
-      const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
       emailSent = false
-      if (rows[0]?.contact_email) {
+      if (school.contact_email) {
         const result = await sendEmail({
-          to: rows[0].contact_email,
+          to: school.contact_email,
           subject: 'Payment confirmation rejected — VolunTrack',
           html: `<p>${rejectMsg}</p>${emailFooterHtml()}`,
-          idempotencyKey: `payment-rejected/${req.params.id}/${id}`,
         })
         emailSent = result.sent
       }
@@ -1127,7 +1151,6 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${escapeHtml(name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
-      idempotencyKey: `school-invite/${id}`,
     })
 
     return res.status(201).json({ ok: true, id, emailSent })
@@ -1173,7 +1196,6 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
       to: invite.email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${escapeHtml(invite.name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
-      idempotencyKey: `school-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
     return res.json({ ok: true, emailSent })
@@ -1242,7 +1264,6 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
         dueDate: s.payment_due_date,
         message: message.trim(),
       }),
-      idempotencyKey: `payment-notice/${s.id}/${id}`,
     })))
     const emailsSent = results.filter((r) => r.sent).length
 
@@ -1280,7 +1301,6 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
           dueDate: rows[0].payment_due_date,
           message: message.trim(),
         }),
-        idempotencyKey: `payment-notice/${req.params.schoolId}/${id}`,
       })
       emailSent = result.sent
     }
