@@ -63,7 +63,7 @@ export default function Terms() {
           </Section>
 
           <Section title="Account Termination">
-            <p>You may delete your account at any time from Settings. We may suspend or terminate accounts that violate these terms, including for submitting fraudulent hour logs.</p>
+            <p>You may delete your account at any time from Settings, which clears VolunTrack data from the device you are using. To have the copy held on our servers erased as well, email us — see <Link to="/privacy" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">Privacy</Link> for what that covers and what is kept. We may suspend or terminate accounts that violate these terms, including for submitting fraudulent hour logs.</p>
           </Section>
 
           <Section title="Limitation of Liability">
