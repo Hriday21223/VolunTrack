@@ -1,12 +1,12 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
-import { timingSafeEqual } from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { generateChildLinkCode } from '../ids.js'
 import { hasEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 import { runWeeklyDigest, previousWeekWindow, weekWindowFromStart } from '../digest.js'
+import { checkCronKey } from '../cronAuth.js'
 
 const router = express.Router()
 
@@ -122,21 +122,6 @@ router.delete('/children/:childId', limiter, requireDb, requireAuth('parent'), a
 })
 
 // --- Weekly progress digest ------------------------------------------------
-
-// Shared-secret auth for the cron entrypoint. The global `authenticate`
-// middleware is soft (never rejects), so this route would be public without an
-// explicit check — the x-cron-key header is the credential. Returns null on
-// success, or { code, error } to send back.
-function checkCronKey(req) {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return { code: 503, error: 'Digest cron is not configured.' }
-  const provided = Buffer.from(String(req.get('x-cron-key') || ''))
-  const expected = Buffer.from(secret)
-  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
-    return { code: 401, error: 'Not authorized.' }
-  }
-  return null
-}
 
 // Cron entrypoint — hit weekly by .github/workflows/parent-weekly-digest.yml.
 // Always the just-finished Mon–Sun week, every opted-in parent.
