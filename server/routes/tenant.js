@@ -371,4 +371,157 @@ router.delete('/domains/:id', tenantAdminLimiter, requireDb, requireAuth('school
   }
 })
 
+// ---------------------------------------------------------------------------
+// Admin: white-label branding
+// ---------------------------------------------------------------------------
+
+// An uploaded logo is stored inline as a data: URL. The dashboard shrinks and
+// re-encodes it in the browser first (src/lib/logoImage.js), so this is a
+// ceiling, not the expected size — /by-host returns the logo to every sign-in
+// page load, and the SPA caches that response.
+const MAX_LOGO_DATA_URL = 200_000
+
+// SVG is deliberately absent: it is inert inside <img>, but a data:image/svg+xml
+// opened directly is a document that can run script.
+//
+// An explicit switch rather than a lookup table keyed by the matched type, so
+// no method is ever chosen by a request-derived name (CodeQL
+// js/unvalidated-dynamic-method-call), and anything unexpected is refused.
+function hasImageMagic(type, b) {
+  switch (type) {
+    case 'png':
+      return b.length > 8 && b[0] === 0x89 && b.toString('ascii', 1, 4) === 'PNG'
+    case 'jpeg':
+      return b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff
+    case 'webp':
+      return b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP'
+    default:
+      return false
+  }
+}
+
+function normalizeLogoDataUrl(raw) {
+  // Length first, so the pattern below only ever runs over bounded input.
+  if (raw.length > MAX_LOGO_DATA_URL) {
+    return { ok: false, error: 'That logo is too large. Use an image under 150 KB.' }
+  }
+  const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw)
+  if (!match) return { ok: false, error: 'Logo must be a PNG, JPEG, or WebP image.' }
+  // The declared type must agree with the bytes, so a mislabelled payload
+  // can't ride through on a PNG prefix.
+  if (!hasImageMagic(match[1], Buffer.from(match[2], 'base64'))) {
+    return { ok: false, error: 'That file is not a valid PNG, JPEG, or WebP image.' }
+  }
+  return { ok: true, value: raw }
+}
+
+// The logo is rendered into an <img src> on a login page we do not control the
+// styling of. It is either an uploaded image (above) or an https link: an http
+// URL would be blocked as mixed content or downgrade the page, and any other
+// scheme has no business in a column an admin can set.
+function normalizeLogoUrl(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return { ok: true, value: null }
+  if (raw.startsWith('data:')) return normalizeLogoDataUrl(raw)
+  if (raw.length > 500) return { ok: false, error: 'Logo URL must be 500 characters or fewer.' }
+  if (!/^https:\/\//i.test(raw)) return { ok: false, error: 'Logo URL must start with https://' }
+  if (!validator.isURL(raw, { protocols: ['https'], require_protocol: true })) {
+    return { ok: false, error: 'Enter a valid https logo URL.' }
+  }
+  return { ok: true, value: raw }
+}
+
+// Stored as written but constrained to a hex literal, so it can be dropped
+// into a style value on the login page without escaping.
+function normalizeBrandColor(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return { ok: true, value: null }
+  const withHash = raw.startsWith('#') ? raw : `#${raw}`
+  if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(withHash)) {
+    return { ok: false, error: 'Accent colour must be a hex value like #2f855a.' }
+  }
+  return { ok: true, value: withHash.toLowerCase() }
+}
+
+// Which row branding lives on. Unlike domains, an admin has no single owner
+// row to act for, so admins are asked to use the school/org dashboards.
+async function brandingTarget(auth) {
+  const owner = await ownerFor(auth)
+  if (!owner || owner.unrestricted) return null
+  return owner.schoolId
+    ? { table: 'schools', id: owner.schoolId, scope: 'school' }
+    : { table: 'organizations', id: owner.orgId, scope: 'organization' }
+}
+
+// GET /api/tenant/branding — what a tenant host currently shows.
+router.get('/branding', tenantAdminLimiter, requireDb, requireAuth('school', 'school_staff', 'org'), async (req, res) => {
+  try {
+    const target = await brandingTarget(req.auth)
+    if (!target) return res.status(400).json({ error: 'Your account is not linked to a school or organization.' })
+
+    // Table name comes from brandingTarget's fixed pair, never from input.
+    const { rows } = await query(
+      `SELECT name, brand_logo_url, brand_color FROM ${target.table} WHERE id = $1`,
+      [target.id],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+
+    // Branding only reaches anyone through a live tenant hostname, so the UI
+    // can say so instead of leaving an admin wondering where it shows up.
+    const { rows: hostRows } = await query(
+      `SELECT hostname FROM tenant_domains
+        WHERE status = 'active' AND ${target.scope === 'school' ? 'school_id' : 'organization_id'} = $1
+        ORDER BY created_at ASC`,
+      [target.id],
+    )
+
+    return res.json({
+      scope: target.scope,
+      branding: {
+        name: rows[0].name,
+        logoUrl: rows[0].brand_logo_url || null,
+        color: rows[0].brand_color || null,
+      },
+      activeHostnames: hostRows.map((r) => r.hostname),
+    })
+  } catch (error) {
+    console.error('get tenant branding failed:', error)
+    return res.status(500).json({ error: 'Could not load branding.' })
+  }
+})
+
+// PUT /api/tenant/branding { logoUrl, color } — both are clearable by sending
+// an empty string. Co-admins are deliberately excluded, matching the rest of
+// School setup: this changes what every student sees at sign-in.
+router.put('/branding', tenantAdminLimiter, requireDb, requireAuth('school', 'org'), async (req, res) => {
+  try {
+    const target = await brandingTarget(req.auth)
+    if (!target) return res.status(400).json({ error: 'Your account is not linked to a school or organization.' })
+
+    const logo = normalizeLogoUrl(req.body.logoUrl)
+    if (!logo.ok) return res.status(400).json({ error: logo.error })
+    const color = normalizeBrandColor(req.body.color)
+    if (!color.ok) return res.status(400).json({ error: color.error })
+
+    const { rows } = await query(
+      `UPDATE ${target.table} SET brand_logo_url = $1, brand_color = $2
+        WHERE id = $3
+        RETURNING name, brand_logo_url, brand_color`,
+      [logo.value, color.value, target.id],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+
+    return res.json({
+      branding: {
+        name: rows[0].name,
+        logoUrl: rows[0].brand_logo_url || null,
+        color: rows[0].brand_color || null,
+      },
+    })
+  } catch (error) {
+    console.error('update tenant branding failed:', error)
+    return res.status(500).json({ error: 'Could not save branding.' })
+  }
+})
+
 export default router
