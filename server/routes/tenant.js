@@ -383,10 +383,21 @@ const MAX_LOGO_DATA_URL = 200_000
 
 // SVG is deliberately absent: it is inert inside <img>, but a data:image/svg+xml
 // opened directly is a document that can run script.
-const LOGO_MAGIC = {
-  png: (b) => b.length > 8 && b[0] === 0x89 && b.toString('ascii', 1, 4) === 'PNG',
-  jpeg: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
-  webp: (b) => b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP',
+//
+// An explicit switch rather than a lookup table keyed by the matched type, so
+// no method is ever chosen by a request-derived name (CodeQL
+// js/unvalidated-dynamic-method-call), and anything unexpected is refused.
+function hasImageMagic(type, b) {
+  switch (type) {
+    case 'png':
+      return b.length > 8 && b[0] === 0x89 && b.toString('ascii', 1, 4) === 'PNG'
+    case 'jpeg':
+      return b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff
+    case 'webp':
+      return b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP'
+    default:
+      return false
+  }
 }
 
 function normalizeLogoDataUrl(raw) {
@@ -398,7 +409,7 @@ function normalizeLogoDataUrl(raw) {
   if (!match) return { ok: false, error: 'Logo must be a PNG, JPEG, or WebP image.' }
   // The declared type must agree with the bytes, so a mislabelled payload
   // can't ride through on a PNG prefix.
-  if (!LOGO_MAGIC[match[1]](Buffer.from(match[2], 'base64'))) {
+  if (!hasImageMagic(match[1], Buffer.from(match[2], 'base64'))) {
     return { ok: false, error: 'That file is not a valid PNG, JPEG, or WebP image.' }
   }
   return { ok: true, value: raw }
