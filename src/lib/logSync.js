@@ -102,7 +102,8 @@ export async function syncPullLogs(userId) {
     additions.push({
       id: uid('log'),
       serverId: row.id,
-      date: row.date,
+      // Older backends sent the DATE column as a full ISO timestamp.
+      date: typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
       activity: row.activity,
       category: row.category ?? '',
       hours: Number(row.hours) || 0,

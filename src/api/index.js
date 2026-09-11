@@ -168,8 +168,24 @@ export function clearUserData() {
 
 /* ---------- VolunteerLog ---------- */
 
+// Logs pulled from an older backend stored `date` as a full ISO timestamp
+// ("2024-01-06T00:00:00.000Z"), which never matches a calendar day key and
+// blanks <input type="date">. Repair them in place the first time they're read.
+function normalizeLogDates(logs) {
+  let changed = false
+  const fixed = logs.map((l) => {
+    if (typeof l.date === 'string' && l.date.length > 10 && l.date[10] === 'T') {
+      changed = true
+      return { ...l, date: l.date.slice(0, 10) }
+    }
+    return l
+  })
+  if (changed) write(keys.logs, fixed)
+  return fixed
+}
+
 export function listLogs() {
-  return read(keys.logs, [])
+  return normalizeLogDates(read(keys.logs, []))
     .slice()
     .sort((a, b) => (a.date < b.date ? 1 : -1))
 }
