@@ -138,7 +138,9 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          task_id = COALESCE($13, task_id),
          verification_status = CASE WHEN ${VERIFICATION_STALE} THEN 'none' ELSE verification_status END,
          verification_token  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verification_token END,
-         verified_by         = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verified_by END
+         verified_by         = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verified_by END,
+         -- An imported log's signed attestation described the old facts too.
+         import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
        WHERE id = $14`,
       [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, req.params.id],
     )
@@ -183,12 +185,17 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       // proof_key itself is never returned: it is only useful with a minted
       // URL, and every mint is audited. Callers just need to know one exists.
       `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, task_id, created_at,
-               (proof_key IS NOT NULL) AS has_proof, proof_mime
+               (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id
        FROM logs WHERE user_id = $1 ORDER BY logs.date DESC, created_at DESC`,
       [userId],
     )
     return res.json({
-      logs: rows.map(({ has_proof, proof_mime, ...log }) => ({ ...log, hasProof: has_proof, proofMime: proof_mime })),
+      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, ...log }) => ({
+        ...log,
+        hasProof: has_proof,
+        proofMime: proof_mime,
+        importedTranscriptId: imported_transcript_id,
+      })),
     })
   } catch (error) {
     console.error('log fetch failed:', error)

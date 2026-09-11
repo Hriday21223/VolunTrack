@@ -808,6 +808,18 @@ export async function initSchema() {
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_mime TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_bytes INTEGER`) } catch {}
 
+  // Logs brought in from a signed transcript (#143 Part B,
+  // server/routes/transcript.js). import_source_id is the id the log had where
+  // it was first recorded — unique per account, so importing two overlapping
+  // transcripts can never count the same hours twice. import_attestation keeps
+  // the signed verification/proof claims it arrived with, so re-exporting it
+  // doesn't turn "approved by a supervisor at school A" into an unexplained
+  // approval here. Editing the log's facts clears it (logs.js PATCH).
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_source_id TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS imported_transcript_id TEXT`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_attestation JSONB`) } catch {}
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_import_source ON logs(user_id, import_source_id) WHERE import_source_id IS NOT NULL`) } catch {}
+
   // ---------------------------------------------------------------------
   // Append-only audit trail. VolunTrack records *decisions* in several places
   // (logs.verified_by, pdf_uploads.reviewed_by, supervisor_verifications
