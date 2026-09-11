@@ -44,7 +44,8 @@
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.26.2",
     "resend": "^6.18.1",
-    "validator": "^13.15.35"
+    "validator": "^13.15.35",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/react": "^18.3.10",

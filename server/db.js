@@ -1,4 +1,5 @@
 import pg from 'pg'
+import { generateAccountCode } from './ids.js'
 
 const { Pool } = pg
 
@@ -246,6 +247,41 @@ CREATE TABLE IF NOT EXISTS reviews (
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
+// The two tables that carry a customer account_code, and the tag that goes in
+// the middle of the code so an admin can tell from a bank reference alone what
+// kind of account paid. Used to build SQL below — a fixed map, never user input.
+const ACCOUNT_CODE_TABLES = { schools: 'SCH', organizations: 'ORG' }
+
+// An unused account code for `table`. Pre-checks for a collision the same way
+// server/routes/school.js pre-checks a school pin; the UNIQUE index on the
+// column is the actual guarantee.
+export async function nextAccountCode(table) {
+  const kind = ACCOUNT_CODE_TABLES[table]
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateAccountCode(kind)
+    const { rows } = await query(`SELECT 1 FROM ${table} WHERE account_code = $1`, [code])
+    if (rows.length === 0) return code
+  }
+  return generateAccountCode(kind)
+}
+
+// Give every pre-existing row a code. Runs on boot and is idempotent — once a
+// row has a code the WHERE clause skips it, so a restart is a no-op.
+async function backfillAccountCodes(table) {
+  const { rows } = await query(`SELECT id FROM ${table} WHERE account_code IS NULL`)
+  for (const row of rows) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const code = await nextAccountCode(table)
+        await query(`UPDATE ${table} SET account_code = $1 WHERE id = $2 AND account_code IS NULL`, [code, row.id])
+        break
+      } catch (error) {
+        if (error?.code !== '23505') throw error
+      }
+    }
+  }
+}
+
 export async function initSchema() {
   if (!hasDatabase()) return false
   await query(SCHEMA)
@@ -347,6 +383,49 @@ export async function initSchema() {
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_payment_status_check`) } catch {}
   try { await query(`ALTER TABLE organizations ADD CONSTRAINT organizations_payment_status_check CHECK (payment_status IN ('paid','unpaid'))`) } catch {}
+  // Permanent billing identifier per customer ("VT-SCH-4F2K9A"/"VT-ORG-…"),
+  // quoted on invoices and bank transfers. Deliberately NOT schools.pin — that
+  // is the student join code, user-chosen and shared publicly. Existing rows
+  // are backfilled below, so the column stays nullable.
+  // Optional account code a partnership enquiry can quote on the public
+  // contact form. Free text from an unauthenticated form — a hint for the
+  // admin, never proof of identity, so nothing is gated on it.
+  try { await query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS account_code TEXT`) } catch {}
+
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_code TEXT UNIQUE`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS account_code TEXT UNIQUE`) } catch {}
+  try { await backfillAccountCodes('schools') } catch (error) { console.error('school account_code backfill failed:', error) }
+  try { await backfillAccountCodes('organizations') } catch (error) { console.error('organization account_code backfill failed:', error) }
+
+  // An account code is printed on invoices and quoted on bank transfers, so it
+  // must never change or be cleared once issued — a renamed code would orphan
+  // every payment reference already in the wild. Enforced in the database
+  // rather than by convention, so no future route (or a hand-run UPDATE) can
+  // break it. Assigning a code to a row that has none is still allowed, which
+  // is what the backfill above does.
+  try {
+    await query(`
+      CREATE OR REPLACE FUNCTION account_code_is_immutable() RETURNS trigger AS $$
+      BEGIN
+        IF OLD.account_code IS NOT NULL AND NEW.account_code IS DISTINCT FROM OLD.account_code THEN
+          RAISE EXCEPTION 'account_code is immutable (% cannot become %)', OLD.account_code, NEW.account_code;
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql
+    `)
+  } catch (error) { console.error('account_code trigger function failed:', error) }
+  for (const table of Object.keys(ACCOUNT_CODE_TABLES)) {
+    try { await query(`DROP TRIGGER IF EXISTS ${table}_account_code_immutable ON ${table}`) } catch {}
+    try {
+      await query(`
+        CREATE TRIGGER ${table}_account_code_immutable
+        BEFORE UPDATE ON ${table}
+        FOR EACH ROW EXECUTE FUNCTION account_code_is_immutable()
+      `)
+    } catch (error) { console.error(`account_code trigger on ${table} failed:`, error) }
+  }
+
   // Lets notify-organization broadcast a single org (mirrors admin_notifications.school_id).
   try { await query(`ALTER TABLE admin_notifications ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE`) } catch {}
 
@@ -472,6 +551,29 @@ export async function initSchema() {
   } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_incidents_detected ON incidents(detected_at DESC)`) } catch {}
   try { await query(`ALTER TABLE incidents ADD COLUMN IF NOT EXISTS issue_url TEXT`) } catch {}
+  // /api/status/health auto-logs a 'Database' incident, and concurrent health
+  // checks used to race between its SELECT and its INSERT, opening duplicate
+  // incidents and double-sending the notification email. This index makes
+  // "one open auto incident per service" a database rule so the INSERT's
+  // ON CONFLICT DO NOTHING can settle the race. Admin- and GitHub-sourced
+  // incidents are deliberately out of scope — they are created deliberately.
+  try {
+    await query(`
+      UPDATE incidents SET status = 'resolved', resolved_at = COALESCE(resolved_at, now())
+       WHERE status = 'detected' AND source = 'auto'
+         AND id NOT IN (
+           SELECT DISTINCT ON (service) id FROM incidents
+            WHERE status = 'detected' AND source = 'auto'
+            ORDER BY service, detected_at DESC
+         )
+    `)
+  } catch {}
+  try {
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_incidents_one_open_auto
+        ON incidents (service) WHERE status = 'detected' AND source = 'auto'
+    `)
+  } catch {}
 
   // Visitors who opt in on /status to get emailed when an incident is
   // logged. Double opt-in (confirmed starts false) so this can't be used to
@@ -699,6 +801,111 @@ export async function initSchema() {
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
+
+
+  // ---------------------------------------------------------------------
+  // Web Push reminders (#147). localStorage stays the source of truth for
+  // reminders — the app must keep working with no backend, per CLAUDE.md.
+  // These tables exist only for signed-in users who opt into push, so the
+  // server knows when to send while every tab is closed.
+  // ---------------------------------------------------------------------
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint   TEXT UNIQUE NOT NULL,
+        p256dh     TEXT NOT NULL,
+        auth       TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_sent_at TIMESTAMPTZ
+      )
+    `)
+  } catch {}
+
+  // Server mirror of the client's reminder shape. Replaced wholesale on each
+  // sync — the client owns this data, the server only needs enough to know
+  // when to fire.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS reminders (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title       TEXT NOT NULL,
+        body        TEXT,
+        kind        TEXT NOT NULL CHECK (kind IN ('one-off','daily','weekly','monthly')),
+        time        TEXT NOT NULL,
+        weekday     INTEGER,
+        day_of_month INTEGER,
+        start_date  DATE,
+        end_date    DATE,
+        enabled     BOOLEAN NOT NULL DEFAULT true,
+        -- IANA zone captured at sync time. Without it a 09:00 reminder would
+        -- fire at the server's 09:00 (UTC) rather than the user's.
+        timezone    TEXT NOT NULL DEFAULT 'UTC',
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
+  // One row per occurrence actually pushed, so a re-run of the cron cannot
+  // notify the same occurrence twice. Same occurrence-key idea as the
+  // client-side dedupe in src/hooks/useReminders.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS reminder_sends (
+        reminder_id TEXT NOT NULL REFERENCES reminders(id) ON DELETE CASCADE,
+        fire_at     TIMESTAMPTZ NOT NULL,
+        sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (reminder_id, fire_at)
+      )
+    `)
+  } catch {}
+
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id)`) } catch {}
+
+
+  // ---------------------------------------------------------------------
+  // Mandatory MFA for privileged roles (#149). A phished school password
+  // otherwise reaches every student record at that school; an admin one
+  // reaches every tenant.
+  //
+  // mfa_required_at is the deadline, not a flag: existing accounts get a
+  // grace window to enrol rather than being locked out on deploy.
+  // ---------------------------------------------------------------------
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_required_at TIMESTAMPTZ`) } catch {}
+
+  // Per-account TOTP throttling. authLimiter is per-IP, so a 6-digit code is
+  // brute-forceable from a botnet spreading attempts across addresses; these
+  // bind the limit to the account being attacked instead.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_failed_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMPTZ`) } catch {}
+
+  // Password-reset codes are generated and stored server-side, hashed like a
+  // password. They used to be whatever the client sent to /api/send-reset-email,
+  // which meant anyone could pick a code for someone else's account and then
+  // redeem it. See POST /api/send-reset-email and /api/auth/reset-password.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
+
+  // Backfill privileged password accounts that have no deadline yet.
+  // Deliberately excludes auth_provider='sso': those users have no VolunTrack
+  // password, MFA is their school IdP's responsibility, and pushing them into
+  // an enrolment flow they cannot complete would lock them out.
+  try {
+    await query(
+      `UPDATE users
+          SET mfa_required_at = now() + ($1 || ' days')::interval
+        WHERE role IN ('admin','school','school_staff','org')
+          AND mfa_required_at IS NULL
+          AND totp_enabled = false
+          AND auth_provider <> 'sso'`,
+      [String(Number(process.env.MFA_GRACE_DAYS || 21))],
+    )
+  } catch {}
 
   return true
 }

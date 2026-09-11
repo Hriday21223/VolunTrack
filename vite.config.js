@@ -69,6 +69,9 @@ export default defineConfig(({ mode }) => {
 
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          // Web Push handlers. generateSW can't host custom SW code, but it
+          // can importScripts one — see public/push-sw.js.
+          importScripts: ['/push-sw.js'],
         },
       }),
     ],

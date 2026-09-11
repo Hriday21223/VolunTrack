@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff, Building2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
@@ -7,6 +7,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { resolveTenant } from '@/lib/tenant.js'
+import QRCode from 'qrcode'
 
 export default function Login() {
   useSeo({
@@ -15,7 +16,7 @@ export default function Login() {
     path: '/login',
   })
 
-  const { login, verifyTotp, verifyBackupCode, loginWithPin, user, ssoDiscover, ssoStart } = useAuth()
+  const { login, verifyTotp, verifyBackupCode, loginWithPin, user, ssoDiscover, ssoStart, setupTotp, verifyTotpSetup } = useAuth()
   const isAdmin = user?.role === 'admin'
   const nav = useNavigate()
   const loc = useLocation()
@@ -36,6 +37,13 @@ export default function Login() {
   const [totpCode, setTotpCode] = useState('')
   const [backupMode, setBackupMode] = useState(false)
   const [backupCode, setBackupCode] = useState('')
+
+  // Forced MFA enrolment: a privileged account past its deadline gets an
+  // enrolment token instead of a session, and must set TOTP up here.
+  const [enroll, setEnroll] = useState(null)   // { enrollmentToken, user }
+  const [enrollSetup, setEnrollSetup] = useState(null) // { secret, uri, backupCodes }
+  const [enrollCode, setEnrollCode] = useState('')
+  const enrollQrRef = useRef(null)
   // School SSO offered for this email domain, if any. forcePassword is the
   // escape hatch for a school account that still signs in with a password
   // even though its students use SSO.
@@ -95,6 +103,12 @@ export default function Login() {
 
   const tenantSso = tenant?.sso?.[0] || null
   const offeredSso = tenantSso || sso
+  useEffect(() => {
+    if (enrollSetup?.uri && enrollQrRef.current) {
+      QRCode.toCanvas(enrollQrRef.current, enrollSetup.uri, { width: 180, margin: 1 }, () => {})
+    }
+  }, [enrollSetup?.uri])
+
   const ssoActive = Boolean(offeredSso) && mode === 'password' && !isAdmin && !forcePassword
 
   const onSubmit = async (e) => {
@@ -114,9 +128,37 @@ export default function Login() {
           setBusy(false)
           return
         }
+        if (result?.requiresMfaEnrollment) {
+          setEnroll(result)
+          // Fetch the secret straight away so the user sees a QR rather than
+          // another button to press.
+          try {
+            setEnrollSetup(await setupTotp(result.enrollmentToken))
+          } catch (e) {
+            setErr(e.message)
+          }
+          setBusy(false)
+          return
+        }
         setToast(true)
         setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
       }
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onEnrollSubmit = async (e) => {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      // Returns a real session token, so the user lands signed in.
+      await verifyTotpSetup(enrollCode, enroll.enrollmentToken)
+      setToast(true)
+      setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -210,7 +252,53 @@ export default function Login() {
                 </button>
               </div>
 
-              {totpPending ? (
+              {enroll ? (
+                <form onSubmit={onEnrollSubmit} className="space-y-4">
+                  <div className="text-center">
+                    <ShieldCheck className="w-10 h-10 text-amber-400 mx-auto mb-2" />
+                    <h3 className="font-semibold text-white">Two-factor authentication required</h3>
+                    <p className="mt-1 text-sm text-slate-300">
+                      This account can see student records, so it needs an authenticator app.
+                      Scan the code below, then enter the 6-digit code to finish signing in.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <canvas ref={enrollQrRef} className="rounded-lg bg-white p-2" />
+                  </div>
+
+                  {enrollSetup?.secret && (
+                    <p className="text-center text-xs text-slate-400">
+                      Can&apos;t scan? Enter this key: <code className="text-slate-200">{enrollSetup.secret}</code>
+                    </p>
+                  )}
+
+                  {enrollSetup?.backupCodes?.length > 0 && (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+                      <div className="font-semibold mb-1">Save these backup codes now</div>
+                      <div className="font-mono leading-5 break-all">{enrollSetup.backupCodes.join('  ')}</div>
+                      <div className="mt-1">They are shown once and are the only way in if you lose your device.</div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="label text-slate-300" htmlFor="enroll-code">Authenticator code</label>
+                    <input
+                      id="enroll-code" type="text" required inputMode="numeric" maxLength={6} autoFocus
+                      className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-[0.5em] font-mono"
+                      placeholder="000000"
+                      value={enrollCode}
+                      onChange={(e) => setEnrollCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    />
+                  </div>
+
+                  {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
+
+                  <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy || enrollCode.length !== 6 || !enrollSetup}>
+                    {busy ? 'Verifying…' : <>Turn on and sign in <ArrowRight className="w-4 h-4" /></>}
+                  </button>
+                </form>
+              ) : totpPending ? (
                 backupMode ? (
                   <form onSubmit={onBackupSubmit} className="space-y-5">
                     <div className="text-center mb-2">

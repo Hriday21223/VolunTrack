@@ -1,11 +1,12 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
-import { query, hasDatabase, getPool } from '../db.js'
+import { query, hasDatabase, getPool, nextAccountCode } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
+import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
 
@@ -83,8 +84,8 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
 
     const schoolId = uid('sch')
     await query(
-      'INSERT INTO schools (id, name, pin, contact_email, organization_id) VALUES ($1, $2, $3, $4, $5)',
-      [schoolId, name, pin, email, invite?.organization_id || null],
+      'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code) VALUES ($1, $2, $3, $4, $5, $6)',
+      [schoolId, name, pin, email, invite?.organization_id || null, await nextAccountCode('schools')],
     )
 
     const hash = await hashPassword(password)
@@ -128,7 +129,12 @@ router.get('/invite/:token', limiter, requireDb, async (req, res) => {
 })
 
 // Join a school (student enters school code)
-router.post('/join', limiter, requireDb, requireAuth(), async (req, res) => {
+// Students are the only role that joins a school by code. This was
+// requireAuth() with no roles, so a volunteer, parent or org account that
+// typed a code into the Settings join box had schools.id written onto its own
+// user row — an org is meant to own schools, a parent reaches a child's hours
+// through parent_child_links, and a volunteer isn't enrolled anywhere.
+router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res) => {
   const pin = String(req.body.pin || '').trim().toLowerCase()
 
   if (!pin) return res.status(400).json({ error: 'School code is required.' })
@@ -457,6 +463,39 @@ router.get('/info', limiter, requireDb, async (req, res) => {
   }
 })
 
+// Change this school's join code (school admin only — not school_staff, who
+// can review hours but shouldn't be able to invalidate the code students are
+// being handed). Rotating is safe: /join copies the school id onto the user
+// row, so already-linked students keep their link when the code changes.
+router.patch('/code', limiter, requireDb, requireAuth('school'), async (req, res) => {
+  const pin = String(req.body.pin || '').trim().toLowerCase()
+
+  if (!pin) return res.status(400).json({ error: 'School code is required.' })
+  if (!/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
+
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    const { rows: current } = await query('SELECT pin FROM schools WHERE id = $1', [schoolId])
+    if (current.length === 0) return res.status(404).json({ error: 'School not found.' })
+    if (current[0].pin === pin) return res.json({ ok: true, pin })
+
+    // Pre-checked for a friendly message; the UNIQUE index on schools.pin is
+    // what actually prevents two schools racing onto the same code.
+    const existing = await query('SELECT 1 FROM schools WHERE pin = $1', [pin])
+    if (existing.rowCount > 0) return res.status(409).json({ error: 'That school code is already taken.' })
+
+    await query('UPDATE schools SET pin = $1 WHERE id = $2', [pin, schoolId])
+    return res.json({ ok: true, pin })
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'That school code is already taken.' })
+    console.error('school code change failed:', error)
+    return res.status(500).json({ error: 'Could not update school code.' })
+  }
+})
+
 // --- Public volunteer tasks (any user can post, any user can sign up) ---
 
 // Create a public task (phone required)
@@ -464,6 +503,21 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
+  // Only the global 1MB body limit bounded these before, and GET /public-tasks
+  // returns them to every visitor — cap each one like /messages does.
+  const textLimits = [
+    ['Title', title, 200],
+    ['Description', description, 5000],
+    ['Location', location, 300],
+    ['Phone number', phone, 30],
+    ['Time', time, 20],
+    ['Important info', importantInfo, 2000],
+  ]
+  for (const [label, value, max] of textLimits) {
+    if (value != null && (typeof value !== 'string' || value.length > max)) {
+      return res.status(400).json({ error: `${label} must be text of at most ${max} characters.` })
+    }
+  }
   // A negative or non-integer slot count is truthy and numeric, so it would
   // slip past the `|| 1` default below and permanently lock the task as full.
   if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1)) {
@@ -991,7 +1045,7 @@ router.post('/submit-payment-confirmation', limiter, requireDb, requireAuth('sch
 router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at,
+      `SELECT s.id, s.name, s.pin, s.account_code, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s ORDER BY s.created_at DESC`,
     )
@@ -1009,7 +1063,7 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
 router.get('/admin/organizations', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT o.id, o.name, o.contact_email, o.created_at, o.price_amount, o.price_period, o.payment_due_date,
+      `SELECT o.id, o.name, o.account_code, o.contact_email, o.created_at, o.price_amount, o.price_period, o.payment_due_date,
         o.admin_notes, o.payment_status, o.payment_notes, o.paid_at,
         COUNT(s.id) AS school_count
        FROM organizations o
@@ -1085,31 +1139,42 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
   }
 
   try {
+    // A double-click or retried request must not email the school twice or log
+    // a second payment event, so each branch only goes on when its UPDATE
+    // actually changed the row. Approval compares status alone (re-approving
+    // shouldn't re-confirm); unpaid/rejected also compare notes, since a new
+    // rejection reason is worth sending.
+    let school
     if (status === 'paid') {
-      await query(
-        'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now() WHERE id = $3',
+      const { rows } = await query(
+        `UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now()
+         WHERE id = $3 AND payment_status IS DISTINCT FROM $1
+         RETURNING contact_email`,
         [status, notes || null, req.params.id],
       )
+      school = rows[0]
+      if (!school) return res.json({ ok: true, emailSent: null, unchanged: true })
       await query(
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, 'status_paid', $3)`,
         [uid('pev'), req.params.id, notes || null],
       )
 
-      const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
-      if (rows[0]?.contact_email) {
-        const id = uid('anot')
+      if (school.contact_email) {
         await sendEmail({
-          to: rows[0].contact_email,
+          to: school.contact_email,
           subject: 'Payment confirmed — VolunTrack',
           html: `<p>Your payment confirmation has been verified. Your school's account is now unlocked — student uploads and management are available.</p>${emailFooterHtml()}`,
-          idempotencyKey: `payment-approved/${req.params.id}/${id}`,
         })
       }
     } else {
-      await query(
-        'UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = NULL WHERE id = $3',
+      const { rows } = await query(
+        `UPDATE schools SET payment_status = $1, payment_notes = $2::text, paid_at = NULL
+         WHERE id = $3 AND (payment_status, COALESCE(payment_notes, '')) IS DISTINCT FROM ($1, COALESCE($2::text, ''))
+         RETURNING contact_email`,
         [status, notes || null, req.params.id],
       )
+      school = rows[0]
+      if (!school) return res.json({ ok: true, emailSent: null, unchanged: true })
       await query(
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, $3, $4)`,
         [uid('pev'), req.params.id, status === 'unpaid' ? 'status_unpaid' : 'status_rejected', notes || null],
@@ -1132,14 +1197,12 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         [id, req.params.id, rejectMsg],
       )
 
-      const { rows } = await query('SELECT contact_email FROM schools WHERE id = $1', [req.params.id])
       emailSent = false
-      if (rows[0]?.contact_email) {
+      if (school.contact_email) {
         const result = await sendEmail({
-          to: rows[0].contact_email,
+          to: school.contact_email,
           subject: 'Payment confirmation rejected — VolunTrack',
           html: `<p>${rejectMsg}</p>${emailFooterHtml()}`,
-          idempotencyKey: `payment-rejected/${req.params.id}/${id}`,
         })
         emailSent = result.sent
       }
@@ -1178,7 +1241,6 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${escapeHtml(name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
-      idempotencyKey: `school-invite/${id}`,
     })
 
     return res.status(201).json({ ok: true, id, emailSent })
@@ -1224,7 +1286,6 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
       to: invite.email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${escapeHtml(invite.name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
-      idempotencyKey: `school-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
     return res.json({ ok: true, emailSent })
@@ -1282,18 +1343,20 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
       [id, message.trim()],
     )
 
-    const { rows: schools } = await query('SELECT id, name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE contact_email IS NOT NULL')
+    const paymentInstructions = await getPaymentInstructions()
+    const { rows: schools } = await query('SELECT id, name, account_code, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE contact_email IS NOT NULL')
     const results = await Promise.all(schools.map((s) => sendEmail({
       to: s.contact_email,
       subject: 'Payment notice from VolunTrack',
       html: paymentNoticeHtml({
         recipientName: s.name,
+        accountCode: s.account_code,
+        paymentInstructions,
         amount: amount || s.price_amount,
         billingPeriod: amount ? billingPeriod : s.price_period,
         dueDate: s.payment_due_date,
         message: message.trim(),
       }),
-      idempotencyKey: `payment-notice/${s.id}/${id}`,
     })))
     const emailsSent = results.filter((r) => r.sent).length
 
@@ -1317,7 +1380,7 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
       [id, req.params.schoolId, message.trim()],
     )
 
-    const { rows } = await query('SELECT name, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE id = $1', [req.params.schoolId])
+    const { rows } = await query('SELECT name, account_code, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE id = $1', [req.params.schoolId])
     const hasContactEmail = Boolean(rows[0]?.contact_email)
     let emailSent = false
     if (hasContactEmail) {
@@ -1326,12 +1389,13 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
         subject: 'Payment notice from VolunTrack',
         html: paymentNoticeHtml({
           recipientName: rows[0].name,
+          accountCode: rows[0].account_code,
+          paymentInstructions: await getPaymentInstructions(),
           amount: amount || rows[0].price_amount,
           billingPeriod: amount ? billingPeriod : rows[0].price_period,
           dueDate: rows[0].payment_due_date,
           message: message.trim(),
         }),
-        idempotencyKey: `payment-notice/${req.params.schoolId}/${id}`,
       })
       emailSent = result.sent
     }

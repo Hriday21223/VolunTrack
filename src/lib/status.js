@@ -61,14 +61,17 @@ export async function subscribeToStatus(email) {
   return res.json()
 }
 
+// Both of these are POSTs on purpose — see the route comment in
+// server/routes/status.js. They must only ever run from an explicit click,
+// never from a page load, or an email link scanner will trigger them.
 export async function confirmSubscription(token) {
-  const res = await fetch(`${apiUrl()}/status/subscribe/confirm/${token}`)
+  const res = await fetch(`${apiUrl()}/status/subscribe/confirm/${token}`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to confirm subscription')
   return res.json()
 }
 
 export async function unsubscribeFromStatus(token) {
-  const res = await fetch(`${apiUrl()}/status/subscribe/unsubscribe/${token}`)
+  const res = await fetch(`${apiUrl()}/status/subscribe/unsubscribe/${token}`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to unsubscribe')
   return res.json()
 }

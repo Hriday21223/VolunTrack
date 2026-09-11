@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, UserPlus, School, Users, Receipt, Download } from 'lucide-react'
+import { Building2, UserPlus, School, Users, Receipt, Download, Eye } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -7,6 +7,8 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
+import PdfPreview from '@/components/PdfPreview.jsx'
+import PaymentDetails from '@/components/PaymentDetails.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -33,7 +35,10 @@ export default function OrganizationDashboard() {
   const [toast, setToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [invoices, setInvoices] = useState([])
+  // Invoice currently open in the preview overlay, or null.
+  const [previewInvoice, setPreviewInvoice] = useState(null)
   const [orgName, setOrgName] = useState('')
+  const [accountCode, setAccountCode] = useState(null)
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -43,6 +48,7 @@ export default function OrganizationDashboard() {
       const data = await res.json()
       setInvoices(data.invoices || [])
       if (data.entityName) setOrgName(data.entityName)
+      setAccountCode(data.accountCode || null)
     } catch {}
   }, [])
 
@@ -132,6 +138,11 @@ export default function OrganizationDashboard() {
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
       )}
+      {tab === 'schools' && accountCode && (
+        <Card className="mb-4">
+          <PaymentDetails accountCode={accountCode} />
+        </Card>
+      )}
       {tab === 'schools' && invoices.length > 0 && (
         <Card className="mb-4">
           <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" /> Invoices</h3>
@@ -155,9 +166,17 @@ export default function OrganizationDashboard() {
                     {inv.status === 'paid' ? 'Paid' : inv.status === 'void' ? 'Void' : 'Sent'}
                   </span>
                   <button
+                    onClick={() => setPreviewInvoice(inv)}
+                    className="p-1.5 text-earth-400 hover:text-earth-300"
+                    title="Preview invoice"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={() => generateInvoicePDF({
                       invoiceNumber: inv.invoice_number,
                       entityName: orgName,
+                      accountCode,
                       amount: inv.amount,
                       billingPeriod: inv.billing_period,
                       description: inv.description,
@@ -306,6 +325,25 @@ export default function OrganizationDashboard() {
       )}
 
       <Toast open={toast} onClose={() => setToast(false)}>{toastMessage}</Toast>
+
+      {previewInvoice && (
+        <PdfPreview
+          title={`Invoice ${previewInvoice.invoice_number}`}
+          filename={`${previewInvoice.invoice_number}.pdf`}
+          getBlob={() => generateInvoicePDF({
+            invoiceNumber: previewInvoice.invoice_number,
+            entityName: orgName,
+            accountCode,
+            amount: previewInvoice.amount,
+            billingPeriod: previewInvoice.billing_period,
+            description: previewInvoice.description,
+            dueDate: previewInvoice.due_date,
+            createdAt: previewInvoice.created_at,
+            returnBlob: true,
+          })}
+          onClose={() => setPreviewInvoice(null)}
+        />
+      )}
     </AppLayout>
   )
 }
