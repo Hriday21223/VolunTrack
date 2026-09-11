@@ -42,7 +42,6 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
     // Mount-only on purpose; see getBlobRef above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
