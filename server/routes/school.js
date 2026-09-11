@@ -413,6 +413,21 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
+  // Only the global 1MB body limit bounded these before, and GET /public-tasks
+  // returns them to every visitor — cap each one like /messages does.
+  const textLimits = [
+    ['Title', title, 200],
+    ['Description', description, 5000],
+    ['Location', location, 300],
+    ['Phone number', phone, 30],
+    ['Time', time, 20],
+    ['Important info', importantInfo, 2000],
+  ]
+  for (const [label, value, max] of textLimits) {
+    if (value != null && (typeof value !== 'string' || value.length > max)) {
+      return res.status(400).json({ error: `${label} must be text of at most ${max} characters.` })
+    }
+  }
   // A negative or non-integer slot count is truthy and numeric, so it would
   // slip past the `|| 1` default below and permanently lock the task as full.
   if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1)) {
