@@ -375,13 +375,43 @@ router.delete('/domains/:id', tenantAdminLimiter, requireDb, requireAuth('school
 // Admin: white-label branding
 // ---------------------------------------------------------------------------
 
+// An uploaded logo is stored inline as a data: URL. The dashboard shrinks and
+// re-encodes it in the browser first (src/lib/logoImage.js), so this is a
+// ceiling, not the expected size — /by-host returns the logo to every sign-in
+// page load, and the SPA caches that response.
+const MAX_LOGO_DATA_URL = 200_000
+
+// SVG is deliberately absent: it is inert inside <img>, but a data:image/svg+xml
+// opened directly is a document that can run script.
+const LOGO_MAGIC = {
+  png: (b) => b.length > 8 && b[0] === 0x89 && b.toString('ascii', 1, 4) === 'PNG',
+  jpeg: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  webp: (b) => b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP',
+}
+
+function normalizeLogoDataUrl(raw) {
+  // Length first, so the pattern below only ever runs over bounded input.
+  if (raw.length > MAX_LOGO_DATA_URL) {
+    return { ok: false, error: 'That logo is too large. Use an image under 150 KB.' }
+  }
+  const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw)
+  if (!match) return { ok: false, error: 'Logo must be a PNG, JPEG, or WebP image.' }
+  // The declared type must agree with the bytes, so a mislabelled payload
+  // can't ride through on a PNG prefix.
+  if (!LOGO_MAGIC[match[1]](Buffer.from(match[2], 'base64'))) {
+    return { ok: false, error: 'That file is not a valid PNG, JPEG, or WebP image.' }
+  }
+  return { ok: true, value: raw }
+}
+
 // The logo is rendered into an <img src> on a login page we do not control the
-// styling of, so only https is accepted: an http URL would either be blocked
-// as mixed content or downgrade the page, and a data:/javascript: URL has no
-// business in a column an admin can set.
+// styling of. It is either an uploaded image (above) or an https link: an http
+// URL would be blocked as mixed content or downgrade the page, and any other
+// scheme has no business in a column an admin can set.
 function normalizeLogoUrl(value) {
   const raw = String(value ?? '').trim()
   if (!raw) return { ok: true, value: null }
+  if (raw.startsWith('data:')) return normalizeLogoDataUrl(raw)
   if (raw.length > 500) return { ok: false, error: 'Logo URL must be 500 characters or fewer.' }
   if (!/^https:\/\//i.test(raw)) return { ok: false, error: 'Logo URL must start with https://' }
   if (!validator.isURL(raw, { protocols: ['https'], require_protocol: true })) {

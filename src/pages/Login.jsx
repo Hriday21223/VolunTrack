@@ -93,9 +93,10 @@ export default function Login() {
   // A tenant hostname advertises its SSO up front, so a student never has to
   // type an email to discover it. Falls back to the email-domain lookup on the
   // canonical domain, where there is no tenant to key off.
-  // Only http(s) is allowed through to an <img src>. The value comes from a
-  // DB column an admin controls, so it should never be interpolated blind.
-  const tenantLogo = /^https?:\/\//i.test(tenant?.branding?.logoUrl || '')
+  // Only an http(s) link or an uploaded raster image (data:image/png|jpeg|webp,
+  // see server/routes/tenant.js) is allowed through to an <img src>. The value
+  // comes from a DB column an admin controls, so it is never interpolated blind.
+  const tenantLogo = /^(https?:\/\/|data:image\/(png|jpeg|webp);base64,)/i.test(tenant?.branding?.logoUrl || '')
     ? tenant.branding.logoUrl
     : null
   const logoSrc = tenantLogo || `${import.meta.env.BASE_URL}logo-icon.webp`

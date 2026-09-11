@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Image as ImageIcon, Loader2, Palette } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Image as ImageIcon, Link2, Loader2, Palette, Upload, X } from 'lucide-react'
+import { logoFileToDataUrl } from '@/lib/logoImage.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -12,11 +13,12 @@ function authHeaders() {
 }
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+const UPLOADED = /^data:image\/(png|jpeg|webp);base64,/i
 
-// Mirrors the login page: only an https logo is rendered, and the accent is
-// only trusted once it is a hex literal.
+// Mirrors the login page: only an uploaded raster image or an https link is
+// rendered, and the accent is only trusted once it is a hex literal.
 function safeLogo(url) {
-  return /^https:\/\//i.test(url || '') ? url : null
+  return UPLOADED.test(url || '') || /^https:\/\//i.test(url || '') ? url : null
 }
 
 // A miniature of the sign-in card, so an admin can see the accent and logo
@@ -40,6 +42,112 @@ function Preview({ name, logoUrl, color }) {
           ? <img src={logo} alt="" className="h-12 w-12 object-contain" />
           : <div className="grid h-12 w-12 place-items-center rounded-xl bg-white/5 text-slate-500"><ImageIcon className="h-5 w-5" /></div>}
       </div>
+    </div>
+  )
+}
+
+function LogoDrop({ logoUrl, onChange, disabled }) {
+  const inputRef = useRef(null)
+  const [hover, setHover] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState('')
+  const [useLink, setUseLink] = useState(/^https:\/\//i.test(logoUrl || ''))
+
+  const handle = async (file) => {
+    if (!file) return
+    setError('')
+    setProcessing(true)
+    try {
+      onChange(await logoFileToDataUrl(file))
+      setUseLink(false)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const logo = safeLogo(logoUrl)
+  const uploaded = UPLOADED.test(logoUrl || '')
+
+  return (
+    <div>
+      <p className="mb-1 block text-sm font-medium">Logo</p>
+
+      {logo ? (
+        <div className="flex items-center gap-3 rounded-2xl border border-earth-200 bg-earth-50 p-3 dark:border-[#243529] dark:bg-[#0f1a14]">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-slate-950/80">
+            <img src={logo} alt="Current logo" className="h-12 w-12 object-contain" />
+          </div>
+          <div className="min-w-0 flex-1 text-sm">
+            <div className="font-medium">{uploaded ? 'Uploaded logo' : 'Linked logo'}</div>
+            {!uploaded && <div className="truncate text-xs text-slate-500">{logoUrl}</div>}
+          </div>
+          <button type="button" className="btn-sm btn-ghost" onClick={() => inputRef.current?.click()} disabled={disabled || processing}>
+            <Upload className="mr-1 h-3.5 w-3.5" /> Replace
+          </button>
+          <button
+            type="button"
+            className="rounded-lg p-1.5 text-earth-500 hover:bg-earth-200 dark:hover:bg-[#243529]"
+            onClick={() => { onChange(''); setError('') }}
+            disabled={disabled || processing}
+            aria-label="Remove logo"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => inputRef.current?.click()}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click() } }}
+          onDragOver={(e) => { e.preventDefault(); setHover(true) }}
+          onDragLeave={() => setHover(false)}
+          onDrop={(e) => { e.preventDefault(); setHover(false); handle(e.dataTransfer.files?.[0]) }}
+          className={`cursor-pointer select-none rounded-2xl border-2 border-dashed p-6 text-center transition hover:border-brand-500 hover:bg-brand-50/40 dark:hover:bg-brand-900/10 ${
+            hover ? 'drop-active border-brand-500' : 'border-earth-200 dark:border-[#243529]'
+          }`}
+        >
+          {processing
+            ? <Loader2 className="mx-auto mb-2 h-7 w-7 animate-spin text-brand-600" />
+            : <Upload className="mx-auto mb-2 h-7 w-7 text-brand-600" />}
+          <div className="text-sm font-medium">{processing ? 'Preparing your logo…' : 'Drop your logo here or click to upload'}</div>
+          <div className="mt-1 text-xs text-slate-500">PNG, JPEG, WebP, GIF, or SVG · resized to fit automatically</div>
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+        className="hidden"
+        onChange={(e) => { handle(e.target.files?.[0]); e.target.value = '' }}
+      />
+
+      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+
+      {useLink ? (
+        <div className="mt-3">
+          <label htmlFor="brandLogo" className="mb-1 block text-xs font-medium text-slate-500">Logo link</label>
+          <input
+            id="brandLogo"
+            type="url"
+            className="input"
+            placeholder="https://example.edu/logo.png"
+            value={uploaded ? '' : logoUrl}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+          />
+          {logoUrl && !uploaded && !/^https:\/\//i.test(logoUrl) && (
+            <p className="mt-1 text-xs text-red-500">A logo link must start with https://</p>
+          )}
+        </div>
+      ) : (
+        <button type="button" className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500 underline" onClick={() => setUseLink(true)}>
+          <Link2 className="h-3 w-3" /> Use a link to an image instead
+        </button>
+      )}
     </div>
   )
 }
@@ -104,7 +212,7 @@ export default function TenantBrandingSettings() {
   }
 
   const colorValid = !color || HEX.test(color)
-  const logoValid = !logoUrl || /^https:\/\//i.test(logoUrl)
+  const logoValid = !logoUrl || Boolean(safeLogo(logoUrl))
 
   return (
     <div className="space-y-6">
@@ -124,21 +232,7 @@ export default function TenantBrandingSettings() {
       )}
 
       <form onSubmit={save} className="space-y-4">
-        <div>
-          <label htmlFor="brandLogo" className="mb-1 block text-sm font-medium">Logo URL</label>
-          <input
-            id="brandLogo"
-            type="url"
-            className="input"
-            placeholder="https://example.edu/logo.png"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-          />
-          <p className="mt-1 text-xs text-slate-500">
-            Must be an <code>https</code> URL, hosted by you. Leave blank to show the VolunTrack logo.
-          </p>
-          {!logoValid && <p className="mt-1 text-xs text-red-500">Logo URL must start with https://</p>}
-        </div>
+        <LogoDrop logoUrl={logoUrl} onChange={setLogoUrl} disabled={busy} />
 
         <div>
           <label htmlFor="brandColor" className="mb-1 block text-sm font-medium">Accent colour</label>
