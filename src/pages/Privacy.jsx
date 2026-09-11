@@ -29,13 +29,16 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: August 18, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: September 11, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
             <ul className="list-disc pl-5 space-y-1.5">
               <li><strong>Name and email address</strong> — required to create and manage your account.</li>
               <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app.</li>
+              <li><strong>Verification details</strong> — when you ask someone to verify an entry, the supervisor&apos;s name and email, the organization&apos;s name, address and phone, and the signature the supervisor draws when they approve.</li>
+              <li><strong>Proof of service</strong> — photos or documents you attach to an entry. See <em>Proof files</em> below for where these are held.</li>
+              <li><strong>Access records</strong> — when a school or organization staff member opens a student&apos;s record, we record who did it and when, along with the IP address and browser, so that access to a minor&apos;s record can be accounted for.</li>
               <li><strong>Approximate location</strong> — used only when you log hours, to auto-fill the location field. You can always edit or clear it.</li>
               <li><strong>Camera access</strong> — used only for scanning QR codes when syncing your account across devices. No images are ever uploaded or stored.</li>
             </ul>
@@ -46,7 +49,13 @@ export default function Privacy() {
           </Section>
 
           <Section title="Data Storage">
-            <p>Data is stored in a PostgreSQL database and, for offline/demo mode, in your browser's local storage. Communications with the server are encrypted via HTTPS.</p>
+            <p>Without an account, VolunTrack runs entirely in your browser: your hours stay in that browser&apos;s local storage and never reach us.</p>
+            <p className="mt-2">When you create an account, your name, email address and a hashed version of your password are stored in our PostgreSQL database. From then on the hours you log are also saved to our servers as you enter them — this is what lets your school, a linked parent, and your other devices see them. That happens as soon as you are signed in; it is not limited to schools that have set up their own storage. Your browser keeps its own copy as well. Traffic between the app and our servers is encrypted with HTTPS.</p>
+          </Section>
+
+          <Section title="Proof Files">
+            <p>Where your school or organization has connected its own storage, proof photos and documents upload straight from your device to <em>their</em> storage, and we keep only a reference to the file — we never hold the file itself. Those files are then controlled by that school, under their own policies, and we cannot delete them for you.</p>
+            <p className="mt-2">Where no such storage is connected, a proof file you attach stays on your device, and a report you submit to your school is stored by us until it is deleted.</p>
           </Section>
 
           <Section title="Analytics">
@@ -54,11 +63,18 @@ export default function Privacy() {
           </Section>
 
           <Section title="Data Retention">
-            <p>We retain your data until you delete your account. When you delete your account, all associated data — including volunteer logs, goals, achievements, and uploaded PDFs — is permanently removed.</p>
+            <p>We keep your data for as long as your account exists.</p>
+            <p className="mt-2">Some things outlive an account on purpose, or are beyond our reach:</p>
+            <ul className="list-disc pl-5 space-y-1.5 mt-2">
+              <li><strong>Access records</strong> are kept for up to 400 days, so that access to student records stays accountable after the fact. The account holder&apos;s identity is removed from them when an account is erased.</li>
+              <li><strong>Proof files in a school&apos;s own storage</strong> belong to that school. Ask them to delete those.</li>
+              <li><strong>Transcripts you have exported</strong> are files you chose to hand to someone. We cannot withdraw a copy someone else holds.</li>
+            </ul>
           </Section>
 
           <Section title="Account Deletion">
-            <p>You can delete your account and all associated data at any time from the Settings page in the app. You will be prompted to confirm by typing "delete" before the action completes.</p>
+            <p>You can delete your account from the Settings page in the app. You will be prompted to confirm by typing &quot;delete&quot; before the action completes.</p>
+            <p className="mt-2"><strong>This clears VolunTrack data from the device you are using.</strong> Erasing the copy held on our servers is not yet automatic: email us at the address below and we will delete it, subject to the exceptions under <em>Data Retention</em>. We are working on making this happen automatically.</p>
           </Section>
 
           <Section title="Third-Party Sharing">
@@ -66,7 +82,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Service Providers">
-            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
+            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, email delivery, and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
           </Section>
 
           <Section title="Children's Privacy">
@@ -78,7 +94,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Contact">
-            <p>If you have questions about this policy, please contact us at{' '}
+            <p>If you have questions about this policy, or want the data held on our servers deleted, please contact us at{' '}
               <a href="mailto:volunteertrackinfo@gmail.com" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">volunteertrackinfo@gmail.com</a>.
             </p>
           </Section>
