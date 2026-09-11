@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Bell, Plus, Trash2, Power, BellRing, BellOff, Calendar, Repeat, Clock, Pencil } from 'lucide-react'
+import { Bell, Plus, Trash2, Power, BellRing, BellOff, Calendar, CalendarPlus, Repeat, Clock, Pencil } from 'lucide-react'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { reminderApi } from '@/hooks/useReminders.js'
 import { computeNextAt } from '@/lib/scheduler.js'
+import { buildCalendar } from '@/lib/ics.js'
 import { requestNotificationPermission } from '@/hooks/useReminders.js'
 import { pushSupported, getPushConfig, currentSubscription, enablePush, disablePush, syncReminders } from '@/lib/push.js'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -18,6 +19,38 @@ const KINDS = [
 ]
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+function downloadFile(content, filename, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  // Revoking immediately can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+// Signed-up public tasks only exist server-side. Returns null (not []) when
+// signed in but the fetch failed, so the caller can say the export is partial.
+async function fetchMySignups() {
+  let token = null
+  try { token = localStorage.getItem('voluntrack:auth_token') } catch { /* storage blocked */ }
+  if (!token) return []
+  try {
+    const res = await fetch(`${apiUrl}/school/public-tasks/signups/mine`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return null
+    const d = await res.json()
+    return d.signups || []
+  } catch {
+    return null
+  }
+}
 
 const blank = () => ({
   title: '',
@@ -85,6 +118,31 @@ export default function Reminders() {
       setErr(e.message)
     } finally {
       setPushBusy(false)
+    }
+  }
+
+  const [calBusy, setCalBusy] = useState(false)
+  const [calMsg, setCalMsg] = useState('')
+
+  const onDownloadCalendar = async () => {
+    setCalBusy(true)
+    setCalMsg('')
+    try {
+      const signups = await fetchMySignups()
+      const { ics, reminderCount, signupCount } = buildCalendar({
+        reminders: reminderApi.list(),
+        signups: signups || [],
+      })
+      const partial = signups === null ? " Your signed-up tasks couldn't be loaded, so they aren't included." : ''
+      if (reminderCount + signupCount === 0) {
+        setCalMsg(`Nothing to add yet — there are no active reminders or upcoming tasks you've signed up for.${partial}`)
+        return
+      }
+      downloadFile(ics, 'voluntrack-calendar.ics', 'text/calendar;charset=utf-8')
+      const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+      setCalMsg(`Downloaded ${plural(reminderCount, 'reminder')} and ${plural(signupCount, 'signed-up task')}. Open the file to add them to your calendar.${partial}`)
+    } finally {
+      setCalBusy(false)
     }
   }
 
@@ -275,6 +333,21 @@ export default function Reminders() {
                 </button>
               </div>
             )}
+          </Card>
+
+          <Card>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="font-display font-semibold flex items-center gap-2"><CalendarPlus className="w-4 h-4 text-brand-600" /> Add to your calendar</div>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">
+                  Download an .ics file of your active reminders and upcoming tasks you've signed up for, then open it to import them into Google Calendar, Apple Calendar or Outlook. It's a one-time copy — download again after making changes.
+                </p>
+              </div>
+              <button onClick={onDownloadCalendar} className="btn-secondary" disabled={calBusy}>
+                {calBusy ? 'Preparing…' : 'Download .ics'}
+              </button>
+            </div>
+            {calMsg && <p className="text-sm text-earth-600 dark:text-earth-300 mt-3" role="status">{calMsg}</p>}
           </Card>
 
           {items.length === 0 ? (
