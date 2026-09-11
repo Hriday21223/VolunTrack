@@ -90,7 +90,6 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
         to: entity.contact_email,
         subject: `Invoice ${invoiceNumber} from VolunTrack`,
         html: invoiceNoticeHtml({ entityType, entityName: entity.name, invoiceNumber, amount, billingPeriod, dueDate, description }),
-        idempotencyKey: `invoice/${id}`,
       })
       emailSent = result.sent
     }
