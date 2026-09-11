@@ -375,7 +375,11 @@ export default function Admin() {
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       loadSchools()
-      setToastMessage(data.emailSent === false ? 'Payment rejected, but the school could not be emailed — check email settings' : 'Payment rejected — school notified')
+      setToastMessage(
+        data.unchanged ? 'Payment was already rejected with that reason'
+          : data.emailSent === false ? 'Payment rejected, but the school could not be emailed — check email settings'
+          : 'Payment rejected — school notified',
+      )
       setToast(true)
     } catch { setToastMessage('Failed to reject payment'); setToast(true) }
   }

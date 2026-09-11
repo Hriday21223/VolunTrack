@@ -551,6 +551,29 @@ export async function initSchema() {
   } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_incidents_detected ON incidents(detected_at DESC)`) } catch {}
   try { await query(`ALTER TABLE incidents ADD COLUMN IF NOT EXISTS issue_url TEXT`) } catch {}
+  // /api/status/health auto-logs a 'Database' incident, and concurrent health
+  // checks used to race between its SELECT and its INSERT, opening duplicate
+  // incidents and double-sending the notification email. This index makes
+  // "one open auto incident per service" a database rule so the INSERT's
+  // ON CONFLICT DO NOTHING can settle the race. Admin- and GitHub-sourced
+  // incidents are deliberately out of scope — they are created deliberately.
+  try {
+    await query(`
+      UPDATE incidents SET status = 'resolved', resolved_at = COALESCE(resolved_at, now())
+       WHERE status = 'detected' AND source = 'auto'
+         AND id NOT IN (
+           SELECT DISTINCT ON (service) id FROM incidents
+            WHERE status = 'detected' AND source = 'auto'
+            ORDER BY service, detected_at DESC
+         )
+    `)
+  } catch {}
+  try {
+    await query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_incidents_one_open_auto
+        ON incidents (service) WHERE status = 'detected' AND source = 'auto'
+    `)
+  } catch {}
 
   // Visitors who opt in on /status to get emailed when an incident is
   // logged. Double opt-in (confirmed starts false) so this can't be used to
@@ -798,6 +821,47 @@ export async function initSchema() {
 
   try { await query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id)`) } catch {}
+
+
+  // ---------------------------------------------------------------------
+  // Mandatory MFA for privileged roles (#149). A phished school password
+  // otherwise reaches every student record at that school; an admin one
+  // reaches every tenant.
+  //
+  // mfa_required_at is the deadline, not a flag: existing accounts get a
+  // grace window to enrol rather than being locked out on deploy.
+  // ---------------------------------------------------------------------
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_required_at TIMESTAMPTZ`) } catch {}
+
+  // Per-account TOTP throttling. authLimiter is per-IP, so a 6-digit code is
+  // brute-forceable from a botnet spreading attempts across addresses; these
+  // bind the limit to the account being attacked instead.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_failed_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMPTZ`) } catch {}
+
+  // Password-reset codes are generated and stored server-side, hashed like a
+  // password. They used to be whatever the client sent to /api/send-reset-email,
+  // which meant anyone could pick a code for someone else's account and then
+  // redeem it. See POST /api/send-reset-email and /api/auth/reset-password.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
+
+  // Backfill privileged password accounts that have no deadline yet.
+  // Deliberately excludes auth_provider='sso': those users have no VolunTrack
+  // password, MFA is their school IdP's responsibility, and pushing them into
+  // an enrolment flow they cannot complete would lock them out.
+  try {
+    await query(
+      `UPDATE users
+          SET mfa_required_at = now() + ($1 || ' days')::interval
+        WHERE role IN ('admin','school','school_staff','org')
+          AND mfa_required_at IS NULL
+          AND totp_enabled = false
+          AND auth_provider <> 'sso'`,
+      [String(Number(process.env.MFA_GRACE_DAYS || 21))],
+    )
+  } catch {}
 
   return true
 }

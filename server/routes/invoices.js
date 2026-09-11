@@ -103,7 +103,6 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
           description,
           paymentInstructions: await getPaymentInstructions(),
         }),
-        idempotencyKey: `invoice/${id}`,
       })
       emailSent = result.sent
     }

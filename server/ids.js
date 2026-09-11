@@ -33,3 +33,12 @@ export function generateAccountCode(kind) {
   for (let i = 0; i < 6; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
   return `VT-${kind}-${s}`
 }
+
+// Numeric one-time code for emailed recovery flows. From the CSPRNG, not
+// Math.random(): this is a credential, and a predictable one lets an attacker
+// guess the code that was mailed to someone else. Zero-padded so a leading
+// zero survives, and rejection-sampled by randomInt() so every value is
+// equally likely.
+export function generateNumericCode(digits = 6) {
+  return String(randomInt(0, 10 ** digits)).padStart(digits, '0')
+}

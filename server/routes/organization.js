@@ -123,7 +123,6 @@ router.post('/admin/invite', limiter, requireDb, requireAuth('admin'), async (re
       to: email,
       subject: 'You’re invited to set up your organization on VolunTrack',
       html: `<p>${escapeHtml(name)} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
-      idempotencyKey: `organization-invite/${id}`,
     })
 
     return res.status(201).json({ ok: true, id, emailSent })
@@ -168,7 +167,6 @@ router.post('/admin/invite/:id/resend', limiter, requireDb, requireAuth('admin')
       to: invite.email,
       subject: 'You’re invited to set up your organization on VolunTrack',
       html: `<p>${escapeHtml(invite.name)} has been invited to join VolunTrack. Click the link below to finish setting up your organization account — choose your password, then add your schools.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
-      idempotencyKey: `organization-invite-resend/${req.params.id}/${Date.now()}`,
     })
 
     return res.json({ ok: true, emailSent })
@@ -289,7 +287,6 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
           message: message.trim(),
           includeDashboardLink: false,
         }),
-        idempotencyKey: `org-payment-notice/${req.params.organizationId}/${id}`,
       })
       emailSent = result.sent
     }
@@ -344,7 +341,6 @@ router.post('/invite-school', limiter, requireDb, requireAuth('org'), async (req
       to: email,
       subject: 'You’re invited to set up your school on VolunTrack',
       html: `<p>${escapeHtml(name)} has been invited to join VolunTrack. Click the link below to finish setting up your school account — choose your password and school code.</p><p><a href="${link}">${link}</a></p><p>This link expires in ${INVITE_TTL_DAYS} days.</p>${emailFooterHtml()}`,
-      idempotencyKey: `org-school-invite/${id}`,
     })
 
     return res.status(201).json({ ok: true, id, emailSent })

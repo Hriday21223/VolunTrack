@@ -55,28 +55,42 @@ export default function Status() {
   const [subscribing, setSubscribing] = useState(false)
   const [subscribeMessage, setSubscribeMessage] = useState('')
   const [linkMessage, setLinkMessage] = useState('')
+  // { action: 'confirm' | 'unsubscribe', token } — an email link lands here,
+  // but nothing is changed until the visitor presses the button below. Doing
+  // the write on page load let mail-security scanners, which fetch every URL
+  // in an email, confirm or unsubscribe people who never opened the message.
+  const [pendingLink, setPendingLink] = useState(null)
+  const [linkBusy, setLinkBusy] = useState(false)
 
   useEffect(() => {
     const confirmToken = searchParams.get('confirm')
     const unsubscribeToken = searchParams.get('unsubscribe')
     if (!confirmToken && !unsubscribeToken) return
-
-    const run = async () => {
-      try {
-        if (confirmToken) {
-          await confirmSubscription(confirmToken)
-          setLinkMessage("You're subscribed to VolunTrack status updates.")
-        } else {
-          await unsubscribeFromStatus(unsubscribeToken)
-          setLinkMessage("You've been unsubscribed from status updates.")
-        }
-      } catch {
-        setLinkMessage('That link is invalid or has expired.')
-      }
-    }
-    run()
+    setPendingLink(confirmToken
+      ? { action: 'confirm', token: confirmToken }
+      : { action: 'unsubscribe', token: unsubscribeToken })
     setSearchParams({}, { replace: true })
   }, [])
+
+  const runPendingLink = async () => {
+    if (!pendingLink || linkBusy) return
+    setLinkBusy(true)
+    try {
+      if (pendingLink.action === 'confirm') {
+        await confirmSubscription(pendingLink.token)
+        setLinkMessage("You're subscribed to VolunTrack status updates.")
+      } else {
+        await unsubscribeFromStatus(pendingLink.token)
+        setLinkMessage("You've been unsubscribed from status updates.")
+      }
+      setPendingLink(null)
+    } catch {
+      setLinkMessage('That link is invalid or has expired.')
+      setPendingLink(null)
+    } finally {
+      setLinkBusy(false)
+    }
+  }
 
   const submitSubscribe = async (e) => {
     e.preventDefault()
@@ -235,6 +249,21 @@ export default function Status() {
             {allOk ? 'VolunTrack is running normally.' : `${active.length} active issue(s)`}
           </p>
         </div>
+
+        {pendingLink && (
+          <div className="text-center text-sm p-4 rounded-lg mb-4 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300">
+            <p className="mb-3">
+              {pendingLink.action === 'confirm'
+                ? 'Confirm that you want emails when VolunTrack has an incident?'
+                : 'Unsubscribe from VolunTrack status update emails?'}
+            </p>
+            <button type="button" onClick={runPendingLink} disabled={linkBusy} className="btn-primary btn-sm">
+              {linkBusy
+                ? 'Working…'
+                : pendingLink.action === 'confirm' ? 'Confirm subscription' : 'Unsubscribe'}
+            </button>
+          </div>
+        )}
 
         {linkMessage && (
           <div className="text-center text-sm p-3 rounded-lg mb-4 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300">

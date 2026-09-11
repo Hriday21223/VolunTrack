@@ -5,6 +5,7 @@ import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
 import { pushConfigured, vapidPublicKey, sendPush } from '../push.js'
 import { nextOccurrenceUtc } from '../reminderSchedule.js'
+import { requireCronKey, cronLimiter } from '../cronAuth.js'
 
 const router = express.Router()
 
@@ -138,10 +139,7 @@ router.put('/sync', limiter, requireDb, requireAuth(), async (req, res) => {
 // POST /api/reminders/internal/run-due — cron entry point, guarded by a shared
 // secret the same way the parent digest is. Render's free tier has no cron, so
 // a GitHub Actions schedule calls this.
-router.post('/internal/run-due', requireDb, async (req, res) => {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return res.status(503).json({ error: 'CRON_SECRET is not configured.' })
-  if (req.headers['x-cron-key'] !== secret) return res.status(403).json({ error: 'Forbidden.' })
+router.post('/internal/run-due', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
   if (!pushConfigured()) return res.status(503).json({ error: 'Push notifications are not configured.' })
 
   const now = Date.now()
