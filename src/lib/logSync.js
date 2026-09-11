@@ -36,6 +36,12 @@ export async function syncCreateLog(log) {
         supervisorEmail: log.supervisorEmail || null,
         supervisorSignature: log.supervisorSignature || null,
         taskId: log.taskId || null,
+        // Pointer to the proof file in the school's own bucket, when one was
+        // uploaded there. The server re-verifies it belongs to this student.
+        proofKey: log.proofKey || null,
+        proofStorageId: log.proofStorageId || null,
+        proofMime: log.proofMime || null,
+        proofBytes: Number.isInteger(log.proofBytes) ? log.proofBytes : null,
       }),
     })
     if (!res.ok) return null

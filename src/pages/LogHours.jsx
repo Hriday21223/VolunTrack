@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { uploadProof } from '@/lib/proofUpload.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import FileDrop from '@/components/FileDrop.jsx'
@@ -121,7 +122,25 @@ export default function LogHours({ editId, onCloseEdit }) {
     if (!form.proof)                  { setError('Please upload proof — a sign-in sheet, thank-you email, or other supporting document.'); return }
 
     try {
-      const payload = { ...form, hours }
+      let payload = { ...form, hours }
+
+      // Try the school's own bucket first. On success the bytes live there and
+      // the log keeps only a pointer — so the data URL is dropped from the
+      // local copy rather than sitting in localStorage as well. If there's no
+      // tenant storage (or the upload fails), payload is untouched and the
+      // file stays local exactly as before.
+      const pointer = await uploadProof(form.proof)
+      if (pointer) {
+        payload = {
+          ...payload,
+          proofKey: pointer.key,
+          proofStorageId: pointer.storageId,
+          proofMime: pointer.mime,
+          proofBytes: pointer.bytes,
+          proof: { name: form.proof.name, size: form.proof.size, mimeType: form.proof.mimeType, dataUrl: null, stored: true },
+        }
+      }
+
       if (editId) {
         editLog(editId, payload)
         setToast(true)
