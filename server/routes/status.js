@@ -77,20 +77,38 @@ function requireDb(_req, res, next) {
 // next request" is the simple, honest option rather than a fake cron.
 async function syncDatabaseIncident(databaseOk) {
   try {
-    const { rows } = await query(
-      `SELECT id FROM incidents WHERE service = 'Database' AND status = 'detected' LIMIT 1`,
-    )
-    if (!databaseOk && rows.length === 0) {
+    if (!databaseOk) {
       const detail = 'Database health check failed.'
-      await query(
-        `INSERT INTO incidents (id, service, detail, status, source) VALUES ($1, 'Database', $2, 'detected', 'auto')`,
+      // The SELECT still short-circuits the common "incident already open"
+      // case (and is the only guard if the unique index failed to create on
+      // an older database), but it is no longer what makes this safe.
+      const { rows } = await query(
+        `SELECT id FROM incidents
+          WHERE service = 'Database' AND status = 'detected' AND source = 'auto' LIMIT 1`,
+      )
+      if (rows.length > 0) return
+
+      // Let the database arbitrate the rest. /health is public and
+      // unauthenticated, so several checks can run concurrently while the
+      // database is degraded; a SELECT-then-INSERT would let each of them
+      // see "no open incident" and open its own, double-sending the email.
+      // idx_incidents_one_open_auto (server/db.js) makes at most one of them
+      // insert a row, and only that one notifies.
+      const { rowCount } = await query(
+        `INSERT INTO incidents (id, service, detail, status, source)
+         VALUES ($1, 'Database', $2, 'detected', 'auto')
+         ON CONFLICT DO NOTHING`,
         [uid('inc'), detail],
       )
-      await notifyIncident({ service: 'Database', detail, source: 'auto' })
-    } else if (databaseOk && rows.length > 0) {
+      if (rowCount > 0) {
+        await notifyIncident({ service: 'Database', detail, source: 'auto' })
+      }
+    } else {
+      // Resolves every open auto incident for the service, not just the first
+      // — any duplicates predating the unique index get cleared out too.
       await query(
-        `UPDATE incidents SET status = 'resolved', resolved_at = now() WHERE id = $1`,
-        [rows[0].id],
+        `UPDATE incidents SET status = 'resolved', resolved_at = now()
+          WHERE service = 'Database' AND status = 'detected' AND source = 'auto'`,
       )
     }
   } catch (error) {
@@ -291,7 +309,12 @@ router.post('/subscribe', limiter, requireDb, async (req, res) => {
   }
 })
 
-router.get('/subscribe/confirm/:token', limiter, requireDb, async (req, res) => {
+// POST, not GET: both links below are emailed, and link-prescanning mail
+// gateways (Outlook Safe Links and friends) fetch every URL they find. The
+// emailed link points at the SPA (/status?confirm=…), which only renders a
+// button — the state change lives here, behind a POST the scanner won't make.
+// Same two-step shape as the parent digest unsubscribe in parent.js.
+router.post('/subscribe/confirm/:token', limiter, requireDb, async (req, res) => {
   try {
     const { rowCount } = await query(
       'UPDATE status_subscribers SET confirmed = true WHERE token = $1',
@@ -305,7 +328,7 @@ router.get('/subscribe/confirm/:token', limiter, requireDb, async (req, res) => 
   }
 })
 
-router.get('/subscribe/unsubscribe/:token', limiter, requireDb, async (req, res) => {
+router.post('/subscribe/unsubscribe/:token', limiter, requireDb, async (req, res) => {
   try {
     const { rowCount } = await query('DELETE FROM status_subscribers WHERE token = $1', [req.params.token])
     if (rowCount === 0) return res.status(404).json({ error: 'Invalid or expired unsubscribe link.' })

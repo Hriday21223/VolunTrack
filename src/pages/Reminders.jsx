@@ -4,6 +4,7 @@ import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { reminderApi } from '@/hooks/useReminders.js'
 import { computeNextAt } from '@/lib/scheduler.js'
 import { requestNotificationPermission } from '@/hooks/useReminders.js'
+import { pushSupported, getPushConfig, currentSubscription, enablePush, disablePush, syncReminders } from '@/lib/push.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -38,8 +39,54 @@ export default function Reminders() {
   const [toast, setToast] = useState(false)
   const [err, setErr] = useState('')
 
+  // Web Push opt-in. Additive: the in-tab runner keeps working regardless,
+  // and everything below no-ops when there is no backend or no VAPID keys.
+  const [pushCfg, setPushCfg] = useState({ pushEnabled: false, publicKey: null })
+  const [pushOn, setPushOn] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+
   // Re-read whenever the page mounts
   useEffect(() => { setItems(reminderApi.list()) }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!pushSupported()) return undefined
+    getPushConfig().then(async (cfg) => {
+      if (cancelled) return
+      setPushCfg(cfg)
+      if (cfg.pushEnabled) setPushOn(Boolean(await currentSubscription()))
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  // Keep the server's mirror in step with local edits, but only once the user
+  // has actually opted in — otherwise we would upload reminders for someone
+  // who never asked for push.
+  useEffect(() => {
+    if (!pushOn) return
+    syncReminders(items)
+  }, [items, pushOn])
+
+  const onTogglePush = async () => {
+    setPushBusy(true)
+    setErr('')
+    try {
+      if (pushOn) {
+        await disablePush()
+        setPushOn(false)
+      } else {
+        await enablePush(pushCfg.publicKey)
+        setPushOn(true)
+        // Send the current set immediately so the first reminder can fire
+        // without waiting for another edit.
+        await syncReminders(reminderApi.list())
+      }
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const onChange = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -210,6 +257,24 @@ export default function Reminders() {
                 <button onClick={onAskPermission} className="btn-secondary">Enable notifications</button>
               )}
             </div>
+
+            {/* Only offered when the server actually has VAPID keys — the
+                in-tab notification above works with no backend at all. */}
+            {pushCfg.pushEnabled && pushSupported() && (
+              <div className="mt-4 border-t border-earth-100 dark:border-[#1f2e25] pt-4 flex items-start justify-between gap-4">
+                <div>
+                  <div className="font-display font-semibold">Notify me when VolunTrack is closed</div>
+                  <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">
+                    {pushOn
+                      ? 'On — your reminders are synced so we can notify you even with every tab closed.'
+                      : 'Reminders above only fire while a VolunTrack tab is open. Turn this on to be notified anyway.'}
+                  </p>
+                </div>
+                <button onClick={onTogglePush} className={pushOn ? 'btn-ghost' : 'btn-secondary'} disabled={pushBusy}>
+                  {pushBusy ? 'Working…' : pushOn ? 'Turn off' : 'Turn on'}
+                </button>
+              </div>
+            )}
           </Card>
 
           {items.length === 0 ? (

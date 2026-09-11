@@ -6,11 +6,15 @@ import * as OTPAuth from 'otpauth'
 import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
-import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth } from '../auth.js'
+import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
+         signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendWelcomeEmail } from '../email.js'
 
 const router = express.Router()
+
+// Consecutive wrong TOTP codes before an account is briefly locked.
+const TOTP_MAX_ATTEMPTS = 8
 
 // Rate limit auth endpoints to prevent brute force attacks
 const authLimiter = rateLimit({
@@ -92,6 +96,9 @@ export function publicUser(row) {
     studentIdNumber: row.student_id_number,
     syncPin: row.sync_pin,
     totpEnabled: row.totp_enabled,
+    // Non-null means this account must enrol in MFA by that date; the UI uses
+    // it to nag during the grace window.
+    mfaRequiredAt: row.mfa_required_at ?? null,
     createdAt: row.created_at,
   }
 }
@@ -170,6 +177,27 @@ router.post('/login', authLimiter, requireDb, async (req, res) => {
     if (row.totp_enabled) {
       return res.json({ requiresTotp: true, tempToken: signTempToken(user) })
     }
+
+    // Privileged roles must have TOTP. SSO accounts are exempt: they hold no
+    // VolunTrack password, so MFA belongs to their school's IdP, and an
+    // enrolment flow they cannot complete would just lock them out.
+    const needsMfa = mfaRequiredForRole(row.role) && row.auth_provider !== 'sso'
+    if (needsMfa && row.mfa_required_at) {
+      const deadline = new Date(row.mfa_required_at)
+      if (deadline <= new Date()) {
+        // Past the deadline: hand back a token that opens only the two
+        // enrolment routes, never a session.
+        return res.json({
+          requiresMfaEnrollment: true,
+          enrollmentToken: signEnrollmentToken(user),
+          deadline: row.mfa_required_at,
+          user,
+        })
+      }
+      // Still in the grace window — sign in, but tell the client to nag.
+      return res.json({ token: signToken(user), user, mfaEnrollmentDue: row.mfa_required_at })
+    }
+
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('login failed:', error)
@@ -274,6 +302,28 @@ router.put('/sync-pin', requireDb, requireAuth(), async (req, res) => {
   }
 })
 
+// Both PIN routes below issue a session the same way /login does, so they
+// have to respect the same second-factor gates — otherwise TOTP (and the
+// mandatory-MFA requirement for privileged roles) is simply routed around.
+// Returns a response body to send instead of a session, or null to proceed.
+function secondFactorGate(row) {
+  const user = publicUser(row)
+  if (row.totp_enabled) {
+    return { status: 200, body: { requiresTotp: true, tempToken: signTempToken(user) } }
+  }
+  // Past its enrolment deadline, a privileged account gets no session at all.
+  // /login hands back an enrolment token for its setup flow; these routes have
+  // no such flow, so they send the user to the normal sign-in page instead.
+  const needsMfa = mfaRequiredForRole(row.role) && row.auth_provider !== 'sso'
+  if (needsMfa && row.mfa_required_at && new Date(row.mfa_required_at) <= new Date()) {
+    return {
+      status: 403,
+      body: { error: 'This account must finish two-factor setup. Sign in with your email and password.' },
+    }
+  }
+  return null
+}
+
 // Set sync PIN using email + password (no JWT required — for users whose
 // browser session doesn't have a token due to localStorage-only login).
 router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
@@ -291,6 +341,12 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
 
     const ok = await verifyPassword(password, rows[0].password_hash)
     if (!ok) return res.status(403).json({ error: 'Password is incorrect.' })
+
+    // Gate before the PIN is written: a PIN set on a password alone would be
+    // a standing second-factor bypass for POST /sync-login. The client
+    // finishes the TOTP challenge and then sets the PIN via PUT /sync-pin.
+    const gate = secondFactorGate(rows[0])
+    if (gate) return res.status(gate.status).json(gate.body)
 
     const existing = await query('SELECT 1 FROM users WHERE sync_pin = $1 AND id != $2', [syncPin, rows[0].id])
     if (existing.rowCount > 0) return res.status(409).json({ error: 'This sync PIN is already in use.' })
@@ -321,8 +377,13 @@ router.post('/sync-login', authLimiter, requireDb, async (req, res) => {
       return res.status(401).json({ error: 'Invalid sync PIN.' })
     }
     const user = publicUser(rows[0])
-    // Clear the sync PIN so it can't be reused
+    // Clear the sync PIN so it can't be reused — including when a second
+    // factor is still outstanding, since the PIN has now been spent.
     await query('UPDATE users SET sync_pin = NULL WHERE id = $1', [rows[0].id])
+
+    const gate = secondFactorGate(rows[0])
+    if (gate) return res.status(gate.status).json(gate.body)
+
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('sync-login failed:', error)
@@ -368,7 +429,7 @@ async function hashBackupCodes(codes) {
 }
 
 // POST /api/auth/totp/setup — generate secret + backup codes (not yet enabled)
-router.post('/totp/setup', authLimiter, requireDb, requireAuth(), async (req, res) => {
+router.post('/totp/setup', authLimiter, requireDb, requireAuthOrEnrollment, async (req, res) => {
   try {
     const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
     if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
@@ -406,7 +467,7 @@ router.post('/totp/setup', authLimiter, requireDb, requireAuth(), async (req, re
 })
 
 // POST /api/auth/totp/verify-setup — confirm a code to enable 2FA
-router.post('/totp/verify-setup', authLimiter, requireDb, requireAuth(), async (req, res) => {
+router.post('/totp/verify-setup', authLimiter, requireDb, requireAuthOrEnrollment, async (req, res) => {
   const code = String(req.body.code || '').trim()
   if (!/^\d{6}$/.test(code)) {
     return res.status(400).json({ error: 'Enter a 6-digit code.' })
@@ -437,8 +498,20 @@ router.post('/totp/verify-setup', authLimiter, requireDb, requireAuth(), async (
       return res.status(401).json({ error: 'Invalid code. Try again.' })
     }
 
-    await query('UPDATE users SET totp_enabled = true WHERE id = $1', [req.auth.sub])
-    return res.json({ ok: true, user: publicUser({ ...row, totp_enabled: true }) })
+    // Enrolment satisfied, so the deadline no longer applies.
+    await query('UPDATE users SET totp_enabled = true, mfa_required_at = NULL WHERE id = $1', [req.auth.sub])
+    // Reflect the write: `row` predates the UPDATE, so spreading it alone
+    // would hand the client a deadline that no longer exists and leave the
+    // UI nagging about enrolment the user has just completed.
+    const enabled = publicUser({ ...row, totp_enabled: true, mfa_required_at: null })
+
+    // A user who got here on an enrolment token has no session yet — issuing
+    // one now is what makes the forced-enrolment path usable instead of a
+    // dead end. They have just proven possession of the TOTP secret.
+    if (req.enrolling) {
+      return res.json({ ok: true, user: enabled, token: signToken(enabled) })
+    }
+    return res.json({ ok: true, user: enabled })
   } catch (error) {
     console.error('totp verify-setup failed:', error)
     return res.status(500).json({ error: 'Could not verify 2FA code.' })
@@ -469,6 +542,13 @@ router.post('/totp/challenge', authLimiter, requireDb, async (req, res) => {
       return res.status(400).json({ error: '2FA is not enabled on this account.' })
     }
 
+    // Bound to the account, not the IP: 6 digits is only ~1e6 possibilities,
+    // which a botnet spreading attempts across addresses would walk through
+    // while staying under any per-IP limit.
+    if (row.totp_locked_until && new Date(row.totp_locked_until) > new Date()) {
+      return res.status(429).json({ error: 'Too many incorrect codes. Try again in a few minutes.' })
+    }
+
     const totp = new OTPAuth.TOTP({
       issuer: 'VolunTrack',
       label: row.email,
@@ -480,8 +560,29 @@ router.post('/totp/challenge', authLimiter, requireDb, async (req, res) => {
 
     const delta = totp.validate({ token: code.trim(), window: 1 })
     if (delta === null) {
+      const attempts = (row.totp_failed_attempts || 0) + 1
+      // Explicit casts: $2 is both assigned to an integer column and compared,
+      // and without them Postgres fails with "inconsistent types deduced for
+      // parameter $2" — which a swallowed error would turn into a lockout
+      // that silently never engages.
+      await query(
+        `UPDATE users
+            SET totp_failed_attempts = $2::int,
+                totp_locked_until = CASE WHEN $2::int >= $3::int
+                                         THEN now() + interval '15 minutes'
+                                         ELSE totp_locked_until END
+          WHERE id = $1`,
+        [row.id, attempts, TOTP_MAX_ATTEMPTS],
+      ).catch((e) => console.error('totp lockout update failed:', e.message))
       return res.status(401).json({ error: 'Invalid code. Try again.' })
     }
+
+    // Success clears the counter, so a user who fumbles a code then gets it
+    // right isn't left one mistake away from a lockout.
+    await query(
+      'UPDATE users SET totp_failed_attempts = 0, totp_locked_until = NULL WHERE id = $1',
+      [row.id],
+    ).catch((e) => console.error('totp counter reset failed:', e.message))
 
     const user = publicUser(row)
     return res.json({ token: signToken(user), user })
@@ -510,9 +611,16 @@ router.post('/totp/disable', authLimiter, requireDb, requireAuth(), async (req, 
     const ok = await verifyPassword(password, row.password_hash)
     if (!ok) return res.status(403).json({ error: 'Incorrect password.' })
 
+    // Turning MFA off on a privileged account must re-arm the requirement,
+    // not silently exempt it forever. A short window, since this account was
+    // already enrolled and is choosing to step back.
+    const rearm = mfaRequiredForRole(row.role) && row.auth_provider !== 'sso'
     await query(
-      'UPDATE users SET totp_enabled = false, totp_secret = NULL, backup_codes = NULL WHERE id = $1',
-      [req.auth.sub],
+      `UPDATE users
+          SET totp_enabled = false, totp_secret = NULL, backup_codes = NULL,
+              mfa_required_at = CASE WHEN $2 THEN now() + interval '7 days' ELSE NULL END
+        WHERE id = $1`,
+      [req.auth.sub, rearm],
     )
     const updated = { ...row, totp_enabled: false, totp_secret: null, backup_codes: null }
     return res.json({ ok: true, user: publicUser(updated) })
@@ -549,6 +657,14 @@ router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) =>
       return res.status(400).json({ error: '2FA is not enabled on this account.' })
     }
 
+    // Shares /totp/challenge's per-account lockout, deliberately: a separate
+    // counter would just let an attacker who has run the live-code lockout
+    // out of attempts switch to guessing backup codes instead, and the
+    // per-IP limiter alone is walkable with rotating addresses.
+    if (row.totp_locked_until && new Date(row.totp_locked_until) > new Date()) {
+      return res.status(429).json({ error: 'Too many incorrect codes. Try again in a few minutes.' })
+    }
+
     const hashedCodes = JSON.parse(row.backup_codes)
     let matchedIndex = -1
 
@@ -560,12 +676,27 @@ router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) =>
     }
 
     if (matchedIndex === -1) {
+      const attempts = (row.totp_failed_attempts || 0) + 1
+      // See /totp/challenge for why the casts are explicit.
+      await query(
+        `UPDATE users
+            SET totp_failed_attempts = $2::int,
+                totp_locked_until = CASE WHEN $2::int >= $3::int
+                                         THEN now() + interval '15 minutes'
+                                         ELSE totp_locked_until END
+          WHERE id = $1`,
+        [row.id, attempts, TOTP_MAX_ATTEMPTS],
+      ).catch((e) => console.error('totp lockout update failed:', e.message))
       return res.status(401).json({ error: 'Invalid backup code.' })
     }
 
     // Remove the used backup code
     hashedCodes.splice(matchedIndex, 1)
     await query('UPDATE users SET backup_codes = $1 WHERE id = $2', [JSON.stringify(hashedCodes), row.id])
+    await query(
+      'UPDATE users SET totp_failed_attempts = 0, totp_locked_until = NULL WHERE id = $1',
+      [row.id],
+    ).catch((e) => console.error('totp counter reset failed:', e.message))
 
     const user = publicUser(row)
     return res.json({ token: signToken(user), user })

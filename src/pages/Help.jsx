@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal } from 'lucide-react'
+import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal, Download } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
@@ -10,6 +10,7 @@ const TABS = [
   { id: 'parent', label: 'Parent', icon: Users },
   { id: 'volunteer', label: 'Volunteer', icon: Hand },
   { id: 'school', label: 'School', icon: School },
+  { id: 'school_staff', label: 'Co-Admin', icon: UserCheck },
   { id: 'organization', label: 'Organization', icon: Building2 },
   { id: 'admin', label: 'Admin', icon: ShieldCheck },
   { id: 'faq', label: 'FAQ', icon: HelpCircle },
@@ -24,7 +25,7 @@ const FAQ_ITEMS = [
   { q: 'How does supervisor verification work?', a: 'When you log hours, add your supervisor\'s email. They get a one-time link to approve or reject those specific hours — no account needed. Approving asks them to sign; rejecting skips that step. Each log then shows a status: Pending, Verified, or Rejected. Verified hours are the ones your school and linked parents can rely on.' },
   { q: 'How do I let a parent see my hours?', a: 'In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. They\'ll only see hours logged from that point onward, and they can\'t change anything. Linked parents also get a weekly progress email, which they can unsubscribe from at any time from a link in the email.' },
   { q: 'What\'s the difference between a school account and an organization account?', a: 'A school account manages one school\'s students, report reviews, announcements, and co-admins. An organization account sits above multiple schools: it adds them and tracks their setup and payment status, but each school still runs its own dashboard.' },
-  { q: 'Can more than one person manage a school account?', a: 'Yes. The primary school account can add co-admins by email from the Staff tab. Co-admins help review reports, students, and announcements, but can\'t add or remove other co-admins.' },
+  { q: 'Can more than one person manage a school account?', a: 'Yes. The primary school account can add up to 10 co-admins from School setup \u2192 Co-admins, entering each person\'s name, email, and a temporary password they change after signing in. Co-admins share the dashboard \u2014 reviewing reports, managing students, and sending announcements \u2014 but don\'t get the School setup tab, so they can\'t add or remove other co-admins, change the school code, configure sign-in, or handle billing.' },
   { q: 'Who sets the price for a school or organization account?', a: 'The VolunTrack admin, based on your size and how you\'ll use it. You\'ll get a quote with your invite, and invoices arrive by email with a downloadable PDF.' },
   { q: 'How do I join a school?', a: 'Ask your school administrator for their school code. Go to Settings → Join school and enter it — your account links immediately. A school can also add you directly by email.' },
   { q: 'Where can I find volunteer opportunities?', a: 'Open the Opportunities page. It lists public tasks posted by schools and organizations, sorted by distance if you allow location access. Sign up in one click; once the organizer approves you and marks you present, you can log those hours straight from the task.' },
@@ -309,7 +310,7 @@ function SchoolHandbook() {
       </HandbookIntro>
 
       <Section title="School Dashboard Overview">
-        <p>The school dashboard has tabs for <strong>Reports</strong>, <strong>Students</strong>, <strong>Chat</strong>, <strong>Staff</strong>, and <strong>Volunteer</strong>. Your payment status and any admin notices show at the top. Co-admins see a reduced view (My Documents) with just Reports and Volunteer.</p>
+        <p>The school dashboard has tabs for <strong>Students</strong>, <strong>Reports</strong>, <strong>Volunteer</strong>, <strong>School setup</strong>, and an announcements (chat) button. Your payment status and any admin notices show at the top. Co-admins share this dashboard but don't see School setup — see the <strong>Co-Admin</strong> handbook.</p>
       </Section>
 
       <Section title="Getting Your School Set Up">
@@ -334,12 +335,13 @@ function SchoolHandbook() {
         <p className="mt-3">Schools can also upload their own verification documents from the same tab.</p>
       </Section>
 
-      <Section title="Chat (Announcements)">
-        <p>The Chat tab lets you send announcements to all your students. Type a message and click Send — it appears instantly on every student's dashboard. Previously sent announcements are listed below the composer.</p>
+      <Section title="Announcements">
+        <p>The speech-bubble button in the dashboard's tab row opens the announcement composer, which sends to all your students. Type a message and click Send — it appears instantly on every student's dashboard. Previously sent announcements are listed below the composer.</p>
       </Section>
 
       <Section title="Co-admins (Staff)">
-        <p>The primary school account can add co-admins by email from the <strong>Staff</strong> tab. Co-admins help manage the dashboard — reviewing reports, students, and announcements — but can't add or remove other co-admins. Remove a co-admin any time from the same tab.</p>
+        <p>The primary school account can add up to <strong>10</strong> co-admins from <strong>School setup → Co-admins</strong>. You enter their name, email, and a temporary password — there's no invite email, so pass the password on yourself and have them change it in Settings after their first sign-in.</p>
+        <p className="mt-2">Co-admins share your dashboard — reviewing reports, managing students, and sending announcements — but School setup stays yours alone, so they can't add or remove co-admins, rotate the school code, configure sign-in, or touch billing. Remove one at any time from the same tab; their access ends immediately. Full details are in the <strong>Co-Admin</strong> handbook.</p>
       </Section>
 
       <Section title="Posting Volunteer Tasks">
@@ -354,6 +356,53 @@ function SchoolHandbook() {
           <Step icon={Calendar} label="Due-date countdown" description="A banner appears within 10 days of a set deadline." />
         </div>
         <p className="mt-3">If an account is unpaid and locked, the dashboard stays restricted until the admin verifies payment.</p>
+      </Section>
+    </div>
+  )
+}
+
+// ── School Co-Admin Handbook ─────────────────────────────────────────
+
+function SchoolStaffHandbook() {
+  return (
+    <div>
+      <HandbookIntro title="School Co-Admin Handbook">
+        A co-admin helps run a school's dashboard day to day — reviewing reports, managing students, and sending announcements. You share the school admin's dashboard, minus the setup and billing controls.
+      </HandbookIntro>
+
+      <Section title="Getting Your Account">
+        <p>You can't sign yourself up as a co-admin. Your school's primary admin creates the account for you from <strong>School setup → Co-admins</strong>, entering your name, email, and a temporary password.</p>
+        <p className="mt-2">Sign in on the normal login page with that email and password, then change the password from <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link> right away. A school can have up to <strong>10</strong> co-admins.</p>
+        <p className="mt-2">If your school signs in through its own Google or Microsoft account (SSO), the admin can set the connection's default role to co-admin, and matching staff get a co-admin account automatically on first sign-in.</p>
+      </Section>
+
+      <Section title="What You Can Do">
+        <div className="mt-3 space-y-2">
+          <Step icon={FileText} label="Review reports" description="Open student submissions in the Reports tab and approve or reject them with notes, and upload the school's own verification documents." />
+          <Step icon={Download} label="Export hours" description="Reports → Hours exports every student's logged hours for a date range as a CSV." />
+          <Step icon={Users} label="Manage students" description="See the full student list, share the school code, and add students by email." />
+          <Step icon={MessageSquare} label="Send announcements" description="Post to every student's dashboard from the announcements button." />
+          <Step icon={Hand} label="Post volunteer tasks" description="Publish public volunteer opportunities from the Volunteer tab, the same way the school admin does." />
+        </div>
+      </Section>
+
+      <Section title="What Only the Primary Admin Can Do">
+        <p>The <strong>School setup</strong> tab doesn't appear for co-admins. It holds the things that change the school account itself:</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={ShieldCheck} label="Add or remove co-admins" description="Including you — a co-admin can't add or remove another." />
+          <Step icon={Lock} label="Sign-in (SSO) and custom domain" description="Connecting the school's identity provider and claiming a domain." />
+          <Step icon={CreditCard} label="Billing" description="Viewing billing details and submitting the bank confirmation number for a payment." />
+          <Step icon={School} label="Changing the school code" description="Rotating the join code students use, so a code already handed out can't be invalidated from under the admin." />
+        </div>
+      </Section>
+
+      <Section title="If the School Account Is Unpaid">
+        <p>When a school's payment hasn't been verified, the whole dashboard is locked for co-admins too — you'll see the payment screen instead of your tabs. Only the primary admin can enter the bank confirmation number, so ask them to complete it; access unlocks for everyone once the VolunTrack admin verifies the payment.</p>
+      </Section>
+
+      <Section title="Your Account & Security">
+        <p>Co-admin accounts use the same <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link> as any other account: change your password, enable two-factor authentication, and set an app unlock PIN. Because you can read every student's records, 2FA is worth turning on.</p>
+        <p className="mt-2">If you leave the role, the primary admin removes you from School setup → Co-admins and your access ends immediately.</p>
       </Section>
     </div>
   )
@@ -481,6 +530,7 @@ const PANELS = {
   parent: ParentHandbook,
   volunteer: VolunteerHandbook,
   school: SchoolHandbook,
+  school_staff: SchoolStaffHandbook,
   organization: OrganizationHandbook,
   admin: AdminHandbook,
   faq: Faq,
@@ -518,7 +568,7 @@ const HELP_JSON_LD = [
 export default function Help() {
   useSeo({
     title: 'Help & Handbooks',
-    description: 'Guides, FAQs, and handbooks for students, parents, volunteers, schools, organizations, and admins using VolunTrack.',
+    description: 'Guides, FAQs, and handbooks for students, parents, volunteers, schools, co-admins, organizations, and admins using VolunTrack.',
     path: '/help',
     jsonLd: HELP_JSON_LD,
   })

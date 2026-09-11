@@ -176,12 +176,15 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       if (link.length === 0) return res.status(403).json({ error: 'Not allowed.' })
     }
 
+    // `date` is a DATE column: pg parses it into a JS Date, which res.json
+    // serializes as "2024-01-06T00:00:00.000Z". Clients key calendars and
+    // <input type="date"> on the plain "YYYY-MM-DD" string, so format it here.
     const { rows } = await query(
       // proof_key itself is never returned: it is only useful with a minted
       // URL, and every mint is audited. Callers just need to know one exists.
-      `SELECT id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, task_id, created_at,
+      `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, task_id, created_at,
                (proof_key IS NOT NULL) AS has_proof, proof_mime
-       FROM logs WHERE user_id = $1 ORDER BY date DESC, created_at DESC`,
+       FROM logs WHERE user_id = $1 ORDER BY logs.date DESC, created_at DESC`,
       [userId],
     )
     return res.json({

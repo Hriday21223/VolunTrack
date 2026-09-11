@@ -5,7 +5,7 @@
 ## Core pages
 
 - [Home / overview](https://volunteer-track-two.vercel.app/): what VolunTrack is, features, pricing, and FAQ
-- [Help & Handbooks](https://volunteer-track-two.vercel.app/help): role-by-role guides and a full FAQ for students, parents, volunteers, schools, organizations, and admins
+- [Help & Handbooks](https://volunteer-track-two.vercel.app/help): role-by-role guides and a full FAQ for students, parents, volunteers, schools, school co-admins, organizations, and admins
 - [Sign up](https://volunteer-track-two.vercel.app/register): create a free student, parent, or volunteer account
 - [School sign up](https://volunteer-track-two.vercel.app/school/register): create a school account to manage students and report reviews
 - [Organization sign up](https://volunteer-track-two.vercel.app/organization/register): manage multiple schools under one organization

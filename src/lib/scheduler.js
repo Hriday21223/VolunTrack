@@ -40,12 +40,18 @@ export function computeNextAt(r, now = new Date()) {
       return at.toISOString()
     }
     case 'monthly': {
-      const dom = Math.min(31, Math.max(1, Number(r.dayOfMonth) || 1))
-      let at = set(now, { date: dom, hours: hh, minutes: mm, seconds: 0, milliseconds: 0 })
-      if (!isAfter(at, now)) at = addMonths(at, 1)
-      // clamp day for short months
-      at = set(at, { date: Math.min(dom, daysInMonth(at)) })
-      return at.toISOString()
+      const wanted = Math.min(31, Math.max(1, Number(r.dayOfMonth) || 1))
+      // Clamp against the *target* month before building the date, not after.
+      // Date.setDate overflows instead of clamping, so asking for day 31 in
+      // April lands on May 1 — already in the future, so the "roll to next
+      // month" branch never runs and April's occurrence is skipped outright.
+      const occurrenceIn = (monthStart) => {
+        const day = Math.min(wanted, daysInMonth(monthStart))
+        return set(monthStart, { date: day, hours: hh, minutes: mm, seconds: 0, milliseconds: 0 })
+      }
+      const thisMonth = set(now, { date: 1 })
+      const at = occurrenceIn(thisMonth)
+      return (isAfter(at, now) ? at : occurrenceIn(addMonths(thisMonth, 1))).toISOString()
     }
     default:
       return null

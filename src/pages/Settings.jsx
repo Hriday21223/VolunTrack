@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Copy, Eye, EyeOff, QrCode, Upload, Sparkles, CheckCircle2, ChevronDown, Users, X } from 'lucide-react'
+import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, Users, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
-import { hashPin, sendPasswordResetCode, clearPasswordResetCode, createLog } from '@/api/index.js'
-import { buildDemoLogs, buildDemoGoals, buildDemoReminders } from '@/lib/demoData.js'
+import { hashPin } from '@/api/index.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -28,10 +27,12 @@ function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children })
   )
 }
 
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
-  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp } = useAuth()
-  const { goals, saveGoal, removeGoal, logs } = useData()
+  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp } = useAuth()
+  const { goals, saveGoal, removeGoal } = useData()
   const nav = useNavigate()
   const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, primary: false })
   const [toast, setToast] = useState(false)
@@ -46,6 +47,10 @@ export default function Settings() {
   const [showSyncPasswordPrompt, setShowSyncPasswordPrompt] = useState(false)
   const [showPwText, setShowPwText] = useState(false)
   const [syncPasswordBusy, setSyncPasswordBusy] = useState(false)
+  // Set when linking hits an account with 2FA on: the password alone no longer
+  // buys a session, so the PIN isn't written until the code checks out either.
+  const [syncTotpTempToken, setSyncTotpTempToken] = useState('')
+  const [syncTotpCode, setSyncTotpCode] = useState('')
   const [schoolCode, setSchoolCode] = useState('')
   const [schoolName, setSchoolName] = useState('')
   const [schoolBusy, setSchoolBusy] = useState(false)
@@ -58,6 +63,18 @@ export default function Settings() {
   const [pdfs, setPdfs] = useState([])
   const [showSchool, setShowSchool] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState(null)
+  const [ownCodeDraft, setOwnCodeDraft] = useState('')
+  const [ownCodeBusy, setOwnCodeBusy] = useState(false)
+  const [ownCodeErr, setOwnCodeErr] = useState('')
+  const [ownCodeCopied, setOwnCodeCopied] = useState(false)
+  const [orgSchools, setOrgSchools] = useState(null)
+
+  // Students are the only role that joins a school by code. A parent reaches
+  // their child's hours through parent_child_links, an org owns schools rather
+  // than joining one, and a volunteer isn't enrolled anywhere — offering any of
+  // them the join box linked the wrong kind of account to a school. Mirrors
+  // requireAuth('student') on POST /school/join.
+  const canJoinSchool = user?.role === 'student'
   const [showQR, setShowQR] = useState(false)
   const qrCanvasRef = useRef(null)
 
@@ -180,7 +197,6 @@ export default function Settings() {
     setPwBusy(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
       const res = await fetch(`${apiUrl}/auth/password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -212,10 +228,26 @@ export default function Settings() {
         const res = await fetch(`${apiUrl}/school/info?id=${user.schoolId}`)
         if (!res.ok) return
         const data = await res.json()
-        if (data.school) setSchoolInfo(data.school)
+        if (data.school) {
+          setSchoolInfo(data.school)
+          setOwnCodeDraft(data.school.pin || '')
+        }
       } catch {}
     })()
   }, [user?.schoolId])
+
+  useEffect(() => {
+    if (user?.role !== 'org') return
+    ;(async () => {
+      try {
+        const token = localStorage.getItem('voluntrack:auth_token')
+        const res = await fetch(`${apiUrl}/organization/schools`, { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) return
+        const data = await res.json()
+        setOrgSchools(data.schools || [])
+      } catch { /* the card still renders its dashboard link without the list */ }
+    })()
+  }, [user?.role])
 
   const familyApiUrl = import.meta.env.VITE_API_URL || '/api'
   const authHeaders = () => {
@@ -339,7 +371,6 @@ export default function Settings() {
     if (!syncPassword) return
     if (!displaySyncPin) return
     setSyncPasswordBusy(true)
-    const apiUrl = import.meta.env.VITE_API_URL || '/api'
     try {
       const response = await fetch(`${apiUrl}/auth/sync-pin-auth`, {
         method: 'POST',
@@ -349,56 +380,44 @@ export default function Settings() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Failed to link account')
 
+      // 2FA is on: the server withheld both the session and the PIN write
+      // until the second factor is verified. Finish in confirmSyncTotp().
+      if (data.requiresTotp) {
+        setSyncTotpTempToken(data.tempToken)
+        setSyncPassword('')
+        return
+      }
+
       localStorage.setItem('voluntrack:auth_token', data.token)
       setShowSyncPin(true)
       setShowSyncPasswordPrompt(false)
       setSyncPassword('')
       setToastMessage('Account linked! Sync PIN generated.')
       setToast(true)
-      return
     } catch (error) {
-      // If password is incorrect, try to sync the database password
-      // using a locally-generated recovery code
-      if (error.message === 'Password is incorrect.') {
-        try {
-          const updated = sendPasswordResetCode(user.email)
-          if (updated && updated.resetPasswordCode) {
-            const code = updated.resetPasswordCode
-            const sendRes = await fetch(`${apiUrl}/send-reset-email`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: user.email, code, type: 'password' }),
-            })
-            if (sendRes.ok || sendRes.status === 500 || sendRes.status === 503) {
-              const resetRes = await fetch(`${apiUrl}/auth/reset-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: user.email, code, newPassword: syncPassword }),
-              })
-              if (resetRes.ok) {
-                clearPasswordResetCode(user.email)
-                const retryRes = await fetch(`${apiUrl}/auth/sync-pin-auth`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email: user.email, password: syncPassword, syncPin: displaySyncPin }),
-                })
-                const retryData = await retryRes.json()
-                if (retryRes.ok) {
-                  localStorage.setItem('voluntrack:auth_token', retryData.token)
-                  setShowSyncPin(true)
-                  setShowSyncPasswordPrompt(false)
-                  setSyncPassword('')
-                  setToastMessage('Password synced! Sync PIN generated.')
-                  setToast(true)
-                  return
-                }
-              }
-            }
-          }
-        } catch {
-          // fall through to error message below
-        }
-      }
+      setToastMessage(error.message || 'Failed to link account')
+      setToast(true)
+    } finally {
+      setSyncPasswordBusy(false)
+    }
+  }
+
+  // Second half of the linking flow for 2FA accounts: the TOTP challenge
+  // issues the session, and the PIN is then written through the ordinary
+  // authenticated PUT /api/auth/sync-pin.
+  const confirmSyncTotp = async () => {
+    if (!syncTotpCode.trim()) return
+    setSyncPasswordBusy(true)
+    try {
+      await verifyTotp(syncTotpTempToken, syncTotpCode.trim())
+      await setSyncPinAuth(displaySyncPin)
+      setSyncTotpTempToken('')
+      setSyncTotpCode('')
+      setShowSyncPin(true)
+      setShowSyncPasswordPrompt(false)
+      setToastMessage('Account linked! Sync PIN generated.')
+      setToast(true)
+    } catch (error) {
       setToastMessage(error.message || 'Failed to link account')
       setToast(true)
     } finally {
@@ -458,26 +477,6 @@ export default function Settings() {
               />
               <button className="btn-primary"><Plus className="w-4 h-4" /> Add</button>
             </form>
-          </Card>
-
-          <Card className="border border-dashed border-brand-700/30 bg-brand-900/5">
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4 text-brand-400" /> Demo data</h3>
-            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Populate your account with sample logs, goals, and reminders to explore the app before adding your own data.
-            </p>
-            <button
-              onClick={() => {
-                const existing = logs.length
-                if (existing > 0 && !confirm('This will add demo data alongside your existing logs. Continue?')) return
-                buildDemoLogs().forEach((l) => createLog(l))
-                buildDemoGoals().forEach((g) => saveGoal(g))
-                setToastMessage('Demo data loaded! Refresh to see it.')
-                setToast(true)
-              }}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" /> Load demo data
-            </button>
           </Card>
         </CollapsibleSection>
 
@@ -679,7 +678,39 @@ export default function Settings() {
                 ? 'Generate a 5-digit PIN to sync your account with your laptop. Share this PIN with your computer to access your data.'
                 : 'Generate a 5-digit PIN to sync your account with the mobile app. Share this PIN with your mobile device to access your data.'}
             </p>
-            {showSyncPasswordPrompt ? (
+            {showSyncPasswordPrompt && syncTotpTempToken ? (
+              <div className="space-y-3">
+                <div className="p-4 bg-slate-900/80 rounded-xl border border-amber-500/30">
+                  <p className="text-xs text-amber-300 mb-2">
+                    This account uses two-factor authentication. Enter the current code from your
+                    authenticator app to finish linking.
+                  </p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    value={syncTotpCode}
+                    onChange={(e) => setSyncTotpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="input w-full bg-slate-900/80 text-white border-white/10 text-center tracking-widest font-mono"
+                  />
+                </div>
+                <button
+                  onClick={confirmSyncTotp}
+                  disabled={syncTotpCode.length !== 6 || syncPasswordBusy}
+                  className="btn-primary w-full"
+                >
+                  {syncPasswordBusy ? 'Verifying…' : 'Verify & generate PIN'}
+                </button>
+                <button
+                  onClick={() => { setShowSyncPasswordPrompt(false); setSyncTotpTempToken(''); setSyncTotpCode('') }}
+                  className="btn-ghost w-full text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : showSyncPasswordPrompt ? (
               <div className="space-y-3">
                 <div className="p-4 bg-slate-900/80 rounded-xl border border-amber-500/30">
                   <p className="text-xs text-amber-300 mb-2">
@@ -750,8 +781,9 @@ export default function Settings() {
           </Card>
         </CollapsibleSection>
 
+        {(canJoinSchool || user?.role === 'school') && (
         <CollapsibleSection icon={School} label="School" defaultOpen={true}>
-          {user?.role !== 'school' && user?.role !== 'admin' && (
+          {canJoinSchool && (
             <Card>
               <div className="flex items-center gap-2 mb-3">
                 <School className="w-4 h-4 text-brand-600" />
@@ -786,7 +818,6 @@ export default function Settings() {
                       setSchoolBusy(true)
                       try {
                         const token = localStorage.getItem('voluntrack:auth_token')
-                        const apiUrl = import.meta.env.VITE_API_URL || '/api'
                         const res = await fetch(`${apiUrl}/school/join`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -827,7 +858,114 @@ export default function Settings() {
               </Link>
             </Card>
           )}
+
+          {user?.role === 'school' && schoolInfo && (
+            <Card>
+              <div className="flex items-center gap-2 mb-3">
+                <Hash className="w-4 h-4 text-brand-600" />
+                <h3 className="font-display font-semibold">School code</h3>
+              </div>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+                Students enter this in Settings → Join school to link their account to {schoolInfo.name}.
+              </p>
+
+              <div className="flex items-center gap-2 mb-4">
+                <code className="flex-1 overflow-x-auto rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{schoolInfo.pin}</code>
+                <button
+                  type="button"
+                  title="Copy school code"
+                  className="btn-sm btn-ghost shrink-0"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(schoolInfo.pin)
+                      setOwnCodeCopied(true)
+                      setTimeout(() => setOwnCodeCopied(false), 2000)
+                    } catch { /* clipboard blocked — the code is selectable on screen */ }
+                  }}
+                >
+                  {ownCodeCopied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              <form
+                className="space-y-2"
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  const next = ownCodeDraft.trim().toLowerCase()
+                  if (!next || next === schoolInfo.pin) return
+                  setOwnCodeErr('')
+                  setOwnCodeBusy(true)
+                  try {
+                    const res = await fetch(`${apiUrl}/school/code`, {
+                      method: 'PATCH',
+                      headers: authHeaders(),
+                      body: JSON.stringify({ pin: next }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok) throw new Error(data.error || 'Could not update school code.')
+                    setSchoolInfo({ ...schoolInfo, pin: data.pin })
+                    setOwnCodeDraft(data.pin)
+                    setToastMessage('School code updated!')
+                    setToast(true)
+                  } catch (err) {
+                    setOwnCodeErr(err.message)
+                  } finally {
+                    setOwnCodeBusy(false)
+                  }
+                }}
+              >
+                <label className="text-sm text-earth-500 dark:text-earth-400">Change code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={ownCodeDraft}
+                    onChange={(e) => { setOwnCodeErr(''); setOwnCodeDraft(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')) }}
+                    placeholder="cisd-12345"
+                    className="input flex-1"
+                  />
+                  <button type="submit" className="btn-primary" disabled={ownCodeBusy || !ownCodeDraft.trim() || ownCodeDraft.trim() === schoolInfo.pin}>
+                    {ownCodeBusy ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                {ownCodeErr && <p className="text-sm text-red-500">{ownCodeErr}</p>}
+                <p className="text-xs text-earth-500 dark:text-earth-400">
+                  Letters followed by 3–5 digits, e.g. <span className="font-mono">cisd-12345</span>. Students already linked to
+                  your school stay linked — only the code new students type changes.
+                </p>
+              </form>
+            </Card>
+          )}
         </CollapsibleSection>
+        )}
+
+        {user?.role === 'org' && (
+          <CollapsibleSection icon={Building2} label="Organization" defaultOpen={true}>
+            <Card>
+              <div className="flex items-center gap-2 mb-3">
+                <Building2 className="w-4 h-4 text-brand-600" />
+                <h3 className="font-display font-semibold">{user.name}</h3>
+              </div>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+                {orgSchools === null
+                  ? 'Manage the schools your organization owns, review their hours, and invite new ones.'
+                  : `${orgSchools.length} ${orgSchools.length === 1 ? 'school' : 'schools'} in your organization.`}
+              </p>
+              {orgSchools?.length > 0 && (
+                <ul className="mb-4 space-y-1 text-sm">
+                  {orgSchools.map((s) => (
+                    <li key={s.id} className="rounded-lg bg-earth-100/60 dark:bg-white/[0.04] px-3 py-1.5">{s.name}</li>
+                  ))}
+                </ul>
+              )}
+              <Link to="/organization/dashboard" className="btn-primary w-full flex items-center justify-center">
+                Open organization dashboard
+              </Link>
+              <p className="text-xs text-earth-500 dark:text-earth-400 mt-3">
+                Organizations add schools by email invite from the dashboard — there is no organization-wide join code.
+              </p>
+            </Card>
+          </CollapsibleSection>
+        )}
 
         {(user?.role === 'student' || user?.role === 'parent') && (
           <CollapsibleSection icon={Users} label="Family" defaultOpen={false}>
