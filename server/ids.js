@@ -23,6 +23,17 @@ export function generateChildLinkCode() {
   return `${s.slice(0, 4)}-${s.slice(4)}`
 }
 
+// Permanent, human-quotable billing identifier for a school or organization
+// (e.g. "VT-SCH-4F2K9A"). Shown on invoices and payment notices so a customer
+// has something short to put in a bank transfer reference, and the admin has
+// something to match the incoming payment against. Reuses CODE_ALPHABET so the
+// code survives being read aloud or copied off a printed invoice.
+export function generateAccountCode(kind) {
+  let s = ''
+  for (let i = 0; i < 6; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
+  return `VT-${kind}-${s}`
+}
+
 // Numeric one-time code for emailed recovery flows. From the CSPRNG, not
 // Math.random(): this is a credential, and a predictable one lets an attacker
 // guess the code that was mailed to someone else. Zero-padded so a leading

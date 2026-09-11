@@ -60,4 +60,55 @@ router.patch('/office-hours', limiter, requireDb, requireAuth('admin'), async (r
   }
 })
 
+// --- Payment instructions ("how to pay us") ---
+
+// Free-form bank details the admin fills in once, rendered wherever a customer
+// is asked to pay (dashboards, invoice emails, payment notices) next to their
+// account code. Every field is optional — an unset setting renders nothing.
+const PAYMENT_INSTRUCTION_FIELDS = ['bankName', 'accountName', 'accountNumber', 'routingNumber', 'swift', 'reference', 'notes']
+
+// Shared with server/routes/invoices.js and the payment-notice emails, which
+// need the instructions server-side rather than over HTTP.
+export async function getPaymentInstructions() {
+  try {
+    const { rows } = await query(`SELECT value FROM site_settings WHERE key = 'payment_instructions'`)
+    if (rows.length === 0) return null
+    const parsed = JSON.parse(rows[0].value)
+    return PAYMENT_INSTRUCTION_FIELDS.some((f) => parsed[f]) ? parsed : null
+  } catch (error) {
+    console.error('get payment instructions failed:', error)
+    return null
+  }
+}
+
+// Bank details, so unlike /office-hours this is NOT public — only the accounts
+// that actually receive an invoice (and the admin) can read it.
+router.get('/payment-instructions', limiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (_req, res) => {
+  const instructions = await getPaymentInstructions()
+  return res.json(instructions || {})
+})
+
+// Admin-only: edit the payment instructions from the admin panel.
+router.patch('/payment-instructions', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const value = {}
+  for (const field of PAYMENT_INSTRUCTION_FIELDS) {
+    const raw = String(req.body[field] ?? '').trim()
+    const max = field === 'notes' ? 1000 : 200
+    if (raw.length > max) return res.status(400).json({ error: `${field} is too long.` })
+    if (raw) value[field] = raw
+  }
+
+  try {
+    await query(
+      `INSERT INTO site_settings (key, value, updated_at) VALUES ('payment_instructions', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+      [JSON.stringify(value)],
+    )
+    return res.json(value)
+  } catch (error) {
+    console.error('update payment instructions failed:', error)
+    return res.status(500).json({ error: 'Could not update payment instructions.' })
+  }
+})
+
 export default router

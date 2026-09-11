@@ -80,6 +80,9 @@ function Home() {
   if (!user) return <About />
   if (user.role === 'parent') return <Navigate to="/parent" replace />
   if (user.role === 'org') return <Navigate to="/organization/dashboard" replace />
+  // School accounts are institutions, not volunteers — send them to their own
+  // dashboard rather than the personal hour-tracking one, same as org/parent.
+  if (user.role === 'school' || user.role === 'school_staff') return <Navigate to="/school/dashboard" replace />
   return <Protected><Dashboard /></Protected>
 }
 

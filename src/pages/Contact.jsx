@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, Instagram } from 'lucide-react'
+import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, XCircle, Loader2, Instagram } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -16,13 +16,17 @@ export default function Contact() {
   })
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
-  const [form, setForm] = useState({ name: '', email: '', subject: 'General question', message: '' })
+  const [form, setForm] = useState({ name: '', email: '', subject: 'General question', accountCode: '', message: '' })
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [sendErr, setSendErr] = useState('')
   const [captchaToken, setCaptchaToken] = useState('')
   // Bumped after a successful send to remount the widget for a fresh token.
   const [captchaKey, setCaptchaKey] = useState(0)
+  // Result of checking the typed customer ID against real accounts: null
+  // (nothing typed, or the check couldn't run), 'checking', 'malformed',
+  // 'unknown', or { name }.
+  const [accountCheck, setAccountCheck] = useState(null)
   const [officeHours, setOfficeHours] = useState({
     days: 'Monday – Friday',
     hours: '9:00 AM – 5:00 PM (CT)',
@@ -37,6 +41,35 @@ export default function Contact() {
       .catch(() => {})
   }, [])
 
+  // The field is optional, so an empty box is fine — but a typed ID has to
+  // resolve to a real account before the message can be sent.
+  const accountCode = form.accountCode.trim().toUpperCase()
+  useEffect(() => {
+    if (!accountCode) { setAccountCheck(null); return }
+    if (!/^VT-(SCH|ORG)-[A-Z2-9]{6}$/.test(accountCode)) { setAccountCheck('malformed'); return }
+    setAccountCheck('checking')
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api'
+        const res = await fetch(`${apiUrl}/contact/verify-account/${encodeURIComponent(accountCode)}`)
+        // Only a 200 can tell us the ID is unknown. Rate limiting (429) or a
+        // server error means we couldn't check — never call a real customer's
+        // ID fake because of that. The server re-checks on submit either way.
+        if (cancelled) return
+        if (res.status === 400) { setAccountCheck('malformed'); return }
+        if (!res.ok) { setAccountCheck(null); return }
+        const data = await res.json()
+        if (!cancelled) setAccountCheck(data.valid ? { name: data.name } : 'unknown')
+      } catch { if (!cancelled) setAccountCheck(null) }
+    }, 400)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [accountCode])
+
+  // Blocked only when we positively know the ID is bad. A check that couldn't
+  // run leaves accountCheck null, and the server rejects a bad ID on submit.
+  const accountCodeOk = accountCheck !== 'malformed' && accountCheck !== 'unknown'
+
   const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
   const onSubmit = async (e) => {
@@ -44,6 +77,10 @@ export default function Contact() {
     setSendErr('')
     setDone(false)
     if (!form.message.trim() || !form.name.trim() || !form.email.trim()) {
+      return
+    }
+    if (!accountCodeOk) {
+      setSendErr('Please fix the customer ID, or leave it blank.')
       return
     }
     if (turnstileEnabled && !captchaToken) {
@@ -60,6 +97,7 @@ export default function Contact() {
           name: form.name,
           email: form.email,
           subject: form.subject,
+          accountCode: form.accountCode,
           message: form.message,
           turnstileToken: captchaToken,
         }),
@@ -67,7 +105,8 @@ export default function Contact() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send message.')
       setDone(true)
-      setForm({ name: '', email: '', subject: 'General question', message: '' })
+      setForm({ name: '', email: '', subject: 'General question', accountCode: '', message: '' })
+      setAccountCheck(null)
       setCaptchaToken('')
       setCaptchaKey((k) => k + 1)
     } catch (e) {
@@ -126,6 +165,39 @@ export default function Contact() {
                   <option>School or organization partnership</option>
                 </select>
               </div>
+              {form.subject === 'School or organization partnership' && (
+                <div>
+                  <label className="label">Customer ID <span className="text-earth-400 font-normal">(optional)</span></label>
+                  <input
+                    className="input font-mono uppercase"
+                    value={form.accountCode}
+                    onChange={onChange('accountCode')}
+                    placeholder="VT-SCH-4F2K9A"
+                    aria-invalid={accountCheck === 'malformed' || accountCheck === 'unknown'}
+                  />
+                  {accountCheck === 'checking' && (
+                    <p className="text-xs text-earth-500 mt-1 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Checking…
+                    </p>
+                  )}
+                  {accountCheck === 'malformed' && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                      <XCircle className="w-3 h-3" /> That doesn't look like a VolunTrack account ID (e.g. VT-SCH-4F2K9A).
+                    </p>
+                  )}
+                  {accountCheck === 'unknown' && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                      <XCircle className="w-3 h-3" /> No account has that ID. Check it against your invoice, or leave it blank.
+                    </p>
+                  )}
+                  {accountCheck?.name && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> {accountCheck.name}
+                    </p>
+                  )}
+                  <p className="text-xs text-earth-500 mt-1">Already a VolunTrack customer? Enter the account ID from your invoice so we can pull up your account.</p>
+                </div>
+              )}
               <div>
                 <label className="label">Message</label>
                 <textarea
@@ -136,7 +208,7 @@ export default function Contact() {
               </div>
               {sendErr && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{sendErr}</div>}
               <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="contact" />
-              <button className="btn-primary" disabled={busy || (turnstileEnabled && !captchaToken)}>
+              <button className="btn-primary" disabled={busy || !accountCodeOk || (turnstileEnabled && !captchaToken)}>
                 {busy ? 'Sending…' : <>Send message <Send className="w-4 h-4" /></>}
               </button>
             </form>

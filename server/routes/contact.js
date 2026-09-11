@@ -28,10 +28,53 @@ const limiter = rateLimit({
   message: { error: 'Too many requests. Please try again later.' },
 })
 
+// Shape of a customer account code (server/ids.js generateAccountCode).
+// Checked before any lookup so malformed input never reaches the database.
+const ACCOUNT_CODE_RE = /^VT-(SCH|ORG)-[A-Z2-9]{6}$/
+
+// This is the one public endpoint that confirms whether an account code is
+// real, so it is deliberately much tighter than `limiter` — enough for a
+// customer typing their ID once, slow enough to make guessing impractical.
+const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+})
+
+// Resolves a code to the school or organization that owns it, or null.
+async function lookupAccountCode(code) {
+  if (!ACCOUNT_CODE_RE.test(code)) return null
+  const { rows } = await query(
+    `SELECT name FROM schools WHERE account_code = $1
+     UNION ALL
+     SELECT name FROM organizations WHERE account_code = $1`,
+    [code],
+  )
+  return rows[0] || null
+}
+
 function requireDb(_req, res, next) {
   if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
   next()
 }
+
+// Public: the contact form checks a typed customer ID against real accounts
+// so someone can't send a partnership enquiry quoting an ID that doesn't exist.
+router.get('/verify-account/:code', verifyLimiter, requireDb, async (req, res) => {
+  const code = String(req.params.code || '').trim().toUpperCase()
+  if (!ACCOUNT_CODE_RE.test(code)) {
+    return res.status(400).json({ valid: false, error: "That doesn't look like a VolunTrack account ID." })
+  }
+  try {
+    const match = await lookupAccountCode(code)
+    return res.json(match ? { valid: true, name: match.name } : { valid: false })
+  } catch (error) {
+    console.error('verify account code failed:', error)
+    return res.status(500).json({ error: 'Could not check that ID.' })
+  }
+})
 
 // Submit a contact-form message (public). Starts a new thread.
 router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) => {
@@ -39,22 +82,42 @@ router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) =
   const email = String(req.body.email || '').trim().toLowerCase()
   const subject = String(req.body.subject || '').trim() || 'General question'
   const message = String(req.body.message || '').trim()
+  // Optional, and only offered for partnership enquiries. Free text from an
+  // unauthenticated form — a hint for the admin, never proof of identity.
+  const accountCode = String(req.body.accountCode || '').trim().toUpperCase()
 
   if (!name || name.length > 100) return res.status(400).json({ error: 'Invalid name.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Invalid email.' })
   if (!message || message.length > 5000) return res.status(400).json({ error: 'Invalid message.' })
   if (subject.length > 200) return res.status(400).json({ error: 'Invalid subject.' })
 
+  // Re-checked here, not just in the browser, so a scripted POST can't attach
+  // a made-up ID to a message.
+  if (accountCode) {
+    if (!ACCOUNT_CODE_RE.test(accountCode)) {
+      return res.status(400).json({ error: "That doesn't look like a VolunTrack account ID (e.g. VT-SCH-4F2K9A). Leave it blank if you don't have one." })
+    }
+    try {
+      if (!(await lookupAccountCode(accountCode))) {
+        return res.status(400).json({ error: 'No VolunTrack account has that ID. Double-check it against your invoice, or leave it blank.' })
+      }
+    } catch (error) {
+      console.error('contact account code lookup failed:', error)
+      return res.status(500).json({ error: 'Failed to send message.' })
+    }
+  }
+
   try {
     const id = uid('cmsg')
     await query(
-      `INSERT INTO contact_messages (id, thread_id, direction, name, email, subject, message)
-       VALUES ($1, $1, 'inbound', $2, $3, $4, $5)`,
-      [id, name, email, subject, message],
+      `INSERT INTO contact_messages (id, thread_id, direction, name, email, subject, message, account_code)
+       VALUES ($1, $1, 'inbound', $2, $3, $4, $5, $6)`,
+      [id, name, email, subject, message, accountCode || null],
     )
 
     const to = process.env.CONTACT_EMAIL || 'volunteertrack@googlegroups.com'
-    const body = `New contact message from ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;<br>Subject: ${escapeHtml(subject)}<br><br>${escapeHtml(message).replace(/\n/g, '<br>')}`
+    const accountLine = accountCode ? `Customer ID: ${escapeHtml(accountCode)}<br>` : ''
+    const body = `New contact message from ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;<br>Subject: ${escapeHtml(subject)}<br>${accountLine}<br>${escapeHtml(message).replace(/\n/g, '<br>')}`
     await sendEmail({ to, subject: `VolunTrack contact: ${subject}`, html: body })
 
     return res.status(201).json({ ok: true, threadId: id })
@@ -72,11 +135,15 @@ router.get('/admin/threads', limiter, requireDb, requireAuth('admin'), async (re
   try {
     const { rows } = await query(`
       SELECT
-        first.thread_id, first.name, first.email, first.subject, first.message,
+        first.thread_id, first.name, first.email, first.subject, first.message, first.account_code,
+        COALESCE(
+          (SELECT s.name FROM schools s WHERE s.account_code = first.account_code),
+          (SELECT o.name FROM organizations o WHERE o.account_code = first.account_code)
+        ) AS account_name,
         latest.direction, latest.created_at,
         (SELECT COUNT(*) FROM contact_messages m2 WHERE m2.thread_id = first.thread_id) AS message_count
       FROM (
-        SELECT DISTINCT ON (thread_id) thread_id, name, email, subject, message
+        SELECT DISTINCT ON (thread_id) thread_id, name, email, subject, message, account_code
         FROM contact_messages
         ORDER BY thread_id, created_at ASC
       ) first
