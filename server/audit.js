@@ -32,6 +32,9 @@ export const AUDIT = {
   // outlives the request, so issuing one is recorded like a download URL.
   TRANSCRIPT_ISSUED: 'transcript.issued',
   TRANSCRIPT_IMPORTED: 'transcript.imported',
+  // Erasing an account is the one write worth recording here: afterwards
+  // there is no row left to ask about it.
+  ACCOUNT_DELETED: 'account.deleted',
 }
 
 // Correlates events by the same person after their account is deleted (the
@@ -75,9 +78,11 @@ export function recordAudit(req, {
   const auth = req?.auth || {}
   const actorId = auth.sub || null
 
-  // Fire-and-forget. The returned promise is intentionally unawaited; the
-  // .catch() keeps it from ever becoming an unhandled rejection.
-  query(
+  // Fire-and-forget by default: callers do not await this, and the .catch()
+  // keeps it from ever becoming an unhandled rejection. The promise is
+  // returned so recordAuditNow() can await the one case that needs the row
+  // written before what it references disappears.
+  return query(
     `INSERT INTO audit_events
        (id, actor_id, actor_role, actor_hash, action, outcome, subject_user_id,
         school_id, organization_id, object_type, object_id, ip, user_agent, meta)
@@ -103,6 +108,19 @@ export function recordAudit(req, {
   ).catch((error) => {
     console.error('audit write failed:', action, error.message)
   })
+}
+
+/**
+ * The same event, awaited. Used only where the row being recorded is about to
+ * disappear — account deletion, whose actor_id references the user row being
+ * deleted, so a late fire-and-forget insert would fail its foreign key and
+ * lose the one event nobody can reconstruct afterwards.
+ *
+ * Still never throws: a failed audit write must not turn a completed delete
+ * into a 500.
+ */
+export async function recordAuditNow(req, event) {
+  await recordAudit(req, event)
 }
 
 // Events older than this are pruned. Long enough to investigate an incident
