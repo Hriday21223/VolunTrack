@@ -111,7 +111,8 @@ function verificationFor(row) {
   return {
     status,
     supervisor_name: row.supervisor_name || null,
-    supervisor_email_hash: emailHash(row.supervisor_email),
+    // Hashed at write time now (#186) — we no longer hold the address itself.
+    supervisor_email_hash: row.supervisor_email_hash || null,
     verified_by_role: verifiedByRole,
     decided_at: decidedAt,
   }
@@ -161,7 +162,7 @@ router.post('/', issueLimiter, requireDb, requireSigningKey, requireAuth('studen
 
     const { rows } = await query(
       `SELECT l.id, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours,
-              l.org_name, l.supervisor_name, l.supervisor_email, l.verification_status,
+              l.org_name, l.supervisor_name, l.supervisor_email_hash, l.verification_status,
               (l.proof_key IS NOT NULL) AS has_proof, l.proof_mime,
               COALESCE(ps.name, po.name) AS proof_retained_by,
               vu.role AS verified_by_role,

@@ -585,10 +585,13 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
     )
     // No-op if this token was never linked to a synced log (e.g. the
     // student wasn't signed into a server-backed account when they logged
-    // the hours) — a parent simply won't see the status for that log.
+    // the hours) — a parent simply won't see the status for that log. Only
+    // the decision is mirrored onto the log: the signature image stays on
+    // supervisor_verifications, which the student's device reads back through
+    // GET /api/verify-hours/:token (#186).
     await query(
-      'UPDATE logs SET verification_status = $1, supervisor_signature = COALESCE($2, supervisor_signature) WHERE verification_token = $3',
-      [newStatus, sig, token],
+      'UPDATE logs SET verification_status = $1 WHERE verification_token = $2',
+      [newStatus, token],
     )
 
     // Best-effort: let the student know the outcome. Never fails the response.

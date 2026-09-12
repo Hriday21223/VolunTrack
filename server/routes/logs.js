@@ -4,6 +4,7 @@ import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { uid } from '../ids.js'
 import { keyBelongsTo } from '../storage/s3.js'
+import { emailHash } from '../transcript.js'
 
 const router = express.Router()
 
@@ -25,17 +26,15 @@ function requireDb(_req, res, next) {
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature, taskId, proofKey, proofStorageId, proofMime, proofBytes } = req.body
+  const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes } = req.body
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
   }
-  // A drawn signature is a base64 PNG data URL — cap it well under the
-  // global 1MB JSON body limit so one oversized field can't eat the whole
-  // request budget for the rest of the payload.
-  if (supervisorSignature && supervisorSignature.length > 200_000) {
-    return res.status(400).json({ error: 'Signature image is too large.' })
-  }
+  // org address/phone, the supervisor's signature image and the supervisor's
+  // plaintext email are deliberately not read off the body here: nothing
+  // server-side consumes them, so we no longer keep third-party PII for a
+  // minor's supervisor. They stay on the student's device. See #186.
   try {
     // Only allow linking to a task the caller is actually an approved
     // volunteer on — this is what the task's host later relies on to review
@@ -69,9 +68,9 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
 
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -86,10 +85,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Log not found.' })
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
 
-    const { date, activity, category, hours, notes, location, orgName, orgAddress, orgPhone, supervisorName, supervisorEmail, supervisorSignature, taskId } = req.body
-    if (supervisorSignature && supervisorSignature.length > 200_000) {
-      return res.status(400).json({ error: 'Signature image is too large.' })
-    }
+    const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId } = req.body
     // Match POST's validation — an update must not be able to slip a
     // non-positive or non-numeric value past the check the insert enforces.
     let hoursNum = null
@@ -108,10 +104,11 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     }
     // A supervisor or school signed off on a specific date/activity/hours —
     // editing any of those facts means the sign-off no longer describes this
-    // log, so the verification (and the signature that backs it, which the PDF
-    // export renders) is dropped and has to be requested again. Clearing
-    // verification_token also orphans any still-open supervisor link, so a late
-    // click on it can't re-approve the rewritten values.
+    // log, so the verification is dropped and has to be requested again.
+    // Clearing verification_token also orphans any still-open supervisor link,
+    // so a late click on it can't re-approve the rewritten values. (The
+    // signature image the PDF export renders is local-only now — useData drops
+    // it on the same edit.)
     const VERIFICATION_STALE = `(
       COALESCE($1, date) IS DISTINCT FROM date
       OR COALESCE($2, activity) IS DISTINCT FROM activity
@@ -128,21 +125,16 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          notes = COALESCE($5, notes),
          location = COALESCE($6, location),
          org_name = COALESCE($7, org_name),
-         org_address = COALESCE($8, org_address),
-         org_phone = COALESCE($9, org_phone),
-         supervisor_name = COALESCE($10, supervisor_name),
-         supervisor_email = COALESCE($11, supervisor_email),
-         supervisor_signature = CASE WHEN ${VERIFICATION_STALE}
-                                     THEN NULL
-                                     ELSE COALESCE($12, supervisor_signature) END,
-         task_id = COALESCE($13, task_id),
+         supervisor_name = COALESCE($8, supervisor_name),
+         supervisor_email_hash = COALESCE($9, supervisor_email_hash),
+         task_id = COALESCE($10, task_id),
          verification_status = CASE WHEN ${VERIFICATION_STALE} THEN 'none' ELSE verification_status END,
          verification_token  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verification_token END,
          verified_by         = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verified_by END,
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
-       WHERE id = $14`,
-      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, orgAddress || null, orgPhone || null, supervisorName || null, supervisorEmail || null, supervisorSignature || null, taskId || null, req.params.id],
+       WHERE id = $11`,
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -184,7 +176,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
     const { rows } = await query(
       // proof_key itself is never returned: it is only useful with a minted
       // URL, and every mint is audited. Callers just need to know one exists.
-      `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, org_address, org_phone, supervisor_name, supervisor_email, supervisor_signature, verification_status, task_id, created_at,
+      `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, supervisor_name, verification_status, task_id, created_at,
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id
        FROM logs WHERE user_id = $1 ORDER BY logs.date DESC, created_at DESC`,
       [userId],
