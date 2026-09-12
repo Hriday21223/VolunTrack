@@ -6,6 +6,7 @@ import { requireAuth } from '../auth.js'
 import { uid, generateToken } from '../ids.js'
 import { sendEmail, emailFooterHtml, hasEmail, emailHealthSnapshot, refreshEmailHealth } from '../email.js'
 import { escapeHtml } from '../html.js'
+import { createIncidentIssue, closeIncidentIssue, parseIncidentMarker } from '../github.js'
 import authRouter from './auth.js'
 import schoolRouter from './school.js'
 import organizationRouter from './organization.js'
@@ -94,16 +95,34 @@ async function syncAutoIncident(service, serviceOk, detail) {
       // see "no open incident" and open its own, double-sending the email.
       // idx_incidents_one_open_auto (server/db.js) makes at most one of them
       // insert a row, and only that one notifies.
+      const incidentId = uid('inc')
       const { rowCount } = await query(
         `INSERT INTO incidents (id, service, detail, status, source)
          VALUES ($1, $2, $3, 'detected', 'auto')
          ON CONFLICT DO NOTHING`,
-        [uid('inc'), service, detail],
+        [incidentId, service, detail],
       )
       if (rowCount > 0) {
         await notifyIncident({ service, detail, source: 'auto' })
+        // File an issue too, and record the link. The Email incident is raised
+        // precisely when email is broken, so the notification above cannot
+        // arrive — the issue is the channel that still works. No-ops without
+        // GITHUB_ISSUE_TOKEN/REPO, and never throws.
+        const issueUrl = await createIncidentIssue({ service, detail, incidentId })
+        if (issueUrl) {
+          await query('UPDATE incidents SET issue_url = $1 WHERE id = $2', [issueUrl, incidentId])
+        }
       }
     } else {
+      // Close any issue this service filed before resolving, so a recovered
+      // service doesn't leave a stale open issue behind. Read the rows first:
+      // the UPDATE below can't return what it resolved and still stay a single
+      // statement, and an incident with no issue_url just skips this.
+      const { rows: open } = await query(
+        `SELECT issue_url FROM incidents
+          WHERE service = $1 AND status = 'detected' AND source = 'auto' AND issue_url IS NOT NULL`,
+        [service],
+      )
       // Resolves every open auto incident for the service, not just the first
       // — any duplicates predating the unique index get cleared out too.
       await query(
@@ -111,6 +130,9 @@ async function syncAutoIncident(service, serviceOk, detail) {
           WHERE service = $1 AND status = 'detected' AND source = 'auto'`,
         [service],
       )
+      for (const row of open) {
+        await closeIncidentIssue(row.issue_url, `${service} is healthy again — closing automatically.`)
+      }
     }
   } catch (error) {
     console.error(`syncAutoIncident(${service}) failed:`, error)
@@ -434,6 +456,19 @@ export async function handleGithubWebhook(req, res) {
     // otherwise only issues created with the label ever could.
     if (action === 'opened' || action === 'labeled') {
       if (!hasIncidentLabel(issue)) return res.status(200).send('OK')
+      // An issue we filed ourselves carries the id of the incident that filed
+      // it. Attach the link to that incident instead of recording a second one:
+      // this delivery can outrun the issue_url UPDATE in syncAutoIncident, so
+      // matching on the URL alone would sometimes see "no such incident" and
+      // duplicate the row. Matching the marker makes both orderings equivalent.
+      const markedId = parseIncidentMarker(issue.body)
+      if (markedId) {
+        const { rowCount } = await query(
+          'UPDATE incidents SET issue_url = $1 WHERE id = $2',
+          [issue.html_url, markedId],
+        )
+        if (rowCount > 0) return res.status(200).send('OK')
+      }
       const { rows } = await query(
         `SELECT id FROM incidents WHERE issue_url = $1 AND status = 'detected' LIMIT 1`,
         [issue.html_url],
