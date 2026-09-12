@@ -49,6 +49,17 @@ export async function resolveIncident(id, status = 'resolved') {
   return res.json()
 }
 
+// Resolving only marks an incident closed — it stays in the public list. This
+// removes it outright, and can't be undone.
+export async function deleteIncident(id) {
+  const res = await fetch(`${apiUrl()}/status/incidents/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Failed to delete incident')
+  return res.json()
+}
+
 // Opt in to incident emails — double opt-in, a confirmation link is sent
 // before this address actually starts receiving anything.
 export async function subscribeToStatus(email) {
