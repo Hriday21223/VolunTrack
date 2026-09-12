@@ -12,6 +12,7 @@ import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
+import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -226,24 +227,12 @@ export default function SchoolDashboard() {
     }
     setUploading(true)
     try {
-      const token = localStorage.getItem('voluntrack:auth_token')
-      const reader = new FileReader()
-      reader.onload = async () => {
-        const base64 = reader.result.split(',')[1]
-        const res = await fetch(`${apiUrl}/school/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ filename: file.name, fileData: base64, fileType: file.type }),
-        })
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || 'Upload failed')
-        }
-        setToastMsg('PDF uploaded!')
-        setToast(true)
-        loadData()
-      }
-      reader.readAsDataURL(file)
+      // Uploads to the school's own storage where one is configured, so the
+      // document never passes through us (#143 step 6).
+      await submitDocumentToSchool(file)
+      setToastMsg('PDF uploaded!')
+      setToast(true)
+      loadData()
     } catch (e) {
       setToastMsg(e.message)
       setToast(true)
@@ -278,6 +267,8 @@ export default function SchoolDashboard() {
       })
       if (!res.ok) throw new Error('Failed to load')
       const data = await res.json()
+      // A document in the school's own storage comes back as a short-lived
+      // URL instead of base64; older rows still carry fileData (#143 step 6).
       setSelectedPdf(data.pdf)
     } catch (e) {
       setToastMsg(e.message)
@@ -304,7 +295,13 @@ export default function SchoolDashboard() {
               <span className="text-sm font-medium capitalize">{selectedPdf.status}</span>
             </div>
             <div className="bg-white rounded-xl overflow-hidden" style={{ height: '80vh' }}>
-              <embed src={`data:${selectedPdf.fileType};base64,${selectedPdf.fileData}`} type="application/pdf" className="w-full h-full" />
+              {/* Documents in the school's own storage arrive as a short-lived
+                  URL; rows still held by us arrive as base64 (#143 step 6). */}
+              <embed
+                src={selectedPdf.url || `data:${selectedPdf.fileType};base64,${selectedPdf.fileData}`}
+                type={selectedPdf.fileType || 'application/pdf'}
+                className="w-full h-full"
+              />
             </div>
             {isSchoolAdmin && selectedPdf.status === 'pending' && (
               <div className="flex gap-2 mt-4">

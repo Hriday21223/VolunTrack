@@ -9,6 +9,8 @@ import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from 
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
+import { decryptSecret, hasEncryptionKey } from '../secrets.js'
+import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 
 const router = express.Router()
 
@@ -292,14 +294,50 @@ router.delete('/staff/:id', limiter, requireDb, requireAuth('school'), requirePa
   }
 })
 
+// ---------------------------------------------------------------------------
+// Student documents and tenant storage (#143 step 6)
+// ---------------------------------------------------------------------------
+
+// The active storage config a school's documents go through: its own, else its
+// parent organization's. Mirrors resolveStorageForUser() in routes/storage.js,
+// but keyed by school rather than by user — the drain job works school by
+// school, and an upload is attached to a school id that an admin may have
+// supplied rather than to the caller's own account.
+async function activeStorageForSchool(schoolId) {
+  if (!schoolId) return null
+  const { rows } = await query(
+    `SELECT ts.* FROM tenant_storage ts
+       LEFT JOIN schools s ON s.id = $1
+      WHERE ts.status = 'active'
+        AND (ts.school_id = $1 OR (s.organization_id IS NOT NULL AND ts.organization_id = s.organization_id))
+      ORDER BY (ts.school_id IS NOT NULL) DESC
+      LIMIT 1`,
+    [schoolId],
+  )
+  return rows[0] || null
+}
+
+// Shape presign() wants, decrypting the stored secret access key.
+function usableStorage(row) {
+  return {
+    bucket: row.bucket,
+    region: row.region,
+    endpoint: row.endpoint,
+    prefix: row.prefix,
+    accessKeyId: row.access_key_id,
+    secretAccessKey: decryptSecret(row.secret_encrypted),
+  }
+}
+
 // Upload a PDF (student or admin)
 router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), async (req, res, next) => {
   if (req.auth.role === 'admin') return next()
   return requirePaidSchool(req, res, next)
 }, async (req, res) => {
-  const { filename, fileData, fileType } = req.body
+  const { filename, fileData, fileType, storageId, objectKey, fileBytes } = req.body
 
-  if (!filename || !fileData) return res.status(400).json({ error: 'Filename and file data required.' })
+  if (!filename) return res.status(400).json({ error: 'Filename required.' })
+  if (!fileData && !objectKey) return res.status(400).json({ error: 'Filename and file data required.' })
 
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
@@ -315,13 +353,57 @@ router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), asyn
     }
     if (!schoolId) return res.status(400).json({ error: 'No school linked to your account.' })
 
+    // Where the school has its own bucket the browser has already uploaded
+    // there, and all we are handed is a pointer — which is caller-supplied, so
+    // it is verified rather than trusted: the key must sit in this student's
+    // own namespace inside a config that is actually active.
+    let storedId = null
+    let storedKey = null
+    if (objectKey || storageId) {
+      const { rows: cfgRows } = await query(
+        `SELECT id, prefix FROM tenant_storage WHERE id = $1 AND status = 'active'`,
+        [storageId],
+      )
+      const cfg = cfgRows[0]
+      if (!cfg || !keyBelongsTo(cfg, objectKey, req.auth.sub)) {
+        return res.status(400).json({ error: 'That file reference is not valid.' })
+      }
+      storedId = cfg.id
+      storedKey = String(objectKey)
+    } else {
+      // No pointer: this is the legacy base64 path. Refuse it when the school
+      // does have a bucket, rather than adding new bytes to the column #143
+      // step 6 exists to drain — the client should have used the presigned
+      // upload, so this means something went wrong worth surfacing.
+      //
+      // Guarded on the encryption key as well: without it the presigned route
+      // returns 503, so refusing here too would leave the student unable to
+      // submit anything at all. Falling back to base64 is the lesser evil.
+      const active = hasEncryptionKey() ? await activeStorageForSchool(schoolId) : null
+      if (active) {
+        return res.status(409).json({
+          error: 'Your school stores documents in its own storage. Please retry the upload.',
+        })
+      }
+    }
+
     const id = uid('pdf')
     await query(
-      `INSERT INTO pdf_uploads (id, user_id, school_id, filename, file_data, file_type)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [id, req.auth.sub, schoolId, filename, fileData, fileType || 'application/pdf'],
+      `INSERT INTO pdf_uploads (id, user_id, school_id, filename, file_data, file_type, storage_id, object_key, file_bytes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        id,
+        req.auth.sub,
+        schoolId,
+        filename,
+        storedKey ? null : fileData,
+        fileType || 'application/pdf',
+        storedId,
+        storedKey,
+        storedKey && Number.isInteger(fileBytes) ? fileBytes : null,
+      ],
     )
-    return res.status(201).json({ ok: true, id })
+    return res.status(201).json({ ok: true, id, direct: Boolean(storedKey) })
   } catch (error) {
     console.error('pdf upload failed:', error)
     return res.status(500).json({ error: 'Could not upload file.' })
@@ -389,18 +471,41 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       return res.status(403).json({ error: 'Not allowed.' })
     }
 
-    // This response carries the document itself (base64 file_data), so the
-    // read is exactly the kind that must leave a trace.
+    // This response hands over the document — either the base64 itself or a
+    // URL that works for whoever holds it — so the read is exactly the kind
+    // that must leave a trace. The key is recorded, never the signed URL,
+    // which is itself a live grant.
     recordAudit(req, {
       action: AUDIT.PDF_READ,
       subjectUserId: pdf.user_id,
       schoolId: pdf.school_id,
       objectType: 'pdf_upload',
       objectId: pdf.id,
-      meta: { filename: pdf.filename },
+      meta: { filename: pdf.filename, ...(pdf.object_key ? { key: pdf.object_key, storageId: pdf.storage_id } : {}) },
     })
 
-    return res.json({ pdf: { id: pdf.id, filename: pdf.filename, fileData: pdf.file_data, fileType: pdf.file_type, status: pdf.status, notes: pdf.notes, createdAt: pdf.created_at } })
+    const base = {
+      id: pdf.id,
+      filename: pdf.filename,
+      fileType: pdf.file_type,
+      status: pdf.status,
+      notes: pdf.notes,
+      createdAt: pdf.created_at,
+    }
+
+    // A document in the school's own bucket: mint a short-lived GET rather
+    // than proxying the bytes through us.
+    if (pdf.object_key && pdf.storage_id) {
+      const { rows: cfgRows } = await query('SELECT * FROM tenant_storage WHERE id = $1', [pdf.storage_id])
+      if (!cfgRows[0]) {
+        return res.status(410).json({ error: 'The storage this document was written to is no longer configured.' })
+      }
+      const expiresIn = 300
+      const url = presign(usableStorage(cfgRows[0]), { method: 'GET', key: pdf.object_key, expiresIn })
+      return res.json({ pdf: { ...base, url, expiresIn } })
+    }
+
+    return res.json({ pdf: { ...base, fileData: pdf.file_data } })
   } catch (error) {
     console.error('pdf get failed:', error)
     return res.status(500).json({ error: 'Could not fetch PDF.' })
@@ -1106,6 +1211,145 @@ router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async
   } catch (error) {
     console.error('admin price update failed:', error)
     return res.status(500).json({ error: 'Could not save price.' })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Draining pdf_uploads.file_data (#143 step 6)
+//
+// Documents uploaded before tenant storage existed — or by a school that has
+// since connected a bucket — still sit in our database as base64. These two
+// routes move them out, school by school, so the column can eventually be
+// dropped. Only rows belonging to a school with an *active* config can move;
+// for a school with no bucket there is nowhere to move them to, and they stay.
+//
+// This is the one path where the bytes pass through our server, which is the
+// thing #143 exists to avoid. It is a deliberate one-time transfer, admin-only,
+// and every move is audited.
+// ---------------------------------------------------------------------------
+
+// GET /api/school/admin/pdf-drain-status — what is left to move.
+router.get('/admin/pdf-drain-status', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.id AS school_id, s.name AS school_name,
+              count(p.id)::int AS undrained,
+              COALESCE(sum(length(p.file_data)), 0)::bigint AS approx_bytes,
+              (ts.id IS NOT NULL) AS has_storage
+         FROM pdf_uploads p
+         JOIN schools s ON s.id = p.school_id
+         LEFT JOIN tenant_storage ts
+           ON ts.status = 'active'
+          AND (ts.school_id = s.id OR (s.organization_id IS NOT NULL AND ts.organization_id = s.organization_id))
+        WHERE p.file_data IS NOT NULL
+        GROUP BY s.id, s.name, (ts.id IS NOT NULL)
+        ORDER BY undrained DESC`,
+    )
+    const movable = rows.filter((r) => r.has_storage)
+    return res.json({
+      schools: rows,
+      totals: {
+        undrained: rows.reduce((n, r) => n + r.undrained, 0),
+        movableNow: movable.reduce((n, r) => n + r.undrained, 0),
+        blockedNoStorage: rows.filter((r) => !r.has_storage).reduce((n, r) => n + r.undrained, 0),
+      },
+    })
+  } catch (error) {
+    console.error('pdf drain status failed:', error)
+    return res.status(500).json({ error: 'Could not read drain status.' })
+  }
+})
+
+// POST /api/school/admin/drain-pdf-uploads { schoolId?, limit?, dryRun? }
+// Moves a batch into the owning school's bucket. Deliberately batched and
+// manually triggered rather than run on boot: it is a one-off migration of
+// minors' documents, not something that should happen unattended.
+router.post('/admin/drain-pdf-uploads', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.body?.limit) || 25, 1), 100)
+  const dryRun = req.body?.dryRun === true
+  const onlySchool = req.body?.schoolId ? String(req.body.schoolId) : null
+
+  try {
+    const { rows } = await query(
+      `SELECT id, user_id, school_id, filename, file_type, length(file_data) AS chars
+         FROM pdf_uploads
+        WHERE file_data IS NOT NULL
+          AND ($1::text IS NULL OR school_id = $1)
+        ORDER BY created_at
+        LIMIT $2`,
+      [onlySchool, limit],
+    )
+
+    const result = { examined: rows.length, moved: 0, skippedNoStorage: 0, failed: 0, dryRun, errors: [] }
+    const configs = new Map()
+
+    for (const row of rows) {
+      if (!configs.has(row.school_id)) configs.set(row.school_id, await activeStorageForSchool(row.school_id))
+      const cfgRow = configs.get(row.school_id)
+      if (!cfgRow) { result.skippedNoStorage += 1; continue }
+      if (dryRun) { result.moved += 1; continue }
+
+      try {
+        // Re-read the bytes only now, one row at a time — loading every
+        // document in the batch into memory at once is how a free-tier dyno
+        // dies.
+        const { rows: dataRows } = await query('SELECT file_data FROM pdf_uploads WHERE id = $1', [row.id])
+        const base64 = dataRows[0]?.file_data
+        if (!base64) { result.skippedNoStorage += 1; continue }
+        const body = Buffer.from(base64, 'base64')
+
+        const config = usableStorage(cfgRow)
+        const ext = (row.file_type || '').includes('pdf') ? 'pdf' : 'bin'
+        // Same namespace the browser would have used, so keyBelongsTo() keeps
+        // holding for these rows afterwards.
+        const key = withPrefix(config.prefix, `students/${row.user_id}/${uid('doc')}.${ext}`)
+        const url = presign(config, {
+          method: 'PUT',
+          key,
+          expiresIn: 300,
+          headers: { 'content-length': String(body.length) },
+        })
+
+        const put = await fetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': row.file_type || 'application/pdf', 'Content-Length': String(body.length) },
+          body,
+        })
+        if (!put.ok) throw new Error(`bucket returned ${put.status}`)
+
+        // Pointer written and bytes dropped in one statement, so a crash
+        // between the two can't leave a row claiming a key it never got.
+        await query(
+          `UPDATE pdf_uploads
+              SET storage_id = $1, object_key = $2, file_bytes = $3, file_data = NULL
+            WHERE id = $4`,
+          [cfgRow.id, key, body.length, row.id],
+        )
+
+        recordAudit(req, {
+          action: AUDIT.PDF_MIGRATED,
+          subjectUserId: row.user_id,
+          schoolId: row.school_id,
+          objectType: 'pdf_upload',
+          objectId: row.id,
+          meta: { key, bytes: body.length, storageId: cfgRow.id },
+        })
+        result.moved += 1
+      } catch (error) {
+        result.failed += 1
+        // The row keeps its bytes — a failed move must never lose a document.
+        result.errors.push({ id: row.id, error: String(error.message).slice(0, 200) })
+      }
+    }
+
+    const { rows: left } = await query(
+      `SELECT count(*)::int AS remaining FROM pdf_uploads WHERE file_data IS NOT NULL`,
+    )
+    result.remaining = left[0]?.remaining ?? null
+    return res.json(result)
+  } catch (error) {
+    console.error('pdf drain failed:', error)
+    return res.status(500).json({ error: 'Could not drain documents.' })
   }
 })
 
