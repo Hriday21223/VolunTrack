@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, Clock, Database, Cpu, Monitor, Eye, AlertTriangle, Bell, Server, List, Mail } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
@@ -12,6 +12,17 @@ import { getHealth, getIncidents, HEALTH_UNKNOWN, subscribeToStatus, confirmSubs
 // open would rate-limit itself and then report the backend as down. See the
 // matching headroom on the server limiter in server/routes/status.js.
 const POLL_MS = 60000
+
+// Each tab is a URL (/status/incidents), so a tab can be linked to, bookmarked
+// and reloaded — "the incidents list" is the thing people actually want to send
+// someone. Overview is the bare /status, which keeps every existing link, the
+// prerendered dist/status.html and the sitemap entry working unchanged.
+const TABS = ['overview', 'incidents', 'system']
+const DEFAULT_TAB = 'overview'
+
+function tabPath(tab) {
+  return tab === DEFAULT_TAB ? '/status' : `/status/${tab}`
+}
 
 function StatusBadge({ ok, label }) {
   return (
@@ -36,10 +47,22 @@ const STORAGE_KEYS = [
 ]
 
 export default function Status() {
+  // The tab lives in the URL, not in state, so back/forward and a reload land
+  // where you were. Case is normalised (/status/Overview works), and anything
+  // unrecognised falls back to Overview rather than rendering a blank page.
+  // Declared first because useSeo below reads statusTab.
+  const { tab: tabParam } = useParams()
+  const navigate = useNavigate()
+  const requestedTab = (tabParam || DEFAULT_TAB).toLowerCase()
+  const statusTab = TABS.includes(requestedTab) ? requestedTab : DEFAULT_TAB
+  const setStatusTab = (tab) => navigate(tabPath(tab))
+
+  // Canonical follows the tab that's actually showing — otherwise all three
+  // URLs would claim to be /status and the tabs would read as duplicates.
   useSeo({
-    title: 'System Status',
+    title: statusTab === DEFAULT_TAB ? 'System Status' : `System Status — ${statusTab[0].toUpperCase()}${statusTab.slice(1)}`,
     description: 'Live status and uptime for VolunTrack services.',
-    path: '/status',
+    path: tabPath(statusTab),
   })
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
@@ -55,7 +78,12 @@ export default function Status() {
   const [online, setOnline] = useState(navigator.onLine)
   const [swStatus, setSwStatus] = useState('checking')
   const [incidents, setIncidents] = useState([])
-  const [statusTab, setStatusTab] = useState('overview')
+  useEffect(() => {
+    // Replace, not push: a typo'd URL shouldn't leave a history entry that
+    // sends the visitor straight back to it when they press back. A correctly
+    // spelled but differently cased tab is rewritten to the canonical path too.
+    if (tabParam && tabParam !== statusTab) navigate(tabPath(statusTab), { replace: true })
+  }, [tabParam, statusTab, navigate])
 
   const [searchParams, setSearchParams] = useSearchParams()
   const [subscribeEmail, setSubscribeEmail] = useState('')

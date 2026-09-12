@@ -34,6 +34,12 @@ const ROUTES = [
   '/contact',
   '/help',
   '/status',
+  // The status tabs are real URLs (see TABS in src/pages/Status.jsx). Without
+  // their own prerendered files, a hard load or a shared link hits the host's
+  // 404 instead of the SPA on static hosts that serve files before falling
+  // back to index.html.
+  '/status/incidents',
+  '/status/system',
   '/terms',
   '/privacy',
 ]
