@@ -828,6 +828,40 @@ export async function initSchema() {
   // Finds the rows still holding bytes, which is all the drain job scans.
   try { await query(`CREATE INDEX IF NOT EXISTS idx_pdf_uploads_undrained ON pdf_uploads(school_id) WHERE file_data IS NOT NULL`) } catch {}
 
+  // Creating an account — not joining a school — is what used to put a
+  // student's full record on our servers (#186). Nothing server-side ever read
+  // logs.org_address, logs.org_phone or logs.supervisor_signature: they were
+  // written by POST/PATCH /api/logs and handed back only to the device that
+  // sent them. logs.supervisor_email had exactly one reader, the transcript,
+  // which hashes it on the way out — so the hash is what we keep.
+  //
+  // The columns are emptied rather than dropped: a rollback to the previous
+  // release must still boot, and DROP COLUMN is not reversible. A follow-up
+  // removes them once this has been live for a release.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_email_hash TEXT`) } catch {}
+  try {
+    // sha256() over the lowercased, trimmed address — identical to emailHash()
+    // in server/transcript.js, so transcripts issued before and after this
+    // migration carry the same supervisor_email_hash for the same supervisor.
+    await query(`UPDATE logs
+                    SET supervisor_email_hash = encode(sha256(lower(btrim(supervisor_email))::bytea), 'hex')
+                  WHERE supervisor_email IS NOT NULL AND supervisor_email_hash IS NULL`)
+  } catch (error) {
+    console.error('supervisor_email_hash backfill failed:', error)
+  }
+  try {
+    // Idempotent: matches nothing once it has run. Runs before the hash
+    // backfill can be undone by it, so ordering here matters.
+    await query(`UPDATE logs
+                    SET supervisor_email = NULL, org_address = NULL, org_phone = NULL, supervisor_signature = NULL
+                  WHERE supervisor_email IS NOT NULL
+                     OR org_address IS NOT NULL
+                     OR org_phone IS NOT NULL
+                     OR supervisor_signature IS NOT NULL`)
+  } catch (error) {
+    console.error('log PII wipe failed:', error)
+  }
+
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_source_id TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS imported_transcript_id TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_attestation JSONB`) } catch {}
