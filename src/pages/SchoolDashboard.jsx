@@ -67,6 +67,10 @@ export default function SchoolDashboard() {
   const [accountCode, setAccountCode] = useState(null)
   // Invoice currently open in the preview overlay, or null.
   const [previewInvoice, setPreviewInvoice] = useState(null)
+  // Students at another school asking to move here (#143 step 5). Nothing
+  // moves until someone on this side accepts.
+  const [transfers, setTransfers] = useState([])
+  const [transferBusy, setTransferBusy] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -175,6 +179,11 @@ export default function SchoolDashboard() {
           setInvoices(data.invoices || [])
           setAccountCode(data.accountCode || null)
         }
+        const transferRes = await fetch(`${apiUrl}/school/transfers`, { headers })
+        if (transferRes.ok) {
+          const data = await transferRes.json()
+          setTransfers(data.transfers || [])
+        }
       }
     } catch (e) {
       console.error('Load failed:', e)
@@ -238,6 +247,31 @@ export default function SchoolDashboard() {
       setToast(true)
     } finally {
       setUploading(false)
+    }
+  }
+
+  // Accepting moves the student's account to this school; declining leaves
+  // them exactly where they are. Either way the request is spent, so the list
+  // is reloaded rather than patched locally.
+  const decideTransfer = async (id, decision) => {
+    setTransferBusy(id)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/transfers/${id}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ decision }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not record the decision.')
+      setToastMsg(decision === 'accept' ? 'Student transferred in.' : 'Transfer declined.')
+      setToast(true)
+      loadData()
+    } catch (e) {
+      setToastMsg(e.message)
+      setToast(true)
+    } finally {
+      setTransferBusy('')
     }
   }
 
@@ -616,6 +650,49 @@ export default function SchoolDashboard() {
                     To change it, go to <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>.
                   </p>
                 )}
+              </Card>
+            )}
+
+            {/* Students at another school asking to move here. Accepting is
+                what actually moves them; their hours and approvals come with
+                the account rather than being re-entered (#143 step 5). */}
+            {transfers.length > 0 && (
+              <Card className="mb-4">
+                <h3 className="font-semibold mb-1 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-brand-600" /> Transfer requests ({transfers.length})
+                </h3>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+                  These students asked to move to your school. Their volunteer record moves with them.
+                </p>
+                <div className="divide-y divide-white/10">
+                  {transfers.map((t) => (
+                    <div key={t.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{t.student_name}</div>
+                        <div className="text-xs text-earth-500 dark:text-earth-400 truncate">
+                          {t.student_email}{t.grade ? ` · Grade ${t.grade}` : ''}
+                          {t.from_school_name ? ` · currently at ${t.from_school_name}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => decideTransfer(t.id, 'accept')}
+                          disabled={transferBusy === t.id}
+                          className="btn-sm btn-primary"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> {transferBusy === t.id ? 'Working…' : 'Accept'}
+                        </button>
+                        <button
+                          onClick={() => decideTransfer(t.id, 'decline')}
+                          disabled={transferBusy === t.id}
+                          className="btn-sm btn-ghost"
+                        >
+                          <XCircle className="w-3.5 h-3.5 mr-1" /> Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </Card>
             )}
 
