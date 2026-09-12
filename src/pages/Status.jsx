@@ -195,6 +195,8 @@ export default function Status() {
   const dbConfigured = health ? health.checks.database.ok !== null : false
   const dbOk = health ? health.checks.database.ok : true
   const emailOk = health ? health.checks.email.ok : true
+  // Older backends only sent `ok`, which then meant "configured".
+  const emailConfigured = health ? (health.checks.email.configured ?? health.checks.email.ok) : true
 
   // Only real infra checks are "critical" — client capability checks below
   // are informational only, since this app is designed to work offline
@@ -203,7 +205,7 @@ export default function Status() {
     { name: 'Application', ok: appHealthy, critical: true, detail: appHealthy ? 'responding' : 'unreachable' },
     { name: 'Backend API', ok: apiOk, critical: true, detail: apiOk ? 'responding' : 'unreachable' },
     { name: 'Database', ok: dbOk !== false, critical: dbConfigured, detail: !dbConfigured ? 'not configured' : dbOk ? 'connected' : 'unreachable' },
-    { name: 'Email (SMTP)', ok: emailOk, critical: false, detail: emailOk ? 'configured' : 'not configured' },
+    { name: 'Email (SMTP)', ok: emailOk, critical: false, detail: !emailConfigured ? 'not configured' : emailOk ? 'connected' : 'unreachable' },
     { name: 'Local Storage', ok: storageOk, critical: true, detail: storageOk ? 'ready' : 'unavailable' },
     { name: 'Session Storage', ok: sessionOk, critical: false, detail: sessionOk ? 'ready' : 'unavailable' },
     { name: 'Service Worker', ok: swStatus === 'active' || swStatus === 'none', critical: false, detail: swStatus },

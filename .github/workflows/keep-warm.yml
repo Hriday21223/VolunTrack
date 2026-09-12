@@ -7,16 +7,69 @@ name: Keep backend warm
 # retry failed deliveries. Pinging a lightweight health endpoint well
 # inside that 15-min window keeps the backend warm so webhook deliveries
 # land on a live process. See #44.
+#
+# The same ping doubles as the outside-in outage monitor: the backend can't
+# record its own outage, so when it stays unreachable this opens an `outage`
+# issue, and closes it once the backend answers again. The server can't
+# receive the `opened` webhook while it's down, so the incident reaches
+# /status when the `closed` webhook lands (as resolved history).
 
 on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
+permissions:
+  issues: write
+
+# A slow run (retries below) must not overlap the next scheduled one, or both
+# could see "no open outage issue" and each open one.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+env:
+  HEALTH_URL: https://voluntrack-backend-frrh.onrender.com/api/status/health
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Ping backend health endpoint
+        id: ping
+        # Three attempts over a few minutes, so one slow cold boot or network
+        # blip doesn't open an issue. Only "unreachable" counts: a 200 with
+        # ok:false is a database problem, which /health already auto-logs.
         run: |
-          curl -sf --max-time 60 https://voluntrack-backend-frrh.onrender.com/api/status/health
+          if curl -sf -o /dev/null --max-time 60 --retry 2 --retry-delay 30 --retry-all-errors "$HEALTH_URL"; then
+            echo "up=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or close outage issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          UP: ${{ steps.ping.outputs.up }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          open=$(gh issue list --label outage --state open --json number --jq '.[0].number // empty')
+          now=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          if [ "$UP" = "true" ]; then
+            if [ -n "$open" ]; then
+              gh issue close "$open" --comment "Backend is responding again as of $now ($RUN_URL)."
+            fi
+            exit 0
+          fi
+
+          if [ -z "$open" ]; then
+            gh label create outage --color B60205 --description "Backend unreachable (opened and closed by keep-warm.yml)" --force
+            # The body is shown publicly on /status, so keep it user-facing.
+            gh issue create --label outage \
+              --title "Backend API unreachable" \
+              --body "The VolunTrack backend stopped responding as of $now. Signing in, school dashboards and syncing are affected; logging hours on this device still works. This issue closes automatically once the backend is back."
+          fi
+          echo "::error::Backend unreachable at $HEALTH_URL ($now)"
+          exit 1

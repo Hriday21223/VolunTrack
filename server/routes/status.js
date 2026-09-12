@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { uid, generateToken } from '../ids.js'
-import { sendEmail, emailFooterHtml } from '../email.js'
+import { sendEmail, emailFooterHtml, hasEmail, emailHealthSnapshot, refreshEmailHealth } from '../email.js'
 import { escapeHtml } from '../html.js'
 import authRouter from './auth.js'
 import schoolRouter from './school.js'
@@ -72,19 +72,19 @@ function requireDb(_req, res, next) {
   next()
 }
 
-// Auto-logs/resolves a 'Database' incident as a side effect of the health
+// Auto-logs/resolves an incident for `service` as a side effect of the health
 // check itself — this app has no background job runner, so "detect on the
 // next request" is the simple, honest option rather than a fake cron.
-async function syncDatabaseIncident(databaseOk) {
+async function syncAutoIncident(service, serviceOk, detail) {
   try {
-    if (!databaseOk) {
-      const detail = 'Database health check failed.'
+    if (!serviceOk) {
       // The SELECT still short-circuits the common "incident already open"
       // case (and is the only guard if the unique index failed to create on
       // an older database), but it is no longer what makes this safe.
       const { rows } = await query(
         `SELECT id FROM incidents
-          WHERE service = 'Database' AND status = 'detected' AND source = 'auto' LIMIT 1`,
+          WHERE service = $1 AND status = 'detected' AND source = 'auto' LIMIT 1`,
+        [service],
       )
       if (rows.length > 0) return
 
@@ -96,30 +96,52 @@ async function syncDatabaseIncident(databaseOk) {
       // insert a row, and only that one notifies.
       const { rowCount } = await query(
         `INSERT INTO incidents (id, service, detail, status, source)
-         VALUES ($1, 'Database', $2, 'detected', 'auto')
+         VALUES ($1, $2, $3, 'detected', 'auto')
          ON CONFLICT DO NOTHING`,
-        [uid('inc'), detail],
+        [uid('inc'), service, detail],
       )
       if (rowCount > 0) {
-        await notifyIncident({ service: 'Database', detail, source: 'auto' })
+        await notifyIncident({ service, detail, source: 'auto' })
       }
     } else {
       // Resolves every open auto incident for the service, not just the first
       // — any duplicates predating the unique index get cleared out too.
       await query(
         `UPDATE incidents SET status = 'resolved', resolved_at = now()
-          WHERE service = 'Database' AND status = 'detected' AND source = 'auto'`,
+          WHERE service = $1 AND status = 'detected' AND source = 'auto'`,
+        [service],
       )
     }
   } catch (error) {
-    console.error('syncDatabaseIncident failed:', error)
+    console.error(`syncAutoIncident(${service}) failed:`, error)
   }
+}
+
+// One failed SMTP handshake is usually a blip, and an incident emails every
+// subscriber — so require this many probes in a row (probes are at least
+// EMAIL_CHECK_INTERVAL_MS apart) before opening one. The notification itself
+// goes out over the same SMTP that just failed, so it may well not arrive;
+// the incident still shows on /status and in the Admin Incidents tab.
+const EMAIL_FAILURES_BEFORE_INCIDENT = 2
+
+// Not awaited by /health: an SMTP handshake can take seconds, and the probe is
+// throttled in server/email.js, so most calls just report the last result.
+function checkEmailInBackground() {
+  const probe = refreshEmailHealth()
+  if (!probe || !hasDatabase()) return
+  probe.then((health) => {
+    if (health.ok) return syncAutoIncident('Email', true)
+    if (health.consecutiveFailures < EMAIL_FAILURES_BEFORE_INCIDENT) return
+    const code = health.errorCode ? ` (${health.errorCode})` : ''
+    return syncAutoIncident('Email', false, `Email (SMTP) connection check failed${code}.`)
+  }).catch((error) => console.error('email health check failed:', error))
 }
 
 // Public: /status polls this to render real backend/DB health instead of
 // per-browser feature checks.
 router.get('/health', limiter, async (_req, res) => {
-  const emailOk = Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
+  const emailConfigured = hasEmail()
+  if (emailConfigured) checkEmailInBackground()
   let databaseOk = false
 
   if (hasDatabase()) {
@@ -130,7 +152,7 @@ router.get('/health', limiter, async (_req, res) => {
       console.error('health check: database query failed:', error)
       databaseOk = false
     }
-    await syncDatabaseIncident(databaseOk)
+    await syncAutoIncident('Database', databaseOk, 'Database health check failed.')
   }
 
   const ok = (!hasDatabase() || databaseOk)
@@ -138,7 +160,9 @@ router.get('/health', limiter, async (_req, res) => {
     ok,
     checks: {
       database: { ok: hasDatabase() ? databaseOk : null },
-      email: { ok: emailOk },
+      // ok reflects the last real SMTP probe; until the first one finishes it
+      // falls back to "configured", which is all this field used to mean.
+      email: { configured: emailConfigured, ok: emailConfigured && emailHealthSnapshot().ok !== false },
     },
     timestamp: new Date().toISOString(),
   })
@@ -396,10 +420,33 @@ export async function handleGithubWebhook(req, res) {
         await notifyIncident({ service, detail, source: 'github' })
       }
     } else if (action === 'closed') {
-      await query(
+      const { rowCount } = await query(
         `UPDATE incidents SET status = 'resolved', resolved_at = now() WHERE issue_url = $1 AND status = 'detected'`,
         [issue.html_url],
       )
+      // keep-warm.yml opens an `outage` issue exactly when the backend is
+      // unreachable — so the `opened` delivery to this endpoint fails, and
+      // GitHub doesn't retry it. By the time the workflow closes the issue the
+      // backend is answering again, so record the outage as resolved history.
+      const isOutage = Array.isArray(issue.labels) && issue.labels.some((l) => l?.name === 'outage')
+      if (rowCount === 0 && isOutage) {
+        const { rows } = await query('SELECT 1 FROM incidents WHERE issue_url = $1 LIMIT 1', [issue.html_url])
+        if (rows.length === 0) {
+          const validTime = (value) => (value && !Number.isNaN(Date.parse(value)) ? value : null)
+          await query(
+            `INSERT INTO incidents (id, service, detail, status, source, issue_url, detected_at, resolved_at)
+             VALUES ($1, $2, $3, 'resolved', 'github', $4, COALESCE($5::timestamptz, now()), COALESCE($6::timestamptz, now()))`,
+            [
+              uid('inc'),
+              String(issue.title || 'Outage').slice(0, 200),
+              String(issue.body || '').slice(0, 1000) || null,
+              issue.html_url,
+              validTime(issue.created_at),
+              validTime(issue.closed_at),
+            ],
+          )
+        }
+      }
     } else if (action === 'reopened') {
       await query(
         `UPDATE incidents SET status = 'detected', resolved_at = NULL WHERE issue_url = $1 AND status = 'resolved'`,
