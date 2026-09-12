@@ -233,7 +233,14 @@ router.get('/incidents', limiter, requireDb, async (_req, res) => {
     return res.json(rows.map((r) => ({
       id: r.id,
       service: r.service,
-      detail: r.detail,
+      // Issue bodies are never served. Nothing writes them any more, but rows
+      // created before the label gate hold up to 1000 characters of one — and
+      // this endpoint is public and unauthenticated, so suppressing them here
+      // unpublishes the backlog without touching the table. Titles and the
+      // issue link still come through, which is what a status reader needs.
+      // 'auto' and 'admin' details are written to be read on /status, so they
+      // are unaffected.
+      detail: r.source === 'github' ? null : r.detail,
       status: r.status,
       source: r.source,
       detectedAt: r.detected_at,
