@@ -110,6 +110,10 @@ function Shell() {
           <Route path="/terms"           element={<Terms />} />
           <Route path="/privacy"         element={<Privacy />} />
           <Route path="/status"         element={<Status />} />
+          {/* Each tab is its own URL, so one can be linked, bookmarked and
+              reloaded. Status itself normalises the value and redirects
+              anything unrecognised back to /status. */}
+          <Route path="/status/:tab"    element={<Status />} />
           <Route path="/verify-hours"   element={<VerifyHours />} />
           <Route path="/verify-transcript" element={<VerifyTranscript />} />
 
