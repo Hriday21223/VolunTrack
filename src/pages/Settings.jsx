@@ -172,6 +172,11 @@ export default function Settings() {
 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('')
+  // Deleting a server-backed account re-checks the password (or, for SSO
+  // accounts that have none, the email address) — see DELETE /api/auth/account.
+  const [deleteSecret, setDeleteSecret] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' })
   const [showPw, setShowPw] = useState(false)
   const [pwBusy, setPwBusy] = useState(false)
@@ -215,10 +220,25 @@ export default function Settings() {
     }
   }
 
-  const handleDeleteAccount = () => {
+  // SSO accounts have no password, so DELETE /api/auth/account asks them to
+  // type their email address instead.
+  const isSsoAccount = user?.authProvider === 'sso'
+  const hasServerAccount = Boolean(localStorage.getItem('voluntrack:auth_token'))
+
+  const handleDeleteAccount = async () => {
     if (!user) return
-    deleteAccount()
-    nav('/login')
+    setDeleteError('')
+    setDeleteBusy(true)
+    try {
+      await deleteAccount(isSsoAccount ? { email: deleteSecret } : { password: deleteSecret })
+      nav('/login')
+    } catch (err) {
+      // The account still exists on the server, and nothing local was
+      // cleared, so the form stays open with the reason shown.
+      setDeleteError(err.message)
+    } finally {
+      setDeleteBusy(false)
+    }
   }
 
   useEffect(() => {
@@ -1094,11 +1114,11 @@ export default function Settings() {
             <div className="inline-flex items-center gap-3 rounded-3xl border border-red-500/40 bg-red-600/10 px-4 py-3 text-sm font-semibold text-red-100 shadow-sm shadow-red-500/10 mb-4">
               <span className="inline-flex h-3 w-3 rounded-full bg-red-400 shadow-red-500/30 shadow-md" />
               <span className="uppercase tracking-[0.22em] text-red-100/90">Warning</span>
-              <span className="text-red-100 max-w-xl">Deleting your account will remove all local VolunTrack data and cannot be undone.</span>
+              <span className="text-red-100 max-w-xl">Deleting your account erases it from this device and from our servers, and cannot be undone.</span>
             </div>
             <h3 className="font-display font-semibold mb-3 text-red-300">Delete account</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Remove your local account and all VolunTrack data stored on this device. This action cannot be undone.
+              Remove your account and your VolunTrack data — from this device and, if you have an account with us, from our servers too. This action cannot be undone.
             </p>
             {confirmDelete ? (
               <div className="space-y-4">
@@ -1114,16 +1134,34 @@ export default function Settings() {
                     placeholder="Type delete to confirm"
                     className="input w-full bg-slate-900/80 text-white border-white/10"
                   />
+                  {hasServerAccount && (
+                    <>
+                      <div className="text-sm text-earth-200">
+                        {isSsoAccount
+                          ? <>Then type your email address, <span className="font-semibold text-black">{user?.email}</span>.</>
+                          : 'Then re-enter your password.'}
+                      </div>
+                      <input
+                        type={isSsoAccount ? 'email' : 'password'}
+                        autoComplete={isSsoAccount ? 'email' : 'current-password'}
+                        value={deleteSecret}
+                        onChange={(e) => setDeleteSecret(e.target.value)}
+                        placeholder={isSsoAccount ? 'your email address' : 'Your password'}
+                        className="input w-full bg-slate-900/80 text-white border-white/10"
+                      />
+                    </>
+                  )}
+                  {deleteError && <p className="text-sm text-red-300">{deleteError}</p>}
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     onClick={handleDeleteAccount}
-                    disabled={deleteConfirmationText.trim().toLowerCase() !== 'delete'}
+                    disabled={deleteBusy || deleteConfirmationText.trim().toLowerCase() !== 'delete' || (hasServerAccount && !deleteSecret)}
                     className="btn-danger w-full disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Yes, delete everything
+                    {deleteBusy ? 'Deleting…' : 'Yes, delete everything'}
                   </button>
-                  <button onClick={() => { setConfirmDelete(false); setDeleteConfirmationText('') }} className="btn-secondary w-full">Cancel</button>
+                  <button onClick={() => { setConfirmDelete(false); setDeleteConfirmationText(''); setDeleteSecret(''); setDeleteError('') }} className="btn-secondary w-full">Cancel</button>
                 </div>
               </div>
             ) : (

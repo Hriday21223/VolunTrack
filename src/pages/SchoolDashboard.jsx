@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Hash, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -8,6 +8,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
+import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
@@ -460,6 +461,9 @@ export default function SchoolDashboard() {
             <button onClick={() => setSetupTab('domain')} className={`btn-sm ${setupTab === 'domain' ? 'btn-primary' : 'btn-ghost'}`}>
               <Globe className="w-3.5 h-3.5 mr-1" /> Domain
             </button>
+            <button onClick={() => setSetupTab('branding')} className={`btn-sm ${setupTab === 'branding' ? 'btn-primary' : 'btn-ghost'}`}>
+              <Palette className="w-3.5 h-3.5 mr-1" /> Branding
+            </button>
             <button onClick={() => setSetupTab('billing')} className={`btn-sm ${setupTab === 'billing' ? 'btn-primary' : 'btn-ghost'}`}>
               <Receipt className="w-3.5 h-3.5 mr-1" /> Billing
             </button>
@@ -709,6 +713,18 @@ export default function SchoolDashboard() {
               Serve VolunTrack to your students on your own web address instead of the shared one.
             </p>
             <TenantDomainSettings />
+          </Card>
+        )}
+
+        {/* Branding only renders on a tenant hostname, so its tab sits
+            directly after the Custom domain tab that makes one exist. */}
+        {tab === 'setup' && setupTab === 'branding' && user?.role === 'school' && (
+          <Card>
+            <h2 className="text-lg font-semibold mb-1">Branding</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Put your school&apos;s logo and colour on the sign-in page students see at your own web address.
+            </p>
+            <TenantBrandingSettings />
           </Card>
         )}
 

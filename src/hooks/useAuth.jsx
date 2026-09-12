@@ -379,8 +379,28 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  const deleteAccount = useCallback(() => {
+  // A server-backed account is erased on the server first. Until
+  // DELETE /api/auth/account existed this cleared the browser only, so the
+  // account and every log stayed in Postgres while the UI said otherwise
+  // (#183). A local-only account has nothing to call.
+  const deleteAccount = useCallback(async ({ password, email } = {}) => {
     if (!user) return
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (token) {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const res = await fetch(`${apiUrl}/auth/account`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ password: password || '', email: email || '' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        // Nothing local is cleared on failure: the account still exists on the
+        // server, and wiping the device would strand it with no way back in.
+        throw new Error(data.error || 'Could not delete your account.')
+      }
+      localStorage.removeItem('voluntrack:auth_token')
+    }
     deleteUser(user.id)
     clearUserData()
     remove(SESSION_KEY)

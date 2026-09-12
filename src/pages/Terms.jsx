@@ -63,7 +63,7 @@ export default function Terms() {
           </Section>
 
           <Section title="Account Termination">
-            <p>You may delete your account at any time from Settings. We may suspend or terminate accounts that violate these terms, including for submitting fraudulent hour logs.</p>
+            <p>You may delete your account at any time from Settings, which erases it from your device and from our servers — see <Link to="/privacy" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">Privacy</Link> for the few things that are kept afterwards. School and organization accounts are closed by contacting us instead, so that student records are transferred or removed properly. We may suspend or terminate accounts that violate these terms, including for submitting fraudulent hour logs.</p>
           </Section>
 
           <Section title="Limitation of Liability">

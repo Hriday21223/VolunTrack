@@ -9,6 +9,7 @@ import { uid } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
+import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail } from '../email.js'
 
 const router = express.Router()
@@ -96,6 +97,9 @@ export function publicUser(row) {
     studentIdNumber: row.student_id_number,
     syncPin: row.sync_pin,
     totpEnabled: row.totp_enabled,
+    // 'sso' accounts have no password, so the UI asks them to confirm
+    // sensitive actions (account deletion) a different way.
+    authProvider: row.auth_provider ?? 'password',
     // Non-null means this account must enrol in MFA by that date; the UI uses
     // it to nag during the grace window.
     mfaRequiredAt: row.mfa_required_at ?? null,
@@ -703,6 +707,72 @@ router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) =>
   } catch (error) {
     console.error('totp backup-recovery failed:', error)
     return res.status(500).json({ error: 'Could not verify backup code.' })
+  }
+})
+
+// Roles that may erase themselves here. Deliberately narrow: public_tasks
+// .created_by CASCADEs, and schools/organizations have no owner column, so a
+// school or org account deleting itself would take its tasks with it and
+// orphan the school its students are attached to. Those go through support.
+const SELF_DELETABLE_ROLES = ['student', 'volunteer', 'parent']
+
+// DELETE /api/auth/account — erase the caller's own account and everything
+// that hangs off it. Until this existed, "delete account" only cleared the
+// browser (src/hooks/useAuth.jsx), so every row stayed in Postgres. See #183.
+router.delete('/account', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  const password = typeof req.body?.password === 'string' ? req.body.password : ''
+  const confirmEmail = String(req.body?.email || '').trim().toLowerCase()
+
+  try {
+    const { rows } = await query(
+      'SELECT id, role, email, password_hash, school_id, organization_id FROM users WHERE id = $1',
+      [req.auth.sub],
+    )
+    const row = rows[0]
+    if (!row) return res.status(404).json({ error: 'Account not found.' })
+
+    if (!SELF_DELETABLE_ROLES.includes(row.role)) {
+      return res.status(403).json({
+        error: 'School, organization, and admin accounts cannot be deleted here. Contact us so the records attached to them are transferred or closed properly.',
+      })
+    }
+
+    // A stolen token must not be enough to erase someone's record, so the
+    // password is re-checked here exactly as /totp/disable does. SSO accounts
+    // have none; typing the address is the equivalent deliberate step.
+    if (row.password_hash) {
+      if (!password) return res.status(400).json({ error: 'Your password is required to delete your account.' })
+      if (!(await verifyPassword(password, row.password_hash))) {
+        return res.status(403).json({ error: 'Incorrect password.' })
+      }
+    } else if (confirmEmail !== String(row.email || '').toLowerCase()) {
+      return res.status(400).json({ error: 'Type your email address to confirm deletion.' })
+    }
+
+    // Awaited, unlike every other audit call: actor_id references the row we
+    // are about to delete, so a fire-and-forget insert could land after the
+    // DELETE and fail its foreign key. The event has to outlive the account —
+    // actor_id nulls out, actor_role and actor_hash remain.
+    await recordAuditNow(req, {
+      action: AUDIT.ACCOUNT_DELETED,
+      subjectUserId: row.id,
+      schoolId: row.school_id,
+      organizationId: row.organization_id,
+      objectType: 'account',
+      objectId: row.id,
+      meta: { role: row.role },
+    })
+
+    // Everything the account owns cascades: logs, goals, pdf_uploads, task
+    // signups, reminders, push subscriptions, parent links. What survives is
+    // exactly what the privacy policy says survives — audit events with the
+    // identity dropped, proof files in a school's own bucket, and transcripts
+    // already exported.
+    await query('DELETE FROM users WHERE id = $1', [row.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('account deletion failed:', error)
+    return res.status(500).json({ error: 'Could not delete your account.' })
   }
 })
 

@@ -93,13 +93,20 @@ export default function Login() {
   // A tenant hostname advertises its SSO up front, so a student never has to
   // type an email to discover it. Falls back to the email-domain lookup on the
   // canonical domain, where there is no tenant to key off.
-  // Only http(s) is allowed through to an <img src>. The value comes from a
-  // DB column an admin controls, so it should never be interpolated blind.
-  const tenantLogo = /^https?:\/\//i.test(tenant?.branding?.logoUrl || '')
+  // Only an http(s) link or an uploaded raster image (data:image/png|jpeg|webp,
+  // see server/routes/tenant.js) is allowed through to an <img src>. The value
+  // comes from a DB column an admin controls, so it is never interpolated blind.
+  const tenantLogo = /^(https?:\/\/|data:image\/(png|jpeg|webp);base64,)/i.test(tenant?.branding?.logoUrl || '')
     ? tenant.branding.logoUrl
     : null
   const logoSrc = tenantLogo || `${import.meta.env.BASE_URL}logo-icon.webp`
   const logoAlt = tenantLogo ? tenant.name : 'VolunTrack'
+
+  // The server only ever stores a hex literal here, but this is interpolated
+  // into a style value, so re-check the shape rather than trusting the wire.
+  const tenantColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(tenant?.branding?.color || '')
+    ? tenant.branding.color
+    : null
 
   const tenantSso = tenant?.sso?.[0] || null
   const offeredSso = tenantSso || sso
@@ -226,10 +233,14 @@ export default function Login() {
 
         <div className="relative animate-scale-in">
           <Card padded={false} className="overflow-hidden border border-white/10 bg-slate-950/80 shadow-soft">
+            {/* A tenant's accent only paints decorative chrome — never button
+                or text backgrounds, where an arbitrary hex could land
+                unreadable against the card. */}
+            {tenantColor && <div className="h-1 w-full" style={{ backgroundColor: tenantColor }} />}
             <div className="bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_25%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.14),transparent_25%)] p-8">
               <div className="flex items-center justify-between mb-6 animate-fade-in-up">
                 <div>
-                  <p className="text-sm text-brand-200 uppercase tracking-[0.3em]">Secure sign in</p>
+                  <p className="text-sm text-brand-200 uppercase tracking-[0.3em]" style={tenantColor ? { color: tenantColor } : undefined}>Secure sign in</p>
                   <h2 className="text-3xl font-bold text-white">Welcome back</h2>
                 </div>
                 <img src={logoSrc} alt={logoAlt} className="w-12 h-12 object-contain" />
