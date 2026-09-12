@@ -68,6 +68,80 @@ export default function Settings() {
   const [ownCodeErr, setOwnCodeErr] = useState('')
   const [ownCodeCopied, setOwnCodeCopied] = useState(false)
   const [orgSchools, setOrgSchools] = useState(null)
+  // A student who already belongs to a school can ask to move to another one,
+  // but nothing happens until the receiving school accepts (#143 step 5).
+  const [pendingTransfer, setPendingTransfer] = useState(null)
+  const [transferBusy, setTransferBusy] = useState(false)
+
+  // One path for both cases: the server decides whether a code links straight
+  // away (no school yet) or opens a transfer request (already at a school),
+  // and says which it did. The client never has to guess.
+  const handleSchoolCode = async () => {
+    if (!schoolCode) return
+    setSchoolBusy(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pin: schoolCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to join')
+      setSchoolCode('')
+      if (data.pending) {
+        // Nothing has moved yet, so stay on the page and show the waiting
+        // state rather than reloading as if something changed.
+        setPendingTransfer({ to_school_name: data.schoolName, status: 'pending' })
+        setToastMessage(data.message || 'Transfer requested.')
+        setToast(true)
+        return
+      }
+      setToastMessage('School linked!')
+      setToast(true)
+      window.location.reload()
+    } catch (e) {
+      setToastMessage(e.message)
+      setToast(true)
+    } finally {
+      setSchoolBusy(false)
+    }
+  }
+
+  const cancelTransfer = async () => {
+    setTransferBusy(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/transfer/mine`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not cancel the request.')
+      setPendingTransfer(null)
+      setToastMessage('Transfer request cancelled.')
+      setToast(true)
+    } catch (e) {
+      setToastMessage(e.message)
+      setToast(true)
+    } finally {
+      setTransferBusy(false)
+    }
+  }
+
+  // A request outlives the page it was made on, so the waiting state has to
+  // come from the server rather than from component state.
+  useEffect(() => {
+    if (user?.role !== 'student' || !user?.schoolId) return
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    let cancelled = false
+    fetch(`${apiUrl}/school/transfer/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled && data) setPendingTransfer(data.transfer) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user?.role, user?.schoolId])
 
   // Students are the only role that joins a school by code. A parent reaches
   // their child's hours through parent_child_links, an org owns schools rather
@@ -807,7 +881,10 @@ export default function Settings() {
             <Card>
               <div className="flex items-center gap-2 mb-3">
                 <School className="w-4 h-4 text-brand-600" />
-                <h3 className="font-display font-semibold">Join school</h3>
+                {/* Once linked this card is about the school you are in —
+                    and about moving to another one — so "Join school" only
+                    describes the unlinked case. */}
+                <h3 className="font-display font-semibold">{user.schoolId ? 'Your school' : 'Join school'}</h3>
               </div>
               {user.schoolId ? (
                 <div className="space-y-3">
@@ -821,6 +898,47 @@ export default function Settings() {
                   <Link to="/school/dashboard" className="btn-secondary w-full flex items-center justify-center">
                     <Upload className="w-4 h-4 mr-2" /> Upload & view PDFs
                   </Link>
+
+                  {/* Changing schools keeps the same account: the hours and
+                      approvals move with it. The receiving school has to
+                      accept first, so nothing happens the moment a code is
+                      typed (#143 step 5). */}
+                  <div className="pt-3 border-t border-white/10">
+                    {pendingTransfer ? (
+                      <div className="space-y-2">
+                        <p className="text-sm">
+                          Waiting for <span className="font-medium">{pendingTransfer.to_school_name}</span> to accept your transfer.
+                        </p>
+                        <p className="text-xs text-earth-500 dark:text-earth-400">
+                          Your hours stay with {schoolInfo?.name || 'your current school'} until they do.
+                        </p>
+                        <button onClick={cancelTransfer} disabled={transferBusy} className="btn-ghost w-full text-sm">
+                          {transferBusy ? 'Cancelling…' : 'Cancel request'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Moving to a different school?</p>
+                        <p className="text-xs text-earth-500 dark:text-earth-400">
+                          Enter their code. Your hours and approvals move with your account once they accept.
+                        </p>
+                        <input
+                          type="text"
+                          value={schoolCode}
+                          onChange={(e) => setSchoolCode(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                          placeholder="new-school-code"
+                          className="input w-full"
+                        />
+                        <button
+                          onClick={handleSchoolCode}
+                          disabled={!schoolCode || schoolBusy}
+                          className="btn-secondary w-full"
+                        >
+                          {schoolBusy ? 'Requesting…' : 'Request transfer'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -833,29 +951,7 @@ export default function Settings() {
                     className="input w-full"
                   />
                   <button
-                    onClick={async () => {
-                      if (!schoolCode) return
-                      setSchoolBusy(true)
-                      try {
-                        const token = localStorage.getItem('voluntrack:auth_token')
-                        const res = await fetch(`${apiUrl}/school/join`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                          body: JSON.stringify({ pin: schoolCode }),
-                        })
-                        const data = await res.json()
-                        if (!res.ok) throw new Error(data.error || 'Failed to join')
-                        setToastMessage('School linked!')
-                        setToast(true)
-                        setSchoolCode('')
-                        window.location.reload()
-                      } catch (e) {
-                        setToastMessage(e.message)
-                        setToast(true)
-                      } finally {
-                        setSchoolBusy(false)
-                      }
-                    }}
+                    onClick={handleSchoolCode}
                     disabled={!schoolCode || schoolBusy}
                     className="btn-primary w-full"
                   >
