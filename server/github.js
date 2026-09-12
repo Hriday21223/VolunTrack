@@ -1,109 +1,137 @@
-// Files a GitHub issue for an automatically detected incident.
+// Files a GitHub issue when /api/status/health auto-detects an incident, and
+// closes it again on recovery — the inside-out counterpart to
+// .github/workflows/keep-warm.yml, which watches from outside and can only see
+// "the backend is unreachable". A Database or Email failure is invisible to
+// that workflow (the ping still returns 200), so until now those incidents
+// lived only on /status and in one email; nothing landed anywhere the work of
+// fixing them actually happens. The Email incident is the sharpest case: it is
+// raised precisely when email is broken, so its own notification cannot arrive.
 //
-// Why this exists: an auto incident (Database, Email) previously announced
-// itself only by email — and the Email incident is, by definition, raised when
-// email is broken, so that notification cannot arrive. A GitHub issue is the
-// one channel that still works when SMTP is down, and it gives the incident a
-// place to be discussed and closed.
+// Entirely opt-in, same posture as SSO and tenant storage: with
+// GITHUB_ISSUE_TOKEN / GITHUB_ISSUE_REPO unset every call is a no-op and the
+// incident is recorded exactly as before.
 //
-// Unset env vars mean "off": both functions return null and log, rather than
-// throwing, so a backend with no token behaves exactly as it did before. Same
-// posture as SSO and tenant storage, which no-op without their keys.
-const API = 'https://api.github.com'
+// Issues are filed under the `incident` label, never `outage`: keep-warm.yml
+// keys off "is there an open `outage` issue?" to decide whether to open one,
+// so filing ours under that label would suppress a real outage issue and let
+// the workflow close ours the next time it pinged successfully. Both labels are
+// in INCIDENT_LABELS in server/routes/status.js, so either still syncs.
 
-// The label ties this into the incident sync in server/routes/status.js:
-// INCIDENT_LABELS there decides which issues become incidents, and `outage` is
-// also what .github/workflows/keep-warm.yml applies.
-const ISSUE_LABEL = 'outage'
+const API_BASE = 'https://api.github.com'
+const LABEL = 'incident'
 
-function config() {
-  const token = process.env.GITHUB_ISSUE_TOKEN
-  const repo = process.env.GITHUB_ISSUE_REPO
-  if (!token || !repo) return null
-  // owner/repo only — a full URL or a trailing slash would build a 404 path.
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) {
-    console.error(`GITHUB_ISSUE_REPO must be "owner/repo", got: ${repo.replace(/\n|\r/g, '')}`)
-    return null
-  }
-  return { token, repo }
+function token() { return process.env.GITHUB_ISSUE_TOKEN || '' }
+function repo() { return (process.env.GITHUB_ISSUE_REPO || '').trim() }
+
+export function githubIssuesConfigured() {
+  return Boolean(token() && /^[\w.-]+\/[\w.-]+$/.test(repo()))
 }
 
-export function hasIssueFiling() {
-  return Boolean(config())
-}
+// Stamped into the issue body so the `opened` webhook delivery — which can
+// arrive before the POST that created the issue has returned its URL to us —
+// can tell "VolunTrack filed this for incident X" from "a human opened an
+// issue", instead of opening a second, duplicate incident for our own issue.
+const MARKER = /<!--\s*voluntrack-incident:([\w-]+)\s*-->/
 
-// Written into the issue body so the webhook can match the issue back to the
-// incident that opened it. Without this, the `opened` delivery we trigger
-// ourselves would look like a brand new incident and insert a duplicate row —
-// and it can arrive before the issue_url UPDATE lands, so matching on the URL
-// alone is a race. The marker makes the two orderings equivalent.
 export function incidentMarker(incidentId) {
   return `<!-- voluntrack-incident:${incidentId} -->`
 }
 
-const MARKER_RE = /<!--\s*voluntrack-incident:([A-Za-z0-9_]+)\s*-->/
-
-export function parseIncidentMarker(body) {
-  return MARKER_RE.exec(String(body || ''))?.[1] || null
+export function incidentIdFromIssueBody(body) {
+  const match = MARKER.exec(String(body || ''))
+  return match ? match[1] : null
 }
 
-async function gh(path, init = {}) {
-  const cfg = config()
-  if (!cfg) return null
-  const res = await fetch(`${API}/repos/${cfg.repo}${path}`, {
-    ...init,
+async function gh(path, { method = 'GET', body } = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
     headers: {
-      Authorization: `Bearer ${cfg.token}`,
+      Authorization: `Bearer ${token()}`,
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
       'Content-Type': 'application/json',
-      ...init.headers,
     },
-    // A slow GitHub must not hold a health check open.
+    body: body ? JSON.stringify(body) : undefined,
+    // A slow GitHub must never hold up the caller; /health is polled on a timer.
     signal: AbortSignal.timeout(10000),
   })
+
+  let data = null
+  try { data = await res.json() } catch { /* 204s and error pages */ }
+
   if (!res.ok) {
-    throw new Error(`GitHub ${init.method || 'GET'} ${path} failed: ${res.status} ${(await res.text()).slice(0, 200)}`)
+    const err = new Error(`GitHub: ${data?.message || `HTTP ${res.status}`}`)
+    err.status = res.status
+    throw err
   }
-  return res.json()
+  return data
 }
 
-// Returns the new issue's html_url, or null when filing is off or fails.
-// Never throws: a failure here must not turn a health check into a 500.
-export async function createIncidentIssue({ service, detail, incidentId }) {
-  if (!config()) return null
+// The label has to exist before an issue can carry it on some repos, and it
+// is what the webhook's INCIDENT_LABELS gate looks for. 422 means it already
+// exists, which is the normal case after the first ever incident.
+async function ensureLabel() {
   try {
-    const body = [
-      detail || 'An automated health check failed.',
-      '',
-      'Filed automatically by the VolunTrack backend health check. It closes when the check passes again.',
-      incidentMarker(incidentId),
-    ].join('\n')
-    const issue = await gh('/issues', {
+    await gh(`/repos/${repo()}/labels`, {
       method: 'POST',
-      body: JSON.stringify({ title: service, body, labels: [ISSUE_LABEL] }),
+      body: { name: LABEL, color: 'B60205', description: 'Service incident (opened and closed by the backend health check)' },
+    })
+  } catch (error) {
+    if (error.status !== 422) throw error
+  }
+}
+
+/**
+ * Opens an issue for an auto-detected incident. Returns its html_url, or null
+ * if GitHub isn't configured. Never throws — a failure to file the issue must
+ * not change whether the incident itself was recorded.
+ */
+export async function openIncidentIssue({ incidentId, service, detail, statusUrl }) {
+  if (!githubIssuesConfigured()) return null
+  try {
+    await ensureLabel()
+    const body = [
+      `**${service}** failed an automated health check at ${new Date().toISOString()}.`,
+      detail || null,
+      statusUrl ? `Status page: ${statusUrl}` : null,
+      'Filed automatically by the backend health check. It closes itself once the check passes again.',
+      incidentMarker(incidentId),
+    ].filter(Boolean).join('\n\n')
+
+    const issue = await gh(`/repos/${repo()}/issues`, {
+      method: 'POST',
+      body: { title: `${service} health check failing`, body, labels: [LABEL] },
     })
     return issue?.html_url || null
   } catch (error) {
-    console.error('filing incident issue failed:', error.message)
+    console.error('openIncidentIssue failed:', error.message)
     return null
   }
 }
 
-// Closes the issue an incident filed, so a recovered service doesn't leave a
-// stale open issue behind. Best-effort for the same reason as above.
+// Only touches issues on our own configured repo — issue_url can also hold an
+// admin-supplied link to somewhere else entirely (POST /api/status/incidents
+// accepts any https://github.com/... URL), and recovering from a database blip
+// must never close a stranger's issue.
+function issueNumberFor(issueUrl) {
+  const match = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\/(\d+)$/.exec(String(issueUrl || ''))
+  if (!match || match[1].toLowerCase() !== repo().toLowerCase()) return null
+  return match[2]
+}
+
+/** Closes the issue an incident was filed under. Never throws. */
 export async function closeIncidentIssue(issueUrl, comment) {
-  if (!config()) return false
-  const number = /\/issues\/(\d+)(?:[?#].*)?$/.exec(String(issueUrl || ''))?.[1]
+  if (!githubIssuesConfigured()) return false
+  const number = issueNumberFor(issueUrl)
   if (!number) return false
   try {
     if (comment) {
-      await gh(`/issues/${number}/comments`, { method: 'POST', body: JSON.stringify({ body: comment }) })
+      await gh(`/repos/${repo()}/issues/${number}/comments`, { method: 'POST', body: { body: comment } })
     }
-    await gh(`/issues/${number}`, { method: 'PATCH', body: JSON.stringify({ state: 'closed' }) })
+    await gh(`/repos/${repo()}/issues/${number}`, { method: 'PATCH', body: { state: 'closed' } })
     return true
   } catch (error) {
-    console.error('closing incident issue failed:', error.message)
+    console.error('closeIncidentIssue failed:', error.message)
     return false
   }
 }
