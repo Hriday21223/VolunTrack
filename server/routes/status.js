@@ -293,6 +293,20 @@ router.patch('/incidents/:id', limiter, requireDb, requireAuth('admin'), async (
   }
 })
 
+// Admin-only: delete an incident outright. Resolving is not enough to unpublish
+// one — GET /incidents serves the 50 most recent rows whatever their status — so
+// this exists to purge entries that should never have been public.
+router.delete('/incidents/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { rowCount } = await query('DELETE FROM incidents WHERE id = $1', [req.params.id])
+    if (rowCount === 0) return res.status(404).json({ error: 'Incident not found.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('delete incident failed:', error)
+    return res.status(500).json({ error: 'Could not delete incident.' })
+  }
+})
+
 // Public: opt in to incident emails. Double opt-in — the row starts
 // unconfirmed and a confirmation link is emailed, so this endpoint can't be
 // used to spam-subscribe someone else's address.
@@ -363,7 +377,18 @@ router.post('/subscribe/unsubscribe/:token', limiter, requireDb, async (req, res
   }
 })
 
-// Real sync with GitHub Issues: opening an issue creates an incident,
+// Only a labelled issue becomes an incident. Without this gate every issue
+// opened in the repo — feature work, design discussion — was published on the
+// public /status page as though it were an outage, body text and all.
+// `outage` is what keep-warm.yml applies; `incident` is for labelling by hand.
+const INCIDENT_LABELS = new Set(['outage', 'incident'])
+
+function hasIncidentLabel(issue) {
+  return Array.isArray(issue.labels)
+    && issue.labels.some((l) => INCIDENT_LABELS.has(String(l?.name || '').trim().toLowerCase()))
+}
+
+// Real sync with GitHub Issues: opening a labelled issue creates an incident,
 // closing it resolves that incident, reopening it reopens that incident.
 // Disabled until GITHUB_WEBHOOK_SECRET is set (the webhook is registered
 // on the repo separately, pointed at this endpoint).
@@ -405,19 +430,21 @@ export async function handleGithubWebhook(req, res) {
   if (!issue?.html_url) return res.status(200).send('OK')
 
   try {
-    if (action === 'opened') {
+    // `labeled` counts too, so labelling an existing issue opens an incident —
+    // otherwise only issues created with the label ever could.
+    if (action === 'opened' || action === 'labeled') {
+      if (!hasIncidentLabel(issue)) return res.status(200).send('OK')
       const { rows } = await query(
         `SELECT id FROM incidents WHERE issue_url = $1 AND status = 'detected' LIMIT 1`,
         [issue.html_url],
       )
       if (rows.length === 0) {
         const service = String(issue.title || 'GitHub issue').slice(0, 200)
-        const detail = String(issue.body || '').slice(0, 1000)
         await query(
-          `INSERT INTO incidents (id, service, detail, status, source, issue_url) VALUES ($1, $2, $3, 'detected', 'github', $4)`,
-          [uid('inc'), service, detail || null, issue.html_url],
+          `INSERT INTO incidents (id, service, status, source, issue_url) VALUES ($1, $2, 'detected', 'github', $3)`,
+          [uid('inc'), service, issue.html_url],
         )
-        await notifyIncident({ service, detail, source: 'github' })
+        await notifyIncident({ service, source: 'github' })
       }
     } else if (action === 'closed') {
       const { rowCount } = await query(
@@ -428,18 +455,16 @@ export async function handleGithubWebhook(req, res) {
       // unreachable — so the `opened` delivery to this endpoint fails, and
       // GitHub doesn't retry it. By the time the workflow closes the issue the
       // backend is answering again, so record the outage as resolved history.
-      const isOutage = Array.isArray(issue.labels) && issue.labels.some((l) => l?.name === 'outage')
-      if (rowCount === 0 && isOutage) {
+      if (rowCount === 0 && hasIncidentLabel(issue)) {
         const { rows } = await query('SELECT 1 FROM incidents WHERE issue_url = $1 LIMIT 1', [issue.html_url])
         if (rows.length === 0) {
           const validTime = (value) => (value && !Number.isNaN(Date.parse(value)) ? value : null)
           await query(
-            `INSERT INTO incidents (id, service, detail, status, source, issue_url, detected_at, resolved_at)
-             VALUES ($1, $2, $3, 'resolved', 'github', $4, COALESCE($5::timestamptz, now()), COALESCE($6::timestamptz, now()))`,
+            `INSERT INTO incidents (id, service, status, source, issue_url, detected_at, resolved_at)
+             VALUES ($1, $2, 'resolved', 'github', $3, COALESCE($4::timestamptz, now()), COALESCE($5::timestamptz, now()))`,
             [
               uid('inc'),
               String(issue.title || 'Outage').slice(0, 200),
-              String(issue.body || '').slice(0, 1000) || null,
               issue.html_url,
               validTime(issue.created_at),
               validTime(issue.closed_at),

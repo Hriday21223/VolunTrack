@@ -6,7 +6,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { getIncidents, createIncident, resolveIncident, getHealth } from '@/lib/status.js'
+import { getIncidents, createIncident, resolveIncident, deleteIncident, getHealth } from '@/lib/status.js'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -183,6 +183,8 @@ export default function Admin() {
   const [incidents, setIncidents] = useState([])
   const [loadingIncidents, setLoadingIncidents] = useState(false)
   const [resolvingId, setResolvingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [newIncident, setNewIncident] = useState({ service: '', detail: '', issueUrl: '' })
   const [loggingIncident, setLoggingIncident] = useState(false)
 
@@ -232,6 +234,19 @@ export default function Admin() {
       await resolveIncident(id)
       await loadIncidents()
     } catch (error) { setToastMessage(error.message || 'Failed to resolve incident'); setToast(true) } finally { setResolvingId(null) }
+  }
+
+  // Two clicks on purpose: deleting is the only way to unpublish an incident
+  // from the public /status page, and there's no undo.
+  const deleteOne = async (id) => {
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return }
+    setDeletingId(id)
+    try {
+      await deleteIncident(id)
+      setConfirmDeleteId(null)
+      await loadIncidents()
+      setToastMessage('Incident deleted'); setToast(true)
+    } catch (error) { setToastMessage(error.message || 'Failed to delete incident'); setToast(true) } finally { setDeletingId(null) }
   }
 
   useEffect(() => {
@@ -1453,12 +1468,37 @@ export default function Admin() {
                           <button onClick={() => resolveOne(inc.id)} disabled={resolvingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600 disabled:opacity-50">
                             {resolvingId === inc.id ? 'Resolving...' : 'Resolve'}
                           </button>
+                          <button onClick={() => deleteOne(inc.id)} disabled={deletingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded border border-red-300 dark:border-red-800 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50">
+                            {deletingId === inc.id ? 'Deleting...' : confirmDeleteId === inc.id ? 'Confirm delete?' : 'Delete'}
+                          </button>
                         </div>
                       </div>
                     </div>
                   </Card>
                 ))}
             </div>
+          )}
+
+          {incidents.some((i) => i.status === 'resolved') && (
+            <Card className="mb-6">
+              <h3 className="font-display font-semibold text-base mb-1">Resolved history</h3>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+                These are still listed publicly on /status. Resolving doesn't unpublish an incident — deleting does.
+              </p>
+              <div className="space-y-2">
+                {incidents.filter((i) => i.status === 'resolved').map((inc) => (
+                  <div key={inc.id} className="flex items-start justify-between gap-2 border-b border-earth-100 dark:border-earth-800 pb-2 last:border-0 last:pb-0">
+                    <div className="min-w-0">
+                      <p className="text-sm text-earth-800 dark:text-earth-200 truncate">{inc.service}</p>
+                      <p className="text-xs text-earth-400 dark:text-earth-500">{new Date(inc.detectedAt).toLocaleString()}</p>
+                    </div>
+                    <button onClick={() => deleteOne(inc.id)} disabled={deletingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded shrink-0 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50">
+                      {deletingId === inc.id ? 'Deleting...' : confirmDeleteId === inc.id ? 'Confirm delete?' : 'Delete'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           <Card>
