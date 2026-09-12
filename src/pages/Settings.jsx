@@ -881,7 +881,10 @@ export default function Settings() {
             <Card>
               <div className="flex items-center gap-2 mb-3">
                 <School className="w-4 h-4 text-brand-600" />
-                <h3 className="font-display font-semibold">Join school</h3>
+                {/* Once linked this card is about the school you are in —
+                    and about moving to another one — so "Join school" only
+                    describes the unlinked case. */}
+                <h3 className="font-display font-semibold">{user.schoolId ? 'Your school' : 'Join school'}</h3>
               </div>
               {user.schoolId ? (
                 <div className="space-y-3">
