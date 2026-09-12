@@ -354,9 +354,11 @@ function usableConfig(row) {
 }
 
 // Object keys are namespaced per student, which is what lets a later claim be
-// checked without tracking pending uploads in a table.
-function proofKeyFor(config, userId, ext) {
-  return withPrefix(config.prefix, `students/${userId}/${uid('proof')}.${ext}`)
+// checked without tracking pending uploads in a table. Documents submitted to
+// a school (#143 step 6) share the namespace and differ only by id prefix —
+// keyBelongsTo() guards the whole namespace, so nothing is weakened by it.
+function objectKeyFor(config, userId, ext, kind) {
+  return withPrefix(config.prefix, `students/${userId}/${uid(kind)}.${ext}`)
 }
 
 // POST /api/storage/upload-url { contentType, bytes }
@@ -380,7 +382,11 @@ router.post('/upload-url', mintLimiter, requireDb, requireKey, requireAuth(), as
     if (!row) return res.json({ available: false })
 
     const config = usableConfig(row)
-    const key = proofKeyFor(config, req.auth.sub, ext)
+    // 'document' is a report submitted to the school (#143 step 6); anything
+    // else is proof attached to a log. Both live under the student's own
+    // namespace and differ only by id prefix.
+    const kind = req.body.kind === 'document' ? 'doc' : 'proof'
+    const key = objectKeyFor(config, req.auth.sub, ext, kind)
 
     // content-length is signed, so the upload is pinned to exactly the size
     // declared here — a client that sends more fails the signature at S3

@@ -815,10 +815,56 @@ export async function initSchema() {
   // the signed verification/proof claims it arrived with, so re-exporting it
   // doesn't turn "approved by a supervisor at school A" into an unexplained
   // approval here. Editing the log's facts clears it (logs.js PATCH).
+  // Student documents submitted to a school used to live in pdf_uploads
+  // .file_data as base64 — the one place we held minors' files ourselves
+  // (#143 step 6). A school with its own bucket now gets a pointer instead,
+  // exactly like logs.proof_key. file_data stays nullable rather than dropped:
+  // schools with no bucket still use it, and legacy rows are drained in
+  // batches by POST /api/school/admin/drain-pdf-uploads.
+  try { await query(`ALTER TABLE pdf_uploads ADD COLUMN IF NOT EXISTS storage_id TEXT REFERENCES tenant_storage(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`ALTER TABLE pdf_uploads ADD COLUMN IF NOT EXISTS object_key TEXT`) } catch {}
+  try { await query(`ALTER TABLE pdf_uploads ADD COLUMN IF NOT EXISTS file_bytes INTEGER`) } catch {}
+  try { await query(`ALTER TABLE pdf_uploads ALTER COLUMN file_data DROP NOT NULL`) } catch {}
+  // Finds the rows still holding bytes, which is all the drain job scans.
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_pdf_uploads_undrained ON pdf_uploads(school_id) WHERE file_data IS NOT NULL`) } catch {}
+
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_source_id TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS imported_transcript_id TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_attestation JSONB`) } catch {}
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_import_source ON logs(user_id, import_source_id) WHERE import_source_id IS NOT NULL`) } catch {}
+
+  // ---------------------------------------------------------------------
+  // Moving a student between schools (#143 step 5). A first join by school
+  // code still links immediately — that is the documented flow. A student who
+  // already belongs to a school does NOT: POST /api/school/join records a
+  // request here instead, and the receiving school accepts or declines it.
+  // Without that, any student could type any school's code and silently
+  // attach themselves to a roster that never agreed to hold their records.
+  //
+  // The student's logs, verifications and proof pointers are untouched by a
+  // transfer: proof_storage_id keeps pointing at the old school's bucket on
+  // purpose (see the comment above), which is exactly why a signed transcript
+  // carries attestations rather than the files themselves.
+  // ---------------------------------------------------------------------
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_transfers (
+        id             TEXT PRIMARY KEY,
+        user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        from_school_id TEXT REFERENCES schools(id) ON DELETE SET NULL,
+        to_school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        status         TEXT NOT NULL DEFAULT 'pending'
+                         CHECK (status IN ('pending','accepted','declined','cancelled')),
+        decided_by     TEXT REFERENCES users(id) ON DELETE SET NULL,
+        decided_at     TIMESTAMPTZ,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+  // One open request per student: a second attempt updates the first rather
+  // than leaving two schools each able to claim the same account.
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_school_transfers_pending ON school_transfers(user_id) WHERE status = 'pending'`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_school_transfers_inbox ON school_transfers(to_school_id, status, created_at DESC)`) } catch {}
 
   // ---------------------------------------------------------------------
   // Append-only audit trail. VolunTrack records *decisions* in several places
