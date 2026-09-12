@@ -53,9 +53,9 @@ export default function Privacy() {
             <p className="mt-2">When you create an account, your name, email address and a hashed version of your password are stored in our PostgreSQL database. From then on the hours you log are also saved to our servers as you enter them — this is what lets your school, a linked parent, and your other devices see them. That happens as soon as you are signed in; it is not limited to schools that have set up their own storage. Your browser keeps its own copy as well. Traffic between the app and our servers is encrypted with HTTPS.</p>
           </Section>
 
-          <Section title="Proof Files">
-            <p>Where your school or organization has connected its own storage, proof photos and documents upload straight from your device to <em>their</em> storage, and we keep only a reference to the file — we never hold the file itself. Those files are then controlled by that school, under their own policies, and we cannot delete them for you.</p>
-            <p className="mt-2">Where no such storage is connected, a proof file you attach stays on your device, and a report you submit to your school is stored by us until it is deleted.</p>
+          <Section title="Proof Files and Documents">
+            <p>Where your school or organization has connected its own storage, both the proof you attach to an entry and the reports you submit to your school upload straight from your device to <em>their</em> storage. We keep only a reference to the file and never hold the file itself. Those files are then controlled by that school, under their own policies, and we cannot delete them for you.</p>
+            <p className="mt-2">Where no such storage is connected, a proof file you attach stays on your device, and a report you submit to your school is stored by us until you or the school deletes it.</p>
           </Section>
 
           <Section title="Analytics">
@@ -67,7 +67,7 @@ export default function Privacy() {
             <p className="mt-2">Some things outlive an account on purpose, or are beyond our reach:</p>
             <ul className="list-disc pl-5 space-y-1.5 mt-2">
               <li><strong>Access records</strong> are kept for up to 400 days, so that access to student records stays accountable after the fact. The account holder&apos;s identity is removed from them when an account is erased.</li>
-              <li><strong>Proof files in a school&apos;s own storage</strong> belong to that school. Ask them to delete those.</li>
+              <li><strong>Proof files and documents in a school&apos;s own storage</strong> belong to that school. Ask them to delete those.</li>
               <li><strong>Transcripts you have exported</strong> are files you chose to hand to someone. We cannot withdraw a copy someone else holds.</li>
             </ul>
           </Section>

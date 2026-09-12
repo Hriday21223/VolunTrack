@@ -13,6 +13,7 @@ import { categoryColor } from '@/lib/categories.js'
 import { deriveAchievementState } from '@/lib/achievements.js'
 import { downloadSignedTranscript, hasAccountSession, importTranscript, readTranscriptFile } from '@/lib/transcript.js'
 import { syncPullLogs } from '@/lib/logSync.js'
+import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -40,20 +41,14 @@ export default function Reports() {
     setSubmitting(true)
     try {
       const blob = await exportLogsPDF({ user, logs: filtered, returnBlob: true })
-      const reader = new FileReader()
-      reader.onload = async () => {
-        const base64 = reader.result.split(',')[1]
-        const token = localStorage.getItem('voluntrack:auth_token')
-        const res = await fetch(`${apiUrl}/school/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ filename: `report-${Date.now()}.pdf`, fileData: base64, fileType: 'application/pdf' }),
-        })
-        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Upload failed') }
-        setToastMsg('Report submitted to school!')
-        setToastOpen(true)
-      }
-      reader.readAsDataURL(blob)
+      // Goes straight to the school's own storage where they have set one up,
+      // and falls back to sending it through us where they haven't (#143).
+      await submitDocumentToSchool(blob, {
+        filename: `report-${Date.now()}.pdf`,
+        fileType: 'application/pdf',
+      })
+      setToastMsg('Report submitted to school!')
+      setToastOpen(true)
     } catch (e) {
       setToastMsg(e.message)
       setToastOpen(true)

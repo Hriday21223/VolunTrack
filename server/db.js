@@ -815,6 +815,19 @@ export async function initSchema() {
   // the signed verification/proof claims it arrived with, so re-exporting it
   // doesn't turn "approved by a supervisor at school A" into an unexplained
   // approval here. Editing the log's facts clears it (logs.js PATCH).
+  // Student documents submitted to a school used to live in pdf_uploads
+  // .file_data as base64 — the one place we held minors' files ourselves
+  // (#143 step 6). A school with its own bucket now gets a pointer instead,
+  // exactly like logs.proof_key. file_data stays nullable rather than dropped:
+  // schools with no bucket still use it, and legacy rows are drained in
+  // batches by POST /api/school/admin/drain-pdf-uploads.
+  try { await query(`ALTER TABLE pdf_uploads ADD COLUMN IF NOT EXISTS storage_id TEXT REFERENCES tenant_storage(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`ALTER TABLE pdf_uploads ADD COLUMN IF NOT EXISTS object_key TEXT`) } catch {}
+  try { await query(`ALTER TABLE pdf_uploads ADD COLUMN IF NOT EXISTS file_bytes INTEGER`) } catch {}
+  try { await query(`ALTER TABLE pdf_uploads ALTER COLUMN file_data DROP NOT NULL`) } catch {}
+  // Finds the rows still holding bytes, which is all the drain job scans.
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_pdf_uploads_undrained ON pdf_uploads(school_id) WHERE file_data IS NOT NULL`) } catch {}
+
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_source_id TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS imported_transcript_id TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS import_attestation JSONB`) } catch {}
