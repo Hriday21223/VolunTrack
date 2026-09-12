@@ -38,6 +38,10 @@ export const AUDIT = {
   // A document moved out of our database into the school's own bucket. The
   // bytes passed through our server once, which is worth a record.
   PDF_MIGRATED: 'pdf.migrated',
+  // Moving a student between schools hands a whole volunteer record to a
+  // different roster, so both halves — the ask and the decision — are kept.
+  TRANSFER_REQUESTED: 'transfer.requested',
+  TRANSFER_DECIDED: 'transfer.decided',
 }
 
 // Correlates events by the same person after their account is deleted (the
