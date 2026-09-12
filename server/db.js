@@ -834,6 +834,39 @@ export async function initSchema() {
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_import_source ON logs(user_id, import_source_id) WHERE import_source_id IS NOT NULL`) } catch {}
 
   // ---------------------------------------------------------------------
+  // Moving a student between schools (#143 step 5). A first join by school
+  // code still links immediately — that is the documented flow. A student who
+  // already belongs to a school does NOT: POST /api/school/join records a
+  // request here instead, and the receiving school accepts or declines it.
+  // Without that, any student could type any school's code and silently
+  // attach themselves to a roster that never agreed to hold their records.
+  //
+  // The student's logs, verifications and proof pointers are untouched by a
+  // transfer: proof_storage_id keeps pointing at the old school's bucket on
+  // purpose (see the comment above), which is exactly why a signed transcript
+  // carries attestations rather than the files themselves.
+  // ---------------------------------------------------------------------
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_transfers (
+        id             TEXT PRIMARY KEY,
+        user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        from_school_id TEXT REFERENCES schools(id) ON DELETE SET NULL,
+        to_school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        status         TEXT NOT NULL DEFAULT 'pending'
+                         CHECK (status IN ('pending','accepted','declined','cancelled')),
+        decided_by     TEXT REFERENCES users(id) ON DELETE SET NULL,
+        decided_at     TIMESTAMPTZ,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+  // One open request per student: a second attempt updates the first rather
+  // than leaving two schools each able to claim the same account.
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_school_transfers_pending ON school_transfers(user_id) WHERE status = 'pending'`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_school_transfers_inbox ON school_transfers(to_school_id, status, created_at DESC)`) } catch {}
+
+  // ---------------------------------------------------------------------
   // Append-only audit trail. VolunTrack records *decisions* in several places
   // (logs.verified_by, pdf_uploads.reviewed_by, supervisor_verifications
   // .responded_at) but nothing recorded who merely *looked* at a student's

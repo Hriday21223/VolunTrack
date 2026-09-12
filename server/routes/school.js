@@ -142,14 +142,164 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
   if (!pin) return res.status(400).json({ error: 'School code is required.' })
 
   try {
-    const { rows } = await query('SELECT id FROM schools WHERE pin = $1', [pin])
+    const { rows } = await query('SELECT id, name FROM schools WHERE pin = $1', [pin])
     if (rows.length === 0) return res.status(404).json({ error: 'No school found with that code.' })
+    const target = rows[0]
 
-    await query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].id, req.auth.sub])
-    return res.json({ ok: true, schoolId: rows[0].id })
+    const { rows: meRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const currentSchoolId = meRows[0]?.school_id || null
+
+    if (currentSchoolId === target.id) {
+      return res.status(409).json({ error: 'You are already linked to that school.' })
+    }
+
+    // First join links immediately — that is the documented flow, and there is
+    // no existing school whose roster the student is leaving.
+    if (!currentSchoolId) {
+      await query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub])
+      return res.json({ ok: true, schoolId: target.id })
+    }
+
+    // A transfer is different: it hands this student's whole record to a
+    // different school, so that school has to agree to take it. Until then
+    // nothing moves — the student stays exactly where they are (#143 step 5).
+    const { rows: created } = await query(
+      `INSERT INTO school_transfers (id, user_id, from_school_id, to_school_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id) WHERE status = 'pending'
+       DO UPDATE SET to_school_id = EXCLUDED.to_school_id,
+                     from_school_id = EXCLUDED.from_school_id,
+                     created_at = now()
+       RETURNING id`,
+      [uid('xfer'), req.auth.sub, currentSchoolId, target.id],
+    )
+
+    recordAudit(req, {
+      action: AUDIT.TRANSFER_REQUESTED,
+      subjectUserId: req.auth.sub,
+      schoolId: target.id,
+      objectType: 'school_transfer',
+      objectId: created[0]?.id || null,
+      meta: { fromSchoolId: currentSchoolId, toSchoolId: target.id },
+    })
+
+    return res.json({
+      ok: true,
+      pending: true,
+      schoolName: target.name,
+      message: `${target.name} has been asked to accept your transfer. Your hours stay with your current school until they do.`,
+    })
   } catch (error) {
     console.error('school join failed:', error)
     return res.status(500).json({ error: 'Could not join school.' })
+  }
+})
+
+// GET /api/school/transfer/mine — the student's own open request, if any.
+router.get('/transfer/mine', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT t.id, t.status, t.created_at, s.name AS to_school_name
+         FROM school_transfers t
+         JOIN schools s ON s.id = t.to_school_id
+        WHERE t.user_id = $1 AND t.status = 'pending'
+        LIMIT 1`,
+      [req.auth.sub],
+    )
+    return res.json({ transfer: rows[0] || null })
+  } catch (error) {
+    console.error('transfer lookup failed:', error)
+    return res.status(500).json({ error: 'Could not load your transfer request.' })
+  }
+})
+
+// DELETE /api/school/transfer/mine — student changes their mind.
+router.delete('/transfer/mine', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rowCount } = await query(
+      `UPDATE school_transfers SET status = 'cancelled', decided_at = now()
+        WHERE user_id = $1 AND status = 'pending'`,
+      [req.auth.sub],
+    )
+    if (rowCount === 0) return res.status(404).json({ error: 'You have no pending transfer request.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('transfer cancel failed:', error)
+    return res.status(500).json({ error: 'Could not cancel the request.' })
+  }
+})
+
+// GET /api/school/transfers — requests waiting on this school.
+router.get('/transfers', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  try {
+    const { rows: meRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = meRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    const { rows } = await query(
+      `SELECT t.id, t.created_at, u.id AS student_id, u.name AS student_name,
+              u.email AS student_email, u.grade, f.name AS from_school_name
+         FROM school_transfers t
+         JOIN users u ON u.id = t.user_id
+         LEFT JOIN schools f ON f.id = t.from_school_id
+        WHERE t.to_school_id = $1 AND t.status = 'pending'
+        ORDER BY t.created_at DESC`,
+      [schoolId],
+    )
+    return res.json({ transfers: rows })
+  } catch (error) {
+    console.error('transfer list failed:', error)
+    return res.status(500).json({ error: 'Could not fetch transfer requests.' })
+  }
+})
+
+// POST /api/school/transfers/:id/decide { decision: 'accept' | 'decline' }
+// Accepting is the only thing that actually moves school_id. The student's
+// logs, verifications and proof pointers are left exactly as they are — the
+// record travels with the account rather than being copied or re-entered.
+router.post('/transfers/:id/decide', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const decision = String(req.body?.decision || '').trim().toLowerCase()
+  if (!['accept', 'decline'].includes(decision)) {
+    return res.status(400).json({ error: 'Decision must be accept or decline.' })
+  }
+
+  try {
+    const { rows: meRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = meRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    // Scoped to this school and to 'pending' in the same statement, so a
+    // request belonging to another school — or already decided — matches
+    // nothing rather than being checked and then acted on separately.
+    const { rows } = await query(
+      `UPDATE school_transfers
+          SET status = $1, decided_by = $2, decided_at = now()
+        WHERE id = $3 AND to_school_id = $4 AND status = 'pending'
+        RETURNING user_id, from_school_id, to_school_id`,
+      [decision === 'accept' ? 'accepted' : 'declined', req.auth.sub, req.params.id, schoolId],
+    )
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'That request is no longer open.' })
+    }
+    const transfer = rows[0]
+
+    if (decision === 'accept') {
+      await query('UPDATE users SET school_id = $1 WHERE id = $2', [transfer.to_school_id, transfer.user_id])
+    }
+
+    recordAudit(req, {
+      action: AUDIT.TRANSFER_DECIDED,
+      subjectUserId: transfer.user_id,
+      schoolId,
+      objectType: 'school_transfer',
+      objectId: req.params.id,
+      meta: { decision, fromSchoolId: transfer.from_school_id, toSchoolId: transfer.to_school_id },
+    })
+
+    return res.json({ ok: true, decision })
+  } catch (error) {
+    console.error('transfer decision failed:', error)
+    return res.status(500).json({ error: 'Could not record the decision.' })
   }
 })
 
