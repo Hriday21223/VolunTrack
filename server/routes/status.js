@@ -67,6 +67,23 @@ const limiter = rateLimit({
   message: { error: 'Too many requests. Please try again later.' },
 })
 
+// /health and /incidents are polled on a timer by the public /status page, so
+// they can't share the write endpoints' budget: at one poll a minute each,
+// a single open tab spends 30 of the 60 requests in a 15-minute window, and a
+// second tab (or anyone else behind the same NAT) starts collecting 429s —
+// which the page used to render as "Backend API — unreachable", a false
+// outage reported by the very server answering the request. This allows ~10
+// simultaneous pollers per IP. Rate-limiting these two reads harder buys
+// nothing anyway: both are cheap, the SMTP probe behind /health is throttled
+// separately in server/email.js, and neither writes anything.
+const pollLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+})
+
 function requireDb(_req, res, next) {
   if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
   next()
@@ -139,7 +156,7 @@ function checkEmailInBackground() {
 
 // Public: /status polls this to render real backend/DB health instead of
 // per-browser feature checks.
-router.get('/health', limiter, async (_req, res) => {
+router.get('/health', pollLimiter, async (_req, res) => {
   const emailConfigured = hasEmail()
   if (emailConfigured) checkEmailInBackground()
   let databaseOk = false
@@ -227,7 +244,7 @@ router.get('/routes', limiter, requireDb, requireAuth('admin'), (_req, res) => {
 })
 
 // Public: real, shared incident history (not per-browser localStorage).
-router.get('/incidents', limiter, requireDb, async (_req, res) => {
+router.get('/incidents', pollLimiter, requireDb, async (_req, res) => {
   try {
     const { rows } = await query('SELECT * FROM incidents ORDER BY detected_at DESC LIMIT 50')
     return res.json(rows.map((r) => ({

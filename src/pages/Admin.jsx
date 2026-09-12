@@ -6,7 +6,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { getIncidents, createIncident, resolveIncident, deleteIncident, getHealth } from '@/lib/status.js'
+import { getIncidents, createIncident, resolveIncident, deleteIncident, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
 import { generateInvoicePDF } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -190,7 +190,12 @@ export default function Admin() {
 
   const loadIncidents = useCallback(async () => {
     setLoadingIncidents(true)
-    try { setIncidents(await getIncidents()) } finally { setLoadingIncidents(false) }
+    try {
+      // null means the fetch told us nothing (rate-limited, offline) — leave
+      // the list on screen rather than blanking it to "no incidents".
+      const result = await getIncidents()
+      if (result) setIncidents(result)
+    } finally { setLoadingIncidents(false) }
   }, [])
 
   const [apiHealth, setApiHealth] = useState(null)
@@ -208,7 +213,9 @@ export default function Admin() {
           ? fetch(`${apiUrl}/status/routes`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
           : Promise.resolve(null),
       ])
-      setApiHealth(health)
+      // HEALTH_UNKNOWN means the backend answered without health data; keep
+      // the last real reading if we have one, and never read it as "down".
+      setApiHealth((prev) => (health === HEALTH_UNKNOWN && prev && prev !== HEALTH_UNKNOWN ? prev : health))
       setApiRoutes(routesRes?.routes || [])
     } finally {
       setLoadingApiInfo(false)
@@ -1710,6 +1717,8 @@ export default function Admin() {
               <p className="text-sm text-earth-400 py-2">Checking…</p>
             ) : apiHealth === null ? (
               <p className="text-sm text-red-500 py-2 flex items-center gap-1.5"><XCircle className="w-4 h-4" /> Backend unreachable</p>
+            ) : apiHealth === HEALTH_UNKNOWN ? (
+              <p className="text-sm text-earth-500 dark:text-earth-400 py-2 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Backend responding, but health details are unavailable right now.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <ApiHealthPill label="Backend" ok={true} detail="responding" />

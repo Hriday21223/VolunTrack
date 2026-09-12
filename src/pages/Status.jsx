@@ -4,7 +4,14 @@ import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, Clock, Database, Cpu
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
-import { getHealth, getIncidents, subscribeToStatus, confirmSubscription, unsubscribeFromStatus } from '@/lib/status.js'
+import { getHealth, getIncidents, HEALTH_UNKNOWN, subscribeToStatus, confirmSubscription, unsubscribeFromStatus } from '@/lib/status.js'
+
+// This page runs three polls per tick, two of which hit /api/status/* and
+// share one server-side rate-limit budget. At 30s that was 4 API requests a
+// minute — exactly the limiter's 60-per-15-minutes cap, so a single tab left
+// open would rate-limit itself and then report the backend as down. See the
+// matching headroom on the server limiter in server/routes/status.js.
+const POLL_MS = 60000
 
 function StatusBadge({ ok, label }) {
   return (
@@ -125,18 +132,28 @@ export default function Status() {
   useEffect(() => {
     const check = async () => {
       const result = await getHealth()
+      // The backend answered, just not with health data (a rate-limited poll
+      // is the common case). It's reachable — keep the service details we
+      // already have rather than flipping them to "unreachable".
+      if (result === HEALTH_UNKNOWN) {
+        setApiOk(true)
+        return
+      }
       setApiOk(result !== null)
       setHealth(result)
     }
     check()
-    const id = setInterval(check, 30000)
+    const id = setInterval(check, POLL_MS)
     return () => clearInterval(id)
   }, [])
 
   useEffect(() => {
-    const loadIncidents = async () => setIncidents(await getIncidents())
+    const loadIncidents = async () => {
+      const result = await getIncidents()
+      if (result) setIncidents(result)
+    }
     loadIncidents()
-    const id = setInterval(loadIncidents, 30000)
+    const id = setInterval(loadIncidents, POLL_MS)
     return () => clearInterval(id)
   }, [])
 
@@ -150,7 +167,7 @@ export default function Status() {
       } catch { setAppHealthy(false) }
     }
     check()
-    const id = setInterval(check, 30000)
+    const id = setInterval(check, POLL_MS)
     return () => clearInterval(id)
   }, [])
 
@@ -197,6 +214,11 @@ export default function Status() {
   const emailOk = health ? health.checks.email.ok : true
   // Older backends only sent `ok`, which then meant "configured".
   const emailConfigured = health ? (health.checks.email.configured ?? health.checks.email.ok) : true
+  // No reading yet (first paint, or every poll so far came back without data).
+  // These two tiles describe the server's internals, so with nothing to go on
+  // the honest answer is "unknown" — the old fallbacks asserted "Database: not
+  // configured" and "Email: connected", both of which can be flatly wrong.
+  const unknownDetail = health ? null : 'unknown'
 
   // Only real infra checks are "critical" — client capability checks below
   // are informational only, since this app is designed to work offline
@@ -204,8 +226,8 @@ export default function Status() {
   const services = [
     { name: 'Application', ok: appHealthy, critical: true, detail: appHealthy ? 'responding' : 'unreachable' },
     { name: 'Backend API', ok: apiOk, critical: true, detail: apiOk ? 'responding' : 'unreachable' },
-    { name: 'Database', ok: dbOk !== false, critical: dbConfigured, detail: !dbConfigured ? 'not configured' : dbOk ? 'connected' : 'unreachable' },
-    { name: 'Email (SMTP)', ok: emailOk, critical: false, detail: !emailConfigured ? 'not configured' : emailOk ? 'connected' : 'unreachable' },
+    { name: 'Database', ok: dbOk !== false, critical: dbConfigured, detail: unknownDetail ?? (!dbConfigured ? 'not configured' : dbOk ? 'connected' : 'unreachable') },
+    { name: 'Email (SMTP)', ok: emailOk, critical: false, detail: unknownDetail ?? (!emailConfigured ? 'not configured' : emailOk ? 'connected' : 'unreachable') },
     { name: 'Local Storage', ok: storageOk, critical: true, detail: storageOk ? 'ready' : 'unavailable' },
     { name: 'Session Storage', ok: sessionOk, critical: false, detail: sessionOk ? 'ready' : 'unavailable' },
     { name: 'Service Worker', ok: swStatus === 'active' || swStatus === 'none', critical: false, detail: swStatus },

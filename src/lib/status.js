@@ -5,27 +5,43 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+// A poll that reached the backend but came back without usable health data —
+// most often a 429, since /status polls on a timer and shares one rate-limit
+// budget. It means "no new information", NOT "the backend is down": callers
+// must keep the last known state rather than paint the page red, or the
+// status page reports a false outage for the server that just answered it.
+export const HEALTH_UNKNOWN = 'unknown'
+
+// Gateway-level failures are the ones that really do mean the backend isn't
+// there (Render asleep, proxy with nothing behind it).
+const DOWN_STATUSES = [502, 503, 504]
+
 // Real backend/DB health — replaces the old per-browser feature-detection
-// list. Returns null if the backend itself is unreachable.
+// list. Returns null if the backend itself is unreachable, or HEALTH_UNKNOWN
+// if it answered but told us nothing about its health.
 export async function getHealth() {
   try {
     const res = await fetch(`${apiUrl()}/status/health`, { signal: AbortSignal.timeout(5000) })
-    if (!res.ok) return null
-    return await res.json()
+    if (res.ok) return await res.json()
+    return DOWN_STATUSES.includes(res.status) ? null : HEALTH_UNKNOWN
   } catch {
+    // Network error or timeout — nothing answered at all.
     return null
   }
 }
 
 // Real, shared incident history (server-persisted) — replaces the old
-// per-browser localStorage list.
+// per-browser localStorage list. Returns null when the fetch didn't produce a
+// list, so a rate-limited poll leaves the incidents already on screen alone
+// instead of blanking them to "no incidents".
 export async function getIncidents() {
   try {
     const res = await fetch(`${apiUrl()}/status/incidents`, { signal: AbortSignal.timeout(5000) })
-    if (!res.ok) return []
-    return await res.json()
+    if (!res.ok) return null
+    const data = await res.json()
+    return Array.isArray(data) ? data : null
   } catch {
-    return []
+    return null
   }
 }
 
