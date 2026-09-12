@@ -1466,7 +1466,7 @@ export default function Admin() {
               <AlertTriangle className="w-4 h-4 text-brand-600" /> Log an incident
             </h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Manually flag something not caught by the automated database health check (e.g. a third-party outage).
+              Database and email failures, and backend outages, are logged automatically. Use this for anything else (e.g. a third-party outage or planned maintenance).
             </p>
             <div className="space-y-3 max-w-sm">
               <div>
@@ -1681,7 +1681,7 @@ export default function Admin() {
                 <ApiHealthPill
                   label="Email (SMTP)"
                   ok={apiHealth.checks.email.ok}
-                  detail={apiHealth.checks.email.ok ? 'configured' : 'not configured'}
+                  detail={!(apiHealth.checks.email.configured ?? apiHealth.checks.email.ok) ? 'not configured' : apiHealth.checks.email.ok ? 'connected' : 'unreachable'}
                 />
               </div>
             )}

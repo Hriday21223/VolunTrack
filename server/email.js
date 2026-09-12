@@ -27,6 +27,46 @@ export function hasEmail() {
   return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
 }
 
+// Real SMTP reachability, not just "the env vars are set": transport.verify()
+// connects and authenticates without sending a message. /api/status/health is
+// public, so the probe is throttled to one per interval process-wide — however
+// often the endpoint is hit, we open at most one SMTP connection per window.
+const EMAIL_CHECK_INTERVAL_MS = 5 * 60 * 1000
+const emailHealth = { ok: null, consecutiveFailures: 0, errorCode: null, checkedAt: 0 }
+let emailCheckInFlight = null
+
+// Last known result; ok is null until the first probe finishes.
+export function emailHealthSnapshot() {
+  return { ...emailHealth }
+}
+
+// Starts a probe if one is due and returns its promise (resolving to the new
+// snapshot), or null when SMTP isn't configured or a probe ran recently.
+export function refreshEmailHealth() {
+  const t = smtpTransport()
+  if (!t || emailCheckInFlight) return null
+  if (Date.now() - emailHealth.checkedAt < EMAIL_CHECK_INTERVAL_MS) return null
+
+  emailHealth.checkedAt = Date.now()
+  emailCheckInFlight = t.verify()
+    .then(() => {
+      emailHealth.ok = true
+      emailHealth.consecutiveFailures = 0
+      emailHealth.errorCode = null
+    })
+    .catch((error) => {
+      console.error('SMTP health check failed:', error.message)
+      emailHealth.ok = false
+      emailHealth.consecutiveFailures += 1
+      // Only nodemailer's short code (EAUTH, ETIMEDOUT, …) is kept — the full
+      // message can echo server responses and ends up on the public /status page.
+      emailHealth.errorCode = /^[A-Z_]{2,32}$/.test(error.code || '') ? error.code : null
+    })
+    .then(() => emailHealthSnapshot())
+    .finally(() => { emailCheckInFlight = null })
+  return emailCheckInFlight
+}
+
 // Strip CR/LF so a caller-supplied value can't forge extra log lines when
 // interpolated into a log message. The replacement must be the empty string
 // for CodeQL to recognize this as a log-injection sanitizer.
