@@ -9,3 +9,7 @@ updates:
       - dependency-type: "dev"
         versions:
           - "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
