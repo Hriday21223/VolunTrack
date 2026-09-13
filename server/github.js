@@ -11,10 +11,15 @@
 // posture as SSO and tenant storage, which no-op without their keys.
 const API = 'https://api.github.com'
 
-// The label ties this into the incident sync in server/routes/status.js:
-// INCIDENT_LABELS there decides which issues become incidents, and `outage` is
-// also what .github/workflows/keep-warm.yml applies.
-const ISSUE_LABEL = 'outage'
+// Deliberately not `outage`: that label belongs to keep-warm.yml, which decides
+// whether to open a backend-unreachable issue by asking "is an `outage` issue
+// already open?" and closes the first one it finds as soon as the ping succeeds.
+// A Database or Email failure never stops that ping — /health still answers 200,
+// which is why keep-warm.yml leaves those to us — so filing ours as `outage`
+// would both suppress a genuine outage issue and get ours closed, still broken,
+// on the next successful run. `incident` is the other member of INCIDENT_LABELS
+// in server/routes/status.js, so the webhook sync still picks it up.
+const ISSUE_LABEL = 'incident'
 
 function config() {
   const token = process.env.GITHUB_ISSUE_TOKEN
@@ -68,11 +73,32 @@ async function gh(path, init = {}) {
   return res.json()
 }
 
+// A label passed on a new issue has to exist first, and no repo starts with an
+// `incident` label — keep-warm.yml creates its own (`gh label create outage
+// --force`) for exactly this reason. Best-effort and never fatal: the usual case
+// after the first incident is a 422 meaning it is already there, and if we can't
+// create it at all, filing the issue still matters more than labelling it.
+async function ensureLabel() {
+  try {
+    await gh('/labels', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: ISSUE_LABEL,
+        color: 'B60205',
+        description: 'Service incident (opened and closed by the backend health check)',
+      }),
+    })
+  } catch {
+    // Already exists, or we lack permission to create it — carry on regardless.
+  }
+}
+
 // Returns the new issue's html_url, or null when filing is off or fails.
 // Never throws: a failure here must not turn a health check into a 500.
 export async function createIncidentIssue({ service, detail, incidentId }) {
   if (!config()) return null
   try {
+    await ensureLabel()
     const body = [
       detail || 'An automated health check failed.',
       '',
@@ -90,11 +116,24 @@ export async function createIncidentIssue({ service, detail, incidentId }) {
   }
 }
 
+// Only ever names an issue on our own configured repo. issue_url can also hold
+// an admin-supplied link to somewhere else entirely — POST /api/status/incidents
+// accepts any https://github.com/... URL — and taking just the trailing number
+// off such a link would close *our* issue of that number, an unrelated one, the
+// next time a database blip recovered.
+function issueNumberFor(issueUrl) {
+  const cfg = config()
+  if (!cfg) return null
+  const match = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\/(\d+)(?:[?#].*)?$/.exec(String(issueUrl || ''))
+  if (!match || match[1].toLowerCase() !== cfg.repo.toLowerCase()) return null
+  return match[2]
+}
+
 // Closes the issue an incident filed, so a recovered service doesn't leave a
 // stale open issue behind. Best-effort for the same reason as above.
 export async function closeIncidentIssue(issueUrl, comment) {
   if (!config()) return false
-  const number = /\/issues\/(\d+)(?:[?#].*)?$/.exec(String(issueUrl || ''))?.[1]
+  const number = issueNumberFor(issueUrl)
   if (!number) return false
   try {
     if (comment) {

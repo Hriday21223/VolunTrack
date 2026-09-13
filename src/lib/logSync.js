@@ -30,11 +30,11 @@ export async function syncCreateLog(log) {
         notes: log.notes,
         location: log.location || null,
         orgName: log.orgName || null,
-        orgAddress: log.orgAddress || null,
-        orgPhone: log.orgPhone || null,
         supervisorName: log.supervisorName || null,
+        // The server hashes this and keeps only the hash (#186); the org's
+        // address and phone and the supervisor's signature image are never
+        // sent, because nothing server-side reads them.
         supervisorEmail: log.supervisorEmail || null,
-        supervisorSignature: log.supervisorSignature || null,
         taskId: log.taskId || null,
         // Pointer to the proof file in the school's own bucket, when one was
         // uploaded there. The server re-verifies it belongs to this student.
@@ -116,11 +116,14 @@ export async function syncPullLogs(userId) {
       notes: row.notes ?? '',
       location: row.location ?? '',
       orgName: row.org_name ?? '',
-      orgAddress: row.org_address ?? '',
-      orgPhone: row.org_phone ?? '',
       supervisorName: row.supervisor_name ?? '',
-      supervisorEmail: row.supervisor_email ?? '',
-      supervisorSignature: row.supervisor_signature ?? '',
+      // Not restorable: the server holds only a hash of the supervisor's
+      // email, and never the org address/phone or the signature image. A
+      // device that pulls a log back gets the hours, not the paperwork (#186).
+      orgAddress: '',
+      orgPhone: '',
+      supervisorEmail: '',
+      supervisorSignature: '',
       verificationStatus: row.verification_status ?? 'none',
       verified: row.verification_status === 'approved',
       taskId: row.task_id ?? '',
