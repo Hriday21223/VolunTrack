@@ -116,11 +116,24 @@ export async function createIncidentIssue({ service, detail, incidentId }) {
   }
 }
 
+// Only ever names an issue on our own configured repo. issue_url can also hold
+// an admin-supplied link to somewhere else entirely — POST /api/status/incidents
+// accepts any https://github.com/... URL — and taking just the trailing number
+// off such a link would close *our* issue of that number, an unrelated one, the
+// next time a database blip recovered.
+function issueNumberFor(issueUrl) {
+  const cfg = config()
+  if (!cfg) return null
+  const match = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/issues\/(\d+)(?:[?#].*)?$/.exec(String(issueUrl || ''))
+  if (!match || match[1].toLowerCase() !== cfg.repo.toLowerCase()) return null
+  return match[2]
+}
+
 // Closes the issue an incident filed, so a recovered service doesn't leave a
 // stale open issue behind. Best-effort for the same reason as above.
 export async function closeIncidentIssue(issueUrl, comment) {
   if (!config()) return false
-  const number = /\/issues\/(\d+)(?:[?#].*)?$/.exec(String(issueUrl || ''))?.[1]
+  const number = issueNumberFor(issueUrl)
   if (!number) return false
   try {
     if (comment) {
