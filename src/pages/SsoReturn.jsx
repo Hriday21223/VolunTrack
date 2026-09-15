@@ -3,6 +3,24 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Loader2, ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
+// `returnTo` arrives in the query string, so it is attacker-controlled: a
+// sign-in link can be crafted to bounce the user off-site once authenticated.
+// Matching on the string ("starts with / but not //") is not enough, because
+// the URL parser treats a backslash as a slash for http(s) — "/\evil.com"
+// clears that test and still resolves to https://evil.com. So resolve the
+// value and compare origins instead of guessing from its shape, and hand back
+// only the path portion so the result can never carry an origin of its own.
+function safeReturnTo(raw, fallback = '/dashboard') {
+  if (!raw) return fallback
+  try {
+    const url = new URL(raw, window.location.origin)
+    if (url.origin !== window.location.origin) return fallback
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return fallback
+  }
+}
+
 // Landing page for the redirect back from the school's identity provider.
 // The backend hands over a single-use code (never the JWT itself), which we
 // trade for a real session here.
@@ -20,14 +38,14 @@ export default function SsoReturn() {
     claimed.current = true
 
     const code = params.get('code')
-    const returnTo = params.get('returnTo') || '/dashboard'
+    const returnTo = safeReturnTo(params.get('returnTo'))
     if (!code) {
       setErr('This sign-in link is missing its code. Please try signing in again.')
       return
     }
 
     ssoExchange(code)
-      .then(() => nav(returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/dashboard', { replace: true }))
+      .then(() => nav(returnTo, { replace: true }))
       .catch((e) => setErr(e.message))
   }, [params, ssoExchange, nav])
 
