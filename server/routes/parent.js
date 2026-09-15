@@ -123,6 +123,27 @@ router.delete('/children/:childId', limiter, requireDb, requireAuth('parent'), a
 
 // --- Weekly progress digest ------------------------------------------------
 
+// Whether SMTP is configured travels with every digest response. A dry run
+// deliberately skips the hasEmail() gate on the routes below so it stays usable
+// on a box with no SMTP — but that also let it answer a bare `ok: true` from a
+// backend that could not send a thing, which is how the only green run this
+// workflow ever had came from a backend whose every real run was failing 503.
+// Reporting the flag keeps the dry run useful without letting it read as a
+// green light.
+function digestResponse(res, win, out) {
+  const emailConfigured = hasEmail()
+  if (!emailConfigured) {
+    console.warn('weekly digest ran with SMTP unconfigured — no digest can actually be sent')
+  }
+  return res.json({
+    ok: true,
+    weekStart: win.weekStart,
+    emailConfigured,
+    ...(emailConfigured ? {} : { warning: 'Email is not configured, so no digest can be sent.' }),
+    ...out,
+  })
+}
+
 // Cron entrypoint — hit weekly by .github/workflows/parent-weekly-digest.yml.
 // Always the just-finished Mon–Sun week, every opted-in parent.
 router.post('/internal/run-weekly-digest', digestLimiter, requireDb, async (req, res) => {
@@ -135,7 +156,7 @@ router.post('/internal/run-weekly-digest', digestLimiter, requireDb, async (req,
   try {
     const win = previousWeekWindow()
     const out = await runWeeklyDigest({ ...win, dryRun })
-    return res.json({ ok: true, weekStart: win.weekStart, ...out })
+    return digestResponse(res, win, out)
   } catch (error) {
     console.error('run-weekly-digest failed:', error)
     return res.status(500).json({ error: 'Could not run the weekly digest.' })
@@ -167,7 +188,7 @@ router.post('/admin/send-weekly-digest', digestLimiter, requireDb, requireAuth('
       force: force === true,
       dryRun: isDryRun,
     })
-    return res.json({ ok: true, weekStart: win.weekStart, ...out })
+    return digestResponse(res, win, out)
   } catch (error) {
     console.error('send-weekly-digest failed:', error)
     return res.status(500).json({ error: 'Could not send the weekly digest.' })

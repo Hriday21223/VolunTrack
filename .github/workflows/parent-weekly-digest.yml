@@ -26,15 +26,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger the weekly digest endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ vars.PUBLIC_BACKEND_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || false }}
         run: |
+          set -uo pipefail
           # The endpoint sends synchronously, so give it a long ceiling rather
           # than retrying a request that may still be running server-side.
-          # --retry (no --retry-all-errors) covers a Render cold-start
-          # connection failure only; the backend's parent_digest_sends
-          # stale-guard makes an accidental re-send idempotent regardless.
-          curl -fsS -X POST \
-            --connect-timeout 30 --retry 2 --retry-delay 30 --max-time 900 \
-            -H "x-cron-key: ${{ secrets.CRON_SECRET }}" \
-            -H 'content-type: application/json' \
-            -d '{"dryRun": ${{ github.event.inputs.dry_run || false }} }' \
-            "${{ vars.PUBLIC_BACKEND_URL }}/api/parent/internal/run-weekly-digest"
+          # Retries cover a Render cold-start *connection* failure only. curl's
+          # own --retry also treats 503 as transient, which is wrong here: the
+          # backend answers 503 when EMAIL_*/CRON_SECRET are unconfigured, a
+          # condition no amount of retrying clears — it just spent a minute
+          # restating the same error. So drive the retry loop by hand and fail
+          # fast on any HTTP response, retrying only when we never got one.
+          # The backend's parent_digest_sends stale-guard makes an accidental
+          # re-send idempotent regardless.
+          url="$BACKEND_URL/api/parent/internal/run-weekly-digest"
+          body="$(mktemp)"
+          attempt=1
+          while :; do
+            code=$(curl -sS -X POST \
+              --connect-timeout 30 --max-time 900 \
+              -o "$body" -w '%{http_code}' \
+              -H "x-cron-key: $CRON_SECRET" \
+              -H 'content-type: application/json' \
+              -d "{\"dryRun\": $DRY_RUN }" \
+              "$url") || code=000
+            echo "HTTP $code"
+            cat "$body"; echo
+            case "$code" in
+              2??)
+                # A dry run answers ok:true even with SMTP unconfigured, so the
+                # status code alone is not proof the digest can send.
+                if grep -q '"emailConfigured":false' "$body"; then
+                  echo "::error::backend reached, but SMTP is not configured — no digest was sent. Set EMAIL_USER and EMAIL_PASSWORD on the backend."
+                  exit 1
+                fi
+                exit 0
+                ;;
+              503)
+                echo "::error::backend returned 503 (unconfigured EMAIL_*/CRON_SECRET) — retrying will not help."
+                exit 1
+                ;;
+              000)
+                : # no HTTP response at all: likely a cold start, worth a retry
+                ;;
+              *)
+                echo "::error::unexpected HTTP $code from the digest endpoint."
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" -ge 3 ]; then
+              echo "::error::backend unreachable after $attempt attempts."
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            sleep 30
+          done
