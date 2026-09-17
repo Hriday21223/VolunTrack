@@ -1,0 +1,159 @@
+name: Deploy frontend (Vercel)
+
+# The Vercel project is NOT connected to this repo, so merging to main never
+# shipped the frontend — the live site once sat 21 commits behind while Render
+# (which does auto-deploy) ran current backend code against it. This workflow
+# is the missing half: every push to main builds and deploys the frontend, so
+# the two halves stay in step.
+#
+# It builds here rather than on Vercel on purpose. scripts/prerender.mjs needs
+# Chrome, and Vercel's build image is missing the shared libraries it wants
+# (libnspr4.so), so prerendering has been silently skipping there for weeks —
+# the script soft-fails on Vercel by design and the build still reports
+# success. The GitHub runner image ships those libraries, so Chrome launches
+# and the 13 routes in ROUTES get real prerendered HTML. `vercel build` still
+# sets VERCEL=1, which re-arms that same soft-fail, so the "Verify" step below
+# checks the output instead of trusting the exit code.
+#
+# Setup (one time):
+#   gh secret set VERCEL_TOKEN      # https://vercel.com/account/tokens
+#   gh secret set VERCEL_ORG_ID     # team_RPYNPHTepX4b8OV12ZOjgroE
+#   gh secret set VERCEL_PROJECT_ID # prj_Ap1D5q5BVpqpELBXSGvwiaeuDbUj
+# The org/project IDs live in .vercel/project.json, which is gitignored, so
+# `vercel pull` needs them from the environment.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which environment to deploy
+        type: choice
+        options: [ preview, production ]
+        default: preview
+
+# Deploys are not safe to run concurrently against one project: two builds
+# racing to alias the same production domain can land out of order, leaving
+# the older commit live. Queue them instead of cancelling, so every merge
+# still ships.
+concurrency:
+  group: deploy-vercel
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # A manual run defaults to preview; a push to main always goes live.
+      TARGET: ${{ github.event_name == 'push' && 'production' || inputs.target }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Check Vercel credentials are configured
+        # Fail loudly rather than skipping. A workflow that quietly does
+        # nothing recreates the exact problem this file exists to fix: the
+        # frontend falling behind main with nothing to show for it.
+        run: |
+          missing=
+          [ -n "$VERCEL_TOKEN" ] || missing="$missing VERCEL_TOKEN"
+          [ -n "$VERCEL_ORG_ID" ] || missing="$missing VERCEL_ORG_ID"
+          [ -n "$VERCEL_PROJECT_ID" ] || missing="$missing VERCEL_PROJECT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::missing repo secret(s):$missing — see the setup notes at the top of this workflow."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel project settings and environment
+        # Brings down VITE_API_URL and VITE_SITE_URL, so the bundle is built
+        # against the same values Vercel would use. Note a preview pull gets
+        # the Preview environment, where VITE_SITE_URL is currently unset —
+        # the SEO files then fall back to localhost, which is fine for a test
+        # deploy but is why previews should not be promoted by hand.
+        run: vercel pull --yes --environment="$TARGET" --token="$VERCEL_TOKEN"
+
+      - name: Build
+        run: |
+          if [ "$TARGET" = production ]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Verify the prerendered pages exist
+        # prerender.mjs returns quietly when Chrome will not start and VERCEL=1
+        # is set, which `vercel build` sets. Without this check a deploy that
+        # silently dropped every SEO page still reports success — which is how
+        # it went unnoticed for weeks. Compare against index.html too: a file
+        # that merely exists proves nothing if it is just the SPA shell.
+        run: |
+          static=.vercel/output/static
+          for page in about.html help.html terms.html; do
+            if [ ! -f "$static/$page" ]; then
+              echo "::error::$page was not prerendered — Chrome likely failed to launch. Check the build log for '[prerender] skipped'."
+              exit 1
+            fi
+          done
+          if cmp -s "$static/index.html" "$static/about.html"; then
+            echo "::error::about.html is byte-identical to index.html, so prerendering produced only the SPA shell."
+            exit 1
+          fi
+          echo "Prerendered $(ls "$static"/*.html "$static"/**/*.html 2>/dev/null | wc -l | tr -d ' ') HTML files."
+
+      - name: Deploy
+        id: deploy
+        run: |
+          if [ "$TARGET" = production ]; then
+            url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          else
+            url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed to $url"
+
+      - name: Check the deployed site answers
+        # The alias can take a moment to swing across; retry before calling it
+        # a failure. Deep links are the thing worth checking: /dashboard has no
+        # file of its own, so a 404 here means the SPA fallback rewrite in
+        # vercel.json is broken again.
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          for path in / /about /dashboard; do
+            for attempt in 1 2 3; do
+              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$URL$path") || code=000
+              [ "$code" = 200 ] && break
+              sleep 5
+            done
+            if [ "$code" != 200 ]; then
+              echo "::error::$path returned HTTP $code on the new deployment."
+              exit 1
+            fi
+            echo "$path OK"
+          done
+
+      - name: Summarise
+        if: always()
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          {
+            echo "### Vercel deploy"
+            echo
+            echo "- Target: \`$TARGET\`"
+            echo "- URL: ${URL:-(no deployment)}"
+          } >> "$GITHUB_STEP_SUMMARY"
