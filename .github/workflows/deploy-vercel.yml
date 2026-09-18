@@ -25,6 +25,10 @@ name: Deploy frontend (Vercel)
 on:
   push:
     branches: [ main ]
+  # A PR gets a preview deploy, so a change to the build or to vercel.json can
+  # be checked on a real URL before it reaches production.
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       target:
@@ -49,7 +53,9 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       # A manual run defaults to preview; a push to main always goes live.
-      TARGET: ${{ github.event_name == 'push' && 'production' || inputs.target }}
+      # Only a push to main goes live. A manual run honours its input; a
+      # pull_request has no inputs at all, so it falls through to preview.
+      TARGET: ${{ github.event_name == 'push' && 'production' || inputs.target || 'preview' }}
     steps:
       - uses: actions/checkout@v7
 
