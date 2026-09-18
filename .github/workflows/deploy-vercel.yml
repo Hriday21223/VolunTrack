@@ -159,6 +159,15 @@ jobs:
             fi
             echo "$path OK"
           done
+          # A 200 only proves something answered. /terms must arrive as the
+          # prerendered page rather than the SPA shell — serving the shell is
+          # what happens when the catch-all rewrite outranks the static file,
+          # and it silently undoes the whole reason this builds here.
+          if ! curl -sS --max-time 30 "$URL/terms" | grep -q 'Terms of Service'; then
+            echo "::error::/terms served the SPA shell — the prerendered HTML built but is unreachable. Check cleanUrls/rewrites in vercel.json."
+            exit 1
+          fi
+          echo "/terms served prerendered OK"
 
       - name: Summarise
         if: always()
