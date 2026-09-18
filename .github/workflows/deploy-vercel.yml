@@ -114,10 +114,18 @@ jobs:
               exit 1
             fi
           done
-          if cmp -s "$static/index.html" "$static/about.html"; then
-            echo "::error::about.html is byte-identical to index.html, so prerendering produced only the SPA shell."
+          # Compare terms.html, NOT about.html: Home() in src/App.jsx returns
+          # <About /> for a logged-out visitor, which is exactly what a
+          # prerender is, so / and /about are legitimately identical and can
+          # never prove anything. /terms is its own page either way.
+          if cmp -s "$static/index.html" "$static/terms.html"; then
+            echo "::error::terms.html is byte-identical to index.html, so prerendering produced only the SPA shell."
             exit 1
           fi
+          grep -q 'Terms of Service' "$static/terms.html" || {
+            echo "::error::terms.html does not contain its own heading — the page rendered, but not as itself."
+            exit 1
+          }
           echo "Prerendered $(ls "$static"/*.html "$static"/**/*.html 2>/dev/null | wc -l | tr -d ' ') HTML files."
 
       - name: Deploy
