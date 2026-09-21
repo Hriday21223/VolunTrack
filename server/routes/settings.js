@@ -2,6 +2,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
+import { normalizePromo, publicPromo, NO_PROMO } from '../promo.js'
 
 const router = express.Router()
 
@@ -108,6 +109,79 @@ router.patch('/payment-instructions', limiter, requireDb, requireAuth('admin'), 
   } catch (error) {
     console.error('update payment instructions failed:', error)
     return res.status(500).json({ error: 'Could not update payment instructions.' })
+  }
+})
+
+// --- Join offer ("10% off your first month") ---
+
+// The single active offer, raw and including `enabled`. Admin-side and
+// server-side readers use this; the public one below strips it.
+export async function getPromoOffer() {
+  try {
+    const { rows } = await query(`SELECT value FROM site_settings WHERE key = 'promo_offer'`)
+    if (rows.length === 0) return { ...NO_PROMO }
+    const { offer } = normalizePromo(JSON.parse(rows[0].value))
+    // A stored row that no longer validates (an older shape, a hand-edited
+    // value) is treated as "no offer" rather than crashing every reader.
+    return offer || { ...NO_PROMO }
+  } catch (error) {
+    console.error('get promo offer failed:', error)
+    return { ...NO_PROMO }
+  }
+}
+
+/**
+ * How many times a code has been claimed. Counted from the invoices themselves
+ * rather than a counter column, so voiding an invoice returns its use and there
+ * is no separate tally that can drift. An uncoded offer is never capped, so it
+ * has nothing to count.
+ */
+export async function countPromoRedemptions(code) {
+  if (!code) return 0
+  try {
+    const { rows } = await query(
+      `SELECT count(*)::int AS n FROM invoices WHERE discount_code = $1 AND status <> 'void'`,
+      [code],
+    )
+    return rows[0]?.n || 0
+  } catch (error) {
+    console.error('count promo redemptions failed:', error)
+    // Fail closed: an unknown count reads as "fully claimed" rather than
+    // letting a broken query hand out an unlimited number of discounts.
+    return Number.MAX_SAFE_INTEGER
+  }
+}
+
+// Public: the signup pages, the home page and school/org dashboards all render
+// the same banner. Returns `{ offer: null }` when nothing is running — there is
+// nothing sensitive here, it is marketing copy the admin chose to publish.
+router.get('/promo', limiter, async (_req, res) => {
+  if (!hasDatabase()) return res.json({ offer: null })
+  const offer = await getPromoOffer()
+  return res.json({ offer: publicPromo(offer, await countPromoRedemptions(offer.code)) })
+})
+
+// Admin-only: read the offer back for editing, `enabled` and all.
+router.get('/promo/admin', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
+  const offer = await getPromoOffer()
+  return res.json({ offer, redemptionsUsed: await countPromoRedemptions(offer.code) })
+})
+
+// Admin-only: replace the offer. There is exactly one, so this is a full
+// overwrite rather than a merge — clearing a field in the form clears it here.
+router.patch('/promo', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const { offer, error } = normalizePromo(req.body)
+  if (error) return res.status(400).json({ error })
+  try {
+    await query(
+      `INSERT INTO site_settings (key, value, updated_at) VALUES ('promo_offer', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+      [JSON.stringify(offer)],
+    )
+    return res.json({ offer, redemptionsUsed: await countPromoRedemptions(offer.code) })
+  } catch (err) {
+    console.error('update promo offer failed:', err)
+    return res.status(500).json({ error: 'Could not update the offer.' })
   }
 })
 

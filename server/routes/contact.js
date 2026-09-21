@@ -85,11 +85,14 @@ router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) =
   // Optional, and only offered for partnership enquiries. Free text from an
   // unauthenticated form — a hint for the admin, never proof of identity.
   const accountCode = String(req.body.accountCode || '').trim().toUpperCase()
+  // Same posture, but never a reason to reject the message — see db.js.
+  const couponCode = String(req.body.couponCode || '').trim().toUpperCase().replace(/\s+/g, '')
 
   if (!name || name.length > 100) return res.status(400).json({ error: 'Invalid name.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Invalid email.' })
   if (!message || message.length > 5000) return res.status(400).json({ error: 'Invalid message.' })
   if (subject.length > 200) return res.status(400).json({ error: 'Invalid subject.' })
+  if (couponCode.length > 24) return res.status(400).json({ error: 'Invalid coupon code.' })
 
   // Re-checked here, not just in the browser, so a scripted POST can't attach
   // a made-up ID to a message.
@@ -110,14 +113,15 @@ router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) =
   try {
     const id = uid('cmsg')
     await query(
-      `INSERT INTO contact_messages (id, thread_id, direction, name, email, subject, message, account_code)
-       VALUES ($1, $1, 'inbound', $2, $3, $4, $5, $6)`,
-      [id, name, email, subject, message, accountCode || null],
+      `INSERT INTO contact_messages (id, thread_id, direction, name, email, subject, message, account_code, coupon_code)
+       VALUES ($1, $1, 'inbound', $2, $3, $4, $5, $6, $7)`,
+      [id, name, email, subject, message, accountCode || null, couponCode || null],
     )
 
     const to = process.env.CONTACT_EMAIL || 'volunteertrack@googlegroups.com'
     const accountLine = accountCode ? `Customer ID: ${escapeHtml(accountCode)}<br>` : ''
-    const body = `New contact message from ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;<br>Subject: ${escapeHtml(subject)}<br>${accountLine}<br>${escapeHtml(message).replace(/\n/g, '<br>')}`
+    const couponLine = couponCode ? `Coupon: ${escapeHtml(couponCode)}<br>` : ''
+    const body = `New contact message from ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;<br>Subject: ${escapeHtml(subject)}<br>${accountLine}${couponLine}<br>${escapeHtml(message).replace(/\n/g, '<br>')}`
     await sendEmail({ to, subject: `VolunTrack contact: ${subject}`, html: body })
 
     return res.status(201).json({ ok: true, threadId: id })
@@ -135,7 +139,7 @@ router.get('/admin/threads', limiter, requireDb, requireAuth('admin'), async (re
   try {
     const { rows } = await query(`
       SELECT
-        first.thread_id, first.name, first.email, first.subject, first.message, first.account_code,
+        first.thread_id, first.name, first.email, first.subject, first.message, first.account_code, first.coupon_code,
         COALESCE(
           (SELECT s.name FROM schools s WHERE s.account_code = first.account_code),
           (SELECT o.name FROM organizations o WHERE o.account_code = first.account_code)
@@ -143,7 +147,7 @@ router.get('/admin/threads', limiter, requireDb, requireAuth('admin'), async (re
         latest.direction, latest.created_at,
         (SELECT COUNT(*) FROM contact_messages m2 WHERE m2.thread_id = first.thread_id) AS message_count
       FROM (
-        SELECT DISTINCT ON (thread_id) thread_id, name, email, subject, message, account_code
+        SELECT DISTINCT ON (thread_id) thread_id, name, email, subject, message, account_code, coupon_code
         FROM contact_messages
         ORDER BY thread_id, created_at ASC
       ) first

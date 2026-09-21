@@ -11,6 +11,7 @@ import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
+import { recordReferral } from './referral.js'
 
 const router = express.Router()
 
@@ -62,6 +63,9 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
   const password = req.body.password
   const pin = String(req.body.pin || '').trim().toLowerCase()
   const inviteToken = req.body.inviteToken ? String(req.body.inviteToken).trim() : null
+  // Optional. A bad or expired code must never block a registration — the
+  // school still gets its account, the admin just sees no referral attached.
+  const referralCode = req.body.referralCode ? String(req.body.referralCode).trim().toUpperCase() : null
 
   if (!name || name.length > 100) return res.status(400).json({ error: 'School name is required.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
@@ -103,9 +107,15 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
       await query(`UPDATE school_invites SET status = 'completed' WHERE id = $1`, [invite.id])
     }
 
+    let referral = null
+    if (referralCode) {
+      const result = await recordReferral({ code: referralCode, referredType: 'school', referredId: schoolId })
+      referral = result.ok ? { referrerName: result.referrerName } : { error: result.reason }
+    }
+
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, schoolId: rows[0].school_id, grade: rows[0].grade }
     await sendWelcomeEmail({ to: user.email, name: user.name })
-    return res.status(201).json({ token: signToken(user), user })
+    return res.status(201).json({ token: signToken(user), user, referral })
   } catch (error) {
     console.error('school register failed:', error)
     return res.status(500).json({ error: 'Could not register school.' })

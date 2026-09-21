@@ -24,6 +24,7 @@ import auditRoutes from './server/routes/audit.js'
 import { isAllowedTenantOrigin } from './server/tenantOrigins.js'
 import storageRoutes from './server/routes/storage.js'
 import transcriptRoutes from './server/routes/transcript.js'
+import referralRoutes from './server/routes/referral.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 
@@ -126,6 +127,7 @@ app.use('/api/reminders', remindersRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/storage', storageRoutes)
 app.use('/api/transcript', transcriptRoutes)
+app.use('/api/referral', referralRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the

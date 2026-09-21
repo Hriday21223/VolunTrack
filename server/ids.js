@@ -34,6 +34,21 @@ export function generateAccountCode(kind) {
   return `VT-${kind}-${s}`
 }
 
+// A school's own shareable referral code (e.g. "LINCOLN-R7K2"). Unlike the
+// account code this is meant to be passed around — printed in an invite email,
+// read out at a conference — so it leads with a slug of the customer's own name
+// to make it recognisable, and falls back to a generic prefix for a name with
+// no usable letters. The random tail is what actually makes it unique;
+// the slug is only there to make it memorable.
+export function generateReferralCode(name) {
+  // First word only, so "Lincoln High School" reads LINCOLN-… rather than
+  // being chopped mid-word into LINCOLNHIG-….
+  const slug = (String(name || '').toUpperCase().match(/[A-Z]+/) || [''])[0].slice(0, 10)
+  let tail = ''
+  for (let i = 0; i < 4; i++) tail += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
+  return `${slug || 'VOLUN'}-${tail}`
+}
+
 // Numeric one-time code for emailed recovery flows. From the CSPRNG, not
 // Math.random(): this is a credential, and a predictable one lets an attacker
 // guess the code that was mailed to someone else. Zero-padded so a leading

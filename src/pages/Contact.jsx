@@ -16,7 +16,9 @@ export default function Contact() {
   })
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
-  const [form, setForm] = useState({ name: '', email: '', subject: 'General question', accountCode: '', message: '' })
+  const [form, setForm] = useState({ name: '', email: '', subject: 'General question', accountCode: '', couponCode: '', message: '' })
+  // The offer currently running, so a typed coupon can be confirmed against it.
+  const [promo, setPromo] = useState(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [sendErr, setSendErr] = useState('')
@@ -39,6 +41,16 @@ export default function Contact() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => { if (data) setOfficeHours(data) })
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    let cancelled = false
+    fetch(`${apiUrl}/settings/promo`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled) setPromo(data?.offer || null) })
+      .catch(() => {})
+    return () => { cancelled = true }
   }, [])
 
   // The field is optional, so an empty box is fine — but a typed ID has to
@@ -70,6 +82,13 @@ export default function Contact() {
   // run leaves accountCheck null, and the server rejects a bad ID on submit.
   const accountCodeOk = accountCheck !== 'malformed' && accountCheck !== 'unknown'
 
+  // Confirmed against the running offer purely as reassurance. A code that
+  // doesn't match is never a reason to block the message — the sender may be
+  // quoting an older campaign, and refusing to accept a partnership enquiry
+  // over a mistyped promo code would be absurd. The admin sees what was typed.
+  const couponCode = form.couponCode.trim().toUpperCase()
+  const couponMatches = Boolean(couponCode && promo?.code && couponCode === promo.code)
+
   const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
   const onSubmit = async (e) => {
@@ -98,6 +117,7 @@ export default function Contact() {
           email: form.email,
           subject: form.subject,
           accountCode: form.accountCode,
+          couponCode: form.couponCode,
           message: form.message,
           turnstileToken: captchaToken,
         }),
@@ -105,7 +125,7 @@ export default function Contact() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send message.')
       setDone(true)
-      setForm({ name: '', email: '', subject: 'General question', accountCode: '', message: '' })
+      setForm({ name: '', email: '', subject: 'General question', accountCode: '', couponCode: '', message: '' })
       setAccountCheck(null)
       setCaptchaToken('')
       setCaptchaKey((k) => k + 1)
@@ -196,6 +216,28 @@ export default function Contact() {
                     </p>
                   )}
                   <p className="text-xs text-earth-500 mt-1">Already a VolunTrack customer? Enter the account ID from your invoice so we can pull up your account.</p>
+                </div>
+              )}
+              {form.subject === 'School or organization partnership' && (
+                <div>
+                  <label className="label">Coupon code <span className="text-earth-400 font-normal">(optional)</span></label>
+                  <input
+                    className="input font-mono uppercase tracking-wider"
+                    value={form.couponCode}
+                    onChange={onChange('couponCode')}
+                    placeholder={promo?.code || 'LAUNCH10'}
+                  />
+                  {couponMatches ? (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> {promo.headline} — {promo.percentOff}% off applies to your first invoice.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-earth-500 mt-1">
+                      {promo?.code
+                        ? `Have a coupon? Enter it here and we'll apply it when we set you up. ${promo.headline} is running now.`
+                        : "Have a coupon from a flyer, email or event? Enter it here and we'll apply it when we set you up."}
+                    </p>
+                  )}
                 </div>
               )}
               <div>
