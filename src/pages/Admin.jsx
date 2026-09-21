@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -8,6 +8,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
 import { generateInvoicePDF } from '@/lib/export.js'
+import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
@@ -171,6 +172,19 @@ export default function Admin() {
   const [savingPaymentInfo, setSavingPaymentInfo] = useState(false)
   const [loadingOfficeHours, setLoadingOfficeHours] = useState(false)
   const [savingOfficeHours, setSavingOfficeHours] = useState(false)
+  const [promoDraft, setPromoDraft] = useState({ ...NO_PROMO })
+  const [loadingPromo, setLoadingPromo] = useState(false)
+  const [savingPromo, setSavingPromo] = useState(false)
+  const [promoUsed, setPromoUsed] = useState(0)
+  const [invitePreview, setInvitePreview] = useState(null) // dry-run result, doubles as the confirm dialog
+  const [sendingInvites, setSendingInvites] = useState(false)
+  // The offer as it applies to the entity in the open invoice modal, straight
+  // from the server — { offer, isFirstInvoice, eligible, reason }.
+  const [invoicePromo, setInvoicePromo] = useState(null)
+  const [applyPromoToInvoice, setApplyPromoToInvoice] = useState(false)
+  // A referral credit this customer has earned, chosen instead of the join
+  // offer — the server rejects both on one invoice.
+  const [selectedCreditId, setSelectedCreditId] = useState('')
   const [invites, setInvites] = useState([])
   const [loadingInvites, setLoadingInvites] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -597,6 +611,31 @@ export default function Admin() {
     } catch {}
   }
 
+  // The live eligibility check for the entity whose invoice modal is open, with
+  // the billing period the admin currently has selected folded in — the server
+  // deliberately leaves that out, since the admin can still change it here.
+  const invoicePromoCheck = useMemo(() => {
+    if (!invoicePromo?.offer) return { eligible: false, reason: invoicePromo?.reason || null }
+    if (!invoicePromo.eligible) return { eligible: false, reason: invoicePromo.reason }
+    return promoAppliesTo(invoicePromo.offer, {
+      entityType: invoiceModal?.entityType,
+      billingPeriod: invoiceBillingPeriodDraft,
+      isFirstInvoice: invoicePromo.isFirstInvoice,
+      redemptionsUsed: invoicePromo.redemptionsUsed,
+    })
+  }, [invoicePromo, invoiceModal, invoiceBillingPeriodDraft])
+
+  // What the customer will actually be billed. Mirrors what the server
+  // recomputes on submit, via the same @promo module.
+  const invoiceTotals = useMemo(() => {
+    const base = Number(invoiceAmountDraft)
+    if (!Number.isFinite(base) || base <= 0) return null
+    const credit = (invoicePromo?.credits || []).find((c) => c.id === selectedCreditId)
+    if (credit) return applyPromoAmount(base, Number(credit.percent_off))
+    if (!applyPromoToInvoice || !invoicePromoCheck.eligible) return null
+    return applyPromoAmount(base, invoicePromo.offer.percentOff)
+  }, [invoiceAmountDraft, applyPromoToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
+
   const openInvoiceModal = (entityType, entity) => {
     const numericAmount = (entity.price_amount || '').replace(/[^0-9.]/g, '')
     setInvoiceModal({ entityType, entityId: entity.id, entityName: entity.name, accountCode: entity.account_code })
@@ -604,6 +643,24 @@ export default function Admin() {
     setInvoiceBillingPeriodDraft(entity.price_period || 'monthly')
     setInvoiceDescriptionDraft('')
     setInvoiceDueDateDraft(entity.payment_due_date ? String(entity.payment_due_date).slice(0, 10) : '')
+    setInvoicePromo(null)
+    setApplyPromoToInvoice(false)
+    setSelectedCreditId('')
+    ;(async () => {
+      try {
+        const token = localStorage.getItem('voluntrack:auth_token')
+        const res = await fetch(`${apiUrl}/invoices/admin/${entityType}/${entity.id}/promo`, { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) return
+        const data = await res.json()
+        setInvoicePromo(data)
+        // Pre-tick it: if an offer is running and this account qualifies, the
+        // admin almost certainly means to honour what the signup page promised.
+        if (data.eligible) setApplyPromoToInvoice(true)
+        // A customer with a credit waiting almost always means to spend it,
+        // and it can't be combined with the join offer anyway.
+        if (data.credits?.length) { setSelectedCreditId(data.credits[0].id); setApplyPromoToInvoice(false) }
+      } catch {}
+    })()
   }
 
   const sendInvoice = async () => {
@@ -621,17 +678,20 @@ export default function Admin() {
           billingPeriod: invoiceBillingPeriodDraft,
           description: invoiceDescriptionDraft.trim() || undefined,
           dueDate: invoiceDueDateDraft || undefined,
+          applyPromo: !selectedCreditId && applyPromoToInvoice && invoicePromoCheck.eligible,
+          referralCreditId: selectedCreditId || undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft('')
+      setInvoicePromo(null); setApplyPromoToInvoice(false); setSelectedCreditId('')
       if (data.invoice?.hasContactEmail === false) {
         setToastMessage('Invoice created — no contact email on file, nothing was emailed')
       } else if (data.invoice?.emailSent === false) {
         setToastMessage('Invoice created, but the email failed to send — check email settings')
       } else {
-        setToastMessage('Invoice sent')
+        setToastMessage(data.invoice?.discountLabel ? `Invoice sent — $${Number(data.invoice.amount).toFixed(2)} after ${data.invoice.discountPercent}% off` : 'Invoice sent')
       }
       setToast(true)
     } catch { setToastMessage('Failed to send invoice'); setToast(true) } finally { setSendingInvoice(false) }
@@ -672,6 +732,8 @@ export default function Admin() {
       entityName: historyModal?.entityName,
       accountCode: historyModal?.accountCode,
       amount: event.amount,
+      subtotal: event.subtotal,
+      discountLabel: event.discount_label,
       billingPeriod: event.billing_period,
       description: event.description,
       dueDate: event.due_date,
@@ -704,6 +766,76 @@ export default function Admin() {
     } catch { setToastMessage('Failed to update payment instructions'); setToast(true) } finally { setSavingPaymentInfo(false) }
   }
 
+  const loadPromo = useCallback(async () => {
+    setLoadingPromo(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/promo/admin`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) {
+        const data = await res.json()
+        setPromoDraft({ ...NO_PROMO, ...(data.offer || {}) })
+        setPromoUsed(data.redemptionsUsed || 0)
+      }
+    } catch {} finally { setLoadingPromo(false) }
+  }, [])
+
+  const savePromo = async () => {
+    setSavingPromo(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/promo`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          ...promoDraft,
+          endsAt: promoDraft.endsAt || '',
+          maxRedemptions: promoDraft.maxRedemptions === '' ? null : promoDraft.maxRedemptions,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setPromoDraft({ ...NO_PROMO, ...data.offer })
+      setPromoUsed(data.redemptionsUsed || 0)
+      setToastMessage(data.offer.enabled ? 'Offer is live' : 'Offer saved (not running)')
+      setToast(true)
+    } catch (e) { setToastMessage(e.message || 'Failed to save the offer'); setToast(true) } finally { setSavingPromo(false) }
+  }
+
+  // Two steps on purpose: this fans out real email to every customer, so the
+  // admin sees exactly who would be written to before anything is sent.
+  const previewInvites = async (force = false) => {
+    setSendingInvites(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/referral/admin/send-invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ dryRun: true, force }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setInvitePreview({ ...data, force })
+    } catch (e) { setToastMessage(e.message || 'Could not build the invite list'); setToast(true) } finally { setSendingInvites(false) }
+  }
+
+  const sendInvites = async () => {
+    setSendingInvites(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/referral/admin/send-invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ force: invitePreview?.force === true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setInvitePreview(null)
+      const failed = data.failed?.length ? `, ${data.failed.length} failed` : ''
+      setToastMessage(`Sent ${data.sent} invite${data.sent === 1 ? '' : 's'}${data.skipped ? `, ${data.skipped} skipped` : ''}${failed}`)
+      setToast(true)
+    } catch (e) { setToastMessage(e.message || 'Could not send the invites'); setToast(true) } finally { setSendingInvites(false) }
+  }
+
   const loadOfficeHours = useCallback(async () => {
     setLoadingOfficeHours(true)
     try {
@@ -723,9 +855,11 @@ export default function Admin() {
     if (tab === 'schools') loadSchools()
     else if (tab === 'invites') loadInvites()
     else if (tab === 'organizations') loadOrganizations()
-    else if (tab === 'settings') { loadOfficeHours(); loadPaymentInstructions() }
+    else if (tab === 'settings') { loadOfficeHours(); loadPaymentInstructions(); loadPromo() }
+    // The inbox annotates a quoted coupon with whether it is the live one.
+    else if (tab === 'inbox') loadPromo()
     else if (tab === 'api') loadApiInfo()
-  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadApiInfo])
+  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadPromo, loadApiInfo])
 
   // One box filters both customer lists — name, contact email, or the account
   // ID an admin has just read off an incoming bank transfer.
@@ -1600,6 +1734,204 @@ export default function Admin() {
           )}
         </Card>
         <Card>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <h3 className="font-display font-semibold text-base flex items-center gap-2">
+              <Tag className="w-4 h-4 text-brand-600" /> Join offer
+            </h3>
+            <label className="inline-flex items-center gap-2 text-sm shrink-0">
+              <input
+                type="checkbox"
+                checked={promoDraft.enabled}
+                onChange={(e) => setPromoDraft({ ...promoDraft, enabled: e.target.checked })}
+              />
+              Running
+            </label>
+          </div>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+            A discount for schools and organizations that sign up — shown on the home page, the signup pages and their
+            dashboards, and offered as a one-click discount when you invoice a new account. Switch it off to take it down
+            everywhere; invoices already sent keep the price they were sent at.
+          </p>
+          {loadingPromo ? (
+            <p className="text-sm text-earth-400 py-4">Loading…</p>
+          ) : (
+            <div className="space-y-3 max-w-sm">
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Headline</label>
+                <input
+                  type="text"
+                  value={promoDraft.headline}
+                  onChange={(e) => setPromoDraft({ ...promoDraft, headline: e.target.value })}
+                  placeholder="Launch offer"
+                  className="input mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Percent off</label>
+                  <input
+                    type="number" min="1" max="100" step="1"
+                    value={promoDraft.percentOff}
+                    onChange={(e) => setPromoDraft({ ...promoDraft, percentOff: e.target.value })}
+                    className="input mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Ends (optional)</label>
+                  <input
+                    type="date"
+                    value={promoDraft.endsAt || ''}
+                    onChange={(e) => setPromoDraft({ ...promoDraft, endsAt: e.target.value })}
+                    className="input mt-1"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Code (optional)</label>
+                  <input
+                    type="text"
+                    value={promoDraft.code}
+                    onChange={(e) => setPromoDraft({ ...promoDraft, code: e.target.value.toUpperCase() })}
+                    placeholder="LAUNCH10"
+                    className="input mt-1 font-mono tracking-wider"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Usage limit</label>
+                  <input
+                    type="number" min="1" step="1"
+                    value={promoDraft.maxRedemptions ?? ''}
+                    onChange={(e) => setPromoDraft({ ...promoDraft, maxRedemptions: e.target.value === '' ? null : Number(e.target.value) })}
+                    placeholder="Unlimited"
+                    className="input mt-1"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-earth-500 dark:text-earth-400 -mt-1">
+                The code is printed on the banner for customers to quote. A usage limit needs one, since claims are
+                counted against it.
+                {promoDraft.code && (
+                  <>
+                    {' '}<strong>{promoUsed}</strong> claimed
+                    {promoDraft.maxRedemptions
+                      ? ` of ${promoDraft.maxRedemptions} — ${promoRemaining(promoDraft, promoUsed)} left.`
+                      : ' so far.'}
+                    {' '}Voiding an invoice gives its use back.
+                  </>
+                )}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Who it&apos;s for</label>
+                  <select
+                    className="input mt-1"
+                    value={promoDraft.audience}
+                    onChange={(e) => setPromoDraft({ ...promoDraft, audience: e.target.value })}
+                  >
+                    {PROMO_AUDIENCES.map((a) => (
+                      <option key={a} value={a}>{a === 'both' ? 'Schools & organizations' : a === 'school' ? 'Schools only' : 'Organizations only'}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Billing period</label>
+                  <select
+                    className="input mt-1"
+                    value={promoDraft.appliesTo}
+                    onChange={(e) => setPromoDraft({ ...promoDraft, appliesTo: e.target.value })}
+                  >
+                    {PROMO_PERIODS.map((period) => (
+                      <option key={period} value={period}>{period === 'any' ? 'Any' : period === 'one_time' ? 'One-time' : period === 'monthly' ? 'Monthly' : 'Yearly'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={promoDraft.firstInvoiceOnly}
+                  onChange={(e) => setPromoDraft({ ...promoDraft, firstInvoiceOnly: e.target.checked })}
+                />
+                <span>First invoice only — an account that has already been invoiced can&apos;t claim it again.</span>
+              </label>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Where it shows</label>
+                <select
+                  className="input mt-1"
+                  value={promoDraft.visibility}
+                  onChange={(e) => setPromoDraft({ ...promoDraft, visibility: e.target.value })}
+                >
+                  {PROMO_VISIBILITIES.map((v) => (
+                    <option key={v} value={v}>
+                      {v === 'public' ? 'Public — home page, signup pages, dashboards' : 'Invite only — never shown on the site'}
+                    </option>
+                  ))}
+                </select>
+                {promoDraft.visibility === 'invite' && (
+                  <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                    Nothing renders on the landing page, signup pages or About. Existing customers still see it on their
+                    own dashboard, which is where they get their referral code.
+                  </p>
+                )}
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={promoDraft.referral}
+                  onChange={(e) => setPromoDraft({ ...promoDraft, referral: e.target.checked })}
+                />
+                <span>
+                  Referral — a customer who sends someone new also gets {promoDraft.percentOff || 10}% off their next
+                  invoice, as well as the discount for whoever joins.
+                </span>
+              </label>
+              <div>
+                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Details</label>
+                <textarea
+                  rows={2}
+                  value={promoDraft.details}
+                  onChange={(e) => setPromoDraft({ ...promoDraft, details: e.target.value })}
+                  placeholder={`Get ${promoLabel(promoDraft)} when your school joins.`}
+                  className="input mt-1"
+                />
+                <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                  Leave blank and the banner reads &ldquo;Get {promoLabel(promoDraft)}.&rdquo;
+                </p>
+              </div>
+              <button onClick={savePromo} disabled={savingPromo} className="btn-primary btn-sm">
+                {savingPromo ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          )}
+        </Card>
+        <Card>
+          <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+            <Gift className="w-4 h-4 text-brand-600" /> Invite existing customers
+          </h3>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+            Email every school and organization their own referral code so they can pass it on. Each one gets a separate
+            message — never a shared thread — and it is sent as an automated email they can&apos;t reply to. Anyone already
+            invited is skipped, so sending twice won&apos;t mail them again.
+          </p>
+          {!promoDraft.referral || !promoDraft.enabled ? (
+            <p className="text-sm text-earth-500 dark:text-earth-400">
+              Turn on a running offer with <strong>Referral</strong> ticked above, then save, to send invites.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => previewInvites(false)} disabled={sendingInvites} className="btn-primary btn-sm inline-flex items-center gap-1.5">
+                <Send className="w-3.5 h-3.5" /> {sendingInvites ? 'Working…' : 'Preview recipients'}
+              </button>
+              <button onClick={() => previewInvites(true)} disabled={sendingInvites} className="btn-ghost btn-sm">
+                Include already-invited
+              </button>
+            </div>
+          )}
+        </Card>
+        <Card>
           <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-brand-600" /> Payment instructions
           </h3>
@@ -1842,6 +2174,14 @@ export default function Admin() {
                     <div className="mt-1 text-xs text-earth-500">
                       Customer ID: <span className="font-mono">{c.account_code}</span>
                       {c.account_name ? ` · ${c.account_name}` : ' · no matching account'}
+                    </div>
+                  )}
+                  {c.coupon_code && (
+                    <div className="mt-1 text-xs text-earth-500">
+                      Coupon: <span className="font-mono">{c.coupon_code}</span>
+                      {promoDraft.code
+                        ? (c.coupon_code === promoDraft.code ? ' · matches the running offer' : ' · does not match the running offer')
+                        : ' · no offer is running'}
                     </div>
                   )}
                   <p className="mt-2 text-sm text-earth-800 dark:text-earth-200 whitespace-pre-wrap">{c.message}</p>
@@ -2189,6 +2529,32 @@ export default function Admin() {
         </div>
       )}
 
+      {invitePreview && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setInvitePreview(null)}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2"><Gift className="w-4 h-4 text-brand-400" /> Send referral invites</h3>
+            <p className="text-sm text-earth-400 mb-3">
+              {invitePreview.wouldSend === 0
+                ? 'Nobody to send to — everyone listed has already been invited.'
+                : `${invitePreview.wouldSend} separate email${invitePreview.wouldSend === 1 ? '' : 's'} will be sent, one per customer.`}
+            </p>
+            <div className="max-h-60 overflow-y-auto rounded-xl bg-earth-500/5 p-2 space-y-1">
+              {invitePreview.recipients.map((r) => (
+                <div key={`${r.entityType}:${r.entityId}`} className={`text-xs flex items-center justify-between gap-2 ${r.skipped ? 'opacity-50' : ''}`}>
+                  <span className="min-w-0 truncate">{r.name} <span className="text-earth-500">· {r.email}</span></span>
+                  <span className="font-mono shrink-0">{r.skipped || r.code}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setInvitePreview(null)} className="btn-ghost flex-1">Cancel</button>
+              <button onClick={sendInvites} disabled={sendingInvites || invitePreview.wouldSend === 0} className="btn-primary flex-1">
+                {sendingInvites ? 'Sending…' : `Send ${invitePreview.wouldSend}`}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
       {invoiceModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setInvoiceModal(null)}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -2234,10 +2600,73 @@ export default function Admin() {
                 <label className="label">Due date (optional)</label>
                 <input type="date" className="input" value={invoiceDueDateDraft} onChange={(e) => setInvoiceDueDateDraft(e.target.value)} />
               </div>
+              {invoicePromo?.credits?.length > 0 && (
+                <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
+                  <p className="font-medium flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 text-brand-400" /> Referral credits</p>
+                  <div className="mt-2 space-y-1.5">
+                    {invoicePromo.credits.map((c) => (
+                      <label key={c.id} className="flex items-start gap-2">
+                        <input
+                          type="radio"
+                          name="referral-credit"
+                          className="mt-0.5"
+                          checked={selectedCreditId === c.id}
+                          onChange={() => { setSelectedCreditId(c.id); setApplyPromoToInvoice(false) }}
+                        />
+                        <span>{Number(c.percent_off)}% off — for referring {c.referred_name || 'a new customer'}</span>
+                      </label>
+                    ))}
+                    <label className="flex items-start gap-2 text-earth-500">
+                      <input
+                        type="radio"
+                        name="referral-credit"
+                        className="mt-0.5"
+                        checked={selectedCreditId === ''}
+                        onChange={() => setSelectedCreditId('')}
+                      />
+                      <span>Don&apos;t use a credit</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+              {invoicePromo?.offer && !selectedCreditId && (
+                <div className={`rounded-xl p-3 text-sm ${invoicePromoCheck.eligible ? 'bg-brand-500/10 border border-brand-500/30' : 'bg-earth-500/5'}`}>
+                  <label className={`flex items-start gap-2 ${invoicePromoCheck.eligible ? '' : 'opacity-60'}`}>
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      disabled={!invoicePromoCheck.eligible}
+                      checked={applyPromoToInvoice && invoicePromoCheck.eligible}
+                      onChange={(e) => setApplyPromoToInvoice(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-medium">Apply {invoicePromo.offer.headline || 'the join offer'}</span>
+                      {' — '}{promoLabel(invoicePromo.offer)}
+                      {invoicePromo.offer.code && (
+                        <span className="text-earth-500"> · <span className="font-mono">{invoicePromo.offer.code}</span></span>
+                      )}
+                    </span>
+                  </label>
+                  {typeof invoicePromo.remaining === 'number' && (
+                    <p className="text-xs text-earth-500 mt-1.5 ml-6">
+                      {invoicePromo.remaining} of {invoicePromo.offer.maxRedemptions} uses left.
+                    </p>
+                  )}
+                  {!invoicePromoCheck.eligible && invoicePromoCheck.reason && (
+                    <p className="text-xs text-earth-500 mt-1.5 ml-6">{invoicePromoCheck.reason}</p>
+                  )}
+                  {invoiceTotals && (
+                    <p className="text-xs text-earth-600 dark:text-earth-300 mt-1.5 ml-6">
+                      ${invoiceTotals.subtotal.toFixed(2)} − ${invoiceTotals.discountAmount.toFixed(2)} ={' '}
+                      <strong>${invoiceTotals.total.toFixed(2)}</strong> due
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2">
                 <button onClick={() => setInvoiceModal(null)} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={sendInvoice} className="btn-primary flex-1" disabled={sendingInvoice || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()}>
-                  {sendingInvoice ? 'Sending…' : 'Send invoice'}
+                  {sendingInvoice ? 'Sending…' : invoiceTotals ? `Send $${invoiceTotals.total.toFixed(2)}` : 'Send invoice'}
                 </button>
               </div>
             </div>

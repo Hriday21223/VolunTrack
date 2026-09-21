@@ -1,9 +1,10 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { Mail, Lock, User as UserIcon, ArrowRight, School, Hash } from 'lucide-react'
+import { Mail, Lock, User as UserIcon, ArrowRight, School, Hash, Tag } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
+import PromoBanner from '@/components/PromoBanner.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -21,7 +22,7 @@ export default function SchoolRegister() {
   const { refreshUser } = useAuth()
   const [searchParams] = useSearchParams()
   const inviteToken = searchParams.get('token')
-  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', referralCode: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
@@ -85,6 +86,8 @@ export default function SchoolRegister() {
           <span className="font-display font-bold text-2xl">VolunTrack</span>
         </Link>
 
+        <PromoBanner audience="school" className="mb-4" />
+
         <Card padded={false} className="p-7">
           <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your school' : 'Register your school'}</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
@@ -123,6 +126,20 @@ export default function SchoolRegister() {
                 <input type="text" className="input pl-9" placeholder="cisd-12345" value={form.pin} onChange={onChange('pin')} required />
               </div>
               <p className="text-xs text-earth-400 mt-1">Students will use this code to link their accounts.</p>
+            </div>
+            <div>
+              <label className="label">Referral code <span className="text-earth-400 font-normal">(optional)</span></label>
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
+                <input
+                  type="text"
+                  className="input pl-9 font-mono uppercase tracking-wider"
+                  placeholder="LINCOLN-R7K2"
+                  value={form.referralCode}
+                  onChange={onChange('referralCode')}
+                />
+              </div>
+              <p className="text-xs text-earth-400 mt-1">Were you invited by another school? Enter their code and you both get a discount.</p>
             </div>
 
             <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300">

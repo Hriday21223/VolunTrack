@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Gift, Zap, Menu, X } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
+import PromoBanner from '@/components/PromoBanner.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -236,9 +237,19 @@ export default function About() {
         <main className="max-w-[1400px] mx-auto px-4 md:px-8 pb-20">
 
           <section data-animate className="mt-16 md:mt-24 text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand-700/30 bg-brand-900/20 px-4 py-1.5 text-xs font-medium text-brand-300 mb-6">
-              <Zap className="w-3.5 h-3.5 animate-float" /> Free for students — no credit card needed
-            </div>
+            {/* A running offer takes the spot above the headline; the standing
+                "free for students" pill is the fallback when there is none, so
+                the hero never opens with a hole. */}
+            <PromoBanner
+              compact
+              showRemaining={false}
+              className="inline-block text-left mb-6"
+              fallback={(
+                <div className="inline-flex items-center gap-2 rounded-full border border-brand-700/30 bg-brand-900/20 px-4 py-1.5 text-xs font-medium text-brand-300 mb-6">
+                  <Zap className="w-3.5 h-3.5 animate-float" /> Free for students — no credit card needed
+                </div>
+              )}
+            />
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
               Track your volunteer hours, earn rewards, and showcase your impact.
             </h1>
@@ -253,7 +264,7 @@ export default function About() {
                 Sign in
               </Link>
             </div>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-5 text-sm text-earth-400">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-5 text-sm text-earth-400">
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> No credit card</span>
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Private by design</span>
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Export anytime</span>

@@ -9,6 +9,8 @@ import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
+import PromoBanner from '@/components/PromoBanner.jsx'
+import ReferralCard from '@/components/ReferralCard.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -138,6 +140,8 @@ export default function OrganizationDashboard() {
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
       )}
+      {tab === 'schools' && <PromoBanner audience="organization" className="mb-4" />}
+      {tab === 'schools' && <ReferralCard className="mb-4" />}
       {tab === 'schools' && accountCode && (
         <Card className="mb-4">
           <PaymentDetails accountCode={accountCode} />
@@ -150,7 +154,16 @@ export default function OrganizationDashboard() {
             {invoices.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between gap-3 text-sm p-3 rounded-xl bg-earth-500/5">
                 <div className="min-w-0">
-                  <p className="font-medium">{inv.invoice_number} <span className="text-earth-500 font-normal">${Number(inv.amount).toFixed(2)}</span></p>
+                  <p className="font-medium">
+                    {inv.invoice_number}{' '}
+                    {inv.discount_label && Number(inv.subtotal) > Number(inv.amount) && (
+                      <span className="text-earth-400 font-normal line-through mr-1">${Number(inv.subtotal).toFixed(2)}</span>
+                    )}
+                    <span className="text-earth-500 font-normal">${Number(inv.amount).toFixed(2)}</span>
+                  </p>
+                  {inv.discount_label && (
+                    <p className="text-xs text-brand-600 dark:text-brand-400 mt-0.5">{inv.discount_label}</p>
+                  )}
                   <p className="text-xs text-earth-500 mt-0.5">
                     {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
                   </p>
@@ -178,6 +191,8 @@ export default function OrganizationDashboard() {
                       entityName: orgName,
                       accountCode,
                       amount: inv.amount,
+                      subtotal: inv.subtotal,
+                      discountLabel: inv.discount_label,
                       billingPeriod: inv.billing_period,
                       description: inv.description,
                       dueDate: inv.due_date,
@@ -335,6 +350,8 @@ export default function OrganizationDashboard() {
             entityName: orgName,
             accountCode,
             amount: previewInvoice.amount,
+            subtotal: previewInvoice.subtotal,
+            discountLabel: previewInvoice.discount_label,
             billingPeriod: previewInvoice.billing_period,
             description: previewInvoice.description,
             dueDate: previewInvoice.due_date,

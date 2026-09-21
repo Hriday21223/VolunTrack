@@ -91,7 +91,7 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
 const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
 
 /** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
-export async function generateInvoicePDF({ invoiceNumber, entityName, accountCode, amount, billingPeriod, description, dueDate, createdAt, returnBlob }) {
+export async function generateInvoicePDF({ invoiceNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, returnBlob }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
 
@@ -124,10 +124,19 @@ export async function generateInvoicePDF({ invoiceNumber, entityName, accountCod
   }
 
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
+  // A discounted invoice has to show its own arithmetic: list price, what came
+  // off, and what is owed. Without a discount the table stays the single line
+  // it has always been.
+  const discounted = Boolean(discountLabel) && Number(subtotal) > Number(amount)
+  const listPrice = discounted ? Number(subtotal) : Number(amount)
+  const body = [[description || 'VolunTrack subscription', `$${listPrice.toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`]]
+  if (discounted) {
+    body.push([discountLabel, `-$${(Number(subtotal) - Number(amount)).toFixed(2)}`])
+  }
   autoTable(doc, {
     startY: accountCode ? 164 : 150,
     head: [['Description', 'Amount']],
-    body: [[description || 'VolunTrack subscription', `$${Number(amount).toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`]],
+    body,
     headStyles: { fillColor: [63, 131, 68] },
     styles: { fontSize: 10, cellPadding: 8 },
     columnStyles: { 1: { halign: 'right' } },

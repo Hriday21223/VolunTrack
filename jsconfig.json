@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
-    "paths": { "@/*": ["src/*"] },
+    "paths": { "@/*": ["src/*"], "@promo": ["server/promo.js"] },
     "jsx": "preserve",
     "module": "ESNext",
     "moduleResolution": "Bundler",

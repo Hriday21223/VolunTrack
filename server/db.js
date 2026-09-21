@@ -1,5 +1,5 @@
 import pg from 'pg'
-import { generateAccountCode } from './ids.js'
+import { generateAccountCode, generateReferralCode } from './ids.js'
 
 const { Pool } = pg
 
@@ -282,6 +282,26 @@ async function backfillAccountCodes(table) {
   }
 }
 
+// A school's shareable referral code. Same shape as backfillAccountCodes: runs
+// on boot, skips rows that already have one, and leans on the UNIQUE index
+// rather than the pre-check for correctness.
+async function backfillReferralCodes(table) {
+  const { rows } = await query(`SELECT id, name FROM ${table} WHERE referral_code IS NULL`)
+  for (const row of rows) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await query(
+          `UPDATE ${table} SET referral_code = $1 WHERE id = $2 AND referral_code IS NULL`,
+          [generateReferralCode(row.name), row.id],
+        )
+        break
+      } catch (error) {
+        if (error?.code !== '23505') throw error
+      }
+    }
+  }
+}
+
 export async function initSchema() {
   if (!hasDatabase()) return false
   await query(SCHEMA)
@@ -391,6 +411,13 @@ export async function initSchema() {
   // contact form. Free text from an unauthenticated form — a hint for the
   // admin, never proof of identity, so nothing is gated on it.
   try { await query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS account_code TEXT`) } catch {}
+
+  // A coupon code the sender says they have. Like account_code it is free text
+  // from an unauthenticated form — a hint for the admin, never a claim on a
+  // discount. Deliberately NOT validated against the running offer: refusing to
+  // accept somebody's message because they mistyped a promo code would be a
+  // strange way to treat an incoming partnership enquiry.
+  try { await query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS coupon_code TEXT`) } catch {}
 
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS account_code TEXT UNIQUE`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS account_code TEXT UNIQUE`) } catch {}
@@ -517,6 +544,72 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // Join-offer discount (see server/promo.js). `amount` stays what the customer
+  // actually owes, so every existing reader — the paid/unpaid gate, the emails,
+  // payment_events — keeps working untouched; `subtotal` is the list price it
+  // was taken off. The percentage and label are frozen onto the row rather than
+  // read back from site_settings, so editing or ending the offer can never
+  // restate an invoice that has already been sent.
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS subtotal NUMERIC(10,2)`) } catch {}
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5,2)`) } catch {}
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_label TEXT`) } catch {}
+  // The code an invoice was discounted under. This is also the redemption
+  // ledger: "how many of the 8 uses are gone" is a COUNT over non-void invoices
+  // carrying the code, so voiding a mistaken invoice hands the use back
+  // automatically and there is no second counter to drift out of step.
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_code TEXT`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_invoices_discount_code ON invoices(discount_code) WHERE discount_code IS NOT NULL`) } catch {}
+  // Which referral credit paid for this invoice's discount, when one did. Set
+  // instead of discount_code, never alongside it: an invoice carries the join
+  // offer or a referral credit, not both compounded.
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS referral_id TEXT`) } catch {}
+
+  // Referral programme (see server/routes/referral.js). Every school/org gets a
+  // shareable code; a new customer that quotes one creates a `referrals` row.
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE`) } catch {}
+  try { await backfillReferralCodes('schools') } catch (error) { console.error('school referral_code backfill failed:', error) }
+  try { await backfillReferralCodes('organizations') } catch (error) { console.error('organization referral_code backfill failed:', error) }
+
+  // One row per referred customer. `percent_off` is frozen at the moment the
+  // referral is recorded, for the same reason invoices freeze their discount:
+  // editing the offer later must not restate what somebody was already
+  // promised. Lifecycle is pending -> earned (the referred customer has been
+  // invoiced, so the reward is real) -> redeemed (applied to the referrer's own
+  // invoice); 'void' is the escape hatch for a referral entered in error.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS referrals (
+        id                  TEXT PRIMARY KEY,
+        code                TEXT NOT NULL,
+        referrer_type       TEXT NOT NULL CHECK (referrer_type IN ('school','organization')),
+        referrer_id         TEXT NOT NULL,
+        referred_type       TEXT NOT NULL CHECK (referred_type IN ('school','organization')),
+        referred_id         TEXT NOT NULL,
+        percent_off         NUMERIC(5,2) NOT NULL,
+        status              TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','earned','redeemed','void')),
+        earned_at           TIMESTAMPTZ,
+        redeemed_invoice_id TEXT REFERENCES invoices(id) ON DELETE SET NULL,
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (referred_type, referred_id)
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_type, referrer_id, status)`) } catch {}
+
+  // When each customer was last sent the invite email, so a second blast can
+  // skip anyone already contacted rather than mailing them twice.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS referral_invite_sends (
+        entity_type TEXT NOT NULL CHECK (entity_type IN ('school','organization')),
+        entity_id   TEXT NOT NULL,
+        sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (entity_type, entity_id)
+      )
+    `)
+  } catch {}
+
   try { await query(`CREATE INDEX IF NOT EXISTS idx_payment_events_entity ON payment_events(entity_type, entity_id, created_at DESC)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_invoices_entity ON invoices(entity_type, entity_id, created_at DESC)`) } catch {}
 
