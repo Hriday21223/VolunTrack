@@ -138,6 +138,14 @@ async function main() {
     throw err
   }
 
+  // Renders are buffered and written only once every route is done. Writing
+  // as we go corrupts the run: outputPathFor('/') overwrites dist/index.html,
+  // which is also what the server falls back to for a route with no file of
+  // its own, so /about would be served the already-rendered home page. That
+  // HTML carries an h1, so the wait below resolves instantly and page.content()
+  // captures the home page before React re-renders for the new URL — every
+  // route after the first came out a copy of '/'.
+  const rendered = []
   try {
     for (const route of ROUTES) {
       const url = `http://127.0.0.1:${port}${route}`
@@ -163,7 +171,10 @@ async function main() {
         }
       }
 
-      const outPath = outputPathFor(route)
+      rendered.push({ route, html, outPath: outputPathFor(route) })
+    }
+
+    for (const { route, html, outPath } of rendered) {
       await mkdir(dirname(outPath), { recursive: true })
       await writeFile(outPath, html)
       console.log(`[prerender] ${route} -> ${outPath.replace(DIST_DIR, 'dist')}`)
