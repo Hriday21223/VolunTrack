@@ -712,7 +712,22 @@ router.get('/info', limiter, requireDb, async (req, res) => {
       rows = r.rows
     }
     if (rows.length === 0) return res.status(404).json({ error: 'No school found.' })
-    return res.json({ school: { id: rows[0].id, name: rows[0].name, pin: rows[0].pin, paymentStatus: rows[0].payment_status, paymentNotes: rows[0].payment_notes, paidAt: rows[0].paid_at, paymentDueDate: rows[0].payment_due_date } })
+    const school = rows[0]
+
+    // The join code and the payment state are the school's own business. This
+    // route has to stay unauthenticated so someone can look a school up by its
+    // code before they have an account, but that means anyone holding a school
+    // id could otherwise read the code back out — and a linked student has no
+    // use for it beyond passing it on. So the public shape is just id + name,
+    // and the rest is added only for the school's own admins.
+    let privileged = req.auth?.role === 'admin'
+    if (!privileged && (req.auth?.role === 'school' || req.auth?.role === 'school_staff')) {
+      const me = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+      privileged = me.rows[0]?.school_id === school.id
+    }
+    if (!privileged) return res.json({ school: { id: school.id, name: school.name } })
+
+    return res.json({ school: { id: school.id, name: school.name, pin: school.pin, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
   }
