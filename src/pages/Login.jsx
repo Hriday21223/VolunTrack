@@ -121,6 +121,15 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
+    // An SSO student presses the same Sign in button as everyone else, so the
+    // submit has to hand off to the IdP rather than post a password. ssoStart()
+    // is a full-page navigation, so nothing after it runs and `busy` never
+    // needs clearing — it just holds the button in its pending state.
+    if (ssoActive) {
+      setBusy(true)
+      ssoStart(offeredSso.connectionId, loc.state?.from?.pathname || '/dashboard')
+      return
+    }
     setBusy(true)
     try {
       if (mode === 'pin') {
@@ -383,28 +392,13 @@ export default function Login() {
                   </div>
                 </div>
                 {ssoActive && (
-                  <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-                    <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
-                      Your school uses single sign-on — no VolunTrack password needed.
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-primary w-full py-3 text-sm font-semibold"
-                      onClick={() => ssoStart(offeredSso.connectionId, loc.state?.from?.pathname || '/dashboard')}
-                    >
-                      <Building2 className="w-4 h-4" /> Continue with {offeredSso.displayName}
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full text-center text-sm text-sky-200 hover:text-white"
-                      onClick={() => setForcePassword(true)}
-                    >
-                      Use a VolunTrack password instead
-                    </button>
+                  <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                    <span className="inline-flex items-center gap-2 font-semibold"><Building2 className="w-4 h-4" /> {offeredSso.displayName}</span>
+                    <div className="mt-1">Your school uses single sign-on — leave the password blank and press Sign in.</div>
                   </div>
                 )}
 
-                {ssoActive ? null : isAdmin && mode === 'password' ? (
+                {isAdmin && mode === 'password' ? (
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                     Admin — click Sign in to continue (no password needed).
                   </div>
@@ -412,42 +406,60 @@ export default function Login() {
                   <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center justify-between gap-4">
                       <label className="label text-slate-300" htmlFor="credential">{mode === 'pin' ? '4-digit PIN' : 'Password'}</label>
-                      <Link to={mode === 'pin' ? '/reset-pin' : '/forgot-password'} className="text-xs text-sky-200 hover:text-white">
-                        {mode === 'pin' ? 'Forgot PIN?' : 'Forgot?'}
-                      </Link>
+                      {/* An SSO student has no VolunTrack password, so a reset link would lead nowhere. */}
+                      {!ssoActive && (
+                        <Link to={mode === 'pin' ? '/reset-pin' : '/forgot-password'} className="text-xs text-sky-200 hover:text-white">
+                          {mode === 'pin' ? 'Forgot PIN?' : 'Forgot?'}
+                        </Link>
+                      )}
                     </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <input
                         id="credential"
                         type={showCredential ? 'text' : 'password'}
-                        required
+                        required={!ssoActive}
+                        disabled={ssoActive}
                         autoComplete={mode === 'pin' ? 'one-time-code' : 'current-password'}
                         inputMode={mode === 'pin' ? 'numeric' : 'text'}
                         pattern={mode === 'pin' ? '[0-9]*' : undefined}
-                        className="input pl-9 pr-10 bg-slate-900/80 text-white border-white/10"
-                        placeholder={mode === 'pin' ? '••••' : '••••••••'}
-                        value={mode === 'pin' ? pin : password}
+                        className={`input pl-9 pr-10 bg-slate-900/80 text-white border-white/10${ssoActive ? ' opacity-50 cursor-not-allowed' : ''}`}
+                        placeholder={ssoActive ? 'Not needed for single sign-on' : mode === 'pin' ? '••••' : '••••••••'}
+                        value={ssoActive ? '' : mode === 'pin' ? pin : password}
                         onChange={(e) => (mode === 'pin' ? setPin(e.target.value) : setPassword(e.target.value))}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowCredential((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                        tabIndex={-1}
-                        title={showCredential ? 'Hide' : 'Show'}
-                      >
-                        {showCredential ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                      {!ssoActive && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCredential((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                          tabIndex={-1}
+                          title={showCredential ? 'Hide' : 'Show'}
+                        >
+                          {showCredential ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
 
-                {!ssoActive && (
-                  <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold animate-fade-in-up" style={{ animationDelay: '400ms' }} disabled={busy}>
-                    {busy ? (mode === 'pin' ? 'Unlocking…' : 'Signing in…') : (mode === 'pin' ? <>Unlock <ArrowRight className="w-4 h-4" /></> : <>Sign in <ArrowRight className="w-4 h-4" /></>)}
+                <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold animate-fade-in-up" style={{ animationDelay: '400ms' }} disabled={busy}>
+                  {busy
+                    ? (ssoActive ? 'Redirecting…' : mode === 'pin' ? 'Unlocking…' : 'Signing in…')
+                    : (mode === 'pin' ? <>Unlock <ArrowRight className="w-4 h-4" /></> : <>Sign in <ArrowRight className="w-4 h-4" /></>)}
+                </button>
+
+                {/* A school admin or staff member on the SSO domain still needs the
+                    password form, so this escape hatch must stay reachable. */}
+                {ssoActive && (
+                  <button
+                    type="button"
+                    className="w-full text-center text-sm text-sky-200 hover:text-white"
+                    onClick={() => setForcePassword(true)}
+                  >
+                    Use a VolunTrack password instead
                   </button>
                 )}
               </form>
