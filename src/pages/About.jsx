@@ -242,7 +242,6 @@ export default function About() {
                 the hero never opens with a hole. */}
             <PromoBanner
               compact
-              showRemaining={false}
               className="inline-block text-left mb-6"
               fallback={(
                 <div className="inline-flex items-center gap-2 rounded-full border border-brand-700/30 bg-brand-900/20 px-4 py-1.5 text-xs font-medium text-brand-300 mb-6">

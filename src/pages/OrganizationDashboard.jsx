@@ -9,7 +9,6 @@ import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
-import PromoBanner from '@/components/PromoBanner.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -140,7 +139,6 @@ export default function OrganizationDashboard() {
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
       )}
-      {tab === 'schools' && <PromoBanner audience="organization" className="mb-4" />}
       {tab === 'schools' && <ReferralCard className="mb-4" />}
       {tab === 'schools' && accountCode && (
         <Card className="mb-4">
