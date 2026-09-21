@@ -5,7 +5,7 @@
  *
  * This module is pure (no db, no env, no I/O) and is imported by client code
  * through the `@promo` alias (vite.config.js / jsconfig.json), because the
- * banner on the signup page, the admin's invoice preview, and
+ * banner on the landing page, the admin's invoice preview, and
  * `POST /api/invoices/admin` — which is what actually charges the discounted
  * amount — have to agree to the cent. Two copies of this arithmetic drift, and
  * the drift shows up as a school being billed something other than the number

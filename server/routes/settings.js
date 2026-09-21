@@ -152,8 +152,8 @@ export async function countPromoRedemptions(code) {
   }
 }
 
-// Public: the signup pages, the home page and school/org dashboards all render
-// the same banner. Returns `{ offer: null }` when nothing is running — there is
+// Public: the landing-page hero renders this, and nothing else does — see
+// CLAUDE.md for why the offer is kept off the signup pages and dashboards. Returns `{ offer: null }` when nothing is running — there is
 // nothing sensitive here, it is marketing copy the admin chose to publish.
 router.get('/promo', limiter, async (_req, res) => {
   if (!hasDatabase()) return res.json({ offer: null })

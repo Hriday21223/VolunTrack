@@ -80,7 +80,7 @@ export default defineConfig(({ mode }) => {
       alias: [
         { find: '@', replacement: resolve('./src') },
         // The join offer's rules and arithmetic have to be applied identically
-        // in the browser and on the server: the signup banner quotes a price,
+        // in the browser and on the server: the landing-page banner quotes a price,
         // and POST /api/invoices/admin is what actually charges it. Two copies
         // drift, and the drift shows up as a school being billed something
         // other than the number it was shown. One narrow alias to that single

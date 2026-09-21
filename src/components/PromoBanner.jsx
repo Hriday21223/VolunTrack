@@ -5,14 +5,14 @@ import { promoLabel } from '@promo'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 /**
- * The admin's current join offer, rendered wherever a school or organization
- * might be deciding whether to sign up. `GET /api/settings/promo` already
+ * The admin's current join offer. Rendered in one place — the landing-page
+ * hero — by design; see CLAUDE.md before adding another. `GET /api/settings/promo` already
  * filters out a disabled or expired offer and returns `null`, so this renders
  * nothing at all unless something is genuinely running — including when there
  * is no backend configured.
  *
  * `audience` narrows it further for a page that only one kind of customer
- * sees: the school signup page shouldn't advertise an organizations-only deal.
+ * sees, so a schools-only deal isn't shown where only organizations look.
  *
  * `fallback` is what to render instead when nothing is running — the landing
  * page hero puts the banner where a standing pill used to be, and that pill has
