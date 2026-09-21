@@ -14,3 +14,6 @@ dev-dist
 
 # Local Netlify folder
 .netlify
+
+# Private project notes (test-account credentials) — never commit
+CLAUDE.local.md

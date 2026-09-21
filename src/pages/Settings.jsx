@@ -890,8 +890,9 @@ export default function Settings() {
                 <div className="space-y-3">
                   {schoolInfo && (
                     <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                      {/* Name only — this block is student-only (canJoinSchool),
+                          and a linked student has no use for the join code. */}
                       <p className="font-medium">{schoolInfo.name}</p>
-                      <p className="text-earth-400">Code: <span className="font-mono">{schoolInfo.pin}</span></p>
                     </div>
                   )}
                   <p className="text-sm text-earth-500 dark:text-earth-400">Upload verification PDFs for approval.</p>

@@ -35,6 +35,9 @@ export default function Dashboard() {
   const { logs, goals, earned } = useData()
   const [searchParams] = useSearchParams()
   const [schoolInfo, setSchoolInfo] = useState(null)
+  // Who the school card's admin details are for. The server also withholds
+  // them from anyone else, so this only decides what is worth rendering.
+  const isSchoolAdmin = ['school', 'school_staff', 'admin'].includes(user?.role)
   const [publicTasks, setPublicTasks] = useState([])
   const [dashTab, setDashTab] = useState('home')
   const [schoolMessages, setSchoolMessages] = useState([])
@@ -86,9 +89,13 @@ export default function Dashboard() {
     if (!user?.schoolId) return
     ;    (async () => {
       try {
-        const infoRes = await fetch(`${apiUrl}/school/info?id=${user.schoolId}`)
-        if (infoRes.ok) { const d = await infoRes.json(); if (d.school) setSchoolInfo(d.school) }
         const token = localStorage.getItem('voluntrack:auth_token')
+        // Sent authenticated so a school admin still gets the code and payment
+        // fields back; for everyone else the server returns just id + name.
+        const infoRes = await fetch(`${apiUrl}/school/info?id=${user.schoolId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (infoRes.ok) { const d = await infoRes.json(); if (d.school) setSchoolInfo(d.school) }
         const msgRes = await fetch(`${apiUrl}/school/messages`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -245,8 +252,13 @@ export default function Dashboard() {
               <School className="w-5 h-5 text-brand-600" />
               <div>
                 <p className="font-medium text-sm">{schoolInfo.name}</p>
-                <p className="text-xs text-earth-400">Code: <span className="font-mono">{schoolInfo.pin}</span></p>
-                {schoolInfo.paymentStatus && (
+                {/* The join code, the payment badge and the school dashboard
+                    link are all school-admin business — a student is only
+                    being told which school they are linked to. */}
+                {isSchoolAdmin && schoolInfo.pin && (
+                  <p className="text-xs text-earth-400">Code: <span className="font-mono">{schoolInfo.pin}</span></p>
+                )}
+                {isSchoolAdmin && schoolInfo.paymentStatus && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     schoolInfo.paymentStatus === 'paid'
                       ? 'bg-emerald-500/10 text-emerald-400'
@@ -256,11 +268,11 @@ export default function Dashboard() {
                   </span>
                 )}
               </div>
-              <Link to="/school/dashboard" className="btn-secondary ml-auto text-sm">Dashboard</Link>
+              {isSchoolAdmin && <Link to="/school/dashboard" className="btn-secondary ml-auto text-sm">Dashboard</Link>}
             </div>
           </Card>
 
-          {schoolInfo?.paymentDueDate && (() => {
+          {isSchoolAdmin && schoolInfo?.paymentDueDate && (() => {
             const daysLeft = Math.ceil((new Date(schoolInfo.paymentDueDate) - new Date()) / (1000 * 60 * 60 * 24))
             if (daysLeft <= 10 && daysLeft >= 0) {
               return (
