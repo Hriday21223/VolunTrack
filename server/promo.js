@@ -140,10 +140,13 @@ export function promoRemaining(offer, redemptionsUsed = 0) {
 export function publicPromo(offer, redemptionsUsed = 0, now = new Date()) {
   if (!isPromoLive(offer, now)) return null
   if (offer.visibility === 'invite') return null
-  const remaining = promoRemaining(offer, redemptionsUsed)
-  if (remaining === 0) return null
-  const { enabled, ...rest } = offer
-  return { ...rest, remaining, redemptionsUsed: Number(redemptionsUsed || 0), label: promoLabel(offer) }
+  // A fully-claimed offer disappears, but how many are left is never published:
+  // "only 2 left" is pressure we don't put on a customer, and the raw counts
+  // would leak how the campaign is going to anyone who calls the endpoint.
+  // The cap stays an internal control, visible to the admin only.
+  if (promoRemaining(offer, redemptionsUsed) === 0) return null
+  const { enabled, maxRedemptions, ...rest } = offer
+  return { ...rest, label: promoLabel(offer) }
 }
 
 /**

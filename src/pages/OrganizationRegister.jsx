@@ -4,7 +4,6 @@ import { Mail, Lock, ArrowRight, Building2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
-import PromoBanner from '@/components/PromoBanner.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -84,8 +83,6 @@ export default function OrganizationRegister() {
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-10 h-10 object-contain" />
           <span className="font-display font-bold text-2xl">VolunTrack</span>
         </Link>
-
-        <PromoBanner audience="organization" className="mb-4" />
 
         <Card padded={false} className="p-7">
           {!inviteToken ? (

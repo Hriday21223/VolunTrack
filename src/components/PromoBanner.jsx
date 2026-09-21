@@ -18,7 +18,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
  * page hero puts the banner where a standing pill used to be, and that pill has
  * to come back when there is no offer rather than leaving a hole.
  */
-export default function PromoBanner({ audience, className = '', compact = false, showRemaining = true, fallback = null }) {
+export default function PromoBanner({ audience, className = '', compact = false, fallback = null }) {
   const [offer, setOffer] = useState(null)
 
   useEffect(() => {
@@ -32,11 +32,6 @@ export default function PromoBanner({ audience, className = '', compact = false,
 
   if (!offer) return fallback
   if (audience && offer.audience !== 'both' && offer.audience !== audience) return fallback
-
-  // "Only 3 left" is the part that actually moves someone; a large remainder
-  // reads as a plain count so the banner doesn't cry scarcity at 47 of 50.
-  const remaining = offer.remaining
-  const scarce = typeof remaining === 'number' && remaining <= 5
 
   const endsAt = offer.endsAt
     ? new Date(`${offer.endsAt}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -62,13 +57,6 @@ export default function PromoBanner({ audience, className = '', compact = false,
           <code className="rounded-md border border-brand-500/40 bg-brand-500/10 px-2 py-0.5 font-mono font-semibold tracking-wider">
             {offer.code}
           </code>
-          {showRemaining && typeof remaining === 'number' && (
-            <span className={scarce ? 'text-xs font-semibold text-brand-600 dark:text-brand-400' : 'text-xs text-earth-500 dark:text-earth-400'}>
-              {scarce
-                ? `Only ${remaining} left of ${offer.maxRedemptions}`
-                : `${remaining} of ${offer.maxRedemptions} left`}
-            </span>
-          )}
         </p>
       )}
       {endsAt && (

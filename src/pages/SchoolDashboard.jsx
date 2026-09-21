@@ -14,7 +14,6 @@ import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
-import PromoBanner from '@/components/PromoBanner.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -528,7 +527,6 @@ export default function SchoolDashboard() {
           }
           return null
         })()}
-        {billingTab && <PromoBanner audience="school" />}
         {billingTab && <ReferralCard />}
         {billingTab && accountCode && (
           <Card>
