@@ -1,11 +1,29 @@
 import nodemailer from 'nodemailer'
 import { escapeHtml } from './html.js'
 
-// Gmail SMTP (already used for password/PIN recovery — see server.js) can
-// deliver to any address with no domain-verification step, unlike Resend's
-// sandbox mode which only sends to the account owner's own email until a
-// domain is DNS-verified. Reuse the same SMTP creds here so admin/school
-// emails (invites, payment notices) actually reach recipients.
+// Two ways out, picked at send time by which env vars are set.
+//
+// BREVO_API_KEY is the production path: Render's free instances block outbound
+// SMTP (ports 25/465/587), so Gmail SMTP cannot work there at all — connections
+// hang with no error. Brevo posts over HTTPS, which is not blocked. It verifies
+// a single sender address rather than a whole domain, which is what lets us
+// send as an @gmail.com address while VolunTrack has no domain of its own.
+//
+// SMTP stays as the fallback so local development keeps working with the
+// credentials already in .env, and so a future move to a verified domain is a
+// config change rather than a rewrite. See #205.
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
+
+function brevoKey() {
+  return process.env.BREVO_API_KEY || null
+}
+
+// The address every message is sent as. Brevo rejects a sender it has not had
+// verified, so this must match what was verified in the Brevo dashboard.
+function fromAddress() {
+  return process.env.EMAIL_FROM || process.env.EMAIL_USER || null
+}
+
 let transport = null
 function smtpTransport() {
   const host = process.env.EMAIL_HOST
@@ -26,12 +44,19 @@ function smtpTransport() {
       // endpoint reported email as configured, because the env vars were all
       // set, while not one message could leave the box. See #205.
       family: 4,
+      // Without these a blocked port doesn't error — it hangs. That is exactly
+      // what happened on Render: a send sat for 90s and the caller gave up
+      // before anything was logged. Fail in seconds and say so instead.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     })
   }
   return transport
 }
 
 export function hasEmail() {
+  if (brevoKey() && fromAddress()) return true
   return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
 }
 
@@ -48,22 +73,46 @@ export function emailHealthSnapshot() {
   return { ...emailHealth }
 }
 
-// Starts a probe if one is due and returns its promise (resolving to the new
-// snapshot), or null when SMTP isn't configured or a probe ran recently.
-export function refreshEmailHealth() {
+// Reaches whichever provider is configured, without sending a message: Brevo's
+// /account is a cheap authenticated GET, and nodemailer's verify() opens and
+// authenticates an SMTP connection. Both answer the question the SMTP-only
+// version could not — "can this box actually deliver mail right now" — which is
+// what let a completely dead email setup report itself healthy. See #205.
+function probeProvider() {
+  const key = brevoKey()
+  if (key) {
+    return fetch('https://api.brevo.com/v3/account', {
+      headers: { 'api-key': key, accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    }).then((res) => {
+      if (!res.ok) {
+        const error = new Error(`Brevo account check returned ${res.status}`)
+        error.code = res.status === 401 ? 'EAUTH' : 'EPROVIDER'
+        throw error
+      }
+    })
+  }
   const t = smtpTransport()
-  if (!t || emailCheckInFlight) return null
+  return t ? t.verify() : null
+}
+
+// Starts a probe if one is due and returns its promise (resolving to the new
+// snapshot), or null when no provider is configured or a probe ran recently.
+export function refreshEmailHealth() {
+  if (emailCheckInFlight) return null
   if (Date.now() - emailHealth.checkedAt < EMAIL_CHECK_INTERVAL_MS) return null
+  const probe = probeProvider()
+  if (!probe) return null
 
   emailHealth.checkedAt = Date.now()
-  emailCheckInFlight = t.verify()
+  emailCheckInFlight = probe
     .then(() => {
       emailHealth.ok = true
       emailHealth.consecutiveFailures = 0
       emailHealth.errorCode = null
     })
     .catch((error) => {
-      console.error('SMTP health check failed:', error.message)
+      console.error('Email health check failed:', error.message)
       emailHealth.ok = false
       emailHealth.consecutiveFailures += 1
       // Only nodemailer's short code (EAUTH, ETIMEDOUT, …) is kept — the full
@@ -155,18 +204,44 @@ export function paymentNoticeHtml({ recipientName, entityLabel = 'school', accou
 // Fire-and-log: a failed send should never break the admin/school flow that
 // triggered it — admin_notifications already gives an in-app fallback.
 export async function sendEmail({ to, subject, html }) {
+  const from = fromAddress()
+  const key = brevoKey()
+
+  if (key && from) {
+    try {
+      const res = await fetch(BREVO_ENDPOINT, {
+        method: 'POST',
+        headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+          sender: { email: from, name: 'VolunTrack' },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!res.ok) {
+        // Brevo puts the reason in the body (unverified sender, over quota, bad
+        // key). Log it — this is the one place that says why mail stopped.
+        const detail = await res.text().catch(() => '')
+        console.error(`Brevo send failed: ${res.status} ${forLog(detail.slice(0, 200))}`)
+        return { sent: false, error: `Brevo returned ${res.status}` }
+      }
+      const data = await res.json().catch(() => ({}))
+      return { sent: true, id: data.messageId }
+    } catch (error) {
+      console.error('Brevo send failed:', error.message)
+      return { sent: false, error: error.message }
+    }
+  }
+
   const t = smtpTransport()
   if (!t) {
-    console.log(`[dev] EMAIL_HOST/EMAIL_USER/EMAIL_PASSWORD not set — would have emailed ${forLog(to)}: ${forLog(subject)}`)
+    console.log(`[dev] No email provider configured (BREVO_API_KEY, or EMAIL_HOST/EMAIL_USER/EMAIL_PASSWORD) — would have emailed ${forLog(to)}: ${forLog(subject)}`)
     return { sent: false }
   }
   try {
-    const info = await t.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to,
-      subject,
-      html,
-    })
+    const info = await t.sendMail({ from, to, subject, html })
     return { sent: true, id: info.messageId }
   } catch (error) {
     console.error('SMTP send failed:', error.message)
