@@ -18,6 +18,14 @@ function smtpTransport() {
       port: Number(process.env.EMAIL_PORT || 587),
       secure: process.env.EMAIL_SECURE === 'true',
       auth: { user, pass },
+      // Pin the connection to IPv4. smtp.gmail.com publishes both A and AAAA
+      // records, Node prefers the AAAA, and Render's instances have no IPv6
+      // route out — so every send failed with
+      // `connect ENETUNREACH 2607:f8b0:...:587` and no fallback to the A
+      // record. Nothing in the app's own config revealed this: the health
+      // endpoint reported email as configured, because the env vars were all
+      // set, while not one message could leave the box. See #205.
+      family: 4,
     })
   }
   return transport
