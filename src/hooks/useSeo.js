@@ -2,8 +2,8 @@ import { useEffect } from 'react'
 
 // Falls back to a safe localhost origin when VITE_SITE_URL is unset — see
 // vite.config.js / scripts/site-url.mjs, which guarantee this is always
-// populated at build time. Set the real production domain as a Netlify
-// dashboard env var once it's known (see DEPLOYMENT.md).
+// populated at build time. Set the real production domain as a Vercel
+// project env var (see DEPLOYMENT.md).
 const SITE_URL = import.meta.env.VITE_SITE_URL
 const DEFAULT_TITLE = 'VolunTrack · Volunteer Hour Tracker'
 const DEFAULT_DESCRIPTION = 'VolunTrack is a calm volunteer hour tracker. Log hours, set goals, earn badges, and generate reports for school or community service.'

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Regenerates public/robots.txt and public/sitemap.xml with the real site
-// domain baked in, so Netlify's `npm run build` (which runs this via the
+// domain baked in, so the deploy's `npm run build` (which runs this via the
 // "prebuild" npm script) always ships correct static SEO files without
 // hand-editing them whenever the deployed domain changes.
 //
