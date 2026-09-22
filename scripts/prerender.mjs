@@ -9,7 +9,7 @@
 //
 // Output paths use extensionless files (e.g. dist/about.html) rather than
 // dist/about/index.html, matching vercel.json's `cleanUrls: true` and
-// Netlify's default pretty-URL behavior — both serve `<path>.html` for a
+// the usual static-host pretty-URL behavior — both serve `<path>.html` for a
 // request to `<path>` before falling back to the SPA rewrite.
 //
 // Keep ROUTES in sync with SITEMAP_ENTRIES in generate-seo-files.mjs (plus
@@ -126,7 +126,7 @@ async function main() {
     // nothing left to close it — until the platform's build-time ceiling
     // kills the deployment. Close it and degrade to a plain
     // (non-prerendered) SPA build on those platforms; keep failing hard
-    // everywhere else (Netlify/local/CI), where Chrome does launch and
+    // everywhere else (local/CI), where Chrome does launch and
     // prerendering is expected to work.
     server.close()
     // VERCEL: Vercel. CF_PAGES: classic Cloudflare Pages. WORKERS_CI: Cloudflare
@@ -150,7 +150,7 @@ async function main() {
     for (const route of ROUTES) {
       const url = `http://127.0.0.1:${port}${route}`
       // 'networkidle0' has intermittently hung past its 30s default on slower
-      // build machines (Netlify), likely due to the PWA's own service-worker
+      // build machines, likely due to the PWA's own service-worker
       // registration/analytics keeping a connection open past the idle
       // window. 'domcontentloaded' is faster and avoids that hang; one retry
       // absorbs any remaining transient navigation timeout. The h1 wait is

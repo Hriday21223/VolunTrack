@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/Hriday21223/VolunTrack/actions/workflows/ci.yml/badge.svg)](https://github.com/Hriday21223/VolunTrack/actions/workflows/ci.yml)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/Hriday21223/VolunTrack/security/dependabot)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/1d7fb983-2255-4867-87c8-bdcff8572a41/deploy-status)](https://app.netlify.com/projects/volunteertrackorg/deploys)
+[![Deploy frontend](https://github.com/Hriday21223/VolunTrack/actions/workflows/deploy-vercel.yml/badge.svg)](https://github.com/Hriday21223/VolunTrack/actions/workflows/deploy-vercel.yml)
 
-**Live demo:** hosted on Netlify — update this link once the site is deployed (see [DEPLOYMENT.md](DEPLOYMENT.md))
+**Live demo:** <https://volunteer-track-two.vercel.app> (frontend on Vercel, backend on Render — see [DEPLOYMENT.md](DEPLOYMENT.md))
 
 A warm, focused volunteer hour tracker. Log hours, set goals, earn achievements, and generate reports for school or community organizations.
 

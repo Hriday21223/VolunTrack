@@ -77,28 +77,60 @@ workflow runs Mondays ~13:00 UTC and `curl`s the endpoint; requires `EMAIL_*`
 set on the backend to actually send. Trigger it manually from the Actions tab
 (with `dry_run: true` to preview without sending).
 
-## Step 4: Deploy Frontend to Netlify
+## Step 4: Deploy Frontend to Vercel
 
-Once your backend is deployed (e.g., `https://voluntrack-backend.onrender.com`):
+This is the live path: the frontend runs on Vercel at
+<https://volunteer-track-two.vercel.app>.
 
-1. Go to [netlify.com](https://netlify.com) and sign up/login
-2. Click "Add new site" → "Import an existing project"
-3. Connect your GitHub repository and select `VolunteerTrack`
-4. Netlify will detect the `netlify.toml` (build command `npm run build`, publish dir `dist`)
-5. Add the environment variable:
+The Vercel project is **not** connected to this repo — there is no Git
+integration, so merging to `main` does not by itself ship anything from
+Vercel's side. `.github/workflows/deploy-vercel.yml` is what deploys: every
+push to `main` builds and deploys production, a PR gets a preview, and
+`workflow_dispatch` lets you pick either by hand. It builds on the GitHub
+runner rather than on Vercel because `scripts/prerender.mjs` needs Chrome and
+Vercel's build image is missing libraries it wants — so prerendering silently
+skips there. The workflow's "Verify" step fails the deploy if the prerendered
+pages did not come out, instead of trusting a green build.
+
+One-time setup:
+
+1. Create the project once (`npx vercel link`, or import it in the dashboard).
+   `vercel.json` in the repo root holds the build config (`npm run build`,
+   output `dist`, `cleanUrls`, SPA fallback rewrite).
+2. Set these repo secrets so the workflow can deploy (the org/project IDs live
+   in `.vercel/project.json`, which is gitignored):
+
+   ```bash
+   gh secret set VERCEL_TOKEN       # https://vercel.com/account/tokens
+   gh secret set VERCEL_ORG_ID
+   gh secret set VERCEL_PROJECT_ID
+   ```
+
+3. Add the environment variables in the Vercel dashboard (Project → Settings →
+   Environment Variables), for Production:
 
    ```bash
    VITE_API_URL=https://voluntrack-backend.onrender.com/api
-   VITE_SITE_URL=https://your-site.netlify.app
+   VITE_SITE_URL=https://volunteer-track-two.vercel.app
    ```
 
-   `VITE_SITE_URL` should be this site's own public URL (no trailing slash) —
-   it's baked into canonical/Open Graph tags and `robots.txt`/`sitemap.xml`
-   at build time. If you attach a custom domain later, update this value and
-   redeploy so SEO tags follow automatically — no code changes needed.
+   The workflow runs `vercel pull` before building, so the bundle is built
+   against exactly these values. `VITE_SITE_URL` should be the site's own
+   public URL (no trailing slash) — it's baked into canonical/Open Graph tags
+   and `robots.txt`/`sitemap.xml` at build time. If you attach a custom domain
+   later, update this value and redeploy so SEO tags follow automatically — no
+   code changes needed. Note `VITE_SITE_URL` is currently unset in the Preview
+   environment, so preview builds fall back to localhost in their SEO files;
+   that's fine for a test deploy, but it's why previews shouldn't be promoted
+   by hand.
 
-6. Deploy. Note the assigned site URL (e.g., `https://your-site.netlify.app`).
-7. Back in Render, set `FRONTEND_URL` on the backend service to that Netlify URL so CORS allows it.
+4. Back in Render, set `FRONTEND_URL` on the backend service to the Vercel URL
+   so CORS allows it.
+
+To deploy manually instead: `npx vercel --prod` (or re-run the workflow from
+the Actions tab), but prefer the workflow — a local `vercel build` sets
+`VERCEL=1` and skips prerendering, shipping a plain SPA shell for the SEO
+pages.
 
 ## Step 4b: Deploy Frontend to Cloudflare Workers (alternative)
 
@@ -125,8 +157,8 @@ backend, not through this Worker).
 
 Client-side SPA routing is handled by `assets.not_found_handling` in
 `wrangler.jsonc` (`public/_redirects` also ships in `dist/` and works the same
-way, for parity with Netlify). Cloudflare's Workers Builds image, like
-Vercel's, is missing shared libraries Puppeteer's Chrome needs —
+way, for parity with other static hosts). Cloudflare's Workers Builds image,
+like Vercel's, is missing shared libraries Puppeteer's Chrome needs —
 `scripts/prerender.mjs` detects this (`WORKERS_CI=1`, set automatically by
 Workers Builds) and skips SEO prerendering rather than hanging the build,
 falling back to a plain client-rendered SPA.
@@ -135,7 +167,7 @@ To deploy manually instead of via Git CI: `npm run build && npx wrangler deploy`
 
 ## Step 5: Test Cross-Device Sync
 
-1. **Desktop**: Go to your Netlify site URL
+1. **Desktop**: Go to your deployed site URL
 2. **Register/Login** with your account (now using backend)
 3. **Settings** → Generate sync PIN
 4. **Mobile**: Open same URL on phone
@@ -161,7 +193,7 @@ To deploy manually instead of via Git CI: `npm run build && npx wrangler deploy`
 
 ## Architecture
 
-- **Frontend**: Netlify, Vercel, or Cloudflare Workers (static React app)
+- **Frontend**: Vercel (static React app; Cloudflare Workers as an alternative)
 - **Backend**: Render (Node.js + Express)
 - **Database**: Neon (PostgreSQL)
 - **Auth**: JWT tokens stored in localStorage
@@ -171,6 +203,6 @@ To deploy manually instead of via Git CI: `npm run build && npx wrangler deploy`
 
 - **Render**: Free tier (750 hours/month)
 - **Neon**: Free tier (0.5GB storage, ~200 hours compute)
-- **Netlify / Vercel / Cloudflare Workers**: Free tier
+- **Vercel / Cloudflare Workers**: Free tier
 
 Total: **$0/month** for hobby usage!
