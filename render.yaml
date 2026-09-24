@@ -35,6 +35,12 @@ services:
       # in the parent weekly digest emails (server/digest.js).
       - key: PUBLIC_BACKEND_URL
         value: https://voluntrack-backend-frrh.onrender.com
+      # Holds the free tier's ~15-min idle spin-down open by self-pinging
+      # /api/status/ping (server/keepAwake.js). Set to "1" here only — local
+      # dev and any self-hosted deploy should leave it unset. Note this keeps
+      # the service running ~730 h/month against the free 750 h allowance.
+      - key: KEEP_AWAKE
+        value: "1"
       # Shared secret for the parent-digest cron endpoint (x-cron-key header).
       # Set it in the dashboard and add a matching GitHub Actions repo secret
       # named CRON_SECRET; leave unset to disable the endpoint.

@@ -92,6 +92,14 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: [
         { find: '@', replacement: resolve('./src') },
+        // The requirements policy (tenant-defined log rules) has to be applied
+        // identically in the browser and on the server: the form shows the rule
+        // before you submit, the API is what actually enforces it. Two copies
+        // of that logic drift, and the drift shows up as "the form let me save
+        // it but the server said no". One narrow alias to that single pure
+        // module instead — deliberately not an alias to server/, which would
+        // put db.js and the signing keys one import away from client code.
+        { find: '@policy', replacement: resolve('./server/requirements.js') },
         // The join offer's rules and arithmetic have to be applied identically
         // in the browser and on the server: the landing-page banner quotes a price,
         // and POST /api/invoices/admin is what actually charges it. Two copies

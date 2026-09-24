@@ -42,6 +42,11 @@ export async function syncCreateLog(log) {
         proofStorageId: log.proofStorageId || null,
         proofMime: log.proofMime || null,
         proofBytes: Number.isInteger(log.proofBytes) ? log.proofBytes : null,
+        // Answers to the school's own questions, and whether a proof file
+        // exists at all — without tenant storage the file never leaves this
+        // device, so the pointer above is null even when one was attached.
+        customFields: log.customFields || null,
+        hasLocalProof: Boolean(log.hasLocalProof || log.proof),
       }),
     })
     if (!res.ok) return null
@@ -127,6 +132,7 @@ export async function syncPullLogs(userId) {
       verificationStatus: row.verification_status ?? 'none',
       verified: row.verification_status === 'approved',
       taskId: row.task_id ?? '',
+      customFields: row.customFields ?? {},
       importedTranscriptId: row.importedTranscriptId ?? '',
       createdAt: row.created_at ?? new Date().toISOString(),
     })

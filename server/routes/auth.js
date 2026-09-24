@@ -8,6 +8,7 @@ import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole } from '../auth.js'
+import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail } from '../email.js'
@@ -177,6 +178,31 @@ router.post('/login', authLimiter, requireDb, async (req, res) => {
     if (!ok) {
       return res.status(401).json({ error: 'Invalid email or password.' })
     }
+    // A school can require that its students arrive through its own IdP. The
+    // check sits after the password verify on purpose: answering "this account
+    // must use SSO" before knowing the password is right would turn the login
+    // form into an oracle for which addresses belong to which school.
+    //
+    // Only password accounts are affected — an SSO account has no password to
+    // get here with — and the rule is deliberately not extended to the email
+    // domain allowlist, which is enforced where an account joins a tenant
+    // rather than at every sign-in. Applied at login, an allowlist added later
+    // would lock out the students already on the roster under their old
+    // addresses.
+    // Scoped to students: a school admin or staff member shares the school_id
+    // that resolves this policy, and the toggle that sets it lives inside the
+    // dashboard they would be locking themselves out of. The rule is about the
+    // roster, and the UI says as much.
+    if (row.role === 'student' && row.auth_provider !== 'sso') {
+      const signIn = await signInPolicyForEmail(email)
+      if (signIn?.policy?.signIn?.ssoOnly) {
+        return res.status(403).json({
+          error: `${signIn.schoolName || 'Your school'} requires you to sign in with your school account. Use the school sign-in option instead of a password.`,
+          ssoRequired: true,
+        })
+      }
+    }
+
     const user = publicUser(row)
     if (row.totp_enabled) {
       return res.json({ requiresTotp: true, tempToken: signTempToken(user) })

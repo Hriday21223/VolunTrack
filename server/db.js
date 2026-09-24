@@ -154,6 +154,8 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
 CREATE TABLE IF NOT EXISTS supervisor_verifications (
   id               TEXT PRIMARY KEY,
   token            TEXT UNIQUE NOT NULL,
+  status_token     TEXT UNIQUE,
+  student_user_id  TEXT REFERENCES users(id) ON DELETE SET NULL,
   student_name     TEXT NOT NULL,
   supervisor_name  TEXT,
   supervisor_email TEXT NOT NULL,
@@ -331,6 +333,12 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS backup_codes TEXT`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS student_email TEXT`) } catch {}
+  // `token` approves or rejects and must never leave the supervisor's email.
+  // `status_token` is the read-only handle the student's own browser polls,
+  // so handing it back to the log's author can't forge an approval.
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS status_token TEXT UNIQUE`) } catch {}
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS student_user_id TEXT REFERENCES users(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_supervisor_verifications_status_token ON supervisor_verifications(status_token)`) } catch {}
 
   // Parent portal
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS child_link_code TEXT UNIQUE`) } catch {}
@@ -558,7 +566,6 @@ export async function initSchema() {
   // carrying the code, so voiding a mistaken invoice hands the use back
   // automatically and there is no second counter to drift out of step.
   try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_code TEXT`) } catch {}
-  try { await query(`CREATE INDEX IF NOT EXISTS idx_invoices_discount_code ON invoices(discount_code) WHERE discount_code IS NOT NULL`) } catch {}
   // Which referral credit paid for this invoice's discount, when one did. Set
   // instead of discount_code, never alongside it: an invoice carries the join
   // offer or a referral credit, not both compounded.
@@ -609,6 +616,7 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_invoices_discount_code ON invoices(discount_code) WHERE discount_code IS NOT NULL`) } catch {}
 
   try { await query(`CREATE INDEX IF NOT EXISTS idx_payment_events_entity ON payment_events(entity_type, entity_id, created_at DESC)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_invoices_entity ON invoices(entity_type, entity_id, created_at DESC)`) } catch {}
@@ -1147,6 +1155,23 @@ export async function initSchema() {
       [String(Number(process.env.MFA_GRACE_DAYS || 21))],
     )
   } catch {}
+
+  // ---------------------------------------------------------------------
+  // Tenant-defined requirements (see server/requirements.js).
+  //
+  // One JSONB policy per tenant rather than a column per rule: the rule set is
+  // the thing schools differ on, so it grows, and an additive ALTER per toggle
+  // would be a migration for every checkbox. A section absent from the JSON
+  // means "inherit" — a school's row only carries what it overrides, so an org
+  // changing its defaults reaches every school that never opted out.
+  // ---------------------------------------------------------------------
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS requirements JSONB`) } catch {}
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS requirements JSONB`) } catch {}
+
+  // Answers to the extra questions a tenant added to the Log Hours form. Kept
+  // on the log rather than in a side table: they describe this entry, travel
+  // with it on a transfer, and are meaningless without it.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS custom_fields JSONB`) } catch {}
 
   return true
 }

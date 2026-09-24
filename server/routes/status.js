@@ -197,6 +197,18 @@ function checkEmailInBackground() {
   }).catch((error) => console.error('email health check failed:', error))
 }
 
+// Public: the cheapest possible "you are still receiving traffic" endpoint,
+// pinged on a timer by server/keepAwake.js to stop Render's free tier spinning
+// the service down. It deliberately does NOT touch the database: /health opens
+// a Database incident on a single failed `SELECT 1` (no failure threshold) and
+// every new incident emails the admin and all confirmed status subscribers, so
+// polling /health on a timer would turn one transient Neon blip into a
+// broadcast. Keeping the service awake and adding real periodic health
+// monitoring are separate changes; this is only the first.
+router.get('/ping', pollLimiter, (_req, res) => {
+  res.status(204).end()
+})
+
 // Public: /status polls this to render real backend/DB health instead of
 // per-browser feature checks.
 router.get('/health', pollLimiter, async (_req, res) => {

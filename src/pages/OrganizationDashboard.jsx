@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, UserPlus, School, Users, Receipt, Download, Eye } from 'lucide-react'
+import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -10,8 +10,16 @@ import { generateInvoicePDF } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
+import RequirementsSettings from '@/components/RequirementsSettings.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+const TAB_TITLES = {
+  schools: 'Your schools',
+  hours: 'Hour reports',
+  requirements: 'Requirements',
+  invites: 'Pending invites',
+}
 
 const ORG_TOUR_STEPS = [
   { selector: '[data-tour="org-schools-tab"]', title: 'Your schools', description: 'Every school you’ve added lives here, along with their payment status and student counts.' },
@@ -110,8 +118,13 @@ export default function OrganizationDashboard() {
 
   return (
     <AppLayout
-      title={tab === 'schools' ? 'Your schools' : 'Pending invites'}
-      subtitle={tab === 'schools' ? `${schools.length} school${schools.length === 1 ? '' : 's'} added` : `${invites.length} invite${invites.length === 1 ? '' : 's'} sent`}
+      title={TAB_TITLES[tab] || 'Your schools'}
+      subtitle={
+        tab === 'schools' ? `${schools.length} school${schools.length === 1 ? '' : 's'} added`
+          : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent`
+          : tab === 'requirements' ? 'Defaults for every school you own'
+          : 'Export hours across your schools'
+      }
       action={
         <div className="flex gap-2">
           <button data-tour="org-schools-tab" onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -120,12 +133,17 @@ export default function OrganizationDashboard() {
           <button onClick={() => setTab('hours')} className={`btn-sm ${tab === 'hours' ? 'btn-primary' : 'btn-ghost'}`}>
             <Download className="w-3.5 h-3.5 mr-1" /> Hours
           </button>
+          <button onClick={() => setTab('requirements')} className={`btn-sm ${tab === 'requirements' ? 'btn-primary' : 'btn-ghost'}`}>
+            <ClipboardList className="w-3.5 h-3.5 mr-1" /> Requirements
+          </button>
           <button data-tour="org-invites-tab" onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
         </div>
       }
     >
+      {tab === 'requirements' && <RequirementsSettings scope="organization" />}
+
       {tab === 'hours' && (
         <Card>
           <h2 className="text-lg font-semibold mb-1">Hour reports</h2>
@@ -207,6 +225,9 @@ export default function OrganizationDashboard() {
           </div>
         </Card>
       )}
+      {/* This used to be a plain schools/else ternary, so every tab added
+          since — Hours, and now Requirements — rendered the invites list
+          underneath it. Name the tab it belongs to instead. */}
       {tab === 'schools' ? (
         loadingSchools ? (
           <Card><p className="text-center text-earth-400 py-8">Loading schools…</p></Card>
@@ -262,7 +283,7 @@ export default function OrganizationDashboard() {
             ))}
           </div>
         )
-      ) : (
+      ) : tab === 'invites' ? (
         loadingInvites ? (
           <Card><p className="text-center text-earth-400 py-8">Loading invites…</p></Card>
         ) : invites.length === 0 ? (
@@ -310,7 +331,7 @@ export default function OrganizationDashboard() {
             ))}
           </div>
         )
-      )}
+      ) : null}
 
       {showInviteModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
