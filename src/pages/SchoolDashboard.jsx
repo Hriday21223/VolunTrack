@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
+import RequirementsSettings from '@/components/RequirementsSettings.jsx'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
@@ -487,6 +488,9 @@ export default function SchoolDashboard() {
             <button onClick={() => setSetupTab('staff')} className={`btn-sm ${setupTab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
               <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
             </button>
+            <button onClick={() => setSetupTab('requirements')} className={`btn-sm ${setupTab === 'requirements' ? 'btn-primary' : 'btn-ghost'}`}>
+              <ClipboardList className="w-3.5 h-3.5 mr-1" /> Requirements
+            </button>
             <button onClick={() => setSetupTab('sso')} className={`btn-sm ${setupTab === 'sso' ? 'btn-primary' : 'btn-ghost'}`}>
               <KeyRound className="w-3.5 h-3.5 mr-1" /> Sign-in
             </button>
@@ -781,6 +785,10 @@ export default function SchoolDashboard() {
             </p>
             <HoursReportPanel title="Volunteer hours report" />
           </Card>
+        )}
+
+        {tab === 'setup' && setupTab === 'requirements' && user?.role === 'school' && (
+          <RequirementsSettings scope="school" />
         )}
 
         {tab === 'setup' && setupTab === 'sso' && user?.role === 'school' && (

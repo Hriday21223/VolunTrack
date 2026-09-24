@@ -5,6 +5,8 @@ import { requireAuth } from '../auth.js'
 import { uid } from '../ids.js'
 import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
+import { validateLogAgainstPolicy, sanitizeCustomFieldValues } from '../requirements.js'
+import { policyForUser, hoursLoggedOn } from '../policy.js'
 
 const router = express.Router()
 
@@ -21,12 +23,34 @@ function requireDb(_req, res, next) {
   next()
 }
 
+// Hold an entry to the rules the student's school set (server/requirements.js).
+// The Log Hours form checks the same policy with the same function before it
+// submits; this is the copy that counts, because a form is not a boundary.
+//
+// A tenant that has configured nothing gets the permissive defaults, so this
+// returns no errors and the request proceeds exactly as it did before.
+async function checkPolicy(req, entry, { excludeLogId = null } = {}) {
+  const resolved = await policyForUser(req.auth.sub)
+  if (!resolved) return { ok: true, policy: null }
+  const { policy } = resolved
+
+  // Only pay for the extra query when a tenant actually set a per-day cap —
+  // the rule can't be checked from the submitted entry alone.
+  let sameDayHours = 0
+  if (policy.logRules.maxHoursPerDay != null && entry.date) {
+    sameDayHours = await hoursLoggedOn(req.auth.sub, entry.date, excludeLogId)
+  }
+
+  const errors = validateLogAgainstPolicy(policy, { ...entry, sameDayHours })
+  return { ok: errors.length === 0, errors, policy }
+}
+
 // Write-through sync target for a student's own Log Hours form. Always
 // writes to the caller's own account — there is no way to pass a target
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes } = req.body
+  const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes, customFields, hasLocalProof } = req.body
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
@@ -66,11 +90,31 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
       storageKey = String(proofKey)
     }
 
+    // A school's "proof required" rule is satisfied by a real object pointer
+    // when that school runs tenant storage. Without it, the proof file never
+    // leaves the student's device (it lives in localStorage as base64), so the
+    // only signal available here is the client's word for it — the form is
+    // where that rule actually bites, and this keeps a compliant entry from
+    // being rejected for a file we were never meant to hold.
+    const policyCheck = await checkPolicy(req, {
+      date, activity, category, hours: hoursNum, notes, location, orgName,
+      supervisorName, supervisorEmail,
+      hasProof: Boolean(storageKey) || hasLocalProof === true,
+      customFields,
+    })
+    if (!policyCheck.ok) {
+      return res.status(422).json({
+        error: policyCheck.errors[0].message,
+        requirementErrors: policyCheck.errors,
+      })
+    }
+    const customFieldValues = sanitizeCustomFieldValues(policyCheck.policy, customFields)
+
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -81,11 +125,18 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
 
 router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows } = await query('SELECT user_id FROM logs WHERE id = $1', [req.params.id])
+    const { rows } = await query(
+      `SELECT user_id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes,
+              location, org_name, supervisor_name, supervisor_email_hash,
+              (proof_key IS NOT NULL) AS has_proof, custom_fields
+         FROM logs WHERE id = $1`,
+      [req.params.id],
+    )
     if (rows.length === 0) return res.status(404).json({ error: 'Log not found.' })
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
+    const existing = rows[0]
 
-    const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId } = req.body
+    const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
     // Match POST's validation — an update must not be able to slip a
     // non-positive or non-numeric value past the check the insert enforces.
     let hoursNum = null
@@ -102,6 +153,37 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       )
       if (signupRows.length === 0) return res.status(400).json({ error: 'You must be an approved volunteer on this task to link it.' })
     }
+    // The rules apply to what the log will say after the edit, not to the
+    // handful of fields this request happens to carry — so the policy is
+    // checked against the merged result. Otherwise a compliant entry could be
+    // edited into a non-compliant one field at a time.
+    const merged = {
+      date: date || existing.date,
+      activity: activity || existing.activity,
+      category: category || existing.category,
+      hours: hoursNum ?? Number(existing.hours),
+      notes: notes != null ? notes : existing.notes,
+      location: location || existing.location,
+      orgName: orgName || existing.org_name,
+      supervisorName: supervisorName || existing.supervisor_name,
+      // Only the hash is kept (#186), so presence is all that can be checked
+      // here — enough for a "supervisor required" rule, which asks whether one
+      // was named, not who.
+      supervisorEmail: supervisorEmail || (existing.supervisor_email_hash ? 'on-file' : ''),
+      hasProof: existing.has_proof || hasLocalProof === true,
+      customFields: customFields !== undefined ? customFields : existing.custom_fields,
+    }
+    const policyCheck = await checkPolicy(req, merged, { excludeLogId: req.params.id })
+    if (!policyCheck.ok) {
+      return res.status(422).json({
+        error: policyCheck.errors[0].message,
+        requirementErrors: policyCheck.errors,
+      })
+    }
+    const customFieldValues = customFields !== undefined
+      ? sanitizeCustomFieldValues(policyCheck.policy, customFields)
+      : null
+
     // A supervisor or school signed off on a specific date/activity/hours —
     // editing any of those facts means the sign-off no longer describes this
     // log, so the verification is dropped and has to be requested again.
@@ -128,13 +210,14 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          supervisor_name = COALESCE($8, supervisor_name),
          supervisor_email_hash = COALESCE($9, supervisor_email_hash),
          task_id = COALESCE($10, task_id),
+         custom_fields = CASE WHEN $12::boolean THEN $13::jsonb ELSE custom_fields END,
          verification_status = CASE WHEN ${VERIFICATION_STALE} THEN 'none' ELSE verification_status END,
          verification_token  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verification_token END,
          verified_by         = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verified_by END,
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
        WHERE id = $11`,
-      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id],
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -177,16 +260,17 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       // proof_key itself is never returned: it is only useful with a minted
       // URL, and every mint is audited. Callers just need to know one exists.
       `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, supervisor_name, verification_status, task_id, created_at,
-               (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id
+               (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields
        FROM logs WHERE user_id = $1 ORDER BY logs.date DESC, created_at DESC`,
       [userId],
     )
     return res.json({
-      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, ...log }) => ({
+      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, ...log }) => ({
         ...log,
         hasProof: has_proof,
         proofMime: proof_mime,
         importedTranscriptId: imported_transcript_id,
+        customFields: custom_fields || null,
       })),
     })
   } catch (error) {

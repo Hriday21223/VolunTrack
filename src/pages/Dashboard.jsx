@@ -6,6 +6,8 @@ import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
+import ProgressBar from '@/components/ProgressBar.jsx'
+import { useMyRequirements } from '@/lib/requirements.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
@@ -66,6 +68,9 @@ export default function Dashboard() {
               .reduce((s, l) => s + (Number(l.hours) || 0), 0),
     [logs, monthStart],
   )
+
+  // What this student's school asks of them, if anything (server/requirements.js).
+  const requirements = useMyRequirements()
 
   const primary = goals.find((g) => g.primary) || goals[0]
   const target = primary ? Number(primary.targetHours) || 0 : 0
@@ -405,6 +410,35 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
+
+        {/* The school's own requirement, kept separate from the student's
+            personal goal above: one is what they set for themselves, the
+            other is what they have to hit. Rendered only when a tenant
+            actually set one. */}
+        {requirements.goalHours != null && (
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div>
+                <div className="text-xs text-earth-400">
+                  {requirements.schoolName ? `${requirements.schoolName} requires` : 'School requirement'}
+                </div>
+                <div className="text-lg font-bold text-white">
+                  {total >= requirements.goalHours ? 'Requirement met' : `${fmtHours(requirements.goalHours - total)} to go`}
+                </div>
+              </div>
+              <div className="text-right">
+                {requirements.policy.goals.deadline && (
+                  <div className="text-xs text-earth-400">by {requirements.policy.goals.deadline}</div>
+                )}
+
+              </div>
+            </div>
+            <ProgressBar value={total} target={requirements.goalHours} />
+            {requirements.policy.goals.note && (
+              <p className="text-xs text-earth-400 mt-2">{requirements.policy.goals.note}</p>
+            )}
+          </Card>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-3">
           <Card className="p-4" data-tour="goal-progress">

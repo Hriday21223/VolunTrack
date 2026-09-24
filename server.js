@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import nodemailer from 'nodemailer'
 import { initSchema, hasDatabase, query } from './server/db.js'
-import { authenticate, hashPassword, verifyPassword } from './server/auth.js'
+import { authenticate, requireAuth, hashPassword, verifyPassword } from './server/auth.js'
 import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import authSsoRoutes from './server/routes/authSso.js'
@@ -24,9 +24,11 @@ import auditRoutes from './server/routes/audit.js'
 import { isAllowedTenantOrigin } from './server/tenantOrigins.js'
 import storageRoutes from './server/routes/storage.js'
 import transcriptRoutes from './server/routes/transcript.js'
+import requirementsRoutes from './server/routes/requirements.js'
 import referralRoutes from './server/routes/referral.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
+import { startKeepAwake } from './server/keepAwake.js'
 
 dotenv.config()
 
@@ -127,6 +129,7 @@ app.use('/api/reminders', remindersRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/storage', storageRoutes)
 app.use('/api/transcript', transcriptRoutes)
+app.use('/api/requirements', requirementsRoutes)
 app.use('/api/referral', referralRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
@@ -410,17 +413,45 @@ app.post('/api/send-report', emailLimiter, async (req, res) => {
 // contact_messages so the admin inbox works across browsers/devices,
 // instead of the old email-only, localStorage-backed version).
 
-app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
-  const { supervisorEmail, supervisorName, studentName, studentEmail, hours, activity, signupUrl, logId } = req.body
+// The signup/verify links in supervisor mail must resolve to a site we
+// actually serve — the same allowlist CORS uses — or the message becomes a
+// branded delivery vehicle for someone else's domain.
+async function resolveAppSignupUrl(raw) {
+  const fallback = process.env.FRONTEND_URL
+    ? `${process.env.FRONTEND_URL.replace(/\/+$/, '')}/register`
+    : null
+  if (!raw || typeof raw !== 'string' || raw.length > 500) return fallback
+  let u
+  try {
+    u = new URL(raw)
+  } catch {
+    return fallback
+  }
+  u.search = ''
+  u.hash = ''
+  if (!/\/register\/?$/.test(u.pathname)) return fallback
+  if (STATIC_ORIGINS.includes(u.origin)) return u.toString()
+  try {
+    if (await isAllowedTenantOrigin(u.origin)) return u.toString()
+  } catch {
+    return fallback
+  }
+  return fallback
+}
+
+// This route sends mail from VolunTrack's own SMTP identity to a
+// caller-named recipient, so it is authenticated: an unauthenticated version
+// is an open relay that lends our sender reputation to anyone's phishing.
+// The sender's identity comes from the session, never the body, and the
+// links in the message may only point at origins we serve.
+app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res) => {
+  const { supervisorEmail, supervisorName, hours, activity, signupUrl, logId } = req.body
 
   if (!supervisorEmail || typeof supervisorEmail !== 'string' || !supervisorEmail.includes('@') || supervisorEmail.length > 254) {
     return res.status(400).json({ error: 'Invalid supervisor email.' })
   }
-  if (!studentName || typeof studentName !== 'string' || studentName.length > 100) {
-    return res.status(400).json({ error: 'Invalid student name.' })
-  }
-  if (studentEmail && (typeof studentEmail !== 'string' || !studentEmail.includes('@') || studentEmail.length > 254)) {
-    return res.status(400).json({ error: 'Invalid student email.' })
+  if (supervisorName != null && (typeof supervisorName !== 'string' || supervisorName.length > 100)) {
+    return res.status(400).json({ error: 'Invalid supervisor name.' })
   }
   if (!activity || typeof activity !== 'string' || activity.length > 200) {
     return res.status(400).json({ error: 'Invalid activity.' })
@@ -429,9 +460,25 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
   if (!Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'Invalid hours.' })
   }
-  if (!signupUrl || typeof signupUrl !== 'string' || signupUrl.length > 500) {
-    return res.status(400).json({ error: 'Invalid signup URL.' })
+
+  // Who the mail says it is from is read off the session, so the body can't
+  // dress the message up as anything ("Your account will be suspended").
+  let studentName = req.auth.email || 'A VolunTrack student'
+  let studentEmail = req.auth.email || null
+  if (hasDatabase()) {
+    try {
+      const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [req.auth.sub])
+      if (rows.length) {
+        studentName = rows[0].name || rows[0].email || studentName
+        studentEmail = rows[0].email || studentEmail
+      }
+    } catch (error) {
+      console.error('Could not resolve notifying student:', error)
+    }
   }
+
+  const appUrl = await resolveAppSignupUrl(signupUrl)
+  if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
 
   const { transport, missing } = transporter()
   if (!transport) {
@@ -444,17 +491,20 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
   // Only when a DB is available can we hold tamper-proof verification state
   // (the student's browser can't be trusted to self-report "verified").
   let token = null
+  let statusToken = null
   if (hasDatabase()) {
     token = generateToken()
+    statusToken = generateToken()
     try {
       await query(
-        `INSERT INTO supervisor_verifications (id, token, student_name, student_email, supervisor_name, supervisor_email, activity, hours)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [uid('sv'), token, studentName, studentEmail || null, supervisorName || null, supervisorEmail, activity, hoursNum],
+        `INSERT INTO supervisor_verifications (id, token, status_token, student_user_id, student_name, student_email, supervisor_name, supervisor_email, activity, hours)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [uid('sv'), token, statusToken, req.auth.sub, studentName, studentEmail || null, supervisorName || null, supervisorEmail, activity, hoursNum],
       )
     } catch (error) {
       console.error('Could not create supervisor verification record:', error)
       token = null
+      statusToken = null
     }
   }
 
@@ -462,7 +512,7 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
   // authenticated and owns it), link the verification token onto that log
   // row so a parent's read-only view can see the outcome later. Never trust
   // an unverified logId from the request body.
-  if (token && logId && req.auth) {
+  if (token && logId) {
     try {
       const { rows: logRows } = await query('SELECT user_id FROM logs WHERE id = $1', [logId])
       if (logRows.length && logRows[0].user_id === req.auth.sub) {
@@ -476,20 +526,16 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
 
   let verifyUrl = null
   if (token) {
-    try {
-      const u = new URL(signupUrl)
-      u.pathname = u.pathname.replace(/\/register\/?$/, '/verify-hours')
-      u.search = `?token=${token}`
-      verifyUrl = u.toString()
-    } catch {
-      token = null
-    }
+    const u = new URL(appUrl)
+    u.pathname = u.pathname.replace(/\/register\/?$/, '/verify-hours')
+    u.search = `?token=${token}`
+    verifyUrl = u.toString()
   }
 
   const safeStudent = escapeHtml(studentName)
   const safeActivity = escapeHtml(activity)
   const safeSupervisorName = supervisorName ? escapeHtml(supervisorName) : ''
-  const safeSignupUrl = escapeHtml(signupUrl)
+  const safeSignupUrl = escapeHtml(appUrl)
   const safeVerifyUrl = verifyUrl ? escapeHtml(verifyUrl) : null
   const greeting = safeSupervisorName ? `Hi ${safeSupervisorName},` : 'Hi,'
 
@@ -498,7 +544,7 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
     + (verifyUrl
       ? `Please review and approve or reject these hours: ${verifyUrl}\n\n`
       : '')
-    + `Sign up for a free VolunTrack account: ${signupUrl}\n\n${emailFooterText()}`
+    + `Sign up for a free VolunTrack account: ${appUrl}\n\n${emailFooterText()}`
 
   const html = `
     <p>${greeting}</p>
@@ -520,7 +566,9 @@ app.post('/api/notify-supervisor', emailLimiter, async (req, res) => {
       text,
       html,
     })
-    return res.status(200).json({ ok: true, token })
+    // Only the read-only handle goes back to the student's browser. The
+    // approve/reject token exists in the supervisor's inbox and nowhere else.
+    return res.status(200).json({ ok: true, statusToken })
   } catch (error) {
     console.error('Supervisor notification email failed:', error)
     return res.status(500).json({ error: 'Failed to send notification.' })
@@ -531,8 +579,11 @@ app.get('/api/verify-hours/:token', async (req, res) => {
   if (!hasDatabase()) return res.status(404).json({ error: 'Not available.' })
   const { token } = req.params
   try {
+    // Readable by either handle: the supervisor arrives with the approval
+    // token from their email, the student's own browser polls with the
+    // read-only status token. Neither is disclosed by this response.
     const { rows } = await query(
-      'SELECT student_name, supervisor_name, activity, hours, status, supervisor_signature FROM supervisor_verifications WHERE token = $1',
+      'SELECT student_name, supervisor_name, activity, hours, status, supervisor_signature FROM supervisor_verifications WHERE token = $1 OR status_token = $1',
       [token],
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Verification link not found.' })
@@ -565,11 +616,19 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
     }
   }
   try {
+    // Deliberately matches on `token` alone: the student's status token is
+    // read-only and must not reach this write path.
     const { rows } = await query(
-      'SELECT status, student_email, student_name, supervisor_name, activity, hours FROM supervisor_verifications WHERE token = $1',
+      'SELECT status, student_user_id, student_email, student_name, supervisor_name, activity, hours FROM supervisor_verifications WHERE token = $1',
       [token],
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Verification link not found.' })
+
+    // A student cannot vouch for their own hours, however they came by the
+    // link. Defence in depth behind the token split above.
+    if (req.auth && rows[0].student_user_id && req.auth.sub === rows[0].student_user_id) {
+      return res.status(403).json({ error: 'You cannot approve your own hours.' })
+    }
 
     // Idempotent: the first response wins, further clicks/reopens don't change
     // it. 'superseded' lands here too — the task organizer resolved this log
@@ -665,6 +724,8 @@ async function start() {
 
   app.listen(port, () => {
     console.log(`Backend server listening at http://localhost:${port}`)
+    // After listen(), so the first self-ping can't arrive before we can answer it.
+    startKeepAwake()
   })
 }
 

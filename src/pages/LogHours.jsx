@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin } from 'lucide-react'
+import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { uploadProof } from '@/lib/proofUpload.js'
@@ -10,6 +10,7 @@ import FileDrop from '@/components/FileDrop.jsx'
 import Toast from '@/components/Toast.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
+import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy } from '@/lib/requirements.js'
 import { hoursBetween, fmtHours } from '@/utils/date.js'
 import { notifySupervisor } from '@/lib/supervisorNotify.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
@@ -69,6 +70,8 @@ const blank = () => ({
   supervisorEmail: '',
   supervisorSignature: '',
   proof: null,
+  // Answers to the extra questions this student's school added to the form.
+  customFields: {},
   verified: false,
   verificationStatus: 'none',
   verificationToken: null,
@@ -82,6 +85,18 @@ export default function LogHours({ editId, onCloseEdit }) {
   const [toast, setToast] = useState(false)
   const [error, setError] = useState('')
   const [myTasks, setMyTasks] = useState([])
+  // What this student's school asks for. Starts at the permissive default, so
+  // the form is usable on the first paint and in client-only mode, and
+  // tightens once the policy lands.
+  const requirements = useMyRequirements()
+  const { policy, sources } = requirements
+  const required = formFieldRequirements(requirements)
+  const customFields = policy.customFields || []
+  const policyNotes = describePolicy(policy)
+  // An empty list means the school did not restrict categories.
+  const categories = policy.logRules.allowedCategories.length > 0
+    ? policy.logRules.allowedCategories
+    : ACTIVITY_CATEGORIES
 
   useEffect(() => {
     const token = localStorage.getItem('voluntrack:auth_token')
@@ -104,6 +119,18 @@ export default function LogHours({ editId, onCloseEdit }) {
     }
   }, [editId, logs])
 
+  // A school can narrow the category list after an entry was drafted — or the
+  // policy can arrive a moment after the form's default. Snap to something
+  // valid rather than submitting a category the school will reject.
+  useEffect(() => {
+    if (categories.length > 0 && !categories.includes(form.category)) {
+      setForm((f) => ({ ...f, category: categories[0] }))
+    }
+  }, [categories, form.category])
+
+  const setCustomField = (key) => (value) =>
+    setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [key]: value } }))
+
   const hours = hoursBetween(
     form.date && form.startTime ? `${form.date}T${form.startTime}:00` : null,
     form.date && form.endTime   ? `${form.date}T${form.endTime}:00`   : null,
@@ -115,14 +142,34 @@ export default function LogHours({ editId, onCloseEdit }) {
     e.preventDefault()
     setError('')
     if (!form.activity.trim()) { setError('Please enter an activity name.'); return }
-    if (!form.location.trim()) { setError('Please enter a location or use the button below to detect it.'); return }
     if (hours <= 0)             { setError('End time must be after start time.'); return }
-    if (!form.supervisorName.trim()) { setError("Please enter your supervisor's name."); return }
-    if (!form.supervisorEmail.trim()) { setError("Please enter your supervisor's email."); return }
-    if (!form.proof)                  { setError('Please upload proof — a sign-in sheet, thank-you email, or other supporting document.'); return }
+    if (required.locationRequired && !form.location.trim()) { setError('Please enter a location or use the button below to detect it.'); return }
+    if (required.supervisorRequired && !form.supervisorName.trim()) { setError("Please enter your supervisor's name."); return }
+    if (required.supervisorRequired && !form.supervisorEmail.trim()) { setError("Please enter your supervisor's email."); return }
+    if (required.proofRequired && !form.proof) { setError('Please upload proof — a sign-in sheet, thank-you email, or other supporting document.'); return }
+
+    // The school's own rules, checked with the same function the API uses, so
+    // a student reads the rule here instead of having a save fail silently.
+    // sameDayHours is the one rule that can't be checked from the form alone;
+    // it comes from the entries already on this device, and the server
+    // re-checks it against the real roster.
+    const sameDayHours = logs
+      .filter((l) => l.date === form.date && l.id !== editId)
+      .reduce((sum, l) => sum + (Number(l.hours) || 0), 0)
+    const violations = validateLogAgainstPolicy(policy, {
+      ...form,
+      hours,
+      hasProof: Boolean(form.proof),
+      sameDayHours,
+    })
+    if (violations.length > 0) { setError(violations[0].message); return }
 
     try {
-      let payload = { ...form, hours }
+      // hasLocalProof tells the API that a proof file exists even when it never
+      // leaves this device — without tenant storage the bytes stay in
+      // localStorage, so the pointer the server would otherwise look for is
+      // never created. See POST /api/logs.
+      let payload = { ...form, hours, hasLocalProof: Boolean(form.proof) }
 
       // Try the school's own bucket first. On success the bytes live there and
       // the log keeps only a pointer — so the data URL is dropped from the
@@ -154,14 +201,12 @@ export default function LogHours({ editId, onCloseEdit }) {
           notifySupervisor({
             supervisorEmail: payload.supervisorEmail,
             supervisorName: payload.supervisorName,
-            studentName: user?.name || 'A VolunTrack student',
-            studentEmail: user?.email || null,
             hours: payload.hours,
             activity: payload.activity,
             logId: serverId,
           }).then((result) => {
-            if (result.token) {
-              editLog(created.id, { verificationStatus: 'pending', verificationToken: result.token })
+            if (result.statusToken) {
+              editLog(created.id, { verificationStatus: 'pending', verificationToken: result.statusToken })
             }
           })
         }
@@ -192,7 +237,7 @@ export default function LogHours({ editId, onCloseEdit }) {
               <div>
                 <label className="label">Category</label>
                 <select className="input" value={form.category} onChange={onChange('category')}>
-                  {ACTIVITY_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  {categories.map((c) => <option key={c}>{c}</option>)}
                 </select>
                 <div className="mt-2">
                   <span className={`chip ${categoryColor(form.category)}`}>{form.category}</span>
@@ -240,13 +285,13 @@ export default function LogHours({ editId, onCloseEdit }) {
             <SectionTitle>Where</SectionTitle>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="label">Location *</label>
+                <label className="label">Location {required.locationRequired ? '*' : ''}</label>
                 <LocationPicker
                   address={form.location}
                   lat={form.latitude}
                   lng={form.longitude}
                   placeholder="123 Main St, Library, Online, etc."
-                  required
+                  required={required.locationRequired}
                   onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
                 />
               </div>
@@ -263,7 +308,7 @@ export default function LogHours({ editId, onCloseEdit }) {
               The nonprofit or group you volunteered with — many schools require this on a verification form.
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field icon={Building2} label="Organization name" value={form.orgName} onChange={onChange('orgName')} placeholder="Riverside Food Bank" />
+              <Field icon={Building2} label={`Organization name ${required.orgNameRequired ? '*' : ''}`} value={form.orgName} onChange={onChange('orgName')} placeholder="Riverside Food Bank" />
               <Field icon={Phone}     label="Organization phone" value={form.orgPhone} onChange={onChange('orgPhone')} placeholder="(555) 123-4567" type="tel" />
               <div className="sm:col-span-2">
                 <label className="label flex items-center gap-1.5"><MapPin className="w-4 h-4" /> Organization address</label>
@@ -278,8 +323,8 @@ export default function LogHours({ editId, onCloseEdit }) {
               Capture who can vouch for this work. Schools typically require a name and email.
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field icon={User}        label="Supervisor name *"  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder="Mr. Johnson" required />
-              <Field icon={Mail}        label="Supervisor email *" value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder="johnson@school.edu" type="email" required />
+              <Field icon={User}        label={`Supervisor name ${required.supervisorRequired ? '*' : ''}`}  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder="Mr. Johnson" required={required.supervisorRequired} />
+              <Field icon={Mail}        label={`Supervisor email ${required.supervisorRequired ? '*' : ''}`} value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder="johnson@school.edu" type="email" required={required.supervisorRequired} />
               {form.supervisorEmail?.trim() ? (
                 <div className="sm:col-span-2">
                   <VerificationBadge status={form.verificationStatus} />
@@ -302,17 +347,64 @@ export default function LogHours({ editId, onCloseEdit }) {
               ) : (
                 <div className="sm:col-span-2">
                   <p className="text-xs text-amber-500">
-                    Supervisor name and email are required so this entry can be verified.
+                    {required.supervisorRequired
+                      ? 'Supervisor name and email are required so this entry can be verified.'
+                      : 'Add a supervisor to have this entry verified — optional at your school.'}
                   </p>
                 </div>
               )}
             </div>
           </Card>
+
+          {customFields.length > 0 && (
+            <Card>
+              <SectionTitle icon={ClipboardList}>
+                {requirements.schoolName ? `${requirements.schoolName} asks` : 'Your school asks'}
+              </SectionTitle>
+              <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
+                Extra questions your school added to this form.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {customFields.map((field) => (
+                  <CustomField
+                    key={field.key}
+                    field={field}
+                    value={form.customFields?.[field.key]}
+                    onChange={setCustomField(field.key)}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-5">
+          {(policyNotes.length > 0 || requirements.goalHours != null) && (
+            <Card>
+              <SectionTitle icon={ClipboardList}>
+                {requirements.schoolName ? `${requirements.schoolName} requires` : 'Your requirements'}
+              </SectionTitle>
+              {requirements.goalHours != null && (
+                <p className="text-sm mb-2">
+                  <span className="font-semibold text-brand-700 dark:text-brand-300">{requirements.goalHours} hours</span>
+                  {policy.goals.deadline ? ` by ${policy.goals.deadline}` : ' total'}
+                </p>
+              )}
+              {policy.goals.note && (
+                <p className="text-xs text-earth-500 dark:text-earth-400 mb-2">{policy.goals.note}</p>
+              )}
+              {policyNotes.length > 0 && (
+                <ul className="text-sm text-earth-600 dark:text-earth-300 list-disc pl-5 space-y-1">
+                  {policyNotes.map((note) => <li key={note}>{note}</li>)}
+                </ul>
+              )}
+              {sources.logRules === 'organization' && requirements.organizationName && (
+                <p className="text-xs text-earth-400 mt-2">Set by {requirements.organizationName}.</p>
+              )}
+            </Card>
+          )}
           <Card>
-            <SectionTitle icon={Upload}>Proof *</SectionTitle>
+            <SectionTitle icon={Upload}>Proof {required.proofRequired ? '*' : ''}</SectionTitle>
             <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
               Upload a photo of a sign-in sheet, a thank-you email, or any supporting document.
             </p>
@@ -361,6 +453,78 @@ function SectionTitle({ children, icon: Icon }) {
       {Icon && <Icon className="w-4 h-4 text-brand-600" />}
       {children}
     </h2>
+  )
+}
+
+// One tenant-defined question. The type list is closed (see
+// CUSTOM_FIELD_TYPES in server/requirements.js), so an unknown type can only
+// come from a policy newer than this build — it falls through to a text box
+// rather than rendering nothing and quietly losing the answer.
+function CustomField({ field, value, onChange }) {
+  const label = (
+    <label className="label flex items-center gap-1.5">
+      {field.label}{field.required ? ' *' : ''}
+    </label>
+  )
+  const help = field.help ? <p className="text-xs text-earth-400 mt-1">{field.help}</p> : null
+
+  if (field.type === 'checkbox') {
+    return (
+      <div className={field.help ? '' : 'self-end'}>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value === true}
+            onChange={(e) => onChange(e.target.checked)}
+            required={field.required}
+          />
+          {field.label}{field.required ? ' *' : ''}
+        </label>
+        {help}
+      </div>
+    )
+  }
+
+  if (field.type === 'select') {
+    return (
+      <div>
+        {label}
+        <select className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)} required={field.required}>
+          <option value="">Select…</option>
+          {field.options.map((o) => <option key={o}>{o}</option>)}
+        </select>
+        {help}
+      </div>
+    )
+  }
+
+  if (field.type === 'textarea') {
+    return (
+      <div className="sm:col-span-2">
+        {label}
+        <textarea
+          className="input min-h-[80px] resize-y"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value)}
+          required={field.required}
+        />
+        {help}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {label}
+      <input
+        className="input"
+        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        required={field.required}
+      />
+      {help}
+    </div>
   )
 }
 

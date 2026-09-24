@@ -9,6 +9,8 @@ import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from 
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
+import { policyForSchool } from '../policy.js'
+import { emailAllowedBySignIn } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -156,8 +158,20 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
     if (rows.length === 0) return res.status(404).json({ error: 'No school found with that code.' })
     const target = rows[0]
 
-    const { rows: meRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const { rows: meRows } = await query('SELECT school_id, email FROM users WHERE id = $1', [req.auth.sub])
     const currentSchoolId = meRows[0]?.school_id || null
+
+    // A school may restrict which email domains can join it — the code alone
+    // is a weak gate once it has been passed around a group chat. Checked here
+    // rather than at every sign-in, so adding the rule later cannot lock out
+    // students already on the roster under an old address. The address comes
+    // from the users row, not the JWT, so an email change can't be outrun by
+    // an old token.
+    const targetPolicy = await policyForSchool(target.id)
+    if (targetPolicy && !emailAllowedBySignIn(targetPolicy.policy, meRows[0]?.email)) {
+      const domains = targetPolicy.policy.signIn.allowedEmailDomains.join(', ')
+      return res.status(403).json({ error: `${target.name} only accepts accounts from: ${domains}.` })
+    }
 
     if (currentSchoolId === target.id) {
       return res.status(409).json({ error: 'You are already linked to that school.' })

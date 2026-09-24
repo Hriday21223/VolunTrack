@@ -4,21 +4,25 @@
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
-export async function notifySupervisor({ supervisorEmail, supervisorName, studentName, studentEmail, hours, activity, logId }) {
+// The server now derives the student's name and email from the session and
+// requires one, so a signed-out (localStorage-only) user gets a silent
+// no-op here rather than an email. It also returns only a read-only status
+// handle — the token that can approve or reject lives in the supervisor's
+// inbox alone.
+export async function notifySupervisor({ supervisorEmail, supervisorName, hours, activity, logId }) {
   if (!supervisorEmail) return { ok: false }
+  const authToken = localStorage.getItem('voluntrack:auth_token')
+  if (!authToken) return { ok: false }
   try {
     const signupUrl = `${window.location.origin}${import.meta.env.BASE_URL}register`
-    const authToken = localStorage.getItem('voluntrack:auth_token')
-    const headers = { 'Content-Type': 'application/json' }
-    if (authToken) headers.Authorization = `Bearer ${authToken}`
     const response = await fetch(`${apiUrl}/notify-supervisor`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify({ supervisorEmail, supervisorName, studentName, studentEmail, hours, activity, signupUrl, logId: logId || null }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ supervisorEmail, supervisorName, hours, activity, signupUrl, logId: logId || null }),
     })
     if (!response.ok) return { ok: false }
     const body = await response.json().catch(() => ({}))
-    return { ok: true, token: body.token || null }
+    return { ok: true, statusToken: body.statusToken || null }
   } catch {
     return { ok: false }
   }
