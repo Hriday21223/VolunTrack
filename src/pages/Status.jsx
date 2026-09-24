@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, Clock, Database, Cpu, Monitor, Eye, AlertTriangle, Bell, Server, List, Mail } from 'lucide-react'
+import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, Clock, Database, Cpu, Monitor, Eye, AlertTriangle, Bell, Server, List, Mail, Tag } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
@@ -17,6 +17,11 @@ const POLL_MS = 60000
 // and reloaded — "the incidents list" is the thing people actually want to send
 // someone. Overview is the bare /status, which keeps every existing link, the
 // prerendered dist/status.html and the sitemap entry working unchanged.
+// Injected from package.json by vite.config.js, so it tracks the release tags
+// rather than being a string somebody has to remember to edit. Undefined only
+// if the page is somehow run outside a Vite build.
+const APP_VERSION = import.meta.env.VITE_APP_VERSION
+
 const TABS = ['overview', 'incidents', 'system']
 const DEFAULT_TAB = 'overview'
 
@@ -375,6 +380,16 @@ export default function Status() {
 
         {statusTab === 'system' && (
           <div className="grid md:grid-cols-2 gap-4">
+            <Card>
+              <h2 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                <Tag className="w-5 h-5 text-brand-600" /> Application
+              </h2>
+              <div className="text-sm text-earth-600 dark:text-earth-300 space-y-1">
+                <DetailRow label="App version" value={APP_VERSION ? `v${APP_VERSION}` : '—'} />
+                <DetailRow label="Mode" value={import.meta.env.PROD ? 'production' : 'development'} />
+              </div>
+            </Card>
+
             <Card>
               <h2 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
                 <Database className="w-5 h-5 text-brand-600" /> Data
