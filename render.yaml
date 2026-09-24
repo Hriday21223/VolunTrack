@@ -2,7 +2,7 @@
 # Deploy by connecting this repo in the Render dashboard (New > Blueprint).
 # After the first deploy, set ADMIN_EMAIL and ADMIN_PASSWORD in the Environment tab.
 #
-# ⚠️  Sensitive env vars (DATABASE_URL, EMAIL_USER, EMAIL_PASSWORD) are NOT
+# ⚠️  Sensitive env vars (DATABASE_URL, BREVO_API_KEY, EMAIL_USER, EMAIL_PASSWORD) are NOT
 #     stored in this file. Set them in the Render dashboard under
 #     Dashboard → your-service → Environment to keep them out of version control.
 #
