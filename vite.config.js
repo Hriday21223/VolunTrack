@@ -2,7 +2,15 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
 import { resolveSiteUrl } from './scripts/site-url.mjs'
+
+// package.json is the single source of truth for the app version, and it is
+// what the release tags track (v0.3.0 === "version": "0.3.0"). Read it here so
+// the number shown on /status/system can never drift from the published
+// release the way a hardcoded string would.
+const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8'))
 
 export default defineConfig(({ mode }) => {
   // Resolve VITE_SITE_URL ourselves (via Vite's own .env-loading logic) and
@@ -14,6 +22,11 @@ export default defineConfig(({ mode }) => {
   // process.env var).
   const env = loadEnv(mode, process.cwd(), '')
   process.env.VITE_SITE_URL = resolveSiteUrl(env)
+
+  // Exposed the same way, for the same reason: set it on process.env before
+  // returning config and Vite picks it up as import.meta.env.VITE_APP_VERSION,
+  // so no new global needs declaring for eslint or jsconfig.
+  process.env.VITE_APP_VERSION = pkg.version
 
   return {
     base: '/',
