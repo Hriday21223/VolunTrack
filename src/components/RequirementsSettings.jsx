@@ -16,6 +16,7 @@ import {
   DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES,
   fetchSchoolRequirements, saveSchoolRequirements,
   fetchOrgRequirements, saveOrgRequirements,
+  gradeKey, gradeLabel,
 } from '@/lib/requirements.js'
 
 const SECTION_LABELS = {
@@ -295,7 +296,7 @@ function GoalsEditor({ value, onChange }) {
         <div className="space-y-2">
           {grades.map(([grade, hours]) => (
             <div key={grade} className="flex items-center gap-2">
-              <span className="text-sm w-24">Grade {grade}</span>
+              <span className="text-sm w-24">{gradeLabel(grade)}</span>
               <input
                 className="input flex-1"
                 type="number"
@@ -322,7 +323,7 @@ function AddGrade({ existing, onAdd }) {
     <div className="flex gap-2 mt-2">
       <input
         className="input flex-1"
-        placeholder="Grade (e.g. 11)"
+        placeholder="Grade (e.g. 11, Junior, Year 12)"
         value={grade}
         onChange={(e) => setGrade(e.target.value)}
       />
@@ -330,7 +331,7 @@ function AddGrade({ existing, onAdd }) {
         type="button"
         className="btn-sm btn-secondary"
         disabled={!grade.trim() || Object.hasOwn(existing, grade.trim())}
-        onClick={() => { onAdd(grade.trim()); setGrade('') }}
+        onClick={() => { onAdd(gradeKey(grade)); setGrade('') }}
       >
         <Plus className="w-3.5 h-3.5 mr-1" /> Add
       </button>

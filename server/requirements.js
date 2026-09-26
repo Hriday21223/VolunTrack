@@ -170,7 +170,7 @@ function normalizeGoals(input) {
   const byGrade = {}
   if (raw.byGrade && typeof raw.byGrade === 'object' && !Array.isArray(raw.byGrade)) {
     for (const [grade, hours] of Object.entries(raw.byGrade).slice(0, 20)) {
-      const g = text(grade, 20)
+      const g = gradeKey(text(grade, 20))
       const h = posNumber(hours, { max: 10000 })
       if (g && h !== null) byGrade[g] = h
     }
@@ -245,11 +245,70 @@ export function resolvePolicy({ schoolPolicy, orgPolicy, orgName } = {}) {
   return { policy, sources, orgName: orgName || null }
 }
 
+// ---------------------------------------------------------------------------
+// Grades
+// ---------------------------------------------------------------------------
+
+// A student's grade is free text on the account, and a school's per-grade
+// overrides are keyed by whatever the admin typed. Matching those two exactly
+// meant an override for "11" silently missed every student who wrote "11th
+// grade" or "Junior" — the rule looked configured and applied to nobody.
+// Both sides now go through this, so they meet in the middle.
+const GRADE_WORDS = {
+  k: 'K', kinder: 'K', kindergarten: 'K',
+  freshman: '9', freshmen: '9', fresh: '9',
+  sophomore: '10', soph: '10',
+  junior: '11', jr: '11',
+  senior: '12', sr: '12',
+}
+
+export const SCHOOL_GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+
+/**
+ * Canonical form of a grade, for storing and for matching.
+ * "11th grade", "Grade 11", "junior", " 11 " → "11". Anything unrecognized
+ * keeps its own trimmed text, so a school using its own labels ("Year 12",
+ * "Sixth form") still matches students who were given that same label.
+ */
+export function gradeKey(input) {
+  const raw = String(input ?? '').trim()
+  if (!raw) return null
+  const lower = raw.toLowerCase()
+
+  const word = GRADE_WORDS[lower.replace(/[^a-z]/g, '')]
+  if (word) return word
+
+  // The first number in the string, when the rest is only grade noise
+  // ("11th grade", "grade 11", "yr 11"). A label carrying anything else
+  // ("11 and up") is left alone rather than guessed at.
+  const match = lower.match(/^(?:grade|yr|year|g)?\s*(\d{1,2})(?:st|nd|rd|th)?\s*(?:grade|yr|year)?$/)
+  if (match) {
+    const n = Number(match[1])
+    if (n >= 1 && n <= 12) return String(n)
+  }
+
+  return raw
+}
+
+/** How a grade reads in the UI: "Grade 11", "Kindergarten", or as given. */
+export function gradeLabel(input) {
+  const key = gradeKey(input)
+  if (!key) return null
+  if (key === 'K') return 'Kindergarten'
+  return /^\d{1,2}$/.test(key) ? `Grade ${key}` : key
+}
+
 /** The hour target that applies to one student, grade override first. */
 export function goalHoursFor(policy, grade) {
   const goals = policy?.goals || DEFAULT_GOALS
-  const key = String(grade ?? '').trim()
-  if (key && goals.byGrade && goals.byGrade[key] != null) return goals.byGrade[key]
+  const key = gradeKey(grade)
+  if (key && goals.byGrade) {
+    // Exact first — a tenant's own label wins over anything inferred.
+    if (goals.byGrade[key] != null) return goals.byGrade[key]
+    for (const [stored, hours] of Object.entries(goals.byGrade)) {
+      if (hours != null && gradeKey(stored) === key) return hours
+    }
+  }
   return goals.totalHours ?? null
 }
 

@@ -6,6 +6,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
+import { SCHOOL_GRADES, gradeLabel } from '@policy'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const ROLES = [
@@ -156,7 +157,16 @@ export default function Register() {
                   <Field icon={Hash}          label="School code (optional)" value={form.schoolCode} onChange={onChange('schoolCode')} placeholder="cisd-12345" />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
-                  <Field icon={GraduationCap} label="Grade or Role" value={form.grade} onChange={onChange('grade')} placeholder="11th grade / Volunteer lead" />
+                  <label className="label" htmlFor="register-grade">Grade (optional)</label>
+                  <div className="relative">
+                    <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
+                    <select id="register-grade" className="input pl-9" value={form.grade} onChange={onChange('grade')}>
+                      <option value="">Select your grade</option>
+                      {SCHOOL_GRADES.map((g) => (
+                        <option key={g} value={g}>{gradeLabel(g)}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '800ms' }}>
                   <Field icon={Hash} label="Student ID number (optional)" value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />

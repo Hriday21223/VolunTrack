@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Download, FileSpreadsheet, FileText, Eye, Loader2 } from 'lucide-react'
 import { schoolHoursCSV, schoolSummaryCSV, schoolHoursPDF } from '@/lib/export.js'
 import { fmtHours } from '@/utils/date.js'
+import { gradeLabel } from '@policy'
 import PdfPreview from '@/components/PdfPreview.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -167,7 +168,7 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
                   {report.students.slice(0, 25).map((s) => (
                     <tr key={s.studentId} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="py-2 pr-3">{s.name}</td>
-                      <td className="py-2 pr-3">{s.grade || '—'}</td>
+                      <td className="py-2 pr-3">{gradeLabel(s.grade) || '—'}</td>
                       <td className="py-2 pr-3">{s.logCount}</td>
                       <td className="py-2 pr-3">{fmtHours(s.approvedHours)}</td>
                       <td className="py-2 pr-3">{fmtHours(s.pendingHours)}</td>
