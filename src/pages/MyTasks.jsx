@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -26,6 +26,168 @@ export default function MyTasks() {
   const [batchBusy, setBatchBusy] = useState(false)
   const [students, setStudents] = useState([])
   const [studentsLoading, setStudentsLoading] = useState(true)
+  // Editing, cancelling and messaging are all per-task panels rather than
+  // modals: the organizer is looking at the task they mean to act on.
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+  const [cancellingId, setCancellingId] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [messagingId, setMessagingId] = useState(null)
+  const [messageDraft, setMessageDraft] = useState('')
+  const [actionBusy, setActionBusy] = useState(false)
+  const [report, setReport] = useState(null)
+  const [reportRange, setReportRange] = useState({ from: '', to: '' })
+  const [reportBusy, setReportBusy] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+
+  const loadReport = useCallback(async (range) => {
+    setReportBusy(true)
+    try {
+      const params = new URLSearchParams()
+      if (range?.from) params.set('from', range.from)
+      if (range?.to) params.set('to', range.to)
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/public-tasks/mine/report?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) setReport(await res.json())
+    } catch {
+      // The report is a read of data already on screen elsewhere; a failure
+      // here should not disturb the task list.
+    } finally { setReportBusy(false) }
+  }, [])
+
+  const authHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}`,
+  })
+
+  const reportCSV = () => {
+    if (!report) return
+    const rows = [
+      ['Date', 'Event', 'Location', 'Status', 'Approved', 'Present', 'Absent', 'Excused', 'Hours'],
+      ...report.tasks.map((t) => [
+        String(t.date || '').slice(0, 10),
+        (t.title || '').replaceAll(',', ' '),
+        (t.location || '').replaceAll(',', ' '),
+        t.status, t.approved, t.present, t.absent, t.excused, t.hours,
+      ]),
+    ]
+    const blob = new Blob([rows.map((r) => r.join(',')).join('\n')], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `volunteer-impact-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const reportPDF = async () => {
+    if (!report) return
+    const { schoolHoursPDF } = await import('@/lib/export.js')
+    await schoolHoursPDF({
+      title: 'Volunteer impact report',
+      range: [report.from, report.to].filter(Boolean).join(' to ') || 'All time',
+      // schoolHoursPDF draws a per-row table; an event maps onto the same
+      // shape as a student (a name, a count, two hour columns).
+      students: report.tasks.map((t) => ({
+        name: `${String(t.date || '').slice(0, 10)} · ${t.title}`,
+        grade: t.status,
+        logCount: t.approved,
+        approvedHours: t.hours,
+        pendingHours: 0,
+      })),
+      totals: { students: report.totals.volunteers, logs: report.totals.events, hours: report.totals.hours },
+    })
+  }
+
+  const startEdit = (t) => {
+    setEditingId(t.id)
+    setCancellingId(null)
+    setMessagingId(null)
+    setEditForm({
+      title: t.title || '',
+      description: t.description || '',
+      location: t.location || '',
+      // The row carries a timestamp; the date input wants a plain day.
+      date: String(t.date || '').slice(0, 10),
+      time: t.time || '',
+      slotsTotal: Number(t.slots_total) || 1,
+      phone: t.phone || '',
+      importantInfo: t.important_info || '',
+      latitude: t.latitude ?? null,
+      longitude: t.longitude ?? null,
+    })
+  }
+
+  const saveEdit = async (taskId) => {
+    setActionBusy(true)
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}`, {
+        method: 'PATCH', headers: authHeaders(), body: JSON.stringify(editForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not save the changes')
+      setEditingId(null)
+      setEditForm(null)
+      setToastMsg('Task updated')
+      setToast(true)
+      loadTasks()
+    } catch (e) {
+      setToastMsg(e.message); setToast(true)
+    } finally { setActionBusy(false) }
+  }
+
+  const setTaskStatus = async (taskId, status) => {
+    setActionBusy(true)
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/status`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ status }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not change the status')
+      setToastMsg(status === 'closed' ? 'Signups closed' : 'Signups reopened')
+      setToast(true)
+      loadTasks()
+    } catch (e) {
+      setToastMsg(e.message); setToast(true)
+    } finally { setActionBusy(false) }
+  }
+
+  const cancelTask = async (taskId) => {
+    setActionBusy(true)
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/cancel`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ reason: cancelReason.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not cancel the task')
+      setCancellingId(null)
+      setCancelReason('')
+      setToastMsg(data.notified ? `Cancelled — ${data.notified} volunteer${data.notified === 1 ? '' : 's'} notified` : 'Task cancelled')
+      setToast(true)
+      loadTasks()
+    } catch (e) {
+      setToastMsg(e.message); setToast(true)
+    } finally { setActionBusy(false) }
+  }
+
+  const messageVolunteers = async (taskId) => {
+    setActionBusy(true)
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/message`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ message: messageDraft.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not send your message')
+      setMessagingId(null)
+      setMessageDraft('')
+      setToastMsg(`Sent to ${data.sent} volunteer${data.sent === 1 ? '' : 's'}`)
+      setToast(true)
+    } catch (e) {
+      setToastMsg(e.message); setToast(true)
+    } finally { setActionBusy(false) }
+  }
 
   const loadTasks = useCallback(async () => {
     setLoading(true)
@@ -215,6 +377,86 @@ export default function MyTasks() {
           </Card>
         )}
 
+        {/* What an organizer needs at grant time. Every figure was already in
+            the tasks and their signups; nothing could read it back out. */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-brand-600" /> Impact report</h3>
+            <button
+              onClick={() => { const next = !showReport; setShowReport(next); if (next && !report) loadReport(reportRange) }}
+              className="btn-sm btn-ghost"
+            >
+              {showReport ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {showReport && (
+            <div className="mt-3">
+              <div className="flex flex-wrap items-end gap-2 mb-3">
+                <div>
+                  <label htmlFor="report-from" className="block text-[11px] text-earth-400 mb-1">From</label>
+                  <input id="report-from" type="date" className="input w-[145px]" value={reportRange.from} onChange={(e) => setReportRange((r) => ({ ...r, from: e.target.value }))} />
+                </div>
+                <div>
+                  <label htmlFor="report-to" className="block text-[11px] text-earth-400 mb-1">To</label>
+                  <input id="report-to" type="date" className="input w-[145px]" value={reportRange.to} onChange={(e) => setReportRange((r) => ({ ...r, to: e.target.value }))} />
+                </div>
+                <button onClick={() => loadReport(reportRange)} className="btn-sm btn-ghost" disabled={reportBusy}>
+                  {reportBusy ? 'Loading…' : 'Apply'}
+                </button>
+                <div className="flex-1" />
+                <button onClick={reportPDF} className="btn-sm btn-ghost disabled:opacity-40" disabled={!report || report.tasks.length === 0}>
+                  <Download className="w-3.5 h-3.5 mr-1" /> PDF
+                </button>
+                <button onClick={reportCSV} className="btn-sm btn-ghost disabled:opacity-40" disabled={!report || report.tasks.length === 0}>
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> CSV
+                </button>
+              </div>
+
+              {!report ? (
+                <p className="text-sm text-earth-500">Loading…</p>
+              ) : report.tasks.length === 0 ? (
+                <p className="text-sm text-earth-500">No events in that range.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                    <ReportStat label="Events" value={report.totals.events} />
+                    <ReportStat label="Volunteers" value={report.totals.volunteers} />
+                    <ReportStat label="Hours logged" value={report.totals.hours} />
+                    <ReportStat
+                      label="Attendance"
+                      value={report.totals.attendanceRate == null ? 'Not marked' : `${Math.round(report.totals.attendanceRate * 100)}%`}
+                    />
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-earth-500">
+                        <tr>
+                          <th className="text-left py-2">Date</th>
+                          <th className="text-left py-2">Event</th>
+                          <th className="text-right py-2">Approved</th>
+                          <th className="text-right py-2">Present</th>
+                          <th className="text-right py-2">Hours</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.tasks.map((t) => (
+                          <tr key={t.id} className="border-t border-white/10">
+                            <td className="py-2 whitespace-nowrap">{String(t.date || '').slice(0, 10)}</td>
+                            <td className="py-2">{t.title}{t.status === 'cancelled' && <span className="text-xs text-red-400"> · cancelled</span>}</td>
+                            <td className="py-2 text-right">{t.approved}</td>
+                            <td className="py-2 text-right">{t.present}</td>
+                            <td className="py-2 text-right">{t.hours}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </Card>
+
         {loading ? (
           <Card><p className="text-center text-earth-500 py-8">Loading…</p></Card>
         ) : tasks.length === 0 ? (
@@ -245,15 +487,91 @@ export default function MyTasks() {
                   )}
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${t.status === 'open' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-earth-800 text-earth-400'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    t.status === 'open' ? 'bg-emerald-500/10 text-emerald-300'
+                      : t.status === 'cancelled' ? 'bg-red-500/10 text-red-300'
+                        : 'bg-earth-800 text-earth-400'
+                  }`}>
                     {t.status}
                   </span>
                   {isExpanded ? <ChevronUp className="w-4 h-4 text-earth-400" /> : <ChevronDown className="w-4 h-4 text-earth-400" />}
                 </div>
               </div>
 
+              {t.status === 'cancelled' && t.cancelled_reason && (
+                <p className="mt-2 text-xs text-red-300">Cancelled: {t.cancelled_reason}</p>
+              )}
+
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-white/10">
+                  {/* A posted task used to be unchangeable — these four are
+                      the verbs an organizer has always needed. */}
+                  {t.status !== 'cancelled' && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
+                        <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
+                      </button>
+                      <button onClick={() => setTaskStatus(t.id, t.status === 'open' ? 'closed' : 'open')} className="btn-sm btn-ghost" disabled={actionBusy}>
+                        {t.status === 'open' ? <><Lock className="w-3.5 h-3.5 mr-1" /> Close signups</> : <><Unlock className="w-3.5 h-3.5 mr-1" /> Reopen signups</>}
+                      </button>
+                      <button onClick={() => { setMessagingId(messagingId === t.id ? null : t.id); setEditingId(null); setCancellingId(null) }} className="btn-sm btn-ghost" disabled={actionBusy}>
+                        <Mail className="w-3.5 h-3.5 mr-1" /> Message volunteers
+                      </button>
+                      <button onClick={() => { setCancellingId(cancellingId === t.id ? null : t.id); setEditingId(null); setMessagingId(null) }} className="btn-sm btn-ghost text-red-400" disabled={actionBusy}>
+                        <Ban className="w-3.5 h-3.5 mr-1" /> Cancel event
+                      </button>
+                    </div>
+                  )}
+
+                  {editingId === t.id && editForm && (
+                    <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">
+                      <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Task title" />
+                      <textarea className="input" rows={2} maxLength={5000} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+                      <LocationPicker
+                        address={editForm.location}
+                        lat={editForm.latitude}
+                        lng={editForm.longitude}
+                        placeholder="Location"
+                        onChange={({ address, lat, lng }) => setEditForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
+                      />
+                      <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder="Important info — approved volunteers only" />
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <input type="date" className="input" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} aria-label="Date" />
+                        <input type="time" className="input" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} aria-label="Time" />
+                        <input type="number" min={1} className="input" value={editForm.slotsTotal} onChange={(e) => setEditForm({ ...editForm, slotsTotal: e.target.value })} aria-label="Volunteers needed" />
+                        <input type="tel" className="input" maxLength={30} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} aria-label="Phone" />
+                      </div>
+                      <button onClick={() => saveEdit(t.id)} className="btn-primary btn-sm" disabled={actionBusy}>
+                        {actionBusy ? 'Saving…' : 'Save changes'}
+                      </button>
+                    </div>
+                  )}
+
+                  {messagingId === t.id && (
+                    <div className="mb-4 p-3 rounded-xl border border-white/10">
+                      <label htmlFor={`msg-${t.id}`} className="label text-xs">Message every approved volunteer</label>
+                      <textarea id={`msg-${t.id}`} className="input" rows={3} maxLength={2000} value={messageDraft} onChange={(e) => setMessageDraft(e.target.value)} placeholder="Bring gloves and water. Park at the back of the lot." />
+                      <p className="text-xs text-earth-500 mt-1">Sent one message per person — volunteers never see each other&apos;s addresses.</p>
+                      <button onClick={() => messageVolunteers(t.id)} className="btn-primary btn-sm mt-2" disabled={actionBusy || !messageDraft.trim()}>
+                        {actionBusy ? 'Sending…' : 'Send'}
+                      </button>
+                    </div>
+                  )}
+
+                  {cancellingId === t.id && (
+                    <div className="mb-4 p-3 rounded-xl border border-red-500/30">
+                      <label htmlFor={`cancel-${t.id}`} className="label text-xs">Cancel this event</label>
+                      <input id={`cancel-${t.id}`} className="input" maxLength={500} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason (optional) — included in the email" />
+                      <p className="text-xs text-earth-500 mt-1">Everyone signed up is emailed. Attendance already recorded is kept, and the event cannot be reopened.</p>
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => cancelTask(t.id)} className="btn-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-1.5" disabled={actionBusy}>
+                          {actionBusy ? 'Cancelling…' : 'Yes, cancel it'}
+                        </button>
+                        <button onClick={() => { setCancellingId(null); setCancelReason('') }} className="btn-sm btn-ghost" disabled={actionBusy}>Keep it</button>
+                      </div>
+                    </div>
+                  )}
+
                   {signups.length === 0 ? (
                     <p className="text-sm text-earth-500 text-center py-4">No one has signed up yet.</p>
                   ) : (
@@ -427,5 +745,14 @@ export default function MyTasks() {
 
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
     </AppLayout>
+  )
+}
+
+function ReportStat({ label, value }) {
+  return (
+    <div className="rounded-xl bg-white/5 px-3 py-2">
+      <div className="text-[11px] text-earth-400">{label}</div>
+      <div className="font-semibold mt-0.5">{value}</div>
+    </div>
   )
 }

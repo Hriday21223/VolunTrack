@@ -187,6 +187,36 @@ export default function Dashboard() {
     return () => { live = false }
   }, [])
 
+  // An organizer lands on this same dashboard, which is built around their
+  // own logged hours. What they actually need is the state of their events.
+  const [myTasks, setMyTasks] = useState([])
+  useEffect(() => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    let live = true
+    fetch(`${apiUrl}/school/public-tasks/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : { tasks: [] }))
+      .then((d) => { if (live) setMyTasks(d.tasks || []) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [])
+
+  const organizing = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const live = myTasks.filter((t) => t.status !== 'cancelled')
+    const soon = live
+      .filter((t) => String(t.date || '').slice(0, 10) >= today)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    const pendingApprovals = live.reduce(
+      (n, t) => n + (t.signups || []).filter((s) => s.signup_status === 'pending' || s.status === 'pending').length, 0,
+    )
+    // Attendance is only worth chasing once the event has actually happened.
+    const unmarked = live
+      .filter((t) => String(t.date || '').slice(0, 10) < today)
+      .reduce((n, t) => n + (t.signups || []).filter((s) => (s.signup_status || s.status) === 'approved' && !s.attendance_status).length, 0)
+    return { total: live.length, soon, pendingApprovals, unmarked }
+  }, [myTasks])
+
   const upcoming = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd')
     const tasks = signups
@@ -508,6 +538,43 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
+
+        {organizing.total > 0 && (
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display font-semibold">Your events</h3>
+              <Link to="/my-tasks" className="text-xs text-brand-400 hover:underline">My tasks</Link>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <span className="text-earth-300">{organizing.soon.length} upcoming</span>
+              {organizing.pendingApprovals > 0 && (
+                <Link to="/my-tasks" className="text-amber-400 hover:underline">
+                  {organizing.pendingApprovals} awaiting approval
+                </Link>
+              )}
+              {organizing.unmarked > 0 && (
+                <Link to="/attendance" className="text-amber-400 hover:underline">
+                  {organizing.unmarked} attendance unmarked
+                </Link>
+              )}
+              {organizing.pendingApprovals === 0 && organizing.unmarked === 0 && (
+                <span className="text-earth-500">Nothing waiting on you</span>
+              )}
+            </div>
+            {organizing.soon.length > 0 && (
+              <ul className="mt-3 divide-y divide-white/5">
+                {organizing.soon.slice(0, 3).map((t) => (
+                  <li key={t.id} className="py-2 flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate text-earth-100">{t.title}</span>
+                    <span className="text-xs text-earth-400 whitespace-nowrap">
+                      {fmtDate(String(t.date).slice(0, 10))} · {t.slots_filled}/{t.slots_total}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
 
         {/* Only shown when something is actually stuck. A card that is always
             there stops being read, and "nothing needs you" is not news. */}

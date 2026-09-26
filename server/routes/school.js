@@ -5,7 +5,7 @@ import { query, hasDatabase, getPool, nextAccountCode } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
@@ -14,6 +14,7 @@ import { emailAllowedBySignIn } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
+import { requireCronKey, cronLimiter } from '../cronAuth.js'
 
 const router = express.Router()
 
@@ -28,6 +29,17 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
+})
+
+// Messaging a roster fans one click out to every approved volunteer, so it
+// gets a tighter cap than the general one — the same posture as the app's
+// other outbound-email endpoints.
+const taskMailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many messages sent. Please try again later.' },
 })
 
 function requireDb(_req, res, next) {
@@ -923,7 +935,12 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       return res.json({ ok: true, id: existing[0].id })
     }
 
-    const { rows: signups } = await client.query('SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1', [req.params.id])
+    // Rejected signups must not hold a slot: turning three applicants away on
+    // a four-slot task used to leave room for one, and then report "full".
+    const { rows: signups } = await client.query(
+      "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status <> 'rejected'",
+      [req.params.id],
+    )
     if (Number(signups[0].cnt) >= rows[0].slots_total) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: 'Task is full.' })
@@ -956,6 +973,9 @@ router.post('/public-tasks/:id/approve/:userId', limiter, requireDb, requireAuth
       "UPDATE public_task_signups SET status = 'approved' WHERE task_id = $1 AND user_id = $2",
       [req.params.id, req.params.userId],
     )
+    // Nobody was ever told. A volunteer signed up and then watched a page for
+    // a status change that only existed inside the organizer's dashboard.
+    notifySignupDecision(req.params.id, req.params.userId, 'approved')
     return res.json({ ok: true })
   } catch (error) {
     console.error('approve signup failed:', error)
@@ -974,10 +994,387 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
       "UPDATE public_task_signups SET status = 'rejected' WHERE task_id = $1 AND user_id = $2",
       [req.params.id, req.params.userId],
     )
+    notifySignupDecision(req.params.id, req.params.userId, 'rejected')
     return res.json({ ok: true })
   } catch (error) {
     console.error('reject signup failed:', error)
     return res.status(500).json({ error: 'Could not reject signup.' })
+  }
+})
+
+// --- Task notifications ----------------------------------------------------
+
+// Every task email goes to one person at a time. A shared To: line on a
+// volunteer roster would publish a list of minors' addresses to each other,
+// which is the same reason referral invites are sent separately.
+function taskEmailHtml({ heading, lines, task }) {
+  const when = [task.date, task.time].filter(Boolean).join(' at ')
+  const detail = [
+    when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : '',
+    task.location ? `<p><strong>Where:</strong> ${escapeHtml(task.location)}</p>` : '',
+    task.creator_name ? `<p><strong>Organizer:</strong> ${escapeHtml(task.creator_name)}</p>` : '',
+  ].join('')
+  return `
+    <h2>${escapeHtml(heading)}</h2>
+    ${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}
+    <h3>${escapeHtml(task.title || 'Volunteer opportunity')}</h3>
+    ${detail}
+    ${emailFooterHtml()}
+  `
+}
+
+// Fire-and-forget, like recordAudit: a mail server having a bad day must not
+// turn a successful approval into a 500 for the organizer.
+async function notifySignupDecision(taskId, userId, decision) {
+  try {
+    const { rows } = await query(
+      `SELECT t.title, t.date, t.time, t.location, t.creator_name, t.important_info, u.email, u.name
+         FROM public_tasks t, users u
+        WHERE t.id = $1 AND u.id = $2`,
+      [taskId, userId],
+    )
+    const row = rows[0]
+    if (!row?.email) return
+    const approved = decision === 'approved'
+    await sendEmail({
+      to: row.email,
+      subject: approved ? `You're in: ${row.title}` : `Update on your signup: ${row.title}`,
+      html: taskEmailHtml({
+        heading: approved ? "You're approved" : 'Your signup was not accepted',
+        lines: approved
+          ? [
+            `Hi ${row.name || 'there'}, the organizer approved your signup.`,
+            ...(row.important_info ? [row.important_info] : []),
+          ]
+          : [`Hi ${row.name || 'there'}, the organizer could not take your signup for this one. Other opportunities are listed in VolunTrack.`],
+        task: row,
+      }),
+    })
+  } catch (error) {
+    console.error('task signup notification failed:', error)
+  }
+}
+
+// --- Editing a posted task -------------------------------------------------
+
+// PATCH /api/school/public-tasks/:id — organizer edits their own task.
+// Only the fields sent are changed, so a corrected address doesn't have to
+// re-send the description. Slots cannot drop below the people already
+// approved: the app would have to un-approve somebody to make that true.
+router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
+  const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude']
+  const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
+
+  try {
+    const { rows } = await query('SELECT created_by, status FROM public_tasks WHERE id = $1', [req.params.id])
+    if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
+    if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can edit this task.' })
+    if (rows[0].status === 'cancelled') return res.status(400).json({ error: 'A cancelled task cannot be edited.' })
+
+    const sets = []
+    const values = []
+    for (const field of editable) {
+      if (req.body[field] === undefined) continue
+      const column = { importantInfo: 'important_info', slotsTotal: 'slots_total' }[field] || field
+
+      if (field === 'slotsTotal') {
+        const slots = Number(req.body.slotsTotal)
+        if (!Number.isInteger(slots) || slots < 1 || slots > 1000) {
+          return res.status(400).json({ error: 'Volunteers needed must be between 1 and 1000.' })
+        }
+        const { rows: approved } = await query(
+          "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status = 'approved'",
+          [req.params.id],
+        )
+        if (slots < Number(approved[0].cnt)) {
+          return res.status(400).json({ error: `You have already approved ${approved[0].cnt} volunteers — reject someone first to go below that.` })
+        }
+        values.push(slots)
+      } else if (field === 'latitude' || field === 'longitude') {
+        const n = req.body[field] === null || req.body[field] === '' ? null : Number(req.body[field])
+        if (n !== null && !Number.isFinite(n)) return res.status(400).json({ error: 'Invalid map position.' })
+        values.push(n)
+      } else {
+        const text = String(req.body[field] ?? '').trim()
+        if (limits[field] && text.length > limits[field]) {
+          return res.status(400).json({ error: `${field} is too long.` })
+        }
+        if (['title', 'description', 'location', 'phone'].includes(field) && !text) {
+          return res.status(400).json({ error: `${field} cannot be empty.` })
+        }
+        if (field === 'date' && text && !validator.isDate(text)) return res.status(400).json({ error: 'Invalid date.' })
+        values.push(text)
+      }
+      sets.push(`${column} = $${values.length}`)
+    }
+
+    if (sets.length === 0) return res.status(400).json({ error: 'Nothing to change.' })
+    values.push(req.params.id)
+    const { rows: updated } = await query(
+      `UPDATE public_tasks SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length} RETURNING *`,
+      values,
+    )
+    return res.json({ task: updated[0] })
+  } catch (error) {
+    console.error('task edit failed:', error)
+    return res.status(500).json({ error: 'Could not update the task.' })
+  }
+})
+
+// POST /api/school/public-tasks/:id/status { status: 'open' | 'closed' }
+// Closing stops new signups without touching anyone already on the list —
+// the signup route has always refused a closed task, and until now nothing
+// could put a task into that state.
+router.post('/public-tasks/:id/status', limiter, requireDb, requireAuth(), async (req, res) => {
+  const status = req.body.status
+  if (!['open', 'closed'].includes(status)) return res.status(400).json({ error: "Status must be 'open' or 'closed'." })
+  try {
+    const { rows } = await query('SELECT created_by, status FROM public_tasks WHERE id = $1', [req.params.id])
+    if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
+    if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can change this task.' })
+    if (rows[0].status === 'cancelled') return res.status(400).json({ error: 'A cancelled task cannot be reopened.' })
+
+    await query('UPDATE public_tasks SET status = $1, updated_at = now() WHERE id = $2', [status, req.params.id])
+    return res.json({ ok: true, status })
+  } catch (error) {
+    console.error('task status change failed:', error)
+    return res.status(500).json({ error: 'Could not change the task status.' })
+  }
+})
+
+// POST /api/school/public-tasks/:id/cancel { reason }
+// Cancelling is the honest end state for an event that will not happen:
+// signups and attendance stay, because the record of who turned up to the
+// ones that did run must survive. Everyone who signed up is told, since they
+// had it in their calendar.
+router.post('/public-tasks/:id/cancel', limiter, requireDb, requireAuth(), async (req, res) => {
+  const reason = String(req.body.reason || '').trim().slice(0, 500)
+  try {
+    const { rows } = await query(
+      'SELECT created_by, status, title, date, time, location, creator_name FROM public_tasks WHERE id = $1',
+      [req.params.id],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
+    if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can cancel this task.' })
+    if (rows[0].status === 'cancelled') return res.status(400).json({ error: 'This task is already cancelled.' })
+
+    await query(
+      "UPDATE public_tasks SET status = 'cancelled', cancelled_reason = $1, cancelled_at = now(), updated_at = now() WHERE id = $2",
+      [reason || null, req.params.id],
+    )
+
+    const { rows: people } = await query(
+      `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND s.status <> 'rejected'`,
+      [req.params.id],
+    )
+    // Sequential and individual — see taskEmailHtml on why there is no shared
+    // recipient line. Failures are logged, never surfaced as a failed cancel:
+    // the event is off either way.
+    for (const person of people) {
+      try {
+        await sendEmail({
+          to: person.email,
+          subject: `Cancelled: ${rows[0].title}`,
+          html: taskEmailHtml({
+            heading: 'This event has been cancelled',
+            lines: [
+              `Hi ${person.name || 'there'}, the organizer has cancelled this event.`,
+              ...(reason ? [`Reason given: ${reason}`] : []),
+            ],
+            task: rows[0],
+          }),
+        })
+      } catch (error) { console.error('cancellation email failed:', error) }
+    }
+
+    return res.json({ ok: true, notified: people.length })
+  } catch (error) {
+    console.error('task cancel failed:', error)
+    return res.status(500).json({ error: 'Could not cancel the task.' })
+  }
+})
+
+// POST /api/school/public-tasks/:id/message { message }
+// The organizer has everyone's address and, until now, no way to use it —
+// "bring gloves, park at the back" had to happen outside the app.
+router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth(), async (req, res) => {
+  const message = String(req.body.message || '').trim()
+  if (!message) return res.status(400).json({ error: 'Write a message first.' })
+  if (message.length > 2000) return res.status(400).json({ error: 'Message is too long (2000 characters max).' })
+
+  try {
+    const { rows } = await query(
+      'SELECT created_by, title, date, time, location, creator_name FROM public_tasks WHERE id = $1',
+      [req.params.id],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
+    if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can message volunteers.' })
+
+    const { rows: people } = await query(
+      `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND s.status = 'approved'`,
+      [req.params.id],
+    )
+    if (people.length === 0) return res.status(400).json({ error: 'No approved volunteers to message yet.' })
+
+    let sent = 0
+    for (const person of people) {
+      try {
+        await sendEmail({
+          to: person.email,
+          subject: `Message from the organizer: ${rows[0].title}`,
+          html: taskEmailHtml({
+            heading: `A message from ${rows[0].creator_name || 'the organizer'}`,
+            lines: [message],
+            task: rows[0],
+          }),
+        })
+        sent += 1
+      } catch (error) { console.error('organizer message failed:', error) }
+    }
+    return res.json({ ok: true, sent, recipients: people.length })
+  } catch (error) {
+    console.error('organizer message failed:', error)
+    return res.status(500).json({ error: 'Could not send your message.' })
+  }
+})
+
+// POST /api/school/public-tasks/internal/run-reminders
+// Driven by .github/workflows/task-reminders.yml, because Render's free tier
+// has no cron. Mails every approved volunteer on a task happening tomorrow.
+// public_task_reminder_sends is the idempotency key, so a workflow that fires
+// twice — or replays after a failure — cannot mail a roster again.
+router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const dryRun = req.body?.dryRun === true
+  try {
+    const { rows: tasks } = await query(
+      `SELECT t.id, t.title, t.date, t.time, t.location, t.creator_name, t.important_info
+         FROM public_tasks t
+        WHERE t.status = 'open'
+          AND t.date = (current_date + interval '1 day')::date
+          AND NOT EXISTS (SELECT 1 FROM public_task_reminder_sends r WHERE r.task_id = t.id)`,
+    )
+
+    const results = []
+    for (const task of tasks) {
+      const { rows: people } = await query(
+        `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+          WHERE s.task_id = $1 AND s.status = 'approved'`,
+        [task.id],
+      )
+      if (people.length === 0) continue
+      if (dryRun) { results.push({ task: task.title, recipients: people.length, dryRun: true }); continue }
+
+      let sent = 0
+      for (const person of people) {
+        try {
+          await sendEmail({
+            to: person.email,
+            subject: `Tomorrow: ${task.title}`,
+            html: taskEmailHtml({
+              heading: 'Your volunteer event is tomorrow',
+              lines: [
+                `Hi ${person.name || 'there'}, this is a reminder about tomorrow.`,
+                ...(task.important_info ? [task.important_info] : []),
+              ],
+              task,
+            }),
+          })
+          sent += 1
+        } catch (error) { console.error('task reminder email failed:', error) }
+      }
+      // Recorded even on a partial send: re-running would mail the people who
+      // did get it a second time, which is worse than one person missing it.
+      await query(
+        'INSERT INTO public_task_reminder_sends (task_id, recipients) VALUES ($1, $2) ON CONFLICT (task_id) DO NOTHING',
+        [task.id, sent],
+      )
+      results.push({ task: task.title, recipients: people.length, sent })
+    }
+
+    return res.json({ ok: true, tasks: tasks.length, results, emailConfigured: hasEmail() })
+  } catch (error) {
+    console.error('task reminders run failed:', error)
+    return res.status(500).json({ error: 'Could not run task reminders.' })
+  }
+})
+
+// GET /api/school/public-tasks/mine/report?from=&to=
+// What an organizer needs at grant time. Every figure here was already in
+// public_tasks and its signups; nothing could read it back out.
+router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async (req, res) => {
+  const from = String(req.query.from || '').trim()
+  const to = String(req.query.to || '').trim()
+  if (from && !validator.isDate(from)) return res.status(400).json({ error: 'Invalid from date.' })
+  if (to && !validator.isDate(to)) return res.status(400).json({ error: 'Invalid to date.' })
+
+  try {
+    const params = [req.auth.sub]
+    let range = ''
+    if (from) { params.push(from); range += ` AND t.date >= $${params.length}` }
+    if (to) { params.push(to); range += ` AND t.date <= $${params.length}` }
+
+    const { rows } = await query(
+      `SELECT t.id, t.title, t.date, t.location, t.status, t.slots_total,
+              COUNT(s.id) FILTER (WHERE s.status = 'approved')            AS approved,
+              COUNT(s.id) FILTER (WHERE s.status = 'pending')             AS pending,
+              COUNT(s.id) FILTER (WHERE s.attendance_status = 'present')  AS present,
+              COUNT(s.id) FILTER (WHERE s.attendance_status = 'absent')   AS absent,
+              COUNT(s.id) FILTER (WHERE s.attendance_status = 'excused')  AS excused,
+              COALESCE(SUM(l.hours), 0)                                   AS hours
+         FROM public_tasks t
+         LEFT JOIN public_task_signups s ON s.task_id = t.id
+         LEFT JOIN logs l ON l.task_id = t.id
+        WHERE t.created_by = $1${range}
+        GROUP BY t.id
+        ORDER BY t.date DESC`,
+      params,
+    )
+
+    const tasks = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      date: r.date,
+      location: r.location,
+      status: r.status,
+      slotsTotal: r.slots_total,
+      approved: Number(r.approved),
+      pending: Number(r.pending),
+      present: Number(r.present),
+      absent: Number(r.absent),
+      excused: Number(r.excused),
+      hours: Number(r.hours),
+    }))
+
+    // Distinct people, not signups: one volunteer at six events is one
+    // volunteer, which is the number a grant report is asking for.
+    const { rows: distinct } = await query(
+      `SELECT COUNT(DISTINCT s.user_id) AS people
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+        WHERE t.created_by = $1 AND s.status = 'approved'${range}`,
+      params,
+    )
+
+    const marked = tasks.reduce((n, t) => n + t.present + t.absent + t.excused, 0)
+    const present = tasks.reduce((n, t) => n + t.present, 0)
+    return res.json({
+      from: from || null,
+      to: to || null,
+      tasks,
+      totals: {
+        events: tasks.length,
+        cancelled: tasks.filter((t) => t.status === 'cancelled').length,
+        volunteers: Number(distinct[0]?.people || 0),
+        hours: tasks.reduce((n, t) => n + t.hours, 0),
+        // Null rather than 0% when nobody has been marked — an organizer who
+        // never took attendance did not achieve a 0% turnout.
+        attendanceRate: marked > 0 ? present / marked : null,
+      },
+    })
+  } catch (error) {
+    console.error('organizer report failed:', error)
+    return res.status(500).json({ error: 'Could not build your report.' })
   }
 })
 

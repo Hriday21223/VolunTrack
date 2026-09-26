@@ -487,6 +487,51 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('role constraint migration failed:', error) }
 
+  // A posted task used to be immutable: no edit, no close, no cancel. The
+  // 'closed' state existed in the original CHECK and nothing could ever set
+  // it. Widening to 'cancelled' the same way the role constraint is widened —
+  // look the name up, drop and re-add inside one DO block, idempotent across
+  // boots. A cancelled task keeps its signups and attendance: people did turn
+  // up to the ones that ran, and an organizer cancelling next week's event
+  // must not erase last month's record.
+  try {
+    await query(`
+      DO $$
+      DECLARE cname text;
+      BEGIN
+        -- Matched on the column, not on "IN": Postgres stores an IN list as
+        -- "status = ANY (ARRAY[...])", so a pattern looking for IN finds
+        -- nothing and the ADD below then collides with the existing name.
+        SELECT conname INTO cname FROM pg_constraint
+          WHERE conrelid = 'public_tasks'::regclass AND contype = 'c'
+            AND pg_get_constraintdef(oid) ILIKE '%status%'
+          LIMIT 1;
+        IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE public_tasks DROP CONSTRAINT %I', cname); END IF;
+        ALTER TABLE public_tasks ADD CONSTRAINT public_tasks_status_check
+          CHECK (status IN ('open','closed','cancelled'));
+      END $$;
+    `)
+  } catch (error) { console.error('public task status constraint migration failed:', error) }
+
+  // Why it was cancelled, and when — the volunteers are told, so the reason is
+  // part of the record rather than something the organizer says once.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS cancelled_reason TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`) } catch {}
+
+  // One row per task whose day-before reminder has gone out, so a cron run
+  // that fires twice — or a replay after a failure — cannot mail everyone
+  // again. Same shape as parent_digest_sends.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS public_task_reminder_sends (
+        task_id    TEXT PRIMARY KEY REFERENCES public_tasks(id) ON DELETE CASCADE,
+        sent_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        recipients INTEGER NOT NULL DEFAULT 0
+      )
+    `)
+  } catch (error) { console.error('public task reminder table migration failed:', error) }
+
   // Attendance for public-task signups — a volunteer marks present/absent/excused
   // for students approved on a task they posted. See POST /school/public-tasks/:taskId/attendance/:userId.
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS attendance_status TEXT CHECK (attendance_status IN ('present','absent','excused'))`) } catch {}

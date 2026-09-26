@@ -1,0 +1,83 @@
+name: Volunteer task reminders
+
+# Mails every approved volunteer the day before a task they signed up for.
+# Same shape as parent-weekly-digest.yml: Render's free tier has no cron, so
+# the schedule lives here and the work happens on the backend, which already
+# holds DATABASE_URL and the email credentials. The only secret here is the
+# opaque CRON_SECRET.
+#
+# Setup: repo secret CRON_SECRET (matching the backend's env var) and repo
+# variable PUBLIC_BACKEND_URL.
+#
+# Idempotency is the backend's: public_task_reminder_sends carries one row per
+# task already reminded, so a duplicate run mails nobody twice.
+
+on:
+  schedule:
+    # ~17:00 UTC (~noon US Eastern) — far enough ahead of an evening or next
+    # morning event that "tomorrow" is still useful notice.
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Count the recipients on the backend instead of mailing them
+        type: boolean
+        default: false
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the task reminder endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ vars.PUBLIC_BACKEND_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || false }}
+        run: |
+          set -uo pipefail
+          # Retry only when no HTTP response came back at all (a Render cold
+          # start). Any actual status is final: 503 means the backend is
+          # unconfigured, which retrying cannot fix, and a 2xx is done.
+          url="$BACKEND_URL/api/school/public-tasks/internal/run-reminders"
+          body="$(mktemp)"
+          attempt=1
+          while :; do
+            code=$(curl -sS -X POST \
+              --connect-timeout 30 --max-time 900 \
+              -o "$body" -w '%{http_code}' \
+              -H "x-cron-key: $CRON_SECRET" \
+              -H 'content-type: application/json' \
+              -d "{\"dryRun\": $DRY_RUN }" \
+              "$url") || code=000
+            echo "HTTP $code"
+            cat "$body"; echo
+            case "$code" in
+              2??)
+                # A run with nothing scheduled is a legitimate success, but a
+                # backend that cannot send email is not — it would report the
+                # same ok:true while every reminder silently went nowhere.
+                if grep -q '"emailConfigured":false' "$body"; then
+                  echo "::error::backend reached, but no email provider is configured — no reminder was sent."
+                  exit 1
+                fi
+                exit 0
+                ;;
+              503)
+                echo "::error::backend returned 503 (unconfigured CRON_SECRET or database) — retrying will not help."
+                exit 1
+                ;;
+              000)
+                : # no HTTP response: likely a cold start, worth a retry
+                ;;
+              *)
+                echo "::error::unexpected HTTP $code from the task reminder endpoint."
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" -ge 3 ]; then
+              echo "::error::backend unreachable after $attempt attempts."
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            sleep 30
+          done
