@@ -6,7 +6,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
-import { SCHOOL_GRADES, gradeLabel } from '@policy'
+import { GRADE_GROUPS, gradeOptionLabel } from '@policy'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const ROLES = [
@@ -162,8 +162,12 @@ export default function Register() {
                     <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                     <select id="register-grade" className="input pl-9" value={form.grade} onChange={onChange('grade')}>
                       <option value="">Select your grade</option>
-                      {SCHOOL_GRADES.map((g) => (
-                        <option key={g} value={g}>{gradeLabel(g)}</option>
+                      {GRADE_GROUPS.map((group) => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.grades.map((g) => (
+                            <option key={g} value={g}>{gradeOptionLabel(g)}</option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>

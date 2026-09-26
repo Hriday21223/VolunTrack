@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Camera, Save, School, GraduationCap, User as UserIcon, Mail, Hash, Lock, Copy, Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { SCHOOL_GRADES, gradeLabel } from '@policy'
+import { SCHOOL_GRADES, GRADE_GROUPS, gradeLabel, gradeOptionLabel } from '@policy'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -224,8 +224,12 @@ function GradeField({ value, onChange }) {
       <select id="profile-grade" className="input" value={value || ''} onChange={onChange}>
         <option value="">Not saying</option>
         {!known && value && <option value={value}>{gradeLabel(value)}</option>}
-        {SCHOOL_GRADES.map((g) => (
-          <option key={g} value={g}>{gradeLabel(g)}</option>
+        {GRADE_GROUPS.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.grades.map((g) => (
+              <option key={g} value={g}>{gradeOptionLabel(g)}</option>
+            ))}
+          </optgroup>
         ))}
       </select>
       <p className="text-xs text-earth-400 mt-1">Your school sees this on its roster, and uses it to set your hour requirement.</p>

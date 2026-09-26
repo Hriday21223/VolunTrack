@@ -256,6 +256,9 @@ export function resolvePolicy({ schoolPolicy, orgPolicy, orgName } = {}) {
 // Both sides now go through this, so they meet in the middle.
 const GRADE_WORDS = {
   k: 'K', kinder: 'K', kindergarten: 'K',
+  first: '1', second: '2', third: '3', fourth: '4', fifth: '5',
+  sixth: '6', seventh: '7', eighth: '8',
+  ninth: '9', tenth: '10', eleventh: '11', twelfth: '12',
   freshman: '9', freshmen: '9', fresh: '9',
   sophomore: '10', soph: '10',
   junior: '11', jr: '11',
@@ -263,6 +266,26 @@ const GRADE_WORDS = {
 }
 
 export const SCHOOL_GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+
+// What a student in each year is called. Middle school goes by the ordinal,
+// high school by the class name a US transcript or reference letter uses —
+// which is also what a school admin is most likely to type into a per-grade
+// rule, so these double as matching vocabulary in GRADE_WORDS above.
+export const GRADE_NAMES = {
+  6: 'Sixth grader', 7: 'Seventh grader', 8: 'Eighth grader',
+  9: 'Freshman', 10: 'Sophomore', 11: 'Junior', 12: 'Senior',
+}
+
+// Grouped for the pickers, so a student scans one band rather than a list of
+// thirteen. Elementary is kept because the schema allows it, not because many
+// service-hour programmes reach that far down.
+export const GRADE_GROUPS = [
+  { label: 'Elementary school (Grades K–5)', grades: ['K', '1', '2', '3', '4', '5'] },
+  { label: 'Middle school (Grades 6–8)', grades: ['6', '7', '8'] },
+  { label: 'High school (Grades 9–12)', grades: ['9', '10', '11', '12'] },
+]
+
+const ORDINAL_SUFFIX = { 1: 'st', 2: 'nd', 3: 'rd' }
 
 /**
  * Canonical form of a grade, for storing and for matching.
@@ -275,7 +298,8 @@ export function gradeKey(input) {
   if (!raw) return null
   const lower = raw.toLowerCase()
 
-  const word = GRADE_WORDS[lower.replace(/[^a-z]/g, '')]
+  const letters = lower.replace(/[^a-z]/g, '')
+  const word = GRADE_WORDS[letters] || GRADE_WORDS[letters.replace(/(grader|grade|year)$/, '')]
   if (word) return word
 
   // The first number in the string, when the rest is only grade noise
@@ -290,12 +314,28 @@ export function gradeKey(input) {
   return raw
 }
 
-/** How a grade reads in the UI: "Grade 11", "Kindergarten", or as given. */
+/** How a grade reads in the UI: "11th Grade", "Kindergarten", or as given. */
 export function gradeLabel(input) {
   const key = gradeKey(input)
   if (!key) return null
   if (key === 'K') return 'Kindergarten'
-  return /^\d{1,2}$/.test(key) ? `Grade ${key}` : key
+  if (!/^\d{1,2}$/.test(key)) return key
+  const n = Number(key)
+  const teen = n % 100 >= 11 && n % 100 <= 13
+  return `${n}${teen ? 'th' : ORDINAL_SUFFIX[n % 10] || 'th'} Grade`
+}
+
+/** What a student in that grade is called — "Junior" — where there is a name. */
+export function gradeName(input) {
+  const key = gradeKey(input)
+  return (key && GRADE_NAMES[key]) || null
+}
+
+/** Both, for a picker: "11th Grade — Junior". */
+export function gradeOptionLabel(input) {
+  const label = gradeLabel(input)
+  const name = gradeName(input)
+  return name ? `${label} — ${name}` : label
 }
 
 /** The hour target that applies to one student, grade override first. */
