@@ -12,6 +12,7 @@ export const BADGES = [
     icon: 'Sprout',
     color: 'brand',
     isEarned: ({ totalHours }) => totalHours >= 1,
+    target: { metric: 'totalHours', value: 1, unit: 'h' },
   },
   {
     id: 'streak-3',
@@ -20,6 +21,7 @@ export const BADGES = [
     icon: 'Flame',
     color: 'amber',
     isEarned: ({ distinctDays }) => distinctDays >= 3,
+    target: { metric: 'distinctDays', value: 3, unit: ' days' },
   },
   {
     id: 'streak-7',
@@ -28,6 +30,7 @@ export const BADGES = [
     icon: 'Flame',
     color: 'orange',
     isEarned: ({ distinctDays }) => distinctDays >= 7,
+    target: { metric: 'distinctDays', value: 7, unit: ' days' },
   },
   {
     id: 'ten-hours',
@@ -36,6 +39,7 @@ export const BADGES = [
     icon: 'Award',
     color: 'sky',
     isEarned: ({ totalHours }) => totalHours >= 10,
+    target: { metric: 'totalHours', value: 10, unit: 'h' },
   },
   {
     id: 'fifty-hours',
@@ -44,6 +48,7 @@ export const BADGES = [
     icon: 'Medal',
     color: 'violet',
     isEarned: ({ totalHours }) => totalHours >= 50,
+    target: { metric: 'totalHours', value: 50, unit: 'h' },
   },
   {
     id: 'hundred-hours',
@@ -52,6 +57,7 @@ export const BADGES = [
     icon: 'Trophy',
     color: 'amber',
     isEarned: ({ totalHours }) => totalHours >= 100,
+    target: { metric: 'totalHours', value: 100, unit: 'h' },
   },
   {
     id: 'community-hero',
@@ -68,6 +74,7 @@ export const BADGES = [
     icon: 'Compass',
     color: 'emerald',
     isEarned: ({ distinctCategories }) => distinctCategories >= 3,
+    target: { metric: 'distinctCategories', value: 3, unit: ' categories' },
   },
   {
     id: 'category-master',
@@ -76,6 +83,7 @@ export const BADGES = [
     icon: 'Sparkles',
     color: 'fuchsia',
     isEarned: ({ distinctCategories }) => distinctCategories >= 5,
+    target: { metric: 'distinctCategories', value: 5, unit: ' categories' },
   },
   {
     id: 'monthly-five',
@@ -84,6 +92,7 @@ export const BADGES = [
     icon: 'CalendarCheck',
     color: 'indigo',
     isEarned: ({ bestMonthHours }) => bestMonthHours >= 5,
+    target: { metric: 'bestMonthHours', value: 5, unit: 'h in a month' },
   },
   {
     id: 'weekend-warrior',
@@ -100,6 +109,7 @@ export const BADGES = [
     icon: 'TrendingUp',
     color: 'teal',
     isEarned: ({ distinctMonths }) => distinctMonths >= 2,
+    target: { metric: 'distinctMonths', value: 2, unit: ' months' },
   },
 ]
 
@@ -147,4 +157,34 @@ export function evaluateAchievements(logs, goals, alreadyEarned = []) {
     if (b.isEarned(state)) newly.push(b.id)
   }
   return { state, newly }
+}
+
+
+/**
+ * The unearned badge closest to being earned, with how far off it is.
+ *
+ * Only badges with a measurable target take part — "Weekend Warrior" is a yes
+ * or no, and telling someone they are 0% of the way to a weekend is not
+ * encouragement. Returns null once every measurable badge is earned.
+ */
+export function nextBadgeProgress(logs, goals, earned = []) {
+  const state = deriveAchievementState(logs, goals)
+  const candidates = BADGES
+    .filter((b) => b.target && !earned.includes(b.id) && !b.isEarned(state))
+    .map((b) => {
+      const current = Number(state[b.target.metric]) || 0
+      return {
+        id: b.id,
+        title: b.title,
+        current,
+        target: b.target.value,
+        unit: b.target.unit,
+        remaining: Math.max(0, b.target.value - current),
+        percent: Math.min(1, current / b.target.value),
+      }
+    })
+  if (candidates.length === 0) return null
+  // Closest by what is left, not by percentage: "2 hours away" beats "80% of
+  // the way to a hundred".
+  return candidates.sort((a, b) => a.remaining - b.remaining || a.target - b.target)[0]
 }

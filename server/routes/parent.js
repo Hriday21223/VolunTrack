@@ -7,6 +7,8 @@ import { hasEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 import { runWeeklyDigest, previousWeekWindow, weekWindowFromStart } from '../digest.js'
 import { checkCronKey } from '../cronAuth.js'
+import { policyForUser } from '../policy.js'
+import { goalHoursFor } from '../requirements.js'
 
 const router = express.Router()
 
@@ -100,10 +102,65 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
        ORDER BY u.name`,
       [req.auth.sub],
     )
-    return res.json({ children: rows })
+
+    // What each child's school asks of them. A parent's whole question is
+    // whether their child is going to make it, which needs the target and the
+    // deadline, not just a list of entries. Resolved per child because two
+    // children can be at different schools — and per grade, since a school may
+    // ask more of a senior than a freshman.
+    const children = await Promise.all(rows.map(async (child) => {
+      try {
+        const resolved = await policyForUser(child.id)
+        if (!resolved) return { ...child, requirement: null }
+        return {
+          ...child,
+          requirement: {
+            schoolName: resolved.schoolName,
+            goalHours: goalHoursFor(resolved.policy, resolved.grade),
+            deadline: resolved.policy?.goals?.deadline || null,
+            note: resolved.policy?.goals?.note || '',
+          },
+        }
+      } catch {
+        // A child whose policy can't be read still shows their hours.
+        return { ...child, requirement: null }
+      }
+    }))
+
+    return res.json({ children })
   } catch (error) {
     console.error('parent children fetch failed:', error)
     return res.status(500).json({ error: 'Could not fetch children.' })
+  }
+})
+
+// --- Weekly digest preference (the signed-in half of the unsubscribe link) ---
+//
+// The digest already has a public two-step unsubscribe for the link in the
+// email. A parent who is looking straight at the dashboard should not have to
+// go and find that email to turn the thing off, or to turn it back on — which
+// the link cannot do at all.
+router.get('/digest-preference', limiter, requireDb, requireAuth('parent'), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT weekly_digest_opt_out FROM users WHERE id = $1', [req.auth.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ enabled: !rows[0].weekly_digest_opt_out, emailConfigured: hasEmail() })
+  } catch (error) {
+    console.error('digest preference read failed:', error)
+    return res.status(500).json({ error: 'Could not read your email preference.' })
+  }
+})
+
+router.patch('/digest-preference', limiter, requireDb, requireAuth('parent'), async (req, res) => {
+  if (typeof req.body.enabled !== 'boolean') {
+    return res.status(400).json({ error: 'enabled must be true or false.' })
+  }
+  try {
+    await query('UPDATE users SET weekly_digest_opt_out = $1 WHERE id = $2', [!req.body.enabled, req.auth.sub])
+    return res.json({ enabled: req.body.enabled, emailConfigured: hasEmail() })
+  } catch (error) {
+    console.error('digest preference update failed:', error)
+    return res.status(500).json({ error: 'Could not save your email preference.' })
   }
 })
 
