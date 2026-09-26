@@ -9,6 +9,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import QRCode from 'qrcode'
+import { format, parseISO } from 'date-fns'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -34,7 +35,7 @@ export default function Settings() {
   const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp } = useAuth()
   const { goals, saveGoal, removeGoal } = useData()
   const nav = useNavigate()
-  const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, primary: false })
+  const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, deadline: '', primary: false })
   const [toast, setToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [pin, setPin] = useState('')
@@ -260,8 +261,14 @@ export default function Settings() {
   const addGoal = (e) => {
     e.preventDefault()
     if (!newGoal.title.trim()) return
-    saveGoal({ ...newGoal, title: newGoal.title.trim(), targetHours: Number(newGoal.targetHours) || 0 })
-    setNewGoal({ title: '', targetHours: 50, primary: false })
+    saveGoal({
+      ...newGoal,
+      title: newGoal.title.trim(),
+      targetHours: Number(newGoal.targetHours) || 0,
+      // Optional: a goal with no date behaves exactly as it always did.
+      deadline: newGoal.deadline || null,
+    })
+    setNewGoal({ title: '', targetHours: 50, deadline: '', primary: false })
     setToastMessage('Goal added')
     setToast(true)
   }
@@ -550,7 +557,10 @@ export default function Settings() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{g.title}</div>
-                      <div className="text-xs text-earth-500 dark:text-earth-400">{g.targetHours}h target</div>
+                      <div className="text-xs text-earth-500 dark:text-earth-400">
+                        {g.targetHours}h target
+                        {g.deadline && <> · by {format(parseISO(g.deadline), 'd MMM yyyy')}</>}
+                      </div>
                     </div>
                     <button onClick={() => removeGoal(g.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete">
                       <Trash2 className="w-4 h-4" />
@@ -560,17 +570,25 @@ export default function Settings() {
               </ul>
             )}
 
-            <form onSubmit={addGoal} className="grid sm:grid-cols-[1fr_120px_auto] gap-2">
+            <form onSubmit={addGoal} className="flex flex-wrap gap-2">
               <input
-                className="input" placeholder="Goal title (e.g. 50 hours by June)"
+                id="goal-title"
+                className="input flex-1 min-w-[180px]" placeholder="Goal title (e.g. Service hours)"
                 value={newGoal.title} onChange={(e) => setNewGoal((g) => ({ ...g, title: e.target.value }))}
               />
               <input
-                type="number" min="1" className="input"
+                id="goal-target"
+                type="number" min="1" className="input w-24" aria-label="Target hours" title="Target hours"
                 value={newGoal.targetHours} onChange={(e) => setNewGoal((g) => ({ ...g, targetHours: e.target.value }))}
               />
-              <button className="btn-primary"><Plus className="w-4 h-4" /> Add</button>
+              <input
+                id="goal-deadline"
+                type="date" className="input w-[150px]" aria-label="Deadline (optional)" title="Deadline (optional)"
+                value={newGoal.deadline} onChange={(e) => setNewGoal((g) => ({ ...g, deadline: e.target.value }))}
+              />
+              <button className="btn-primary shrink-0"><Plus className="w-4 h-4" /> Add</button>
             </form>
+            <p className="text-xs text-earth-400 mt-2">Add a deadline and the dashboard works out the pace you need to keep.</p>
           </Card>
         </CollapsibleSection>
 

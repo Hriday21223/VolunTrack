@@ -8,6 +8,7 @@ import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
 import { useMyRequirements } from '@/lib/requirements.js'
+import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
@@ -17,6 +18,19 @@ import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { format, startOfWeek, startOfMonth, addDays, parseISO } from 'date-fns'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// Standing reads at a glance: behind and overdue earn colour, on-track and
+// ahead stay quiet so the dashboard isn't a wall of green ticks.
+// fmtHours gives two decimals, which reads as false precision on a rate —
+// "3.20h a week" is noise. A rate wants one decimal, or minutes under an hour.
+const paceHours = (h) => (h < 1 ? `${Math.round(h * 60)}m` : `${Math.round(h * 10) / 10}h`)
+
+const PACE_TONE = {
+  behind: 'text-amber-400',
+  overdue: 'text-red-400',
+  ahead: 'text-brand-400',
+  'on-track': 'text-earth-400',
+}
 
 const fmtDist = (km) => {
   if (km === null || km === undefined) return null
@@ -76,6 +90,24 @@ export default function Dashboard() {
   const target = primary ? Number(primary.targetHours) || 0 : 0
   const percent = target > 0 ? Math.min(1, total / target) : 0
   const remaining = Math.max(0, target - total)
+
+  // "42 of 100" only answers half the question; with a deadline we can also
+  // say what it takes from here. Both the personal goal and the school's own
+  // requirement go through the same maths (src/lib/pace.js).
+  const goalPaceInfo = useMemo(() => goalPace({
+    target,
+    total,
+    deadline: primary?.deadline,
+    startedAt: primary?.createdAt,
+    logs,
+  }), [target, total, primary?.deadline, primary?.createdAt, logs])
+
+  const requirementPace = useMemo(() => goalPace({
+    target: requirements.goalHours,
+    total,
+    deadline: requirements.policy?.goals?.deadline,
+    logs,
+  }), [requirements.goalHours, requirements.policy?.goals?.deadline, total, logs])
 
   // Weekly chart: last 7 days ending today
   const weekly = useMemo(() => {
@@ -428,9 +460,13 @@ export default function Dashboard() {
               </div>
               <div className="text-right">
                 {requirements.policy.goals.deadline && (
-                  <div className="text-xs text-earth-400">by {requirements.policy.goals.deadline}</div>
+                  <div className="text-xs text-earth-400">by {fmtDate(requirements.policy.goals.deadline)}</div>
                 )}
-
+                {requirementPace.hasDeadline && !requirementPace.met && (
+                  <div className={`text-xs ${PACE_TONE[requirementPace.status] || 'text-earth-400'}`}>
+                    {paceSummary(requirementPace, { formatHours: paceHours })}
+                  </div>
+                )}
               </div>
             </div>
             <ProgressBar value={total} target={requirements.goalHours} />
@@ -459,6 +495,28 @@ export default function Dashboard() {
               <div className="mt-2 text-xs text-earth-400">
                 Goal: {fmtHours(target)} · {primary.title}
               </div>
+            )}
+            {primary && goalPaceInfo.hasDeadline && (
+              <div className="mt-2 pt-2 border-t border-white/5 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-earth-300">
+                  <CalIcon className="w-3 h-3 text-earth-500 shrink-0" />
+                  <span>{paceSummary(goalPaceInfo, { formatHours: paceHours })}</span>
+                </div>
+                {paceStanding(goalPaceInfo, { formatHours: paceHours }) && (
+                  <div className={`text-xs ${PACE_TONE[goalPaceInfo.status] || 'text-earth-400'}`}>
+                    {paceStanding(goalPaceInfo, { formatHours: paceHours })}
+                    {goalPaceInfo.daysLeft >= 0 && <span className="text-earth-500"> · {goalPaceInfo.daysLeft} day{goalPaceInfo.daysLeft === 1 ? '' : 's'} left</span>}
+                  </div>
+                )}
+                {goalPaceInfo.willMakeIt === false && (
+                  <div className="text-xs text-earth-500">
+                    At your recent pace: {fmtDate(goalPaceInfo.projectedFinish.toISOString())}
+                  </div>
+                )}
+              </div>
+            )}
+            {primary && !goalPaceInfo.hasDeadline && !goalPaceInfo.met && (
+              <Link to="/settings" className="mt-2 block text-xs text-brand-400 hover:underline">Add a deadline to see your pace →</Link>
             )}
             {!primary && (
               <Link to="/settings" className="mt-2 block text-xs text-brand-400 hover:underline">Set a goal →</Link>
