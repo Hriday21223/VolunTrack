@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { resolvePolicy, validateLogAgainstPolicy, goalHoursFor } from '@policy'
 
 export { validateLogAgainstPolicy, goalHoursFor }
-export { SCHOOL_GRADES, GRADE_GROUPS, gradeKey, gradeLabel, gradeName, gradeOptionLabel } from '@policy'
+export { SCHOOL_GRADES, gradeKey, gradeLabel, gradeName, gradeOptionLabel } from '@policy'
 export { CUSTOM_FIELD_TYPES, SECTIONS, DEFAULTS, normalizePolicy } from '@policy'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'

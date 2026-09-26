@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Camera, Save, School, GraduationCap, User as UserIcon, Mail, Hash, Lock, Copy, Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { SCHOOL_GRADES, GRADE_GROUPS, gradeLabel, gradeOptionLabel } from '@policy'
+import { SCHOOL_GRADES, gradeKey, gradeOptionLabel } from '@policy'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -213,23 +213,19 @@ function Field({ icon: Icon, label, ...rest }) {
 }
 
 function GradeField({ value, onChange }) {
-  // A grade set before this was a picker ("11th grade", "Junior") still has a
-  // home: it is offered as-is until they choose from the list.
-  const known = SCHOOL_GRADES.includes(value)
+  // A grade stored before this was a picker ("11th grade", "Junior") resolves
+  // onto the matching option rather than needing one of its own.
+  const current = gradeKey(value)
+  const selected = SCHOOL_GRADES.includes(current) ? current : ''
   return (
     <div>
       <label className="label flex items-center gap-1.5" htmlFor="profile-grade">
         <GraduationCap className="w-4 h-4" /> Grade
       </label>
-      <select id="profile-grade" className="input" value={value || ''} onChange={onChange}>
-        <option value="">Not saying</option>
-        {!known && value && <option value={value}>{gradeLabel(value)}</option>}
-        {GRADE_GROUPS.map((group) => (
-          <optgroup key={group.label} label={group.label}>
-            {group.grades.map((g) => (
-              <option key={g} value={g}>{gradeOptionLabel(g)}</option>
-            ))}
-          </optgroup>
+      <select id="profile-grade" className="input" value={selected} onChange={onChange}>
+        <option value="">Select your grade</option>
+        {SCHOOL_GRADES.map((g) => (
+          <option key={g} value={g}>{gradeOptionLabel(g)}</option>
         ))}
       </select>
       <p className="text-xs text-earth-400 mt-1">Your school sees this on its roster, and uses it to set your hour requirement.</p>

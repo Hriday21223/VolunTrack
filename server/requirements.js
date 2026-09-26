@@ -265,7 +265,10 @@ const GRADE_WORDS = {
   senior: '12', sr: '12',
 }
 
-export const SCHOOL_GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+// High school only: service-hour requirements are a high-school thing here,
+// and a shorter list is a faster pick. The matcher below still understands
+// other years, so a school's own older data keeps resolving.
+export const SCHOOL_GRADES = ['9', '10', '11', '12']
 
 // What a student in each year is called. Middle school goes by the ordinal,
 // high school by the class name a US transcript or reference letter uses —
@@ -275,15 +278,6 @@ export const GRADE_NAMES = {
   6: 'Sixth grader', 7: 'Seventh grader', 8: 'Eighth grader',
   9: 'Freshman', 10: 'Sophomore', 11: 'Junior', 12: 'Senior',
 }
-
-// Grouped for the pickers, so a student scans one band rather than a list of
-// thirteen. Elementary is kept because the schema allows it, not because many
-// service-hour programmes reach that far down.
-export const GRADE_GROUPS = [
-  { label: 'Elementary school (Grades K–5)', grades: ['K', '1', '2', '3', '4', '5'] },
-  { label: 'Middle school (Grades 6–8)', grades: ['6', '7', '8'] },
-  { label: 'High school (Grades 9–12)', grades: ['9', '10', '11', '12'] },
-]
 
 const ORDINAL_SUFFIX = { 1: 'st', 2: 'nd', 3: 'rd' }
 
