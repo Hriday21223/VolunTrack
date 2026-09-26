@@ -1,5 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { normalizePromo, publicPromo, NO_PROMO } from '../promo.js'
@@ -182,6 +183,85 @@ router.patch('/promo', limiter, requireDb, requireAuth('admin'), async (req, res
   } catch (err) {
     console.error('update promo offer failed:', err)
     return res.status(500).json({ error: 'Could not update the offer.' })
+  }
+})
+
+// --- Blueprint docs (the admin panel's Blueprint tab) ---
+
+// Links to the living reference pages for how this app is built. They are kept
+// out of the repo so they can be refreshed without a deploy, and out of every
+// public surface: they spell out each role's powers and every server gate, so
+// both reading and editing them is admin-only.
+//
+// The two shipped links are the defaults, returned when nothing has been saved
+// yet. Saving is a full overwrite of the list, so an admin can also drop one.
+const DEFAULT_BLUEPRINT_DOCS = [
+  {
+    title: 'The VolunTrack Field Guide',
+    url: 'https://claude.ai/artifact/6kfF7uqPM7rSG9maQWYKyh',
+    summary: 'Every role and feature, read from the source: what each of the seven account types can do, billing and pricing, supervisor verification, public tasks, auth, data custody, and the quirks worth knowing.',
+  },
+  {
+    title: 'App Pipeline',
+    url: 'https://claude.ai/artifact/Vgp53Gh2VBkYgQf1SMVAEq',
+    summary: 'How a click becomes a stored hour: the localStorage lane, the Postgres lane, the direct-to-bucket proof path, the middleware chain, and all 18 mounted routers with their access gates.',
+  },
+]
+
+const MAX_BLUEPRINT_DOCS = 30
+
+// A link an admin pastes here is rendered as an anchor in their own panel, so
+// the scheme matters: only https, never a javascript: or data: URL.
+function normalizeBlueprintDocs(input) {
+  if (!Array.isArray(input)) return { error: 'Expected a list of blueprints.' }
+  if (input.length > MAX_BLUEPRINT_DOCS) return { error: `At most ${MAX_BLUEPRINT_DOCS} blueprints.` }
+
+  const docs = []
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') return { error: 'Each blueprint needs a title and a link.' }
+    const title = String(raw.title ?? '').trim()
+    const url = String(raw.url ?? '').trim()
+    const summary = String(raw.summary ?? '').trim()
+
+    if (!title || title.length > 120) return { error: 'A blueprint needs a title of 1–120 characters.' }
+    if (!validator.isURL(url, { protocols: ['https'], require_protocol: true })) {
+      return { error: `"${title}" needs an https link.` }
+    }
+    if (url.length > 500) return { error: `The link for "${title}" is too long.` }
+    if (summary.length > 800) return { error: `The summary for "${title}" is too long.` }
+
+    docs.push(summary ? { title, url, summary } : { title, url })
+  }
+  return { docs }
+}
+
+router.get('/blueprint-docs', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
+  try {
+    const { rows } = await query(`SELECT value FROM site_settings WHERE key = 'blueprint_docs'`)
+    if (rows.length === 0) return res.json({ docs: DEFAULT_BLUEPRINT_DOCS })
+    const { docs } = normalizeBlueprintDocs(JSON.parse(rows[0].value))
+    // A stored value that no longer validates falls back to the defaults rather
+    // than emptying the tab.
+    return res.json({ docs: docs || DEFAULT_BLUEPRINT_DOCS })
+  } catch (error) {
+    console.error('get blueprint docs failed:', error)
+    return res.status(500).json({ error: 'Could not fetch the blueprints.' })
+  }
+})
+
+router.put('/blueprint-docs', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const { docs, error } = normalizeBlueprintDocs(req.body.docs)
+  if (error) return res.status(400).json({ error })
+  try {
+    await query(
+      `INSERT INTO site_settings (key, value, updated_at) VALUES ('blueprint_docs', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = now()`,
+      [JSON.stringify(docs)],
+    )
+    return res.json({ docs })
+  } catch (err) {
+    console.error('update blueprint docs failed:', err)
+    return res.status(500).json({ error: 'Could not save the blueprints.' })
   }
 })
 

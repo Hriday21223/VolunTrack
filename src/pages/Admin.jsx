@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, ExternalLink } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -81,7 +81,23 @@ function generateDraft(contact) {
   return intro + '\n\n' + body + closing
 }
 
-const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'api']
+const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'api', 'blueprint']
+
+// Living reference pages for how this app is actually built, kept outside the
+// repo so they can be updated without a deploy. Admin-only: they describe every
+// role's powers and the server's gates, which is not public documentation.
+const BLUEPRINT_DOCS = [
+  {
+    title: 'The VolunTrack Field Guide',
+    url: 'https://claude.ai/artifact/6kfF7uqPM7rSG9maQWYKyh',
+    summary: 'Every role and feature, read from the source: what each of the seven account types can do, billing and pricing, supervisor verification, public tasks, auth, data custody, and the quirks worth knowing.',
+  },
+  {
+    title: 'App Pipeline',
+    url: 'https://claude.ai/artifact/Vgp53Gh2VBkYgQf1SMVAEq',
+    summary: 'How a click becomes a stored hour: the localStorage lane, the Postgres lane, the direct-to-bucket proof path, the middleware chain, and all 18 mounted routers with their access gates.',
+  },
+]
 
 const METHOD_COLORS = {
   GET: 'text-emerald-600 dark:text-emerald-400',
@@ -176,6 +192,11 @@ export default function Admin() {
   const [loadingPromo, setLoadingPromo] = useState(false)
   const [savingPromo, setSavingPromo] = useState(false)
   const [promoUsed, setPromoUsed] = useState(0)
+  const [blueprints, setBlueprints] = useState(BLUEPRINT_DOCS)
+  const [blueprintsEditable, setBlueprintsEditable] = useState(false)
+  const [loadingBlueprints, setLoadingBlueprints] = useState(false)
+  const [savingBlueprints, setSavingBlueprints] = useState(false)
+  const [blueprintDraft, setBlueprintDraft] = useState({ title: '', url: '', summary: '' })
   const [invitePreview, setInvitePreview] = useState(null) // dry-run result, doubles as the confirm dialog
   const [sendingInvites, setSendingInvites] = useState(false)
   // The offer as it applies to the entity in the open invoice modal, straight
@@ -836,6 +857,75 @@ export default function Admin() {
     } catch (e) { setToastMessage(e.message || 'Could not send the invites'); setToast(true) } finally { setSendingInvites(false) }
   }
 
+  const loadBlueprints = useCallback(async () => {
+    setLoadingBlueprints(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/blueprint-docs`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) {
+        const data = await res.json()
+        setBlueprints(Array.isArray(data.docs) ? data.docs : BLUEPRINT_DOCS)
+        setBlueprintsEditable(true)
+      } else {
+        // No database configured (503) — show the shipped links read-only
+        // rather than an empty tab.
+        setBlueprints(BLUEPRINT_DOCS)
+        setBlueprintsEditable(false)
+      }
+    } catch {
+      setBlueprints(BLUEPRINT_DOCS)
+      setBlueprintsEditable(false)
+    } finally { setLoadingBlueprints(false) }
+  }, [])
+
+  // One endpoint, one list: adding and removing both send the whole list, so
+  // the saved value is always exactly what the tab is showing.
+  const saveBlueprints = async (docs) => {
+    setSavingBlueprints(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/blueprint-docs`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ docs }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not save the blueprints')
+      setBlueprints(data.docs)
+      return true
+    } catch (e) {
+      setToastMessage(e.message || 'Could not save the blueprints')
+      setToast(true)
+      return false
+    } finally { setSavingBlueprints(false) }
+  }
+
+  const addBlueprint = async () => {
+    const title = blueprintDraft.title.trim()
+    const url = blueprintDraft.url.trim()
+    const summary = blueprintDraft.summary.trim()
+    if (!title || !url) {
+      setToastMessage('A blueprint needs a title and an https link.')
+      setToast(true)
+      return
+    }
+    const saved = await saveBlueprints([...blueprints, { title, url, summary }])
+    if (saved) {
+      setBlueprintDraft({ title: '', url: '', summary: '' })
+      setToastMessage('Blueprint added')
+      setToast(true)
+    }
+  }
+
+  const removeBlueprint = async (url) => {
+    if (!confirm('Remove this blueprint link?')) return
+    const saved = await saveBlueprints(blueprints.filter((doc) => doc.url !== url))
+    if (saved) {
+      setToastMessage('Blueprint removed')
+      setToast(true)
+    }
+  }
+
   const loadOfficeHours = useCallback(async () => {
     setLoadingOfficeHours(true)
     try {
@@ -859,7 +949,8 @@ export default function Admin() {
     // The inbox annotates a quoted coupon with whether it is the live one.
     else if (tab === 'inbox') loadPromo()
     else if (tab === 'api') loadApiInfo()
-  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadPromo, loadApiInfo])
+    else if (tab === 'blueprint') loadBlueprints()
+  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadPromo, loadApiInfo, loadBlueprints])
 
   // One box filters both customer lists — name, contact email, or the account
   // ID an admin has just read off an incoming bank transfer.
@@ -1108,8 +1199,8 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'api' ? 'API' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -1138,6 +1229,9 @@ export default function Admin() {
           </button>
           <button onClick={() => { setTab('api'); loadApiInfo() }} className={`btn-sm ${tab === 'api' ? 'btn-primary' : 'btn-ghost'}`}>
             <Terminal className="w-3.5 h-3.5 mr-1" /> API
+          </button>
+          <button onClick={() => setTab('blueprint')} className={`btn-sm ${tab === 'blueprint' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Compass className="w-3.5 h-3.5 mr-1" /> Blueprint
           </button>
         </div>
       }
@@ -2134,6 +2228,122 @@ export default function Admin() {
               )
             })()}
           </Card>
+        </div>
+      ) : tab === 'blueprint' ? (
+        <div className="space-y-6">
+          <Card>
+            <h3 className="font-display font-semibold text-base mb-2 flex items-center gap-2">
+              <Compass className="w-4 h-4 text-brand-600" /> Reference pages
+            </h3>
+            <p className="text-sm text-earth-500 dark:text-earth-400">
+              Written by reading <code className="font-mono text-xs">src/</code> and <code className="font-mono text-xs">server/</code> directly. They live outside the repo, so they can be refreshed without a deploy — and they are admin-only, since they spell out every role's powers and every server gate.
+            </p>
+          </Card>
+
+          {loadingBlueprints ? (
+            <Card><p className="text-center text-earth-400 py-8">Loading blueprints…</p></Card>
+          ) : blueprints.length === 0 ? (
+            <Card>
+              <div className="text-center py-10 text-earth-500">
+                <Compass className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p className="font-medium text-earth-900 dark:text-earth-100">No blueprints yet</p>
+                <p className="text-sm mt-1">Add a link below and it will show up here for every admin.</p>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {blueprints.map((doc) => (
+                <Card key={doc.url}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="font-display font-semibold text-base">{doc.title}</h3>
+                    {blueprintsEditable && (
+                      <button
+                        onClick={() => removeBlueprint(doc.url)}
+                        disabled={savingBlueprints}
+                        className="shrink-0 text-earth-400 hover:text-red-500 disabled:opacity-50"
+                        title="Remove this blueprint"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {doc.summary && <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">{doc.summary}</p>}
+                  <div className="flex items-center gap-2">
+                    <a href={doc.url} target="_blank" rel="noreferrer" className="btn-primary btn-sm inline-flex">
+                      <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open
+                    </a>
+                    <button
+                      onClick={() => copyApiText(doc.url, doc.url)}
+                      className="btn-ghost btn-sm inline-flex"
+                      title="Copy link"
+                    >
+                      {apiCopied === doc.url ? (
+                        <><Check className="w-3.5 h-3.5 mr-1" /> Copied</>
+                      ) : (
+                        <><Copy className="w-3.5 h-3.5 mr-1" /> Copy link</>
+                      )}
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {blueprintsEditable ? (
+            <Card>
+              <h3 className="font-display font-semibold text-base mb-1 flex items-center gap-2">
+                <Compass className="w-4 h-4 text-brand-600" /> Add a blueprint
+              </h3>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+                Paste the link to another reference page — a doc, a diagram, a runbook. It has to be an https link, and every admin sees what you add.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="blueprint-title" className="block text-xs font-medium text-earth-500 dark:text-earth-400 mb-1">Title</label>
+                  <input
+                    id="blueprint-title"
+                    className="input"
+                    placeholder="Database schema walkthrough"
+                    maxLength={120}
+                    value={blueprintDraft.title}
+                    onChange={(e) => setBlueprintDraft((d) => ({ ...d, title: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="blueprint-url" className="block text-xs font-medium text-earth-500 dark:text-earth-400 mb-1">Link</label>
+                  <input
+                    id="blueprint-url"
+                    className="input font-mono text-sm"
+                    placeholder="https://…"
+                    maxLength={500}
+                    value={blueprintDraft.url}
+                    onChange={(e) => setBlueprintDraft((d) => ({ ...d, url: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="blueprint-summary" className="block text-xs font-medium text-earth-500 dark:text-earth-400 mb-1">What it covers <span className="text-earth-400">(optional)</span></label>
+                  <textarea
+                    id="blueprint-summary"
+                    className="input min-h-[72px]"
+                    placeholder="One or two lines on what a reader will find in it."
+                    maxLength={800}
+                    value={blueprintDraft.summary}
+                    onChange={(e) => setBlueprintDraft((d) => ({ ...d, summary: e.target.value }))}
+                  />
+                </div>
+                <button onClick={addBlueprint} disabled={savingBlueprints} className="btn-primary btn-sm inline-flex">
+                  {savingBlueprints ? 'Saving…' : 'Add blueprint'}
+                </button>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <p className="text-sm text-earth-500 dark:text-earth-400 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                These are the shipped links. Adding your own needs the backend database, which isn't reachable right now.
+              </p>
+            </Card>
+          )}
         </div>
       ) : loadingThreads ? (
         <Card><p className="text-center text-earth-400 py-8">Loading messages…</p></Card>
