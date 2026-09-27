@@ -477,9 +477,23 @@ export async function initSchema() {
       DO $$
       DECLARE cname text;
       BEGIN
-        SELECT conname INTO cname FROM pg_constraint
-          WHERE conrelid = 'users'::regclass AND contype = 'c'
-            AND pg_get_constraintdef(oid) ILIKE '%role%IN%';
+        -- Found by the column the constraint actually covers, not by
+        -- pattern-matching its text. The old pattern looked for "IN", which
+        -- Postgres never stores — it rewrites an IN list as
+        -- "role = ANY (ARRAY[...])" — and matched here only because 'admin'
+        -- happens to contain those two letters. Rename that role and the
+        -- lookup finds nothing, skips the DROP, and the ADD below collides
+        -- with the existing name. The identical pattern on public_tasks
+        -- ('open'/'closed', no "in" anywhere) did exactly that.
+        SELECT c.conname INTO cname
+          FROM pg_constraint c
+          WHERE c.conrelid = 'users'::regclass AND c.contype = 'c'
+            AND EXISTS (
+              SELECT 1 FROM unnest(c.conkey) k
+                JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k
+               WHERE a.attname = 'role'
+            )
+          LIMIT 1;
         IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', cname); END IF;
         ALTER TABLE users ADD CONSTRAINT users_role_check
           CHECK (role IN ('admin','school','school_staff','student','volunteer','parent','org'));
@@ -499,12 +513,17 @@ export async function initSchema() {
       DO $$
       DECLARE cname text;
       BEGIN
-        -- Matched on the column, not on "IN": Postgres stores an IN list as
-        -- "status = ANY (ARRAY[...])", so a pattern looking for IN finds
-        -- nothing and the ADD below then collides with the existing name.
-        SELECT conname INTO cname FROM pg_constraint
-          WHERE conrelid = 'public_tasks'::regclass AND contype = 'c'
-            AND pg_get_constraintdef(oid) ILIKE '%status%'
+        -- Found by the column it covers, for the reason spelled out on the
+        -- users constraint below: the text of a CHECK is not what you think
+        -- it is once Postgres has rewritten it.
+        SELECT c.conname INTO cname
+          FROM pg_constraint c
+          WHERE c.conrelid = 'public_tasks'::regclass AND c.contype = 'c'
+            AND EXISTS (
+              SELECT 1 FROM unnest(c.conkey) k
+                JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k
+               WHERE a.attname = 'status'
+            )
           LIMIT 1;
         IF cname IS NOT NULL THEN EXECUTE format('ALTER TABLE public_tasks DROP CONSTRAINT %I', cname); END IF;
         ALTER TABLE public_tasks ADD CONSTRAINT public_tasks_status_check
