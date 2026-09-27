@@ -29,16 +29,18 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: September 11, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: September 26, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
             <ul className="list-disc pl-5 space-y-1.5">
               <li><strong>Name and email address</strong> — required to create and manage your account.</li>
-              <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app.</li>
+              <li><strong>School sign-in</strong> — if your school has set up single sign-on, we receive your name, email address, and an account identifier from your school&apos;s sign-in provider (such as Google or Microsoft). We never see your school password.</li>
+              <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app, plus any extra fields your school or organization requires on an entry.</li>
               <li><strong>Verification details</strong> — when you ask someone to verify an entry, the supervisor&apos;s name and email, the organization&apos;s name, address and phone, and the signature the supervisor draws when they approve.</li>
               <li><strong>Proof of service</strong> — photos or documents you attach to an entry. See <em>Proof files</em> below for where these are held.</li>
               <li><strong>Access records</strong> — when a school or organization staff member opens a student&apos;s record, we record who did it and when, along with the IP address and browser, so that access to a minor&apos;s record can be accounted for.</li>
+              <li><strong>Billing details</strong> — for school and organization accounts only: invoices, payment confirmations you submit, and any discount or referral code used.</li>
               <li><strong>Approximate location</strong> — used only when you log hours, to auto-fill the location field. You can always edit or clear it.</li>
               <li><strong>Camera access</strong> — used only for scanning QR codes when syncing your account across devices. No images are ever uploaded or stored.</li>
             </ul>
@@ -73,17 +75,18 @@ export default function Privacy() {
           </Section>
 
           <Section title="Account Deletion">
-            <p>You can delete your account from the Settings page in the app. You will be prompted to type &quot;delete&quot; and re-enter your password before the action completes.</p>
+            <p>You can delete your account from the Settings page in the app. You will be prompted to type &quot;delete&quot; and confirm with your password (or, if you sign in through your school, your email address) before the action completes.</p>
             <p className="mt-2">This erases your account and everything attached to it — volunteer logs, goals, reminders, documents you uploaded to a school, and any parent link — from our servers as well as from the device you are using. It cannot be undone, and the exceptions under <em>Data Retention</em> still apply.</p>
             <p className="mt-2">School, organization, and administrator accounts cannot be deleted this way, because doing so would remove records other people rely on. Contact us and we will close or transfer the account properly.</p>
           </Section>
 
           <Section title="Third-Party Sharing">
             <p>We do not sell or trade your personal data. We share it only with the schools, organizations, or linked parent accounts you explicitly connect to (for example, via a school code or family link code), and only for the purpose of hour tracking and verification.</p>
+            <p className="mt-2">If you move to another school, your whole record, including past entries, moves to the new school only once it accepts the transfer; from then on your former school no longer sees it. Files already held in your former school&apos;s own storage stay there.</p>
           </Section>
 
           <Section title="Service Providers">
-            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, email delivery, and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
+            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, email delivery, bot protection on public forms, and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
           </Section>
 
           <Section title="Children's Privacy">
