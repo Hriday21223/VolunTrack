@@ -8,6 +8,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
+import { gradeLabel } from '@policy'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
@@ -764,7 +765,7 @@ export default function SchoolDashboard() {
                       <div key={s.id} className="py-3 flex justify-between items-center">
                         <div>
                           <p className="font-medium text-sm">{s.name}</p>
-                          <p className="text-xs text-earth-400">{s.email}{s.grade ? ` · ${s.grade}` : ''}</p>
+                          <p className="text-xs text-earth-400">{s.email}{s.grade ? ` · ${gradeLabel(s.grade)}` : ''}</p>
                         </div>
                         <span className="text-xs text-earth-500">{new Date(s.created_at).toLocaleDateString()}</span>
                       </div>

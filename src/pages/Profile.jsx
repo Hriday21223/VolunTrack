@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Camera, Save, School, GraduationCap, User as UserIcon, Mail, Hash, Lock, Copy, Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { SCHOOL_GRADES, gradeKey, gradeOptionLabel } from '@policy'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -42,6 +43,10 @@ export default function Profile() {
   // none of them, so the fields are hidden rather than sitting there empty and
   // confusing — a school being asked which school it belongs to, and so on.
   const isVolunteerProfile = !['school', 'school_staff', 'org', 'parent'].includes(user?.role)
+  // A student's grade is a fact a school files them under — and it decides
+  // which per-grade hour requirement applies (server/requirements.js), which
+  // only works if everyone picks from the same list rather than typing prose.
+  const isStudent = user?.role === 'student'
 
   useEffect(() => {
     if (!isBilledAccount) return
@@ -152,7 +157,11 @@ export default function Profile() {
             {isVolunteerProfile && (
               <>
                 <Field icon={School}        label="School / Organization" value={form.school} onChange={onChange('school')} />
-                <Field icon={GraduationCap} label="Grade or Role"        value={form.grade}  onChange={onChange('grade')} />
+                {isStudent ? (
+                  <GradeField value={form.grade} onChange={onChange('grade')} />
+                ) : (
+                  <Field icon={GraduationCap} label="Role" value={form.grade} onChange={onChange('grade')} placeholder="Volunteer lead" />
+                )}
                 <Field icon={Hash}          label="Student ID number"    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />
               </>
             )}
@@ -199,6 +208,27 @@ function Field({ icon: Icon, label, ...rest }) {
     <div>
       <label className="label flex items-center gap-1.5">{Icon && <Icon className="w-4 h-4" />}{label}</label>
       <input className="input" {...rest} />
+    </div>
+  )
+}
+
+function GradeField({ value, onChange }) {
+  // A grade stored before this was a picker ("11th grade", "Junior") resolves
+  // onto the matching option rather than needing one of its own.
+  const current = gradeKey(value)
+  const selected = SCHOOL_GRADES.includes(current) ? current : ''
+  return (
+    <div>
+      <label className="label flex items-center gap-1.5" htmlFor="profile-grade">
+        <GraduationCap className="w-4 h-4" /> Grade
+      </label>
+      <select id="profile-grade" className="input" value={selected} onChange={onChange}>
+        <option value="">Select your grade</option>
+        {SCHOOL_GRADES.map((g) => (
+          <option key={g} value={g}>{gradeOptionLabel(g)}</option>
+        ))}
+      </select>
+      <p className="text-xs text-earth-400 mt-1">Your school sees this on its roster, and uses it to set your hour requirement.</p>
     </div>
   )
 }

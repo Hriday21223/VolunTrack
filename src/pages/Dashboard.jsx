@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar } from 'lucide-react'
+import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -8,6 +8,9 @@ import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
 import { useMyRequirements } from '@/lib/requirements.js'
+import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
+import { nextBadgeProgress } from '@/lib/achievements.js'
+import { listReminders } from '@/api/index.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
@@ -17,6 +20,23 @@ import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { format, startOfWeek, startOfMonth, addDays, parseISO } from 'date-fns'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// Standing reads at a glance: behind and overdue earn colour, on-track and
+// ahead stay quiet so the dashboard isn't a wall of green ticks.
+// fmtHours gives two decimals, which reads as false precision on a rate —
+// "3.20h a week" is noise. A rate wants one decimal, or minutes under an hour.
+// How long an entry waits on a supervisor before it is worth chasing. Two
+// weeks is past "they are busy" and still inside a marking period.
+const STALE_PENDING_DAYS = 14
+
+const paceHours = (h) => (h < 1 ? `${Math.round(h * 60)}m` : `${Math.round(h * 10) / 10}h`)
+
+const PACE_TONE = {
+  behind: 'text-amber-400',
+  overdue: 'text-red-400',
+  ahead: 'text-brand-400',
+  'on-track': 'text-earth-400',
+}
 
 const fmtDist = (km) => {
   if (km === null || km === undefined) return null
@@ -77,6 +97,24 @@ export default function Dashboard() {
   const percent = target > 0 ? Math.min(1, total / target) : 0
   const remaining = Math.max(0, target - total)
 
+  // "42 of 100" only answers half the question; with a deadline we can also
+  // say what it takes from here. Both the personal goal and the school's own
+  // requirement go through the same maths (src/lib/pace.js).
+  const goalPaceInfo = useMemo(() => goalPace({
+    target,
+    total,
+    deadline: primary?.deadline,
+    startedAt: primary?.createdAt,
+    logs,
+  }), [target, total, primary?.deadline, primary?.createdAt, logs])
+
+  const requirementPace = useMemo(() => goalPace({
+    target: requirements.goalHours,
+    total,
+    deadline: requirements.policy?.goals?.deadline,
+    logs,
+  }), [requirements.goalHours, requirements.policy?.goals?.deadline, total, logs])
+
   // Weekly chart: last 7 days ending today
   const weekly = useMemo(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -132,6 +170,96 @@ export default function Dashboard() {
       loadPublicTasks()
     }
   }, [user?.role, loadPublicTasks])
+
+  // What the student has actually committed to. Signing up for a task and
+  // setting a reminder both used to vanish from view the moment they were
+  // done — the task list lived on another page, the reminder only ever
+  // surfaced as a toast at the moment it fired.
+  const [signups, setSignups] = useState([])
+  useEffect(() => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    let live = true
+    fetch(`${apiUrl}/school/public-tasks/signups/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : { signups: [] }))
+      .then((d) => { if (live) setSignups(d.signups || []) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [])
+
+  // An organizer lands on this same dashboard, which is built around their
+  // own logged hours. What they actually need is the state of their events.
+  const [myTasks, setMyTasks] = useState([])
+  useEffect(() => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    let live = true
+    fetch(`${apiUrl}/school/public-tasks/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : { tasks: [] }))
+      .then((d) => { if (live) setMyTasks(d.tasks || []) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [])
+
+  const organizing = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const live = myTasks.filter((t) => t.status !== 'cancelled')
+    const soon = live
+      .filter((t) => String(t.date || '').slice(0, 10) >= today)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    const pendingApprovals = live.reduce(
+      (n, t) => n + (t.signups || []).filter((s) => s.signup_status === 'pending' || s.status === 'pending').length, 0,
+    )
+    // Attendance is only worth chasing once the event has actually happened.
+    const unmarked = live
+      .filter((t) => String(t.date || '').slice(0, 10) < today)
+      .reduce((n, t) => n + (t.signups || []).filter((s) => (s.signup_status || s.status) === 'approved' && !s.attendance_status).length, 0)
+    return { total: live.length, soon, pendingApprovals, unmarked }
+  }, [myTasks])
+
+  const upcoming = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const tasks = signups
+      .filter((s) => s.date >= today && s.signup_status !== 'rejected' && s.task_status !== 'closed')
+      .map((s) => ({
+        kind: 'task',
+        id: s.id,
+        date: s.date,
+        time: s.time || '',
+        title: s.title,
+        detail: [s.location, s.creator_name].filter(Boolean).join(' · '),
+        pending: s.signup_status !== 'approved',
+      }))
+    const nudges = listReminders()
+      .filter((r) => r.enabled !== false && r.nextAt)
+      .map((r) => ({
+        kind: 'reminder',
+        id: r.id,
+        date: String(r.nextAt).slice(0, 10),
+        time: '',
+        title: r.title || 'Log your hours',
+        detail: 'Reminder',
+      }))
+      .filter((r) => r.date >= today)
+    return [...tasks, ...nudges]
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+      .slice(0, 4)
+  }, [signups])
+
+  // Entries that need the student to do something. Hours sit in "pending"
+  // silently, and a rejection is only visible if they happen to scroll the
+  // activity list — both cost them hours they already worked.
+  const attention = useMemo(() => {
+    const staleBefore = format(addDays(new Date(), -STALE_PENDING_DAYS), 'yyyy-MM-dd')
+    // Locally authored logs carry verificationStatus; one that came back from
+    // the server through logSync can still be holding the row's own spelling.
+    const statusOf = (l) => l.verificationStatus || l.verification_status || 'none'
+    const rejected = logs.filter((l) => statusOf(l) === 'rejected')
+    const stale = logs.filter((l) => statusOf(l) === 'pending' && String(l.date || '') <= staleBefore)
+    return { rejected, stale }
+  }, [logs])
+
+  const nextBadge = useMemo(() => nextBadgeProgress(logs, goals, earned), [logs, goals, earned])
 
   const recent = useMemo(() => logs.slice(0, 5), [logs])
 
@@ -411,6 +539,100 @@ export default function Dashboard() {
           </div>
         </Card>
 
+        {organizing.total > 0 && (
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display font-semibold">Your events</h3>
+              <Link to="/my-tasks" className="text-xs text-brand-400 hover:underline">My tasks</Link>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <span className="text-earth-300">{organizing.soon.length} upcoming</span>
+              {organizing.pendingApprovals > 0 && (
+                <Link to="/my-tasks" className="text-amber-400 hover:underline">
+                  {organizing.pendingApprovals} awaiting approval
+                </Link>
+              )}
+              {organizing.unmarked > 0 && (
+                <Link to="/attendance" className="text-amber-400 hover:underline">
+                  {organizing.unmarked} attendance unmarked
+                </Link>
+              )}
+              {organizing.pendingApprovals === 0 && organizing.unmarked === 0 && (
+                <span className="text-earth-500">Nothing waiting on you</span>
+              )}
+            </div>
+            {organizing.soon.length > 0 && (
+              <ul className="mt-3 divide-y divide-white/5">
+                {organizing.soon.slice(0, 3).map((t) => (
+                  <li key={t.id} className="py-2 flex items-center justify-between gap-3 text-sm">
+                    <span className="truncate text-earth-100">{t.title}</span>
+                    <span className="text-xs text-earth-400 whitespace-nowrap">
+                      {fmtDate(String(t.date).slice(0, 10))} · {t.slots_filled}/{t.slots_total}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
+
+        {/* Only shown when something is actually stuck. A card that is always
+            there stops being read, and "nothing needs you" is not news. */}
+        {(attention.rejected.length > 0 || attention.stale.length > 0) && (
+          <Card className="p-4 border-amber-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <h3 className="font-display font-semibold">Needs your attention</h3>
+            </div>
+            <ul className="space-y-2">
+              {attention.rejected.slice(0, 3).map((l) => (
+                <li key={l.id} className="text-sm flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-red-400 font-medium">Rejected</span>
+                  <span className="text-earth-200">{l.activity || 'Entry'} · {fmtDate(l.date)}</span>
+                  <Link to="/log" className="text-xs text-brand-400 hover:underline">Edit and resubmit</Link>
+                </li>
+              ))}
+              {attention.stale.length > 0 && (
+                <li className="text-sm flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-amber-400 font-medium">{attention.stale.length} waiting</span>
+                  <span className="text-earth-200">
+                    {attention.stale.length === 1 ? 'An entry has' : 'Entries have'} been pending over {STALE_PENDING_DAYS} days
+                  </span>
+                  <Link to="/reports" className="text-xs text-brand-400 hover:underline">Review them</Link>
+                </li>
+              )}
+            </ul>
+          </Card>
+        )}
+
+        {/* Signed-up tasks and due reminders — the two things the app knew
+            about and never put in front of anyone. */}
+        {upcoming.length > 0 && (
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display font-semibold">Coming up</h3>
+              <Link to="/calendar" className="text-xs text-brand-400 hover:underline">Calendar</Link>
+            </div>
+            <ul className="divide-y divide-white/5">
+              {upcoming.map((item) => (
+                <li key={`${item.kind}-${item.id}`} className="py-2 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-earth-100 truncate">
+                      {item.title}
+                      {item.pending && <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-400">awaiting approval</span>}
+                    </p>
+                    {item.detail && <p className="text-xs text-earth-400 truncate">{item.detail}</p>}
+                  </div>
+                  <div className="text-xs text-earth-400 whitespace-nowrap text-right">
+                    {fmtDate(item.date)}
+                    {item.time && <div className="text-earth-500">{item.time}</div>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+
         {/* The school's own requirement, kept separate from the student's
             personal goal above: one is what they set for themselves, the
             other is what they have to hit. Rendered only when a tenant
@@ -428,9 +650,13 @@ export default function Dashboard() {
               </div>
               <div className="text-right">
                 {requirements.policy.goals.deadline && (
-                  <div className="text-xs text-earth-400">by {requirements.policy.goals.deadline}</div>
+                  <div className="text-xs text-earth-400">by {fmtDate(requirements.policy.goals.deadline)}</div>
                 )}
-
+                {requirementPace.hasDeadline && !requirementPace.met && (
+                  <div className={`text-xs ${PACE_TONE[requirementPace.status] || 'text-earth-400'}`}>
+                    {paceSummary(requirementPace, { formatHours: paceHours })}
+                  </div>
+                )}
               </div>
             </div>
             <ProgressBar value={total} target={requirements.goalHours} />
@@ -460,6 +686,28 @@ export default function Dashboard() {
                 Goal: {fmtHours(target)} · {primary.title}
               </div>
             )}
+            {primary && goalPaceInfo.hasDeadline && (
+              <div className="mt-2 pt-2 border-t border-white/5 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-earth-300">
+                  <CalIcon className="w-3 h-3 text-earth-500 shrink-0" />
+                  <span>{paceSummary(goalPaceInfo, { formatHours: paceHours })}</span>
+                </div>
+                {paceStanding(goalPaceInfo, { formatHours: paceHours }) && (
+                  <div className={`text-xs ${PACE_TONE[goalPaceInfo.status] || 'text-earth-400'}`}>
+                    {paceStanding(goalPaceInfo, { formatHours: paceHours })}
+                    {goalPaceInfo.daysLeft >= 0 && <span className="text-earth-500"> · {goalPaceInfo.daysLeft} day{goalPaceInfo.daysLeft === 1 ? '' : 's'} left</span>}
+                  </div>
+                )}
+                {goalPaceInfo.willMakeIt === false && (
+                  <div className="text-xs text-earth-500">
+                    At your recent pace: {fmtDate(goalPaceInfo.projectedFinish.toISOString())}
+                  </div>
+                )}
+              </div>
+            )}
+            {primary && !goalPaceInfo.hasDeadline && !goalPaceInfo.met && (
+              <Link to="/settings" className="mt-2 block text-xs text-brand-400 hover:underline">Add a deadline to see your pace →</Link>
+            )}
             {!primary && (
               <Link to="/settings" className="mt-2 block text-xs text-brand-400 hover:underline">Set a goal →</Link>
             )}
@@ -474,7 +722,13 @@ export default function Dashboard() {
           <Card className="p-4">
             <div className="text-xs text-earth-400">Badges earned</div>
             <div className="mt-2 text-2xl font-bold text-earth-100">{earned.length}/12</div>
-            <div className="mt-2 text-xs text-earth-400">Earned badges appear as you log more hours.</div>
+            {nextBadge ? (
+              <div className="mt-2 text-xs text-earth-400">
+                {nextBadge.unit === 'h' ? fmtHours(nextBadge.remaining) : `${nextBadge.remaining}${nextBadge.unit}`} to <span className="text-earth-200">{nextBadge.title}</span>
+              </div>
+            ) : (
+              <div className="mt-2 text-xs text-earth-400">Earned badges appear as you log more hours.</div>
+            )}
           </Card>
         </div>
 

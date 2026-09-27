@@ -59,7 +59,11 @@ export function DataProvider({ children }) {
     const { newly } = evaluateAchievements(logs, goals, earned)
     if (newly.length) {
       newly.forEach(markEarned)
-      setEarned((prev) => [...prev, ...newly])
+      // markEarned() dedupes what it writes, but this state update did not —
+      // an effect that ran twice for one change (StrictMode, a re-render
+      // between evaluations) appended the same ids again and the dashboard
+      // counted "14/12 badges earned" until the next reload.
+      setEarned((prev) => [...new Set([...prev, ...newly])])
       setPendingBadges(newly)
     }
   }, [logs, goals, earned])

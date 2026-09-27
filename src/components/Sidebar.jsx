@@ -16,14 +16,17 @@ const ROLE_ITEMS = {
     { to: '/help',         label: 'Help',        icon: HelpCircle },
     { to: '/status',       label: 'System Status',      icon: Activity },
   ],
+  // This list was the student one with My Tasks and Attendance added and
+  // nothing taken away, so an account that signed up to run events was
+  // offered a personal hour-tracking app: Log Hours, Calendar, Achievements
+  // and Reports are all about tracking your *own* volunteering, and an
+  // organizer logs hours for their team from inside My Tasks. Those four
+  // routes still work if someone types the URL — only the nav is trimmed,
+  // so nothing is taken away from an organizer who does also volunteer.
   volunteer: [
     { to: '/my-tasks',     label: 'My Tasks',    icon: ClipboardList },
-    { to: '/',             label: 'Dashboard',   icon: Home },
     { to: '/attendance',   label: 'Attendance',  icon: ClipboardCheck },
-    { to: '/log',          label: 'Log Hours',   icon: Clock },
-    { to: '/calendar',     label: 'Calendar',    icon: Calendar },
-    { to: '/achievements', label: 'Achievements', icon: Trophy },
-    { to: '/reports',      label: 'Reports',     icon: FileText },
+    { to: '/',             label: 'Dashboard',   icon: Home },
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
