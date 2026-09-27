@@ -1315,19 +1315,27 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
     if (from) { params.push(from); range += ` AND t.date >= $${params.length}` }
     if (to) { params.push(to); range += ` AND t.date <= $${params.length}` }
 
+    // Signups and logs are both one-to-many off a task, so joining them in
+    // one GROUP BY multiplies each against the other — a task with 3 signups
+    // and 2 logs reported 4 approved and 30 hours instead of 2 and 10. Each
+    // aggregate gets its own subquery, which is also why there is no GROUP BY
+    // here any more.
     const { rows } = await query(
       `SELECT t.id, t.title, t.date, t.location, t.status, t.slots_total,
-              COUNT(s.id) FILTER (WHERE s.status = 'approved')            AS approved,
-              COUNT(s.id) FILTER (WHERE s.status = 'pending')             AS pending,
-              COUNT(s.id) FILTER (WHERE s.attendance_status = 'present')  AS present,
-              COUNT(s.id) FILTER (WHERE s.attendance_status = 'absent')   AS absent,
-              COUNT(s.id) FILTER (WHERE s.attendance_status = 'excused')  AS excused,
-              COALESCE(SUM(l.hours), 0)                                   AS hours
+              (SELECT COUNT(*) FROM public_task_signups s
+                WHERE s.task_id = t.id AND s.status = 'approved')            AS approved,
+              (SELECT COUNT(*) FROM public_task_signups s
+                WHERE s.task_id = t.id AND s.status = 'pending')             AS pending,
+              (SELECT COUNT(*) FROM public_task_signups s
+                WHERE s.task_id = t.id AND s.attendance_status = 'present')  AS present,
+              (SELECT COUNT(*) FROM public_task_signups s
+                WHERE s.task_id = t.id AND s.attendance_status = 'absent')   AS absent,
+              (SELECT COUNT(*) FROM public_task_signups s
+                WHERE s.task_id = t.id AND s.attendance_status = 'excused')  AS excused,
+              (SELECT COALESCE(SUM(l.hours), 0) FROM logs l
+                WHERE l.task_id = t.id)                                      AS hours
          FROM public_tasks t
-         LEFT JOIN public_task_signups s ON s.task_id = t.id
-         LEFT JOIN logs l ON l.task_id = t.id
         WHERE t.created_by = $1${range}
-        GROUP BY t.id
         ORDER BY t.date DESC`,
       params,
     )
