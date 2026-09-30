@@ -123,10 +123,11 @@ export default function Login() {
   }, [enrollSetup?.uri])
 
   const ssoActive = Boolean(offeredSso) && mode === 'password' && !isAdmin && !forcePassword
-  // Only the password path reaches the server's POST /auth/login. The 4-digit
-  // PIN is checked against this device's own storage, and SSO hands off to the
-  // school's IdP, so neither has anything for a CAPTCHA to protect.
-  const needsCaptcha = turnstileEnabled && mode === 'password' && !ssoActive
+  // Both tabs show the widget. On the password tab the server enforces it
+  // (POST /auth/login runs verifyTurnstile); the 4-digit PIN is checked against
+  // this device's own storage, so there it only slows down someone guessing at
+  // the keyboard. SSO hands off to the school's IdP and needs neither.
+  const needsCaptcha = turnstileEnabled && !ssoActive
 
   const onSubmit = async (e) => {
     e.preventDefault()
@@ -142,16 +143,21 @@ export default function Login() {
     }
     setBusy(true)
     try {
+      if (needsCaptcha && !captchaToken) {
+        setErr('Please complete the CAPTCHA below.')
+        setBusy(false)
+        return
+      }
       if (mode === 'pin') {
-        await loginWithPin(email, pin)
+        try {
+          await loginWithPin(email, pin)
+        } finally {
+          setCaptchaToken('')
+          setCaptchaKey((k) => k + 1)
+        }
         setToast(true)
         setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
       } else {
-        if (needsCaptcha && !captchaToken) {
-          setErr('Please complete the CAPTCHA below.')
-          setBusy(false)
-          return
-        }
         let result
         try {
           result = await login(email, password, captchaToken)
