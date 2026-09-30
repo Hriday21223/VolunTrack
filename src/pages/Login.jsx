@@ -10,6 +10,7 @@ import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { resolveTenant } from '@/lib/tenant.js'
 import QRCode from 'qrcode'
+import { isNativeApp } from '@/lib/platform.js'
 
 export default function Login() {
   useSeo({
@@ -243,29 +244,34 @@ export default function Login() {
     <div className="min-h-screen relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(63,131,68,0.24),transparent_28%),radial-gradient(circle_at_top_right,rgba(160,124,68,0.18),transparent_20%),radial-gradient(circle_at_bottom_left,rgba(39,84,45,0.22),transparent_22%),linear-gradient(180deg,#0a130d_0%,#0f1f15_40%,#151f10_100%)] text-white px-4 py-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.08),transparent_14%),radial-gradient(circle_at_80%_20%,rgba(184,149,93,0.18),transparent_18%),radial-gradient(circle_at_50%_80%,rgba(63,131,68,0.16),transparent_16%)]" />
       <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.2fr_0.8fr] items-center">
-        <div className="space-y-8 animate-fade-in-up">
-          <Link to="/" className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-brand-100 shadow-soft backdrop-blur transition hover:bg-slate-800/60 hover:text-white">
-            <img src={logoSrc} alt={logoAlt} className="w-5 h-5 object-contain" />
-            {tenant ? `${tenant.name} · VolunTrack` : 'VolunTrack login'}
-          </Link>
+        {/* The pitch column stacks above the form on a phone, so in the apps —
+            where the visitor came to sign in, not to be sold on it — it's left
+            out and the sign-in card is the first thing on screen. */}
+        {!isNativeApp && (
+          <div className="space-y-8 animate-fade-in-up">
+            <Link to="/" className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-brand-100 shadow-soft backdrop-blur transition hover:bg-slate-800/60 hover:text-white">
+              <img src={logoSrc} alt={logoAlt} className="w-5 h-5 object-contain" />
+              {tenant ? `${tenant.name} · VolunTrack` : 'VolunTrack login'}
+            </Link>
 
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-white animate-fade-in-up" style={{ animationDelay: '100ms' }}>Welcome back to the volunteer dashboard.</h1>
-            <p className="max-w-2xl text-lg text-slate-300 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-              Sign in and pick up where you left off—track hours, keep goals moving, and export your service record with confidence.
-            </p>
+            <div className="space-y-4">
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-white animate-fade-in-up" style={{ animationDelay: '100ms' }}>Welcome back to the volunteer dashboard.</h1>
+              <p className="max-w-2xl text-lg text-slate-300 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                Sign in and pick up where you left off—track hours, keep goals moving, and export your service record with confidence.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+              <FeatureCard title="Fast logging" description="Jump straight to the hours form and save every session with proof and supervisor details." />
+              <FeatureCard title="Progress tracking" description="See goal completion, weekly activity, and earned badges in one clean view." />
+            </div>
+
+            <Link to="/help" className="block rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-soft backdrop-blur text-sm text-slate-300 hover:bg-slate-800/60 transition animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+              <div className="font-semibold text-white">Need help getting started?</div>
+              <p className="mt-2 leading-6">Create an account, set your first goal, and log your first volunteer hours to earn a badge.</p>
+            </Link>
           </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-            <FeatureCard title="Fast logging" description="Jump straight to the hours form and save every session with proof and supervisor details." />
-            <FeatureCard title="Progress tracking" description="See goal completion, weekly activity, and earned badges in one clean view." />
-          </div>
-
-          <Link to="/help" className="block rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-soft backdrop-blur text-sm text-slate-300 hover:bg-slate-800/60 transition animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-            <div className="font-semibold text-white">Need help getting started?</div>
-            <p className="mt-2 leading-6">Create an account, set your first goal, and log your first volunteer hours to earn a badge.</p>
-          </Link>
-        </div>
+        )}
 
         <div className="relative animate-scale-in">
           <Card padded={false} className="overflow-hidden border border-white/10 bg-slate-950/80 shadow-soft">
