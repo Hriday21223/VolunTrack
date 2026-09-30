@@ -7,6 +7,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { fmtHours } from '@/utils/date.js'
+import { useMyRequirements } from '@/lib/requirements.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -43,6 +44,9 @@ export default function Profile() {
   // none of them, so the fields are hidden rather than sitting there empty and
   // confusing — a school being asked which school it belongs to, and so on.
   const isVolunteerProfile = !['school', 'school_staff', 'org', 'parent'].includes(user?.role)
+  // A student who joined a school is filed under that school, whatever the
+  // free-text School field below says — show the school they actually belong to.
+  const { schoolName: linkedSchoolName } = useMyRequirements()
   // A student's grade is a fact a school files them under — and it decides
   // which per-grade hour requirement applies (server/requirements.js), which
   // only works if everyone picks from the same list rather than typing prose.
@@ -141,7 +145,7 @@ export default function Profile() {
           <div className="mt-3 font-display font-semibold text-lg">{form.name || 'Volunteer'}</div>
           {isVolunteerProfile ? (
             <>
-              <div className="text-sm text-earth-500 dark:text-earth-400">{form.school || 'No school set'}</div>
+              <div className="text-sm text-earth-500 dark:text-earth-400">{linkedSchoolName || form.school || 'No school set'}</div>
               <div className="text-xs text-earth-500 dark:text-earth-400">{form.grade}</div>
             </>
           ) : (

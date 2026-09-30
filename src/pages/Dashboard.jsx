@@ -14,6 +14,7 @@ import { listReminders } from '@/api/index.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
+import { isNativeApp } from '@/lib/platform.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
@@ -46,7 +47,7 @@ const fmtDist = (km) => {
 }
 
 const STUDENT_TOUR_STEPS = [
-  { selector: '[data-tour="log-hours"]', title: 'Log hours', description: 'Click here any time to record a volunteer session — activity, hours, and proof if you have it.' },
+  { selector: '[data-tour="log-hours"]', title: 'Log hours', description: 'Use this any time to record a volunteer session — activity, hours, and proof if you have it.' },
   { selector: '[data-tour="goal-progress"]', title: 'Goal progress', description: 'Track how close you are to your primary volunteering goal, and how many hours are left.' },
   { selector: '[data-tour="weekly-chart"]', title: 'Weekly chart', description: 'See your hours for the current week broken down by day, so you can keep momentum going.' },
   { selector: '[data-tour="recent-activity"]', title: 'Recent activity', description: 'Your most recently logged sessions show up here — jump back in any time to log more.' },
@@ -159,8 +160,10 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    // Get user location only for students
-    if (user?.role === 'student' && navigator.geolocation) {
+    // Get user location only for students — and never unprompted in the
+    // apps, where this raises the OS permission dialog over a page the
+    // student only just opened. Events has an Enable button for that.
+    if (user?.role === 'student' && !isNativeApp && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => { loadPublicTasks(pos.coords.latitude, pos.coords.longitude) },
         () => { loadPublicTasks() },
@@ -513,31 +516,38 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-5">
-        <Card className="overflow-hidden lg:col-span-3">
-          <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr] bg-gradient-to-r from-brand-800 via-slate-950 to-slate-900 p-5">
-            <div className="space-y-3 text-white">
-              <span className="text-xs uppercase tracking-[0.35em] text-brand-300">Volunteer snapshot</span>
-              <h2 className="text-xl font-bold leading-tight">A cleaner way to track hours, goals, and progress.</h2>
-              <p className="max-w-xl text-sm text-slate-300 leading-6">
-                Log sessions fast, keep your goals moving, and export polished records for school, club, or scholarship review.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Link to="/log" className="btn-primary btn-sm">Log hours</Link>
-                <Link to="/calendar" className="btn-secondary btn-sm">View calendar</Link>
+      {/* grid-cols-1, not the implicit auto column: an auto column grows to
+          its content's min width, which pushed this card past the screen edge
+          on phones. Desktop keeps the implicit columns its col-span-3 relies on. */}
+      <div className="grid grid-cols-1 lg:grid-cols-none gap-5">
+        {/* A pitch ("A cleaner way to track hours…") — the apps' tiles above
+            already show these numbers, so it's left out there. */}
+        {!isNativeApp && (
+          <Card className="overflow-hidden lg:col-span-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr] bg-gradient-to-r from-brand-800 via-slate-950 to-slate-900 p-5">
+              <div className="space-y-3 text-white">
+                <span className="text-xs uppercase tracking-[0.35em] text-brand-300">Volunteer snapshot</span>
+                <h2 className="text-xl font-bold leading-tight">A cleaner way to track hours, goals, and progress.</h2>
+                <p className="max-w-xl text-sm text-slate-300 leading-6">
+                  Log sessions fast, keep your goals moving, and export polished records for school, club, or scholarship review.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Link to="/log" className="btn-primary btn-sm">Log hours</Link>
+                  <Link to="/calendar" className="btn-secondary btn-sm">View calendar</Link>
+                </div>
+              </div>
+              <div className="rounded-[1.5rem] bg-slate-950/95 p-4 ring-1 ring-white/10 shadow-soft">
+                <div className="text-xs text-earth-400">Total this year</div>
+                <div className="mt-2 text-3xl font-bold text-white">{fmtHours(total)}</div>
+                <div className="mt-1 text-xs text-earth-400">{logs.length} volunteer sessions logged</div>
+                <div className="mt-3 grid gap-2">
+                  <StatCard icon={Clock} label="This month" value={fmtHours(thisMonth)} accent="brand" compact />
+                  <StatCard icon={CalIcon} label="Sessions" value={logs.length} accent="earth" compact />
+                </div>
               </div>
             </div>
-            <div className="rounded-[1.5rem] bg-slate-950/95 p-4 ring-1 ring-white/10 shadow-soft">
-              <div className="text-xs text-earth-400">Total this year</div>
-              <div className="mt-2 text-3xl font-bold text-white">{fmtHours(total)}</div>
-              <div className="mt-1 text-xs text-earth-400">{logs.length} volunteer sessions logged</div>
-              <div className="mt-3 grid gap-2">
-                <StatCard icon={Clock} label="This month" value={fmtHours(thisMonth)} accent="brand" compact />
-                <StatCard icon={CalIcon} label="Sessions" value={logs.length} accent="earth" compact />
-              </div>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {organizing.total > 0 && (
           <Card className="p-4">

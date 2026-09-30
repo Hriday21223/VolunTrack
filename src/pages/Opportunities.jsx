@@ -3,6 +3,7 @@ import { MapPin, Calendar as CalIcon, Users } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import { isNativeApp } from '@/lib/platform.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -30,7 +31,9 @@ export default function Opportunities() {
   }, [])
 
   useEffect(() => {
-    if (navigator.geolocation) {
+    // In the apps, location is asked for only from the Enable button below —
+    // never as the page opens.
+    if (navigator.geolocation && !isNativeApp) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
@@ -50,8 +53,9 @@ export default function Opportunities() {
     if (userLoc) loadNearbyTasks(userLoc.lat, userLoc.lng, nearbyRadius)
   }, [nearbyRadius, userLoc, loadNearbyTasks])
 
+  // The apps' tab bar calls this page Events; its title should match.
   return (
-    <AppLayout title="Opportunities" subtitle="Volunteer tasks near you">
+    <AppLayout title={isNativeApp ? 'Events' : 'Opportunities'} subtitle="Volunteer tasks near you">
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>

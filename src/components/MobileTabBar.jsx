@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { isNativeApp } from '@/lib/platform.js'
+import { isNativeApp, APP_BACK_EVENT } from '@/lib/platform.js'
 
 // Labels here match Sidebar.jsx exactly (same route, same label) so the
 // nav doesn't appear to rename itself between desktop and mobile. "Log"
@@ -97,6 +97,13 @@ function nativeTabs(core, more) {
   return { tabs, sheet }
 }
 
+const NO_KEYBOARD_INPUTS = new Set(['checkbox', 'radio', 'file', 'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range', 'button', 'submit', 'reset', 'image', 'hidden'])
+function opensKeyboard(el) {
+  if (!el) return false
+  if (el.isContentEditable || el.tagName === 'TEXTAREA') return true
+  return el.tagName === 'INPUT' && !NO_KEYBOARD_INPUTS.has(el.type)
+}
+
 export default function MobileTabBar() {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
@@ -135,6 +142,31 @@ export default function MobileTabBar() {
     }
     return () => { document.body.style.overflow = '' }
   }, [moreOpen])
+
+  // Android's Back button closes the sheet rather than leaving the page.
+  useEffect(() => {
+    if (!moreOpen) return
+    const onBack = (e) => { e.preventDefault(); setMoreOpen(false) }
+    window.addEventListener(APP_BACK_EVENT, onBack)
+    return () => window.removeEventListener(APP_BACK_EVENT, onBack)
+  }, [moreOpen])
+
+  // In the apps the WebView shrinks to make room for the keyboard, which
+  // carries this fixed bar up on top of it — over the very field being typed
+  // in. So the bar steps aside while a text field has focus. (Date, time and
+  // select fields open a dialog, not the keyboard, so they don't count.)
+  const [typing, setTyping] = useState(false)
+  useEffect(() => {
+    if (!isNativeApp) return
+    const update = () => setTyping(opensKeyboard(document.activeElement))
+    const onFocusOut = () => setTimeout(update, 0)
+    document.addEventListener('focusin', update)
+    document.addEventListener('focusout', onFocusOut)
+    return () => {
+      document.removeEventListener('focusin', update)
+      document.removeEventListener('focusout', onFocusOut)
+    }
+  }, [])
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) setMoreOpen(false)
@@ -211,6 +243,7 @@ export default function MobileTabBar() {
   )
 
   if (native) {
+    if (typing) return null
     const tabLink = ({ to, label, icon: Icon }) => {
       const active = isActive(to)
       return (
