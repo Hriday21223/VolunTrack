@@ -7,7 +7,7 @@ import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AdminUsers from '@/components/AdminUsers.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { getIncidents, createIncident, resolveIncident, deleteIncident, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
+import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
 import { generateInvoicePDF } from '@/lib/export.js'
 import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
 
@@ -221,6 +221,8 @@ export default function Admin() {
   const [resolvingId, setResolvingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
+  const [deletingAll, setDeletingAll] = useState(false)
   const [newIncident, setNewIncident] = useState({ service: '', detail: '', issueUrl: '' })
   const [loggingIncident, setLoggingIncident] = useState(false)
 
@@ -290,6 +292,18 @@ export default function Admin() {
       await loadIncidents()
       setToastMessage('Incident deleted'); setToast(true)
     } catch (error) { setToastMessage(error.message || 'Failed to delete incident'); setToast(true) } finally { setDeletingId(null) }
+  }
+
+  // Same two-click pattern as deleteOne: the first click arms the button.
+  const deleteAllResolved = async () => {
+    if (!confirmDeleteAll) { setConfirmDeleteAll(true); return }
+    setDeletingAll(true)
+    try {
+      const { deleted } = await deleteResolvedIncidents()
+      setConfirmDeleteAll(false)
+      await loadIncidents()
+      setToastMessage(`Deleted ${deleted} resolved incident${deleted === 1 ? '' : 's'}`); setToast(true)
+    } catch (error) { setToastMessage(error.message || 'Failed to delete resolved incidents'); setToast(true) } finally { setDeletingAll(false) }
   }
 
   useEffect(() => {
@@ -1720,7 +1734,16 @@ export default function Admin() {
 
           {incidents.some((i) => i.status === 'resolved') && (
             <Card className="mb-6">
-              <h3 className="font-display font-semibold text-base mb-1">Resolved history</h3>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="font-display font-semibold text-base">Resolved history</h3>
+                <button onClick={deleteAllResolved} onBlur={() => setConfirmDeleteAll(false)} disabled={deletingAll} className="text-xs font-semibold px-2.5 py-1 rounded shrink-0 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50">
+                  {deletingAll
+                    ? 'Deleting...'
+                    : confirmDeleteAll
+                      ? `Confirm delete all ${incidents.filter((i) => i.status === 'resolved').length}?`
+                      : 'Delete all'}
+                </button>
+              </div>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
                 These are still listed publicly on /status. Resolving doesn't unpublish an incident — deleting does.
               </p>

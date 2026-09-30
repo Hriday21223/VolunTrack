@@ -76,6 +76,16 @@ export async function deleteIncident(id) {
   return res.json()
 }
 
+// Unpublish every resolved incident at once. Active incidents are untouched.
+export async function deleteResolvedIncidents() {
+  const res = await fetch(`${apiUrl()}/status/incidents?status=resolved`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Failed to delete resolved incidents')
+  return res.json()
+}
+
 // Opt in to incident emails — double opt-in, a confirmation link is sent
 // before this address actually starts receiving anything.
 export async function subscribeToStatus(email) {
