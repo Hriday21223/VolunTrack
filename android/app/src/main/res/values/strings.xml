@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VolunTrack</string>
+    <string name="title_activity_main">VolunTrack</string>
+    <string name="package_name">com.voluntrack.voluntrack</string>
+    <string name="custom_url_scheme">com.voluntrack.voluntrack</string>
+</resources>

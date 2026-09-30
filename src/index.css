@@ -30,6 +30,25 @@
   html, body { @apply overflow-x-hidden; }
   body {
     @apply bg-earth-50 text-earth-900 font-sans antialiased;
+    /* index.html asks for viewport-fit=cover, so on a notched iPhone — the
+       native app, or the site added to the home screen — the page is drawn
+       under the status bar and home indicator. These insets are 0 everywhere
+       else, so desktop and ordinary browsers are unchanged. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  /* An opaque strip behind the status bar, so content scrolling up under it
+     (past a sticky header's offset) doesn't collide with the clock. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: env(safe-area-inset-top);
+    background: inherit;
+    z-index: 50;
+    pointer-events: none;
   }
   .dark body {
     @apply bg-[#0f1813] text-earth-100;

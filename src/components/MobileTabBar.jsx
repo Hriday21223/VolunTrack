@@ -131,7 +131,7 @@ export default function MobileTabBar() {
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="mx-4 mb-4 rounded-[1.5rem] bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl border border-earth-200/50 dark:border-white/10 shadow-2xl shadow-black/5 dark:shadow-black/20">
           <ul className="grid px-1 pt-1" style={{ gridTemplateColumns: `repeat(${coreItems.length + 1}, 1fr)` }}>
             {coreItems.map(({ to, label, icon: Icon }) => {

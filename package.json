@@ -16,9 +16,11 @@
     "build": "vite build",
     "postbuild": "npx puppeteer browsers install chrome && node scripts/prerender.mjs",
     "preview": "vite preview",
+    "build:app": "vite build --mode app && cap sync",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.2",
     "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
@@ -48,6 +50,10 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "@types/react": "^18.3.10",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^6.0.3",
