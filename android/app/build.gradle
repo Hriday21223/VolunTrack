@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// Release signing for Google Play. The upload key lives outside git: either
+// android/keystore.properties (gitignored; see keystore.properties.example)
+// or VOLUNTRACK_UPLOAD_* environment variables for CI. With neither, release
+// builds come out unsigned and Play will refuse them — debug builds are
+// unaffected.
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+def signingValue = { String prop, String env -> keystoreProps.getProperty(prop) ?: System.getenv(env) }
+def uploadStoreFile = signingValue('storeFile', 'VOLUNTRACK_UPLOAD_STORE_FILE')
+
 android {
     namespace = "com.voluntrack.voluntrack"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +20,8 @@ android {
         applicationId "com.voluntrack.voluntrack"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 300
+        versionName "0.3.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +29,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (uploadStoreFile) {
+            release {
+                storeFile rootProject.file(uploadStoreFile)
+                storePassword signingValue('storePassword', 'VOLUNTRACK_UPLOAD_STORE_PASSWORD')
+                keyAlias signingValue('keyAlias', 'VOLUNTRACK_UPLOAD_KEY_ALIAS')
+                keyPassword signingValue('keyPassword', 'VOLUNTRACK_UPLOAD_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadStoreFile) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

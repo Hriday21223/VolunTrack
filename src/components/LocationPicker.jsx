@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Navigation, MapPin } from 'lucide-react'
 import { searchPlaces, reverseGeocode } from '@/lib/geocode.js'
+import { isNativeApp } from '@/lib/platform.js'
 
 // Bundlers break Leaflet's default marker icon URLs — point them at the CDN
 // copies that ship in the same package version instead of asset-resolving.
@@ -63,7 +64,10 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
   useEffect(() => setQuery(address || ''), [address])
 
   useEffect(() => {
-    if (!navigator.geolocation) return
+    // In the app this would be an OS permission prompt the moment the form
+    // opens, with nothing the user did to explain it — the stores reject
+    // that. There, location is only asked for by "Use current location".
+    if (isNativeApp || !navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
       (pos) => { biasRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude } },
       () => {},

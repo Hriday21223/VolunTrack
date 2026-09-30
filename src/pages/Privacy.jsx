@@ -12,7 +12,12 @@ export default function Privacy() {
     path: '/privacy',
   })
 
-  useEffect(() => { window.scrollTo(0, 0) }, [])
+  useEffect(() => {
+    // Honor a deep link like /privacy#account-deletion; otherwise start at the top.
+    const target = window.location.hash && document.getElementById(window.location.hash.slice(1))
+    if (target) target.scrollIntoView()
+    else window.scrollTo(0, 0)
+  }, [])
 
   return (
     <div className="min-h-screen page-shell">
@@ -74,7 +79,7 @@ export default function Privacy() {
             </ul>
           </Section>
 
-          <Section title="Account Deletion">
+          <Section id="account-deletion" title="Account Deletion">
             <p>You can delete your account from the Settings page in the app. You will be prompted to type &quot;delete&quot; and confirm with your password (or, if you sign in through your school, your email address) before the action completes.</p>
             <p className="mt-2">This erases your account and everything attached to it — volunteer logs, goals, reminders, documents you uploaded to a school, and any parent link — from our servers as well as from the device you are using. It cannot be undone, and the exceptions under <em>Data Retention</em> still apply.</p>
             <p className="mt-2">School, organization, and administrator accounts cannot be deleted this way, because doing so would remove records other people rely on. Contact us and we will close or transfer the account properly.</p>
@@ -110,9 +115,11 @@ export default function Privacy() {
   )
 }
 
-function Section({ title, children }) {
+// `id` makes a section linkable — Google Play's listing requires a web URL
+// for account deletion, and it points at /privacy#account-deletion.
+function Section({ id, title, children }) {
   return (
-    <div>
+    <div id={id} className={id ? 'scroll-mt-24' : undefined}>
       <h2 className="font-display font-semibold text-base mb-1.5">{title}</h2>
       {children}
     </div>

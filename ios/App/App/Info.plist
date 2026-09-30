@@ -22,8 +22,16 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>VolunTrack uses the camera to scan a sign-in QR code and to photograph proof of your volunteer hours.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>VolunTrack uses your location, only when you tap Use current location, to fill in where you volunteered.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>VolunTrack lets you attach a photo from your library as proof of your volunteer hours.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -49,7 +57,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
