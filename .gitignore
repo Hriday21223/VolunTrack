@@ -9,6 +9,8 @@ _site
 dev-dist
 .vercel
 .env*
+# Public values only (see the file), for the native app build.
+!.env.app
 .wrangler
 .dev.vars*
 

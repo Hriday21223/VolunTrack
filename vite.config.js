@@ -35,6 +35,10 @@ export default defineConfig(({ mode }) => {
       react(),
 
       VitePWA({
+        // The native apps (npm run build:app) ship the bundle inside the app
+        // and update through the stores, so a service worker there would only
+        // add a second cache that can serve a stale build after an update.
+        disable: mode === 'app',
         registerType: 'autoUpdate',
         devOptions: {
           enabled: false,

@@ -81,6 +81,11 @@ const STATIC_ORIGINS = [
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
   'http://localhost:5173',
   'http://localhost:10000',
+  // The native apps (Capacitor) serve their bundle from these fixed origins.
+  // Auth is a bearer token held in the app's own storage, not a cookie, so
+  // admitting them doesn't let another local page ride on a user's session.
+  'https://localhost',     // Android
+  'capacitor://localhost', // iOS
 ]
 
 app.use(cors({
