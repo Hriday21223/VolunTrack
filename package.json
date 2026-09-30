@@ -17,6 +17,8 @@
     "postbuild": "npx puppeteer browsers install chrome && node scripts/prerender.mjs",
     "preview": "vite preview",
     "build:app": "vite build --mode app && cap sync",
+    "version:app": "node scripts/mobile-version.mjs",
+    "bundle:android": "npm run version:app && npm run build:app && cd android && ./gradlew bundleRelease",
     "lint": "eslint ."
   },
   "dependencies": {

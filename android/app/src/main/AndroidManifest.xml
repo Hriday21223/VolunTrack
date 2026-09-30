@@ -33,4 +33,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- QR sign-in scan and "take photo" for proof of service. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- "Use current location" on the Log Hours form, only when tapped. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Neither is essential, so Play must not hide the app from devices without them. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
 </manifest>
