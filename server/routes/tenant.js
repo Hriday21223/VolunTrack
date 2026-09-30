@@ -221,11 +221,6 @@ router.post('/domains', tenantAdminLimiter, requireDb, requireAuth('school', 'sc
       return res.status(400).json({ error: 'A valid hostname is required, e.g. volunteer.yourschool.edu.' })
     }
 
-    // UNIQUE(hostname) would catch this, but a clear 409 beats a constraint
-    // error — and it must not reveal *who* holds it.
-    const { rows: existing } = await query('SELECT id FROM tenant_domains WHERE hostname = $1', [hostname])
-    if (existing[0]) return res.status(409).json({ error: 'That hostname is already claimed.' })
-
     let schoolId = owner.schoolId
     let orgId = owner.orgId
     if (owner.unrestricted) {
@@ -234,12 +229,31 @@ router.post('/domains', tenantAdminLimiter, requireDb, requireAuth('school', 'sc
       if (!schoolId && !orgId) return res.status(400).json({ error: 'A schoolId or organizationId is required.' })
     }
 
-    const id = uid('tdom')
-    await query(
-      `INSERT INTO tenant_domains (id, school_id, organization_id, hostname, kind, status, verify_token)
-       VALUES ($1,$2,$3,$4,'custom','pending',$5)`,
-      [id, schoolId, orgId, hostname, `voluntrack-verify=${generateToken().slice(0, 32)}`],
+    // An unproven claim doesn't block anyone — only a verified one does, so
+    // nobody can squat a hostname they don't own and lock its real owner out.
+    // Several tenants may hold a pending claim; the first to publish its TXT
+    // record wins at verify time. The message must not reveal *who* holds it.
+    const { rows: existing } = await query(
+      `SELECT verified_at IS NOT NULL AS verified,
+              (school_id IS NOT DISTINCT FROM $2 AND organization_id IS NOT DISTINCT FROM $3) AS mine
+         FROM tenant_domains WHERE hostname = $1`,
+      [hostname, schoolId, orgId],
     )
+    if (existing.some((r) => r.mine)) return res.status(409).json({ error: 'You have already added that hostname.' })
+    if (existing.some((r) => r.verified)) return res.status(409).json({ error: 'That hostname is already claimed.' })
+
+    const id = uid('tdom')
+    try {
+      await query(
+        `INSERT INTO tenant_domains (id, school_id, organization_id, hostname, kind, status, verify_token)
+         VALUES ($1,$2,$3,$4,'custom','pending',$5)`,
+        [id, schoolId, orgId, hostname, `voluntrack-verify=${generateToken().slice(0, 32)}`],
+      )
+    } catch (error) {
+      // A concurrent add by the same tenant (uq_tenant_domains_owner_hostname).
+      if (error.code === '23505') return res.status(409).json({ error: 'You have already added that hostname.' })
+      throw error
+    }
 
     const { rows } = await query('SELECT * FROM tenant_domains WHERE id = $1', [id])
     return res.status(201).json({ domain: publicDomain(rows[0]) })
@@ -259,6 +273,15 @@ router.post('/domains/:id/verify', tenantProvisionLimiter, requireDb, requireAut
     if (!(await canManage(req.auth, row))) return res.status(403).json({ error: 'Not allowed.' })
     if (row.status === 'active') return res.json({ domain: publicDomain(row) })
 
+    const TAKEN = 'Another account has already verified ownership of this hostname.'
+    if (!row.verified_at) {
+      const { rows: winner } = await query(
+        'SELECT 1 FROM tenant_domains WHERE hostname = $1 AND verified_at IS NOT NULL AND id <> $2 LIMIT 1',
+        [row.hostname, row.id],
+      )
+      if (winner[0]) return res.status(409).json({ error: TAKEN })
+    }
+
     let records = []
     try {
       records = await resolveTxt(txtRecordName(row.hostname))
@@ -273,7 +296,15 @@ router.post('/domains/:id/verify', tenantProvisionLimiter, requireDb, requireAut
       return res.status(400).json({ error: 'The expected TXT value was not found on that record yet.' })
     }
 
-    await query('UPDATE tenant_domains SET verified_at = now() WHERE id = $1', [row.id])
+    // uq_tenant_domains_verified_hostname makes this the tie-break: if another
+    // tenant verified in the instant since the check above, this UPDATE fails
+    // rather than leaving two verified owners.
+    try {
+      await query('UPDATE tenant_domains SET verified_at = now() WHERE id = $1 AND verified_at IS NULL', [row.id])
+    } catch (error) {
+      if (error.code === '23505') return res.status(409).json({ error: TAKEN })
+      throw error
+    }
 
     // Ownership is proven. Without Cloudflare configured we stop here rather
     // than pretending the domain is live — it cannot serve TLS yet.

@@ -899,7 +899,11 @@ export async function initSchema() {
         id              TEXT PRIMARY KEY,
         school_id       TEXT REFERENCES schools(id) ON DELETE CASCADE,
         organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
-        hostname        TEXT UNIQUE NOT NULL,
+        -- Not UNIQUE on its own: several tenants may hold an unproven claim to
+        -- the same name, and only a *verified* claim is exclusive (see the
+        -- partial index below). Otherwise anyone could squat a hostname they
+        -- don't own and lock the real owner out of claiming it.
+        hostname        TEXT NOT NULL,
         kind            TEXT NOT NULL DEFAULT 'custom' CHECK (kind IN ('vanity','custom')),
         -- Only 'active' rows are ever served. Everything else is a hostname
         -- someone has claimed but not yet proven or provisioned.
@@ -916,6 +920,38 @@ export async function initSchema() {
 
   try { await query(`CREATE INDEX IF NOT EXISTS idx_tenant_domains_school ON tenant_domains(school_id)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_tenant_domains_org ON tenant_domains(organization_id)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_tenant_domains_hostname ON tenant_domains(hostname)`) } catch {}
+  // First to prove ownership wins: at most one verified claim per hostname,
+  // enforced here so two tenants verifying at the same instant can't both win.
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_tenant_domains_verified_hostname ON tenant_domains(hostname) WHERE verified_at IS NOT NULL`) } catch {}
+  // …and one claim per tenant per hostname, so a school can't add it twice.
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_tenant_domains_owner_hostname ON tenant_domains(hostname, COALESCE(school_id, ''), COALESCE(organization_id, ''))`) } catch {}
+  // Databases created before this change still carry the column-level
+  // UNIQUE(hostname). Found by the single column it covers rather than by
+  // name, for the same reason as the CHECK lookups on users/public_tasks.
+  try {
+    await query(`
+      DO $$
+      DECLARE cname text;
+      BEGIN
+        SELECT c.conname INTO cname
+          FROM pg_constraint c
+         WHERE c.conrelid = 'tenant_domains'::regclass AND c.contype = 'u'
+           AND array_length(c.conkey, 1) = 1
+           AND EXISTS (
+             SELECT 1 FROM unnest(c.conkey) k
+               JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k
+              WHERE a.attname = 'hostname'
+           )
+         LIMIT 1;
+        IF cname IS NOT NULL THEN
+          EXECUTE format('ALTER TABLE tenant_domains DROP CONSTRAINT %I', cname);
+        END IF;
+      END $$;
+    `)
+  } catch (error) {
+    console.error('dropping tenant_domains hostname UNIQUE failed:', error.message)
+  }
 
   // ---------------------------------------------------------------------
   // Tenant-provided object storage ("bring your own bucket"). A school or
