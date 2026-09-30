@@ -79,9 +79,11 @@ export default function TenantDomainSettings() {
       if (okMessage) setNotice(okMessage)
       return data
     } catch (e) {
-      setErr(e.message)
-      // Even a failed verify can have recorded ownership, so refresh anyway.
+      // Even a failed verify can have recorded ownership, so refresh anyway —
+      // but before showing the error: a successful load() clears `err`, which
+      // used to wipe "No TXT record found…" the instant it appeared.
       await load()
+      setErr(e.message)
       return null
     } finally {
       setBusy(false)
