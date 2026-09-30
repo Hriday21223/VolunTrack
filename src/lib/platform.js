@@ -21,7 +21,11 @@ export function applyNativeAppChrome() {
   }
 }
 
-// Status bar and splash screen, once React has painted the first screen.
+// Dispatched on window when Android's Back button is pressed. Something that
+// should close first — a sheet, a dialog — calls preventDefault() on it.
+export const APP_BACK_EVENT = 'voluntrack:app-back'
+
+// Status bar, Back button and splash screen, once React has painted the first screen.
 // Plugins are loaded on demand so the website never downloads them.
 export async function startNativeApp() {
   if (!isNativeApp) return
@@ -33,6 +37,19 @@ export async function startNativeApp() {
       await StatusBar.setBackgroundColor({ color: '#071117' })
     }
   } catch { /* cosmetic — never block startup on it */ }
+  try {
+    // Android's Back button. Without a listener Capacitor just closes the app,
+    // from any page. An open sheet gets first refusal (it cancels
+    // APP_BACK_EVENT); then Back walks the page history, and only on the home
+    // page does it leave the app.
+    const { App } = await import('@capacitor/app')
+    await App.addListener('backButton', ({ canGoBack }) => {
+      const claimed = !window.dispatchEvent(new Event(APP_BACK_EVENT, { cancelable: true }))
+      if (claimed) return
+      if (canGoBack && window.location.pathname !== '/') window.history.back()
+      else App.exitApp()
+    })
+  } catch { /* Back then keeps Capacitor's default of closing the app */ }
   try {
     const { SplashScreen } = await import('@capacitor/splash-screen')
     await SplashScreen.hide()

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Star, Heart, X } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
+import { useAuth } from '@/hooks/useAuth.jsx'
+import { anonymousReviewerName } from '@/lib/reviewerLabel.js'
 
 const LABELS = ['', 'Needs work', 'Okay', 'Pretty good', 'Great', 'Amazing!']
 
 export default function ReviewPopup() {
   const { showReview, submitReview, dismissReview } = useData()
+  const { user } = useAuth()
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
   const [comment, setComment] = useState('')
@@ -100,7 +103,7 @@ export default function ReviewPopup() {
             Add my name if this is shown in the app
           </label>
           <p className="mt-1 text-xs text-earth-500">
-            If you leave this unchecked (or don&apos;t sign your name), we&apos;ll show it as &quot;VolunTrack {'{'}your role{'}'}&quot; instead — never your real name.
+            If you leave this unchecked (or don&apos;t sign your name), we&apos;ll show it as &quot;{anonymousReviewerName(user?.role)}&quot; instead — never your real name.
           </p>
           {wantsName && (
             <input

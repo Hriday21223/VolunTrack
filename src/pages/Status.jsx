@@ -4,6 +4,7 @@ import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, Clock, Database, Cpu
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import { getHealth, getIncidents, HEALTH_UNKNOWN, subscribeToStatus, confirmSubscription, unsubscribeFromStatus } from '@/lib/status.js'
 
 // This page runs three polls per tick, two of which hit /api/status/* and
@@ -52,6 +53,9 @@ const STORAGE_KEYS = [
 ]
 
 export default function Status() {
+  // Signed-in users reach this page from their own nav, so "sign in" is the
+  // wrong way back for them.
+  const { user } = useAuth()
   // The tab lives in the URL, not in state, so back/forward and a reload land
   // where you were. Case is normalised (/status/Overview works), and anything
   // unrecognised falls back to Overview rather than rendering a blank page.
@@ -293,7 +297,7 @@ export default function Status() {
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-9 h-9 object-contain" />
           <span className="font-display font-bold text-lg">VolunTrack</span>
         </Link>
-        <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
+        <Link to={user ? '/' : '/login'} className="btn-ghost"><ArrowLeft className="w-4 h-4" /> {user ? 'Back to dashboard' : 'Back to sign in'}</Link>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">

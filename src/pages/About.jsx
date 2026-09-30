@@ -5,21 +5,10 @@ import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
+import { roleLabel, anonymousReviewerName } from '@/lib/reviewerLabel.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
-// Reviewers who don't opt to sign their name are shown as "VolunTrack
-// <role>" instead — never a real name unless they explicitly added one.
-const ROLE_LABELS = {
-  student: 'Student',
-  volunteer: 'Volunteer',
-  school: 'School Admin',
-  school_staff: 'School Co-Admin',
-  parent: 'Parent',
-  org: 'Organization Admin',
-  admin: 'Team',
-}
-const roleLabel = (role) => ROLE_LABELS[role] || 'Volunteer'
 
 const FEATURES = [
   { icon: Calendar,  title: 'Simple hour logging', body: 'Log activity, time, location, and proof so your volunteer work is always ready to share.' },
@@ -406,7 +395,7 @@ export default function About() {
                     </div>
                     <p className="text-sm leading-7 text-slate-300 italic">&ldquo;{comment}&rdquo;</p>
                     <div className="mt-6 pt-4 border-t border-white/10">
-                      <div className="font-semibold text-sm text-white">{name || `VolunTrack ${roleLabel(role)}`}</div>
+                      <div className="font-semibold text-sm text-white">{name || anonymousReviewerName(role)}</div>
                       {name && <div className="text-xs text-earth-400">{roleLabel(role)}</div>}
                     </div>
                   </Card>
