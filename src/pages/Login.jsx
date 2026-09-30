@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import Turnstile from '@/components/Turnstile.jsx'
+import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { resolveTenant } from '@/lib/tenant.js'
 import QRCode from 'qrcode'
@@ -30,6 +32,10 @@ export default function Login() {
   const [showCredential, setShowCredential] = useState(false)
   const [toast, setToast] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  // Turnstile tokens are single-use — bump this to remount the widget for a
+  // fresh one after every password attempt, successful or not.
+  const [captchaKey, setCaptchaKey] = useState(0)
 
   // 2FA challenge state
   const [totpPending, setTotpPending] = useState(false)
@@ -117,6 +123,10 @@ export default function Login() {
   }, [enrollSetup?.uri])
 
   const ssoActive = Boolean(offeredSso) && mode === 'password' && !isAdmin && !forcePassword
+  // Only the password path reaches the server's POST /auth/login. The 4-digit
+  // PIN is checked against this device's own storage, and SSO hands off to the
+  // school's IdP, so neither has anything for a CAPTCHA to protect.
+  const needsCaptcha = turnstileEnabled && mode === 'password' && !ssoActive
 
   const onSubmit = async (e) => {
     e.preventDefault()
@@ -137,7 +147,18 @@ export default function Login() {
         setToast(true)
         setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
       } else {
-        const result = await login(email, password)
+        if (needsCaptcha && !captchaToken) {
+          setErr('Please complete the CAPTCHA below.')
+          setBusy(false)
+          return
+        }
+        let result
+        try {
+          result = await login(email, password, captchaToken)
+        } finally {
+          setCaptchaToken('')
+          setCaptchaKey((k) => k + 1)
+        }
         if (result?.requiresTotp) {
           setTempToken(result.tempToken)
           setTotpPending(true)
@@ -443,9 +464,13 @@ export default function Login() {
                   </div>
                 )}
 
+                {needsCaptcha && (
+                  <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="login" className="animate-fade-in-up" />
+                )}
+
                 {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
 
-                <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold animate-fade-in-up" style={{ animationDelay: '400ms' }} disabled={busy}>
+                <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold animate-fade-in-up" style={{ animationDelay: '400ms' }} disabled={busy || (needsCaptcha && !captchaToken)}>
                   {busy
                     ? (ssoActive ? 'Redirecting…' : mode === 'pin' ? 'Unlocking…' : 'Signing in…')
                     : (mode === 'pin' ? <>Unlock <ArrowRight className="w-4 h-4" /></> : <>Sign in <ArrowRight className="w-4 h-4" /></>)}

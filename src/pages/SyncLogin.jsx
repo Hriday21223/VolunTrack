@@ -4,6 +4,8 @@ import { ArrowLeft, Shield, ArrowRight, Smartphone, Monitor, Scan, Camera, Camer
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import Turnstile from '@/components/Turnstile.jsx'
+import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { Html5Qrcode } from 'html5-qrcode'
 
@@ -17,6 +19,22 @@ export default function SyncLogin() {
   const { loginWithSyncPin, verifyTotp, verifyBackupCode } = useAuth()
   const nav = useNavigate()
   const [syncPin, setSyncPin] = useState('')
+  // A sync PIN alone signs an account in, so every attempt — typed or scanned —
+  // carries a Turnstile token. The QR callbacks outlive the render that
+  // created them, so they read the token through a ref rather than state.
+  const [captchaToken, setCaptchaTokenState] = useState('')
+  const captchaTokenRef = useRef('')
+  const setCaptchaToken = (t) => { captchaTokenRef.current = t; setCaptchaTokenState(t) }
+  // Tokens are single-use — bump this to remount the widget after an attempt.
+  const [captchaKey, setCaptchaKey] = useState(0)
+  const captchaMissing = turnstileEnabled && !captchaToken
+  // Spends the current token on one sync attempt and queues a fresh widget.
+  const syncWithCaptcha = (pin) => {
+    const token = captchaTokenRef.current
+    setCaptchaToken('')
+    setCaptchaKey((k) => k + 1)
+    return loginWithSyncPin(pin, token)
+  }
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
@@ -49,9 +67,10 @@ export default function SyncLogin() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
+    if (captchaMissing) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
     try {
-      const result = await loginWithSyncPin(syncPin)
+      const result = await syncWithCaptcha(syncPin)
       if (result?.requiresTotp) {
         setTotpTempToken(result.tempToken)
         setSyncPin('')
@@ -104,7 +123,7 @@ export default function SyncLogin() {
           if (pin.length === 5) {
             setSyncPin(pin)
             setBusy(true)
-            loginWithSyncPin(pin)
+            syncWithCaptcha(pin)
               .then(() => {
                 setToast(true)
                 setTimeout(() => nav('/', { replace: true }), 600)
@@ -138,7 +157,7 @@ export default function SyncLogin() {
       if (pin.length === 5) {
         setSyncPin(pin)
         scannerInstance.current = null
-        await loginWithSyncPin(pin)
+        await syncWithCaptcha(pin)
         setToast(true)
         setTimeout(() => nav('/', { replace: true }), 600)
       } else {
@@ -270,11 +289,14 @@ export default function SyncLogin() {
                     />
                   </div>
 
+                  <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="sync-login" />
+
                   <div className="flex gap-2">
-                    <button type="submit" className="btn-primary flex-1 py-3 text-sm font-semibold" disabled={busy}>
+                    <button type="submit" className="btn-primary flex-1 py-3 text-sm font-semibold" disabled={busy || captchaMissing}>
                       {busy ? 'Syncing…' : <>Sync account <ArrowRight className="w-4 h-4" /></>}
                     </button>
-                    <button type="button" onClick={startScanning} className="btn-secondary px-4">
+                    {/* Scanning signs in the moment a code is read, so it needs a token up front. */}
+                    <button type="button" onClick={startScanning} className="btn-secondary px-4" disabled={busy || captchaMissing} title={captchaMissing ? 'Complete the CAPTCHA first' : 'Scan a QR code'}>
                       <Scan className="w-5 h-5" />
                     </button>
                   </div>

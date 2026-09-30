@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
     refreshUser()
   }, [refreshUser])
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, turnstileToken) => {
     // Try backend API first. Only a genuinely unreachable backend (the
     // fetch itself throwing — offline, static-host demo, etc.) falls back
     // to the local-only account. A real response from the backend (wrong
@@ -65,7 +65,7 @@ export function AuthProvider({ children }) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, turnstileToken })
       })
     } catch {
       response = null
@@ -225,7 +225,7 @@ export function AuthProvider({ children }) {
     return safe
   }, [])
 
-  const loginWithSyncPin = useCallback(async (syncPin) => {
+  const loginWithSyncPin = useCallback(async (syncPin, turnstileToken) => {
     // Mirrors login()/register(): only a genuinely unreachable backend (the
     // fetch itself throwing) falls back to the local-only account. A real
     // backend response (invalid/expired PIN) must surface as an error rather
@@ -238,7 +238,7 @@ export function AuthProvider({ children }) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ syncPin })
+        body: JSON.stringify({ syncPin, turnstileToken })
       })
     } catch {
       response = null

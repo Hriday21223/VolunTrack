@@ -160,7 +160,7 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
   }
 })
 
-router.post('/login', authLimiter, requireDb, async (req, res) => {
+router.post('/login', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')
 
@@ -393,8 +393,10 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
   }
 })
 
-// Login with sync PIN (for mobile app sync)
-router.post('/sync-login', authLimiter, requireDb, async (req, res) => {
+// Login with sync PIN (for mobile app sync). The PIN is the only credential —
+// no email — so it is 100,000 guesses away from *some* account with a PIN set,
+// and a per-IP rate limit alone doesn't hold against a bot rotating IPs.
+router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
   const syncPin = validateSyncPin(req.body.syncPin || '')
   
   if (!syncPin) {
