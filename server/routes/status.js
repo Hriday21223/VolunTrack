@@ -375,6 +375,23 @@ router.patch('/incidents/:id', limiter, requireDb, requireAuth('admin'), async (
 // Admin-only: delete an incident outright. Resolving is not enough to unpublish
 // one — GET /incidents serves the 50 most recent rows whatever their status — so
 // this exists to purge entries that should never have been public.
+// Bulk unpublish of the resolved history — the Admin "Delete all" button.
+// Scoped to resolved rows by an explicit query param rather than defaulting
+// to it, so a bare DELETE /incidents can never be read as "delete everything"
+// and an open incident can't be swept off /status while it's still happening.
+router.delete('/incidents', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  if (req.query.status !== 'resolved') {
+    return res.status(400).json({ error: 'Only resolved incidents can be deleted in bulk.' })
+  }
+  try {
+    const { rowCount } = await query("DELETE FROM incidents WHERE status = 'resolved'")
+    return res.json({ ok: true, deleted: rowCount })
+  } catch (error) {
+    console.error('delete resolved incidents failed:', error)
+    return res.status(500).json({ error: 'Could not delete resolved incidents.' })
+  }
+})
+
 router.delete('/incidents/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rowCount } = await query('DELETE FROM incidents WHERE id = $1', [req.params.id])
