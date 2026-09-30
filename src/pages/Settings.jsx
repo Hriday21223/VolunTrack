@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, Users, X } from 'lucide-react'
+import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, ChevronRight, Users, X, HelpCircle, Mail, Activity, FileText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
@@ -10,6 +10,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import QRCode from 'qrcode'
 import { format, parseISO } from 'date-fns'
+import { isNativeApp } from '@/lib/platform.js'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -1209,12 +1210,32 @@ export default function Settings() {
         </CollapsibleSection>
 
         <CollapsibleSection icon={Info} label="About & Account" defaultOpen={false}>
-          <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Info className="w-4 h-4 text-brand-600" /> About</h3>
-            <p className="text-sm text-earth-500 dark:text-earth-400">
-              VolunTrack co. Visit the <Link to="/about" className="text-brand-700 dark:text-brand-300 hover:underline">About page</Link> or <Link to="/contact" className="text-brand-700 dark:text-brand-300 hover:underline">get in touch</Link>.
-            </p>
-          </Card>
+          {isNativeApp ? (
+            // The app has no website footer, so the links it carried live here.
+            <Card className="p-0 overflow-hidden">
+              {[
+                { to: '/help', label: 'Help', icon: HelpCircle },
+                { to: '/contact', label: 'Contact us', icon: Mail },
+                { to: '/status', label: 'System status', icon: Activity },
+                { to: '/privacy', label: 'Privacy Policy', icon: ShieldCheck },
+                { to: '/terms', label: 'Terms of Service', icon: FileText },
+              ].map(({ to, label, icon: Icon }) => (
+                <Link key={to} to={to} className="flex items-center gap-3 border-b border-white/5 px-4 py-3.5 last:border-0 active:bg-white/5">
+                  <Icon className="w-5 h-5 text-brand-500" />
+                  <span className="flex-1 text-sm font-medium">{label}</span>
+                  <ChevronRight className="w-4 h-4 opacity-40" />
+                </Link>
+              ))}
+              <div className="px-4 py-3 text-xs text-earth-500">VolunTrack {import.meta.env.VITE_APP_VERSION}</div>
+            </Card>
+          ) : (
+            <Card>
+              <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Info className="w-4 h-4 text-brand-600" /> About</h3>
+              <p className="text-sm text-earth-500 dark:text-earth-400">
+                VolunTrack co. Visit the <Link to="/about" className="text-brand-700 dark:text-brand-300 hover:underline">About page</Link> or <Link to="/contact" className="text-brand-700 dark:text-brand-300 hover:underline">get in touch</Link>.
+              </p>
+            </Card>
+          )}
 
           <Card>
             <button

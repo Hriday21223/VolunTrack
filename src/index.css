@@ -123,3 +123,42 @@
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ---------------------------------------------------------------------
+   Native apps only (html.native-app, set by src/lib/platform.js). The
+   website never gets this class, so none of it changes the site.
+   --------------------------------------------------------------------- */
+html.native-app {
+  /* What shows when the page is pulled past its end (iOS bounce, Android
+     over-scroll): the app's own dark background, not white. */
+  background-color: #071117;
+  overscroll-behavior-y: none;
+}
+html.native-app body {
+  background-color: #071117;
+  /* Apps don't select UI text, flash grey on tap, or pop the long-press
+     callout; form fields and anything marked .selectable still can. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.native-app input,
+html.native-app textarea,
+html.native-app [contenteditable='true'],
+html.native-app .selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+/* A short slide-in on each new page (AppLayout keys <main> on the title). */
+@keyframes app-page-enter {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+html.native-app .app-page-enter {
+  animation: app-page-enter 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.native-app .app-page-enter { animation: none; }
+}

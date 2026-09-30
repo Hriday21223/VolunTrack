@@ -3,6 +3,7 @@ import { LogOut, Menu } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { cn } from '@/utils/cn.js'
+import { isNativeApp } from '@/lib/platform.js'
 import Sidebar from './Sidebar.jsx'
 import ReviewPopup from './ReviewPopup.jsx'
 import ReviewConsentPrompt from './ReviewConsentPrompt.jsx'
@@ -11,6 +12,30 @@ export default function AppLayout({ children, title, subtitle, action }) {
   const { user, logout } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
+
+  // Inside the apps: a large-title header only. Navigation is the bottom tab
+  // bar and its More sheet, and sign-out lives in Settings, so the website's
+  // hamburger drawer, user chip and logout icon are left out.
+  if (isNativeApp) {
+    return (
+      <div className="relative min-h-screen bg-[#071117] text-earth-100">
+        <header className="sticky top-[env(safe-area-inset-top)] z-20 bg-[#071117]/95 backdrop-blur">
+          <div className="flex items-end gap-3 px-5 pb-3 pt-4">
+            <div className="min-w-0 flex-1">
+              {title && <h1 className="font-display text-3xl font-bold tracking-tight truncate">{title}</h1>}
+              {subtitle && <p className="mt-0.5 text-sm text-earth-400 truncate">{subtitle}</p>}
+            </div>
+            {action}
+          </div>
+        </header>
+        <main key={title} className="app-page-enter px-4 pt-2 pb-32 w-full">
+          {children}
+        </main>
+        <ReviewPopup />
+        <ReviewConsentPrompt />
+      </div>
+    )
+  }
 
   return (
     <div className="relative min-h-screen bg-[#071117] text-earth-100">

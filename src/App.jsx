@@ -8,11 +8,13 @@ import MobileTabBar from '@/components/MobileTabBar.jsx'
 import BadgeToasts from '@/components/BadgeToasts.jsx'
 import ReminderToasts from '@/components/ReminderToasts.jsx'
 import ErrorBoundary from '@/components/ErrorBoundary.jsx'
+import { isNativeApp } from '@/lib/platform.js'
 
 // About is the logged-out landing page served at "/" — kept as a static import
 // so the initial route renders without an extra chunk round-trip. Every other
 // route is code-split since only one is ever active at a time.
 import About from '@/pages/About.jsx'
+const AppWelcome = lazy(() => import('@/pages/AppWelcome.jsx'))
 const Login = lazy(() => import('@/pages/Login.jsx'))
 const Register = lazy(() => import('@/pages/Register.jsx'))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword.jsx'))
@@ -78,7 +80,7 @@ function AdminProtected({ children }) {
 
 function Home() {
   const { user } = useAuth()
-  if (!user) return <About />
+  if (!user) return isNativeApp ? <AppWelcome /> : <About />
   if (user.role === 'parent') return <Navigate to="/parent" replace />
   if (user.role === 'org') return <Navigate to="/organization/dashboard" replace />
   // School accounts are institutions, not volunteers — send them to their own
@@ -150,7 +152,10 @@ export default function App() {
       <AuthProvider>
         <DataProvider>
           <Shell />
-          <Analytics />
+          {/* Vercel Analytics counts website visits; inside the apps its
+              script isn't served, and the stores' privacy forms are simpler
+              with nothing collected. */}
+          {!isNativeApp && <Analytics />}
         </DataProvider>
       </AuthProvider>
     </ErrorBoundary>
