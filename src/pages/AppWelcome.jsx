@@ -14,9 +14,12 @@ export default function AppWelcome() {
 
       <div className="relative flex min-h-screen flex-col px-6 pb-10">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <div className="mb-6 grid h-24 w-24 place-items-center rounded-[1.75rem] bg-white shadow-2xl shadow-brand-900/40">
-            <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="h-16 w-16 object-contain" />
-          </div>
+          {/* The same artwork as the home-screen icon (resources/icon-only.png). */}
+          <img
+            src={`${import.meta.env.BASE_URL}app-icon.png`}
+            alt=""
+            className="mb-6 h-24 w-24 rounded-[1.6rem] shadow-2xl shadow-brand-900/40"
+          />
           <h1 className="font-display text-4xl font-bold tracking-tight">VolunTrack</h1>
           <p className="mt-3 max-w-xs text-base text-earth-300">
             Log your volunteer hours, hit your goals, and share your record with your school.
