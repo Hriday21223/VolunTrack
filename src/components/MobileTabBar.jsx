@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { isNativeApp } from '@/lib/platform.js'
 
 // Labels here match Sidebar.jsx exactly (same route, same label) so the
 // nav doesn't appear to rename itself between desktop and mobile. "Log"
@@ -83,6 +84,19 @@ const MORE_ITEMS = {
 }
 MORE_ITEMS.school_staff = MORE_ITEMS.school
 
+// Inside the apps the tab bar uses app-style names, keeps Log Hours only as
+// the raised centre button, and moves Settings into the More sheet (where
+// apps keep it) to make room.
+const NATIVE_LABELS = { Dashboard: 'Home', Opportunities: 'Events', Profile: 'Me' }
+function nativeTabs(core, more) {
+  const settings = core.find((i) => i.to === '/settings')
+  const tabs = core
+    .filter((i) => i.to !== '/settings' && i.to !== '/log')
+    .map((i) => ({ ...i, label: NATIVE_LABELS[i.label] || i.label }))
+  const sheet = [...(settings ? [settings] : []), ...more.filter((i) => i.to !== '/log')]
+  return { tabs, sheet }
+}
+
 export default function MobileTabBar() {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
@@ -90,8 +104,11 @@ export default function MobileTabBar() {
   const [moreOpen, setMoreOpen] = useState(false)
   const sheetRef = useRef(null)
   const role = user?.role || 'student'
-  const coreItems = CORE_ITEMS[role] || CORE_ITEMS.student
-  const moreItems = MORE_ITEMS[role] || MORE_ITEMS.student
+  const baseCore = CORE_ITEMS[role] || CORE_ITEMS.student
+  const baseMore = MORE_ITEMS[role] || MORE_ITEMS.student
+  const native = isNativeApp ? nativeTabs(baseCore, baseMore) : null
+  const coreItems = native ? native.tabs : baseCore
+  const moreItems = native ? native.sheet : baseMore
   const showLogFab = !!user && role !== 'parent'
 
   const isActive = (to) => {
@@ -127,7 +144,121 @@ export default function MobileTabBar() {
   // <Protected> routes that would just bounce them back to /login, and it
   // was covering the login/register/reset forms with no clearance for it.
   // (Placed after all hooks above so hook call order stays unconditional.)
+  function renderMoreSheet() {
+    return (
+        <div
+          className={cn('fixed inset-0 z-50 bg-black/50 backdrop-blur-sm', !native && 'md:hidden')}
+          onClick={handleBackdropClick}
+        >
+          <div
+            ref={sheetRef}
+            className="absolute bottom-0 inset-x-0 bg-white dark:bg-[#1a1a1a] rounded-t-[1.75rem] border-t border-earth-200/50 dark:border-white/10 shadow-2xl max-h-[70vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl border-b border-earth-200/50 dark:border-white/10 px-5 py-4 flex items-center justify-between z-10">
+              <h3 className="font-display font-semibold text-lg">More</h3>
+              <button
+                onClick={() => setMoreOpen(false)}
+                className="w-8 h-8 rounded-full bg-earth-100 dark:bg-white/10 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <nav className="p-3 pb-8">
+              {moreItems.map(({ to, label, icon: Icon }) => {
+                const active = isActive(to)
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => setMoreOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-150',
+                      active
+                        ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400'
+                        : 'text-earth-700 dark:text-earth-300 hover:bg-earth-100 dark:hover:bg-white/5',
+                    )}
+                  >
+                    <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
+                    <span className="font-medium text-sm flex-1">{label}</span>
+                    <ChevronRight className="w-4 h-4 opacity-40" />
+                  </NavLink>
+                )
+              })}
+            </nav>
+          </div>
+        </div>
+    )
+  }
+
   if (!user) return null
+
+  const moreButton = (
+    <button
+      onClick={() => setMoreOpen(true)}
+      className={cn(
+        'flex w-full flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium',
+        moreActive ? 'text-brand-400' : 'text-earth-400',
+      )}
+    >
+      <div className="flex h-6 w-6 flex-col items-center justify-center gap-1">
+        <span className="block h-0.5 w-5 rounded-full bg-current" />
+        <span className="block h-0.5 w-5 rounded-full bg-current" />
+        <span className="block h-0.5 w-5 rounded-full bg-current" />
+      </div>
+      More
+    </button>
+  )
+
+  if (native) {
+    const tabLink = ({ to, label, icon: Icon }) => {
+      const active = isActive(to)
+      return (
+        <li key={to}>
+          <NavLink
+            to={to}
+            end={to === '/'}
+            className={cn(
+              'flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium',
+              active ? 'text-brand-400' : 'text-earth-400',
+            )}
+          >
+            <Icon className="h-6 w-6" strokeWidth={active ? 2.4 : 1.8} />
+            {label}
+          </NavLink>
+        </li>
+      )
+    }
+    // The raised Log button sits in the middle slot.
+    const half = Math.ceil(coreItems.length / 2)
+    const columns = coreItems.length + 1 + (showLogFab ? 1 : 0)
+    return (
+      <>
+        <nav
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b161c]/95 backdrop-blur-xl"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <ul className="grid items-end px-2" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+            {coreItems.slice(0, half).map(tabLink)}
+            {showLogFab && (
+              <li className="flex justify-center">
+                <Link
+                  to="/log"
+                  aria-label="Log hours"
+                  className="-mt-5 mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-900/60 ring-4 ring-[#0b161c] active:scale-90 transition-transform"
+                >
+                  <Plus className="h-7 w-7" strokeWidth={2.6} />
+                </Link>
+              </li>
+            )}
+            {coreItems.slice(half).map(tabLink)}
+            <li>{moreButton}</li>
+          </ul>
+        </nav>
+        {moreOpen && renderMoreSheet()}
+      </>
+    )
+  }
 
   return (
     <>
@@ -190,50 +321,7 @@ export default function MobileTabBar() {
         )}
       </nav>
 
-      {moreOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden"
-          onClick={handleBackdropClick}
-        >
-          <div
-            ref={sheetRef}
-            className="absolute bottom-0 inset-x-0 bg-white dark:bg-[#1a1a1a] rounded-t-[1.75rem] border-t border-earth-200/50 dark:border-white/10 shadow-2xl max-h-[70vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl border-b border-earth-200/50 dark:border-white/10 px-5 py-4 flex items-center justify-between z-10">
-              <h3 className="font-display font-semibold text-lg">More</h3>
-              <button
-                onClick={() => setMoreOpen(false)}
-                className="w-8 h-8 rounded-full bg-earth-100 dark:bg-white/10 flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <nav className="p-3 pb-8">
-              {moreItems.map(({ to, label, icon: Icon }) => {
-                const active = isActive(to)
-                return (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    onClick={() => setMoreOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-150',
-                      active
-                        ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400'
-                        : 'text-earth-700 dark:text-earth-300 hover:bg-earth-100 dark:hover:bg-white/5',
-                    )}
-                  >
-                    <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
-                    <span className="font-medium text-sm flex-1">{label}</span>
-                    <ChevronRight className="w-4 h-4 opacity-40" />
-                  </NavLink>
-                )
-              })}
-            </nav>
-          </div>
-        </div>
-      )}
+      {moreOpen && renderMoreSheet()}
     </>
   )
 }

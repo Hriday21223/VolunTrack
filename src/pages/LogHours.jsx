@@ -15,6 +15,7 @@ import { hoursBetween, fmtHours } from '@/utils/date.js'
 import { notifySupervisor } from '@/lib/supervisorNotify.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { format } from 'date-fns'
+import { hapticSuccess } from '@/lib/platform.js'
 
 // Rotating appreciation notes for the student once a supervisor approves.
 // Built as opener x closer combinations (10 x 10 = 100 unique notes) rather
@@ -196,6 +197,7 @@ export default function LogHours({ editId, onCloseEdit }) {
         const created = addLog(payload)
         setForm(blank())
         setToast(true)
+        hapticSuccess()
         if (payload.supervisorEmail?.trim()) {
           const serverId = await created.whenSynced.catch(() => null)
           notifySupervisor({

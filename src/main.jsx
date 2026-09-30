@@ -4,8 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import './index.css'
 import { applyStoredTheme } from './hooks/useTheme.js'
+import { applyNativeAppChrome, startNativeApp } from './lib/platform.js'
 
 applyStoredTheme()
+applyNativeAppChrome()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -14,3 +16,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
+
+startNativeApp()
