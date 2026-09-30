@@ -13,6 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Shows behind the status bar and gesture bar: Capacitor's SystemBars
+             plugin paints the decor view with this theme's windowBackground,
+             so it must be the app's dark background, not the default white. -->
+        <item name="android:windowBackground">@color/appBackground</item>
     </style>
 
 
