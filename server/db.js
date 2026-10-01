@@ -1232,6 +1232,43 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_failed_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMPTZ`) } catch {}
 
+  // Passkeys as a second factor, alongside TOTP (server/routes/passkeys.js).
+  // Only the public key is stored — the private half never leaves the
+  // user's device. `id` is the credential ID (base64url), which is what an
+  // assertion names, so lookups need no second index.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS passkeys (
+        id           TEXT PRIMARY KEY,
+        user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        public_key   TEXT NOT NULL,
+        counter      BIGINT NOT NULL DEFAULT 0,
+        transports   JSONB,
+        backed_up    BOOLEAN NOT NULL DEFAULT false,
+        name         TEXT NOT NULL,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_used_at TIMESTAMPTZ
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_passkeys_user ON passkeys(user_id)`) } catch {}
+
+  // One row per outstanding WebAuthn ceremony. A challenge is deleted the
+  // moment it is checked, pass or fail, so a captured response can't be
+  // replayed — passkeys often report a signature counter of 0, so the
+  // counter alone can't catch a replay.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS webauthn_challenges (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        purpose    TEXT NOT NULL CHECK (purpose IN ('register','authenticate')),
+        challenge  TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL
+      )
+    `)
+  } catch {}
+
   // Password-reset codes are generated and stored server-side, hashed like a
   // password. They used to be whatever the client sent to /api/send-reset-email,
   // which meant anyone could pick a code for someone else's account and then

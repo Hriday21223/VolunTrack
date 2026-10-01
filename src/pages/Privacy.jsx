@@ -34,7 +34,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: September 26, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: September 30, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -47,6 +47,8 @@ export default function Privacy() {
               <li><strong>Access records</strong> — when a school or organization staff member opens a student&apos;s record, we record who did it and when, along with the IP address and browser, so that access to a minor&apos;s record can be accounted for.</li>
               <li><strong>Billing details</strong> — for school and organization accounts only: invoices, payment confirmations you submit, and any discount or referral code used.</li>
               <li><strong>Approximate location</strong> — used only when you log hours, to auto-fill the location field. You can always edit or clear it.</li>
+              <li><strong>Passkeys</strong> — if you add a passkey as a sign-in step, we store its public key, an identifier for it, a name such as &quot;iPhone&quot;, and when it was added and last used. The private key stays on your device (or in your iCloud Keychain or Google Password Manager); we never receive it.</li>
+              <li><strong>Face ID, Touch ID and fingerprint (apps only)</strong> — if you choose <em>Keep me signed in</em>, the app asks your phone to confirm it&apos;s you before it opens. Your phone does the check and only tells the app whether it passed: your face or fingerprint data never leaves your device and never reaches us. Your sign-in is kept in your phone&apos;s secure storage (the iOS Keychain or Android Keystore) and removed when you sign out.</li>
               <li><strong>Camera access</strong> — used only for scanning QR codes when syncing your account across devices. No images are ever uploaded or stored.</li>
             </ul>
           </Section>

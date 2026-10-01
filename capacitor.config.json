@@ -13,6 +13,12 @@
       "launchShowDuration": 5000,
       "launchAutoHide": true,
       "backgroundColor": "#071117"
+    },
+    "CapacitorPasskey": {
+      "origin": "https://volunteer-track-two.vercel.app",
+      "domains": [
+        "volunteer-track-two.vercel.app"
+      ]
     }
   },
   "backgroundColor": "#071117"

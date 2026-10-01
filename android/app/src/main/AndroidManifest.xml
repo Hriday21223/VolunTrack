@@ -28,6 +28,10 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+        <!-- CapacitorPasskey auto-configuration -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/capacitor_passkey_asset_statements" />
     </application>
 
     <!-- Permissions -->
@@ -38,6 +42,9 @@
     <!-- "Use current location" on the Log Hours form, only when tapped. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Unlock with fingerprint/face when "Keep me signed in" is on. A normal
+         permission: granted at install, no prompt. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Neither is essential, so Play must not hide the app from devices without them. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />

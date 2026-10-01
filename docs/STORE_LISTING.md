@@ -102,7 +102,12 @@ cost of the app running letterboxed on iPads.
 
 Not collected: financial info (school invoices are paid by bank transfer outside
 the app), contacts, messages, health, audio, web history, device IDs,
-diagnostics, analytics. Vercel Analytics runs on the website only; the app
+diagnostics, analytics — and **no biometric data**: Face ID / Touch ID /
+fingerprint unlock (*Keep me signed in*) is checked by the OS, which tells the
+app only pass/fail. A passkey sends us its **public key** only (plus a name
+and dates), which is account-security data under *Account management*, not a
+separate data type. The sign-in token kept for *Keep me signed in* stays in
+the device's Keychain / Keystore. Vercel Analytics runs on the website only; the app
 doesn't load it (`src/App.jsx`).
 
 "Shared" is **No** throughout because every recipient is either a
@@ -124,6 +129,10 @@ purpose *App Functionality* — matching `PrivacyInfo.xcprivacy`:
 - Identifiers → User ID
 - Location → Precise Location (only when the user taps *Use current location*)
 - User Content → Photos or Videos, Other User Content
+
+Nothing to declare for Face ID (the app never receives biometric data; its
+`NSFaceIDUsageDescription` is in `Info.plist`) or for passkeys (public key
+only, part of the account).
 
 ## Age rating / audience
 
