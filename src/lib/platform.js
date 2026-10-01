@@ -51,9 +51,27 @@ export async function startNativeApp() {
     })
   } catch { /* Back then keeps Capacitor's default of closing the app */ }
   try {
+    // Hiding as soon as this runs would uncover an empty page: render() has
+    // only been queued, and the bundle is still loading on a cold start.
+    await whenRootPainted()
     const { SplashScreen } = await import('@capacitor/splash-screen')
     await SplashScreen.hide()
-  } catch { /* the splash also times out on its own */ }
+  } catch { /* launchShowDuration in capacitor.config.json hides it anyway */ }
+}
+
+// Resolves once React has put something in #root and the browser has painted it.
+function whenRootPainted() {
+  return new Promise((resolve) => {
+    const root = document.getElementById('root')
+    const painted = () => requestAnimationFrame(() => requestAnimationFrame(resolve))
+    if (!root || root.firstElementChild) return painted()
+    const observer = new MutationObserver(() => {
+      if (!root.firstElementChild) return
+      observer.disconnect()
+      painted()
+    })
+    observer.observe(root, { childList: true })
+  })
 }
 
 // A light "success" tap for moments worth feeling — saving hours, finishing

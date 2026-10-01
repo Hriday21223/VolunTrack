@@ -8,6 +8,12 @@
   "plugins": {
     "SystemBars": {
       "style": "DARK"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 5000,
+      "launchAutoHide": true,
+      "backgroundColor": "#071117"
     }
-  }
+  },
+  "backgroundColor": "#071117"
 }
