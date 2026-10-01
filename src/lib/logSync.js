@@ -1,7 +1,8 @@
 // Sync of a student's logs with the server, for authenticated (server-backed)
 // accounts only. The create/update/delete helpers are write-through (local →
-// server); syncPullLogs goes the other way (server → local) so a freshly
-// synced device gets back hours it never held locally. Never throws — a
+// server); syncPullLogs goes the other way (server → local), on every sign-in,
+// so a device gets back hours it never held locally — an app installed after
+// a year of logging on the website must not open on 0 hours. Never throws — a
 // failed sync just means that log stays local-only, matching the app's
 // existing dual-mode design.
 
