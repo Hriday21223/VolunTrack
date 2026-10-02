@@ -106,6 +106,10 @@ export function AuthProvider({ children }) {
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', data.token)
 
+      // Bring the account's server-side logs onto this device, as every
+      // sign-in does — see syncPullLogs.
+      await syncPullLogs(data.user.id)
+
       // Store user session
       write(SESSION_KEY, data.user)
       setUser(data.user)
@@ -122,10 +126,9 @@ export function AuthProvider({ children }) {
     return safe
   }, [])
 
-  // `pullLogs` is for the sync-PIN path: that flow exists to bring an account's
-  // server-side logs onto a new device, and the TOTP step now sits between the
-  // PIN and the session, so the pull has to happen here instead.
-  const verifyTotp = useCallback(async (tempToken, code, { pullLogs = false } = {}) => {
+  // The TOTP step sits between the password (or sync PIN) and the session, so
+  // the sign-in's log pull happens here for 2FA accounts.
+  const verifyTotp = useCallback(async (tempToken, code) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/challenge`, {
       method: 'POST',
@@ -138,22 +141,22 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
-    if (pullLogs) await syncPullLogs(data.user.id)
+    await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
   }, [])
 
-  const verifyPasskey = useCallback(async (tempToken, { pullLogs = false } = {}) => {
+  const verifyPasskey = useCallback(async (tempToken) => {
     const data = await signInWithPasskey(tempToken)
     localStorage.setItem('voluntrack:auth_token', data.token)
-    if (pullLogs) await syncPullLogs(data.user.id)
+    await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
   }, [])
 
-  const verifyBackupCode = useCallback(async (tempToken, code, { pullLogs = false } = {}) => {
+  const verifyBackupCode = useCallback(async (tempToken, code) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/totp/backup-recovery`, {
       method: 'POST',
@@ -166,7 +169,7 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
-    if (pullLogs) await syncPullLogs(data.user.id)
+    await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
@@ -206,7 +209,10 @@ export function AuthProvider({ children }) {
     // Enrolment completed with no prior session: the server issues the real
     // token here, which is what turns forced enrolment into a way in rather
     // than a dead end.
-    if (data.token) localStorage.setItem('voluntrack:auth_token', data.token)
+    if (data.token) {
+      localStorage.setItem('voluntrack:auth_token', data.token)
+      await syncPullLogs(data.user.id)
+    }
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
@@ -269,7 +275,7 @@ export function AuthProvider({ children }) {
       const data = await response.json()
 
       // 2FA required — the PIN has already been spent server-side; the caller
-      // finishes with verifyTotp(tempToken, code, { pullLogs: true }) — or
+      // finishes with verifyTotp(tempToken, code) — or
       // verifyPasskey when `methods` includes 'passkey'.
       if (data.requiresTotp) {
         return { requiresTotp: true, tempToken: data.tempToken, methods: data.methods || ['totp'] }
@@ -381,6 +387,7 @@ export function AuthProvider({ children }) {
     }
     const data = await response.json()
     localStorage.setItem('voluntrack:auth_token', data.token)
+    await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
     setUser(data.user)
     return data.user
