@@ -82,7 +82,10 @@ export default function Reports() {
       title="Reports"
       subtitle="Export your record or print a certificate of service."
     >
-      <div className="grid lg:grid-cols-3 gap-5">
+      {/* grid-cols-1, not an implicit column: an implicit track grows to its
+          content's min width, and the date inputs below are wide enough on
+          Android to push the whole page off a phone screen. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-1 space-y-5">
         <Card>
           <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Filter className="w-4 h-4 text-brand-600" /> Filter</h3>
@@ -96,11 +99,11 @@ export default function Reports() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="label">From</label>
-                <input type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
+                <input type="date" className="input min-w-0" value={from} onChange={(e) => setFrom(e.target.value)} />
               </div>
               <div>
                 <label className="label">To</label>
-                <input type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} />
+                <input type="date" className="input min-w-0" value={to} onChange={(e) => setTo(e.target.value)} />
               </div>
             </div>
             <div className="pt-2 space-y-2">

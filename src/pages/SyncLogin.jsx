@@ -91,7 +91,7 @@ export default function SyncLogin() {
     setBusy(true)
     try {
       const verify = useBackupCode ? verifyBackupCode : verifyTotp
-      await verify(totpTempToken, totpCode.trim(), { pullLogs: true })
+      await verify(totpTempToken, totpCode.trim())
       setToast(true)
       setTimeout(() => nav('/', { replace: true }), 600)
     } catch (e) {
