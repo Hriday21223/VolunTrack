@@ -70,6 +70,12 @@ export default function AppLock({ children }) {
       App.addListener('appStateChange', async ({ isActive }) => {
         if (!isActive) { backgroundedAt.current = Date.now(); return }
         if (!backgroundedAt.current || Date.now() - backgroundedAt.current < RELOCK_AFTER_MS) return
+        // Consume the timestamp before asking. Capacitor reports "inactive"
+        // only on onStop but "active" on every onResume, and the system
+        // prompt is translucent — it pauses the app without stopping it. Left
+        // set, the return from the prompt (cancelled or passed) read as
+        // another long absence and asked again, forever.
+        backgroundedAt.current = 0
         if (!(await loadKeptSession())) return
         setRelocked(true)
         unlockWithDevice().then(() => setRelocked(false)).catch(() => {})
