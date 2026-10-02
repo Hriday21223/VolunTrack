@@ -20,7 +20,10 @@
     </style>
 
 
+    <!-- Android 12+ draws its own launch screen from this theme: the app icon
+         on windowSplashScreenBackground, which defaults to white. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/appBackground</item>
     </style>
 </resources>
