@@ -47,9 +47,17 @@ export function DataProvider({ children }) {
   // SPA session, its state must be re-read here whenever the signed-in
   // account changes — otherwise the previous account's in-memory logs stay
   // on screen after switching to a different account in the same browser.
+  //
+  // Sign-in pulls the account's server-side logs before setting the user, so
+  // the history arrives here all at once. Badges it already earns are marked
+  // silently: they were earned on another device, and toasting each one
+  // buried a freshly installed app under a stack of "Achievement earned!".
   useEffect(() => {
-    setLogs(listLogs())
-    setGoals(listGoals())
+    const nextLogs = listLogs()
+    const nextGoals = listGoals()
+    evaluateAchievements(nextLogs, nextGoals, getEarned()).newly.forEach(markEarned)
+    setLogs(nextLogs)
+    setGoals(nextGoals)
     setEarned(getEarned())
     setReviewSubmitted(getReviews().length > 0)
   }, [user?.id])
