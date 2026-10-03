@@ -17,10 +17,10 @@ const HORIZON_DAYS = 45
 const MAX_TOTAL = 400
 const DEFAULT_BODY = 'Time to check on your volunteer work.'
 
-async function plugin() {
-  const { LocalNotifications } = await import('@capacitor/local-notifications')
-  return LocalNotifications
-}
+// Resolves to the module, never to the plugin itself: a Capacitor plugin is a
+// proxy that answers to any property, `then` included, so a promise resolved
+// with it — or an `await` on it — never settles.
+const load = () => import('@capacitor/local-notifications')
 
 // The plugin's 'prompt' / 'prompt-with-rationale' read as the browser's 'default'.
 const toPermission = ({ display }) => (display === 'granted' || display === 'denied' ? display : 'default')
@@ -28,13 +28,13 @@ const toPermission = ({ display }) => (display === 'granted' || display === 'den
 /** @returns {Promise<'granted'|'denied'|'default'|'unsupported'>} */
 export async function nativeNotificationPermission() {
   if (!isNativeApp) return 'unsupported'
-  try { return toPermission(await (await plugin()).checkPermissions()) } catch { return 'unsupported' }
+  try { return toPermission(await (await load()).LocalNotifications.checkPermissions()) } catch { return 'unsupported' }
 }
 
 // Only ever call this from a tap — never at load.
 export async function requestNativeNotificationPermission() {
   if (!isNativeApp) return 'unsupported'
-  try { return toPermission(await (await plugin()).requestPermissions()) } catch { return 'default' }
+  try { return toPermission(await (await load()).LocalNotifications.requestPermissions()) } catch { return 'default' }
 }
 
 /** Every enabled reminder's occurrences between now and the horizon, soonest first. */
@@ -80,7 +80,7 @@ export function syncNativeReminders(reminders) {
 }
 
 async function sync(reminders) {
-  const LocalNotifications = await plugin()
+  const { LocalNotifications } = await load()
   if (toPermission(await LocalNotifications.checkPermissions()) !== 'granted') {
     lastSignature = null // so granting it later books them straight away
     return

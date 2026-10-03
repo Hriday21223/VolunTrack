@@ -8,6 +8,7 @@ import {
   findUserBySyncPin, updateSyncPin,
 } from '@/api/index.js'
 import { syncPullLogs } from '@/lib/logSync.js'
+import { syncNativeReminders } from '@/lib/nativeReminders.js'
 
 const AuthContext = createContext(null)
 
@@ -383,6 +384,9 @@ export function AuthProvider({ children }) {
     // scoped per account — without this, the next account signed into on
     // this browser would see the previous account's cached local data.
     clearUserData()
+    // In the apps, cancel the reminders already booked with the phone now —
+    // the runner would only notice the cleared list on its next tick.
+    syncNativeReminders([])
     setUser(null)
   }, [])
 
@@ -410,6 +414,7 @@ export function AuthProvider({ children }) {
     }
     deleteUser(user.id)
     clearUserData()
+    syncNativeReminders([])
     remove(SESSION_KEY)
     setUser(null)
   }, [user])
