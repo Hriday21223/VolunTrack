@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
-import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff, Building2 } from 'lucide-react'
+import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff, Building2, KeyRound } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 import Card from '@/components/Card.jsx'
@@ -11,6 +11,8 @@ import { useSeo } from '@/hooks/useSeo.js'
 import { resolveTenant } from '@/lib/tenant.js'
 import QRCode from 'qrcode'
 import { isNativeApp } from '@/lib/platform.js'
+import { deviceLockAvailable, setKeepSignedIn } from '@/lib/appSession.js'
+import { isPasskeyCancel } from '@/lib/passkey.js'
 
 export default function Login() {
   useSeo({
@@ -19,7 +21,7 @@ export default function Login() {
     path: '/login',
   })
 
-  const { login, verifyTotp, verifyBackupCode, loginWithPin, user, ssoDiscover, ssoStart, setupTotp, verifyTotpSetup } = useAuth()
+  const { login, verifyTotp, verifyPasskey, verifyBackupCode, loginWithPin, user, ssoDiscover, ssoStart, setupTotp, verifyTotpSetup } = useAuth()
   const isAdmin = user?.role === 'admin'
   const nav = useNavigate()
   const loc = useLocation()
@@ -44,6 +46,21 @@ export default function Login() {
   const [totpCode, setTotpCode] = useState('')
   const [backupMode, setBackupMode] = useState(false)
   const [backupCode, setBackupCode] = useState('')
+  // Which second steps the account has ('totp', 'passkey'), and whether the
+  // passkey one is showing — it leads when the account has one.
+  const [methods, setMethods] = useState(['totp'])
+  const [passkeyMode, setPasskeyMode] = useState(false)
+
+  // Apps only: "Keep me signed in", offered when the phone has a lock
+  // (biometrics or passcode) to put in front of the kept session.
+  const [canKeep, setCanKeep] = useState(false)
+  const [keep, setKeep] = useState(true)
+  useEffect(() => {
+    if (!isNativeApp) return
+    let live = true
+    deviceLockAvailable().then((ok) => { if (live) setCanKeep(ok) })
+    return () => { live = false }
+  }, [])
 
   // Forced MFA enrolment: a privileged account past its deadline gets an
   // enrolment token instead of a session, and must set TOTP up here.
@@ -160,6 +177,7 @@ export default function Login() {
         setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
       } else {
         let result
+        setKeepSignedIn(canKeep && keep)
         try {
           result = await login(email, password, captchaToken)
         } finally {
@@ -168,6 +186,8 @@ export default function Login() {
         }
         if (result?.requiresTotp) {
           setTempToken(result.tempToken)
+          setMethods(result.methods)
+          setPasskeyMode(result.methods.includes('passkey'))
           setTotpPending(true)
           setBusy(false)
           return
@@ -220,6 +240,20 @@ export default function Login() {
       setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onPasskey = async () => {
+    setErr('')
+    setBusy(true)
+    try {
+      await verifyPasskey(tempToken)
+      setToast(true)
+      setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
+    } catch (e) {
+      setErr(isPasskeyCancel(e) ? 'Passkey check was cancelled.' : e.message)
     } finally {
       setBusy(false)
     }
@@ -352,7 +386,23 @@ export default function Login() {
                   </button>
                 </form>
               ) : totpPending ? (
-                backupMode ? (
+                passkeyMode ? (
+                  <div className="space-y-5">
+                    <div className="text-center mb-2">
+                      <KeyRound className="w-10 h-10 text-sky-400 mx-auto mb-2" />
+                      <p className="text-sm text-slate-300">Confirm it’s you with your passkey</p>
+                    </div>
+                    {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
+                    <button type="button" onClick={onPasskey} className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
+                      {busy ? 'Waiting for passkey…' : <>Use passkey <ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                    {methods.includes('totp') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(false); setErr('') }}>
+                        Use authenticator code instead
+                      </button>
+                    )}
+                  </div>
+                ) : backupMode ? (
                   <form onSubmit={onBackupSubmit} className="space-y-5">
                     <div className="text-center mb-2">
                       <ShieldCheck className="w-10 h-10 text-sky-400 mx-auto mb-2" />
@@ -408,6 +458,11 @@ export default function Login() {
                     <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setBackupMode(true); setErr('') }}>
                       Use a backup code instead
                     </button>
+                    {methods.includes('passkey') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(true); setErr('') }}>
+                        Use a passkey instead
+                      </button>
+                    )}
                   </form>
                 )
               ) : (
@@ -474,6 +529,21 @@ export default function Login() {
                       )}
                     </div>
                   </div>
+                )}
+
+                {canKeep && mode === 'password' && (
+                  <label className="flex items-start gap-3 text-sm text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={keep}
+                      onChange={(e) => setKeep(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-900/70 accent-brand-500"
+                    />
+                    <span>
+                      Keep me signed in
+                      <span className="block text-xs text-slate-400">You’ll unlock the app with Face ID, your fingerprint or your passcode.</span>
+                    </span>
+                  </label>
                 )}
 
                 {needsCaptcha && (

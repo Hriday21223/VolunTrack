@@ -12,6 +12,7 @@ import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail } from '../email.js'
+import { hasPasskeys } from '../passkeys.js'
 
 const router = express.Router()
 
@@ -160,6 +161,18 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
   }
 })
 
+// The second step an account owes after its password, or null if none.
+// `methods` lists what it can answer with; `requiresTotp` stays true for any
+// second factor so a client from before passkeys still stops at a 2FA step
+// rather than treating the response as a failed sign-in.
+async function secondFactorChallenge(row) {
+  const methods = []
+  if (row.totp_enabled) methods.push('totp')
+  if (await hasPasskeys(row.id)) methods.push('passkey')
+  if (methods.length === 0) return null
+  return { requiresTotp: true, methods, tempToken: signTempToken(publicUser(row)) }
+}
+
 router.post('/login', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')
@@ -204,9 +217,8 @@ router.post('/login', authLimiter, requireDb, verifyTurnstile(), async (req, res
     }
 
     const user = publicUser(row)
-    if (row.totp_enabled) {
-      return res.json({ requiresTotp: true, tempToken: signTempToken(user) })
-    }
+    const secondFactor = await secondFactorChallenge(row)
+    if (secondFactor) return res.json(secondFactor)
 
     // Privileged roles must have TOTP. SSO accounts are exempt: they hold no
     // VolunTrack password, so MFA belongs to their school's IdP, and an
@@ -336,11 +348,9 @@ router.put('/sync-pin', requireDb, requireAuth(), async (req, res) => {
 // have to respect the same second-factor gates — otherwise TOTP (and the
 // mandatory-MFA requirement for privileged roles) is simply routed around.
 // Returns a response body to send instead of a session, or null to proceed.
-function secondFactorGate(row) {
-  const user = publicUser(row)
-  if (row.totp_enabled) {
-    return { status: 200, body: { requiresTotp: true, tempToken: signTempToken(user) } }
-  }
+async function secondFactorGate(row) {
+  const secondFactor = await secondFactorChallenge(row)
+  if (secondFactor) return { status: 200, body: secondFactor }
   // Past its enrolment deadline, a privileged account gets no session at all.
   // /login hands back an enrolment token for its setup flow; these routes have
   // no such flow, so they send the user to the normal sign-in page instead.
@@ -375,7 +385,7 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
     // Gate before the PIN is written: a PIN set on a password alone would be
     // a standing second-factor bypass for POST /sync-login. The client
     // finishes the TOTP challenge and then sets the PIN via PUT /sync-pin.
-    const gate = secondFactorGate(rows[0])
+    const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
 
     const existing = await query('SELECT 1 FROM users WHERE sync_pin = $1 AND id != $2', [syncPin, rows[0].id])
@@ -413,7 +423,7 @@ router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req
     // factor is still outstanding, since the PIN has now been spent.
     await query('UPDATE users SET sync_pin = NULL WHERE id = $1', [rows[0].id])
 
-    const gate = secondFactorGate(rows[0])
+    const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
 
     return res.json({ token: signToken(user), user })

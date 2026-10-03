@@ -8,6 +8,7 @@ import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { Html5Qrcode } from 'html5-qrcode'
+import { isPasskeyCancel } from '@/lib/passkey.js'
 
 export default function SyncLogin() {
   useSeo({
@@ -16,7 +17,7 @@ export default function SyncLogin() {
     path: '/sync-login',
   })
 
-  const { loginWithSyncPin, verifyTotp, verifyBackupCode } = useAuth()
+  const { loginWithSyncPin, verifyTotp, verifyPasskey, verifyBackupCode } = useAuth()
   const nav = useNavigate()
   const [syncPin, setSyncPin] = useState('')
   // A sync PIN alone signs an account in, so every attempt — typed or scanned —
@@ -43,6 +44,7 @@ export default function SyncLogin() {
   // Set when the account has 2FA on: the PIN is spent, but no session is
   // issued until the second factor is verified too.
   const [totpTempToken, setTotpTempToken] = useState('')
+  const [totpMethods, setTotpMethods] = useState(['totp'])
   const [totpCode, setTotpCode] = useState('')
   const [useBackupCode, setUseBackupCode] = useState(false)
   const scannerRef = useRef(null)
@@ -73,6 +75,7 @@ export default function SyncLogin() {
       const result = await syncWithCaptcha(syncPin)
       if (result?.requiresTotp) {
         setTotpTempToken(result.tempToken)
+        setTotpMethods(result.methods || ['totp'])
         setSyncPin('')
         return
       }
@@ -96,6 +99,20 @@ export default function SyncLogin() {
       setTimeout(() => nav('/', { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onPasskey = async () => {
+    setErr('')
+    setBusy(true)
+    try {
+      await verifyPasskey(totpTempToken)
+      setToast(true)
+      setTimeout(() => nav('/', { replace: true }), 600)
+    } catch (e) {
+      setErr(isPasskeyCancel(e) ? 'Passkey check was cancelled.' : e.message)
     } finally {
       setBusy(false)
     }
@@ -263,6 +280,16 @@ export default function SyncLogin() {
                 >
                   {useBackupCode ? 'Use your authenticator app instead' : 'Use a backup code instead'}
                 </button>
+                {totpMethods.includes('passkey') && (
+                  <button
+                    type="button"
+                    onClick={onPasskey}
+                    disabled={busy}
+                    className="mt-3 w-full text-center text-sm text-sky-200 font-semibold hover:text-white"
+                  >
+                    Use a passkey instead
+                  </button>
+                )}
               </>
             ) : (
               <>
