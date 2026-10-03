@@ -48,6 +48,7 @@ export default function Privacy() {
               <li><strong>Billing details</strong> — for school and organization accounts only: invoices, payment confirmations you submit, and any discount or referral code used.</li>
               <li><strong>Approximate location</strong> — used only when you log hours, to auto-fill the location field. You can always edit or clear it.</li>
               <li><strong>Camera access</strong> — used only for scanning QR codes when syncing your account across devices. No images are ever uploaded or stored.</li>
+              <li><strong>Notifications</strong> — in the mobile app, only if you allow them, to deliver the reminders you set. They are scheduled on your phone itself, so your reminders never reach us.</li>
             </ul>
           </Section>
 

@@ -13,6 +13,10 @@
       "launchShowDuration": 5000,
       "launchAutoHide": true,
       "backgroundColor": "#071117"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_reminder",
+      "iconColor": "#2f6935"
     }
   },
   "backgroundColor": "#071117"
