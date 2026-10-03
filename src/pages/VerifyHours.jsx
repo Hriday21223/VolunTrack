@@ -1,11 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckCircle2, XCircle, ShieldCheck, AlertTriangle, FileSignature } from 'lucide-react'
+import { CheckCircle2, XCircle, ShieldCheck, AlertTriangle, FileSignature, Smartphone } from 'lucide-react'
+import QRCode from 'qrcode'
 import Card from '@/components/Card.jsx'
 import SignaturePad from '@/components/SignaturePad.jsx'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
+import { isNativeApp } from '@/lib/platform.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// A signature drawn with a mouse or trackpad comes out scrawled, so on a
+// device without a touchscreen we offer to hand signing off to a phone.
+const isTouchDevice = isNativeApp ||
+  (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches)
+
+// How often the laptop checks whether the phone has signed, and when it gives
+// up — a forgotten tab shouldn't poll forever.
+const HANDOFF_POLL_MS = 3000
+const HANDOFF_MAX_MS = 10 * 60 * 1000
 
 // Rotating appreciation notes for the supervisor. Built as opener x closer
 // combinations (10 x 10 = 100 unique notes per context) rather than 100 flat
@@ -72,9 +84,29 @@ export default function VerifyHours() {
   const [busy, setBusy] = useState(false)
   const [respondError, setRespondError] = useState('')
   // 'review' (approve/reject buttons) or 'signing' (approval needs a
-  // signature first) — reject skips this step entirely.
-  const [mode, setMode] = useState('review')
+  // signature first) — reject skips this step entirely. The phone opened
+  // from the handoff QR (`sign=1`) goes straight to the pad.
+  const [mode, setMode] = useState(searchParams.get('sign') === '1' ? 'signing' : 'review')
   const [signature, setSignature] = useState('')
+  const [handoff, setHandoff] = useState(false)
+
+  // While the QR is showing, watch for the phone's decision so this page
+  // follows along instead of inviting a second, refused, submission.
+  const pending = state.data?.status === 'pending'
+  useEffect(() => {
+    if (!handoff || !pending) return undefined
+    const startedAt = Date.now()
+    const id = setInterval(async () => {
+      if (Date.now() - startedAt > HANDOFF_MAX_MS) {
+        clearInterval(id)
+        setHandoff(false)
+        return
+      }
+      const data = await getVerificationStatus(token)
+      if (data && data.status !== 'pending') setState({ loading: false, data, error: '' })
+    }, HANDOFF_POLL_MS)
+    return () => clearInterval(id)
+  }, [handoff, pending, token])
 
   useEffect(() => {
     if (!token) {
@@ -101,7 +133,7 @@ export default function VerifyHours() {
       })
       const body = await response.json().catch(() => ({}))
       if (response.ok && body.status) {
-        setState((s) => ({ ...s, data: { ...s.data, status: body.status } }))
+        setState((s) => ({ ...s, data: { ...s.data, status: body.status, supervisorSignature: sig || s.data.supervisorSignature } }))
       } else {
         setRespondError(body.error || 'Something went wrong — please try again.')
       }
@@ -137,7 +169,10 @@ export default function VerifyHours() {
               signature={signature}
               onSign={setSignature}
               onStartApproval={() => setMode('signing')}
-              onCancelApproval={() => { setMode('review'); setSignature('') }}
+              onCancelApproval={() => { setMode('review'); setSignature(''); setHandoff(false) }}
+              token={token}
+              handoff={handoff}
+              onHandoff={setHandoff}
               onReject={() => respond('reject', null)}
               onConfirmApproval={() => respond('approve', signature)}
             />
@@ -148,7 +183,33 @@ export default function VerifyHours() {
   )
 }
 
-function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApproval, onCancelApproval, onReject, onConfirmApproval }) {
+// The QR carries the same link the supervisor's email did — it grants nothing
+// they didn't already hold — plus `sign=1` so the phone opens on the pad.
+function PhoneHandoff({ token, onClose }) {
+  const canvasRef = useRef(null)
+  useEffect(() => {
+    if (!canvasRef.current) return
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}verify-hours?token=${encodeURIComponent(token)}&sign=1`
+    QRCode.toCanvas(canvasRef.current, url, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#111827', light: '#ffffff' },
+    })
+  }, [token])
+
+  return (
+    <div className="rounded-2xl border border-earth-100 dark:border-[#1f2e25] p-4 mb-4 text-center">
+      <canvas ref={canvasRef} className="mx-auto rounded-lg" />
+      <p className="text-sm mt-3">Scan with your phone or iPad camera and sign there with your finger.</p>
+      <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">This page will update automatically once you&apos;ve signed.</p>
+      <button type="button" onClick={onClose} className="text-xs text-brand-600 dark:text-brand-400 mt-3 underline">
+        Sign here instead
+      </button>
+    </div>
+  )
+}
+
+function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApproval, onCancelApproval, onReject, onConfirmApproval, token, handoff, onHandoff }) {
   const thanksNote = useMemo(
     () => pickCombo(SUPERVISOR_THANKS_OPENERS, SUPERVISOR_THANKS_CLOSERS, data.studentName),
     [data.studentName],
@@ -166,6 +227,9 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">
           You approved {data.hours} hour(s) logged by {data.studentName} for "{data.activity}".
         </p>
+        {data.supervisorSignature && (
+          <img src={data.supervisorSignature} alt="Your signature" className="mx-auto mt-3 h-16 rounded-lg border border-earth-200 dark:border-[#1f2e25] bg-white" />
+        )}
         <p className="text-sm text-brand-600 dark:text-brand-400 mt-4 font-medium">
           {thanksNote}
         </p>
@@ -223,7 +287,18 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
       {mode === 'signing' ? (
         <div>
           <label className="label flex items-center gap-1.5"><FileSignature className="w-4 h-4" /> Your signature</label>
-          <SignaturePad value={signature} onChange={onSign} />
+          {handoff ? (
+            <PhoneHandoff token={token} onClose={() => onHandoff(false)} />
+          ) : (
+            <>
+              <SignaturePad value={signature} onChange={onSign} />
+              {!isTouchDevice && (
+                <button type="button" onClick={() => onHandoff(true)} className="flex items-center gap-1.5 text-sm text-brand-600 dark:text-brand-400 mt-2 font-medium">
+                  <Smartphone className="w-4 h-4" /> Sign on your phone or iPad instead
+                </button>
+              )}
+            </>
+          )}
           <div className="hint mb-4">Sign to confirm this work was completed as described — this is what makes the approval count.</div>
           <div className="flex gap-3">
             <button onClick={onConfirmApproval} disabled={busy || !signature} className="btn-primary flex-1 justify-center">
