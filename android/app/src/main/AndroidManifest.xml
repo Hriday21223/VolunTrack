@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -38,6 +39,12 @@
     <!-- "Use current location" on the Log Hours form, only when tapped. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Reminders, booked as local notifications. Asked for only when the user
+         taps Allow on the Reminders page. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The notifications plugin declares exact alarms, which Play restricts to
+         alarm and calendar apps. Reminders are booked inexact, so drop it. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
     <!-- Neither is essential, so Play must not hide the app from devices without them. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { listReminders, getFired, markFired, createReminder, deleteReminder,
          updateReminder } from '@/api/index.js'
 import { dueReminders } from '@/lib/scheduler.js'
+import { syncNativeReminders } from '@/lib/nativeReminders.js'
 
 /**
  * Identifies a single *occurrence*, not a reminder. Recurring reminders
@@ -29,6 +30,9 @@ export function useReminderRunner() {
     const tick = () => {
       const now = new Date()
       const reminders = listReminders()
+      // In the apps, keep the OS's booked notifications in step — this also
+      // catches the list being cleared at sign-out.
+      syncNativeReminders(reminders)
       const due = dueReminders(reminders, new Date(lastCheck.current), now)
       if (due.length) {
         const alreadyFired = new Set(getFired())
@@ -81,9 +85,16 @@ export async function requestNotificationPermission() {
   }
 }
 
+// Edits re-book the apps' notifications at once rather than on the next tick.
+const andSync = (fn) => (...args) => {
+  const result = fn(...args)
+  syncNativeReminders(listReminders())
+  return result
+}
+
 export const reminderApi = {
   list: listReminders,
-  create: createReminder,
-  update: updateReminder,
-  remove: deleteReminder,
+  create: andSync(createReminder),
+  update: andSync(updateReminder),
+  remove: andSync(deleteReminder),
 }
