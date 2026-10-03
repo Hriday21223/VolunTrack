@@ -8,6 +8,7 @@ import {
 
 // How long the app may sit in the background before it asks again.
 const RELOCK_AFTER_MS = 60 * 1000
+const UNLOCK_FAILED = 'Couldn’t confirm it’s you. Try again, or sign out.'
 
 /**
  * The apps' "Keep me signed in" gate (src/lib/appSession.js). On launch, a
@@ -33,7 +34,7 @@ export default function AppLock({ children }) {
       setRelocked(false)
       setPhase('open')
     } catch {
-      setErr('Couldn’t confirm it’s you. Try again, or sign out.')
+      setErr(UNLOCK_FAILED)
     } finally {
       setBusy(false)
     }
@@ -77,8 +78,9 @@ export default function AppLock({ children }) {
         // another long absence and asked again, forever.
         backgroundedAt.current = 0
         if (!(await loadKeptSession())) return
+        setErr('')
         setRelocked(true)
-        unlockWithDevice().then(() => setRelocked(false)).catch(() => {})
+        unlockWithDevice().then(() => setRelocked(false)).catch(() => setErr(UNLOCK_FAILED))
       })).then((h) => { handle = h })
     return () => { handle?.remove() }
   }, [])
