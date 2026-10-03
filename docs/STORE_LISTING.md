@@ -110,6 +110,11 @@ separate data type. The sign-in token kept for *Keep me signed in* stays in
 the device's Keychain / Keystore. Vercel Analytics runs on the website only; the app
 doesn't load it (`src/App.jsx`).
 
+Reminder notifications don't change any answer: they are booked on the phone
+as local notifications (`src/lib/nativeReminders.js`) and nothing about them
+leaves the device. The notification permission is asked for only on the
+Reminders page's *Allow* tap.
+
 "Shared" is **No** throughout because every recipient is either a
 service provider processing on our behalf (hosting, email, bot protection)
 or someone the user chose to send it to (their school, a supervisor they
@@ -185,8 +190,9 @@ Paste into *App Review Information → Notes* (Apple) / *App access* (Play):
 
 **Guideline 4.2 (minimum functionality)** is the main rejection risk for an
 app that shares its UI with a website. Mention the native parts: the native
-app shell and tab bar, haptics, the status bar and splash screen, and camera QR
-sign-in. If Apple still rejects it, native push reminders (`@capacitor/push-notifications`) are the next step.
+app shell and tab bar, haptics, the status bar and splash screen, camera QR
+sign-in, and reminders delivered as native notifications
+while the app is closed.
 
 ## Signing
 

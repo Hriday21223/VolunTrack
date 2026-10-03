@@ -50,6 +50,7 @@ export default function Privacy() {
               <li><strong>Passkeys</strong> — if you add a passkey as a sign-in step, we store its public key, an identifier for it, a name such as &quot;iPhone&quot;, and when it was added and last used. The private key stays on your device (or in your iCloud Keychain or Google Password Manager); we never receive it.</li>
               <li><strong>Face ID, Touch ID and fingerprint (apps only)</strong> — if you choose <em>Keep me signed in</em>, the app asks your phone to confirm it&apos;s you before it opens. Your phone does the check and only tells the app whether it passed: your face or fingerprint data never leaves your device and never reaches us. Your sign-in is kept in your phone&apos;s secure storage (the iOS Keychain or Android Keystore) and removed when you sign out.</li>
               <li><strong>Camera access</strong> — used only for scanning QR codes when syncing your account across devices. No images are ever uploaded or stored.</li>
+              <li><strong>Notifications</strong> — in the mobile app, only if you allow them, to deliver the reminders you set. They are scheduled on your phone itself, so your reminders never reach us.</li>
             </ul>
           </Section>
 

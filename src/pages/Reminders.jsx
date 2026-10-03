@@ -5,6 +5,8 @@ import { reminderApi } from '@/hooks/useReminders.js'
 import { computeNextAt } from '@/lib/scheduler.js'
 import { requestNotificationPermission } from '@/hooks/useReminders.js'
 import { pushSupported, getPushConfig, currentSubscription, enablePush, disablePush, syncReminders } from '@/lib/push.js'
+import { isNativeApp } from '@/lib/platform.js'
+import { nativeNotificationPermission, requestNativeNotificationPermission, syncNativeReminders } from '@/lib/nativeReminders.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -35,7 +37,7 @@ export default function Reminders() {
   const [items, setItems] = useState(() => reminderApi.list())
   const [form, setForm] = useState(blank())
   const [editing, setEditing] = useState(null)
-  const [perm, setPerm] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
+  const [perm, setPerm] = useState(isNativeApp ? 'checking' : typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
   const [toast, setToast] = useState(false)
   const [err, setErr] = useState('')
 
@@ -47,6 +49,12 @@ export default function Reminders() {
 
   // Re-read whenever the page mounts
   useEffect(() => { setItems(reminderApi.list()) }, [])
+
+  // The apps use the phone's own notification permission. Only read here —
+  // it is asked for on the Allow tap, never at load.
+  useEffect(() => {
+    if (isNativeApp) nativeNotificationPermission().then(setPerm)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -125,6 +133,12 @@ export default function Reminders() {
   }
 
   const onAskPermission = async () => {
+    if (isNativeApp) {
+      const result = await requestNativeNotificationPermission()
+      setPerm(result)
+      if (result === 'granted') syncNativeReminders(reminderApi.list())
+      return
+    }
     const result = await requestNotificationPermission()
     setPerm(result)
   }
@@ -245,16 +259,27 @@ export default function Reminders() {
           <Card>
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div className="font-display font-semibold flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> Browser notifications</div>
+                <div className="font-display font-semibold flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> {isNativeApp ? 'Notifications' : 'Browser notifications'}</div>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">
-                  {perm === 'granted'  && 'Enabled — reminders will pop on your device.'}
-                  {perm === 'default'  && 'Not yet requested. We can ask for permission.'}
-                  {perm === 'denied'   && 'Blocked in your browser settings. You can re-enable it there.'}
-                  {perm === 'unsupported' && 'Your browser does not support notifications. In-app toasts will still fire.'}
+                  {isNativeApp ? (
+                    <>
+                      {perm === 'granted' && 'On — reminders arrive even when VolunTrack is closed.'}
+                      {perm === 'default' && 'Allow notifications so your reminders reach you when VolunTrack is closed.'}
+                      {perm === 'denied'  && 'Turned off for VolunTrack in your phone’s settings. Turn them on there to get reminders when the app is closed.'}
+                      {perm === 'unsupported' && 'Notifications aren’t available on this device. Reminders still show while the app is open.'}
+                    </>
+                  ) : (
+                    <>
+                      {perm === 'granted'  && 'Enabled — reminders will pop on your device.'}
+                      {perm === 'default'  && 'Not yet requested. We can ask for permission.'}
+                      {perm === 'denied'   && 'Blocked in your browser settings. You can re-enable it there.'}
+                      {perm === 'unsupported' && 'Your browser does not support notifications. In-app toasts will still fire.'}
+                    </>
+                  )}
                 </p>
               </div>
-              {perm !== 'granted' && perm !== 'unsupported' && (
-                <button onClick={onAskPermission} className="btn-secondary">Enable notifications</button>
+              {perm === 'default' && (
+                <button onClick={onAskPermission} className="btn-secondary">{isNativeApp ? 'Allow' : 'Enable notifications'}</button>
               )}
             </div>
 
