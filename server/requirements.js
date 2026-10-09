@@ -1,13 +1,14 @@
 // Tenant-defined requirements ("how this school wants hours logged").
 //
 // A school — or the organization that owns it — describes its own rules here
-// instead of every tenant getting the one hard-coded form. Four sections, each
+// instead of every tenant getting the one hard-coded form. Five sections, each
 // independently inheritable:
 //
 //   logRules     what an hour entry must contain to be accepted
 //   customFields extra questions this tenant adds to the Log Hours form
 //   goals        the service-hour requirement a student is working toward
 //   signIn       how this tenant's students are allowed to authenticate
+//   signatures   whether an entry must be signed, by whom, or carry a signed form
 //
 // Inheritance is per section, not per field: a school either overrides a whole
 // section or inherits the org's. Per-field merging reads fine in a diff and
@@ -19,7 +20,7 @@
 
 export const POLICY_VERSION = 1
 
-export const SECTIONS = ['logRules', 'customFields', 'goals', 'signIn']
+export const SECTIONS = ['logRules', 'customFields', 'goals', 'signIn', 'signatures']
 
 export const DEFAULT_LOG_RULES = {
   proofRequired: false,
@@ -47,11 +48,28 @@ export const DEFAULT_SIGN_IN = {
   allowedEmailDomains: [],
 }
 
+// mode    'none'      — nothing to sign (the default)
+//         'signature' — the entry itself is signed, drawn on screen
+//         'paperForm' — the school's own form, filled in or signed and handed back
+// signer  who signs: 'supervisor', 'student' or 'both'
+// formUrl where the school's form lives. A Google Form is filled in right on
+//         the Log Hours page; anything else is a file to print, sign and upload.
+export const SIGNATURE_MODES = ['none', 'signature', 'paperForm']
+export const SIGNERS = ['supervisor', 'student', 'both']
+
+export const DEFAULT_SIGNATURES = {
+  mode: 'none',
+  signer: 'supervisor',
+  formUrl: '',
+  note: '',
+}
+
 export const DEFAULTS = {
   logRules: DEFAULT_LOG_RULES,
   customFields: [],
   goals: DEFAULT_GOALS,
   signIn: DEFAULT_SIGN_IN,
+  signatures: DEFAULT_SIGNATURES,
 }
 
 export const CUSTOM_FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'select', 'checkbox']
@@ -194,11 +212,68 @@ function normalizeSignIn(input) {
   }
 }
 
+// https only: the link is shown to students and, for a Google Form, framed
+// inside the app — a javascript: or http: URL has no business in either.
+function httpsUrl(value) {
+  const s = text(value, 500)
+  if (!s) return ''
+  try {
+    const url = new URL(s)
+    return url.protocol === 'https:' ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+function normalizeSignatures(input) {
+  const raw = input && typeof input === 'object' ? input : {}
+  const mode = SIGNATURE_MODES.includes(raw.mode) ? raw.mode : 'none'
+  return {
+    mode,
+    signer: SIGNERS.includes(raw.signer) ? raw.signer : 'supervisor',
+    formUrl: mode === 'paperForm' ? httpsUrl(raw.formUrl) : '',
+    note: text(raw.note, 300),
+  }
+}
+
+/**
+ * The embeddable address of a Google Form, or null when the link is anything
+ * else. Only the public `/forms/d/e/<id>/viewform` link can be filled in by a
+ * student; an editor link (`/forms/d/<id>/edit`) would show them a sign-in wall,
+ * and a forms.gle short link redirects to a page that drops `embedded=true`.
+ */
+export function googleFormEmbedUrl(formUrl) {
+  let url
+  try { url = new URL(formUrl) } catch { return null }
+  if (url.protocol !== 'https:' || url.hostname !== 'docs.google.com') return null
+  const match = url.pathname.match(/^\/forms\/d\/e\/([A-Za-z0-9_-]+)\/(viewform|formResponse)?\/?$/)
+  if (!match) return null
+  return `https://docs.google.com/forms/d/e/${match[1]}/viewform?embedded=true`
+}
+
+/** What one entry has to carry to satisfy the signatures section. */
+export function signatureNeeds(policy) {
+  const sig = policy?.signatures || DEFAULT_SIGNATURES
+  const supervisor = sig.signer === 'supervisor' || sig.signer === 'both'
+  const student = sig.signer === 'student' || sig.signer === 'both'
+  const googleForm = sig.mode === 'paperForm' ? googleFormEmbedUrl(sig.formUrl) : null
+  return {
+    supervisorSignature: sig.mode === 'signature' && supervisor,
+    studentSignature: sig.mode === 'signature' && student,
+    // A Google Form's answers land with the school, never with us, so the
+    // student's word that they sent it is all there is to check.
+    formSubmitted: sig.mode === 'paperForm' && Boolean(googleForm),
+    signedFormUpload: sig.mode === 'paperForm' && !googleForm,
+    googleForm,
+  }
+}
+
 const NORMALIZERS = {
   logRules: normalizeLogRules,
   customFields: normalizeCustomFields,
   goals: normalizeGoals,
   signIn: normalizeSignIn,
+  signatures: normalizeSignatures,
 }
 
 /**
@@ -378,8 +453,9 @@ function todayUtc(now) {
  *
  * @param {object} entry
  *   date, activity, category, hours, notes, location, orgName, supervisorName,
- *   supervisorEmail, hasProof, customFields, sameDayHours (hours already logged
- *   on that date, excluding this entry)
+ *   supervisorEmail, supervisorSignedInPerson, taskId, hasProof, hasStudentSignature,
+ *   formSubmitted, customFields,
+ *   sameDayHours (hours already logged on that date, excluding this entry)
  */
 export function validateLogAgainstPolicy(policy, entry = {}, { now = new Date() } = {}) {
   const rules = policy?.logRules || DEFAULT_LOG_RULES
@@ -440,6 +516,29 @@ export function validateLogAgainstPolicy(policy, entry = {}, { now = new Date() 
   }
   if (rules.proofRequired && !entry.hasProof) {
     add('proof', 'Your school requires a proof file with every entry.')
+  }
+
+  // The supervisor signs on the review link they're emailed, so what the entry
+  // needs is somebody to send it to. Skipped when logRules already asked, so
+  // the student isn't told the same thing twice.
+  const needs = signatureNeeds(policy)
+  // Signing in person, on the student's device, needs no email — the email is
+  // only how a supervisor who isn't there gets the signing link. Nor does an
+  // entry on a VolunTrack task: its organizer signs on their My Tasks page.
+  if (needs.supervisorSignature && !rules.supervisorRequired && !entry.taskId) {
+    if (!text(entry.supervisorName, 200)) add('supervisorName', 'Your school requires your supervisor to sign — add their name.')
+    if (!entry.supervisorSignedInPerson && !text(entry.supervisorEmail, 200)) {
+      add('supervisorEmail', 'Your school requires your supervisor to sign — have them sign here, or add their email so they get the signing link.')
+    }
+  }
+  if (needs.studentSignature && !entry.hasStudentSignature) {
+    add('studentSignature', 'Your school requires you to sign this entry.')
+  }
+  if (needs.formSubmitted && !entry.formSubmitted) {
+    add('formSubmitted', 'Your school requires its form — fill it in, then tick the box to say you sent it.')
+  }
+  if (needs.signedFormUpload && !entry.hasProof && !rules.proofRequired) {
+    add('proof', 'Your school requires its signed form — upload a photo or scan of it.')
   }
 
   const answers = entry.customFields && typeof entry.customFields === 'object' ? entry.customFields : {}

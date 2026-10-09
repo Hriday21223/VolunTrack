@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phon
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import SignaturePad from '@/components/SignaturePad.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { useData } from '@/hooks/useData.jsx'
 
@@ -213,16 +214,21 @@ export default function MyTasks() {
 
   useEffect(() => { loadTasks(); loadStudents() }, [loadTasks, loadStudents])
 
-  const handleVerifyLog = async (studentId, logId, status) => {
+  // The log whose Approve was clicked: approving is a sign-off, so it waits
+  // for the organizer's signature. { logId, signature }
+  const [signing, setSigning] = useState(null)
+
+  const handleVerifyLog = async (studentId, logId, status, signature = null) => {
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/school/students/${studentId}/logs/${logId}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...(signature ? { signature } : {}) }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
-      setToastMsg(status === 'approved' ? 'Hours approved' : 'Hours rejected'); setToast(true)
+      setToastMsg(status === 'approved' ? 'Hours signed and approved' : 'Hours rejected'); setToast(true)
+      setSigning(null)
       loadStudents()
     } catch (e) { setToastMsg(e.message); setToast(true) }
   }
@@ -691,25 +697,46 @@ export default function MyTasks() {
                   ) : (
                     <div className="mt-3 space-y-2">
                       {student.logs.map((log) => (
-                        <div key={log.id} className="flex items-center gap-3 rounded-xl bg-white/5 p-2.5">
+                        <div key={log.id} className="rounded-xl bg-white/5 p-2.5">
+                        <div className="flex items-center gap-3">
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{log.activity} · {log.hours}h</p>
                             <p className="text-xs text-earth-500">{new Date(log.date).toLocaleDateString()}</p>
                           </div>
                           {log.verification_status === 'approved' ? (
-                            <span className="text-xs text-emerald-400 shrink-0">Approved</span>
+                            <span className="text-xs text-emerald-400 shrink-0">Signed &amp; approved</span>
                           ) : log.verification_status === 'rejected' ? (
                             <span className="text-xs text-red-400 shrink-0">Rejected</span>
-                          ) : (
+                          ) : signing?.logId === log.id ? null : (
                             <div className="flex gap-1.5 shrink-0">
-                              <button onClick={() => handleVerifyLog(student.id, log.id, 'approved')} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">
-                                <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                              <button onClick={() => setSigning({ logId: log.id, signature: '' })} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">
+                                <CheckCircle className="w-3 h-3 mr-1" /> Sign &amp; approve
                               </button>
                               <button onClick={() => handleVerifyLog(student.id, log.id, 'rejected')} className="btn-sm text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-2 py-1">
                                 <XCircle className="w-3 h-3 mr-1" /> Reject
                               </button>
                             </div>
                           )}
+                        </div>
+                        {signing?.logId === log.id && (
+                          <div className="mt-3">
+                            <p className="text-xs text-earth-400 mb-2">Sign to confirm {student.name} did this work.</p>
+                            <SignaturePad
+                              value={signing.signature}
+                              onChange={(sig) => setSigning((cur) => (cur?.logId === log.id ? { ...cur, signature: sig } : cur))}
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                disabled={!signing.signature}
+                                onClick={() => handleVerifyLog(student.id, log.id, 'approved', signing.signature)}
+                                className="btn-sm btn-primary text-xs"
+                              >
+                                Confirm approval
+                              </button>
+                              <button onClick={() => setSigning(null)} className="btn-sm btn-ghost text-xs">Cancel</button>
+                            </div>
+                          </div>
+                        )}
                         </div>
                       ))}
                     </div>

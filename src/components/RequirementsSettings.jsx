@@ -13,7 +13,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import {
-  DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES,
+  DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, googleFormEmbedUrl,
   fetchSchoolRequirements, saveSchoolRequirements,
   fetchOrgRequirements, saveOrgRequirements,
   gradeKey, gradeLabel,
@@ -24,6 +24,7 @@ const SECTION_LABELS = {
   customFields: 'Extra questions',
   goals: 'Service-hour requirement',
   signIn: 'Sign-in',
+  signatures: 'Signatures',
 }
 
 const SECTION_HELP = {
@@ -31,6 +32,7 @@ const SECTION_HELP = {
   customFields: 'Your own questions, added to the bottom of the Log Hours form.',
   goals: 'The total each student is working toward. Shown on their dashboard.',
   signIn: 'How students linked to you are allowed to get into their account.',
+  signatures: 'Whether each entry has to be signed, and by whom — or carry your own form.',
 }
 
 const FIELD_TYPE_LABELS = {
@@ -55,7 +57,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
   const [meta, setMeta] = useState({})
   // null for a section means "inherit" — kept distinct from an empty object,
   // which is a deliberate override that happens to turn everything off.
-  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null })
+  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null, signatures: null })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -69,6 +71,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
         customFields: own.customFields ? clone(own.customFields) : null,
         goals: own.goals ? clone(own.goals) : null,
         signIn: own.signIn ? clone(own.signIn) : null,
+        signatures: own.signatures ? clone(own.signatures) : null,
       })
     } catch (e) {
       setError(e.message)
@@ -167,6 +170,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
               {section === 'logRules' && <LogRulesEditor value={sections.logRules} onChange={(c) => patch('logRules', c)} />}
               {section === 'goals' && <GoalsEditor value={sections.goals} onChange={(c) => patch('goals', c)} />}
               {section === 'signIn' && <SignInEditor value={sections.signIn} onChange={(c) => patch('signIn', c)} />}
+              {section === 'signatures' && <SignaturesEditor value={sections.signatures} onChange={(c) => patch('signatures', c)} />}
               {section === 'customFields' && (
                 <CustomFieldsEditor
                   value={sections.customFields}
@@ -363,6 +367,116 @@ function SignInEditor({ value, onChange }) {
           placeholder="school.edu, students.school.edu"
         />
       </div>
+    </>
+  )
+}
+
+const SIGNATURE_MODE_OPTIONS = [
+  { value: 'none', label: 'No signature needed', help: 'Students log hours as usual.' },
+  { value: 'signature', label: 'Signature required', help: 'Each entry is signed on screen before it is saved or approved.' },
+  { value: 'paperForm', label: 'Our own form', help: 'Students fill in your form, or print it, get it signed and upload it.' },
+]
+
+const SIGNER_OPTIONS = [
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'student', label: 'Student' },
+  { value: 'both', label: 'Both' },
+]
+
+function SignaturesEditor({ value, onChange }) {
+  const url = (value.formUrl || '').trim()
+  const embed = url ? googleFormEmbedUrl(url) : null
+  // Two Google Form links that look right but can't be filled in by a student.
+  const editorLink = /docs\.google\.com\/forms\/d\/(?!e\/)/.test(url)
+  const shortLink = /^https?:\/\/forms\.gle\//.test(url)
+  return (
+    <>
+      <div>
+        <label className="label">What each entry needs</label>
+        <div className="space-y-2">
+          {SIGNATURE_MODE_OPTIONS.map((opt) => (
+            <label key={opt.value} className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="signature-mode"
+                className="mt-1"
+                checked={value.mode === opt.value}
+                onChange={() => onChange({ mode: opt.value })}
+              />
+              <span>
+                {opt.label}
+                <span className="block text-xs text-earth-400">{opt.help}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {value.mode !== 'none' && (
+        <div>
+          <label className="label">Who signs</label>
+          <div className="flex flex-wrap gap-2">
+            {SIGNER_OPTIONS.map((opt) => (
+              <button
+                type="button"
+                key={opt.value}
+                onClick={() => onChange({ signer: opt.value })}
+                className={`btn-sm ${value.signer === opt.value ? 'btn-primary' : 'btn-ghost'}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {value.mode === 'signature' && (
+            <p className="text-xs text-earth-400 mt-2">
+              {value.signer === 'student' && 'Students sign on the Log Hours form before they can save.'}
+              {value.signer === 'supervisor' && 'Students must name a supervisor, who gets an emailed link and signs there to approve.'}
+              {value.signer === 'both' && 'Students sign on the form, and their supervisor signs on the emailed link to approve.'}
+            </p>
+          )}
+        </div>
+      )}
+
+      {value.mode === 'paperForm' && (
+        <div>
+          <label className="label">Link to your form</label>
+          <input
+            className="input"
+            type="url"
+            value={value.formUrl || ''}
+            onChange={(e) => onChange({ formUrl: e.target.value })}
+            placeholder="https://docs.google.com/forms/d/e/…/viewform"
+          />
+          <p className="text-xs text-earth-400 mt-1">
+            {embed
+              ? 'Google Form — students fill it in right on the Log Hours page, then tick a box to say they sent it.'
+              : 'A Google Form opens right on the Log Hours page. Any other link (a PDF, a doc) is something students download, get signed, and upload. Leave blank if they get the form in class.'}
+          </p>
+          {editorLink && (
+            <p className="text-xs text-amber-500 mt-1">
+              This looks like the link for editing the form. Use Send → link in Google Forms instead, so students can fill it in.
+            </p>
+          )}
+          {shortLink && (
+            <p className="text-xs text-amber-500 mt-1">
+              Short forms.gle links can’t open inside VolunTrack. Paste the full docs.google.com link to keep students on the page.
+            </p>
+          )}
+        </div>
+      )}
+
+      {value.mode !== 'none' && (
+        <div>
+          <label className="label">Note to students (optional)</label>
+          <input
+            className="input"
+            maxLength={300}
+            value={value.note || ''}
+            onChange={(e) => onChange({ note: e.target.value })}
+            placeholder="Your supervisor must sign in blue or black ink."
+          />
+        </div>
+      )}
     </>
   )
 }

@@ -252,7 +252,7 @@ function escapeHtml(s) {
  */
 export function schoolHoursCSV(logs) {
   const rows = [
-    ['School', 'Student', 'Email', 'Grade', 'Date', 'Activity', 'Category', 'Hours', 'Status', 'Organization', 'Supervisor', 'Location', 'Notes'],
+    ['School', 'Student', 'Email', 'Grade', 'Date', 'Activity', 'Category', 'Hours', 'Status', 'Signed how', 'Organization', 'Supervisor', 'Location', 'Notes'],
     ...logs.map((l) => [
       l.schoolName || '',
       l.studentName || '',
@@ -263,6 +263,7 @@ export function schoolHoursCSV(logs) {
       l.category || '',
       l.hours ?? '',
       l.verificationStatus || '',
+      l.signedHow || '',
       l.orgName || '',
       l.supervisorName || '',
       l.location || '',

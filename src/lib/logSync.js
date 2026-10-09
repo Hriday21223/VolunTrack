@@ -48,6 +48,12 @@ export async function syncCreateLog(log) {
         // device, so the pointer above is null even when one was attached.
         customFields: log.customFields || null,
         hasLocalProof: Boolean(log.hasLocalProof || log.proof),
+        // That the student signed, or sent their school's form — never the
+        // signature image itself, which stays on this device like the
+        // supervisor's.
+        hasStudentSignature: Boolean(log.studentSigned || log.studentSignature),
+        formSubmitted: Boolean(log.formSubmitted),
+        supervisorSignedInPerson: Boolean(log.supervisorSignedInPerson),
       }),
     })
     if (!res.ok) return null
@@ -61,8 +67,13 @@ export async function syncCreateLog(log) {
 export async function syncUpdateLog(serverId, patch) {
   const headers = authHeaders()
   if (!headers || !serverId) return
+  // The edit form hands over the whole entry. Signature images stay on this
+  // device; the server only needs to know there is one.
+  const { studentSignature, supervisorSignature, ...body } = patch
+  if (studentSignature) body.hasStudentSignature = true
+  if (supervisorSignature && patch.supervisorSignedInPerson) body.supervisorSignedInPerson = true
   try {
-    await fetch(`${apiUrl}/logs/${serverId}`, { method: 'PATCH', headers, body: JSON.stringify(patch) })
+    await fetch(`${apiUrl}/logs/${serverId}`, { method: 'PATCH', headers, body: JSON.stringify(body) })
   } catch {
     // best-effort
   }
@@ -124,16 +135,24 @@ export async function syncPullLogs(userId) {
       orgName: row.org_name ?? '',
       supervisorName: row.supervisor_name ?? '',
       // Not restorable: the server holds only a hash of the supervisor's
-      // email, and never the org address/phone or the signature image. A
-      // device that pulls a log back gets the hours, not the paperwork (#186).
+      // email, and never the org address/phone or a supervisor's signature
+      // image. A device that pulls a log back gets the hours, not the
+      // paperwork (#186). (A task organizer's signature is the exception, below.)
       orgAddress: '',
       orgPhone: '',
       supervisorEmail: '',
-      supervisorSignature: '',
       verificationStatus: row.verification_status ?? 'none',
       verified: row.verification_status === 'approved',
       taskId: row.task_id ?? '',
       customFields: row.customFields ?? {},
+      // The image isn't restorable either, but that the entry was signed is.
+      studentSignature: '',
+      studentSigned: Boolean(row.studentSigned),
+      formSubmitted: Boolean(row.formSubmitted),
+      supervisorSignedInPerson: Boolean(row.supervisorSignedInPerson),
+      // A task organizer signs in VolunTrack itself, so theirs is restorable.
+      supervisorSignature: row.organizerSignature || '',
+      verificationDelivery: row.verificationDelivery || null,
       importedTranscriptId: row.importedTranscriptId ?? '',
       createdAt: row.created_at ?? new Date().toISOString(),
     })
