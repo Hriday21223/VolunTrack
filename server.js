@@ -444,6 +444,84 @@ async function resolveAppSignupUrl(raw) {
   return fallback
 }
 
+// Shared by both ways of asking a supervisor to sign: VolunTrack emailing
+// them, or the student sending the link themselves. Returns an error message
+// for a bad body, or null.
+function invalidVerificationRequest({ supervisorEmail, supervisorName, hours, activity }) {
+  if (!supervisorEmail || typeof supervisorEmail !== 'string' || !supervisorEmail.includes('@') || supervisorEmail.length > 254) {
+    return 'Invalid supervisor email.'
+  }
+  if (supervisorName != null && (typeof supervisorName !== 'string' || supervisorName.length > 100)) {
+    return 'Invalid supervisor name.'
+  }
+  if (!activity || typeof activity !== 'string' || activity.length > 200) return 'Invalid activity.'
+  const hoursNum = Number(hours)
+  if (!Number.isFinite(hoursNum) || hoursNum <= 0) return 'Invalid hours.'
+  return null
+}
+
+// Who the request is from is read off the session, so the body can't dress a
+// message up as anything ("Your account will be suspended").
+async function requestingStudent(req) {
+  let name = req.auth.email || 'A VolunTrack student'
+  let email = req.auth.email || null
+  if (hasDatabase()) {
+    try {
+      const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [req.auth.sub])
+      if (rows.length) {
+        name = rows[0].name || rows[0].email || name
+        email = rows[0].email || email
+      }
+    } catch (error) {
+      console.error('Could not resolve notifying student:', error)
+    }
+  }
+  return { name, email }
+}
+
+// Creates the verification record and its two handles: `token` approves or
+// rejects, `statusToken` only reads. `delivery` records who carried the link
+// to the supervisor — VolunTrack, or the student — so a school can weigh a
+// sign-off whose link the student also held.
+async function createSupervisorVerification(req, { student, supervisorEmail, supervisorName, activity, hours, logId, appUrl, delivery }) {
+  // Only when a DB is available can we hold tamper-proof verification state
+  // (the student's browser can't be trusted to self-report "verified").
+  if (!hasDatabase()) return { token: null, statusToken: null, verifyUrl: null }
+  const token = generateToken()
+  const statusToken = generateToken()
+  try {
+    await query(
+      `INSERT INTO supervisor_verifications (id, token, status_token, student_user_id, student_name, student_email, supervisor_name, supervisor_email, activity, hours, delivery)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [uid('sv'), token, statusToken, req.auth.sub, student.name, student.email || null, supervisorName || null, supervisorEmail, activity, Number(hours), delivery],
+    )
+  } catch (error) {
+    console.error('Could not create supervisor verification record:', error)
+    return { token: null, statusToken: null, verifyUrl: null }
+  }
+
+  // If this log was already synced to the server (the caller is
+  // authenticated and owns it), link the verification token onto that log
+  // row so a parent's read-only view can see the outcome later. Never trust
+  // an unverified logId from the request body.
+  if (logId) {
+    try {
+      const { rows: logRows } = await query('SELECT user_id FROM logs WHERE id = $1', [logId])
+      if (logRows.length && logRows[0].user_id === req.auth.sub) {
+        await query('UPDATE logs SET verification_token = $1, verification_status = $2 WHERE id = $3', [token, 'pending', logId])
+        await query('UPDATE supervisor_verifications SET log_id = $1 WHERE token = $2', [logId, token])
+      }
+    } catch (error) {
+      console.error('Could not link verification to log:', error)
+    }
+  }
+
+  const u = new URL(appUrl)
+  u.pathname = u.pathname.replace(/\/register\/?$/, '/verify-hours')
+  u.search = `?token=${token}`
+  return { token, statusToken, verifyUrl: u.toString() }
+}
+
 // This route sends mail from VolunTrack's own SMTP identity to a
 // caller-named recipient, so it is authenticated: an unauthenticated version
 // is an open relay that lends our sender reputation to anyone's phishing.
@@ -451,36 +529,12 @@ async function resolveAppSignupUrl(raw) {
 // links in the message may only point at origins we serve.
 app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res) => {
   const { supervisorEmail, supervisorName, hours, activity, signupUrl, logId } = req.body
-
-  if (!supervisorEmail || typeof supervisorEmail !== 'string' || !supervisorEmail.includes('@') || supervisorEmail.length > 254) {
-    return res.status(400).json({ error: 'Invalid supervisor email.' })
-  }
-  if (supervisorName != null && (typeof supervisorName !== 'string' || supervisorName.length > 100)) {
-    return res.status(400).json({ error: 'Invalid supervisor name.' })
-  }
-  if (!activity || typeof activity !== 'string' || activity.length > 200) {
-    return res.status(400).json({ error: 'Invalid activity.' })
-  }
+  const invalid = invalidVerificationRequest(req.body)
+  if (invalid) return res.status(400).json({ error: invalid })
   const hoursNum = Number(hours)
-  if (!Number.isFinite(hoursNum) || hoursNum <= 0) {
-    return res.status(400).json({ error: 'Invalid hours.' })
-  }
 
-  // Who the mail says it is from is read off the session, so the body can't
-  // dress the message up as anything ("Your account will be suspended").
-  let studentName = req.auth.email || 'A VolunTrack student'
-  let studentEmail = req.auth.email || null
-  if (hasDatabase()) {
-    try {
-      const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [req.auth.sub])
-      if (rows.length) {
-        studentName = rows[0].name || rows[0].email || studentName
-        studentEmail = rows[0].email || studentEmail
-      }
-    } catch (error) {
-      console.error('Could not resolve notifying student:', error)
-    }
-  }
+  const student = await requestingStudent(req)
+  const studentName = student.name
 
   const appUrl = await resolveAppSignupUrl(signupUrl)
   if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
@@ -493,49 +547,9 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
     })
   }
 
-  // Only when a DB is available can we hold tamper-proof verification state
-  // (the student's browser can't be trusted to self-report "verified").
-  let token = null
-  let statusToken = null
-  if (hasDatabase()) {
-    token = generateToken()
-    statusToken = generateToken()
-    try {
-      await query(
-        `INSERT INTO supervisor_verifications (id, token, status_token, student_user_id, student_name, student_email, supervisor_name, supervisor_email, activity, hours)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [uid('sv'), token, statusToken, req.auth.sub, studentName, studentEmail || null, supervisorName || null, supervisorEmail, activity, hoursNum],
-      )
-    } catch (error) {
-      console.error('Could not create supervisor verification record:', error)
-      token = null
-      statusToken = null
-    }
-  }
-
-  // If this log was already synced to the server (the caller is
-  // authenticated and owns it), link the verification token onto that log
-  // row so a parent's read-only view can see the outcome later. Never trust
-  // an unverified logId from the request body.
-  if (token && logId) {
-    try {
-      const { rows: logRows } = await query('SELECT user_id FROM logs WHERE id = $1', [logId])
-      if (logRows.length && logRows[0].user_id === req.auth.sub) {
-        await query('UPDATE logs SET verification_token = $1, verification_status = $2 WHERE id = $3', [token, 'pending', logId])
-        await query('UPDATE supervisor_verifications SET log_id = $1 WHERE token = $2', [logId, token])
-      }
-    } catch (error) {
-      console.error('Could not link verification to log:', error)
-    }
-  }
-
-  let verifyUrl = null
-  if (token) {
-    const u = new URL(appUrl)
-    u.pathname = u.pathname.replace(/\/register\/?$/, '/verify-hours')
-    u.search = `?token=${token}`
-    verifyUrl = u.toString()
-  }
+  const { statusToken, verifyUrl } = await createSupervisorVerification(req, {
+    student, supervisorEmail, supervisorName, activity, hours: hoursNum, logId, appUrl, delivery: 'voluntrack',
+  })
 
   const safeStudent = escapeHtml(studentName)
   const safeActivity = escapeHtml(activity)
@@ -578,6 +592,28 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
     console.error('Supervisor notification email failed:', error)
     return res.status(500).json({ error: 'Failed to send notification.' })
   }
+})
+
+// The student sends the link themselves — from their own email, to the
+// supervisor or the task's organizer — instead of VolunTrack mailing it.
+// Unlike notify-supervisor, the approve/reject link goes back to the student:
+// that is the point, and it is why the record is marked delivery='student'.
+// Approving while signed in as that student is still refused below.
+app.post('/api/verify-hours/link', emailLimiter, requireAuth(), async (req, res) => {
+  if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
+  const { supervisorEmail, supervisorName, hours, activity, signupUrl, logId } = req.body
+  const invalid = invalidVerificationRequest(req.body)
+  if (invalid) return res.status(400).json({ error: invalid })
+
+  const appUrl = await resolveAppSignupUrl(signupUrl)
+  if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
+
+  const student = await requestingStudent(req)
+  const { statusToken, verifyUrl } = await createSupervisorVerification(req, {
+    student, supervisorEmail, supervisorName, activity, hours, logId, appUrl, delivery: 'student',
+  })
+  if (!verifyUrl) return res.status(500).json({ error: 'Could not create the signing link.' })
+  return res.status(201).json({ statusToken, verifyUrl, studentName: student.name })
 })
 
 app.get('/api/verify-hours/:token', async (req, res) => {

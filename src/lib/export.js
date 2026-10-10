@@ -48,7 +48,7 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
 
   autoTable(doc, {
     startY: 120,
-    head: [['Date', 'Activity', 'Category', 'Time', 'Hours', 'Location', 'Organization', 'Org Phone', 'Org Address', 'Supervisor', 'Supervisor Email', 'Notes', 'Signature']],
+    head: [['Date', 'Activity', 'Category', 'Time', 'Hours', 'Location', 'Organization', 'Org Phone', 'Org Address', 'Supervisor', 'Supervisor Email', 'Notes', 'Supervisor Signature', 'Student Signature']],
     body: logs.map((l) => [
       fmtDate(l.date),
       l.activity || '',
@@ -63,14 +63,16 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
       l.supervisorEmail || '',
       l.notes || '',
       '', // filled in by didDrawCell below — autoTable can't take an image as cell content directly
+      '', // student's own signature, when their school asks for one — same treatment
     ]),
     headStyles: { fillColor: [63, 131, 68], fontSize: 8 },
     styles: { fontSize: 7.5, cellPadding: 4, minCellHeight: 28, overflow: 'linebreak' },
     alternateRowStyles: { fillColor: [241, 248, 241] },
-    columnStyles: { 12: { cellWidth: 65 } },
+    columnStyles: { 12: { cellWidth: 65 }, 13: { cellWidth: 65 } },
     didDrawCell: (data) => {
-      if (data.section !== 'body' || data.column.index !== 12) return
-      const sig = logs[data.row.index]?.supervisorSignature
+      if (data.section !== 'body' || (data.column.index !== 12 && data.column.index !== 13)) return
+      const log = logs[data.row.index]
+      const sig = data.column.index === 12 ? log?.supervisorSignature : log?.studentSignature
       if (!sig) return
       try {
         const h = data.cell.height - 8
@@ -252,7 +254,7 @@ function escapeHtml(s) {
  */
 export function schoolHoursCSV(logs) {
   const rows = [
-    ['School', 'Student', 'Email', 'Grade', 'Date', 'Activity', 'Category', 'Hours', 'Status', 'Organization', 'Supervisor', 'Location', 'Notes'],
+    ['School', 'Student', 'Email', 'Grade', 'Date', 'Activity', 'Category', 'Hours', 'Status', 'Signed how', 'Organization', 'Supervisor', 'Location', 'Notes'],
     ...logs.map((l) => [
       l.schoolName || '',
       l.studentName || '',
@@ -263,6 +265,7 @@ export function schoolHoursCSV(logs) {
       l.category || '',
       l.hours ?? '',
       l.verificationStatus || '',
+      l.signedHow || '',
       l.orgName || '',
       l.supervisorName || '',
       l.location || '',
