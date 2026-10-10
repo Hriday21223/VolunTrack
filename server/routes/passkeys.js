@@ -19,7 +19,7 @@ import { isoBase64URL } from '@simplewebauthn/server/helpers'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { signToken, verifyTempToken, requireAuth, verifyPassword } from '../auth.js'
-import { publicUser } from './auth.js'
+import { publicUser, generateBackupCodes, hashBackupCodes } from './auth.js'
 import { RP_NAME, rpId, expectedOrigins, userHandle, CHALLENGE_TTL_MS, MAX_PASSKEYS_PER_USER } from '../passkeys.js'
 
 const router = express.Router()
@@ -160,7 +160,17 @@ router.post('/register/verify', limiter, requireDb, requireAuth(), async (req, r
         cleanName(name),
       ],
     )
-    return res.json({ ok: true, passkey: { id: credential.id, name: cleanName(name) } })
+    // A first passkey on an account with no backup codes yet (no
+    // authenticator app) gets them now, shown once: without them, losing
+    // this device would lock the account out for good.
+    let backupCodes
+    const { rows: userRows } = await query('SELECT backup_codes FROM users WHERE id = $1', [req.auth.sub])
+    const existingCodes = userRows[0]?.backup_codes ? JSON.parse(userRows[0].backup_codes) : []
+    if (existingCodes.length === 0) {
+      backupCodes = generateBackupCodes(10)
+      await query('UPDATE users SET backup_codes = $1 WHERE id = $2', [await hashBackupCodes(backupCodes), req.auth.sub])
+    }
+    return res.json({ ok: true, passkey: { id: credential.id, name: cleanName(name) }, ...(backupCodes ? { backupCodes } : {}) })
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'That passkey is already registered.' })
     console.error('passkey register verify failed:', error)
@@ -175,13 +185,17 @@ router.delete('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     return res.status(400).json({ error: 'Password is required to remove a passkey.' })
   }
   try {
-    const { rows } = await query('SELECT password_hash FROM users WHERE id = $1', [req.auth.sub])
+    const { rows } = await query('SELECT password_hash, totp_enabled FROM users WHERE id = $1', [req.auth.sub])
     if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
     if (!(await verifyPassword(password, rows[0].password_hash))) {
       return res.status(403).json({ error: 'Incorrect password.' })
     }
     const del = await query('DELETE FROM passkeys WHERE id = $1 AND user_id = $2', [req.params.id, req.auth.sub])
     if (del.rowCount === 0) return res.status(404).json({ error: 'Passkey not found.' })
+    // Last second factor gone: its backup codes have nothing left to stand in for.
+    if (!rows[0].totp_enabled && !(await listFor(req.auth.sub)).length) {
+      await query('UPDATE users SET backup_codes = NULL WHERE id = $1', [req.auth.sub])
+    }
     return res.json({ ok: true })
   } catch (error) {
     console.error('passkey delete failed:', error)

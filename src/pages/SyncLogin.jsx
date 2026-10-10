@@ -47,6 +47,10 @@ export default function SyncLogin() {
   const [totpMethods, setTotpMethods] = useState(['totp'])
   const [totpCode, setTotpCode] = useState('')
   const [useBackupCode, setUseBackupCode] = useState(false)
+  // A passkey-only account has no authenticator app: the code box can only
+  // ever take one of its backup codes.
+  const backupOnly = !totpMethods.includes('totp')
+  const usingBackup = useBackupCode || backupOnly
   const scannerRef = useRef(null)
   const scannerInstance = useRef(null)
 
@@ -93,7 +97,7 @@ export default function SyncLogin() {
     setErr('')
     setBusy(true)
     try {
-      const verify = useBackupCode ? verifyBackupCode : verifyTotp
+      const verify = usingBackup ? verifyBackupCode : verifyTotp
       await verify(totpTempToken, totpCode.trim())
       setToast(true)
       setTimeout(() => nav('/', { replace: true }), 600)
@@ -240,14 +244,15 @@ export default function SyncLogin() {
             ) : totpTempToken ? (
               <>
                 <p className="text-sm text-slate-300 mb-6">
-                  This account uses two-factor authentication. Enter the current code from your
-                  authenticator app to finish syncing.
+                  {backupOnly
+                    ? 'This account signs in with a passkey. Use it below, or enter one of your backup codes to finish syncing.'
+                    : 'This account uses two-factor authentication. Enter the current code from your authenticator app to finish syncing.'}
                 </p>
 
                 <form onSubmit={onSubmitTotp} className="space-y-5">
                   <div>
                     <label className="label text-slate-300" htmlFor="totpCode">
-                      {useBackupCode ? 'Backup code' : '6-digit code'}
+                      {usingBackup ? 'Backup code' : '6-digit code'}
                     </label>
                     <input
                       id="totpCode"
@@ -255,13 +260,13 @@ export default function SyncLogin() {
                       required
                       autoFocus
                       autoComplete="one-time-code"
-                      inputMode={useBackupCode ? 'text' : 'numeric'}
-                      maxLength={useBackupCode ? 32 : 6}
+                      inputMode={usingBackup ? 'text' : 'numeric'}
+                      maxLength={usingBackup ? 32 : 6}
                       className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-widest font-mono"
-                      placeholder={useBackupCode ? 'backup code' : '123456'}
+                      placeholder={usingBackup ? 'backup code' : '123456'}
                       value={totpCode}
                       onChange={(e) => setTotpCode(
-                        useBackupCode ? e.target.value : e.target.value.replace(/[^0-9]/g, '').slice(0, 6),
+                        usingBackup ? e.target.value : e.target.value.replace(/[^0-9]/g, '').slice(0, 6),
                       )}
                     />
                   </div>
@@ -273,13 +278,15 @@ export default function SyncLogin() {
 
                 {err && <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{err}</div>}
 
-                <button
-                  type="button"
-                  onClick={() => { setUseBackupCode((v) => !v); setTotpCode(''); setErr('') }}
-                  className="mt-4 w-full text-center text-sm text-sky-200 font-semibold hover:text-white"
-                >
-                  {useBackupCode ? 'Use your authenticator app instead' : 'Use a backup code instead'}
-                </button>
+                {!backupOnly && (
+                  <button
+                    type="button"
+                    onClick={() => { setUseBackupCode((v) => !v); setTotpCode(''); setErr('') }}
+                    className="mt-4 w-full text-center text-sm text-sky-200 font-semibold hover:text-white"
+                  >
+                    {useBackupCode ? 'Use your authenticator app instead' : 'Use a backup code instead'}
+                  </button>
+                )}
                 {totpMethods.includes('passkey') && (
                   <button
                     type="button"

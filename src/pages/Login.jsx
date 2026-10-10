@@ -401,6 +401,9 @@ export default function Login() {
                         Use authenticator code instead
                       </button>
                     )}
+                    <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(false); setBackupMode(true); setErr('') }}>
+                      Lost your device? Use a backup code
+                    </button>
                   </div>
                 ) : backupMode ? (
                   <form onSubmit={onBackupSubmit} className="space-y-5">
@@ -424,9 +427,16 @@ export default function Login() {
                     <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
                       {busy ? 'Verifying…' : <>Verify backup code <ArrowRight className="w-4 h-4" /></>}
                     </button>
-                    <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setBackupMode(false); setErr('') }}>
-                      Use authenticator code instead
-                    </button>
+                    {methods.includes('totp') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setBackupMode(false); setErr('') }}>
+                        Use authenticator code instead
+                      </button>
+                    )}
+                    {methods.includes('passkey') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setBackupMode(false); setPasskeyMode(true); setErr('') }}>
+                        Use your passkey instead
+                      </button>
+                    )}
                   </form>
                 ) : (
                   <form onSubmit={onTotpSubmit} className="space-y-5">

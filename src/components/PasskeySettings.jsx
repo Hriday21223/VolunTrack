@@ -19,6 +19,8 @@ export default function PasskeySettings() {
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [removing, setRemoving] = useState(null) // passkey id awaiting password
+  // Handed back once, with the first passkey on an account that had none.
+  const [backupCodes, setBackupCodes] = useState(null)
   const [password, setPassword] = useState('')
 
   const load = useCallback(async () => {
@@ -33,8 +35,9 @@ export default function PasskeySettings() {
   const onAdd = async () => {
     setErr(''); setMsg(''); setBusy(true)
     try {
-      await addPasskey(token, defaultPasskeyName())
+      const result = await addPasskey(token, defaultPasskeyName())
       setMsg('Passkey added. You can use it the next time you sign in.')
+      if (result?.backupCodes?.length) setBackupCodes(result.backupCodes)
       await load()
     } catch (e) {
       if (!isPasskeyCancel(e)) setErr(e.message)
@@ -118,6 +121,21 @@ export default function PasskeySettings() {
         </button>
       )}
       {msg && <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{msg}</p>}
+      {backupCodes && (
+        <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <p className="text-xs font-semibold text-amber-300 mb-1">Save your backup codes</p>
+          <p className="text-xs text-amber-200/80 mb-2">
+            If you lose this device, sign in with one of these instead of your passkey. Each works once, and
+            this is the only time they&apos;re shown.
+          </p>
+          <div className="grid grid-cols-2 gap-1">
+            {backupCodes.map((code) => (
+              <code key={code} className="text-xs font-mono text-amber-100 bg-slate-900/50 px-2 py-1 rounded text-center">{code}</code>
+            ))}
+          </div>
+          <button type="button" className="btn-ghost text-xs mt-2" onClick={() => setBackupCodes(null)}>I&apos;ve saved them</button>
+        </div>
+      )}
       {err && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{err}</p>}
     </Card>
   )
