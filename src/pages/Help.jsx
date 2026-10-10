@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal, Download, FileSignature } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Footer from '@/components/Footer.jsx'
+import PublicHeader from '@/components/PublicHeader.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
@@ -611,31 +612,31 @@ export default function Help() {
   const Panel = PANELS[tab] || QuickStart
 
   const content = (
-      <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
-        <nav
-          aria-label="Handbook sections"
-          className="flex gap-1 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:pb-0 lg:flex-col lg:overflow-visible lg:sticky lg:top-24 lg:self-start"
-        >
-          <p className="hidden lg:block px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-earth-500">Handbooks</p>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              aria-current={tab === t.id ? 'page' : undefined}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition whitespace-nowrap shrink-0 lg:w-full ${
-                tab === t.id ? 'bg-brand-600 text-white' : 'text-earth-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <t.icon className="w-3.5 h-3.5 shrink-0" />
-              {t.label}
-            </button>
-          ))}
-        </nav>
+    <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
+      <nav
+        aria-label="Handbook sections"
+        className="flex gap-1 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:pb-0 lg:flex-col lg:overflow-visible lg:sticky lg:top-24 lg:self-start"
+      >
+        <p className="hidden lg:block px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-earth-500">Handbooks</p>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            aria-current={tab === t.id ? 'page' : undefined}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition whitespace-nowrap shrink-0 lg:w-full ${
+              tab === t.id ? 'bg-brand-600 text-white' : 'text-earth-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <t.icon className="w-3.5 h-3.5 shrink-0" />
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-        <div className="min-w-0 mt-6 lg:mt-0">
-          <Panel />
-        </div>
+      <div className="min-w-0 mt-6 lg:mt-0">
+        <Panel />
       </div>
+    </div>
   )
 
   if (user) {
@@ -651,16 +652,10 @@ export default function Help() {
   // plain header and footer as Terms and Privacy instead.
   return (
     <div className="min-h-screen page-shell">
-      <header className="px-4 md:px-8 py-5 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-9 h-9 object-contain" />
-          <span className="font-display font-bold text-lg">VolunTrack</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link to="/login" className="btn-ghost">Sign in</Link>
-          <Link to="/register" className="btn-primary">Get started</Link>
-        </div>
-      </header>
+      <PublicHeader>
+        <Link to="/login" className="btn-ghost">Sign in</Link>
+        <Link to="/register" className="btn-primary">Get started</Link>
+      </PublicHeader>
       <main className="px-4 md:px-8 pb-20">
         <div className="max-w-5xl mx-auto mb-6">
           <h1 className="text-3xl md:text-4xl font-bold">Help &amp; Handbooks</h1>

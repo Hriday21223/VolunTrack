@@ -15,6 +15,7 @@ import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
+import { isSignatureImage } from '../signature.js'
 
 const router = express.Router()
 
@@ -1609,12 +1610,9 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
   const { status, signature } = req.body
   if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be approved or rejected.' })
   // An approval is a sign-off, so it carries the organizer's signature — the
-  // same rule, and the same size cap, as the supervisor's emailed link.
-  // A rejection needs none.
-  if (status === 'approved') {
-    if (typeof signature !== 'string' || !signature.startsWith('data:image/png;base64,') || signature.length > 200_000) {
-      return res.status(400).json({ error: 'Sign to approve these hours.' })
-    }
+  // same rule as the supervisor's emailed link. A rejection needs none.
+  if (status === 'approved' && !isSignatureImage(signature)) {
+    return res.status(400).json({ error: 'Sign to approve these hours.' })
   }
 
   try {
@@ -2326,6 +2324,17 @@ router.get('/messages', limiter, requireDb, requireAuth(), async (req, res) => {
 // silently getting a partial export.
 const REPORT_ROW_CAP = 20000
 
+// How an entry was signed off, as a code the export turns into a label
+// (src/lib/export.js). In order of strength: the organizer signed in their own
+// account; the supervisor signed on the student's device; or a link — which
+// the student may also have held — was signed. Needs `l` = logs.
+const SIGNED_HOW_SQL = `CASE
+  WHEN l.organizer_signature IS NOT NULL THEN 'organizer'
+  WHEN l.supervisor_signed_in_person THEN 'in_person'
+  ELSE (SELECT CASE sv.delivery WHEN 'student' THEN 'student_link' ELSE 'emailed' END
+          FROM supervisor_verifications sv WHERE sv.token = l.verification_token)
+END`
+
 function validDate(value) {
   const s = String(value || '').trim()
   return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) ? s : null
@@ -2390,8 +2399,7 @@ router.get('/reports/hours', limiter, requireDb, requireAuth('school', 'school_s
               u.grade, u.school_id, sc.name AS school_name,
               l.id   AS log_id, l.date, l.activity, l.category, l.hours,
               l.verification_status, l.org_name, l.supervisor_name, l.location, l.notes,
-              l.supervisor_signed_in_person, (l.organizer_signature IS NOT NULL) AS organizer_signed,
-              (SELECT sv.delivery FROM supervisor_verifications sv WHERE sv.token = l.verification_token) AS verification_delivery
+              ${SIGNED_HOW_SQL} AS signed_how
          FROM users u
          JOIN schools sc ON sc.id = u.school_id
          LEFT JOIN logs l
@@ -2460,17 +2468,7 @@ router.get('/reports/hours', limiter, requireDb, requireAuth('school', 'school_s
         category: r.category || '',
         hours,
         verificationStatus: r.verification_status,
-        // How the supervisor's sign-off reached us. A school weighs these
-        // differently: the student held the device, or the link, in the first two.
-        signedHow: r.organizer_signed
-          ? 'Signed by task organizer in VolunTrack'
-          : r.supervisor_signed_in_person
-          ? 'Signed in person'
-          : r.verification_delivery === 'student'
-            ? 'Link sent by student'
-            : r.verification_delivery === 'voluntrack'
-              ? 'Emailed by VolunTrack'
-              : '',
+        signedHow: r.signed_how,
         orgName: r.org_name || '',
         supervisorName: r.supervisor_name || '',
         location: r.location || '',

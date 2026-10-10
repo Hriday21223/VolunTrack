@@ -247,6 +247,14 @@ function escapeHtml(s) {
 
 /* ---------- Bulk school/organization hour reports (#142) ---------- */
 
+// signedHow codes from the school hours report (server/routes/school.js).
+const SIGNED_HOW_LABELS = {
+  organizer: 'Signed by task organizer in VolunTrack',
+  in_person: 'Signed in person',
+  student_link: 'Link sent by student',
+  emailed: 'Emailed by VolunTrack',
+}
+
 /**
  * Detail CSV — one row per log, for spreadsheets. Uses the same csvCell
  * escaping as exportLogsCSV so a comma in an activity name can't shift
@@ -265,7 +273,7 @@ export function schoolHoursCSV(logs) {
       l.category || '',
       l.hours ?? '',
       l.verificationStatus || '',
-      l.signedHow || '',
+      SIGNED_HOW_LABELS[l.signedHow] || '',
       l.orgName || '',
       l.supervisorName || '',
       l.location || '',

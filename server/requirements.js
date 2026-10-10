@@ -237,18 +237,31 @@ function normalizeSignatures(input) {
 }
 
 /**
- * The embeddable address of a Google Form, or null when the link is anything
- * else. Only the public `/forms/d/e/<id>/viewform` link can be filled in by a
- * student; an editor link (`/forms/d/<id>/edit`) would show them a sign-in wall,
- * and a forms.gle short link redirects to a page that drops `embedded=true`.
+ * What kind of form link a school pasted:
+ *   { kind: 'embed', embedUrl } — a public Google Form, filled in on Log Hours
+ *   { kind: 'editor' }  — a Google Form's edit link: students hit a sign-in wall
+ *   { kind: 'short' }   — a forms.gle link: its redirect drops `embedded=true`
+ *   { kind: 'file' }    — anything else: downloaded, signed and uploaded
+ * or null for something that isn't a URL. The settings editor warns from the
+ * same answer the Log Hours form acts on.
  */
-export function googleFormEmbedUrl(formUrl) {
+export function classifyFormUrl(formUrl) {
   let url
   try { url = new URL(formUrl) } catch { return null }
-  if (url.protocol !== 'https:' || url.hostname !== 'docs.google.com') return null
-  const match = url.pathname.match(/^\/forms\/d\/e\/([A-Za-z0-9_-]+)\/(viewform|formResponse)?\/?$/)
-  if (!match) return null
-  return `https://docs.google.com/forms/d/e/${match[1]}/viewform?embedded=true`
+  if (url.hostname === 'forms.gle') return { kind: 'short' }
+  if (url.hostname === 'docs.google.com' && url.pathname.startsWith('/forms/d/')) {
+    const match = url.pathname.match(/^\/forms\/d\/e\/([A-Za-z0-9_-]+)\/(viewform|formResponse)?\/?$/)
+    if (match && url.protocol === 'https:') {
+      return { kind: 'embed', embedUrl: `https://docs.google.com/forms/d/e/${match[1]}/viewform?embedded=true` }
+    }
+    if (!url.pathname.startsWith('/forms/d/e/')) return { kind: 'editor' }
+  }
+  return { kind: 'file' }
+}
+
+/** The embeddable address of a Google Form, or null for any other link. */
+export function googleFormEmbedUrl(formUrl) {
+  return classifyFormUrl(formUrl)?.embedUrl ?? null
 }
 
 /** What one entry has to carry to satisfy the signatures section. */

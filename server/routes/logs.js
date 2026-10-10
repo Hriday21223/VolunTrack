@@ -23,6 +23,17 @@ function requireDb(_req, res, next) {
   next()
 }
 
+// The sign-off facts a client may report (server/requirements.js signatures
+// section). Only `true` counts: the drawings themselves never reach us (#186),
+// and a Google Form's answers go to the school, so the client's word is it.
+function signoffFlags(body) {
+  return {
+    hasStudentSignature: body.hasStudentSignature === true,
+    formSubmitted: body.formSubmitted === true,
+    supervisorSignedInPerson: body.supervisorSignedInPerson === true,
+  }
+}
+
 // Hold an entry to the rules the student's school set (server/requirements.js).
 // The Log Hours form checks the same policy with the same function before it
 // submits; this is the copy that counts, because a form is not a boundary.
@@ -50,7 +61,8 @@ async function checkPolicy(req, entry, { excludeLogId = null } = {}) {
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes, customFields, hasLocalProof, hasStudentSignature, formSubmitted, supervisorSignedInPerson } = req.body
+  const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes, customFields, hasLocalProof } = req.body
+  const signoff = signoffFlags(req.body)
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
@@ -102,9 +114,7 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
       hasProof: Boolean(storageKey) || hasLocalProof === true,
       // Like hasLocalProof, the client's word: the signature image never
       // leaves the device, and a Google Form's answers go to the school.
-      hasStudentSignature: hasStudentSignature === true,
-      formSubmitted: formSubmitted === true,
-      supervisorSignedInPerson: supervisorSignedInPerson === true,
+      ...signoff,
       // Checked above to be a task this student is approved on.
       taskId: taskId || null,
       customFields,
@@ -121,7 +131,7 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
     await query(
       `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields, student_signed, form_submitted, supervisor_signed_in_person)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, hasStudentSignature === true, formSubmitted === true, supervisorSignedInPerson === true],
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -144,7 +154,8 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
     const existing = rows[0]
 
-    const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof, hasStudentSignature, formSubmitted, supervisorSignedInPerson } = req.body
+    const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
+    const signoff = signoffFlags(req.body)
     // Match POST's validation — an update must not be able to slip a
     // non-positive or non-numeric value past the check the insert enforces.
     let hoursNum = null
@@ -179,9 +190,9 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       // was named, not who.
       supervisorEmail: supervisorEmail || (existing.supervisor_email_hash ? 'on-file' : ''),
       hasProof: existing.has_proof || hasLocalProof === true,
-      hasStudentSignature: existing.student_signed || hasStudentSignature === true,
-      formSubmitted: existing.form_submitted || formSubmitted === true,
-      supervisorSignedInPerson: existing.supervisor_signed_in_person || supervisorSignedInPerson === true,
+      hasStudentSignature: existing.student_signed || signoff.hasStudentSignature,
+      formSubmitted: existing.form_submitted || signoff.formSubmitted,
+      supervisorSignedInPerson: existing.supervisor_signed_in_person || signoff.supervisorSignedInPerson,
       taskId: taskId || existing.task_id,
       customFields: customFields !== undefined ? customFields : existing.custom_fields,
     }
@@ -233,7 +244,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
        WHERE id = $11`,
-      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, hasStudentSignature === true, formSubmitted === true, supervisorSignedInPerson === true],
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -256,18 +267,22 @@ router.delete('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   }
 })
 
+// A user's logs are readable by the user themself, or a parent linked to them.
+async function canReadLogsOf(req, userId) {
+  if (req.auth.sub === userId) return true
+  if (req.auth.role !== 'parent') return false
+  const { rows } = await query(
+    'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
+    [req.auth.sub, userId],
+  )
+  return rows.length > 0
+}
+
 // Read a user's logs — the caller themself, or a parent linked to them.
 router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
   const { userId } = req.params
   try {
-    if (req.auth.sub !== userId) {
-      if (req.auth.role !== 'parent') return res.status(403).json({ error: 'Not allowed.' })
-      const { rows: link } = await query(
-        'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
-        [req.auth.sub, userId],
-      )
-      if (link.length === 0) return res.status(403).json({ error: 'Not allowed.' })
-    }
+    if (!(await canReadLogsOf(req, userId))) return res.status(403).json({ error: 'Not allowed.' })
 
     // `date` is a DATE column: pg parses it into a JS Date, which res.json
     // serializes as "2024-01-06T00:00:00.000Z". Clients key calendars and
@@ -277,17 +292,18 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       // URL, and every mint is audited. Callers just need to know one exists.
       `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, supervisor_name, verification_status, task_id, created_at,
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
-               student_signed, form_submitted, supervisor_signed_in_person, organizer_signature,
-               (SELECT sv.delivery FROM supervisor_verifications sv WHERE sv.token = logs.verification_token) AS verification_delivery
+               student_signed, form_submitted, supervisor_signed_in_person,
+               (organizer_signature IS NOT NULL) AS organizer_signed
        FROM logs WHERE user_id = $1 ORDER BY logs.date DESC, created_at DESC`,
       [userId],
     )
     return res.json({
-      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, verification_delivery, organizer_signature, ...log }) => ({
+      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, ...log }) => ({
         ...log,
-        organizerSignature: organizer_signature || null,
+        // Only whether one exists: the image is fetched separately, for the
+        // entries a device doesn't have yet (GET /:userId/organizer-signatures).
+        organizerSigned: organizer_signed,
         supervisorSignedInPerson: supervisor_signed_in_person,
-        verificationDelivery: verification_delivery || null,
         hasProof: has_proof,
         studentSigned: student_signed,
         formSubmitted: form_submitted,
@@ -299,6 +315,29 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
   } catch (error) {
     console.error('log fetch failed:', error)
     return res.status(500).json({ error: 'Could not fetch logs.' })
+  }
+})
+
+// Task organizers' signatures for the given entries. Kept out of the list
+// above: each is an image of up to 200KB, and a device pulling logs after
+// sign-in only needs them for entries it doesn't already hold.
+const MAX_SIGNATURE_IDS = 200
+
+router.get('/:userId/organizer-signatures', limiter, requireDb, requireAuth(), async (req, res) => {
+  const { userId } = req.params
+  const ids = String(req.query.ids || '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, MAX_SIGNATURE_IDS)
+  if (ids.length === 0) return res.json({ signatures: {} })
+  try {
+    if (!(await canReadLogsOf(req, userId))) return res.status(403).json({ error: 'Not allowed.' })
+    const { rows } = await query(
+      `SELECT id, organizer_signature FROM logs
+        WHERE user_id = $1 AND id = ANY($2::text[]) AND organizer_signature IS NOT NULL`,
+      [userId, ids],
+    )
+    return res.json({ signatures: Object.fromEntries(rows.map((r) => [r.id, r.organizer_signature])) })
+  } catch (error) {
+    console.error('organizer signature fetch failed:', error)
+    return res.status(500).json({ error: 'Could not fetch signatures.' })
   }
 })
 
