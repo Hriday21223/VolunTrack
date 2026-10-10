@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal, Download } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
+import Footer from '@/components/Footer.jsx'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const TABS = [
@@ -573,11 +575,11 @@ export default function Help() {
     jsonLd: HELP_JSON_LD,
   })
 
+  const { user } = useAuth()
   const [tab, setTab] = useState('quickstart')
   const Panel = PANELS[tab] || QuickStart
 
-  return (
-    <AppLayout title="Help & Handbooks" subtitle="Guides, FAQs, and handbooks for every role">
+  const content = (
       <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
         <nav
           aria-label="Handbook sections"
@@ -603,6 +605,39 @@ export default function Help() {
           <Panel />
         </div>
       </div>
-    </AppLayout>
+  )
+
+  if (user) {
+    return (
+      <AppLayout title="Help & Handbooks" subtitle="Guides, FAQs, and handbooks for every role">
+        {content}
+      </AppLayout>
+    )
+  }
+
+  // Help is public (it's in the site footer), but the app sidebar only leads a
+  // signed-out visitor to pages that bounce them home — so they get the same
+  // plain header and footer as Terms and Privacy instead.
+  return (
+    <div className="min-h-screen page-shell">
+      <header className="px-4 md:px-8 py-5 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2.5">
+          <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-9 h-9 object-contain" />
+          <span className="font-display font-bold text-lg">VolunTrack</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/login" className="btn-ghost">Sign in</Link>
+          <Link to="/register" className="btn-primary">Get started</Link>
+        </div>
+      </header>
+      <main className="px-4 md:px-8 pb-20">
+        <div className="max-w-5xl mx-auto mb-6">
+          <h1 className="text-3xl md:text-4xl font-bold">Help &amp; Handbooks</h1>
+          <p className="text-earth-500 dark:text-earth-400 mt-1">Guides, FAQs, and handbooks for every role</p>
+        </div>
+        {content}
+      </main>
+      <Footer />
+    </div>
   )
 }
