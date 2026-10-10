@@ -186,6 +186,12 @@ export default function VerifyHours() {
 
 // The QR carries the same link the supervisor's email did — it grants nothing
 // they didn't already hold — plus `sign=1` so the phone opens on the pad.
+// Supervisors arrive from an email and have nothing left to do once they've
+// answered — say so, rather than leave them looking for a next step.
+function CloseTabNote() {
+  return <p className="text-xs text-earth-400 mt-4">You may close this tab.</p>
+}
+
 function PhoneHandoff({ token, onClose }) {
   const canvasRef = useRef(null)
   useEffect(() => {
@@ -234,6 +240,7 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <p className="text-sm text-brand-600 dark:text-brand-400 mt-4 font-medium">
           {thanksNote}
         </p>
+        <CloseTabNote />
       </div>
     )
   }
@@ -253,6 +260,7 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-3">
           No action is needed. If that looks wrong, contact the school directly.
         </p>
+        <CloseTabNote />
       </div>
     )
   }
@@ -264,6 +272,7 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">
           You rejected {data.hours} hour(s) logged by {data.studentName} for "{data.activity}".
         </p>
+        <CloseTabNote />
       </div>
     )
   }

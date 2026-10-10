@@ -34,7 +34,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: September 26, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 10, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -42,7 +42,7 @@ export default function Privacy() {
               <li><strong>Name and email address</strong> — required to create and manage your account.</li>
               <li><strong>School sign-in</strong> — if your school has set up single sign-on, we receive your name, email address, and an account identifier from your school&apos;s sign-in provider (such as Google or Microsoft). We never see your school password.</li>
               <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app, plus any extra fields your school or organization requires on an entry.</li>
-              <li><strong>Verification details</strong> — when you ask someone to verify an entry, the supervisor&apos;s name and email, the organization&apos;s name, address and phone, and the signature the supervisor draws when they approve.</li>
+              <li><strong>Verification details</strong> — when you ask someone to verify an entry, the supervisor&apos;s name and email, the organization&apos;s name, address and phone, and the signature the supervisor draws when they approve from the emailed link. A supervisor who signs in person, on your device, leaves that drawing on your device only. When a task organizer signs off your hours from their VolunTrack account, their signature is stored with the entry so you and your school can see it.</li>
               <li><strong>Your signature</strong> — only if your school asks you to sign your entries. The drawing stays on your device; we only record that the entry was signed, and, if your school uses its own online form, that you said you sent it.</li>
               <li><strong>Task organizer contact</strong> — when you create a volunteer task, the email you give is shown to the volunteers you approve, so they can ask you to sign off their hours.</li>
               <li><strong>Proof of service</strong> — photos or documents you attach to an entry. See <em>Proof files</em> below for where these are held.</li>
