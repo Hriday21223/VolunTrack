@@ -16,46 +16,57 @@ function authHeaders() {
   return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : null
 }
 
+// What the server is sent for a log, and where each value comes from on the
+// local entry. One list for create and edit, so a field that should stay on
+// this device — the org's address and phone, signature images, proof bytes —
+// can't leak through either path just by not being named here (#186).
+// [server field, local fields it is derived from, derive]
+const SERVER_FIELDS = [
+  ['date', ['date'], (l) => l.date],
+  ['activity', ['activity'], (l) => l.activity],
+  ['category', ['category'], (l) => l.category],
+  ['hours', ['hours'], (l) => l.hours],
+  ['notes', ['notes'], (l) => l.notes],
+  ['location', ['location'], (l) => l.location || null],
+  ['orgName', ['orgName'], (l) => l.orgName || null],
+  ['supervisorName', ['supervisorName'], (l) => l.supervisorName || null],
+  // The server hashes this and keeps only the hash (#186).
+  ['supervisorEmail', ['supervisorEmail'], (l) => l.supervisorEmail || null],
+  ['taskId', ['taskId'], (l) => l.taskId || null],
+  // Pointer to the proof file in the school's own bucket, when one was
+  // uploaded there. The server re-verifies it belongs to this student.
+  ['proofKey', ['proofKey'], (l) => l.proofKey || null],
+  ['proofStorageId', ['proofStorageId'], (l) => l.proofStorageId || null],
+  ['proofMime', ['proofMime'], (l) => l.proofMime || null],
+  ['proofBytes', ['proofBytes'], (l) => (Number.isInteger(l.proofBytes) ? l.proofBytes : null)],
+  // Answers to the school's own questions.
+  ['customFields', ['customFields'], (l) => l.customFields || null],
+  // Whether a proof file exists at all — without tenant storage the file
+  // never leaves this device, so the pointer above is null even when one
+  // was attached.
+  ['hasLocalProof', ['hasLocalProof', 'proof'], (l) => Boolean(l.hasLocalProof || l.proof)],
+  // That the entry was signed, or the school's form sent — never the images.
+  ['hasStudentSignature', ['studentSigned', 'studentSignature'], (l) => Boolean(l.studentSigned || l.studentSignature)],
+  ['formSubmitted', ['formSubmitted'], (l) => Boolean(l.formSubmitted)],
+  ['supervisorSignedInPerson', ['supervisorSignedInPerson'], (l) => Boolean(l.supervisorSignedInPerson)],
+]
+
+// `only` limits the body to fields the change touches: PATCH treats a field
+// that is present as a new value, so an edit must not send the rest.
+function toServerLog(log, only = null) {
+  const body = {}
+  for (const [field, sources, derive] of SERVER_FIELDS) {
+    if (only && !sources.some((k) => Object.hasOwn(only, k))) continue
+    body[field] = derive(log)
+  }
+  return body
+}
+
 export async function syncCreateLog(log) {
   const headers = authHeaders()
   if (!headers) return null
   try {
-    const res = await fetch(`${apiUrl}/logs`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        date: log.date,
-        activity: log.activity,
-        category: log.category,
-        hours: log.hours,
-        notes: log.notes,
-        location: log.location || null,
-        orgName: log.orgName || null,
-        supervisorName: log.supervisorName || null,
-        // The server hashes this and keeps only the hash (#186); the org's
-        // address and phone and the supervisor's signature image are never
-        // sent, because nothing server-side reads them.
-        supervisorEmail: log.supervisorEmail || null,
-        taskId: log.taskId || null,
-        // Pointer to the proof file in the school's own bucket, when one was
-        // uploaded there. The server re-verifies it belongs to this student.
-        proofKey: log.proofKey || null,
-        proofStorageId: log.proofStorageId || null,
-        proofMime: log.proofMime || null,
-        proofBytes: Number.isInteger(log.proofBytes) ? log.proofBytes : null,
-        // Answers to the school's own questions, and whether a proof file
-        // exists at all — without tenant storage the file never leaves this
-        // device, so the pointer above is null even when one was attached.
-        customFields: log.customFields || null,
-        hasLocalProof: Boolean(log.hasLocalProof || log.proof),
-        // That the student signed, or sent their school's form — never the
-        // signature image itself, which stays on this device like the
-        // supervisor's.
-        hasStudentSignature: Boolean(log.studentSigned || log.studentSignature),
-        formSubmitted: Boolean(log.formSubmitted),
-        supervisorSignedInPerson: Boolean(log.supervisorSignedInPerson),
-      }),
-    })
+    const res = await fetch(`${apiUrl}/logs`, { method: 'POST', headers, body: JSON.stringify(toServerLog(log)) })
     if (!res.ok) return null
     const body = await res.json().catch(() => ({}))
     return body.id || null
@@ -67,11 +78,9 @@ export async function syncCreateLog(log) {
 export async function syncUpdateLog(serverId, patch) {
   const headers = authHeaders()
   if (!headers || !serverId) return
-  // The edit form hands over the whole entry. Signature images stay on this
-  // device; the server only needs to know there is one.
-  const { studentSignature, supervisorSignature, ...body } = patch
-  if (studentSignature) body.hasStudentSignature = true
-  if (supervisorSignature && patch.supervisorSignedInPerson) body.supervisorSignedInPerson = true
+  const body = toServerLog(patch, patch)
+  // Nothing the server keeps changed (e.g. a local verification status).
+  if (Object.keys(body).length === 0) return
   try {
     await fetch(`${apiUrl}/logs/${serverId}`, { method: 'PATCH', headers, body: JSON.stringify(body) })
   } catch {
@@ -137,7 +146,7 @@ export async function syncPullLogs(userId) {
       // Not restorable: the server holds only a hash of the supervisor's
       // email, and never the org address/phone or a supervisor's signature
       // image. A device that pulls a log back gets the hours, not the
-      // paperwork (#186). (A task organizer's signature is the exception, below.)
+      // paperwork (#186). A task organizer's signature is the exception.
       orgAddress: '',
       orgPhone: '',
       supervisorEmail: '',
@@ -150,14 +159,27 @@ export async function syncPullLogs(userId) {
       studentSigned: Boolean(row.studentSigned),
       formSubmitted: Boolean(row.formSubmitted),
       supervisorSignedInPerson: Boolean(row.supervisorSignedInPerson),
-      // A task organizer signs in VolunTrack itself, so theirs is restorable.
-      supervisorSignature: row.organizerSignature || '',
-      verificationDelivery: row.verificationDelivery || null,
+      // Filled in below for an organizer's sign-off, the one restorable image.
+      supervisorSignature: '',
+      organizerSigned: Boolean(row.organizerSigned),
       importedTranscriptId: row.importedTranscriptId ?? '',
       createdAt: row.created_at ?? new Date().toISOString(),
     })
   }
   if (additions.length === 0) return 0
+
+  // A task organizer signs in VolunTrack itself, so their signature is the one
+  // image that comes back — fetched only for the entries just added.
+  const organizerSigned = additions.filter((l) => l.organizerSigned).map((l) => l.serverId)
+  if (organizerSigned.length > 0) {
+    try {
+      const res = await fetch(`${apiUrl}/logs/${userId}/organizer-signatures?ids=${organizerSigned.map(encodeURIComponent).join(',')}`, { headers })
+      const { signatures = {} } = res.ok ? await res.json() : {}
+      for (const l of additions) if (signatures[l.serverId]) l.supervisorSignature = signatures[l.serverId]
+    } catch {
+      // The hours still come back; only the signature image is missing.
+    }
+  }
 
   try {
     write(keys.logs, [...local, ...additions])

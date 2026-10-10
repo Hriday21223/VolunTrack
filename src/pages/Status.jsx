@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Activity, CheckCircle2, XCircle, Globe, Clock, Database, Cpu, Monitor, Eye, AlertTriangle, Bell, Server, List, Mail, Tag } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
+import PublicHeader from '@/components/PublicHeader.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getHealth, getIncidents, HEALTH_UNKNOWN, subscribeToStatus, confirmSubscription, unsubscribeFromStatus } from '@/lib/status.js'
@@ -292,13 +293,9 @@ export default function Status() {
 
   return (
     <div className="min-h-screen page-shell">
-      <header className="px-4 md:px-8 py-5 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-9 h-9 object-contain" />
-          <span className="font-display font-bold text-lg">VolunTrack</span>
-        </Link>
+      <PublicHeader>
         <Link to={user ? '/' : '/login'} className="btn-ghost"><ArrowLeft className="w-4 h-4" /> {user ? 'Back to dashboard' : 'Back to sign in'}</Link>
-      </header>
+      </PublicHeader>
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <div className={`text-center p-6 rounded-2xl mb-6 ${allOk ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>

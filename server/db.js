@@ -1319,14 +1319,14 @@ export async function initSchema() {
   // weaker claim than an emailed link — the student held the pen — so it is
   // kept apart from verification_status, which only a link can set.
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_signed_in_person BOOLEAN NOT NULL DEFAULT false`) } catch {}
-  // Who carried the signing link to the supervisor. 'student' means the
-  // student held the approve link too, so a school can weigh it accordingly.
   // A task organizer's own signature, drawn in VolunTrack when they approve
   // hours logged against their task on My Tasks. Unlike the columns #186
   // emptied, the student never supplies this: it comes from the signed-in
   // organizer, the same way a supervisor's signature reaches
   // supervisor_verifications.
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS organizer_signature TEXT`) } catch {}
+  // Who carried the signing link to the supervisor. 'student' means the
+  // student held the approve link too, so a school can weigh it accordingly.
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS delivery TEXT NOT NULL DEFAULT 'voluntrack' CHECK (delivery IN ('voluntrack','student'))`) } catch {}
 
   return true

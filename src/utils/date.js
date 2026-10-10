@@ -1,6 +1,7 @@
 import { format, formatDistanceToNow, parseISO, differenceInMinutes } from 'date-fns'
 
 export const fmtDate = (iso) => (iso ? format(parseISO(iso), 'MMM d, yyyy') : '—')
+export const fmtDateLong = (iso) => (iso ? format(parseISO(iso), 'MMMM d, yyyy') : '')
 export const fmtTime = (iso) => (iso ? format(parseISO(iso), 'h:mm a') : '—')
 export const fmtDateTime = (iso) => (iso ? format(parseISO(iso), "MMM d, yyyy 'at' h:mm a") : '—')
 export const fromNow = (iso) => (iso ? formatDistanceToNow(parseISO(iso), { addSuffix: true }) : '')

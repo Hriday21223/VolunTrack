@@ -30,6 +30,7 @@ import referralRoutes from './server/routes/referral.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 import { startKeepAwake } from './server/keepAwake.js'
+import { isSignatureImage } from './server/signature.js'
 
 dotenv.config()
 
@@ -447,19 +448,19 @@ async function resolveAppSignupUrl(raw) {
 }
 
 // Shared by both ways of asking a supervisor to sign: VolunTrack emailing
-// them, or the student sending the link themselves. Returns an error message
-// for a bad body, or null.
-function invalidVerificationRequest({ supervisorEmail, supervisorName, hours, activity }) {
+// them, or the student sending the link themselves. Returns `{ error }` for a
+// bad body, or `{ hours }` parsed.
+function parseVerificationRequest({ supervisorEmail, supervisorName, hours, activity }) {
   if (!supervisorEmail || typeof supervisorEmail !== 'string' || !supervisorEmail.includes('@') || supervisorEmail.length > 254) {
-    return 'Invalid supervisor email.'
+    return { error: 'Invalid supervisor email.' }
   }
   if (supervisorName != null && (typeof supervisorName !== 'string' || supervisorName.length > 100)) {
-    return 'Invalid supervisor name.'
+    return { error: 'Invalid supervisor name.' }
   }
-  if (!activity || typeof activity !== 'string' || activity.length > 200) return 'Invalid activity.'
+  if (!activity || typeof activity !== 'string' || activity.length > 200) return { error: 'Invalid activity.' }
   const hoursNum = Number(hours)
-  if (!Number.isFinite(hoursNum) || hoursNum <= 0) return 'Invalid hours.'
-  return null
+  if (!Number.isFinite(hoursNum) || hoursNum <= 0) return { error: 'Invalid hours.' }
+  return { hours: hoursNum }
 }
 
 // Who the request is from is read off the session, so the body can't dress a
@@ -491,31 +492,43 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
   if (!hasDatabase()) return { token: null, statusToken: null, verifyUrl: null }
   const token = generateToken()
   const statusToken = generateToken()
+
+  // If this log was already synced to the server (the caller is
+  // authenticated and owns it), the record is linked to it so a parent's
+  // read-only view can see the outcome later. Never trust an unverified logId
+  // from the request body.
+  let linkedLogId = null
+  if (logId) {
+    try {
+      const { rows } = await query('SELECT 1 FROM logs WHERE id = $1 AND user_id = $2', [logId, req.auth.sub])
+      if (rows.length) linkedLogId = logId
+    } catch (error) {
+      console.error('Could not check verification log owner:', error)
+    }
+  }
+
   try {
+    // A new request for the same log replaces any link still outstanding —
+    // e.g. "Email it for me instead" after the student was handed one — so
+    // only the newest link can ever sign it off.
+    if (linkedLogId) {
+      await query(
+        `UPDATE supervisor_verifications SET status = 'superseded', responded_at = now()
+          WHERE log_id = $1 AND status = 'pending'`,
+        [linkedLogId],
+      )
+    }
     await query(
-      `INSERT INTO supervisor_verifications (id, token, status_token, student_user_id, student_name, student_email, supervisor_name, supervisor_email, activity, hours, delivery)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [uid('sv'), token, statusToken, req.auth.sub, student.name, student.email || null, supervisorName || null, supervisorEmail, activity, Number(hours), delivery],
+      `INSERT INTO supervisor_verifications (id, token, status_token, student_user_id, student_name, student_email, supervisor_name, supervisor_email, activity, hours, delivery, log_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [uid('sv'), token, statusToken, req.auth.sub, student.name, student.email || null, supervisorName || null, supervisorEmail, activity, hours, delivery, linkedLogId],
     )
+    if (linkedLogId) {
+      await query('UPDATE logs SET verification_token = $1, verification_status = $2 WHERE id = $3', [token, 'pending', linkedLogId])
+    }
   } catch (error) {
     console.error('Could not create supervisor verification record:', error)
     return { token: null, statusToken: null, verifyUrl: null }
-  }
-
-  // If this log was already synced to the server (the caller is
-  // authenticated and owns it), link the verification token onto that log
-  // row so a parent's read-only view can see the outcome later. Never trust
-  // an unverified logId from the request body.
-  if (logId) {
-    try {
-      const { rows: logRows } = await query('SELECT user_id FROM logs WHERE id = $1', [logId])
-      if (logRows.length && logRows[0].user_id === req.auth.sub) {
-        await query('UPDATE logs SET verification_token = $1, verification_status = $2 WHERE id = $3', [token, 'pending', logId])
-        await query('UPDATE supervisor_verifications SET log_id = $1 WHERE token = $2', [logId, token])
-      }
-    } catch (error) {
-      console.error('Could not link verification to log:', error)
-    }
   }
 
   const u = new URL(appUrl)
@@ -530,16 +543,10 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
 // The sender's identity comes from the session, never the body, and the
 // links in the message may only point at origins we serve.
 app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res) => {
-  const { supervisorEmail, supervisorName, hours, activity, signupUrl, logId } = req.body
-  const invalid = invalidVerificationRequest(req.body)
-  if (invalid) return res.status(400).json({ error: invalid })
-  const hoursNum = Number(hours)
-
-  const student = await requestingStudent(req)
-  const studentName = student.name
-
-  const appUrl = await resolveAppSignupUrl(signupUrl)
-  if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
+  const { supervisorEmail, supervisorName, activity, signupUrl, logId } = req.body
+  const parsed = parseVerificationRequest(req.body)
+  if (parsed.error) return res.status(400).json({ error: parsed.error })
+  const hoursNum = parsed.hours
 
   const { transport, missing } = transporter()
   if (!transport) {
@@ -548,6 +555,10 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
       missingVars: missing,
     })
   }
+
+  const [appUrl, student] = await Promise.all([resolveAppSignupUrl(signupUrl), requestingStudent(req)])
+  if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
+  const studentName = student.name
 
   const { statusToken, verifyUrl } = await createSupervisorVerification(req, {
     student, supervisorEmail, supervisorName, activity, hours: hoursNum, logId, appUrl, delivery: 'voluntrack',
@@ -603,16 +614,15 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
 // Approving while signed in as that student is still refused below.
 app.post('/api/verify-hours/link', emailLimiter, requireAuth(), async (req, res) => {
   if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
-  const { supervisorEmail, supervisorName, hours, activity, signupUrl, logId } = req.body
-  const invalid = invalidVerificationRequest(req.body)
-  if (invalid) return res.status(400).json({ error: invalid })
+  const { supervisorEmail, supervisorName, activity, signupUrl, logId } = req.body
+  const parsed = parseVerificationRequest(req.body)
+  if (parsed.error) return res.status(400).json({ error: parsed.error })
 
-  const appUrl = await resolveAppSignupUrl(signupUrl)
+  const [appUrl, student] = await Promise.all([resolveAppSignupUrl(signupUrl), requestingStudent(req)])
   if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
 
-  const student = await requestingStudent(req)
   const { statusToken, verifyUrl } = await createSupervisorVerification(req, {
-    student, supervisorEmail, supervisorName, activity, hours, logId, appUrl, delivery: 'student',
+    student, supervisorEmail, supervisorName, activity, hours: parsed.hours, logId, appUrl, delivery: 'student',
   })
   if (!verifyUrl) return res.status(500).json({ error: 'Could not create the signing link.' })
   return res.status(201).json({ statusToken, verifyUrl, studentName: student.name })
@@ -653,10 +663,8 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
     return res.status(400).json({ error: 'Invalid action.' })
   }
   // A rejection needs no signature — only an approval vouches for the work.
-  if (action === 'approve') {
-    if (!signature || typeof signature !== 'string' || signature.length > 200_000) {
-      return res.status(400).json({ error: 'A signature is required to approve these hours.' })
-    }
+  if (action === 'approve' && !isSignatureImage(signature)) {
+    return res.status(400).json({ error: 'A signature is required to approve these hours.' })
   }
   try {
     // Deliberately matches on `token` alone: the student's status token is
@@ -675,8 +683,8 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
 
     // Idempotent: the first response wins, further clicks/reopens don't change
     // it. 'superseded' lands here too — the task organizer resolved this log
-    // from the school dashboard while this link was still outstanding, so the
-    // link is spent and must not overwrite their decision.
+    // while this link was still outstanding, or a newer link replaced it — so
+    // the link is spent and must not overwrite that.
     if (rows[0].status !== 'pending') {
       return res.json({ status: rows[0].status })
     }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, XCircle, Loader2, Instagram } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
+import PublicHeader from '@/components/PublicHeader.jsx'
 import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
@@ -138,17 +139,11 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen page-shell">
-      <header className="px-4 md:px-8 py-5 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="VolunTrack" className="w-9 h-9 object-contain" />
-          <span className="font-display font-bold text-lg">VolunTrack</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link to="/" className="btn-ghost hidden sm:inline-flex">Home</Link>
-          <Link to="/help" className="btn-ghost hidden sm:inline-flex">Help</Link>
-          <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
-        </div>
-      </header>
+      <PublicHeader>
+        <Link to="/" className="btn-ghost hidden sm:inline-flex">Home</Link>
+        <Link to="/help" className="btn-ghost hidden sm:inline-flex">Help</Link>
+        <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
+      </PublicHeader>
 
       <main className="max-w-4xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Contact us</h1>
