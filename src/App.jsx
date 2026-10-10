@@ -14,6 +14,7 @@ import { isNativeApp } from '@/lib/platform.js'
 // so the initial route renders without an extra chunk round-trip. Every other
 // route is code-split since only one is ever active at a time.
 import About from '@/pages/About.jsx'
+import AppLock from '@/components/AppLock.jsx'
 const AppWelcome = lazy(() => import('@/pages/AppWelcome.jsx'))
 const Login = lazy(() => import('@/pages/Login.jsx'))
 const Register = lazy(() => import('@/pages/Register.jsx'))
@@ -149,15 +150,19 @@ function Shell() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <DataProvider>
-          <Shell />
-          {/* Vercel Analytics counts website visits; inside the apps its
-              script isn't served, and the stores' privacy forms are simpler
-              with nothing collected. */}
-          {!isNativeApp && <Analytics />}
-        </DataProvider>
-      </AuthProvider>
+      {/* Apps only: a kept session is restored behind Face ID / fingerprint /
+          passcode before anything signed-in renders. */}
+      <AppLock>
+        <AuthProvider>
+          <DataProvider>
+            <Shell />
+            {/* Vercel Analytics counts website visits; inside the apps its
+                script isn't served, and the stores' privacy forms are simpler
+                with nothing collected. */}
+            {!isNativeApp && <Analytics />}
+          </DataProvider>
+        </AuthProvider>
+      </AppLock>
     </ErrorBoundary>
   )
 }

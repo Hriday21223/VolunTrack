@@ -11,6 +11,7 @@ import Toast from '@/components/Toast.jsx'
 import QRCode from 'qrcode'
 import { format, parseISO } from 'date-fns'
 import { isNativeApp } from '@/lib/platform.js'
+import PasskeySettings from '@/components/PasskeySettings.jsx'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -33,7 +34,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
-  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp } = useAuth()
+  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp, verifyPasskey } = useAuth()
   const { goals, saveGoal, removeGoal } = useData()
   const nav = useNavigate()
   const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, deadline: '', primary: false })
@@ -52,6 +53,7 @@ export default function Settings() {
   // Set when linking hits an account with 2FA on: the password alone no longer
   // buys a session, so the PIN isn't written until the code checks out either.
   const [syncTotpTempToken, setSyncTotpTempToken] = useState('')
+  const [syncTotpMethods, setSyncTotpMethods] = useState(['totp'])
   const [syncTotpCode, setSyncTotpCode] = useState('')
   const [schoolCode, setSchoolCode] = useState('')
   const [schoolName, setSchoolName] = useState('')
@@ -486,6 +488,7 @@ export default function Settings() {
       // until the second factor is verified. Finish in confirmSyncTotp().
       if (data.requiresTotp) {
         setSyncTotpTempToken(data.tempToken)
+        setSyncTotpMethods(data.methods || ['totp'])
         setSyncPassword('')
         return
       }
@@ -507,11 +510,12 @@ export default function Settings() {
   // Second half of the linking flow for 2FA accounts: the TOTP challenge
   // issues the session, and the PIN is then written through the ordinary
   // authenticated PUT /api/auth/sync-pin.
-  const confirmSyncTotp = async () => {
-    if (!syncTotpCode.trim()) return
+  const confirmSyncTotp = async ({ passkey = false } = {}) => {
+    if (!passkey && !syncTotpCode.trim()) return
     setSyncPasswordBusy(true)
     try {
-      await verifyTotp(syncTotpTempToken, syncTotpCode.trim())
+      if (passkey) await verifyPasskey(syncTotpTempToken)
+      else await verifyTotp(syncTotpTempToken, syncTotpCode.trim())
       await setSyncPinAuth(displaySyncPin)
       setSyncTotpTempToken('')
       setSyncTotpCode('')
@@ -735,6 +739,9 @@ export default function Settings() {
             )}
           </Card>
 
+          {/* Server accounts only; a school-SSO account's second factor is its school's. */}
+          {localStorage.getItem('voluntrack:auth_token') && !isSsoAccount && <PasskeySettings />}
+
           <Card>
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-brand-600" />
@@ -810,12 +817,21 @@ export default function Settings() {
                   />
                 </div>
                 <button
-                  onClick={confirmSyncTotp}
+                  onClick={() => confirmSyncTotp()}
                   disabled={syncTotpCode.length !== 6 || syncPasswordBusy}
                   className="btn-primary w-full"
                 >
                   {syncPasswordBusy ? 'Verifying…' : 'Verify & generate PIN'}
                 </button>
+                {syncTotpMethods.includes('passkey') && (
+                  <button
+                    onClick={() => confirmSyncTotp({ passkey: true })}
+                    disabled={syncPasswordBusy}
+                    className="btn-secondary w-full"
+                  >
+                    Use a passkey instead
+                  </button>
+                )}
                 <button
                   onClick={() => { setShowSyncPasswordPrompt(false); setSyncTotpTempToken(''); setSyncTotpCode('') }}
                   className="btn-ghost w-full text-sm"

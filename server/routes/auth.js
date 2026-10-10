@@ -12,6 +12,7 @@ import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail } from '../email.js'
+import { hasPasskeys } from '../passkeys.js'
 
 const router = express.Router()
 
@@ -160,6 +161,18 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
   }
 })
 
+// The second step an account owes after its password, or null if none.
+// `methods` lists what it can answer with; `requiresTotp` stays true for any
+// second factor so a client from before passkeys still stops at a 2FA step
+// rather than treating the response as a failed sign-in.
+async function secondFactorChallenge(row) {
+  const methods = []
+  if (row.totp_enabled) methods.push('totp')
+  if (await hasPasskeys(row.id)) methods.push('passkey')
+  if (methods.length === 0) return null
+  return { requiresTotp: true, methods, tempToken: signTempToken(publicUser(row)) }
+}
+
 router.post('/login', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')
@@ -204,9 +217,8 @@ router.post('/login', authLimiter, requireDb, verifyTurnstile(), async (req, res
     }
 
     const user = publicUser(row)
-    if (row.totp_enabled) {
-      return res.json({ requiresTotp: true, tempToken: signTempToken(user) })
-    }
+    const secondFactor = await secondFactorChallenge(row)
+    if (secondFactor) return res.json(secondFactor)
 
     // Privileged roles must have TOTP. SSO accounts are exempt: they hold no
     // VolunTrack password, so MFA belongs to their school's IdP, and an
@@ -336,11 +348,9 @@ router.put('/sync-pin', requireDb, requireAuth(), async (req, res) => {
 // have to respect the same second-factor gates — otherwise TOTP (and the
 // mandatory-MFA requirement for privileged roles) is simply routed around.
 // Returns a response body to send instead of a session, or null to proceed.
-function secondFactorGate(row) {
-  const user = publicUser(row)
-  if (row.totp_enabled) {
-    return { status: 200, body: { requiresTotp: true, tempToken: signTempToken(user) } }
-  }
+async function secondFactorGate(row) {
+  const secondFactor = await secondFactorChallenge(row)
+  if (secondFactor) return { status: 200, body: secondFactor }
   // Past its enrolment deadline, a privileged account gets no session at all.
   // /login hands back an enrolment token for its setup flow; these routes have
   // no such flow, so they send the user to the normal sign-in page instead.
@@ -375,7 +385,7 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
     // Gate before the PIN is written: a PIN set on a password alone would be
     // a standing second-factor bypass for POST /sync-login. The client
     // finishes the TOTP challenge and then sets the PIN via PUT /sync-pin.
-    const gate = secondFactorGate(rows[0])
+    const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
 
     const existing = await query('SELECT 1 FROM users WHERE sync_pin = $1 AND id != $2', [syncPin, rows[0].id])
@@ -413,7 +423,7 @@ router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req
     // factor is still outstanding, since the PIN has now been spent.
     await query('UPDATE users SET sync_pin = NULL WHERE id = $1', [rows[0].id])
 
-    const gate = secondFactorGate(rows[0])
+    const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
 
     return res.json({ token: signToken(user), user })
@@ -444,7 +454,10 @@ router.post('/grant-admin', authLimiter, requireDb, requireAuth(), async (req, r
 // TOTP Two-Factor Authentication
 // ---------------------------------------------------------------------------
 
-function generateBackupCodes(count = 10) {
+// Shared with server/routes/passkeys.js: a passkey stands where a TOTP code
+// does, so an account whose only second factor is a passkey gets the same
+// codes to fall back on when that device is lost.
+export function generateBackupCodes(count = 10) {
   const codes = []
   for (let i = 0; i < count; i++) {
     codes.push(crypto.randomBytes(4).toString('hex'))
@@ -452,7 +465,7 @@ function generateBackupCodes(count = 10) {
   return codes
 }
 
-async function hashBackupCodes(codes) {
+export async function hashBackupCodes(codes) {
   const hashed = []
   for (const code of codes) {
     hashed.push(await bcrypt.hash(code, 10))
@@ -647,14 +660,18 @@ router.post('/totp/disable', authLimiter, requireDb, requireAuth(), async (req, 
     // not silently exempt it forever. A short window, since this account was
     // already enrolled and is choosing to step back.
     const rearm = mfaRequiredForRole(row.role) && row.auth_provider !== 'sso'
+    // The backup codes stay while a passkey is still a second factor —
+    // they're its only way back in if that device is lost.
+    const keepCodes = await hasPasskeys(row.id)
     await query(
       `UPDATE users
-          SET totp_enabled = false, totp_secret = NULL, backup_codes = NULL,
+          SET totp_enabled = false, totp_secret = NULL,
+              backup_codes = CASE WHEN $3 THEN backup_codes ELSE NULL END,
               mfa_required_at = CASE WHEN $2 THEN now() + interval '7 days' ELSE NULL END
         WHERE id = $1`,
-      [req.auth.sub, rearm],
+      [req.auth.sub, rearm, keepCodes],
     )
-    const updated = { ...row, totp_enabled: false, totp_secret: null, backup_codes: null }
+    const updated = { ...row, totp_enabled: false, totp_secret: null, backup_codes: keepCodes ? row.backup_codes : null }
     return res.json({ ok: true, user: publicUser(updated) })
   } catch (error) {
     console.error('totp disable failed:', error)
@@ -685,7 +702,9 @@ router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) =>
     if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
     const row = rows[0]
 
-    if (!row.totp_enabled || !row.backup_codes) {
+    // Codes back up whichever second factor the account has — an
+    // authenticator app or a passkey.
+    if (!row.backup_codes || !(row.totp_enabled || await hasPasskeys(row.id))) {
       return res.status(400).json({ error: '2FA is not enabled on this account.' })
     }
 

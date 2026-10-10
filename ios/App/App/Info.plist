@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>VolunTrack uses the camera to scan a sign-in QR code and to photograph proof of your volunteer hours.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>VolunTrack uses Face ID to unlock the app when you choose to stay signed in, and to confirm your passkey when you sign in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>VolunTrack uses your location, only when you tap Use current location, to fill in where you volunteered.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

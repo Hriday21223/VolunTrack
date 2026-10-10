@@ -8,14 +8,19 @@ import {
   findUserBySyncPin, updateSyncPin,
 } from '@/api/index.js'
 import { syncPullLogs } from '@/lib/logSync.js'
-import { syncNativeReminders } from '@/lib/nativeReminders.js'
+import { syncKeptSession } from '@/lib/appSession.js'
+import { signInWithPasskey } from '@/lib/passkey.js'
 
 const AuthContext = createContext(null)
 
-const SESSION_KEY = `${keys.user}::session`
+export const SESSION_KEY = `${keys.user}::session`
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => read(SESSION_KEY, null))
+
+  // Apps only: keep the Keychain/Keystore copy behind "Keep me signed in" in
+  // step with who is signed in — saved, refreshed, or removed on sign-out.
+  useEffect(() => { syncKeptSession(user) }, [user])
 
   // Keep the session in sync across tabs.
   useEffect(() => {
@@ -80,9 +85,10 @@ export function AuthProvider({ children }) {
 
       const data = await response.json()
 
-      // 2FA required — return temp token for the TOTP challenge step
+      // 2FA required — return the temp token and which second steps the
+      // account can answer with (a TOTP code, a passkey, or either).
       if (data.requiresTotp) {
-        return { requiresTotp: true, tempToken: data.tempToken }
+        return { requiresTotp: true, tempToken: data.tempToken, methods: data.methods || ['totp'] }
       }
 
       // Privileged account past its MFA deadline. There is deliberately no
@@ -134,6 +140,15 @@ export function AuthProvider({ children }) {
       throw new Error(err.error || 'Invalid code')
     }
     const data = await response.json()
+    localStorage.setItem('voluntrack:auth_token', data.token)
+    await syncPullLogs(data.user.id)
+    write(SESSION_KEY, data.user)
+    setUser(data.user)
+    return data.user
+  }, [])
+
+  const verifyPasskey = useCallback(async (tempToken) => {
+    const data = await signInWithPasskey(tempToken)
     localStorage.setItem('voluntrack:auth_token', data.token)
     await syncPullLogs(data.user.id)
     write(SESSION_KEY, data.user)
@@ -260,9 +275,10 @@ export function AuthProvider({ children }) {
       const data = await response.json()
 
       // 2FA required — the PIN has already been spent server-side; the caller
-      // finishes with verifyTotp(tempToken, code, { pullLogs: true }).
+      // finishes with verifyTotp(tempToken, code) — or
+      // verifyPasskey when `methods` includes 'passkey'.
       if (data.requiresTotp) {
-        return { requiresTotp: true, tempToken: data.tempToken }
+        return { requiresTotp: true, tempToken: data.tempToken, methods: data.methods || ['totp'] }
       }
 
       // Store the token for future authenticated requests
@@ -541,7 +557,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, login, verifyTotp, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
+    <AuthContext.Provider value={{ user, login, verifyTotp, verifyPasskey, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
       {children}
     </AuthContext.Provider>
   )
