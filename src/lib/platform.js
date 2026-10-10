@@ -6,6 +6,12 @@ import { Capacitor } from '@capacitor/core'
 // web page — the website must render exactly as it did without it.
 export const isNativeApp = Capacitor.isNativePlatform()
 
+// True when the device has a touchscreen to sign or draw on. `any-pointer`,
+// not `pointer`: an iPad with a Magic Keyboard reports its trackpad as the
+// primary pointer, but the screen still takes a finger.
+export const isTouchDevice = isNativeApp ||
+  (typeof window !== 'undefined' && !!window.matchMedia?.('(any-pointer: coarse)').matches)
+
 // Called once at boot, before React renders. Marks <html> so CSS can scope
 // app-only rules under `.native-app`, and turns off pinch-zoom, which a web
 // page needs for accessibility but an app's fixed-size UI does not.
