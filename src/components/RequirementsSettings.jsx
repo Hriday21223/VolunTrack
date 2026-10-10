@@ -387,8 +387,13 @@ function SignaturesEditor({ value, onChange }) {
   const url = (value.formUrl || '').trim()
   const embed = url ? googleFormEmbedUrl(url) : null
   // Two Google Form links that look right but can't be filled in by a student.
-  const editorLink = /docs\.google\.com\/forms\/d\/(?!e\/)/.test(url)
-  const shortLink = /^https?:\/\/forms\.gle\//.test(url)
+  // Judged on the parsed host and path, not a pattern over the whole string,
+  // so "docs.google.com/forms/d/" inside some other site's URL doesn't count.
+  let parsed = null
+  try { parsed = new URL(url) } catch { /* not a URL yet — still typing */ }
+  const editorLink = parsed?.hostname === 'docs.google.com'
+    && parsed.pathname.startsWith('/forms/d/') && !parsed.pathname.startsWith('/forms/d/e/')
+  const shortLink = parsed?.hostname === 'forms.gle'
   return (
     <>
       <div>

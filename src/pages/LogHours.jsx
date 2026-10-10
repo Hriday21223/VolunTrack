@@ -375,7 +375,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                 >
                   <option value="">Not linked to a task</option>
                   {myTasks.map((t) => (
-                    <option key={t.id} value={t.id}>{t.title}{t.date ? ` — ${t.date}` : ''}</option>
+                    <option key={t.id} value={t.id}>{t.title}{t.date ? ` — ${new Date(t.date).toLocaleDateString()}` : ''}</option>
                   ))}
                 </select>
                 <p className="text-xs text-earth-400 mt-1">
