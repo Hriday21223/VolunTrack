@@ -122,7 +122,6 @@ export default function Sidebar() {
           {STORAGE_NOTE[role] || DEFAULT_STORAGE_NOTE}
         </div>
         <div className="mt-4 flex gap-3">
-          <Link to="/about" className="text-earth-300 hover:text-white">About</Link>
           <Link to="/contact" className="text-earth-300 hover:text-white">Contact</Link>
           <Link to="/status" className="text-earth-300 hover:text-white">System Status</Link>
         </div>

@@ -144,7 +144,7 @@ export default function Contact() {
           <span className="font-display font-bold text-lg">VolunTrack</span>
         </Link>
         <div className="flex items-center gap-2">
-          <Link to="/about" className="btn-ghost hidden sm:inline-flex">About</Link>
+          <Link to="/" className="btn-ghost hidden sm:inline-flex">Home</Link>
           <Link to="/help" className="btn-ghost hidden sm:inline-flex">Help</Link>
           <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
         </div>
