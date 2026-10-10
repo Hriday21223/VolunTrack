@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { resolvePolicy, validateLogAgainstPolicy, goalHoursFor, signatureNeeds } from '@policy'
 
 export { validateLogAgainstPolicy, goalHoursFor, signatureNeeds }
-export { SIGNATURE_MODES, SIGNERS, googleFormEmbedUrl } from '@policy'
+export { SIGNATURE_MODES, SIGNERS, classifyFormUrl } from '@policy'
 export { SCHOOL_GRADES, gradeKey, gradeLabel, gradeName, gradeOptionLabel } from '@policy'
 export { CUSTOM_FIELD_TYPES, SECTIONS, DEFAULTS, normalizePolicy } from '@policy'
 
@@ -61,21 +61,29 @@ export function useMyRequirements() {
  * Once a school or org does define logRules, that policy is the answer,
  * including switching one of these off: a tenant that says proof is optional
  * has said so deliberately.
+ *
+ * A signatures rule adds to these, depending on the entry: a supervisor who
+ * signs needs a name, and an email to get the signing link — unless they sign
+ * right here on the device (`signsInPerson`), or the entry is on a VolunTrack
+ * task (`taskLinked`), whose organizer signs it off in the app. The server's
+ * validateLogAgainstPolicy waives the same fields for the same entries.
  */
-export function formFieldRequirements({ policy, sources }) {
+export function formFieldRequirements({ policy, sources }, { taskLinked = false, signsInPerson = false } = {}) {
   const configured = sources?.logRules === 'school' || sources?.logRules === 'organization'
   const rules = policy?.logRules || {}
-  // A signatures rule can demand a supervisor (they sign on the emailed link)
-  // or an upload (the signed form) whatever logRules says.
   const needs = signatureNeeds(policy)
-  if (!configured) {
-    return { locationRequired: true, supervisorRequired: true, proofRequired: true, orgNameRequired: false }
-  }
+  // The school's own rules ask for a supervisor on every entry — or, with no
+  // rules of its own, the form's long-standing default does.
+  const supervisorByRule = !configured || Boolean(rules.supervisorRequired)
+  const signerWaived = needs.supervisorSignature && (taskLinked || signsInPerson)
   return {
-    locationRequired: Boolean(rules.locationRequired),
-    supervisorRequired: Boolean(rules.supervisorRequired) || needs.supervisorSignature,
-    proofRequired: Boolean(rules.proofRequired) || needs.signedFormUpload,
-    orgNameRequired: Boolean(rules.orgNameRequired),
+    locationRequired: !configured || Boolean(rules.locationRequired),
+    supervisorNameRequired: supervisorByRule || (needs.supervisorSignature && !taskLinked),
+    supervisorEmailRequired: (configured && Boolean(rules.supervisorRequired))
+      || (supervisorByRule && !signerWaived)
+      || (needs.supervisorSignature && !signerWaived),
+    proofRequired: !configured || Boolean(rules.proofRequired) || needs.signedFormUpload,
+    orgNameRequired: configured && Boolean(rules.orgNameRequired),
   }
 }
 

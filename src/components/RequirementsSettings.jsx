@@ -13,7 +13,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import {
-  DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, googleFormEmbedUrl,
+  DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, classifyFormUrl,
   fetchSchoolRequirements, saveSchoolRequirements,
   fetchOrgRequirements, saveOrgRequirements,
   gradeKey, gradeLabel,
@@ -384,16 +384,7 @@ const SIGNER_OPTIONS = [
 ]
 
 function SignaturesEditor({ value, onChange }) {
-  const url = (value.formUrl || '').trim()
-  const embed = url ? googleFormEmbedUrl(url) : null
-  // Two Google Form links that look right but can't be filled in by a student.
-  // Judged on the parsed host and path, not a pattern over the whole string,
-  // so "docs.google.com/forms/d/" inside some other site's URL doesn't count.
-  let parsed = null
-  try { parsed = new URL(url) } catch { /* not a URL yet — still typing */ }
-  const editorLink = parsed?.hostname === 'docs.google.com'
-    && parsed.pathname.startsWith('/forms/d/') && !parsed.pathname.startsWith('/forms/d/e/')
-  const shortLink = parsed?.hostname === 'forms.gle'
+  const linkKind = classifyFormUrl((value.formUrl || '').trim())?.kind
   return (
     <>
       <div>
@@ -453,16 +444,16 @@ function SignaturesEditor({ value, onChange }) {
             placeholder="https://docs.google.com/forms/d/e/…/viewform"
           />
           <p className="text-xs text-earth-400 mt-1">
-            {embed
+            {linkKind === 'embed'
               ? 'Google Form — students fill it in right on the Log Hours page, then tick a box to say they sent it.'
               : 'A Google Form opens right on the Log Hours page. Any other link (a PDF, a doc) is something students download, get signed, and upload. Leave blank if they get the form in class.'}
           </p>
-          {editorLink && (
+          {linkKind === 'editor' && (
             <p className="text-xs text-amber-500 mt-1">
               This looks like the link for editing the form. Use Send → link in Google Forms instead, so students can fill it in.
             </p>
           )}
-          {shortLink && (
+          {linkKind === 'short' && (
             <p className="text-xs text-amber-500 mt-1">
               Short forms.gle links can’t open inside VolunTrack. Paste the full docs.google.com link to keep students on the page.
             </p>

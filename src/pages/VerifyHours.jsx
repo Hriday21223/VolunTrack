@@ -9,9 +9,6 @@ import { isTouchDevice } from '@/lib/platform.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
-// A signature drawn with a mouse or trackpad comes out scrawled, so on a
-// device without a touchscreen we offer to hand signing off to a phone.
-
 // How often the laptop checks whether the phone has signed, and when it gives
 // up — a forgotten tab shouldn't poll forever.
 const HANDOFF_POLL_MS = 3000
@@ -184,14 +181,16 @@ export default function VerifyHours() {
   )
 }
 
-// The QR carries the same link the supervisor's email did — it grants nothing
-// they didn't already hold — plus `sign=1` so the phone opens on the pad.
 // Supervisors arrive from an email and have nothing left to do once they've
 // answered — say so, rather than leave them looking for a next step.
 function CloseTabNote() {
   return <p className="text-xs text-earth-400 mt-4">You may close this tab.</p>
 }
 
+// A signature drawn with a mouse or trackpad comes out scrawled, so on a
+// device without a touchscreen (isTouchDevice) we offer to hand signing off to
+// a phone. The QR carries the same link the supervisor's email did — it grants
+// nothing they didn't already hold — plus `sign=1` so the phone opens on the pad.
 function PhoneHandoff({ token, onClose }) {
   const canvasRef = useRef(null)
   useEffect(() => {
@@ -244,8 +243,8 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
       </div>
     )
   }
-  // The organizer resolved these hours from the school dashboard before this
-  // link was used. Without this branch the page would fall through to the
+  // These hours were resolved before this link was used: the task organizer
+  // reviewed them, or the student asked again with a newer link. Without this branch the page would fall through to the
   // review form and invite a decision that the server will refuse.
   if (data.status === 'superseded') {
     return (
@@ -253,12 +252,12 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <ShieldCheck className="w-12 h-12 text-earth-400 mx-auto mb-3" />
         <h1 className="text-xl font-bold">Already reviewed</h1>
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">
-          The {data.hours} hour(s) {data.studentName} logged for &quot;{data.activity}&quot; were
-          already reviewed by the organizer running this activity, so there is nothing left
-          for you to confirm.
+          This link for the {data.hours} hour(s) {data.studentName} logged for &quot;{data.activity}&quot;
+          is no longer active — the organizer running this activity already reviewed them, or{' '}
+          {data.studentName} sent you a newer link.
         </p>
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-3">
-          No action is needed. If that looks wrong, contact the school directly.
+          If you have a newer email or message from them, use the link in that one. Otherwise, no action is needed.
         </p>
         <CloseTabNote />
       </div>
