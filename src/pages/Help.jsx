@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal, Download } from 'lucide-react'
+import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal, Download, FileSignature } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
@@ -20,15 +20,16 @@ const TABS = [
 // injected via useSeo() — so an AI answer engine can cite these verbatim and
 // the page never drifts from its schema.
 const FAQ_ITEMS = [
-  { q: 'Is my data private?', a: 'Yes. By default your volunteer logs, goals, and profile are stored in your browser\'s local storage and never leave your device. If you create a server account, your data is stored in a secure database and protected by password authentication, optional two-factor authentication, and an optional app unlock PIN. We never sell or share your data.' },
+  { q: 'Is my data private?', a: 'Yes. Without an account, your volunteer logs, goals, and profile stay in your browser\'s local storage and never leave your device. With an account, your hours are stored in a secure database, protected by your password, optional two-factor authentication, and an optional app unlock PIN, and visible only to you, your school, and parents you invite. Signature drawings stay on your device — the server only records that an entry was signed. We never sell your data or show ads.' },
   { q: 'Can I use VolunTrack without an account?', a: 'Yes. The app works entirely in your browser using local storage — no account is needed to log hours, set goals, or earn badges. You won\'t have cross-device sync, school integration, or cloud backup.' },
-  { q: 'How does supervisor verification work?', a: 'When you log hours, add your supervisor\'s email. They get a one-time link to approve or reject those specific hours — no account needed. Approving asks them to sign; rejecting skips that step. Each log then shows a status: Pending, Verified, or Rejected. Verified hours are the ones your school and linked parents can rely on.' },
+  { q: 'How does supervisor verification work?', a: 'When you log hours, add your supervisor\'s email and they get a one-time link to approve or reject those specific hours — no account needed. Approving asks them to sign; rejecting skips that step. If your school requires signatures, Log Hours asks whether the person signing is next to you: if yes, they sign on your device; if not, you get a ready-made email with the signing link to send yourself (or have VolunTrack send it). On a laptop, they can scan a QR code and sign on their phone. Hours on an Opportunities task are signed off by the organizer from their own account instead. Each log then shows Pending, Approved, or Rejected.' },
   { q: 'How do I let a parent see my hours?', a: 'In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. They\'ll only see hours logged from that point onward, and they can\'t change anything. Linked parents also get a weekly progress email, which they can unsubscribe from at any time from a link in the email.' },
   { q: 'What\'s the difference between a school account and an organization account?', a: 'A school account manages one school\'s students, report reviews, announcements, and co-admins. An organization account sits above multiple schools: it adds them and tracks their setup and payment status, but each school still runs its own dashboard.' },
   { q: 'Can more than one person manage a school account?', a: 'Yes. The primary school account can add up to 10 co-admins from School setup \u2192 Co-admins, entering each person\'s name, email, and a temporary password they change after signing in. Co-admins share the dashboard \u2014 reviewing reports, managing students, and sending announcements \u2014 but don\'t get the School setup tab, so they can\'t add or remove other co-admins, change the school code, configure sign-in, or handle billing.' },
   { q: 'Who sets the price for a school or organization account?', a: 'The VolunTrack admin, based on your size and how you\'ll use it. You\'ll get a quote with your invite, and invoices arrive by email with a downloadable PDF.' },
   { q: 'How do I join a school?', a: 'Ask your school administrator for their school code. Go to Settings → Join school and enter it — your account links immediately. A school can also add you directly by email.' },
-  { q: 'Where can I find volunteer opportunities?', a: 'Open the Opportunities page. It lists public tasks posted by schools and organizations, sorted by distance if you allow location access. Sign up in one click; once the organizer approves you and marks you present, you can log those hours straight from the task.' },
+  { q: 'Where can I find volunteer opportunities?', a: 'Open the Opportunities page. It lists public tasks posted by schools and organizations, sorted by distance if you allow location access. Sign up in one click; once the organizer approves you, pick the task when you log your hours and the organizer signs them off on their My Tasks page.' },
+  { q: 'My school requires signatures — what do I do?', a: 'Log Hours shows a Signatures section with exactly what your school asks for: your own signature, your supervisor\'s (in person or by a link you email), or your school\'s form. If it\'s a Google Form, fill it in right on the page and tick the box; for any other form, download it, get it signed, and upload a photo or scan.' },
   { q: 'Can I log hours for a past date?', a: 'Yes. Set any past date when you add the entry — there\'s no cutoff. If you tend to forget, the Reminders page lets you schedule recurring nudges, delivered as browser notifications and in-app toasts.' },
   { q: 'How do I sync across devices?', a: 'Create a server account (register with email + password). On your first device, go to Settings → sync PIN → Generate PIN. On your second device, go to the login page → Use sync PIN → enter the 5-digit code, or scan the QR code instead of typing it. Your data syncs automatically.' },
   { q: 'What\'s the app unlock PIN?', a: 'An optional PIN, set in Settings, that locks the app on your device. It\'s separate from your password and from 2FA — it just stops someone casually opening the app on an unlocked phone.' },
@@ -39,7 +40,7 @@ const FAQ_ITEMS = [
   { q: 'How do I change my password?', a: 'Go to Settings → Change password. Enter your current password and a new one (at least 8 characters for server accounts). Click \'Update password.\'' },
   { q: 'What categories can I use when logging hours?', a: 'Education, Environment, Health, Community, Animals, Arts, Sports, Technology, Religion, and Other. Pick the one that best fits your activity.' },
   { q: 'How do volunteer badges work?', a: 'You earn badges automatically as you log hours. Milestones include your first log, 10, 25, 50, 100, and 200 hours, plus weekly streaks. Check the Achievements page to see your progress.' },
-  { q: 'Is there a mobile app?', a: 'There\'s no separate app to install from a store. VolunTrack is a Progressive Web App (PWA) — open it in your phone\'s browser and tap \'Add to Home Screen\' to install it like a native app. It works offline after the first visit, and anything that needs the server catches up once you\'re back online.' },
+  { q: 'Is there a mobile app?', a: 'Android and iPhone apps are on their way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App (PWA) — open it in your phone\'s browser and tap \'Add to Home Screen\' to install it like an app. It works offline after the first visit, and anything that needs the server catches up once you\'re back online.' },
   { q: 'I have a bug or feature request.', a: 'Visit the Contact page to send us a message, or open an issue on GitHub: https://github.com/Hriday21223/VolunTrack/issues' },
 ]
 
@@ -164,12 +165,22 @@ function StudentHandbook() {
       </Section>
 
       <Section title="Supervisor Verification">
-        <p>When you add a supervisor's email to a log entry, that person gets a one-time email link to approve or reject those specific hours — no account needed on their end.</p>
+        <p>When you add a supervisor's email to a log entry, that person gets a one-time email link to approve or reject those specific hours — no account needed on their end. Approving asks them to sign. On a laptop, they can tap <strong>Sign on your phone or iPad instead</strong> and scan a QR code to sign with a finger.</p>
         <p className="mt-2">Each log then shows a status badge:</p>
         <div className="mt-3 space-y-2">
           <Step icon={Clock} label="Pending" description="The request has been sent and is waiting on your supervisor." />
-          <Step icon={CheckCircle} label="Verified" description="Your supervisor confirmed the hours. These are the hours schools and parents can rely on." />
+          <Step icon={CheckCircle} label="Approved" description="Your supervisor confirmed the hours. These are the hours schools and parents can rely on." />
           <Step icon={XCircle} label="Rejected" description="Your supervisor declined. Check the details with them and re-log if needed." />
+        </div>
+      </Section>
+
+      <Section title="When Your School Requires Signatures">
+        <p>Some schools require every entry to be signed, or to come with their own form. Log Hours then shows a <strong>Signatures</strong> section telling you exactly what's needed:</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={FileSignature} label="Your signature" description="Sign in the box before you save." />
+          <Step icon={UserCheck} label="Supervisor next to you?" description="Yes — hand them your device to sign. No — after saving you get a ready-made email with the signing link to send them (or let VolunTrack send it)." />
+          <Step icon={Hand} label="Opportunities task" description="Pick the task, and the organizer signs it off on their My Tasks page. Nothing to send." />
+          <Step icon={FileText} label="School form" description="A Google Form opens right on the page — fill it in and tick the box. Any other form: download, sign, and upload a photo or scan." />
         </div>
       </Section>
 
@@ -186,7 +197,7 @@ function StudentHandbook() {
       </Section>
 
       <Section title="Volunteer Opportunities">
-        <p>Click the <strong>Volunteer</strong> button on your dashboard to browse open volunteer tasks sorted by distance. Tasks near you appear first. You can sign up, and once the organizer approves you, their phone number is revealed so you can coordinate.</p>
+        <p>Click the <strong>Volunteer</strong> button on your dashboard to browse open volunteer tasks sorted by distance. Tasks near you appear first. You can sign up, and once the organizer approves you, their phone number is revealed so you can coordinate. When you log the hours, link them to the task and the organizer signs them off.</p>
         <p className="mt-2">You can also post your own tasks from the <Link to="/my-tasks" className="text-brand-400 hover:underline">My Tasks</Link> page.</p>
       </Section>
 
@@ -262,7 +273,7 @@ function VolunteerHandbook() {
   return (
     <div>
       <HandbookIntro title="Volunteer Task Maker Handbook">
-        Post volunteer opportunities, manage signups, log hours for your team, and track tasks by location.
+        Post volunteer opportunities, manage signups, sign off your volunteers' hours, and track tasks by location.
       </HandbookIntro>
 
       <Section title="Getting Started">
@@ -293,8 +304,17 @@ function VolunteerHandbook() {
         </div>
       </Section>
 
-      <Section title="Phone Number Privacy">
-        <p>Your phone number is <strong>never shown publicly</strong>. It's only visible to you and to volunteers you specifically approve.</p>
+      <Section title="Signing Off Volunteers' Hours">
+        <p>When a volunteer logs hours and links them to your task, the entry appears under <strong>My students</strong> on My Tasks.</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={FileSignature} label="Sign & approve" description="Opens a signature box — sign, then Confirm approval. Your signature is saved with the entry." />
+          <Step icon={XCircle} label="Reject" description="Declines the hours. No signature needed." />
+        </div>
+        <p className="mt-3">If the volunteer changes the date, hours, or activity afterward, your approval is cleared and they'll need it signed again.</p>
+      </Section>
+
+      <Section title="Contact Details Privacy">
+        <p>Your phone number is <strong>never shown publicly</strong>. It's only visible to you and to volunteers you specifically approve. Your email is never shown publicly either — it's only filled in as the supervisor on Log Hours for volunteers you've approved.</p>
       </Section>
     </div>
   )
@@ -333,6 +353,17 @@ function SchoolHandbook() {
           <Step icon={Mail} label="Student sees status" description="They can check their submission status on their own Reports page." />
         </div>
         <p className="mt-3">Schools can also upload their own verification documents from the same tab.</p>
+      </Section>
+
+      <Section title="Requirements & Signatures">
+        <p>In <strong>School setup → Requirements</strong>, decide how your students must log hours. Each section either follows your organization (or VolunTrack's defaults) or uses your own rules:</p>
+        <div className="mt-3 space-y-2">
+          <Step icon={ClipboardList} label="Hour-entry rules" description="Require proof, a supervisor, a location, or the organization; set hour limits, how far back entries can be dated, and allowed categories." />
+          <Step icon={HelpCircle} label="Extra questions" description="Add your own questions to the bottom of the Log Hours form." />
+          <Step icon={Trophy} label="Service-hour requirement" description="The total each student works toward, with per-grade overrides and a deadline." />
+          <Step icon={FileSignature} label="Signatures" description="No signature, a signature from the supervisor, the student, or both — or your own form. Paste a Google Form link and students fill it in without leaving VolunTrack; any other link is a form they download, sign, and upload." />
+        </div>
+        <p className="mt-3">Your hours CSV includes a <strong>Signed how</strong> column — signed in person, by a link the student sent, by a link VolunTrack emailed, or by a task organizer — so you can weigh each sign-off.</p>
       </Section>
 
       <Section title="Announcements">

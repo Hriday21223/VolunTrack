@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Gift, Zap, Menu, X } from 'lucide-react'
+import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Zap, Menu, X, FileSignature } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
@@ -18,11 +18,11 @@ const FEATURES = [
 ]
 
 const DETAILED_FEATURES = [
-  { icon: Smartphone, title: 'Mobile-friendly design', body: 'Log hours on the go from any device. The interface adapts to your phone, tablet, or laptop so you can record service whenever and wherever.' },
-  { icon: Download, title: 'Export ready for anything', body: 'Generate clean PDF reports, CSV data exports, and printable certificates formatted for NHS, honor societies, scholarships, and school requirements.' },
-  { icon: Lock, title: 'Private by design', body: 'Your data stays in your browser\'s local storage. No cloud uploads, no third-party servers, no tracking. You stay in control of your information.' },
-  { icon: Bell, title: 'Smart reminders', body: 'Set custom reminders so you never forget to log a session. Get notified when you\'re approaching a goal milestone or when a badge is within reach.' },
-  { icon: Gift, title: 'Badge rewards system', body: 'Earn achievements for consistency, category variety, hour milestones, and special challenges. Badges make service tracking motivating and fun.' },
+  { icon: FileSignature, title: 'Signed, verifiable hours', body: 'Supervisors approve your hours with a signature — in person on your phone, from a link you email them, or from their own VolunTrack account if they posted the task. On a laptop, they can scan a QR code and sign on their phone instead.' },
+  { icon: Download, title: 'Export ready for anything', body: 'Generate clean PDF reports with signatures, CSV data exports, and printable certificates for NHS, honor societies, scholarships, and school requirements.' },
+  { icon: Lock, title: 'Private by design', body: 'Use it without an account and your hours never leave your browser. With an account, they sync securely so your school can review them — and signature drawings stay on your device. We never sell your data or show ads.' },
+  { icon: Bell, title: 'Reminders', body: 'Set recurring reminders so you never forget to log a session. Turn on notifications and they reach you even when VolunTrack isn\'t open.' },
+  { icon: Smartphone, title: 'Works on any device', body: 'Log hours from your phone, tablet, or laptop. Add it to your home screen for an app-like experience that keeps working offline.' },
   { icon: TrendingUp, title: 'Visual progress tracking', body: 'Monitor your monthly trends with bar charts, watch goal rings fill up, and see your all-time stats at a glance on a single dashboard.' },
 ]
 
@@ -50,7 +50,7 @@ const AUDIENCES = [
   {
     icon: GraduationCap, title: 'Students',
     body: 'Track required service hours for NHS, honor societies, scholarships, and college applications. Export proof-ready reports in seconds.',
-    perks: ['Goal-based hour tracking', 'PDF & CSV exports', 'Badge milestones'],
+    perks: ['Goal-based hour tracking', 'Signed supervisor approval', 'PDF & CSV exports'],
   },
   {
     icon: School, title: 'School clubs & organizations',
@@ -59,29 +59,29 @@ const AUDIENCES = [
   },
   {
     icon: Building, title: 'Schools & districts',
-    body: 'Adopt VolunTrack across your entire school or district. Give students a standardized way to log, verify, and report service hours.',
-    perks: ['District-wide tracking', 'Admin & co-admin dashboards', 'Partnership support'],
+    body: 'Adopt VolunTrack across your entire school or district. Set your own rules — required fields, hour goals, and whether entries must be signed or carry your own form — and every student logs the same way.',
+    perks: ['Your own requirements', 'Signatures & school forms', 'Admin & co-admin dashboards'],
   },
   {
     icon: Globe, title: 'Nonprofits & community groups',
-    body: 'Track volunteer contributions, manage tasks, and generate impact reports for grants, boards, and stakeholders.',
-    perks: ['Task management', 'Impact reporting', 'Volunteer coordination'],
+    body: 'Post volunteer tasks, approve sign-ups, sign off volunteers\' hours right in VolunTrack, and generate impact reports for grants, boards, and stakeholders.',
+    perks: ['Task management', 'Sign off hours in-app', 'Impact reporting'],
   },
 ]
 
 const FAQS = [
   { q: 'Is VolunTrack free?', a: 'Yes, for individuals. Students, volunteers, and parents get every feature — logging, goals, badges, reminders, reports, supervisor verification — at no cost, with no paid tiers, ads, or hidden fees. Schools and organizations are on custom pricing; contact us for a quote.' },
   { q: 'Can I export my hours for school requirements?', a: 'Absolutely. From the Reports page you can download a formatted PDF, export a CSV for spreadsheets, or print a certificate of service. Every entry carries its date, hours, activity, category, supervisor, and verification status. If you\'re linked to a school, you can also submit a report to them directly and track whether it\'s approved.' },
-  { q: 'How does supervisor verification work?', a: 'Add your supervisor\'s email when you log the hours. They get a one-time link to review that specific entry and approve it with a signature, or reject it — no account required. The log then shows as Pending, Verified, or Rejected, and verified hours are the ones your school and linked parents can rely on.' },
-  { q: 'Is my data private?', a: 'By default, your data is stored entirely in your browser\'s local storage and never leaves your device. If you create an account to sync across devices or link to a school, your data is stored in a secure database and protected by password authentication, optional two-factor authentication, and an optional app unlock PIN. We never sell or share your data.' },
-  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. Schools can create an account and share a join code so students link their hours to the school for review and approval, with dashboards for reports, students, and announcements. Up to 10 co-admins can share a school\'s dashboard, so the work isn\'t stuck with one login. Organization accounts (for managing multiple schools) are set up by invitation, on custom pricing — contact us to get started.' },
+  { q: 'How does supervisor verification work?', a: 'Your supervisor approves the entry with a signature, or rejects it. If they\'re next to you, they can sign right on your phone. If not, add their email: VolunTrack can email them a one-time review link, or give you a ready-made email to send yourself — no account needed on their side, and on a laptop they can scan a QR code to sign on their phone. For tasks from the Opportunities page, the organizer signs it off from their own VolunTrack account. The entry then shows as Pending, Approved, or Rejected, and your school can see how each one was signed.' },
+  { q: 'Is my data private?', a: 'Without an account, your data is stored entirely in your browser\'s local storage and never leaves your device. If you create an account to sync across devices or link to a school, your hours are stored in a secure database, protected by your password, optional two-factor authentication, and an optional app unlock PIN — and visible only to you, your school, and parents you invite. Signature drawings stay on your device; the server only records that an entry was signed. We never sell your data or show ads. See the Privacy Policy for the details.' },
+  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. Schools can create an account and share a join code so students link their hours to the school for review and approval, with dashboards for reports, students, and announcements. A school sets its own requirements: which fields an entry needs, extra questions, the hour goal, and whether each entry must be signed — by the supervisor, the student, or both — or come with the school\'s own form, including a Google Form students fill in without leaving VolunTrack. Up to 10 co-admins can share a school\'s dashboard. Organization accounts (for managing multiple schools) are set up by invitation, on custom pricing — contact us to get started.' },
   { q: 'Can a parent follow my hours?', a: 'Only if you invite them. In Settings, generate a family link code and share it with your parent, who enters it in their own account. They get a read-only view of hours logged from that point onward — they can\'t edit or delete anything — plus an optional weekly progress email they can unsubscribe from at any time.' },
-  { q: 'Where can I find volunteer opportunities?', a: 'The Opportunities page lists public tasks posted by schools and organizations, sorted by distance if you share your location. Sign up in one click; once the organizer approves you and marks you present, you can log those hours straight from the task.' },
+  { q: 'Where can I find volunteer opportunities?', a: 'The Opportunities page lists public tasks posted by schools and organizations, sorted by distance if you share your location. Sign up in one click; once the organizer approves you, link your hours to the task when you log them and the organizer signs them off from their own account — nothing to email.' },
   { q: 'What if I forget to log a session?', a: 'You can log past sessions anytime — just set the date when you add the entry. The Reminders page also lets you schedule recurring nudges so sessions don\'t pile up unrecorded.' },
   { q: 'Does VolunTrack work offline?', a: 'Yes. VolunTrack is a Progressive Web App — after your first visit, it keeps working without an internet connection, and any local-mode data stays available offline. Anything that needs the server, like syncing or school submissions, catches up once you\'re back online.' },
   { q: 'What if I switch devices?', a: 'If you\'re using local-only mode, your data stays on that device. To carry it over, create an account and generate a sync PIN in Settings on your first device, then enter that PIN on the login screen of your new device to pull your data across.' },
   { q: 'Do I need to create an account?', a: 'No. VolunTrack works fully in your browser with no account required. Creating an account is only needed for cross-device sync, school/organization linking, parent access, or account recovery.' },
-  { q: 'Is there a mobile app?', a: 'There\'s no separate app to install from a store. VolunTrack is a Progressive Web App, so you can open it in your phone\'s browser and tap "Add to Home Screen" for an app-like experience.' },
+  { q: 'Is there a mobile app?', a: 'Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone\'s browser and tap "Add to Home Screen" for an app-like experience that works offline.' },
 ]
 
 
@@ -309,8 +309,9 @@ export default function About() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300"><ShieldCheck className="w-4 h-4" /> Private & stores in your local storage</span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300"><ShieldCheck className="w-4 h-4" /> Private — no ads, never sold</span>
                 <span className="inline-flex items-center gap-2 rounded-full bg-earth-100 px-4 py-2 text-sm font-semibold text-earth-700 dark:bg-white/5 dark:text-earth-300"><Users className="w-4 h-4" /> Volunteer Task Maker — post opportunities</span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-earth-100 px-4 py-2 text-sm font-semibold text-earth-700 dark:bg-white/5 dark:text-earth-300"><FileSignature className="w-4 h-4" /> Signed supervisor approval</span>
               </div>
             </div>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -423,7 +424,7 @@ export default function About() {
             <Sparkles className="w-10 h-10 text-brand-200 mx-auto animate-float" />
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-white">Ready to start tracking your impact?</h2>
             <p className="mt-3 text-brand-100 max-w-lg mx-auto leading-7">
-              Join thousands of students and organizations already using VolunTrack. It&rsquo;s free to get started.
+              Log your first hours in minutes. It&rsquo;s free for students, with no credit card and no ads.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/register" className="btn-secondary inline-flex items-center gap-2 justify-center bg-white text-brand-700 hover:bg-white/90 px-8 py-3 rounded-xl font-semibold">
@@ -444,15 +445,16 @@ export default function About() {
               <ul className="mt-6 space-y-3 text-sm text-earth-700 dark:text-earth-300">
                 <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Save each session with location, category, and supervisor details</li>
                 <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Watch your month and goal progress in one dashboard</li>
+                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Get each entry signed — in person, by email, or by the task organizer</li>
                 <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Export proofs instantly for school or community review</li>
               </ul>
             </Card>
             <Card className="p-8 bg-gradient-to-br from-brand-600 to-brand-700 text-white">
               <div className="space-y-4">
-                <div className="text-sm uppercase tracking-[0.35em] text-brand-200">Your path to launch</div>
-                <div className="text-3xl font-bold">Phase-driven product growth</div>
+                <div className="text-sm uppercase tracking-[0.35em] text-brand-200">What&rsquo;s new</div>
+                <div className="text-3xl font-bold">Hours your school can trust</div>
                 <p className="leading-7 text-brand-100">
-                  The first version is live and focused on deployment. Next, we deliver certificates and premium upgrades. Then, we partner with schools and clubs to make VolunTrack a paid service.
+                  Schools can now require signatures on every entry, or their own form. Supervisors sign in person, from a link, or by scanning a QR code on their phone, and task organizers sign off right in VolunTrack. Android and iPhone apps are coming next.
                 </p>
                 <Link to="/register" className="btn-secondary inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-white/90">Join now</Link>
               </div>
