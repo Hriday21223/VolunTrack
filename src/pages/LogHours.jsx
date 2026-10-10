@@ -1,18 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList } from 'lucide-react'
+import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList, FileSignature, ExternalLink, Copy, Send, X } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { uploadProof } from '@/lib/proofUpload.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import FileDrop from '@/components/FileDrop.jsx'
+import SignaturePad from '@/components/SignaturePad.jsx'
 import Toast from '@/components/Toast.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
-import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy } from '@/lib/requirements.js'
+import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds } from '@/lib/requirements.js'
 import { hoursBetween, fmtHours } from '@/utils/date.js'
-import { notifySupervisor } from '@/lib/supervisorNotify.js'
+import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { format } from 'date-fns'
 import { hapticSuccess } from '@/lib/platform.js'
@@ -71,6 +72,18 @@ const blank = () => ({
   supervisorEmail: '',
   supervisorSignature: '',
   proof: null,
+  // The school's signatures rule. The image stays on this device; the server
+  // is only told that one exists (studentSigned survives a pull from it).
+  studentSignature: '',
+  studentSigned: false,
+  formSubmitted: false,
+  // When the supervisor has to sign: are they next to the student right now?
+  // Yes — they sign on this device. No — the student gets an email to send.
+  signerPresent: true,
+  // On a VolunTrack task the organizer signs on My Tasks — unless they're
+  // right here and the student ticks to have them sign now.
+  signHereNow: false,
+  supervisorSignedInPerson: false,
   // Answers to the extra questions this student's school added to the form.
   customFields: {},
   verified: false,
@@ -94,6 +107,24 @@ export default function LogHours({ editId, onCloseEdit }) {
   const required = formFieldRequirements(requirements)
   const customFields = policy.customFields || []
   const policyNotes = describePolicy(policy)
+  const signing = signatureNeeds(policy)
+  const signatures = policy.signatures
+  const hasStudentSignature = Boolean(form.studentSignature || form.studentSigned)
+  const linkedTask = myTasks.find((t) => t.id === form.taskId) || null
+  const organizerSigns = signing.supervisorSignature && Boolean(linkedTask)
+  const signsInPerson = signing.supervisorSignature
+    && (organizerSigns ? Boolean(form.signHereNow) : form.signerPresent !== false)
+  // The supervisor named is the task's own organizer, who reviews it in-app.
+  const organizerOnFile = Boolean(linkedTask?.creator_email)
+    && form.supervisorEmail?.trim().toLowerCase() === linkedTask.creator_email.trim().toLowerCase()
+  // An in-person signature needs no email — unless the school's own
+  // hour-entry rules ask for a supervisor email on every entry anyway.
+  const explicitSupervisorRule = (sources.logRules === 'school' || sources.logRules === 'organization')
+    && policy.logRules.supervisorRequired
+  const supervisorEmailRequired = required.supervisorRequired
+    && !((signsInPerson || organizerSigns) && !explicitSupervisorRule)
+  // The ready-made email for a supervisor who wasn't there, shown after save.
+  const [emailDraft, setEmailDraft] = useState(null)
   // An empty list means the school did not restrict categories.
   const categories = policy.logRules.allowedCategories.length > 0
     ? policy.logRules.allowedCategories
@@ -146,8 +177,19 @@ export default function LogHours({ editId, onCloseEdit }) {
     if (hours <= 0)             { setError('End time must be after start time.'); return }
     if (required.locationRequired && !form.location.trim()) { setError('Please enter a location or use the button below to detect it.'); return }
     if (required.supervisorRequired && !form.supervisorName.trim()) { setError("Please enter your supervisor's name."); return }
-    if (required.supervisorRequired && !form.supervisorEmail.trim()) { setError("Please enter your supervisor's email."); return }
-    if (required.proofRequired && !form.proof) { setError('Please upload proof — a sign-in sheet, thank-you email, or other supporting document.'); return }
+    if (supervisorEmailRequired && !form.supervisorEmail.trim()) {
+      setError(signing.supervisorSignature
+        ? "Please enter your supervisor's email so you can send them the signing link."
+        : "Please enter your supervisor's email.")
+      return
+    }
+    if (signsInPerson && !form.supervisorSignature) { setError('Have your supervisor sign in the box under Signatures.'); return }
+    if (required.proofRequired && !form.proof) {
+      setError(signing.signedFormUpload
+        ? 'Please upload a photo or scan of your signed school form.'
+        : 'Please upload proof — a sign-in sheet, thank-you email, or other supporting document.')
+      return
+    }
 
     // The school's own rules, checked with the same function the API uses, so
     // a student reads the rule here instead of having a save fail silently.
@@ -161,6 +203,8 @@ export default function LogHours({ editId, onCloseEdit }) {
       ...form,
       hours,
       hasProof: Boolean(form.proof),
+      hasStudentSignature,
+      supervisorSignedInPerson: signsInPerson && Boolean(form.supervisorSignature),
       sameDayHours,
     })
     if (violations.length > 0) { setError(violations[0].message); return }
@@ -170,7 +214,16 @@ export default function LogHours({ editId, onCloseEdit }) {
       // leaves this device — without tenant storage the bytes stay in
       // localStorage, so the pointer the server would otherwise look for is
       // never created. See POST /api/logs.
-      let payload = { ...form, hours, hasLocalProof: Boolean(form.proof) }
+      let payload = {
+        ...form,
+        hours,
+        hasLocalProof: Boolean(form.proof),
+        studentSigned: hasStudentSignature,
+        hasStudentSignature,
+        supervisorSignedInPerson: signsInPerson && Boolean(form.supervisorSignature),
+        // A drawing from "not next to me" was never theirs to keep.
+        supervisorSignature: signsInPerson ? form.supervisorSignature : '',
+      }
 
       // Try the school's own bucket first. On success the bytes live there and
       // the log keeps only a pointer — so the data URL is dropped from the
@@ -198,7 +251,39 @@ export default function LogHours({ editId, onCloseEdit }) {
         setForm(blank())
         setToast(true)
         hapticSuccess()
-        if (payload.supervisorEmail?.trim()) {
+        if (organizerSigns && !signsInPerson) {
+          // Nothing to send: the organizer signs it on their My Tasks page.
+        } else if (signing.supervisorSignature && !signsInPerson) {
+          // Not there to sign: the student sends the link themselves, from
+          // their own email, rather than VolunTrack mailing it.
+          const serverId = await created.whenSynced.catch(() => null)
+          const result = await createVerificationLink({
+            supervisorEmail: payload.supervisorEmail,
+            supervisorName: payload.supervisorName,
+            hours: payload.hours,
+            activity: payload.activity,
+            logId: serverId,
+          })
+          if (result.ok) {
+            editLog(created.id, { verificationStatus: 'pending', verificationToken: result.statusToken })
+            setEmailDraft(buildSigningEmail({
+              to: payload.supervisorEmail,
+              supervisorName: payload.supervisorName,
+              studentName: result.studentName || user?.name || '',
+              hours: payload.hours,
+              activity: payload.activity,
+              date: payload.date,
+              taskTitle: myTasks.find((t) => t.id === payload.taskId)?.title || '',
+              link: result.verifyUrl,
+              logId: created.id,
+              serverId,
+            }))
+          } else {
+            setError('Your hours are saved, but we couldn’t make the signing link — check you’re online and signed in. Your supervisor can still sign in person.')
+          }
+        } else if (payload.supervisorEmail?.trim() && !payload.supervisorSignedInPerson && !organizerOnFile) {
+          // (The organizer of a linked task reviews it on My Tasks instead of
+          // being emailed about it.)
           const serverId = await created.whenSynced.catch(() => null)
           notifySupervisor({
             supervisorEmail: payload.supervisorEmail,
@@ -225,6 +310,29 @@ export default function LogHours({ editId, onCloseEdit }) {
     >
       <form onSubmit={onSubmit} className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          {emailDraft && (
+            <SigningEmailCard
+              draft={emailDraft}
+              onChange={setEmailDraft}
+              onClose={() => setEmailDraft(null)}
+              onSendForMe={async () => {
+                const result = await notifySupervisor({
+                  supervisorEmail: emailDraft.to,
+                  supervisorName: emailDraft.supervisorName,
+                  hours: emailDraft.hours,
+                  activity: emailDraft.activity,
+                  logId: emailDraft.serverId,
+                })
+                if (result.statusToken) {
+                  editLog(emailDraft.logId, { verificationStatus: 'pending', verificationToken: result.statusToken })
+                  setEmailDraft(null)
+                  setToast(true)
+                } else {
+                  setError('We couldn’t send the email. Copy it and send it yourself instead.')
+                }
+              }}
+            />
+          )}
           <Card>
             <SectionTitle>Activity</SectionTitle>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -249,10 +357,25 @@ export default function LogHours({ editId, onCloseEdit }) {
             {myTasks.length > 0 && (
               <div className="mt-4">
                 <label className="label">Link to a task you're approved for (optional)</label>
-                <select className="input" value={form.taskId} onChange={onChange('taskId')}>
+                <select
+                  className="input"
+                  value={form.taskId}
+                  onChange={(e) => {
+                    const taskId = e.target.value
+                    const task = myTasks.find((t) => t.id === taskId)
+                    // The task's organizer is who signs off hours on it, so
+                    // fill them in — without overwriting anything typed.
+                    setForm((f) => ({
+                      ...f,
+                      taskId,
+                      supervisorName: f.supervisorName || task?.creator_name || '',
+                      supervisorEmail: f.supervisorEmail || task?.creator_email || '',
+                    }))
+                  }}
+                >
                   <option value="">Not linked to a task</option>
                   {myTasks.map((t) => (
-                    <option key={t.id} value={t.id}>{t.title}{t.date ? ` — ${t.date}` : ''}</option>
+                    <option key={t.id} value={t.id}>{t.title}{t.date ? ` — ${new Date(t.date).toLocaleDateString()}` : ''}</option>
                   ))}
                 </select>
                 <p className="text-xs text-earth-400 mt-1">
@@ -326,13 +449,15 @@ export default function LogHours({ editId, onCloseEdit }) {
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
               <Field icon={User}        label={`Supervisor name ${required.supervisorRequired ? '*' : ''}`}  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder="Mr. Johnson" required={required.supervisorRequired} />
-              <Field icon={Mail}        label={`Supervisor email ${required.supervisorRequired ? '*' : ''}`} value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder="johnson@school.edu" type="email" required={required.supervisorRequired} />
+              <Field icon={Mail}        label={`Supervisor email ${supervisorEmailRequired ? '*' : ''}`} value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder="johnson@school.edu" type="email" required={supervisorEmailRequired} />
               {form.supervisorEmail?.trim() ? (
                 <div className="sm:col-span-2">
                   <VerificationBadge status={form.verificationStatus} />
                   {(!form.verificationStatus || form.verificationStatus === 'none') && (
                     <p className="text-xs text-earth-400 mt-1">
-                      Your supervisor will get an email with a link to review these hours. If they approve, they'll sign right there to confirm it — if they reject, no signature is needed. This usually takes a day or two.
+                      {organizerOnFile
+                        ? `${linkedTask.creator_name || 'The task organizer'} reviews and signs this on their My Tasks page in VolunTrack — no email is sent.`
+                        : "Your supervisor will get an email with a link to review these hours. If they approve, they'll sign right there to confirm it — if they reject, no signature is needed. This usually takes a day or two."}
                     </p>
                   )}
                   {form.verificationStatus === 'approved' && (
@@ -349,14 +474,137 @@ export default function LogHours({ editId, onCloseEdit }) {
               ) : (
                 <div className="sm:col-span-2">
                   <p className="text-xs text-amber-500">
-                    {required.supervisorRequired
-                      ? 'Supervisor name and email are required so this entry can be verified.'
-                      : 'Add a supervisor to have this entry verified — optional at your school.'}
+                    {signsInPerson && !supervisorEmailRequired
+                      ? 'Add your supervisor’s name — they’ll sign under Signatures below.'
+                      : required.supervisorRequired
+                        ? 'Supervisor name and email are required so this entry can be verified.'
+                        : 'Add a supervisor to have this entry verified — optional at your school.'}
                   </p>
                 </div>
               )}
             </div>
           </Card>
+
+          {signatures.mode !== 'none' && (
+            <Card>
+              <SectionTitle icon={FileSignature}>
+                {signatures.mode === 'paperForm' ? 'Your school’s form' : 'Signatures'}
+              </SectionTitle>
+              {signatures.note && (
+                <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">{signatures.note}</p>
+              )}
+
+              {organizerSigns && (
+                <div className="mb-5">
+                  <p className="text-sm text-earth-600 dark:text-earth-300">
+                    <strong>{linkedTask.creator_name || 'The task organizer'}</strong> will sign this on their My Tasks page — nothing to send.
+                  </p>
+                  <label className="flex items-center gap-2 text-sm mt-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.signHereNow)}
+                      onChange={(e) => setForm((f) => ({ ...f, signHereNow: e.target.checked }))}
+                    />
+                    They’re next to me now — have them sign here instead
+                  </label>
+                  {form.signHereNow && (
+                    <div className="mt-3">
+                      <label className="label flex items-center gap-1.5">Organizer signature *</label>
+                      <SignaturePad
+                        value={form.supervisorSignature}
+                        onChange={(sig) => setForm((f) => ({ ...f, supervisorSignature: sig }))}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {signing.supervisorSignature && !organizerSigns && (
+                <div className="mb-5">
+                  <p className="label">Is the person signing next to you right now?</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, signerPresent: true }))}
+                      className={`btn-sm ${form.signerPresent !== false ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                      Yes, they’re next to me
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, signerPresent: false }))}
+                      className={`btn-sm ${form.signerPresent === false ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                      No, they’re not next to me
+                    </button>
+                  </div>
+                  {form.signerPresent !== false ? (
+                    <div className="mt-4">
+                      <label className="label flex items-center gap-1.5">Supervisor signature *</label>
+                      <SignaturePad
+                        value={form.supervisorSignature}
+                        onChange={(sig) => setForm((f) => ({ ...f, supervisorSignature: sig }))}
+                      />
+                      <p className="text-xs text-earth-400 mt-1">Hand them your device to sign. Add their name under Supervisor verification.</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-earth-500 dark:text-earth-400 mt-3">
+                      Add their name and email above. When you save, we’ll give you a ready-made email to send them with a link to sign.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {signing.studentSignature && (
+                <div>
+                  <label className="label flex items-center gap-1.5">Your signature *</label>
+                  <SignaturePad
+                    value={form.studentSignature}
+                    onChange={(sig) => setForm((f) => ({ ...f, studentSignature: sig, studentSigned: Boolean(sig) }))}
+                  />
+                  {form.studentSigned && !form.studentSignature && (
+                    <p className="text-xs text-earth-400 mt-1">You signed this entry on another device.</p>
+                  )}
+                </div>
+              )}
+
+              {signing.googleForm && (
+                <div className="space-y-3">
+                  <iframe
+                    src={signing.googleForm}
+                    title="Your school’s form"
+                    className="w-full h-[640px] rounded-xl border border-earth-200 dark:border-[#1f2e25] bg-white"
+                    loading="lazy"
+                  />
+                  <a href={signatures.formUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 dark:text-brand-400 inline-flex items-center gap-1">
+                    <ExternalLink className="w-3.5 h-3.5" /> Form not loading? Open it in a new tab
+                  </a>
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.formSubmitted)}
+                      onChange={(e) => setForm((f) => ({ ...f, formSubmitted: e.target.checked }))}
+                    />
+                    I filled in and sent the form *
+                  </label>
+                </div>
+              )}
+
+              {signing.signedFormUpload && (
+                <p className="text-sm text-earth-500 dark:text-earth-400">
+                  {signatures.formUrl ? (
+                    <a href={signatures.formUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 dark:text-brand-400 font-medium inline-flex items-center gap-1">
+                      <ExternalLink className="w-4 h-4" /> Download your school’s form
+                    </a>
+                  ) : 'Use the form your school gave you.'}
+                  {' '}
+                  {signatures.signer === 'student' && 'Sign it, then upload a photo or scan under Signed form.'}
+                  {signatures.signer === 'supervisor' && 'Have your supervisor sign it, then upload a photo or scan under Signed form.'}
+                  {signatures.signer === 'both' && 'Sign it and have your supervisor sign it, then upload a photo or scan under Signed form.'}
+                </p>
+              )}
+            </Card>
+          )}
 
           {customFields.length > 0 && (
             <Card>
@@ -406,9 +654,11 @@ export default function LogHours({ editId, onCloseEdit }) {
             </Card>
           )}
           <Card>
-            <SectionTitle icon={Upload}>Proof {required.proofRequired ? '*' : ''}</SectionTitle>
+            <SectionTitle icon={Upload}>{signing.signedFormUpload ? 'Signed form' : 'Proof'} {required.proofRequired ? '*' : ''}</SectionTitle>
             <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
-              Upload a photo of a sign-in sheet, a thank-you email, or any supporting document.
+              {signing.signedFormUpload
+                ? 'Upload a photo or scan of your school’s form, signed.'
+                : 'Upload a photo of a sign-in sheet, a thank-you email, or any supporting document.'}
             </p>
             <FileDrop
               value={form.proof}
@@ -536,5 +786,82 @@ function Field({ icon: Icon, label, ...rest }) {
       <label className="label flex items-center gap-1.5">{Icon && <Icon className="w-4 h-4" />}{label}</label>
       <input className="input" {...rest} />
     </div>
+  )
+}
+
+// The email a student sends their supervisor — or the task's organizer — when
+// they weren't there to sign. Plain text, so it reads the same pasted into any
+// mail app.
+function buildSigningEmail({ to, supervisorName, studentName, hours, activity, date, taskTitle, link, logId, serverId }) {
+  let when = date
+  try { when = format(new Date(`${date}T00:00:00`), 'MMMM d, yyyy') } catch { /* keep the raw date */ }
+  const subject = `Please confirm my volunteer hours: ${activity}, ${when}`
+  const body = [
+    supervisorName ? `Hi ${supervisorName},` : 'Hi,',
+    '',
+    `I volunteered ${hours} hour(s) on ${when} for "${activity}"${taskTitle ? ` (${taskTitle})` : ''}. My school asks for a signature to confirm it.`,
+    '',
+    'Could you take a minute to review and sign here?',
+    link,
+    '',
+    'It opens in your browser — no account needed.',
+    '',
+    'Thank you!',
+    studentName || '',
+  ].join('\n').trim()
+  return { to, supervisorName, hours, activity, subject, body, logId, serverId }
+}
+
+function SigningEmailCard({ draft, onChange, onClose, onSendForMe }) {
+  const [copied, setCopied] = useState(false)
+  const [sending, setSending] = useState(false)
+  const mailto = `mailto:${encodeURIComponent(draft.to || '')}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(`To: ${draft.to}\nSubject: ${draft.subject}\n\n${draft.body}`)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-2">
+        <SectionTitle icon={Mail}>Send this to get it signed</SectionTitle>
+        <button type="button" onClick={onClose} className="btn-sm btn-ghost" aria-label="Close">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
+        Your hours are saved. Send this from your own email — the link lets them sign, and this entry updates once they do.
+      </p>
+      <div className="space-y-3">
+        <div>
+          <label className="label">To</label>
+          <input className="input" type="email" value={draft.to || ''} onChange={(e) => onChange({ ...draft, to: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Subject</label>
+          <input className="input" value={draft.subject} onChange={(e) => onChange({ ...draft, subject: e.target.value })} />
+        </div>
+        <div>
+          <label className="label">Message</label>
+          <textarea className="input min-h-[220px] resize-y font-mono text-xs" value={draft.body} onChange={(e) => onChange({ ...draft, body: e.target.value })} />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        <a href={mailto} className="btn-primary btn-sm"><Send className="w-4 h-4" /> Open in my email app</a>
+        <button type="button" onClick={copy} className="btn-secondary btn-sm"><Copy className="w-4 h-4" /> {copied ? 'Copied!' : 'Copy email'}</button>
+        <button
+          type="button"
+          disabled={sending || !draft.to}
+          onClick={async () => { setSending(true); await onSendForMe(); setSending(false) }}
+          className="btn-ghost btn-sm"
+        >
+          {sending ? 'Sending…' : 'Email it for me instead'}
+        </button>
+      </div>
+    </Card>
   )
 }

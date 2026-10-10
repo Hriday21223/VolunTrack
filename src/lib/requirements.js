@@ -4,9 +4,10 @@
 // drift apart. See server/routes/requirements.js for the endpoints.
 
 import { useEffect, useState } from 'react'
-import { resolvePolicy, validateLogAgainstPolicy, goalHoursFor } from '@policy'
+import { resolvePolicy, validateLogAgainstPolicy, goalHoursFor, signatureNeeds } from '@policy'
 
-export { validateLogAgainstPolicy, goalHoursFor }
+export { validateLogAgainstPolicy, goalHoursFor, signatureNeeds }
+export { SIGNATURE_MODES, SIGNERS, googleFormEmbedUrl } from '@policy'
 export { SCHOOL_GRADES, gradeKey, gradeLabel, gradeName, gradeOptionLabel } from '@policy'
 export { CUSTOM_FIELD_TYPES, SECTIONS, DEFAULTS, normalizePolicy } from '@policy'
 
@@ -64,13 +65,16 @@ export function useMyRequirements() {
 export function formFieldRequirements({ policy, sources }) {
   const configured = sources?.logRules === 'school' || sources?.logRules === 'organization'
   const rules = policy?.logRules || {}
+  // A signatures rule can demand a supervisor (they sign on the emailed link)
+  // or an upload (the signed form) whatever logRules says.
+  const needs = signatureNeeds(policy)
   if (!configured) {
     return { locationRequired: true, supervisorRequired: true, proofRequired: true, orgNameRequired: false }
   }
   return {
     locationRequired: Boolean(rules.locationRequired),
-    supervisorRequired: Boolean(rules.supervisorRequired),
-    proofRequired: Boolean(rules.proofRequired),
+    supervisorRequired: Boolean(rules.supervisorRequired) || needs.supervisorSignature,
+    proofRequired: Boolean(rules.proofRequired) || needs.signedFormUpload,
     orgNameRequired: Boolean(rules.orgNameRequired),
   }
 }
@@ -91,6 +95,12 @@ export function describePolicy(policy) {
   if (rules.maxBackdateDays != null) out.push(`Logged within ${rules.maxBackdateDays} day(s) of the activity`)
   if (!rules.allowFutureDates) out.push('No future-dated entries')
   if (rules.allowedCategories?.length) out.push(`Only these categories: ${rules.allowedCategories.join(', ')}`)
+  const needs = signatureNeeds(policy)
+  if (needs.supervisorSignature && needs.studentSignature) out.push('Signed by you and your supervisor')
+  else if (needs.supervisorSignature) out.push('Signed by your supervisor')
+  else if (needs.studentSignature) out.push('Signed by you')
+  if (needs.formSubmitted) out.push('Your school’s form, filled in')
+  if (needs.signedFormUpload) out.push('Your school’s signed form, uploaded')
   return out
 }
 

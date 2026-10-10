@@ -1416,7 +1416,10 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
 router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
+      // The organizer's email only reaches volunteers they approved — it is who
+      // those students ask to sign off their hours on the task.
       `SELECT t.id, t.title, t.location, t.date, t.time, t.creator_name, t.status AS task_status,
+              CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
@@ -1603,8 +1606,16 @@ router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) =
 
 // Approve or reject a specific log entry for a student approved on one of my tasks.
 router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { status } = req.body
+  const { status, signature } = req.body
   if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be approved or rejected.' })
+  // An approval is a sign-off, so it carries the organizer's signature — the
+  // same rule, and the same size cap, as the supervisor's emailed link.
+  // A rejection needs none.
+  if (status === 'approved') {
+    if (typeof signature !== 'string' || !signature.startsWith('data:image/png;base64,') || signature.length > 200_000) {
+      return res.status(400).json({ error: 'Sign to approve these hours.' })
+    }
+  }
 
   try {
     const { rows: relRows } = await query(
@@ -1658,8 +1669,8 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
     }
 
     await query(
-      'UPDATE logs SET verification_status = $1, verified_by = $2 WHERE id = $3',
-      [status, req.auth.sub, req.params.logId],
+      'UPDATE logs SET verification_status = $1, verified_by = $2, organizer_signature = $4 WHERE id = $3',
+      [status, req.auth.sub, req.params.logId, status === 'approved' ? signature : null],
     )
 
     // Spend any still-pending supervisor link for this log. Without this the
@@ -2378,7 +2389,9 @@ router.get('/reports/hours', limiter, requireDb, requireAuth('school', 'school_s
       `SELECT u.id  AS student_id, u.name AS student_name, u.email AS student_email,
               u.grade, u.school_id, sc.name AS school_name,
               l.id   AS log_id, l.date, l.activity, l.category, l.hours,
-              l.verification_status, l.org_name, l.supervisor_name, l.location, l.notes
+              l.verification_status, l.org_name, l.supervisor_name, l.location, l.notes,
+              l.supervisor_signed_in_person, (l.organizer_signature IS NOT NULL) AS organizer_signed,
+              (SELECT sv.delivery FROM supervisor_verifications sv WHERE sv.token = l.verification_token) AS verification_delivery
          FROM users u
          JOIN schools sc ON sc.id = u.school_id
          LEFT JOIN logs l
@@ -2447,6 +2460,17 @@ router.get('/reports/hours', limiter, requireDb, requireAuth('school', 'school_s
         category: r.category || '',
         hours,
         verificationStatus: r.verification_status,
+        // How the supervisor's sign-off reached us. A school weighs these
+        // differently: the student held the device, or the link, in the first two.
+        signedHow: r.organizer_signed
+          ? 'Signed by task organizer in VolunTrack'
+          : r.supervisor_signed_in_person
+          ? 'Signed in person'
+          : r.verification_delivery === 'student'
+            ? 'Link sent by student'
+            : r.verification_delivery === 'voluntrack'
+              ? 'Emailed by VolunTrack'
+              : '',
         orgName: r.org_name || '',
         supervisorName: r.supervisor_name || '',
         location: r.location || '',

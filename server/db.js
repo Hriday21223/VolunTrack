@@ -1310,5 +1310,24 @@ export async function initSchema() {
   // with it on a transfer, and are meaningless without it.
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS custom_fields JSONB`) } catch {}
 
+  // A school's signatures rule (server/requirements.js). Only the fact is kept:
+  // the student's drawn signature stays on their device, the same as the
+  // supervisor's (#186), and a Google Form's answers go to the school, not us.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS student_signed BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS form_submitted BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // The supervisor signed on the student's own device, there and then. A
+  // weaker claim than an emailed link — the student held the pen — so it is
+  // kept apart from verification_status, which only a link can set.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS supervisor_signed_in_person BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // Who carried the signing link to the supervisor. 'student' means the
+  // student held the approve link too, so a school can weigh it accordingly.
+  // A task organizer's own signature, drawn in VolunTrack when they approve
+  // hours logged against their task on My Tasks. Unlike the columns #186
+  // emptied, the student never supplies this: it comes from the signed-in
+  // organizer, the same way a supervisor's signature reaches
+  // supervisor_verifications.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS organizer_signature TEXT`) } catch {}
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS delivery TEXT NOT NULL DEFAULT 'voluntrack' CHECK (delivery IN ('voluntrack','student'))`) } catch {}
+
   return true
 }

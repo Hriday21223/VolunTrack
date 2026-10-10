@@ -28,6 +28,29 @@ export async function notifySupervisor({ supervisorEmail, supervisorName, hours,
   }
 }
 
+// For when the student sends the signing link themselves (to the supervisor,
+// or the task's organizer) instead of VolunTrack emailing it. Unlike
+// notifySupervisor, this hands back the approve link itself — the server
+// records that the student held it, so the school can see that.
+export async function createVerificationLink({ supervisorEmail, supervisorName, hours, activity, logId }) {
+  if (!supervisorEmail) return { ok: false }
+  const authToken = localStorage.getItem('voluntrack:auth_token')
+  if (!authToken) return { ok: false }
+  try {
+    const signupUrl = `${window.location.origin}${import.meta.env.BASE_URL}register`
+    const response = await fetch(`${apiUrl}/verify-hours/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ supervisorEmail, supervisorName, hours, activity, signupUrl, logId: logId || null }),
+    })
+    if (!response.ok) return { ok: false }
+    const body = await response.json().catch(() => ({}))
+    return { ok: Boolean(body.verifyUrl), verifyUrl: body.verifyUrl, statusToken: body.statusToken || null, studentName: body.studentName || '' }
+  } catch {
+    return { ok: false }
+  }
+}
+
 /** Look up a supervisor verification's current status by its token. */
 export async function getVerificationStatus(token) {
   try {

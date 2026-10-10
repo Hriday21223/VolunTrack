@@ -5,14 +5,12 @@ import QRCode from 'qrcode'
 import Card from '@/components/Card.jsx'
 import SignaturePad from '@/components/SignaturePad.jsx'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
-import { isNativeApp } from '@/lib/platform.js'
+import { isTouchDevice } from '@/lib/platform.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 // A signature drawn with a mouse or trackpad comes out scrawled, so on a
 // device without a touchscreen we offer to hand signing off to a phone.
-const isTouchDevice = isNativeApp ||
-  (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches)
 
 // How often the laptop checks whether the phone has signed, and when it gives
 // up — a forgotten tab shouldn't poll forever.
@@ -86,7 +84,8 @@ export default function VerifyHours() {
   // 'review' (approve/reject buttons) or 'signing' (approval needs a
   // signature first) — reject skips this step entirely. The phone opened
   // from the handoff QR (`sign=1`) goes straight to the pad.
-  const [mode, setMode] = useState(searchParams.get('sign') === '1' ? 'signing' : 'review')
+  const fromHandoff = searchParams.get('sign') === '1'
+  const [mode, setMode] = useState(fromHandoff ? 'signing' : 'review')
   const [signature, setSignature] = useState('')
   const [handoff, setHandoff] = useState(false)
 
@@ -172,6 +171,8 @@ export default function VerifyHours() {
               onCancelApproval={() => { setMode('review'); setSignature(''); setHandoff(false) }}
               token={token}
               handoff={handoff}
+              // Already on the device the QR handed off to — don't offer it again.
+              canHandoff={!isTouchDevice && !fromHandoff}
               onHandoff={setHandoff}
               onReject={() => respond('reject', null)}
               onConfirmApproval={() => respond('approve', signature)}
@@ -185,6 +186,12 @@ export default function VerifyHours() {
 
 // The QR carries the same link the supervisor's email did — it grants nothing
 // they didn't already hold — plus `sign=1` so the phone opens on the pad.
+// Supervisors arrive from an email and have nothing left to do once they've
+// answered — say so, rather than leave them looking for a next step.
+function CloseTabNote() {
+  return <p className="text-xs text-earth-400 mt-4">You may close this tab.</p>
+}
+
 function PhoneHandoff({ token, onClose }) {
   const canvasRef = useRef(null)
   useEffect(() => {
@@ -209,7 +216,7 @@ function PhoneHandoff({ token, onClose }) {
   )
 }
 
-function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApproval, onCancelApproval, onReject, onConfirmApproval, token, handoff, onHandoff }) {
+function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApproval, onCancelApproval, onReject, onConfirmApproval, token, handoff, canHandoff, onHandoff }) {
   const thanksNote = useMemo(
     () => pickCombo(SUPERVISOR_THANKS_OPENERS, SUPERVISOR_THANKS_CLOSERS, data.studentName),
     [data.studentName],
@@ -233,6 +240,7 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <p className="text-sm text-brand-600 dark:text-brand-400 mt-4 font-medium">
           {thanksNote}
         </p>
+        <CloseTabNote />
       </div>
     )
   }
@@ -252,6 +260,7 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-3">
           No action is needed. If that looks wrong, contact the school directly.
         </p>
+        <CloseTabNote />
       </div>
     )
   }
@@ -263,6 +272,7 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
         <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">
           You rejected {data.hours} hour(s) logged by {data.studentName} for "{data.activity}".
         </p>
+        <CloseTabNote />
       </div>
     )
   }
@@ -292,7 +302,7 @@ function VerifyCard({ data, busy, error, mode, signature, onSign, onStartApprova
           ) : (
             <>
               <SignaturePad value={signature} onChange={onSign} />
-              {!isTouchDevice && (
+              {canHandoff && (
                 <button type="button" onClick={() => onHandoff(true)} className="flex items-center gap-1.5 text-sm text-brand-600 dark:text-brand-400 mt-2 font-medium">
                   <Smartphone className="w-4 h-4" /> Sign on your phone or iPad instead
                 </button>
