@@ -3,7 +3,6 @@ import { Instagram } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 
 const LINKS = [
-  { to: '/about', label: 'About' },
   { to: '/contact', label: 'Contact' },
   { to: '/status', label: 'Status' },
   { to: '/help', label: 'Help' },
