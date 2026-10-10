@@ -264,7 +264,7 @@ export default function Status() {
     { name: 'Application', ok: appHealthy, critical: true, detail: appHealthy ? 'responding' : 'unreachable' },
     { name: 'Backend API', ok: apiOk, critical: true, detail: apiOk ? 'responding' : 'unreachable' },
     { name: 'Database', ok: dbOk !== false, critical: dbConfigured, detail: unknownDetail ?? (!dbConfigured ? 'not configured' : dbOk ? 'connected' : 'unreachable') },
-    { name: 'Email (SMTP)', ok: emailOk, critical: false, detail: unknownDetail ?? (!emailConfigured ? 'not configured' : emailOk ? 'connected' : 'unreachable') },
+    { name: 'Email delivery', ok: emailOk, critical: false, detail: unknownDetail ?? (!emailConfigured ? 'not configured' : emailOk ? 'connected' : 'unreachable') },
     { name: 'Local Storage', ok: storageOk, critical: true, detail: storageOk ? 'ready' : 'unavailable' },
     { name: 'Session Storage', ok: sessionOk, critical: false, detail: sessionOk ? 'ready' : 'unavailable' },
     { name: 'Service Worker', ok: swStatus === 'active' || swStatus === 'none', critical: false, detail: swStatus },
