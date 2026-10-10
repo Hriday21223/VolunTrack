@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Eraser } from 'lucide-react'
+import { isTouchDevice } from '@/lib/platform.js'
 
 // Draw-to-sign pad, backed by a canvas. Stores/emits the result as a base64
 // PNG data URL (same shape FileDrop.jsx uses for the proof upload), so it
@@ -103,7 +104,7 @@ export default function SignaturePad({ value, onChange }) {
         />
         {!hasStroke && (
           <span className="absolute inset-0 grid place-items-center text-sm text-earth-400 pointer-events-none">
-            Sign here
+            {isTouchDevice ? 'Touch to sign' : 'Sign here'}
           </span>
         )}
       </div>
