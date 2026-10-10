@@ -29,7 +29,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: September 26, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 10, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -47,12 +47,12 @@ export default function Terms() {
           </Section>
 
           <Section title="Accurate Logging">
-            <p>Volunteer hours, activities, and proof you submit must be truthful and your own. Schools and organizations reviewing submitted hours rely on this accuracy for verification decisions. Submitting false or misleading logs may result in account suspension.</p>
+            <p>Volunteer hours, activities, and proof you submit must be truthful and your own. Schools and organizations reviewing submitted hours rely on this accuracy for verification decisions. A signature on an entry must be drawn by the person it belongs to: never sign for a supervisor, task organizer, or anyone else. Supervisors and organizers who sign are confirming that the work happened as described. Submitting false or misleading logs, or signatures, may result in account suspension.</p>
           </Section>
 
           <Section title="School and Organization Accounts">
             <p>Schools and organizations may access student-submitted logs, proof uploads, and hour totals for the purpose of review and verification. Parents may link to a student account, in read-only form, with the student's consent via a link code.</p>
-            <p className="mt-2">A school or organization may set its own rules for how its students log hours — for example, required fields or allowed sign-in methods — and may connect its own file storage, in which case files uploaded there are held and governed by that school. A student can move to another school; their record transfers only once the receiving school accepts.</p>
+            <p className="mt-2">A school or organization may set its own rules for how its students log hours — for example, required fields, signatures or its own forms, or allowed sign-in methods — and may connect its own file storage, in which case files uploaded there are held and governed by that school. A student can move to another school; their record transfers only once the receiving school accepts.</p>
           </Section>
 
           <Section title="Fees and Payment">
