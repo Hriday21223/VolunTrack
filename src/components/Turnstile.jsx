@@ -54,6 +54,7 @@ export default function Turnstile({ onVerify, action, className = '' }) {
           sitekey: TURNSTILE_SITE_KEY,
           action,
           theme: 'auto',
+          size: 'flexible',
           callback: (token) => onVerifyRef.current?.(token),
           'expired-callback': () => onVerifyRef.current?.(''),
           'error-callback': () => {
