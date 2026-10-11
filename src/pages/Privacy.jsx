@@ -35,6 +35,7 @@ export default function Privacy() {
           <Section title="Data We Collect">
             <ul className="list-disc pl-5 space-y-1.5">
               <li><strong>Name and email address</strong> — required to create and manage your account.</li>
+              <li><strong>Where you signed up</strong> — whether your account was created on the website, in the Android app or in the iPhone app. We use it only to count sign-ups, so we know which versions of VolunTrack people use.</li>
               <li><strong>School sign-in</strong> — if your school has set up single sign-on, we receive your name, email address, and an account identifier from your school&apos;s sign-in provider (such as Google or Microsoft). We never see your school password.</li>
               <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app, plus any extra fields your school or organization requires on an entry.</li>
               <li><strong>Verification details</strong> — when you ask someone to verify an entry, the supervisor&apos;s name and email, the organization&apos;s name, address and phone, and the signature the supervisor draws when they approve from the emailed link. A supervisor who signs in person, on your device, leaves that drawing on your device only. When a task organizer signs off your hours from their VolunTrack account, their signature is stored with the entry so you and your school can see it.</li>
