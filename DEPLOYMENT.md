@@ -110,7 +110,7 @@ One-time setup:
    Environment Variables), for Production:
 
    ```bash
-   VITE_API_URL=https://voluntrack-backend.onrender.com/api
+   VITE_API_URL=https://voluntrack-backend-frrh.onrender.com/api
    VITE_SITE_URL=https://volunteer-track-two.vercel.app
    ```
 
@@ -148,7 +148,7 @@ backend, not through this Worker).
 4. Add environment variables (Worker → Settings → Environment variables):
 
    ```bash
-   VITE_API_URL=https://voluntrack-backend.onrender.com/api
+   VITE_API_URL=https://voluntrack-backend-frrh.onrender.com/api
    VITE_SITE_URL=https://your-worker.workers.dev
    ```
 
