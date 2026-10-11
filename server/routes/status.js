@@ -16,6 +16,7 @@ import contactRouter from './contact.js'
 import reviewsRouter from './reviews.js'
 import invoicesRouter from './invoices.js'
 import settingsRouter from './settings.js'
+import statsRouter from './stats.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -253,6 +254,7 @@ const MOUNTED_ROUTERS = [
   ['reviews', '/api/reviews', reviewsRouter],
   ['invoices', '/api/invoices', invoicesRouter],
   ['settings', '/api/settings', settingsRouter],
+  ['stats', '/api/stats', statsRouter],
   ['status', '/api/status', router],
 ]
 

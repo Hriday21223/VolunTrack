@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode } from '../db.js'
 import { uid, generateToken } from '../ids.js'
+import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail } from '../email.js'
@@ -112,10 +113,10 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     const hash = await hashPassword(password)
     const userId = uid('usr')
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, school_id)
-       VALUES ($1, 'school', $2, $3, $4, $5)
+      `INSERT INTO users (id, role, name, email, password_hash, school_id, signup_platform)
+       VALUES ($1, 'school', $2, $3, $4, $5, $6)
        RETURNING *`,
-      [userId, name, email, hash, schoolId],
+      [userId, name, email, hash, schoolId, signupPlatform(req)],
     )
 
     if (invite) {

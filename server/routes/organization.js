@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase, nextAccountCode } from '../db.js'
 import { uid, generateToken } from '../ids.js'
+import { signupPlatform } from '../platform.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
@@ -61,10 +62,10 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     const hash = await hashPassword(password)
     const userId = uid('usr')
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, organization_id)
-       VALUES ($1, 'org', $2, $3, $4, $5)
+      `INSERT INTO users (id, role, name, email, password_hash, organization_id, signup_platform)
+       VALUES ($1, 'org', $2, $3, $4, $5, $6)
        RETURNING *`,
-      [userId, name, email, hash, orgId],
+      [userId, name, email, hash, orgId, signupPlatform(req)],
     )
 
     await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
