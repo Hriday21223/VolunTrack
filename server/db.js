@@ -1277,6 +1277,12 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
 
+  // Where the account was created ('web' | 'android' | 'ios'), for the admin's
+  // sign-up counts. NULL for accounts nobody self-registered — ones from before
+  // this column, students a school added, SSO just-in-time accounts. See
+  // server/platform.js.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_platform TEXT`) } catch {}
+
   // Backfill privileged password accounts that have no deadline yet.
   // Deliberately excludes auth_provider='sso': those users have no VolunTrack
   // password, MFA is their school IdP's responsibility, and pushing them into

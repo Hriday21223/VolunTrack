@@ -81,7 +81,45 @@ function generateDraft(contact) {
   return intro + '\n\n' + body + closing
 }
 
-const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'api', 'blueprint']
+// One labelled count per row with a bar showing its share of the total.
+function SignupBreakdown({ rows, total }) {
+  return (
+    <ul className="space-y-2">
+      {rows.map(([label, count]) => (
+        <li key={label}>
+          <div className="flex items-baseline justify-between text-sm">
+            <span className="text-earth-700 dark:text-earth-200">{label}</span>
+            <span className="font-semibold tabular-nums text-earth-900 dark:text-earth-100">{count}</span>
+          </div>
+          <div className="mt-1 h-1.5 rounded-full bg-earth-100 dark:bg-earth-800 overflow-hidden">
+            <div className="h-full rounded-full bg-brand-500" style={{ width: `${total > 0 ? (count / total) * 100 : 0}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// Twelve weekly bars, oldest first; each week starts on its Monday.
+function WeeklySignups({ weeks }) {
+  const max = Math.max(1, ...weeks.map((w) => w.count))
+  const label = (weekStart) => new Date(`${weekStart}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return (
+    <div className="flex items-end gap-1.5 sm:gap-2">
+      {weeks.map((w) => (
+        <div key={w.weekStart} className="flex-1 min-w-0 text-center" title={`Week of ${label(w.weekStart)}: ${w.count} sign-up${w.count === 1 ? '' : 's'}`}>
+          <p className="text-[11px] font-semibold tabular-nums text-earth-700 dark:text-earth-200">{w.count}</p>
+          <div className="h-24 flex items-end">
+            <div className="w-full rounded-t bg-brand-500" style={{ height: `${Math.max((w.count / max) * 100, w.count > 0 ? 6 : 1)}%` }} />
+          </div>
+          <p className="mt-1 text-[10px] text-earth-500 dark:text-earth-400 truncate">{label(w.weekStart)}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'users', 'api', 'blueprint']
 
 // Living reference pages for how this app is actually built, kept outside the
 // repo so they can be updated without a deploy. Admin-only: they describe every
@@ -238,6 +276,9 @@ export default function Admin() {
   const [apiHealth, setApiHealth] = useState(null)
   const [apiRoutes, setApiRoutes] = useState([])
   const [loadingApiInfo, setLoadingApiInfo] = useState(false)
+  const [userStats, setUserStats] = useState(null)
+  const [loadingUserStats, setLoadingUserStats] = useState(false)
+  const [userStatsError, setUserStatsError] = useState('')
   const [apiCopied, setApiCopied] = useState('')
 
   const loadApiInfo = useCallback(async () => {
@@ -256,6 +297,21 @@ export default function Admin() {
       setApiRoutes(routesRes?.routes || [])
     } finally {
       setLoadingApiInfo(false)
+    }
+  }, [])
+
+  const loadUserStats = useCallback(async () => {
+    setLoadingUserStats(true)
+    setUserStatsError('')
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/stats/admin/signups`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error('bad status')
+      setUserStats(await res.json())
+    } catch {
+      setUserStatsError('Couldn’t load sign-up numbers. Check that the backend is running, then refresh.')
+    } finally {
+      setLoadingUserStats(false)
     }
   }, [])
 
@@ -962,9 +1018,10 @@ export default function Admin() {
     else if (tab === 'settings') { loadOfficeHours(); loadPaymentInstructions(); loadPromo() }
     // The inbox annotates a quoted coupon with whether it is the live one.
     else if (tab === 'inbox') loadPromo()
+    else if (tab === 'users') loadUserStats()
     else if (tab === 'api') loadApiInfo()
     else if (tab === 'blueprint') loadBlueprints()
-  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadPromo, loadApiInfo, loadBlueprints])
+  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadPromo, loadUserStats, loadApiInfo, loadBlueprints])
 
   // One box filters both customer lists — name, contact email, or the account
   // ID an admin has just read off an incoming bank transfer.
@@ -1213,8 +1270,8 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'users' ? 'Users' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'users' ? (userStats ? `${userStats.total} ${userStats.total === 1 ? 'person has' : 'people have'} registered` : 'Who has registered') : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       action={
         <div className="flex gap-2">
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -1240,6 +1297,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setTab('settings')} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
             <Wrench className="w-3.5 h-3.5 mr-1" /> Settings
+          </button>
+          <button onClick={() => setTab('users')} className={`btn-sm ${tab === 'users' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Users className="w-3.5 h-3.5 mr-1" /> Users
           </button>
           <button onClick={() => { setTab('api'); loadApiInfo() }} className={`btn-sm ${tab === 'api' ? 'btn-primary' : 'btn-ghost'}`}>
             <Terminal className="w-3.5 h-3.5 mr-1" /> API
@@ -2132,6 +2192,85 @@ export default function Admin() {
             </button>
           </div>
         </Card>
+        </div>
+      ) : tab === 'users' ? (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-earth-500 dark:text-earth-400">
+              Accounts created on the website or in the apps. Someone using VolunTrack without an account isn’t counted.
+            </p>
+            <button onClick={loadUserStats} disabled={loadingUserStats} className="shrink-0 text-xs text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 inline-flex items-center gap-1">
+              <RefreshCw className={`w-3 h-3 ${loadingUserStats ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+          </div>
+          {userStatsError ? (
+            <Card><p className="text-center text-sm text-red-600 dark:text-red-300 py-8">{userStatsError}</p></Card>
+          ) : !userStats ? (
+            <Card><p className="text-center text-earth-400 py-8">Loading sign-up numbers…</p></Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  ['Registered', userStats.total, 'all time'],
+                  ['New this week', userStats.last7Days, 'last 7 days'],
+                  ['New this month', userStats.last30Days, 'last 30 days'],
+                  ['Active', userStats.activeLast30Days, 'logged hours in the last 30 days'],
+                ].map(([label, value, detail]) => (
+                  <Card key={label}>
+                    <p className="text-xs font-semibold text-earth-500 dark:text-earth-400">{label}</p>
+                    <p className="font-display text-3xl font-semibold text-earth-900 dark:text-earth-100 mt-1 tabular-nums">{value}</p>
+                    <p className="text-[11px] text-earth-500 dark:text-earth-400 mt-1">{detail}</p>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <h3 className="font-display font-semibold text-base mb-3">Where they signed up</h3>
+                  <SignupBreakdown
+                    total={userStats.total}
+                    rows={[
+                      ['Website', userStats.byPlatform.web],
+                      ['Android app', userStats.byPlatform.android],
+                      ['iPhone app', userStats.byPlatform.ios],
+                      ['Unknown', userStats.byPlatform.unknown],
+                    ]}
+                  />
+                  <p className="text-[11px] text-earth-500 dark:text-earth-400 mt-3">
+                    Unknown covers accounts created before this was recorded, students a school added, and school single sign-on accounts.
+                  </p>
+                </Card>
+                <Card>
+                  <h3 className="font-display font-semibold text-base mb-3">By role</h3>
+                  <SignupBreakdown
+                    total={userStats.total}
+                    rows={[
+                      ['Students', userStats.byRole.student],
+                      ['Volunteers', userStats.byRole.volunteer],
+                      ['Parents', userStats.byRole.parent],
+                      ['School admins', userStats.byRole.school],
+                      ['School staff', userStats.byRole.school_staff],
+                      ['Organization admins', userStats.byRole.org],
+                    ]}
+                  />
+                  <p className="text-[11px] text-earth-500 dark:text-earth-400 mt-3">
+                    {userStats.schools} school{userStats.schools === 1 ? '' : 's'} and {userStats.organizations} organization{userStats.organizations === 1 ? '' : 's'} registered.
+                  </p>
+                </Card>
+              </div>
+
+              <Card>
+                <h3 className="font-display font-semibold text-base mb-3">Sign-ups per week</h3>
+                <WeeklySignups weeks={userStats.weekly} />
+              </Card>
+
+              {userStats.excluded > 0 && (
+                <p className="text-[11px] text-earth-500 dark:text-earth-400">
+                  These numbers leave out {userStats.excluded} admin and test account{userStats.excluded === 1 ? '' : 's'}.
+                </p>
+              )}
+            </>
+          )}
         </div>
       ) : tab === 'api' ? (
         <div className="space-y-6">

@@ -6,6 +6,7 @@ import * as OTPAuth from 'otpauth'
 import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
+import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole } from '../auth.js'
 import { signInPolicyForEmail } from '../policy.js'
@@ -147,10 +148,10 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
     const hash = await hashPassword(password)
     const id = uid('usr')
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, grade, student_id_number)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO users (id, role, name, email, password_hash, grade, student_id_number, signup_platform)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [id, role, name, email, hash, grade || null, studentIdNumber || null],
+      [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req)],
     )
     const user = publicUser(rows[0])
     await sendWelcomeEmail({ to: user.email, name: user.name })

@@ -99,10 +99,13 @@ cost of the app running letterboxed on iPads.
 | Photos and videos → Photos | Yes | No | Optional | App functionality |
 | Files and docs | Yes | No | Optional | App functionality |
 | App activity → Other user-generated content (hours, descriptions, supervisor contacts) | Yes | No | Required | App functionality |
+| App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
 
 Not collected: financial info (school invoices are paid by bank transfer outside
 the app), contacts, messages, health, audio, web history, device IDs,
-diagnostics, analytics — and **no biometric data**: Face ID / Touch ID /
+diagnostics, and no analytics beyond the one sign-up fact in the table
+(`users.signup_platform`, read from the request's origin when an account is
+created and used only for the admin's sign-up counts) — and **no biometric data**: Face ID / Touch ID /
 fingerprint unlock (*Keep me signed in*) is checked by the OS, which tells the
 app only pass/fail. A passkey sends us its **public key** only (plus a name
 and dates), which is account-security data under *Account management*, not a
@@ -134,6 +137,11 @@ purpose *App Functionality* — matching `PrivacyInfo.xcprivacy`:
 - Identifiers → User ID
 - Location → Precise Location (only when the user taps *Use current location*)
 - User Content → Photos or Videos, Other User Content
+
+One more, *Linked to the user*, *not used for tracking*, purpose *Analytics*:
+
+- Usage Data → Product Interaction (only which app the account was created
+  in — website, Android or iPhone — for the admin's sign-up counts)
 
 Nothing to declare for Face ID (the app never receives biometric data; its
 `NSFaceIDUsageDescription` is in `Info.plist`) or for passkeys (public key
