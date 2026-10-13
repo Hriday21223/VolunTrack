@@ -634,6 +634,10 @@ export async function initSchema() {
   // instead of discount_code, never alongside it: an invoice carries the join
   // offer or a referral credit, not both compounded.
   try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS referral_id TEXT`) } catch {}
+  // The customer's own purchase order number. A school's accounts-payable
+  // office matches an invoice to the PO it approved, and often will not pay
+  // one that doesn't quote it.
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS po_number TEXT`) } catch {}
 
   // Referral programme (see server/routes/referral.js). Every school/org gets a
   // shareable code; a new customer that quotes one creates a `referrals` row.

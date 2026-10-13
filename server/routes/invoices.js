@@ -31,7 +31,7 @@ const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 
 
 // Mirrors paymentNoticeHtml in server/routes/school.js, but for a single
 // numbered invoice rather than a free-text payment notice.
-function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, amount, subtotal, discountLabel, billingPeriod, dueDate, description, paymentInstructions }) {
+function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, poNumber, amount, subtotal, discountLabel, billingPeriod, dueDate, description, paymentInstructions }) {
   const dashboardLink = `${process.env.FRONTEND_URL || ''}${entityType === 'organization' ? '/organization/dashboard' : '/school/dashboard'}`
   const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
@@ -41,6 +41,7 @@ function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber,
     `<table cellpadding="4" cellspacing="0">`,
     `<tr><td><strong>Invoice</strong></td><td>${escapeHtml(invoiceNumber)}</td></tr>`,
     accountCode ? `<tr><td><strong>Account ID</strong></td><td>${escapeHtml(accountCode)}</td></tr>` : '',
+    poNumber ? `<tr><td><strong>Purchase order</strong></td><td>${escapeHtml(poNumber)}</td></tr>` : '',
     discountLabel ? `<tr><td><strong>Subtotal</strong></td><td>$${Number(subtotal).toFixed(2)}</td></tr>` : '',
     discountLabel ? `<tr><td><strong>Discount</strong></td><td>−$${(Number(subtotal) - Number(amount)).toFixed(2)} (${escapeHtml(discountLabel)})</td></tr>` : '',
     `<tr><td><strong>${discountLabel ? 'Total due' : 'Amount'}</strong></td><td>$${Number(amount).toFixed(2)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>`,
@@ -61,6 +62,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
   const description = req.body.description ? String(req.body.description).trim() : null
   const dueDate = req.body.dueDate ? String(req.body.dueDate).trim() : null
   const billingPeriod = req.body.billingPeriod ? String(req.body.billingPeriod).trim() : null
+  const poNumber = req.body.poNumber ? String(req.body.poNumber).trim() : null
   const wantsPromo = req.body.applyPromo === true
   // The referral credit this invoice spends, if any. Mutually exclusive with
   // the join offer: an invoice carries one discount, never two compounded.
@@ -74,6 +76,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
   if (billingPeriod && !['monthly', 'yearly', 'one_time'].includes(billingPeriod)) {
     return res.status(400).json({ error: 'Invalid billing period.' })
   }
+  if (poNumber && poNumber.length > 64) return res.status(400).json({ error: 'Purchase order number is too long.' })
   if (wantsPromo && referralCreditId) {
     return res.status(400).json({ error: 'Apply the join offer or a referral credit, not both.' })
   }
@@ -134,9 +137,9 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     const id = uid('invc')
 
     await query(
-      `INSERT INTO invoices (id, invoice_number, entity_type, entity_id, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'sent')`,
-      [id, invoiceNumber, entityType, entityId, total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate || null],
+      `INSERT INTO invoices (id, invoice_number, entity_type, entity_id, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'sent')`,
+      [id, invoiceNumber, entityType, entityId, total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate || null, poNumber],
     )
     await query(
       `INSERT INTO payment_events (id, entity_type, entity_id, event_type, amount, invoice_id) VALUES ($1, $2, $3, 'invoice_sent', $4, $5)`,
@@ -165,6 +168,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
           entityName: entity.name,
           accountCode: entity.account_code,
           invoiceNumber,
+          poNumber,
           amount: total,
           subtotal,
           discountLabel,
@@ -178,7 +182,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     }
 
     return res.status(201).json({
-      invoice: { id, invoiceNumber, entityType, entityId, amount: total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate, status: 'sent', emailSent, hasContactEmail },
+      invoice: { id, invoiceNumber, entityType, entityId, amount: total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate, poNumber, status: 'sent', emailSent, hasContactEmail },
     })
   } catch (error) {
     console.error('create invoice failed:', error)
@@ -228,7 +232,7 @@ router.get('/admin/:entityType/:entityId/history', limiter, requireDb, requireAu
     const { rows } = await query(
       `SELECT e.id, e.event_type, e.amount, e.notes, e.created_at,
               i.id AS invoice_id, i.invoice_number, i.status AS invoice_status, i.due_date, i.description, i.billing_period,
-              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id
+              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id, i.po_number
        FROM payment_events e
        LEFT JOIN invoices i ON i.id = e.invoice_id
        WHERE e.entity_type = $1 AND e.entity_id = $2
@@ -292,7 +296,7 @@ router.get('/mine', limiter, requireDb, requireAuth('school', 'school_staff', 'o
 
     const { rows: entityRows } = await query(`SELECT name, account_code FROM ${table} WHERE id = $1`, [entityId])
     const { rows } = await query(
-      `SELECT id, invoice_number, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, status, created_at, paid_at
+      `SELECT id, invoice_number, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, created_at, paid_at
        FROM invoices WHERE entity_type = $1 AND entity_id = $2 ORDER BY created_at DESC LIMIT 50`,
       [entityType, entityId],
     )

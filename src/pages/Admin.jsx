@@ -215,6 +215,7 @@ export default function Admin() {
   const [invoiceBillingPeriodDraft, setInvoiceBillingPeriodDraft] = useState('monthly')
   const [invoiceDescriptionDraft, setInvoiceDescriptionDraft] = useState('')
   const [invoiceDueDateDraft, setInvoiceDueDateDraft] = useState('')
+  const [invoicePoNumberDraft, setInvoicePoNumberDraft] = useState('')
   const [sendingInvoice, setSendingInvoice] = useState(false)
   const [historyModal, setHistoryModal] = useState(null) // { entityType, entityId, entityName }
   const [historyEvents, setHistoryEvents] = useState([])
@@ -734,6 +735,7 @@ export default function Admin() {
     setInvoiceBillingPeriodDraft(entity.price_period || 'monthly')
     setInvoiceDescriptionDraft('')
     setInvoiceDueDateDraft(entity.payment_due_date ? String(entity.payment_due_date).slice(0, 10) : '')
+    setInvoicePoNumberDraft('')
     setInvoicePromo(null)
     setApplyPromoToInvoice(false)
     setSelectedCreditId('')
@@ -769,13 +771,14 @@ export default function Admin() {
           billingPeriod: invoiceBillingPeriodDraft,
           description: invoiceDescriptionDraft.trim() || undefined,
           dueDate: invoiceDueDateDraft || undefined,
+          poNumber: invoicePoNumberDraft.trim() || undefined,
           applyPromo: !selectedCreditId && applyPromoToInvoice && invoicePromoCheck.eligible,
           referralCreditId: selectedCreditId || undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
-      setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft('')
+      setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft(''); setInvoicePoNumberDraft('')
       setInvoicePromo(null); setApplyPromoToInvoice(false); setSelectedCreditId('')
       if (data.invoice?.hasContactEmail === false) {
         setToastMessage('Invoice created — no contact email on file, nothing was emailed')
@@ -820,6 +823,7 @@ export default function Admin() {
   const downloadInvoicePdf = (event) => {
     generateInvoicePDF({
       invoiceNumber: event.invoice_number,
+      poNumber: event.po_number,
       entityName: historyModal?.entityName,
       accountCode: historyModal?.accountCode,
       amount: event.amount,
@@ -2972,6 +2976,14 @@ export default function Admin() {
                 <label className="label">Due date (optional)</label>
                 <input type="date" className="input" value={invoiceDueDateDraft} onChange={(e) => setInvoiceDueDateDraft(e.target.value)} />
               </div>
+              <div>
+                <label className="label">Purchase order number (optional)</label>
+                <input
+                  type="text" className="input" maxLength={64}
+                  placeholder="The PO number the customer gave you"
+                  value={invoicePoNumberDraft} onChange={(e) => setInvoicePoNumberDraft(e.target.value)}
+                />
+              </div>
               {invoicePromo?.credits?.length > 0 && (
                 <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
                   <p className="font-medium flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 text-brand-400" /> Referral credits</p>
@@ -3070,7 +3082,7 @@ export default function Admin() {
                       </span>
                       {ev.amount != null && <span className="text-earth-400">${Number(ev.amount).toFixed(2)}</span>}
                     </div>
-                    <p className="text-xs text-earth-400 mt-0.5">{new Date(ev.created_at).toLocaleString()}</p>
+                    <p className="text-xs text-earth-400 mt-0.5">{new Date(ev.created_at).toLocaleString()}{ev.po_number && ` · PO ${ev.po_number}`}</p>
                     {ev.notes && <p className="text-xs text-earth-500 mt-1">{ev.notes}</p>}
                     {ev.event_type === 'invoice_sent' && (
                       <div className="flex gap-1 mt-2">

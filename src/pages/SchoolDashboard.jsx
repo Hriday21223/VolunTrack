@@ -557,6 +557,7 @@ export default function SchoolDashboard() {
                     )}
                     <p className="text-xs text-earth-500 mt-0.5">
                       {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
+                      {inv.po_number && ` · PO ${inv.po_number}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -579,6 +580,7 @@ export default function SchoolDashboard() {
                     <button
                       onClick={() => generateInvoicePDF({
                         invoiceNumber: inv.invoice_number,
+                        poNumber: inv.po_number,
                         entityName: schoolInfo?.name,
                         accountCode,
                         amount: inv.amount,
@@ -1024,6 +1026,7 @@ export default function SchoolDashboard() {
           filename={`${previewInvoice.invoice_number}.pdf`}
           getBlob={() => generateInvoicePDF({
             invoiceNumber: previewInvoice.invoice_number,
+            poNumber: previewInvoice.po_number,
             entityName: schoolInfo?.name,
             accountCode,
             amount: previewInvoice.amount,

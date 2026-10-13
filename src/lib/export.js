@@ -93,7 +93,7 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
 const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
 
 /** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
-export async function generateInvoicePDF({ invoiceNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, returnBlob }) {
+export async function generateInvoicePDF({ invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, returnBlob }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
 
@@ -113,6 +113,7 @@ export async function generateInvoicePDF({ invoiceNumber, entityName, accountCod
   doc.setTextColor(90)
   doc.text(`Issued ${createdAt ? new Date(createdAt).toLocaleDateString() : new Date().toLocaleDateString()}`, 400, 66)
   if (dueDate) doc.text(`Due ${new Date(dueDate).toLocaleDateString()}`, 400, 80)
+  if (poNumber) doc.text(`PO ${poNumber}`, 400, dueDate ? 94 : 80)
   doc.setTextColor(0)
 
   doc.setFont('helvetica', 'bold').setFontSize(12)
