@@ -307,6 +307,12 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     }
   }
 
+  // No server account and no client code: answer exactly as a real send
+  // would, without sending. A different status here would tell anyone asking
+  // whether the address is registered.
+  if (!code && type === 'password' && hasDatabase()) {
+    return res.status(200).json({ ok: true, serverGenerated: true })
+  }
   if (!code || code.length > 20) {
     return res.status(400).json({ error: 'Invalid code.' })
   }

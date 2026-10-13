@@ -31,7 +31,9 @@ function reasonLooksLikeMissingBackend(reason) {
  * Never throws so callers can render a status banner instead of crashing.
  */
 export async function sendRecoveryEmail({ email, code, type }) {
-  if (!email || !code || !type) {
+  // A password reset may carry no code: the backend mints its own for a
+  // server-backed account, and this browser may hold no local copy of it.
+  if (!email || !type || (!code && type !== 'password')) {
     return { ok: false, reason: 'Missing recovery details.', backendAvailable: false }
   }
   try {

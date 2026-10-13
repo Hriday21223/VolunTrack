@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist', 'node_modules', 'dev-dist', '_site', 'android', 'ios'] },
+  { ignores: ['dist', 'node_modules', 'dev-dist', '_site', 'android', 'ios', '.kilo'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -15,6 +15,8 @@ export default [
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // A missing import is a crash at the call site, not a style issue.
+      'no-undef': 'error',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },

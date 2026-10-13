@@ -10,6 +10,7 @@ import {
 import { syncPullLogs } from '@/lib/logSync.js'
 import { syncKeptSession } from '@/lib/appSession.js'
 import { signInWithPasskey } from '@/lib/passkey.js'
+import { syncNativeReminders } from '@/lib/nativeReminders.js'
 
 const AuthContext = createContext(null)
 
@@ -461,9 +462,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   const requestPasswordReset = useCallback(async (email) => {
+    // No local copy is the normal case on a browser this account has never
+    // signed in on. The server owns the code for a server-backed account, so
+    // an empty string here just means "nothing local to fall back on".
     const updated = sendPasswordResetCode(email)
-    if (!updated) throw new Error('No account with that email.')
-    return updated.resetPasswordCode
+    return updated ? updated.resetPasswordCode : ''
   }, [])
 
   const completePasswordReset = useCallback(async (email, code, password) => {
