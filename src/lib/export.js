@@ -168,19 +168,19 @@ export function exportLogsCSV(logs) {
     ['Date', 'Activity', 'Category', 'Hours', 'Start', 'End', 'Location', 'Organization', 'Org Address', 'Org Phone', 'Supervisor', 'Signed', 'Verified', 'Notes'],
     ...logs.map((l) => [
       l.date || '',
-      (l.activity || '').replaceAll(',', ' '),
+      l.activity || '',
       l.category || '',
       l.hours ?? '',
       l.startTime || '',
       l.endTime || '',
-      (l.location || '').replaceAll(',', ' '),
-      (l.orgName || '').replaceAll(',', ' '),
-      (l.orgAddress || '').replaceAll(',', ' '),
-      (l.orgPhone || '').replaceAll(',', ' '),
-      (l.supervisorName || '').replaceAll(',', ' '),
+      l.location || '',
+      l.orgName || '',
+      l.orgAddress || '',
+      l.orgPhone || '',
+      l.supervisorName || '',
       l.supervisorSignature ? 'yes' : 'no',
       l.verified ? 'yes' : 'no',
-      (l.notes || '').replaceAll(/\n/g, ' ').replaceAll(',', ' '),
+      (l.notes || '').replaceAll(/\n/g, ' '),
     ]),
   ]
   return rows.map((r) => r.map(csvCell).join(',')).join('\n')
@@ -263,6 +263,11 @@ const SIGNED_HOW_LABELS = {
   emailed: 'Emailed by VolunTrack',
 }
 
+// What the report screen calls each stored verification status. Anything
+// not yet decided (`none`, `pending`) counts as pending, as it does in the
+// report's totals.
+const VERIFICATION_LABELS = { approved: 'Approved', rejected: 'Rejected' }
+
 /**
  * Detail CSV — one row per log, for spreadsheets. Uses the same csvCell
  * escaping as exportLogsCSV so a comma in an activity name can't shift
@@ -280,7 +285,7 @@ export function schoolHoursCSV(logs) {
       l.activity || '',
       l.category || '',
       l.hours ?? '',
-      l.verificationStatus || '',
+      VERIFICATION_LABELS[l.verificationStatus] || 'Pending',
       SIGNED_HOW_LABELS[l.signedHow] || '',
       l.orgName || '',
       l.supervisorName || '',

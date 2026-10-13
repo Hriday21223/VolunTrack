@@ -333,7 +333,12 @@ export default function Settings() {
     if (!user?.schoolId) return
     ;(async () => {
       try {
-        const res = await fetch(`${apiUrl}/school/info?id=${user.schoolId}`)
+        // The join code is only returned to the school's own admins, so the
+        // request has to carry the session.
+        const token = localStorage.getItem('voluntrack:auth_token')
+        const res = await fetch(`${apiUrl}/school/info?id=${user.schoolId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
         if (!res.ok) return
         const data = await res.json()
         if (data.school) {
