@@ -33,7 +33,7 @@ const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 
 // numbered invoice rather than a free-text payment notice.
 function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, poNumber, amount, subtotal, discountLabel, billingPeriod, dueDate, description, paymentInstructions }) {
   const dashboardLink = `${process.env.FRONTEND_URL || ''}${entityType === 'organization' ? '/organization/dashboard' : '/school/dashboard'}`
-  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
+  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : null
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
   return [
     `<p>Hi ${escapeHtml(entityName)},</p>`,

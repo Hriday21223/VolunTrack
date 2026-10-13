@@ -1,7 +1,7 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
-import { query, hasDatabase, nextAccountCode } from '../db.js'
+import { query, hasDatabase, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
@@ -60,6 +60,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
       'INSERT INTO organizations (id, name, contact_email, account_code) VALUES ($1, $2, $3, $4)',
       [orgId, name, email, await nextAccountCode('organizations')],
     )
+    await assignReferralCode('organizations', orgId, name).catch((e) => console.error('referral code failed:', e.message))
 
     const hash = await hashPassword(password)
     const userId = uid('usr')
@@ -250,6 +251,9 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
       `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'organization', $2, $3, $4)`,
       [uid('pev'), req.params.id, status === 'paid' ? 'status_paid' : 'status_unpaid', notes || null],
     )
+    if (status === 'paid') {
+      await settleSingleOpenInvoice('organization', req.params.id).catch((e) => console.error('invoice settle failed:', e.message))
+    }
     return res.json({ ok: true })
   } catch (error) {
     console.error('update organization payment failed:', error)

@@ -1,5 +1,5 @@
 import pg from 'pg'
-import { generateAccountCode, generateReferralCode } from './ids.js'
+import { generateAccountCode, generateReferralCode, uid } from './ids.js'
 
 const { Pool } = pg
 
@@ -289,19 +289,47 @@ async function backfillAccountCodes(table) {
 // rather than the pre-check for correctness.
 async function backfillReferralCodes(table) {
   const { rows } = await query(`SELECT id, name FROM ${table} WHERE referral_code IS NULL`)
-  for (const row of rows) {
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        await query(
-          `UPDATE ${table} SET referral_code = $1 WHERE id = $2 AND referral_code IS NULL`,
-          [generateReferralCode(row.name), row.id],
-        )
-        break
-      } catch (error) {
-        if (error?.code !== '23505') throw error
-      }
+  for (const row of rows) await assignReferralCode(table, row.id, row.name)
+}
+
+// Also called at registration: the boot backfill alone left every account
+// created since the last restart with no code, so it could not refer anyone
+// and "Invite existing customers" skipped it.
+export async function assignReferralCode(table, id, name) {
+  if (table !== 'schools' && table !== 'organizations') throw new Error('unknown referral table')
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await query(
+        `UPDATE ${table} SET referral_code = $1 WHERE id = $2 AND referral_code IS NULL`,
+        [generateReferralCode(name), id],
+      )
+      return
+    } catch (error) {
+      if (error?.code !== '23505') throw error
     }
   }
+}
+
+// Marking an account paid by hand used to leave its invoice open, so the admin
+// had to mark the same payment twice. Only settles when exactly one invoice is
+// outstanding — with several, which one the money was for is not ours to guess.
+export async function settleSingleOpenInvoice(entityType, entityId) {
+  const { rows } = await query(
+    `SELECT id, amount FROM invoices WHERE entity_type = $1 AND entity_id = $2 AND status = 'sent'`,
+    [entityType, entityId],
+  )
+  if (rows.length !== 1) return null
+  const { rowCount } = await query(
+    `UPDATE invoices SET status = 'paid', paid_at = now() WHERE id = $1 AND status = 'sent'`,
+    [rows[0].id],
+  )
+  if (rowCount === 0) return null
+  await query(
+    `INSERT INTO payment_events (id, entity_type, entity_id, event_type, amount, invoice_id)
+     VALUES ($1, $2, $3, 'invoice_paid', $4, $5)`,
+    [uid('pev'), entityType, entityId, rows[0].amount, rows[0].id],
+  )
+  return rows[0].id
 }
 
 export async function initSchema() {

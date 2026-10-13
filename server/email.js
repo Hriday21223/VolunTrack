@@ -184,7 +184,7 @@ export function paymentInstructionsHtml(instructions, accountCode) {
 // confirmation number. Shared by school and organization notify routes.
 export function paymentNoticeHtml({ recipientName, entityLabel = 'school', accountCode, amount, billingPeriod, dueDate, message, includeDashboardLink = true, paymentInstructions }) {
   const dashboardLink = `${process.env.FRONTEND_URL || ''}/school/dashboard`
-  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null
+  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : null
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
   return [
     `<p>Hi ${escapeHtml(recipientName)},</p>`,
