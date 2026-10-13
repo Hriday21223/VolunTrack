@@ -434,7 +434,7 @@ export default function SchoolDashboard() {
         </span>
       }
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {isSchoolAdmin && (
             <button data-tour="tab-students" onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>Students</button>
           )}

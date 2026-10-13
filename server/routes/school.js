@@ -2191,6 +2191,10 @@ router.delete('/admin/invite/:id', limiter, requireDb, requireAuth('admin'), asy
 // Delete a school and unlink its students (admin only)
 router.delete('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
+    // The school's own logins go with it: an admin or co-admin account linked
+    // to no school can still sign in but has nothing to manage. Students keep
+    // their accounts and hours and are only unlinked.
+    await query(`DELETE FROM users WHERE school_id = $1 AND role IN ('school', 'school_staff')`, [req.params.id])
     await query('UPDATE users SET school_id = NULL WHERE school_id = $1', [req.params.id])
     await query('DELETE FROM schools WHERE id = $1', [req.params.id])
     return res.json({ ok: true })
