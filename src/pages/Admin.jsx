@@ -1495,7 +1495,7 @@ export default function Admin() {
             )}
             {schools.filter(matchesCustomerSearch).map((s) => (
               <Card key={s.id} padded={false} className="p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <School className="w-8 h-8 text-brand-600 shrink-0" />
                     <div className="min-w-0">
@@ -1547,7 +1547,7 @@ export default function Admin() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1 sm:shrink-0">
                     <button onClick={() => { setNoteModal(s.id); setNoteDraft(s.admin_notes || '') }} className={`p-2 ${s.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
                       <ShieldCheck className="w-4 h-4" />
                     </button>
@@ -1687,7 +1687,7 @@ export default function Admin() {
             )}
             {organizations.filter(matchesCustomerSearch).map((org) => (
               <Card key={org.id} padded={false} className="p-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <Building2 className="w-8 h-8 text-brand-600 shrink-0" />
                     <div className="min-w-0">
@@ -1729,7 +1729,7 @@ export default function Admin() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1 sm:shrink-0">
                     <button onClick={() => { setOrgNoteModal(org.id); setOrgNoteDraft(org.admin_notes || '') }} className={`p-2 ${org.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
                       <ShieldCheck className="w-4 h-4" />
                     </button>

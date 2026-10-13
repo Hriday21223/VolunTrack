@@ -2432,7 +2432,7 @@ router.get('/reports/hours', limiter, requireDb, requireAuth('school', 'school_s
     const { rows } = await query(
       `SELECT u.id  AS student_id, u.name AS student_name, u.email AS student_email,
               u.grade, u.school_id, sc.name AS school_name,
-              l.id   AS log_id, l.date, l.activity, l.category, l.hours,
+              l.id   AS log_id, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours,
               l.verification_status, l.org_name, l.supervisor_name, l.location, l.notes,
               ${SIGNED_HOW_SQL} AS signed_how
          FROM users u
