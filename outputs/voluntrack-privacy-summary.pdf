@@ -1,0 +1,1053 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 7487
+>>
+stream
+0.200025 w
+0 G
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.247 0.514 0.267 rg
+54. 734. Td
+(VOLUNTRACK) Tj
+ET
+BT
+/F2 9 Tf
+10.3499999999999996 TL
+0.431 0.478 0.455 rg
+420.2999999999999545 734. Td
+(FOR SCHOOLS AND DISTRICTS) Tj
+ET
+0.85 0.85 0.84 RG
+0.5 w
+54. 726. m
+558. 726. l
+S
+BT
+/F2 22 Tf
+25.2999999999999972 TL
+0.059 0.09 0.071 rg
+54. 694. Td
+(Student Data Privacy Summary) Tj
+ET
+BT
+/F1 10.5 Tf
+12.0749999999999993 TL
+0.149 0.196 0.173 rg
+54. 676. Td
+(VolunTrack lets students log volunteer hours and lets their school verify and report on them. This is what we) Tj
+T* (hold about your students, who can see it, and how it is removed.) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 638. Td
+(What we store about a student) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 621. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+113.4000000000000057 621. Td
+(name and email address, and optionally a grade level and a student ID number.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 621. Td
+(Account) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 604.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+139.4000000000000341 604.5 Td
+(date, hours, activity description, category, location, and any extra fields your school chooses to) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 591. Td
+(require on an entry.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 604.5 Td
+(Service hours) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 574.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+127.8000000000000114 574.5 Td
+(the supervisor's name and email, the organization's name, address and phone, and the) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 561. Td
+(supervisor's signature when they approve an entry from the emailed link.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 574.5 Td
+(Verification) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 544.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+107.4000000000000057 544.5 Td
+(a hashed password \(bcrypt\), or with school single sign-on the name, email and account identifier your) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 531. Td
+(sign-in provider sends. We never see a school password.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 544.5 Td
+(Sign-in) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 514.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+222.3000000000000114 514.5 Td
+(website, Android app or iPhone app. Used only to count sign-ups.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 514.5 Td
+(Where the account was created) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 486. Td
+(What we do not do) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 469. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 469. Td
+(We do not sell or trade personal data, and we show no advertising.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 452.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 452.5 Td
+(We do not store academic records such as courses or marks, or any payment details for students or parents.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 436. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 436. Td
+(Usage analytics are anonymous page views \(Vercel Analytics\): no cookies and no tracking of individuals across) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 422.5 Td
+(sites.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 406. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 406. Td
+(A student's phone location is used only to fill in the location field when they log hours, and they can edit or clear) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 392.5 Td
+(it.) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 364. Td
+(Who can see a student's record) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 347. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+130. 347. Td
+(always.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 347. Td
+(The student) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 330.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+130.2000000000000171 330.5 Td
+(the school account and the staff accounts it invites see their own students only.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 330.5 Td
+(Your school) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 314. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+206.1999999999999602 314. Td
+(an organization account sees the schools it owns.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 314. Td
+(Your district or organization) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 297.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+114. 297.5 Td
+(only after linking to the student with that student's family link code.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 297.5 Td
+(A parent) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 281. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+134.5 281. Td
+(sees only the single entry they were asked to verify.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 281. Td
+(A supervisor) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 264.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+198.1000000000000227 264.5 Td
+(for support, billing and moderation.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 264.5 Td
+(VolunTrack administrators) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+54. 242. Td
+(Every time a school or organization staff member opens a student's record we record who did it and when, with) Tj
+T* (the IP address and browser. These access records are append-only and kept for up to 400 days.) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 204. Td
+(Where the data lives) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 187. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+117.7000000000000028 187. Td
+(PostgreSQL hosted by Neon. Queries are parameterized throughout.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 187. Td
+(Database) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 170.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+127.9000000000000057 170.5 Td
+(backend on Render, web app on Vercel. All traffic between the app and our servers is encrypted) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 157. Td
+(with HTTPS.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 170.5 Td
+(Application) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 140.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+100.2000000000000028 140.5 Td
+(verification requests and account email are delivered through Brevo.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 140.5 Td
+(Email) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 124. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+141.7000000000000171 124. Td
+(Cloudflare Turnstile on public sign-up, sign-in and contact forms.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 124. Td
+(Bot protection) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+54. 101.5 Td
+(These providers process data on our behalf to run the service and do not use it for their own purposes.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.431 0.478 0.455 rg
+54. 30. Td
+(Reflects the privacy policy of October 10, 2026) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.431 0.478 0.455 rg
+419.7599999999999909 30. Td
+(volunteertrackinfo@gmail.com   ·   1 / 2) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 5141
+>>
+stream
+0.5 w
+0.85 0.85 0.84 RG
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 728. Td
+(Proof-of-service files) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+54. 711. Td
+(Your school can connect its own S3-compatible storage bucket. Proof files and submitted reports then upload) Tj
+T* (straight from the student's device to your bucket; VolunTrack keeps only a reference and never holds the file.) Tj
+T* (Those files stay under your control and your retention policy.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+54. 665.5 Td
+(Without connected storage, a proof file a student attaches stays on their device, and a report submitted to the) Tj
+T* (school is stored by us until the student or the school deletes it.) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 627.5 Td
+(Sign-in and account security) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 610.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+142.3000000000000114 610.5 Td
+(connect Google Workspace, Microsoft Entra or another OpenID Connect provider so students) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 597. Td
+(sign in with their school account.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 610.5 Td
+(Single sign-on) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 580.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+160. 580.5 Td
+(available on every account by authenticator app or passkey. For a passkey we store only) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 567. Td
+(the public key.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 580.5 Td
+(Two-factor sign-in) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 550.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+142.5999999999999943 550.5 Td
+(the SSO and storage credentials a school gives us are encrypted with AES-256-GCM.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 550.5 Td
+(Stored secrets) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 534. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+132.9000000000000057 534. Td
+(sign-in and sign-up endpoints are rate limited.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.059 0.09 0.071 rg
+68. 534. Td
+(Abuse limits) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 505.5 Td
+(Retention and deletion) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 488.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 488.5 Td
+(Data is kept for as long as the account exists.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 472. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 472. Td
+(A student can delete their own account from Settings. This erases the account and everything attached to it —) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 458.5 Td
+(logs, goals, reminders, documents uploaded to a school and any parent link — from our servers.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 442. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 442. Td
+(Access records outlive an account for up to 400 days so access stays accountable; the account holder's) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 428.5 Td
+(identity is removed from them when the account is erased.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 412. Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 412. Td
+(Files in a school's own storage belong to the school and are deleted by the school.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 395.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 395.5 Td
+(A student who transfers schools takes their whole record with them once the new school accepts; the former) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 382. Td
+(school then no longer sees it.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.247 0.514 0.267 rg
+56. 365.5 Td
+(•) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+68. 365.5 Td
+(School and organization accounts are closed or transferred on request, by contacting us.) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 337. Td
+(Students under 13) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+54. 320. Td
+(A student under 13 needs consent from a parent, a guardian, or their school or teacher to create an account. We) Tj
+T* (collect only what the service needs.) Tj
+ET
+BT
+/F2 12.5 Tf
+14.3749999999999982 TL
+0.059 0.09 0.071 rg
+54. 282. Td
+(Agreements and questions) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+54. 265. Td
+(This summary describes how VolunTrack handles data. It is not a legal certification. We are glad to review your) Tj
+T* (district's data privacy agreement and to answer a security questionnaire.) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.149 0.196 0.173 rg
+54. 233. Td
+(Full policy: volunteer-track-two.vercel.app/privacy \(last updated October 10, 2026\). Terms:) Tj
+T* (volunteer-track-two.vercel.app/terms. Contact: volunteertrackinfo@gmail.com.) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.431 0.478 0.455 rg
+54. 30. Td
+(Reflects the privacy policy of October 10, 2026) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.431 0.478 0.455 rg
+419.7599999999999909 30. Td
+(volunteertrackinfo@gmail.com   ·   2 / 2) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R ]
+/Count 2
+>>
+endobj
+7 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+8 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 7 0 R
+/F2 8 0 R
+/F3 9 0 R
+/F4 10 0 R
+/F5 11 0 R
+/F6 12 0 R
+/F7 13 0 R
+/F8 14 0 R
+/F9 15 0 R
+/F10 16 0 R
+/F11 17 0 R
+/F12 18 0 R
+/F13 19 0 R
+/F14 20 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+21 0 obj
+<<
+/Producer (jsPDF 4.2.1)
+/Title (þÿ V o l u n T r a c k      S t u d e n t   D a t a   P r i v a c y   S u m m a r y)
+/Subject (How VolunTrack stores, shares and deletes student data)
+/Author (VolunTrack)
+/Creator (VolunTrack build script)
+/CreationDate (D:20261013070525-05'00')
+>>
+endobj
+22 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000012957 00000 n 
+0000014782 00000 n 
+0000000015 00000 n 
+0000000120 00000 n 
+0000007659 00000 n 
+0000007764 00000 n 
+0000013020 00000 n 
+0000013145 00000 n 
+0000013275 00000 n 
+0000013408 00000 n 
+0000013546 00000 n 
+0000013670 00000 n 
+0000013799 00000 n 
+0000013931 00000 n 
+0000014067 00000 n 
+0000014195 00000 n 
+0000014322 00000 n 
+0000014451 00000 n 
+0000014584 00000 n 
+0000014686 00000 n 
+0000015032 00000 n 
+0000015334 00000 n 
+trailer
+<<
+/Size 23
+/Root 22 0 R
+/Info 21 0 R
+/ID [ <60DD1EE48DBC7B23CFFC1B5AF6B4537F> <60DD1EE48DBC7B23CFFC1B5AF6B4537F> ]
+>>
+startxref
+15438
+%%EOF
