@@ -25,6 +25,13 @@ const LOGO_W = 34
 const LOGO_H = 30 // matches logo.png's 384x338 aspect ratio
 
 /** Generate a printable PDF report for the user's logs. When `returnBlob` is true, returns the PDF blob instead of downloading. */
+// Customers usually hand over a number that already starts with "PO", and
+// prefixing that printed "PO PO-2026-0042".
+export function poLabel(poNumber) {
+  const value = String(poNumber || '').trim()
+  return /^p\.?o\b/i.test(value) ? value : `PO ${value}`
+}
+
 export async function exportLogsPDF({ user, logs, returnBlob }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   const total = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
@@ -113,7 +120,7 @@ export async function generateInvoicePDF({ invoiceNumber, poNumber, entityName, 
   doc.setTextColor(90)
   doc.text(`Issued ${createdAt ? new Date(createdAt).toLocaleDateString() : new Date().toLocaleDateString()}`, 400, 66)
   if (dueDate) doc.text(`Due ${new Date(dueDate).toLocaleDateString()}`, 400, 80)
-  if (poNumber) doc.text(`PO ${poNumber}`, 400, dueDate ? 94 : 80)
+  if (poNumber) doc.text(poLabel(poNumber), 400, dueDate ? 94 : 80)
   doc.setTextColor(0)
 
   doc.setFont('helvetica', 'bold').setFontSize(12)

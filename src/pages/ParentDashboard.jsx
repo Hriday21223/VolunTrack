@@ -33,6 +33,16 @@ const PACE_TONE = {
 
 const paceHours = (h) => (h < 1 ? `${Math.round(h * 60)}m` : `${Math.round(h * 10) / 10}h`)
 
+// Logs carry a date with no time, and fromNow() reads that as midnight UTC —
+// an entry made a minute ago showed as "about 18 hours ago".
+function dayFromNow(dateStr) {
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const now = new Date()
+  if (dateStr === ymd(now)) return 'Today'
+  if (dateStr === ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) return 'Yesterday'
+  return fromNow(dateStr)
+}
+
 export default function ParentDashboard() {
   const [children, setChildren] = useState([])
   const [loading, setLoading] = useState(true)
@@ -265,7 +275,7 @@ function ChildCard({ child }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         <Stat label="This month" value={fmtHours(stats.thisMonth)} />
-        <Stat label="Last logged" value={stats.lastDate ? fromNow(stats.lastDate) : 'Never'} />
+        <Stat label="Last logged" value={stats.lastDate ? dayFromNow(stats.lastDate) : 'Never'} />
         <Stat label="Approved" value={fmtHours(stats.approved)} />
         <Stat
           label="Awaiting review"

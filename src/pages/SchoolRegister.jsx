@@ -88,7 +88,7 @@ export default function SchoolRegister() {
         <Card padded={false} className="p-7">
           <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your school' : 'Register your school'}</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-            {inviteToken ? 'You were invited by a VolunTrack admin — just set your password and school code.' : 'Create a school account to review student hours.'}
+            {inviteToken ? 'You were invited to VolunTrack — just set your password and school code.' : 'Create a school account to review student hours.'}
           </p>
 
           {!inviteLoaded ? (

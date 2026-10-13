@@ -7,7 +7,7 @@ import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
-import { generateInvoicePDF } from '@/lib/export.js'
+import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -274,6 +274,8 @@ export default function Admin() {
   const [organizations, setOrganizations] = useState([])
   const [loadingOrganizations, setLoadingOrganizations] = useState(false)
   const [incidents, setIncidents] = useState([])
+  // The tab badge is a call to action, so resolved history must not count.
+  const activeIncidentCount = incidents.filter((i) => i.status !== 'resolved').length
   const [loadingIncidents, setLoadingIncidents] = useState(false)
   const [resolvingId, setResolvingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
@@ -1295,6 +1297,7 @@ export default function Admin() {
     <AppLayout
       title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'users' ? 'Users' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
       subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'users' ? (userStats ? `${userStats.total} ${userStats.total === 1 ? 'person has' : 'people have'} registered` : 'Who has registered') : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      actionWide
       action={
         <div className="flex gap-2">
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -1314,8 +1317,8 @@ export default function Admin() {
           </button>
           <button data-tour="admin-incidents" onClick={() => { setTab('incidents'); loadIncidents() }} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
             <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Incidents
-            {incidents.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{incidents.length > 9 ? '9+' : incidents.length}</span>
+            {activeIncidentCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{activeIncidentCount > 9 ? '9+' : activeIncidentCount}</span>
             )}
           </button>
           <button onClick={() => setTab('settings')} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -3110,7 +3113,7 @@ export default function Admin() {
                       </span>
                       {ev.amount != null && <span className="text-earth-400">${Number(ev.amount).toFixed(2)}</span>}
                     </div>
-                    <p className="text-xs text-earth-400 mt-0.5">{new Date(ev.created_at).toLocaleString()}{ev.po_number && ` · PO ${ev.po_number}`}</p>
+                    <p className="text-xs text-earth-400 mt-0.5">{new Date(ev.created_at).toLocaleString()}{ev.po_number && ` · ${poLabel(ev.po_number)}`}</p>
                     {ev.notes && <p className="text-xs text-earth-500 mt-1">{ev.notes}</p>}
                     {ev.event_type === 'invoice_sent' && (
                       <div className="flex gap-1 mt-2">

@@ -145,6 +145,7 @@ export default function ReviewConsentPrompt() {
               maxLength={4}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              onKeyDown={(e) => { if (e.key === 'Enter' && pin.length === 4 && !busy) confirmPin() }}
               placeholder="0000"
               className="mt-5 w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-center text-2xl tracking-[0.5em] text-white placeholder-earth-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
             />
