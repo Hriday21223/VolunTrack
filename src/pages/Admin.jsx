@@ -37,6 +37,25 @@ function generateInvoiceDescription({ entityName, billingPeriod }) {
   return templates[seed % templates.length]
 }
 
+// Description for the join offer's banner, written from the offer's own
+// settings so the words can't promise something the offer doesn't do. Each
+// click moves on to the next wording. The code and the end date are left out
+// on purpose: the banner prints both itself.
+let promoDetailsTurn = 0
+function generatePromoDetails(offer) {
+  const label = promoLabel(offer)
+  const who = offer.audience === 'school' ? 'your school' : offer.audience === 'organization' ? 'your organization' : 'your school or organization'
+  const referral = offer.referral
+    ? ` Refer someone new and you get ${offer.percentOff}% off your next invoice too.`
+    : ''
+  const templates = [
+    `Join VolunTrack and get ${label}.${referral}`,
+    `Sign up ${who} for VolunTrack and get ${label}.${referral}`,
+    `New to VolunTrack? Get ${label} when ${who} joins.${referral}`,
+  ]
+  return templates[promoDetailsTurn++ % templates.length]
+}
+
 function generateDraft(contact) {
   const subject = contact.subject || 'General question'
   const name = contact.name || 'there'
@@ -2070,7 +2089,16 @@ export default function Admin() {
                 </span>
               </label>
               <div>
-                <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Details</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-earth-500 dark:text-earth-400">Details</label>
+                  <button
+                    type="button"
+                    onClick={() => setPromoDraft({ ...promoDraft, details: generatePromoDetails(promoDraft) })}
+                    className="text-xs text-brand-400 hover:text-brand-300 inline-flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3 h-3" /> Generate with AI
+                  </button>
+                </div>
                 <textarea
                   rows={2}
                   value={promoDraft.details}
