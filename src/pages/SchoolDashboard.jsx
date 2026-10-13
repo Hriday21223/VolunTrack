@@ -12,7 +12,7 @@ import { gradeLabel } from '@policy'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
-import { generateInvoicePDF } from '@/lib/export.js'
+import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
@@ -474,7 +474,7 @@ export default function SchoolDashboard() {
             were actually on. It lives under School setup -> Billing now. */}
         {/* Each sub-tab bar sits at the top of the tab it belongs to. */}
         {tab === 'pdfs' && isSchoolAdmin && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => setReportTab('documents')} className={`btn-sm ${reportTab === 'documents' ? 'btn-primary' : 'btn-ghost'}`}>
               <FileText className="w-3.5 h-3.5 mr-1" /> Documents
             </button>
@@ -485,7 +485,7 @@ export default function SchoolDashboard() {
         )}
 
         {tab === 'setup' && user?.role === 'school' && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => setSetupTab('staff')} className={`btn-sm ${setupTab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
               <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
             </button>
@@ -557,7 +557,7 @@ export default function SchoolDashboard() {
                     )}
                     <p className="text-xs text-earth-500 mt-0.5">
                       {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
-                      {inv.po_number && ` · PO ${inv.po_number}`}
+                      {inv.po_number && ` · ${poLabel(inv.po_number)}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -716,7 +716,7 @@ export default function SchoolDashboard() {
               </Card>
             )}
 
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-4">
               <button onClick={() => setSubTab('list')} className={`btn-sm ${subTab === 'list' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Search className="w-3.5 h-3.5 mr-1" /> Student list ({students.length})
               </button>

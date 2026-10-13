@@ -10,6 +10,7 @@ const SIGNUP_LABELS = {
   pending: { label: 'Pending approval', className: 'bg-amber-500/10 text-amber-400' },
   rejected: { label: 'Rejected', className: 'bg-red-500/10 text-red-400' },
 }
+const CANCELLED_LABEL = { label: 'Cancelled', className: 'bg-earth-500/10 text-earth-400' }
 
 const ATTENDANCE_META = {
   present: { label: 'Present', icon: CheckCircle, className: 'text-emerald-400' },
@@ -18,8 +19,9 @@ const ATTENDANCE_META = {
 }
 
 function SignupRow({ s }) {
-  const signup = SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending
-  const attendance = s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
+  const cancelled = s.task_status === 'cancelled'
+  const signup = cancelled ? CANCELLED_LABEL : (SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending)
+  const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
   const isPast = new Date(s.date) < new Date().setHours(0, 0, 0, 0)
 
   return (
@@ -39,7 +41,7 @@ function SignupRow({ s }) {
             <span className={`text-xs flex items-center gap-1 font-medium ${attendance.className}`}>
               <attendance.icon className="w-3.5 h-3.5" /> {attendance.label}
             </span>
-          ) : s.signup_status === 'approved' && isPast ? (
+          ) : !cancelled && s.signup_status === 'approved' && isPast ? (
             <span className="text-xs flex items-center gap-1 text-earth-500">
               <Clock3 className="w-3.5 h-3.5" /> Not marked yet
             </span>
@@ -68,8 +70,10 @@ export default function Attendance() {
   useEffect(() => { load() }, [load])
 
   const today = new Date().setHours(0, 0, 0, 0)
-  const upcoming = signups.filter((s) => new Date(s.date) >= today)
-  const past = signups.filter((s) => new Date(s.date) < today)
+  // A cancelled task is never upcoming, even when its date is still ahead.
+  const isUpcoming = (s) => s.task_status !== 'cancelled' && new Date(s.date) >= today
+  const upcoming = signups.filter(isUpcoming)
+  const past = signups.filter((s) => !isUpcoming(s))
 
   return (
     <AppLayout title="Attendance" subtitle="Your signup and attendance status across tasks">

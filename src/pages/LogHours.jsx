@@ -135,7 +135,7 @@ export default function LogHours({ editId, onCloseEdit }) {
     if (!token) return
     fetch(`${apiUrl}/school/public-tasks/signups/mine`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => (res.ok ? res.json() : { signups: [] }))
-      .then((d) => setMyTasks((d.signups || []).filter((s) => s.signup_status === 'approved')))
+      .then((d) => setMyTasks((d.signups || []).filter((s) => s.signup_status === 'approved' && s.task_status !== 'cancelled')))
       .catch(() => setMyTasks([]))
   }, [])
   // Re-rolled per log entry (editId/verificationToken), not on every

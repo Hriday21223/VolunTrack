@@ -185,7 +185,8 @@ export default function Dashboard() {
     let live = true
     fetch(`${apiUrl}/school/public-tasks/signups/mine`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : { signups: [] }))
-      .then((d) => { if (live) setSignups(d.signups || []) })
+      // A cancelled task is not "coming up", whatever the sign-up row says.
+      .then((d) => { if (live) setSignups((d.signups || []).filter((s) => s.task_status !== 'cancelled')) })
       .catch(() => {})
     return () => { live = false }
   }, [])

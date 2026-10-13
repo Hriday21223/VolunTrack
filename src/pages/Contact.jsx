@@ -163,12 +163,12 @@ export default function Contact() {
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Your name</label>
-                  <input className="input" value={form.name} onChange={onChange('name')} required />
+                  <label className="label" htmlFor="contact-name">Your name</label>
+                  <input id="contact-name" className="input" value={form.name} onChange={onChange('name')} required />
                 </div>
                 <div>
-                  <label className="label">Email</label>
-                  <input type="email" className="input" value={form.email} onChange={onChange('email')} required />
+                  <label className="label" htmlFor="contact-email">Email</label>
+                  <input id="contact-email" type="email" className="input" value={form.email} onChange={onChange('email')} required />
                 </div>
               </div>
               <div>

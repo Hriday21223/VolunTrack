@@ -6,7 +6,7 @@ import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
-import { generateInvoicePDF } from '@/lib/export.js'
+import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
@@ -182,7 +182,7 @@ export default function OrganizationDashboard() {
                   )}
                   <p className="text-xs text-earth-500 mt-0.5">
                     {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
-                    {inv.po_number && ` · PO ${inv.po_number}`}
+                    {inv.po_number && ` · ${poLabel(inv.po_number)}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

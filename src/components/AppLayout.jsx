@@ -8,7 +8,7 @@ import Sidebar from './Sidebar.jsx'
 import ReviewPopup from './ReviewPopup.jsx'
 import ReviewConsentPrompt from './ReviewConsentPrompt.jsx'
 
-export default function AppLayout({ children, title, subtitle, action }) {
+export default function AppLayout({ children, title, subtitle, action, actionWide = false }) {
   const { user, logout } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
@@ -79,11 +79,17 @@ export default function AppLayout({ children, title, subtitle, action }) {
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="min-w-0 flex-1">
+              {/* A real basis, not 0: with flex-1 alone a wide `action` squeezed
+                  the title down to a single letter instead of wrapping. */}
+              <div className="min-w-0 flex-1 basis-40">
                 {title && <h1 className="text-xl md:text-2xl font-bold truncate">{title}</h1>}
                 {subtitle && <p className="text-sm text-earth-400 truncate">{subtitle}</p>}
               </div>
-              {action}
+              {/* Scrolls sideways when it is wider than the screen, so every
+                  tab stays reachable on a phone. */}
+              {/* `actionWide` is for a tab strip too long to share the title row:
+                  it takes a row of its own under the title and account. */}
+              {action && <div className={`min-w-0 max-w-full overflow-x-auto py-1.5 -my-1.5 ${actionWide ? 'order-last w-full' : ''}`}>{action}</div>}
               <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-earth-900/80">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 grid place-items-center text-white text-sm font-bold">
                   {user?.name?.[0]?.toUpperCase() || 'V'}
