@@ -18,7 +18,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
  * page hero puts the banner where a standing pill used to be, and that pill has
  * to come back when there is no offer rather than leaving a hole.
  */
-export default function PromoBanner({ audience, className = '', compact = false, fallback = null }) {
+export default function PromoBanner({ audience, className = '', fallback = null }) {
   const [offer, setOffer] = useState(null)
 
   useEffect(() => {
@@ -46,11 +46,9 @@ export default function PromoBanner({ audience, className = '', compact = false,
           {offer.percentOff}% off
         </span>
       </p>
-      {!compact && (
-        <p className="text-sm text-earth-600 dark:text-earth-300 mt-1.5">
-          {offer.details || `Get ${promoLabel(offer)}.`}
-        </p>
-      )}
+      <p className="text-sm text-earth-600 dark:text-earth-300 mt-1.5">
+        {offer.details || `Get ${promoLabel(offer)}.`}
+      </p>
       {offer.code && (
         <p className="text-sm mt-2 flex flex-wrap items-center gap-2">
           <span className="text-earth-500 dark:text-earth-400">Code</span>
