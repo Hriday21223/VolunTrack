@@ -1,7 +1,7 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
-import { query, hasDatabase, getPool, nextAccountCode } from '../db.js'
+import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
@@ -109,6 +109,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
       'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code) VALUES ($1, $2, $3, $4, $5, $6)',
       [schoolId, name, pin, email, invite?.organization_id || null, await nextAccountCode('schools')],
     )
+    await assignReferralCode('schools', schoolId, name).catch((e) => console.error('referral code failed:', e.message))
 
     const hash = await hashPassword(password)
     const userId = uid('usr')
@@ -2006,6 +2007,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, 'status_paid', $3)`,
         [uid('pev'), req.params.id, notes || null],
       )
+      await settleSingleOpenInvoice('school', req.params.id).catch((e) => console.error('invoice settle failed:', e.message))
 
       if (school.contact_email) {
         await sendEmail({
