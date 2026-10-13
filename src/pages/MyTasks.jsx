@@ -6,6 +6,7 @@ import Toast from '@/components/Toast.jsx'
 import SignaturePad from '@/components/SignaturePad.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { useData } from '@/hooks/useData.jsx'
+import { csvCell } from '@/lib/csv.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -69,12 +70,12 @@ export default function MyTasks() {
       ['Date', 'Event', 'Location', 'Status', 'Approved', 'Present', 'Absent', 'Excused', 'Hours'],
       ...report.tasks.map((t) => [
         String(t.date || '').slice(0, 10),
-        (t.title || '').replaceAll(',', ' '),
-        (t.location || '').replaceAll(',', ' '),
+        t.title || '',
+        t.location || '',
         t.status, t.approved, t.present, t.absent, t.excused, t.hours,
       ]),
     ]
-    const blob = new Blob([rows.map((r) => r.join(',')).join('\n')], { type: 'text/csv' })
+    const blob = new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

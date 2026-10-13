@@ -578,7 +578,7 @@ export default function Admin() {
   }
 
   const deleteSchool = async (id, name) => {
-    if (!confirm(`Delete "${name}" and unlink all its students?`)) return
+    if (!confirm(`Delete "${name}"? Its students are unlinked and its admin and co-admin logins are removed.`)) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/school/admin/${id}`, {
@@ -712,7 +712,7 @@ export default function Admin() {
   }
 
   const deleteOrganization = async (id, name) => {
-    if (!confirm(`Delete "${name}"? Its schools will be unlinked, not deleted.`)) return
+    if (!confirm(`Delete "${name}"? Its schools will be unlinked, not deleted, and its login is removed.`)) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/organization/admin/${id}`, {
@@ -3125,7 +3125,7 @@ export default function Admin() {
                             <button onClick={() => resolveInvoice(ev.invoice_id, 'paid')} disabled={invoiceActionId === ev.invoice_id} className="btn-sm btn-primary">
                               Mark paid
                             </button>
-                            <button onClick={() => resolveInvoice(ev.invoice_id, 'void')} disabled={invoiceActionId === ev.invoice_id} className="btn-sm btn-ghost text-red-400">
+                            <button onClick={() => { if (confirm('Void this invoice? It cannot be reopened.')) resolveInvoice(ev.invoice_id, 'void') }} disabled={invoiceActionId === ev.invoice_id} className="btn-sm btn-ghost text-red-400">
                               <Ban className="w-3.5 h-3.5 mr-1" /> Void
                             </button>
                           </>

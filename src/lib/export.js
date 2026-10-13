@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { fmtDate, fmtHours, hoursBetween } from '@/utils/date.js'
+import { csvCell } from '@/lib/csv.js'
 
 // The VolunTrack logo is fetched once and cached as a data URL so every PDF
 // (service log, invoice) can stamp it in the header — keep this on every
@@ -186,11 +187,6 @@ export function exportLogsCSV(logs) {
   return rows.map((r) => r.map(csvCell).join(',')).join('\n')
 }
 
-function csvCell(v) {
-  const s = String(v ?? '')
-  return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s
-}
-
 /** Printable certificate — opens the browser print dialog. */
 export function printCertificate({ user, totalHours, goalReached }) {
   const w = window.open('', '_blank', 'width=820,height=1000')
@@ -329,7 +325,7 @@ export async function schoolHoursPDF({ title, range, students, totals, returnBlo
     logo ? 84 : 40, 64,
   )
   doc.text(
-    `${totals.students} students  ·  ${totals.logs} entries  ·  ${fmtHours(totals.approvedHours)} approved + ${fmtHours(totals.pendingHours)} pending = ${fmtHours(totals.totalHours)} total${totals.rejectedHours ? `  ·  ${fmtHours(totals.rejectedHours)} rejected (excluded)` : ''}`,
+    `${totals.students} ${totals.students === 1 ? 'student' : 'students'}  ·  ${totals.logs} ${totals.logs === 1 ? 'entry' : 'entries'}  ·  ${fmtHours(totals.approvedHours)} approved + ${fmtHours(totals.pendingHours)} pending = ${fmtHours(totals.totalHours)} total${totals.rejectedHours ? `  ·  ${fmtHours(totals.rejectedHours)} rejected (excluded)` : ''}`,
     logo ? 84 : 40, 78,
   )
   doc.setTextColor(0)

@@ -310,6 +310,8 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
 // than deleted — the org is just a grouping, not the schools' owner.
 router.delete('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
+    // Same as deleting a school: the organization's login goes with it.
+    await query(`DELETE FROM users WHERE organization_id = $1 AND role = 'org'`, [req.params.id])
     await query('DELETE FROM organizations WHERE id = $1', [req.params.id])
     return res.json({ ok: true })
   } catch (error) {
