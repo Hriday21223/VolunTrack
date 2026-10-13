@@ -230,8 +230,7 @@ export default function About() {
                 "free for students" pill is the fallback when there is none, so
                 the hero never opens with a hole. */}
             <PromoBanner
-              compact
-              className="inline-block text-left mb-6"
+              className="inline-block text-left mb-6 max-w-md"
               fallback={(
                 <div className="inline-flex items-center gap-2 rounded-full border border-brand-700/30 bg-brand-900/20 px-4 py-1.5 text-xs font-medium text-brand-300 mb-6">
                   <Zap className="w-3.5 h-3.5 animate-float" /> Free for students — no credit card needed
