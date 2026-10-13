@@ -144,7 +144,9 @@ export default function Dashboard() {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (msgRes.ok) { const d = await msgRes.json(); setSchoolMessages(d.messages || []) }
-        const notifRes = await fetch(`${apiUrl}/school/admin/notifications?schoolId=${user.schoolId}`, { headers })
+        const notifRes = await fetch(`${apiUrl}/school/admin/notifications?schoolId=${user.schoolId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         if (notifRes.ok) { const d = await notifRes.json(); setAdminNotifs(d.notifications || []) }
       } catch {}
     })()

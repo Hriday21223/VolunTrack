@@ -40,6 +40,15 @@ export default function ForgotPassword() {
       setCode(generated)
 
       const result = await attemptDelivery({ email, code: generated, type: 'password' })
+      // Nothing local and nothing sent: there is no code to show, so say so
+      // rather than landing on a "code ready" screen with no code on it.
+      if (!generated && !result.ok) {
+        setDelivery({ status: 'idle', reason: '', missingVars: [] })
+        setErr(result.backendAvailable === false
+          ? 'No account with that email on this device.'
+          : 'We could not send the recovery email. Please try again in a few minutes.')
+        return
+      }
       if (result.ok && result.code) setCode(result.code)
       // The server issued its own code for this account (see
       // /api/send-reset-email). Ours is not the one that was emailed, so it

@@ -56,10 +56,13 @@ function RouteFallback() {
   )
 }
 
-function Protected({ children }) {
+// `roles` limits a page to the account types it is built for. The API already
+// refuses the data; this keeps another role from landing on an empty shell.
+function Protected({ children, roles }) {
   const { user } = useAuth()
   const loc = useLocation()
   if (!user) return <Navigate to="/login" state={{ from: loc }} replace />
+  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />
   return children
 }
 
@@ -122,7 +125,7 @@ function Shell() {
 
           <Route path="/"             element={<Home />} />
           <Route path="/opportunities" element={<Protected><Opportunities /></Protected>} />
-          <Route path="/parent"       element={<Protected><ParentDashboard /></Protected>} />
+          <Route path="/parent"       element={<Protected roles={['parent']}><ParentDashboard /></Protected>} />
           <Route path="/log"          element={<Protected><LogHours /></Protected>} />
           <Route path="/calendar"     element={<Protected><CalendarView /></Protected>} />
           <Route path="/achievements" element={<Protected><Achievements /></Protected>} />
@@ -135,7 +138,7 @@ function Shell() {
           <Route path="/attendance"  element={<Protected><Attendance /></Protected>} />
           <Route path="/admin/:tab?"  element={<AdminProtected><Admin /></AdminProtected>} />
           <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
-          <Route path="/organization/dashboard" element={<Protected><OrganizationDashboard /></Protected>} />
+          <Route path="/organization/dashboard" element={<Protected roles={['org']}><OrganizationDashboard /></Protected>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
