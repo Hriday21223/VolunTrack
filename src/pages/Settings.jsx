@@ -281,7 +281,7 @@ export default function Settings() {
     setPwError('')
     setPwDone(false)
     if (!pwForm.current || !pwForm.newPw || !pwForm.confirm) { setPwError('Fill in all fields.'); return }
-    if (pwForm.newPw.length < 6) { setPwError('New password must be at least 6 characters.'); return }
+    if (pwForm.newPw.length < 8) { setPwError('New password must be at least 8 characters.'); return }
     if (pwForm.newPw !== pwForm.confirm) { setPwError('Passwords do not match.'); return }
     setPwBusy(true)
     try {
@@ -295,6 +295,10 @@ export default function Settings() {
         const data = await res.json()
         throw new Error(data.error || 'Failed to update password')
       }
+      // Changing the password ends every older session, this one included;
+      // the server returns a replacement so this device stays signed in.
+      const data = await res.json().catch(() => ({}))
+      if (data.token) localStorage.setItem('voluntrack:auth_token', data.token)
       setPwForm({ current: '', newPw: '', confirm: '' })
       setPwDone(true)
     } catch (err) {

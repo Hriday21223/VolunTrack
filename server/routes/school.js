@@ -5,6 +5,7 @@ import { query, hasDatabase, getPool, nextAccountCode } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
+import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
@@ -86,6 +87,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
   if (!name || name.length > 100) return res.status(400).json({ error: 'School name is required.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
+  if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
   if (!pin || !/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
 
   try {
@@ -419,6 +421,7 @@ router.post('/staff', limiter, requireDb, requireAuth('school'), requirePaidScho
   if (!name || name.length > 100) return res.status(400).json({ error: 'Name is required.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
+  if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
 
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
@@ -811,6 +814,12 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
+  if (!isValidDateString(date)) return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
+  // Yesterday is allowed so a host a few time zones behind the server can
+  // still post something happening today.
+  if (date < new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)) {
+    return res.status(400).json({ error: 'The task date is in the past.' })
+  }
   // Only the global 1MB body limit bounded these before, and GET /public-tasks
   // returns them to every visitor — cap each one like /messages does.
   const textLimits = [
@@ -917,10 +926,18 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   const client = await getPool().connect()
   try {
     await client.query('BEGIN')
-    const { rows } = await client.query('SELECT status, slots_total FROM public_tasks WHERE id = $1 FOR UPDATE', [req.params.id])
+    const { rows } = await client.query('SELECT status, slots_total, created_by FROM public_tasks WHERE id = $1 FOR UPDATE', [req.params.id])
     if (rows.length === 0) {
       await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Task not found.' })
+    }
+    if (rows[0].created_by === req.auth.sub) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'You are hosting this task, so you cannot sign up for it.' })
+    }
+    if (rows[0].status === 'cancelled') {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'This task was cancelled.' })
     }
     if (rows[0].status === 'closed') {
       await client.query('ROLLBACK')
@@ -1072,6 +1089,9 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
     if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can edit this task.' })
     if (rows[0].status === 'cancelled') return res.status(400).json({ error: 'A cancelled task cannot be edited.' })
+    if (req.body.date !== undefined && !isValidDateString(req.body.date)) {
+      return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
+    }
 
     const sets = []
     const values = []
@@ -1443,6 +1463,12 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
   if (!volunteerId || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'volunteerId and positive hours are required.' })
   }
+  if (hoursNum > MAX_HOURS_PER_ENTRY) {
+    return res.status(400).json({ error: `One entry can be at most ${MAX_HOURS_PER_ENTRY} hours.` })
+  }
+  if (date != null && date !== '' && !isValidDateString(date)) {
+    return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
+  }
 
   try {
     const { rows: taskRows } = await query('SELECT * FROM public_tasks WHERE id = $1', [req.params.id])
@@ -1491,6 +1517,12 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
 router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth(), async (req, res) => {
   const { entries, date } = req.body
   if (!Array.isArray(entries) || entries.length === 0) return res.status(400).json({ error: 'entries array required.' })
+  if (date != null && date !== '' && !isValidDateString(date)) {
+    return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
+  }
+  if (entries.some((e) => Number(e?.hours) > MAX_HOURS_PER_ENTRY)) {
+    return res.status(400).json({ error: `One entry can be at most ${MAX_HOURS_PER_ENTRY} hours.` })
+  }
 
   try {
     const { rows: taskRows } = await query('SELECT * FROM public_tasks WHERE id = $1', [req.params.id])

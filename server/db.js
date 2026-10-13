@@ -310,6 +310,11 @@ export async function initSchema() {
   // Migration: add columns that may not exist on older databases
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS phone TEXT`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS important_info TEXT`) } catch {}
+  // Tokens issued before this moment are refused, so a password change or
+  // reset signs every other device out. NULL means no cutoff.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sessions_valid_after TIMESTAMPTZ`) } catch {}
+  // The last TOTP time step accepted, so a code cannot be used twice.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_step BIGINT`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected'))`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,7)`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7)`) } catch {}

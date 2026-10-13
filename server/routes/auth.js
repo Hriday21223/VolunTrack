@@ -8,7 +8,8 @@ import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
-         signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole } from '../auth.js'
+         signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole, endSessions } from '../auth.js'
+import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from '../validate.js'
 import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
@@ -138,6 +139,9 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
   }
   if (!password) {
     return res.status(400).json({ error: 'Password must be at least 8 characters.' })
+  }
+  if (isWeakPassword(password)) {
+    return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
   }
 
   try {
@@ -299,6 +303,9 @@ router.put('/password', requireDb, requireAuth(), async (req, res) => {
   if (!newPassword) {
     return res.status(400).json({ error: 'New password must be at least 8 characters.' })
   }
+  if (isWeakPassword(newPassword)) {
+    return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
+  }
 
   try {
     const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
@@ -309,9 +316,12 @@ router.put('/password', requireDb, requireAuth(), async (req, res) => {
 
     const hash = await hashPassword(newPassword)
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.auth.sub])
+    // Whoever knew the old password may still hold a session; end them all and
+    // hand this device a fresh one so it stays signed in.
+    await endSessions(req.auth.sub)
 
     const user = publicUser({ ...rows[0], password_hash: hash })
-    return res.json({ ok: true, user })
+    return res.json({ ok: true, user, token: signToken(user) })
   } catch (error) {
     console.error('password change failed:', error)
     return res.status(500).json({ error: 'Could not update password.' })
@@ -623,11 +633,18 @@ router.post('/totp/challenge', authLimiter, requireDb, async (req, res) => {
       return res.status(401).json({ error: 'Invalid code. Try again.' })
     }
 
+    // A code stays valid for its whole 30 seconds, so without this anyone who
+    // saw it typed could sign in with it again straight away.
+    const step = Math.floor(Date.now() / 30000) + delta
+    if (row.totp_last_step != null && step <= Number(row.totp_last_step)) {
+      return res.status(401).json({ error: 'That code was already used. Wait for the next one.' })
+    }
+
     // Success clears the counter, so a user who fumbles a code then gets it
     // right isn't left one mistake away from a lockout.
     await query(
-      'UPDATE users SET totp_failed_attempts = 0, totp_locked_until = NULL WHERE id = $1',
-      [row.id],
+      'UPDATE users SET totp_failed_attempts = 0, totp_locked_until = NULL, totp_last_step = $2 WHERE id = $1',
+      [row.id, step],
     ).catch((e) => console.error('totp counter reset failed:', e.message))
 
     const user = publicUser(row)
