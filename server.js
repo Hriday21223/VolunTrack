@@ -5,7 +5,8 @@ import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import nodemailer from 'nodemailer'
 import { initSchema, hasDatabase, query } from './server/db.js'
-import { authenticate, requireAuth, hashPassword, verifyPassword } from './server/auth.js'
+import { authenticate, requireAuth, hashPassword, verifyPassword, endSessions } from './server/auth.js'
+import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from './server/validate.js'
 import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import authSsoRoutes from './server/routes/authSso.js'
@@ -217,6 +218,9 @@ app.post('/api/auth/reset-password', emailLimiter, async (req, res) => {
   if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
     return res.status(400).json({ error: 'Password must be at least 8 characters.' })
   }
+  if (isWeakPassword(newPassword)) {
+    return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
+  }
 
   if (!hasDatabase()) {
     return res.status(503).json({ error: 'Server database is not configured.' })
@@ -257,6 +261,8 @@ app.post('/api/auth/reset-password', emailLimiter, async (req, res) => {
         WHERE id = $2`,
       [hash, row.id],
     )
+    // A reset usually means the old password is in someone else's hands.
+    await endSessions(row.id)
 
     return res.json({ ok: true })
   } catch (error) {
@@ -357,7 +363,9 @@ app.get('/api/dev-recovery-code', (req, res) => {
   return res.json({ code: hit.code, type: hit.type, at: hit.at })
 })
 
-app.post('/api/send-report', emailLimiter, async (req, res) => {
+// Signed-in only: this sends caller-written text to a caller-chosen address,
+// which without a session is an open relay for whoever finds the URL.
+app.post('/api/send-report', emailLimiter, requireAuth(), async (req, res) => {
   const { to, school, student, totalHours, entries } = req.body
   if (!to || typeof to !== 'string' || !to.includes('@') || to.length > 254) {
     return res.status(400).json({ error: 'Valid recipient email is required.' })

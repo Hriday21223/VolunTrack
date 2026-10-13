@@ -2,6 +2,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
+import { isValidDateString, logTextError, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { uid } from '../ids.js'
 import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
@@ -67,6 +68,12 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
     return res.status(400).json({ error: 'date, activity, and positive hours are required.' })
   }
+  if (!isValidDateString(date)) return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
+  if (hoursNum > MAX_HOURS_PER_ENTRY) {
+    return res.status(400).json({ error: `One entry can be at most ${MAX_HOURS_PER_ENTRY} hours.` })
+  }
+  const textError = logTextError(req.body)
+  if (textError) return res.status(400).json({ error: textError })
   // org address/phone, the supervisor's signature image and the supervisor's
   // plaintext email are deliberately not read off the body here: nothing
   // server-side consumes them, so we no longer keep third-party PII for a
@@ -164,7 +171,15 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       if (!Number.isFinite(hoursNum) || hoursNum <= 0) {
         return res.status(400).json({ error: 'Hours must be a positive number.' })
       }
+      if (hoursNum > MAX_HOURS_PER_ENTRY) {
+        return res.status(400).json({ error: `One entry can be at most ${MAX_HOURS_PER_ENTRY} hours.` })
+      }
     }
+    if (date != null && date !== '' && !isValidDateString(date)) {
+      return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
+    }
+    const textError = logTextError(req.body)
+    if (textError) return res.status(400).json({ error: textError })
     if (taskId) {
       const { rows: signupRows } = await query(
         "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
