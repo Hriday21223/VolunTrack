@@ -797,6 +797,18 @@ export async function initSchema() {
   // token (lazily filled the first time a digest is sent for that parent),
   // mirroring the status_subscribers opt-out pattern. See server/digest.js.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // Under-13 self sign-up: the account stays locked ('pending') until the
+  // parent or guardian named at sign-up approves it from an emailed link.
+  // NULL status means no consent step applies (13+, or an account a school
+  // created). See server/routes/parentConsent.js.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS under_13 BOOLEAN`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_status TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_consent_email TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_consent_token TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_consent_requested_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parent_consent_sent_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS parental_consent_at TIMESTAMPTZ`) } catch {}
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_parent_consent_token ON users(parent_consent_token) WHERE parent_consent_token IS NOT NULL`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS digest_unsub_token TEXT UNIQUE`) } catch {}
 
   // One row per (parent, week) once that week's digest has been attempted —

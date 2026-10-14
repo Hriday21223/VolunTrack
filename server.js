@@ -11,6 +11,7 @@ import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import authSsoRoutes from './server/routes/authSso.js'
 import passkeyRoutes from './server/routes/passkeys.js'
+import parentConsentRoutes from './server/routes/parentConsent.js'
 import schoolRoutes from './server/routes/school.js'
 import organizationRoutes from './server/routes/organization.js'
 import logsRoutes from './server/routes/logs.js'
@@ -124,6 +125,7 @@ app.use(authenticate)
 // router rather than falling through the password-auth one.
 app.use('/api/auth/sso', authSsoRoutes)
 app.use('/api/auth/passkey', passkeyRoutes)
+app.use('/api/auth/parent-consent', parentConsentRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/school', schoolRoutes)
 app.use('/api/organization', organizationRoutes)

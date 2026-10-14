@@ -41,7 +41,9 @@ export default function Register() {
   const nav = useNavigate()
   const apiUrl = import.meta.env.VITE_API_URL || '/api'
   const [role, setRole] = useState('student')
-  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', studentIdNumber: '', schoolCode: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', studentIdNumber: '', schoolCode: '', ageBand: '', parentEmail: '' })
+  // Set once an under-13 sign-up is waiting on its parent's emailed approval.
+  const [awaitingParent, setAwaitingParent] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
@@ -67,11 +69,18 @@ export default function Register() {
     setErr('')
     if (form.password.length < 6) { setErr('Password must be at least 6 characters.'); return }
     if (form.pin && !/^[0-9]{4}$/.test(form.pin)) { setErr('PIN must be exactly 4 digits.'); return }
+    const under13 = role === 'student' && form.ageBand === 'under13'
+    if (role === 'student' && !form.ageBand) { setErr('Please tell us whether you are 13 or older.'); return }
+    if (under13 && !form.parentEmail.trim()) { setErr("Enter your parent or guardian's email address."); return }
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
     try {
-      const user = await register({ ...form, role, turnstileToken: captchaToken })
+      const user = await register({ ...form, role, under13, parentEmail: under13 ? form.parentEmail.trim() : '', turnstileToken: captchaToken })
+      if (user?.pendingParentalConsent) {
+        setAwaitingParent(form.parentEmail.trim())
+        return
+      }
       if (role === 'student' && form.schoolCode && user) {
         const token = localStorage.getItem('voluntrack:auth_token')
         if (token) {
@@ -91,6 +100,26 @@ export default function Register() {
     } finally {
       setBusy(false)
     }
+  }
+
+  if (awaitingParent) {
+    return (
+      <div className="min-h-screen grid place-items-center px-4 py-8 page-shell">
+        <div className="w-full max-w-lg">
+          <Card padded={false} className="p-7 text-center">
+            <Mail className="w-10 h-10 mx-auto mb-3 text-brand-600" />
+            <h1 className="text-2xl font-bold mb-2">Ask your parent to check their email</h1>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-2">
+              We sent a message to <strong>{awaitingParent}</strong>. Your account is ready as soon as they approve it — then sign in with the email and password you just chose.
+            </p>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
+              If they don&apos;t answer within 14 days, the account is deleted and you can sign up again.
+            </p>
+            <Link to="/login" className="btn-primary inline-flex justify-center">Go to sign in</Link>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -150,6 +179,22 @@ export default function Register() {
 
             {role === 'student' && (
               <>
+                <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
+                  <label className="label" htmlFor="register-age">How old are you?</label>
+                  <select id="register-age" className="input" value={form.ageBand} onChange={onChange('ageBand')} required>
+                    <option value="">Select one</option>
+                    <option value="13plus">13 or older</option>
+                    <option value="under13">Under 13</option>
+                  </select>
+                </div>
+                {form.ageBand === 'under13' && (
+                  <div className="animate-fade-in-up">
+                    <Field icon={Mail} label="Parent or guardian's email" type="email" value={form.parentEmail} onChange={onChange('parentEmail')} placeholder="parent@example.com" autoComplete="off" required />
+                    <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                      We&apos;ll email them to ask for permission. You can sign in once they approve. If your school gave you a VolunTrack account, use that instead.
+                    </p>
+                  </div>
+                )}
                 <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
                   <Field icon={School}        label="School / Organization" value={form.school} onChange={onChange('school')} placeholder="Lincoln High School" />
                 </div>

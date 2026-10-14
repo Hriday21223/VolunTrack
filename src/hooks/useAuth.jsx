@@ -332,6 +332,10 @@ export function AuthProvider({ children }) {
 
       const result = await response.json()
 
+      // An under-13 sign-up is created locked: there is no session until a
+      // parent approves it by email, so there is nothing to store yet.
+      if (result.pendingParentalConsent) return { pendingParentalConsent: true }
+
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', result.token)
 

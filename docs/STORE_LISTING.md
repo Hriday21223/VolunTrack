@@ -149,8 +149,13 @@ only, part of the account).
 
 ## Age rating / audience
 
-The app's users include minors, and its Privacy Policy lets under-13s sign up
-with parental, guardian or school consent. That decides the store settings:
+The app's users include minors. Sign-up asks a student whether they are 13 or
+older; an under-13 account is created locked and only opens once the parent or
+guardian they name approves it from an emailed link (declined or unanswered
+for 14 days: deleted). Accounts a school creates, or that arrive through school
+sign-in, rely on the school's consent. The parent's email address is collected
+for that request only — count it under *Email address* in the Data safety /
+App Privacy answers. That decides the store settings:
 
 - **Play → Target audience:** 13–15, 16–17, 18+. Leave the under-13 bands
   unticked. Ticking one puts the app under the **Families policy**
