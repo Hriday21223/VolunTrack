@@ -6,6 +6,7 @@ import Card from '@/components/Card.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
+import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { gradeOptionLabel } from '@policy'
@@ -112,6 +113,8 @@ export default function ParentDashboard() {
           steps={[children.length === 0 ? PARENT_TOUR_STEP_NO_CHILDREN : PARENT_TOUR_STEP_HAS_CHILDREN]}
         />
       )}
+
+      <AnnouncementBanner />
 
       {loading ? (
         <Card><p className="text-center text-earth-400 py-8">Loading…</p></Card>

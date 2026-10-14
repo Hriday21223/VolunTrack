@@ -201,6 +201,19 @@ export function paymentNoticeHtml({ recipientName, entityLabel = 'school', accou
   ].join('')
 }
 
+// An admin announcement (#290) — deliberately not the payment template: no
+// amounts, bank details or "payment notice" wording.
+export function announcementHtml({ recipientName, title, message, dashboardPath }) {
+  const link = `${process.env.FRONTEND_URL || ''}${dashboardPath}`
+  return [
+    `<p>Hi ${escapeHtml(recipientName)},</p>`,
+    `<h2 style="margin-bottom:4px">${escapeHtml(title)}</h2>`,
+    `<p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>`,
+    `<p>You'll also see this on your dashboard: <a href="${link}">${link}</a></p>`,
+    emailFooterHtml(),
+  ].join('')
+}
+
 // Fire-and-log: a failed send should never break the admin/school flow that
 // triggered it — admin_notifications already gives an in-app fallback.
 export async function sendEmail({ to, subject, html }) {
