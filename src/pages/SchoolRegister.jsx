@@ -7,13 +7,15 @@ import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import RegistrationCodeField from '@/components/RegistrationCodeField.jsx'
+import { isCompleteRegistrationCode } from '@/lib/registrationCode.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function SchoolRegister() {
   useSeo({
     title: 'Register Your School',
-    description: 'Create a free school account on VolunTrack to review, verify, and manage your students’ volunteer hours.',
+    description: 'Set up your school on VolunTrack with the one-time registration code we sent you, then review, verify, and manage your students’ volunteer hours.',
     path: '/school/register',
   })
 
@@ -21,7 +23,7 @@ export default function SchoolRegister() {
   const { refreshUser } = useAuth()
   const [searchParams] = useSearchParams()
   const inviteToken = searchParams.get('token')
-  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', referralCode: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', referralCode: '', registrationCode: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
@@ -53,6 +55,7 @@ export default function SchoolRegister() {
     setErr('')
     if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
     if (!form.pin || !/^[a-zA-Z]+-?\d{3,5}$/.test(form.pin)) { setErr('School code must be letters followed by digits (e.g. cisd-12345).'); return }
+    if (!inviteToken && !isCompleteRegistrationCode(form.registrationCode)) { setErr('Enter the 16-character registration code we gave you.'); return }
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
@@ -60,7 +63,7 @@ export default function SchoolRegister() {
       const res = await fetch(`${apiUrl}/school/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), inviteToken: inviteToken || undefined, turnstileToken: captchaToken }),
+        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), inviteToken: inviteToken || undefined, registrationCode: inviteToken ? undefined : form.registrationCode, turnstileToken: captchaToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')
@@ -88,13 +91,16 @@ export default function SchoolRegister() {
         <Card padded={false} className="p-7">
           <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your school' : 'Register your school'}</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-            {inviteToken ? 'You were invited to VolunTrack — just set your password and school code.' : 'Create a school account to review student hours.'}
+            {inviteToken ? 'You were invited to VolunTrack — just set your password and school code.' : 'Create a school account to review student hours, using the registration code we sent you.'}
           </p>
 
           {!inviteLoaded ? (
             <p className="text-sm text-earth-500 py-4">Loading invite…</p>
           ) : (
           <form onSubmit={onSubmit} className="space-y-4">
+            {!inviteToken && (
+              <RegistrationCodeField value={form.registrationCode} onChange={(v) => setForm((f) => ({ ...f, registrationCode: v }))} />
+            )}
             <div>
               <label className="label">School name</label>
               <div className="relative">

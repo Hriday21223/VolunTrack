@@ -10,6 +10,7 @@ import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
+import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 
 const router = express.Router()
 
@@ -30,30 +31,41 @@ function requireDb(_req, res, next) {
 
 const INVITE_TTL_DAYS = 3
 
-// Complete an organization signup from an admin-sent invite (public route,
-// but requires a valid ?inviteToken — organization accounts are no longer
-// open self-service). Mirrors POST /school/register.
+// Complete an organization signup (public route, but requires a valid
+// ?inviteToken or a one-time registration code from us — organization
+// accounts are not open self-service, #287). Mirrors POST /school/register.
 router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res) => {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const password = req.body.password
   const inviteToken = req.body.inviteToken ? String(req.body.inviteToken).trim() : null
+  const registrationCode = !inviteToken && req.body.registrationCode ? String(req.body.registrationCode) : null
 
-  if (!inviteToken) return res.status(403).json({ error: 'Organization accounts are set up by invitation only. Contact us to get started.' })
+  if (!inviteToken && !registrationCode) return res.status(403).json({ error: CODE_REQUIRED_MESSAGE.organization })
   if (!name || name.length > 100) return res.status(400).json({ error: 'Organization name is required.' })
   if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
   if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
 
+  let claimedCodeId = null
   try {
-    const { rows: inviteRows } = await query('SELECT * FROM organization_invites WHERE token = $1', [inviteToken])
-    const invite = inviteRows[0]
-    if (!invite || invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
-      return res.status(410).json({ error: 'This invite link has expired or was already used.' })
+    let invite = null
+    if (inviteToken) {
+      const { rows: inviteRows } = await query('SELECT * FROM organization_invites WHERE token = $1', [inviteToken])
+      invite = inviteRows[0]
+      if (!invite || invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
+        return res.status(410).json({ error: 'This invite link has expired or was already used.' })
+      }
     }
 
     const existingUser = await query('SELECT 1 FROM users WHERE email = $1', [email])
     if (existingUser.rowCount > 0) return res.status(409).json({ error: 'An account with that email already exists.' })
+
+    // Spent last, so a taken email doesn't cost the organization its code.
+    if (registrationCode) {
+      claimedCodeId = await claimCode('organization', registrationCode)
+      if (!claimedCodeId) return res.status(410).json({ error: CODE_REJECTED_MESSAGE })
+    }
 
     const orgId = uid('org')
     await query(
@@ -70,13 +82,17 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
        RETURNING *`,
       [userId, name, email, hash, orgId, signupPlatform(req)],
     )
+    await markCodeUser(claimedCodeId, userId)
 
-    await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
+    if (invite) {
+      await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
+    }
 
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, organizationId: rows[0].organization_id }
     await sendWelcomeEmail({ to: user.email, name: user.name })
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
+    await releaseCode(claimedCodeId).catch((e) => console.error('registration code release failed:', e.message))
     console.error('organization register failed:', error)
     return res.status(500).json({ error: 'Could not register organization.' })
   }

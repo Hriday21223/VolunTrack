@@ -17,6 +17,7 @@ import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
+import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 import { isSignatureImage } from '../signature.js'
 
 const router = express.Router()
@@ -80,6 +81,9 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
   const password = req.body.password
   const pin = String(req.body.pin || '').trim().toLowerCase()
   const inviteToken = req.body.inviteToken ? String(req.body.inviteToken).trim() : null
+  // Without an invite link, a one-time code from us is required (#287), so a
+  // school can't become a customer without having contacted us.
+  const registrationCode = !inviteToken && req.body.registrationCode ? String(req.body.registrationCode) : null
   // Optional. A bad or expired code must never block a registration — the
   // school still gets its account, the admin just sees no referral attached.
   const referralCode = req.body.referralCode ? String(req.body.referralCode).trim().toUpperCase() : null
@@ -89,7 +93,9 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
   if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
   if (!pin || !/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
+  if (!inviteToken && !registrationCode) return res.status(403).json({ error: CODE_REQUIRED_MESSAGE.school })
 
+  let claimedCodeId = null
   try {
     let invite = null
     if (inviteToken) {
@@ -106,6 +112,13 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     const existingUser = await query('SELECT 1 FROM users WHERE email = $1', [email])
     if (existingUser.rowCount > 0) return res.status(409).json({ error: 'An account with that email already exists.' })
 
+    // Spent only now, once every other check has passed, so a taken email or
+    // school code doesn't cost the school its registration code.
+    if (registrationCode) {
+      claimedCodeId = await claimCode('school', registrationCode)
+      if (!claimedCodeId) return res.status(410).json({ error: CODE_REJECTED_MESSAGE })
+    }
+
     const schoolId = uid('sch')
     await query(
       'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -121,6 +134,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
        RETURNING *`,
       [userId, name, email, hash, schoolId, signupPlatform(req)],
     )
+    await markCodeUser(claimedCodeId, userId)
 
     if (invite) {
       await query(`UPDATE school_invites SET status = 'completed' WHERE id = $1`, [invite.id])
@@ -136,6 +150,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     await sendWelcomeEmail({ to: user.email, name: user.name })
     return res.status(201).json({ token: signToken(user), user, referral })
   } catch (error) {
+    await releaseCode(claimedCodeId).catch((e) => console.error('registration code release failed:', e.message))
     console.error('school register failed:', error)
     return res.status(500).json({ error: 'Could not register school.' })
   }

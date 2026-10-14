@@ -717,6 +717,26 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // One-time codes the admin hands a school or organization so it can
+  // register (server/registrationCodes.js, #287). Only a hash is kept: the
+  // code is shown once at creation, so a database leak can't be redeemed.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS registration_codes (
+        id              TEXT PRIMARY KEY,
+        kind            TEXT NOT NULL CHECK (kind IN ('school','organization')),
+        code_hash       TEXT UNIQUE NOT NULL,
+        code_hint       TEXT NOT NULL,
+        label           TEXT,
+        status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','used','revoked')),
+        expires_at      TIMESTAMPTZ NOT NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        used_at         TIMESTAMPTZ,
+        used_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL
+      )
+    `)
+  } catch {}
+
   try { await query(`CREATE INDEX IF NOT EXISTS idx_invoices_discount_code ON invoices(discount_code) WHERE discount_code IS NOT NULL`) } catch {}
 
   try { await query(`CREATE INDEX IF NOT EXISTS idx_payment_events_entity ON payment_events(entity_type, entity_id, created_at DESC)`) } catch {}

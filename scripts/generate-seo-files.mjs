@@ -103,7 +103,7 @@ const llmsTxt = `# VolunTrack
 - [Home / overview](${SITE_URL}/): what VolunTrack is, features, pricing, and FAQ
 - [Help & Handbooks](${SITE_URL}/help): role-by-role guides and a full FAQ for students, parents, volunteers, schools, school co-admins, organizations, and admins
 - [Sign up](${SITE_URL}/register): create a free student, parent, or volunteer account
-- [School sign up](${SITE_URL}/school/register): create a school account to manage students and report reviews
+- [School sign up](${SITE_URL}/school/register): set up a school account with the one-time registration code VolunTrack provides (contact us for a quote), then manage students and review reports
 - [Organization sign up](${SITE_URL}/organization/register): manage multiple schools under one organization
 - [Contact](${SITE_URL}/contact): support and feedback
 - [System status](${SITE_URL}/status): live service status
