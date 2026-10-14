@@ -9,6 +9,7 @@ import BadgeToasts from '@/components/BadgeToasts.jsx'
 import ReminderToasts from '@/components/ReminderToasts.jsx'
 import ErrorBoundary from '@/components/ErrorBoundary.jsx'
 import { isNativeApp } from '@/lib/platform.js'
+import { readWelcomePending } from '@/lib/welcome.js'
 
 // About is the logged-out landing page served at "/" — kept as a static import
 // so the initial route renders without an extra chunk round-trip. Every other
@@ -18,6 +19,7 @@ import AppLock from '@/components/AppLock.jsx'
 const AppWelcome = lazy(() => import('@/pages/AppWelcome.jsx'))
 const Login = lazy(() => import('@/pages/Login.jsx'))
 const Register = lazy(() => import('@/pages/Register.jsx'))
+const Welcome = lazy(() => import('@/pages/Welcome.jsx'))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword.jsx'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword.jsx'))
 const ResetPin = lazy(() => import('@/pages/ResetPin.jsx'))
@@ -90,6 +92,8 @@ function Home() {
   // School accounts are institutions, not volunteers — send them to their own
   // dashboard rather than the personal hour-tracking one, same as org/parent.
   if (user.role === 'school' || user.role === 'school_staff') return <Navigate to="/school/dashboard" replace />
+  // Just signed up in this tab (see src/lib/welcome.js).
+  if ((user.role === 'student' || user.role === 'volunteer') && readWelcomePending()) return <Navigate to="/welcome" replace />
   return <Protected><Dashboard /></Protected>
 }
 
@@ -124,6 +128,7 @@ function Shell() {
           <Route path="/verify-transcript" element={<VerifyTranscript />} />
 
           <Route path="/"             element={<Home />} />
+          <Route path="/welcome"      element={<Protected roles={['student', 'volunteer']}><Welcome /></Protected>} />
           <Route path="/opportunities" element={<Protected><Opportunities /></Protected>} />
           <Route path="/parent"       element={<Protected roles={['parent']}><ParentDashboard /></Protected>} />
           <Route path="/log"          element={<Protected><LogHours /></Protected>} />
