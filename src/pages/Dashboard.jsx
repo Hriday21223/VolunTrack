@@ -14,6 +14,7 @@ import { listReminders } from '@/api/index.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
+import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import { isNativeApp } from '@/lib/platform.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
@@ -291,6 +292,9 @@ export default function Dashboard() {
       {dashTab === 'home' && (
         <SpotlightTour storageKey="voluntrack:tour-seen:student" steps={STUDENT_TOUR_STEPS} />
       )}
+
+      {/* Admin announcements (#290); renders nothing for a local-only account. */}
+      <AnnouncementBanner />
 
       {dashTab === 'volunteer' && user?.role === 'student' ? (
         <div className="max-w-2xl mx-auto space-y-4">

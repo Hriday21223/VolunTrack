@@ -231,7 +231,7 @@ export default function Admin() {
   const [orgPayNotes, setOrgPayNotes] = useState('')
   const [notifySchoolId, setNotifySchoolId] = useState(null) // null = all schools, string = specific school
   const [notifyOrgId, setNotifyOrgId] = useState(null) // string = specific organization (org notify has no "all" broadcast)
-  const [announceAudience, setAnnounceAudience] = useState(null) // 'schools' | 'orgs' while the announcement composer is open
+  const [announceAudience, setAnnounceAudience] = useState(null) // 'schools' | 'orgs' | 'users' while the announcement composer is open
   const [invoiceModal, setInvoiceModal] = useState(null) // { entityType, entityId, entityName }
   const [invoiceAmountDraft, setInvoiceAmountDraft] = useState('')
   const [invoiceBillingPeriodDraft, setInvoiceBillingPeriodDraft] = useState('monthly')
@@ -2246,9 +2246,14 @@ export default function Admin() {
             <p className="text-xs text-earth-500 dark:text-earth-400">
               Accounts created on the website or in the apps. Someone using VolunTrack without an account isn’t counted.
             </p>
-            <button onClick={loadUserStats} disabled={loadingUserStats} className="shrink-0 text-xs text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 inline-flex items-center gap-1">
-              <RefreshCw className={`w-3 h-3 ${loadingUserStats ? 'animate-spin' : ''}`} /> Refresh
-            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              <button onClick={() => setAnnounceAudience('users')} className="btn-sm btn-ghost">
+                <Megaphone className="w-3.5 h-3.5 mr-1" /> Announcement
+              </button>
+              <button onClick={loadUserStats} disabled={loadingUserStats} className="text-xs text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 inline-flex items-center gap-1">
+                <RefreshCw className={`w-3 h-3 ${loadingUserStats ? 'animate-spin' : ''}`} /> Refresh
+              </button>
+            </div>
           </div>
           {userStatsError ? (
             <Card><p className="text-center text-sm text-red-600 dark:text-red-300 py-8">{userStatsError}</p></Card>

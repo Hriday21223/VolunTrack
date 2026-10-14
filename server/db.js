@@ -717,22 +717,28 @@ export async function initSchema() {
       )
     `)
   } catch {}
-  // Admin announcements to schools and/or organizations, e.g. planned
-  // downtime (#290). Shown as a banner on their dashboards until show_until
-  // (or until the admin ends it), and emailed once when sent. Separate from
+  // Admin announcements, e.g. planned downtime (#290). Each picks any of five
+  // audiences, shows as a banner on their dashboards until show_until (or
+  // until the admin ends it), and is emailed once when sent — in the
+  // background, so emails_sent climbs toward emails_total. Separate from
   // admin_notifications, which are payment notices.
   try {
     await query(`
       CREATE TABLE IF NOT EXISTS announcements (
-        id          TEXT PRIMARY KEY,
-        title       TEXT NOT NULL,
-        message     TEXT NOT NULL,
-        to_schools  BOOLEAN NOT NULL DEFAULT false,
-        to_orgs     BOOLEAN NOT NULL DEFAULT false,
-        show_until  TIMESTAMPTZ NOT NULL,
-        ended_at    TIMESTAMPTZ,
-        created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-        CHECK (to_schools OR to_orgs)
+        id             TEXT PRIMARY KEY,
+        title          TEXT NOT NULL,
+        message        TEXT NOT NULL,
+        to_schools     BOOLEAN NOT NULL DEFAULT false,
+        to_orgs        BOOLEAN NOT NULL DEFAULT false,
+        to_students    BOOLEAN NOT NULL DEFAULT false,
+        to_parents     BOOLEAN NOT NULL DEFAULT false,
+        to_volunteers  BOOLEAN NOT NULL DEFAULT false,
+        show_until     TIMESTAMPTZ NOT NULL,
+        ended_at       TIMESTAMPTZ,
+        emails_total   INTEGER NOT NULL DEFAULT 0,
+        emails_sent    INTEGER NOT NULL DEFAULT 0,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CHECK (to_schools OR to_orgs OR to_students OR to_parents OR to_volunteers)
       )
     `)
   } catch {}
