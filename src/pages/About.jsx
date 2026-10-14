@@ -258,6 +258,41 @@ export default function About() {
             </div>
           </section>
 
+          {/* The product itself, so a visitor sees what they're signing up for.
+              Captured from a client-only demo account (sample data, no real
+              student) — regenerate it when the dashboard changes noticeably. */}
+          <figure data-animate className="mt-12 md:mt-16 max-w-5xl mx-auto">
+            {/* Phones get the phone layout — the desktop shot shrunk to 360px
+                wide is unreadable. The frame narrows to match. */}
+            <div className="max-w-[280px] sm:max-w-none mx-auto rounded-[1.75rem] sm:rounded-2xl border border-white/10 bg-black/40 shadow-2xl shadow-black/40 overflow-hidden">
+              <div className="hidden sm:flex items-center gap-1.5 px-4 py-2.5 border-b border-white/10 bg-white/5" aria-hidden="true">
+                <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
+                <span className="w-2.5 h-2.5 rounded-full bg-white/20" />
+              </div>
+              <picture>
+                <source
+                  media="(max-width: 639px)"
+                  srcSet={`${import.meta.env.BASE_URL}screenshots/dashboard-phone.webp`}
+                  width="780"
+                  height="1520"
+                />
+                <img
+                  src={`${import.meta.env.BASE_URL}screenshots/dashboard.webp`}
+                  alt="The VolunTrack student dashboard: 30 hours logged this year, 75% of a 40-hour NHS service goal, 9 of 12 badges earned, and this week's hours."
+                  width="1920"
+                  height="1200"
+                  loading="lazy"
+                  decoding="async"
+                  className="block w-full h-auto"
+                />
+              </picture>
+            </div>
+            <figcaption className="mt-3 text-center text-sm text-earth-400">
+              Your dashboard: goal progress, monthly totals, and badges in one place.
+            </figcaption>
+          </figure>
+
           <section data-animate className="mt-16 text-center">
             <p className="text-sm uppercase tracking-[0.35em] text-brand-600">How it works</p>
             <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">How do you start tracking volunteer hours?</h2>
