@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, ExternalLink } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
+import RegistrationCodesPanel from '@/components/RegistrationCodesPanel.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -1295,7 +1296,7 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Pending invites' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'users' ? 'Users' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Invites & registration codes' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'users' ? 'Users' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
       subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'users' ? (userStats ? `${userStats.total} ${userStats.total === 1 ? 'person has' : 'people have'} registered` : 'Who has registered') : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       actionWide
       action={
@@ -1590,7 +1591,9 @@ export default function Admin() {
           </div>
         )
       ) : tab === 'invites' ? (
-        loadingInvites ? (
+        <div className="space-y-6">
+        <RegistrationCodesPanel />
+        {loadingInvites ? (
           <Card><p className="text-center text-earth-400 py-8">Loading invites…</p></Card>
         ) : invites.length === 0 ? (
           <Card>
@@ -1659,7 +1662,8 @@ export default function Admin() {
               </Card>
             ))}
           </div>
-        )
+        )}
+        </div>
       ) : tab === 'organizations' ? (
         loadingOrganizations ? (
           <Card><p className="text-center text-earth-400 py-8">Loading organizations…</p></Card>

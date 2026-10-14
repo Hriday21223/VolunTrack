@@ -7,13 +7,15 @@ import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import RegistrationCodeField from '@/components/RegistrationCodeField.jsx'
+import { isCompleteRegistrationCode } from '@/lib/registrationCode.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function OrganizationRegister() {
   useSeo({
     title: 'Register Your Organization',
-    description: 'VolunTrack organization accounts, for managing multiple schools under one login, are set up by invitation — contact us to get started.',
+    description: 'VolunTrack organization accounts, for managing multiple schools under one login, are set up with an invite or a one-time code from us — contact us to get started.',
     path: '/organization/register',
   })
 
@@ -21,7 +23,7 @@ export default function OrganizationRegister() {
   const { refreshUser } = useAuth()
   const [searchParams] = useSearchParams()
   const inviteToken = searchParams.get('token')
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', registrationCode: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
@@ -52,6 +54,7 @@ export default function OrganizationRegister() {
     e.preventDefault()
     setErr('')
     if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
+    if (!inviteToken && !isCompleteRegistrationCode(form.registrationCode)) { setErr('Enter the 16-character registration code we gave you.'); return }
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
@@ -59,7 +62,7 @@ export default function OrganizationRegister() {
       const res = await fetch(`${apiUrl}/organization/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, inviteToken: inviteToken || undefined, turnstileToken: captchaToken }),
+        body: JSON.stringify({ ...form, inviteToken: inviteToken || undefined, registrationCode: inviteToken ? undefined : form.registrationCode, turnstileToken: captchaToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')
@@ -85,27 +88,20 @@ export default function OrganizationRegister() {
         </Link>
 
         <Card padded={false} className="p-7">
-          {!inviteToken ? (
-            <>
-              <h1 className="text-2xl font-bold mb-1">Organization accounts are by invitation</h1>
-              <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-                To add and manage multiple schools under one account, reach out and we&apos;ll get you set up with an invite link.
-              </p>
-              <Link to="/contact" className="btn-primary w-full justify-center">
-                Contact us <ArrowRight className="w-4 h-4" />
-              </Link>
-            </>
-          ) : (
-          <>
-          <h1 className="text-2xl font-bold mb-1">Finish setting up your organization</h1>
+          <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your organization' : 'Register your organization'}</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-            You were invited by a VolunTrack admin — just set your password.
+            {inviteToken
+              ? 'You were invited by a VolunTrack admin — just set your password.'
+              : 'Manage multiple schools under one account, using the registration code we sent you.'}
           </p>
 
           {!inviteLoaded ? (
             <p className="text-sm text-earth-500 py-4">Loading invite…</p>
           ) : (
           <form onSubmit={onSubmit} className="space-y-4">
+            {!inviteToken && (
+              <RegistrationCodeField kind="organization" value={form.registrationCode} onChange={(v) => setForm((f) => ({ ...f, registrationCode: v }))} />
+            )}
             <div>
               <label className="label">Organization name</label>
               <div className="relative">
@@ -151,8 +147,6 @@ export default function OrganizationRegister() {
               {busy ? 'Registering…' : <>Register organization <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
-          )}
-          </>
           )}
 
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-6">

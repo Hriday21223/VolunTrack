@@ -30,6 +30,7 @@ import transcriptRoutes from './server/routes/transcript.js'
 import requirementsRoutes from './server/routes/requirements.js'
 import referralRoutes from './server/routes/referral.js'
 import statsRoutes from './server/routes/stats.js'
+import registrationCodeRoutes from './server/routes/registrationCodes.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 import { startKeepAwake } from './server/keepAwake.js'
@@ -144,6 +145,7 @@ app.use('/api/transcript', transcriptRoutes)
 app.use('/api/requirements', requirementsRoutes)
 app.use('/api/referral', referralRoutes)
 app.use('/api/stats', statsRoutes)
+app.use('/api/registration-codes', registrationCodeRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
