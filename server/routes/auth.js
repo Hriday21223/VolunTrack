@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'
 import * as OTPAuth from 'otpauth'
 import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
-import { uid } from '../ids.js'
+import { uid, generateToken } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole, endSessions } from '../auth.js'
@@ -13,7 +13,7 @@ import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from '../validate.js'
 import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
-import { sendWelcomeEmail } from '../email.js'
+import { sendWelcomeEmail, sendParentConsentEmail, hasEmail } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 
 const router = express.Router()
@@ -144,7 +144,33 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
     return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
   }
 
+  // A student under 13 signing up on their own needs a parent or guardian to
+  // approve by email before the account can be used (see parentConsent.js).
+  // Only this route asks: a student a school adds, or one arriving through
+  // school SSO, is covered by the school's own consent.
+  const under13 = role === 'student' && req.body.under13 === true
+  const parentEmail = under13 ? validateEmail(req.body.parentEmail || '') : ''
+  if (under13) {
+    if (!parentEmail) {
+      return res.status(400).json({ error: "Enter your parent or guardian's email address." })
+    }
+    if (parentEmail === email) {
+      return res.status(400).json({ error: "Your parent or guardian's email must be different from yours." })
+    }
+    // Without a way to reach the parent the account could never be unlocked.
+    if (!hasEmail()) {
+      return res.status(503).json({ error: 'We cannot send the approval email right now. Please try again later.' })
+    }
+  }
+
   try {
+    // Requests nobody approved are not kept: 14 days, then the account goes.
+    await query(
+      `DELETE FROM users
+        WHERE parental_consent_status = 'pending'
+          AND parent_consent_requested_at < now() - interval '${PARENT_CONSENT_TTL_DAYS} days'`,
+    ).catch((e) => console.error('pending-consent prune failed:', e.message))
+
     const existing = await query('SELECT 1 FROM users WHERE email = $1', [email])
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: 'An account with that email already exists.' })
@@ -158,6 +184,19 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
       [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req)],
     )
     const user = publicUser(rows[0])
+    if (under13) {
+      const token = generateToken()
+      await query(
+        `UPDATE users
+            SET under_13 = true, parental_consent_status = 'pending', parent_consent_email = $1,
+                parent_consent_token = $2, parent_consent_requested_at = now(), parent_consent_sent_at = now()
+          WHERE id = $3`,
+        [parentEmail, token, id],
+      )
+      await sendParentConsentEmail({ to: parentEmail, childName: user.name, childEmail: user.email, token })
+      // No session and no welcome email: nothing is usable until the parent approves.
+      return res.status(201).json({ pendingParentalConsent: true })
+    }
     await sendWelcomeEmail({ to: user.email, name: user.name })
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
@@ -165,6 +204,25 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
     return res.status(500).json({ error: 'Could not create account.' })
   }
 })
+
+// How long an under-13 sign-up waits for its parent before it is deleted.
+export const PARENT_CONSENT_TTL_DAYS = 14
+
+// Re-send the parent's approval email when the child tries to sign in, at
+// most once an hour so the sign-in form can't be used to flood an inbox.
+async function resendParentConsent(row) {
+  if (!row.parent_consent_email || !row.parent_consent_token || !hasEmail()) return false
+  const last = row.parent_consent_sent_at ? new Date(row.parent_consent_sent_at).getTime() : 0
+  if (Date.now() - last < 60 * 60 * 1000) return false
+  try {
+    await query('UPDATE users SET parent_consent_sent_at = now() WHERE id = $1', [row.id])
+    await sendParentConsentEmail({ to: row.parent_consent_email, childName: row.name, childEmail: row.email, token: row.parent_consent_token })
+    return true
+  } catch (error) {
+    console.error('parent consent resend failed:', error.message)
+    return false
+  }
+}
 
 // The second step an account owes after its password, or null if none.
 // `methods` lists what it can answer with; `requiresTotp` stays true for any
@@ -219,6 +277,19 @@ router.post('/login', authLimiter, requireDb, verifyTurnstile(), async (req, res
           ssoRequired: true,
         })
       }
+    }
+
+    // An under-13 account stays locked until its parent approves. Checked
+    // after the password, like the SSO rule above, so it can't be used to
+    // probe which addresses have signed up.
+    if (row.parental_consent_status === 'pending') {
+      const resent = await resendParentConsent(row)
+      return res.status(403).json({
+        error: resent
+          ? 'A parent or guardian needs to approve this account first. We just emailed them again.'
+          : 'A parent or guardian needs to approve this account first. Ask them to check their email.',
+        parentalConsentPending: true,
+      })
     }
 
     const user = publicUser(row)

@@ -96,7 +96,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Children's Privacy">
-            <p>VolunTrack is used by students and volunteers of all ages. We only collect information that is necessary for the service. If you are under 13, you must have parental, guardian, or school/teacher consent to create an account. If you believe a child has provided more information than necessary, please contact us.</p>
+            <p>VolunTrack is used by students and volunteers of all ages. We only collect information that is necessary for the service. If you are under 13 and sign up yourself, we ask for a parent or guardian&apos;s email address and send them a request to approve the account. The account is locked until they approve; if they decline, or do not answer within 14 days, it is deleted. We use that email address only for this request. An account your school creates for you, or that you reach through your school&apos;s sign-in, is covered by your school&apos;s consent instead. If you believe a child has provided more information than necessary, please contact us.</p>
           </Section>
 
           <Section title="Changes to This Policy">

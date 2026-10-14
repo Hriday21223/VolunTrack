@@ -262,3 +262,26 @@ export async function sendWelcomeEmail({ to, name }) {
 ${emailFooterHtml()}`,
   })
 }
+
+function backendUrl() {
+  return (process.env.PUBLIC_BACKEND_URL || 'https://voluntrack-backend-frrh.onrender.com').replace(/\/$/, '')
+}
+
+// Asks a parent or guardian to approve an under-13 sign-up. The link goes to
+// the backend, which renders its own confirm page (see
+// server/routes/parentConsent.js) — nothing is approved by opening it.
+export async function sendParentConsentEmail({ to, childName, childEmail, token }) {
+  const link = `${backendUrl()}/api/auth/parent-consent/${token}`
+  const privacy = `${process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app'}/privacy`
+  return sendEmail({
+    to,
+    subject: `${childName} needs your permission to use VolunTrack`,
+    html: `<p>Hello,</p>
+<p><strong>${escapeHtml(childName)}</strong> (${escapeHtml(childEmail)}) signed up for VolunTrack, a volunteer-hour tracker for students, and told us they are under 13. They gave this address as their parent or guardian.</p>
+<p>The account is locked and cannot be used until you approve it. If approved, VolunTrack stores the name, email, grade and volunteer hours your child enters, and shares those hours with their school if they link one. We show no ads and sell no data. Details are in our <a href="${privacy}">Privacy Policy</a>.</p>
+<p><a href="${link}">Review this request</a></p>
+<p>If you decline, or do nothing for 14 days, the account and everything in it is deleted. If you don't know this child, decline or ignore this email.</p>
+${emailFooterHtml()}`,
+  })
+}
+
