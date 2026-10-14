@@ -4,6 +4,7 @@ import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
@@ -366,6 +367,7 @@ export default function SchoolDashboard() {
     return (
       <AppLayout title="Payment Required" subtitle="Your school's account is locked until payment is verified">
         <div className="max-w-lg mx-auto space-y-4">
+          <AnnouncementBanner />
           {adminNotifs.length > 0 && (
             <div className="space-y-2">
               {adminNotifs.map((n) => (
@@ -470,6 +472,7 @@ export default function SchoolDashboard() {
         />
       )}
       <div className="max-w-4xl mx-auto space-y-4">
+        {isSchoolAdmin && <AnnouncementBanner />}
         {/* Billing used to render on every tab, which buried whichever tab you
             were actually on. It lives under School setup -> Billing now. */}
         {/* Each sub-tab bar sits at the top of the tab it belongs to. */}

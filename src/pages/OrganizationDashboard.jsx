@@ -11,6 +11,7 @@ import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
+import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -142,6 +143,7 @@ export default function OrganizationDashboard() {
         </div>
       }
     >
+      <AnnouncementBanner />
       {tab === 'requirements' && <RequirementsSettings scope="organization" />}
 
       {tab === 'hours' && (

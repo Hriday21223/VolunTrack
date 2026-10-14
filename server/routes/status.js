@@ -18,6 +18,7 @@ import invoicesRouter from './invoices.js'
 import settingsRouter from './settings.js'
 import statsRouter from './stats.js'
 import registrationCodesRouter from './registrationCodes.js'
+import announcementsRouter from './announcements.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -257,6 +258,7 @@ const MOUNTED_ROUTERS = [
   ['settings', '/api/settings', settingsRouter],
   ['stats', '/api/stats', statsRouter],
   ['registration-codes', '/api/registration-codes', registrationCodesRouter],
+  ['announcements', '/api/announcements', announcementsRouter],
   ['status', '/api/status', router],
 ]
 

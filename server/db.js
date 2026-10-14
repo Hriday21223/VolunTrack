@@ -717,6 +717,26 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // Admin announcements to schools and/or organizations, e.g. planned
+  // downtime (#290). Shown as a banner on their dashboards until show_until
+  // (or until the admin ends it), and emailed once when sent. Separate from
+  // admin_notifications, which are payment notices.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS announcements (
+        id          TEXT PRIMARY KEY,
+        title       TEXT NOT NULL,
+        message     TEXT NOT NULL,
+        to_schools  BOOLEAN NOT NULL DEFAULT false,
+        to_orgs     BOOLEAN NOT NULL DEFAULT false,
+        show_until  TIMESTAMPTZ NOT NULL,
+        ended_at    TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CHECK (to_schools OR to_orgs)
+      )
+    `)
+  } catch {}
+
   // One-time codes the admin hands a school or organization so it can
   // register (server/registrationCodes.js, #287). Only a hash is kept: the
   // code is shown once at creation, so a database leak can't be redeemed.
