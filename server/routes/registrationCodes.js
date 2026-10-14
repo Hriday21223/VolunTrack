@@ -52,30 +52,27 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
   }
 })
 
-// GET /api/registration-codes/admin — an active code past its expiry is
-// reported as expired; nothing rewrites the row.
+// GET /api/registration-codes/admin — only codes that can still be used.
+// Once a code is used, revoked or past its expiry it has nothing left to do,
+// so the admin's list drops it; the row stays in the table as the record of
+// what was issued and who redeemed it.
 router.get('/admin', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
   try {
     const { rows } = await query(
-      `SELECT c.id, c.kind, c.code_hint, c.label, c.status, c.expires_at, c.created_at, c.used_at,
-              u.name AS used_by_name, u.email AS used_by_email
-         FROM registration_codes c
-         LEFT JOIN users u ON u.id = c.used_by_user_id
-        ORDER BY c.created_at DESC
+      `SELECT id, kind, code_hint, label, expires_at, created_at
+         FROM registration_codes
+        WHERE status = 'active' AND expires_at > now()
+        ORDER BY created_at DESC
         LIMIT 200`,
     )
-    const now = Date.now()
     return res.json({
       codes: rows.map((r) => ({
         id: r.id,
         kind: r.kind,
         hint: r.code_hint,
         label: r.label,
-        status: r.status === 'active' && new Date(r.expires_at).getTime() <= now ? 'expired' : r.status,
         expiresAt: r.expires_at,
         createdAt: r.created_at,
-        usedAt: r.used_at,
-        usedBy: r.used_by_email ? { name: r.used_by_name, email: r.used_by_email } : null,
       })),
     })
   } catch (error) {
