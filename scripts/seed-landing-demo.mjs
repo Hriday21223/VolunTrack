@@ -147,12 +147,13 @@ await db.end()
 
 // Hand the capture script these sessions directly: signing in again would
 // trip the backend's auth rate limit, which the sign-ups above already used.
-const sessionsFile = path.join(os.tmpdir(), 'voluntrack-landing-demo.json')
+const sessionsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'voluntrack-landing-demo-'))
+const sessionsFile = path.join(sessionsDir, 'sessions.json')
 fs.writeFileSync(sessionsFile, JSON.stringify({
   api: API,
   parent: { token: parent.token, user: parent.user },
   volunteer: { token: vol.token, user: vol.user },
-}))
+}), { mode: 0o600, flag: 'wx' })
 console.log(`Wrote demo sessions to ${sessionsFile}`)
 console.log('Seeded sample data. Sign-in for every demo account:', PASSWORD)
 console.log(JSON.stringify({
