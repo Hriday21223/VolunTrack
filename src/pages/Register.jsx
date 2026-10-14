@@ -7,6 +7,7 @@ import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { SCHOOL_GRADES, gradeOptionLabel } from '@policy'
+import { markWelcomePending, clearWelcomePending } from '@/lib/welcome.js'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const ROLES = [
@@ -39,7 +40,6 @@ export default function Register() {
 
   const { register } = useAuth()
   const nav = useNavigate()
-  const apiUrl = import.meta.env.VITE_API_URL || '/api'
   const [role, setRole] = useState('student')
   const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', studentIdNumber: '', schoolCode: '', ageBand: '', parentEmail: '' })
   // Set once an under-13 sign-up is waiting on its parent's emailed approval.
@@ -75,25 +75,25 @@ export default function Register() {
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
+    // Set before register() rather than after: the new session makes
+    // PublicOnly redirect straight to "/", and Home() reads this note to send
+    // a new student or volunteer on to /welcome — which also joins the school
+    // code and shows whether it worked. Withdrawn below if no session results.
+    const wantsWelcome = role === 'student' || role === 'volunteer'
+    if (wantsWelcome) markWelcomePending({ schoolCode: role === 'student' ? form.schoolCode : '' })
     try {
       const user = await register({ ...form, role, under13, parentEmail: under13 ? form.parentEmail.trim() : '', turnstileToken: captchaToken })
       if (user?.pendingParentalConsent) {
+        clearWelcomePending()
         setAwaitingParent(form.parentEmail.trim())
         return
       }
-      if (role === 'student' && form.schoolCode && user) {
-        const token = localStorage.getItem('voluntrack:auth_token')
-        if (token) {
-          await fetch(`${apiUrl}/school/join`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ pin: form.schoolCode }),
-          })
-        }
-      }
       setToast(true)
-      setTimeout(() => nav('/', { replace: true }), 600)
+      // The welcome step is already on screen by now; a late nav('/') would
+      // pull the student off it onto the dashboard.
+      if (!wantsWelcome) setTimeout(() => nav('/', { replace: true }), 600)
     } catch (e) {
+      clearWelcomePending()
       setErr(e.message)
       setCaptchaToken('')
       setCaptchaKey((k) => k + 1)

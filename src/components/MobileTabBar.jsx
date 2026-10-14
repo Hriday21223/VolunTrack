@@ -223,7 +223,9 @@ export default function MobileTabBar() {
     )
   }
 
-  if (!user) return null
+  // The post-sign-up welcome step is a focused, full-screen card; the bar and
+  // its + button would cover the step's own buttons on a phone.
+  if (!user || pathname === '/welcome') return null
 
   const moreButton = (
     <button
