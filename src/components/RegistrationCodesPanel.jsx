@@ -5,17 +5,10 @@ import Card from '@/components/Card.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
 
-const STATUS_STYLE = {
-  active: 'bg-amber-500/10 text-amber-400',
-  used: 'bg-emerald-500/10 text-emerald-400',
-  expired: 'bg-red-500/10 text-red-400',
-  revoked: 'bg-earth-500/10 text-earth-400',
-}
-const STATUS_LABEL = { active: 'Unused', used: 'Used', expired: 'Expired', revoked: 'Revoked' }
-
 // Admin Invites tab: one-time codes a school or organization types on its
 // register page (#287). The full code exists only in the create response,
-// so this is the one place it's ever shown.
+// so this is the one place it's ever shown. The list holds only codes that
+// can still be used — a used, revoked or expired code drops off it.
 export default function RegistrationCodesPanel() {
   const [codes, setCodes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -67,7 +60,9 @@ export default function RegistrationCodesPanel() {
   const revoke = async (id) => {
     setConfirmRevoke(null)
     const res = await fetch(`${apiUrl}/registration-codes/admin/${id}/revoke`, { method: 'POST', headers: authHeaders() })
-    if (!res.ok) {
+    if (res.ok) {
+      setCodes((prev) => prev.filter((c) => c.id !== id))
+    } else {
       const data = await res.json().catch(() => ({}))
       setErr(data.error || 'Could not revoke the code.')
     }
@@ -87,7 +82,7 @@ export default function RegistrationCodesPanel() {
         <div>
           <h2 className="font-semibold flex items-center gap-2"><KeyRound className="w-4 h-4 text-brand-400" /> Registration codes</h2>
           <p className="text-sm text-earth-400 mt-0.5">
-            A school or organization needs one of these (or an invite link) to register. Each works once.
+            A school or organization needs one of these (or an invite link) to register. Each works once, and leaves this list when it's used, revoked or expired.
           </p>
         </div>
         <button onClick={() => setForm({ kind: 'school', label: '', days: 14 })} className="btn-sm btn-primary">
@@ -100,7 +95,7 @@ export default function RegistrationCodesPanel() {
       {loading ? (
         <p className="text-sm text-earth-400 py-4 text-center">Loading codes…</p>
       ) : codes.length === 0 ? (
-        <p className="text-sm text-earth-400 py-4 text-center">No codes yet.</p>
+        <p className="text-sm text-earth-400 py-4 text-center">No unused codes.</p>
       ) : (
         <ul className="divide-y divide-earth-200 dark:divide-earth-800">
           {codes.map((c) => (
@@ -116,25 +111,16 @@ export default function RegistrationCodesPanel() {
                 <p className="text-xs text-earth-500">
                   {c.kind === 'organization' ? 'Organization' : 'School'}
                   {' · '}
-                  {c.status === 'used' && c.usedBy
-                    ? `Used by ${c.usedBy.name || c.usedBy.email} (${c.usedBy.email}) on ${new Date(c.usedAt).toLocaleDateString()}`
-                    : c.status === 'used'
-                    ? `Used ${new Date(c.usedAt).toLocaleDateString()}`
-                    : `${c.status === 'expired' ? 'Expired' : 'Expires'} ${new Date(c.expiresAt).toLocaleDateString()}`}
+                  {`Expires ${new Date(c.expiresAt).toLocaleDateString()}`}
                 </p>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[c.status] || STATUS_STYLE.revoked}`}>
-                {STATUS_LABEL[c.status] || c.status}
-              </span>
-              {c.status === 'active' && (
-                confirmRevoke === c.id ? (
-                  <span className="flex gap-1">
-                    <button onClick={() => revoke(c.id)} className="btn-sm bg-red-600 text-white hover:bg-red-700">Revoke</button>
-                    <button onClick={() => setConfirmRevoke(null)} className="btn-sm btn-ghost">Keep</button>
-                  </span>
-                ) : (
-                  <button onClick={() => setConfirmRevoke(c.id)} className="text-xs text-red-400 hover:text-red-300">Revoke</button>
-                )
+              {confirmRevoke === c.id ? (
+                <span className="flex gap-1">
+                  <button onClick={() => revoke(c.id)} className="btn-sm bg-red-600 text-white hover:bg-red-700">Revoke</button>
+                  <button onClick={() => setConfirmRevoke(null)} className="btn-sm btn-ghost">Keep</button>
+                </span>
+              ) : (
+                <button onClick={() => setConfirmRevoke(c.id)} className="text-xs text-red-400 hover:text-red-300">Revoke</button>
               )}
             </li>
           ))}
