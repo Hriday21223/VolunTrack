@@ -21,16 +21,25 @@ A warm, focused volunteer hour tracker. Log hours, set goals, earn achievements,
 
 ## Features
 
-- 🔐 **Dual Auth**: Local auth (client-side) + Server auth (PostgreSQL + bcrypt + JWT)
-- 📊 Dashboard with total/monthly hours, weekly chart, progress ring, recent activity
-- ⏰ Log hours with drag-and-drop proof upload, supervisor verification fields
-- 📅 Calendar view with session indicators per day
-- 🎯 Goal tracking + 12 auto-earning achievement badges
-- 📄 PDF volunteer log, CSV export, printable certificate
-- 👤 Profile with avatar, school/grade, quick stats
-- ⚙️ Settings: dark mode, goal management, account
-- 🌐 Public About + Contact pages
-- 🔒 **Security**: Rate limiting, input validation, parameterized queries
+**For students and volunteers** (free, no account needed for local-only use)
+- Log hours with activity, category, times, location, notes and proof; a Calendar view; goals with a progress ring and pace toward a deadline
+- 12 automatically earned achievement badges
+- Reports: PDF, CSV and a printable certificate, plus submitting a report to your school
+- Supervisor verification by signature — in person, by an emailed one-time link, or via QR code
+- Reminders, a public Opportunities list of volunteer tasks, and signed, verifiable transcripts
+- Cross-device sync with a sync PIN; two-factor authentication (authenticator app) and passkeys
+
+**For parents** — a read-only family dashboard of a linked child's hours (from the moment they link) and a weekly progress email
+
+**For volunteer task makers** — post tasks, approve sign-ups, message volunteers, and sign off hours in bulk
+
+**For schools and organizations** (paid; sign-up needs a one-time registration code or invite from us)
+- Student roster and report review, co-admins, announcements to students
+- Requirements: required fields, custom questions, hour goals and signature rules, inherited from an organization by its schools
+- School single sign-on, and proof files kept in the school's own storage bucket
+- An access audit trail for student data
+
+**For the admin** — schools, organizations, invoices, registration codes, announcements, reviews, incidents and the contact inbox
 
 ## Run it
 
@@ -91,16 +100,9 @@ All state lives in `localStorage` under the `voluntrack:` namespace:
 See `src/lib/storage.js` and `src/lib/achievements.js` for the rules.
 
 ### Server-side (PostgreSQL)
-When `DATABASE_URL` is configured, the backend stores:
+When `DATABASE_URL` is configured, the backend stores accounts for seven roles (student, volunteer, parent, school, school_staff, org, admin) and everything the server-backed features need — logs, schools and organizations, parent links, volunteer tasks and sign-ups, verifications, invoices, registration codes, announcements and the audit trail. Migrations are additive and run on boot.
 
-| Table      | Purpose                                     |
-|------------|---------------------------------------------|
-| `users`    | User accounts with roles (admin/school/student) |
-| `schools`  | School information and PINs                 |
-| `logs`     | Volunteer hours (future sync from localStorage) |
-| `goals`    | User goals (future sync from localStorage)  |
-
-See `server/db.js` for the schema definition.
+See `server/db.js` for the schema and `CLAUDE.md` for how the pieces fit together.
 
 ## Project layout
 
@@ -123,9 +125,9 @@ server.js      # Express server entry point
 ## Notes
 
 - **Dual mode**: The app works in client-only mode (localStorage) for immediate use, and with the backend for school management features.
-- **Gradual migration**: Users can start with local storage and optionally sync to the backend when schools implement the dashboard.
+- **Gradual migration**: Users can start with local storage and later create an account; logs authored locally sync to the server (`src/lib/logSync.js`).
 - Drag-and-drop proof uploads read files via `FileReader` and store as base64 — convenient, but it does inflate `localStorage`. Keep proof files under ~1 MB.
-- Dark mode is opt-in per device; the choice is persisted in `voluntrack:theme`.
+- Dark is the default theme; a device's choice is persisted in `voluntrack:theme`.
 - **Security**: Backend includes rate limiting, input validation, and parameterized queries. See SECURITY.md for details.
 
 ## License

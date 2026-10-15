@@ -113,6 +113,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
          FROM logs l
          JOIN parent_child_links pcl ON pcl.child_id = l.user_id
          WHERE pcl.parent_id = $1 AND l.date >= $2::date AND l.date < $3::date
+           AND l.created_at >= pcl.created_at
          LIMIT 1`,
         [parent.id, weekStart, weekEnd],
       )
@@ -127,7 +128,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
     }
 
     const { rows: children } = await query(
-      `SELECT u.id, u.name
+      `SELECT u.id, u.name, pcl.created_at AS linked_at
        FROM parent_child_links pcl
        JOIN users u ON u.id = pcl.child_id
        WHERE pcl.parent_id = $1
@@ -143,21 +144,23 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
                   COALESCE(SUM(hours) FILTER (WHERE verification_status = 'approved'), 0) AS verified_hours,
                   COALESCE(SUM(hours) FILTER (WHERE verification_status = 'pending'), 0)  AS pending_hours
            FROM logs
-           WHERE user_id = $1 AND date >= $2::date AND date < $3::date`,
-          [child.id, weekStart, weekEnd],
+           WHERE user_id = $1 AND date >= $2::date AND date < $3::date AND created_at >= $4`,
+          [child.id, weekStart, weekEnd, child.linked_at],
         ),
         query(
           `SELECT to_char(date, 'Mon DD') AS date_label, activity, hours,
                   verification_status AS status
            FROM logs
-           WHERE user_id = $1 AND date >= $2::date AND date < $3::date
+           WHERE user_id = $1 AND date >= $2::date AND date < $3::date AND created_at >= $5
            ORDER BY date, created_at
            LIMIT $4`,
-          [child.id, weekStart, weekEnd, MAX_ENTRIES_PER_CHILD + 1],
+          [child.id, weekStart, weekEnd, MAX_ENTRIES_PER_CHILD + 1, child.linked_at],
         ),
         query(
-          `SELECT COALESCE(SUM(hours), 0) AS all_time_hours FROM logs WHERE user_id = $1`,
-          [child.id],
+          // "All time" for a parent means since they linked — earlier entries
+          // stay private (see logReadScope in server/routes/logs.js).
+          `SELECT COALESCE(SUM(hours), 0) AS all_time_hours FROM logs WHERE user_id = $1 AND created_at >= $2`,
+          [child.id, child.linked_at],
         ),
       ])
       const a = agg[0]

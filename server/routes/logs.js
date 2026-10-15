@@ -283,21 +283,29 @@ router.delete('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 })
 
 // A user's logs are readable by the user themself, or a parent linked to them.
-async function canReadLogsOf(req, userId) {
-  if (req.auth.sub === userId) return true
-  if (req.auth.role !== 'parent') return false
+// Who may read a user's logs, and from when. The user sees all of their own
+// (`since` null). A linked parent sees only entries logged from the moment
+// they linked: students are told a link code shares their hours "from that
+// point onward" and earlier entries stay private, so every parent read path
+// — this route, the organizer-signatures one, proof downloads
+// (server/routes/storage.js) and the weekly digest (server/digest.js) —
+// applies the same cut-off. Returns null when the caller may not read them.
+async function logReadScope(req, userId) {
+  if (req.auth.sub === userId) return { since: null }
+  if (req.auth.role !== 'parent') return null
   const { rows } = await query(
-    'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
+    'SELECT created_at FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
     [req.auth.sub, userId],
   )
-  return rows.length > 0
+  return rows[0] ? { since: rows[0].created_at } : null
 }
 
 // Read a user's logs — the caller themself, or a parent linked to them.
 router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
   const { userId } = req.params
   try {
-    if (!(await canReadLogsOf(req, userId))) return res.status(403).json({ error: 'Not allowed.' })
+    const scope = await logReadScope(req, userId)
+    if (!scope) return res.status(403).json({ error: 'Not allowed.' })
 
     // `date` is a DATE column: pg parses it into a JS Date, which res.json
     // serializes as "2024-01-06T00:00:00.000Z". Clients key calendars and
@@ -309,8 +317,9 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
                student_signed, form_submitted, supervisor_signed_in_person,
                (organizer_signature IS NOT NULL) AS organizer_signed
-       FROM logs WHERE user_id = $1 ORDER BY logs.date DESC, created_at DESC`,
-      [userId],
+       FROM logs WHERE user_id = $1 AND ($2::timestamptz IS NULL OR created_at >= $2)
+       ORDER BY logs.date DESC, created_at DESC`,
+      [userId, scope.since],
     )
     return res.json({
       logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, ...log }) => ({
@@ -343,11 +352,13 @@ router.get('/:userId/organizer-signatures', limiter, requireDb, requireAuth(), a
   const ids = String(req.query.ids || '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, MAX_SIGNATURE_IDS)
   if (ids.length === 0) return res.json({ signatures: {} })
   try {
-    if (!(await canReadLogsOf(req, userId))) return res.status(403).json({ error: 'Not allowed.' })
+    const scope = await logReadScope(req, userId)
+    if (!scope) return res.status(403).json({ error: 'Not allowed.' })
     const { rows } = await query(
       `SELECT id, organizer_signature FROM logs
-        WHERE user_id = $1 AND id = ANY($2::text[]) AND organizer_signature IS NOT NULL`,
-      [userId, ids],
+        WHERE user_id = $1 AND id = ANY($2::text[]) AND organizer_signature IS NOT NULL
+          AND ($3::timestamptz IS NULL OR created_at >= $3)`,
+      [userId, ids, scope.since],
     )
     return res.json({ signatures: Object.fromEntries(rows.map((r) => [r.id, r.organizer_signature])) })
   } catch (error) {

@@ -413,7 +413,7 @@ router.post('/upload-url', mintLimiter, requireDb, requireKey, requireAuth(), as
 router.get('/download-url/:logId', mintLimiter, requireDb, requireKey, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT l.id, l.user_id, l.proof_storage_id, l.proof_key, l.proof_mime,
+      `SELECT l.id, l.user_id, l.proof_storage_id, l.proof_key, l.proof_mime, l.created_at,
               u.school_id, s.organization_id
          FROM logs l
          JOIN users u ON u.id = l.user_id
@@ -480,9 +480,11 @@ async function canReadProof(auth, log) {
     return Boolean(log.organization_id) && rows[0]?.organization_id === log.organization_id
   }
   if (auth.role === 'parent') {
+    // Only for an entry logged after the parent linked — the same cut-off as
+    // reading the logs themselves (logReadScope in server/routes/logs.js).
     const { rows } = await query(
-      'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
-      [auth.sub, log.user_id],
+      'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2 AND created_at <= $3',
+      [auth.sub, log.user_id, log.created_at],
     )
     return rows.length > 0
   }
