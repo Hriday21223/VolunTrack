@@ -5,8 +5,9 @@
 // hand-editing them whenever the deployed domain changes.
 //
 // Uses Vite's own env-loading (same precedence as `vite build` itself) so
-// this stays in sync with vite.config.js. Falls back to a safe localhost URL
-// when VITE_SITE_URL is unset — see scripts/site-url.mjs.
+// this stays in sync with vite.config.js. When VITE_SITE_URL is unset it
+// writes nothing, leaving the committed files as they are — falling back to
+// localhost here would dirty tracked files with URLs that must never ship.
 import { writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
@@ -20,6 +21,10 @@ const PUBLIC_DIR = resolve(__dirname, '../public')
 // which defaults to mode "production" — match that so it reads the same
 // .env files vite build itself will use.
 const env = loadEnv('production', resolve(__dirname, '..'), '')
+if (!env.VITE_SITE_URL) {
+  console.log('[generate-seo-files] VITE_SITE_URL is unset — keeping the committed public/robots.txt, public/sitemap.xml and public/llms.txt')
+  process.exit(0)
+}
 const SITE_URL = resolveSiteUrl(env)
 
 // Paths with no standalone SEO value and/or that carry sensitive tokens in

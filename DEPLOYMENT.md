@@ -120,9 +120,10 @@ One-time setup:
    and `robots.txt`/`sitemap.xml` at build time. If you attach a custom domain
    later, update this value and redeploy so SEO tags follow automatically — no
    code changes needed. Note `VITE_SITE_URL` is currently unset in the Preview
-   environment, so preview builds fall back to localhost in their SEO files;
-   that's fine for a test deploy, but it's why previews shouldn't be promoted
-   by hand.
+   environment: preview builds ship the committed `robots.txt`/`sitemap.xml`/
+   `llms.txt` unchanged, but their canonical/Open Graph tags fall back to
+   localhost. That's fine for a test deploy, but it's why previews shouldn't
+   be promoted by hand.
 
 4. Back in Render, set `FRONTEND_URL` on the backend service to the Vercel URL
    so CORS allows it.
