@@ -35,6 +35,7 @@ import announcementRoutes from './server/routes/announcements.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 import { loadEmailOverrides } from './server/emailSettings.js'
+import { isLocalDatabaseUrl } from './server/localDb.js'
 import { startKeepAwake } from './server/keepAwake.js'
 import { isSignatureImage } from './server/signature.js'
 
@@ -784,6 +785,11 @@ async function seedAdmin() {
 }
 
 async function start() {
+  if (hasDatabase() && !isProd && !isLocalDatabaseUrl()) {
+    console.warn('\n⚠️  WARNING: this local server is using a database that is not on this machine —')
+    console.warn('   probably the live one. Accounts and data you create now are real, on the live site.')
+    console.warn('   Point DATABASE_URL in .env at a local Postgres for development (see .env.example).\n')
+  }
   if (hasDatabase()) {
     try {
       await initSchema()
