@@ -146,13 +146,24 @@ function WeeklySignups({ weeks }) {
 
 const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'users', 'api', 'blueprint']
 
-// Living reference pages for how this app is actually built, kept outside the
-// repo so they can be updated without a deploy. Admin-only: they describe every
-// role's powers and the server's gates, which is not public documentation.
 // The backend service's Render dashboard, where the env-var values the Email
 // provider card falls back to are set (Environment tab).
 const RENDER_BACKEND_DASHBOARD_URL = 'https://dashboard.render.com/web/srv-d9pmh1ajnfac73f017fg'
 
+// What the Blueprint tab says when it can't load the saved links. `problem` is
+// 'network' or the HTTP status from GET /settings/blueprint-docs.
+function blueprintsProblemText(problem) {
+  if (problem === 'network') return "Adding your own needs the server, which couldn't be reached — check your connection, or that the backend is running."
+  if (problem === 401) return 'Your admin session has expired — sign in again to add your own.'
+  if (problem === 403) return 'Only admins can add their own.'
+  if (problem === 429) return 'Too many requests just now — wait a moment, then retry.'
+  if (problem === 503) return "Adding your own needs a database, and this server doesn't have one configured."
+  return `The server couldn't load your saved links (error ${problem}).`
+}
+
+// Living reference pages for how this app is actually built, kept outside the
+// repo so they can be updated without a deploy. Admin-only: they describe every
+// role's powers and the server's gates, which is not public documentation.
 const BLUEPRINT_DOCS = [
   {
     title: 'The VolunTrack Field Guide',
@@ -270,6 +281,9 @@ export default function Admin() {
   const [promoUsed, setPromoUsed] = useState(0)
   const [blueprints, setBlueprints] = useState(BLUEPRINT_DOCS)
   const [blueprintsEditable, setBlueprintsEditable] = useState(false)
+  // Why the saved links couldn't load: 'network' or an HTTP status. Each
+  // reads differently to the admin — an expired session isn't a database outage.
+  const [blueprintsProblem, setBlueprintsProblem] = useState(null)
   const [loadingBlueprints, setLoadingBlueprints] = useState(false)
   const [savingBlueprints, setSavingBlueprints] = useState(false)
   const [blueprintDraft, setBlueprintDraft] = useState({ title: '', url: '', summary: '' })
@@ -1026,15 +1040,18 @@ export default function Admin() {
         const data = await res.json()
         setBlueprints(Array.isArray(data.docs) ? data.docs : BLUEPRINT_DOCS)
         setBlueprintsEditable(true)
+        setBlueprintsProblem(null)
       } else {
-        // No database configured (503) — show the shipped links read-only
-        // rather than an empty tab.
+        // Show the shipped links read-only rather than an empty tab, and keep
+        // the status so the notice can say what actually went wrong.
         setBlueprints(BLUEPRINT_DOCS)
         setBlueprintsEditable(false)
+        setBlueprintsProblem(res.status)
       }
     } catch {
       setBlueprints(BLUEPRINT_DOCS)
       setBlueprintsEditable(false)
+      setBlueprintsProblem('network')
     } finally { setLoadingBlueprints(false) }
   }, [])
 
@@ -2690,10 +2707,17 @@ export default function Admin() {
             </Card>
           ) : (
             <Card>
-              <p className="text-sm text-earth-500 dark:text-earth-400 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                These are the shipped links. Adding your own needs the backend database, which isn't reachable right now.
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm text-earth-500 dark:text-earth-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  These are the shipped links. {blueprintsProblemText(blueprintsProblem)}
+                </p>
+                {blueprintsProblem !== 503 && (
+                  <button onClick={loadBlueprints} disabled={loadingBlueprints} className="text-xs text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 inline-flex items-center gap-1 shrink-0">
+                    <RefreshCw className={`w-3 h-3 ${loadingBlueprints ? 'animate-spin' : ''}`} /> Retry
+                  </button>
+                )}
+              </div>
             </Card>
           )}
         </div>
