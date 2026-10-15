@@ -12,7 +12,6 @@
 import puppeteer from 'puppeteer'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 
 const args = process.argv.slice(2)
@@ -99,7 +98,7 @@ const ROLE_SHOTS = [
   },
 ]
 // Written by seed-landing-demo.mjs — one signed-in session per role.
-const SESSIONS_FILE = path.join(os.tmpdir(), 'voluntrack-landing-demo.json')
+const SESSIONS_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'node_modules', '.cache', 'voluntrack-landing-demo.json')
 // 1440 wide (not the student shot's 1280) so dashboard headers fit on one
 // line; the output is still 1920×1200 like the others.
 const SIZES = [

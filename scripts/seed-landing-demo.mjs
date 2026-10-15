@@ -17,7 +17,7 @@
 // never land there.
 import 'dotenv/config'
 import fs from 'node:fs'
-import os from 'node:os'
+import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import pg from 'pg'
 import { signToken } from '../server/auth.js'
@@ -147,13 +147,16 @@ await db.end()
 
 // Hand the capture script these sessions directly: signing in again would
 // trip the backend's auth rate limit, which the sign-ups above already used.
-const sessionsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'voluntrack-landing-demo-'))
-const sessionsFile = path.join(sessionsDir, 'sessions.json')
+// They're bearer tokens, so they go in this project's own (gitignored)
+// node_modules/.cache, owner-only — not a predictable name in the shared
+// system temp folder, where another user could read or swap the file.
+const sessionsFile = fileURLToPath(new URL('../node_modules/.cache/voluntrack-landing-demo.json', import.meta.url))
+fs.mkdirSync(path.dirname(sessionsFile), { recursive: true })
 fs.writeFileSync(sessionsFile, JSON.stringify({
   api: API,
   parent: { token: parent.token, user: parent.user },
   volunteer: { token: vol.token, user: vol.user },
-}), { mode: 0o600, flag: 'wx' })
+}), { mode: 0o600 })
 console.log(`Wrote demo sessions to ${sessionsFile}`)
 console.log('Seeded sample data. Sign-in for every demo account:', PASSWORD)
 console.log(JSON.stringify({
