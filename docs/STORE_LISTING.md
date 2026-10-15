@@ -93,12 +93,12 @@ cost of the app running letterboxed on iPads.
 | --- | --- | --- | --- | --- |
 | Personal info → Name | Yes | No | Required for an account | App functionality, Account management |
 | Personal info → Email address | Yes | No | Required for an account | App functionality, Account management |
-| Personal info → User IDs | Yes | No | Required for an account | App functionality, Account management |
+| Personal info → User IDs (account ID; the student ID number, if entered) | Yes | No | Required for an account | App functionality, Account management |
 | Location → Approximate location | Yes | No | Optional | App functionality |
 | Location → Precise location | Yes | No | Optional | App functionality |
 | Photos and videos → Photos | Yes | No | Optional | App functionality |
 | Files and docs | Yes | No | Optional | App functionality |
-| App activity → Other user-generated content (hours, descriptions, supervisor contacts) | Yes | No | Required | App functionality |
+| App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
 
 Not collected: financial info (school invoices are paid by bank transfer outside
@@ -135,8 +135,10 @@ purpose *App Functionality* — matching `PrivacyInfo.xcprivacy`:
 
 - Contact Info → Name, Email Address
 - Identifiers → User ID
-- Location → Precise Location (only when the user taps *Use current location*)
-- User Content → Photos or Videos, Other User Content
+- Location → Precise Location (only when the user taps *Use current location*
+  or turns on nearby tasks)
+- User Content → Photos or Videos, Other User Content (entries, and app
+  reviews), Customer Support (contact-form messages)
 
 One more, *Linked to the user*, *not used for tracking*, purpose *Analytics*:
 
@@ -171,7 +173,9 @@ App Privacy answers. That decides the store settings:
 - **Apple → Age rating:** answer "None" to every content question. For
   *Unrestricted web access* answer **No** (the app shows only its own pages).
   For *User-generated content* answer **No** (entries are private, never
-  public). Expected result: 4+. **Don't** choose the Kids category, because
+  public; an app review reaches the website's About page only after its
+  writer agrees and an admin approves it, so it is curated, not open
+  posting). Expected result: 4+. **Don't** choose the Kids category, because
   that brings the Kids rules (no external links, parental gates).
 
 ## Payments
@@ -186,8 +190,10 @@ button or checkout link. Play: **Contains ads — No. In-app purchases — No.**
 
 Apple reviews every build, and Play reviews the first release and policy
 changes. Both reviewers need to sign in, so before the first submission
-**create a dedicated reviewer account on production** (the seeded
-`@test.com` accounts exist only in the local database). Use a student
+**create a dedicated reviewer account on production** (`appreview@test.com`
+exists for this). Don't hand reviewers the other `@test.com` accounts: they
+are on production too, and the admin, school and organization ones have
+two-factor turned on. Use a student
 account joined to a demo school that holds a few sample entries. Don't use
 a real student's account.
 
@@ -199,7 +205,8 @@ Paste into *App Review Information → Notes* (Apple) / *App access* (Play):
 > verification, and see goals and badges.
 > School single sign-on appears only for schools that configured it; the demo
 > account uses a password. Camera is used only to scan a sign-in QR code or
-> photograph proof; location only when the user taps "Use current location".
+> photograph proof; location only when the user taps "Use current location" or turns on
+> nearby tasks.
 
 **Guideline 4.2 (minimum functionality)** is the main rejection risk for an
 app that shares its UI with a website. Mention the native parts: the native

@@ -29,7 +29,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 10, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 15, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -44,10 +44,13 @@ export default function Privacy() {
               <li><strong>Proof of service</strong> — photos or documents you attach to an entry. See <em>Proof files</em> below for where these are held.</li>
               <li><strong>Access records</strong> — when a school or organization staff member opens a student&apos;s record, we record who did it and when, along with the IP address and browser, so that access to a minor&apos;s record can be accounted for.</li>
               <li><strong>Billing details</strong> — for school and organization accounts only: invoices, payment confirmations you submit, and any discount or referral code used.</li>
-              <li><strong>Approximate location</strong> — used only when you log hours, to auto-fill the location field. You can always edit or clear it.</li>
+              <li><strong>Your location</strong> — only with your permission, to fill in where you volunteered and to show volunteer tasks near you. In the mobile apps it is asked for only when you tap <em>Use current location</em> or turn on nearby tasks. You can always edit or clear a filled-in location.</li>
+              <li><strong>Student ID number</strong> — only if you enter it, so it appears on your verification forms and exported records.</li>
+              <li><strong>Messages you send us</strong> — your name, email address and message when you use the contact form, kept so we can reply.</li>
+              <li><strong>App reviews</strong> — if you rate VolunTrack, your rating, comment, and the name you give. A review appears publicly on our website only if you agree to it and we approve it.</li>
               <li><strong>Passkeys</strong> — if you add a passkey as a sign-in step, we store its public key, an identifier for it, a name such as &quot;iPhone&quot;, and when it was added and last used. The private key stays on your device (or in your iCloud Keychain or Google Password Manager); we never receive it.</li>
               <li><strong>Face ID, Touch ID and fingerprint (apps only)</strong> — if you choose <em>Keep me signed in</em>, the app asks your phone to confirm it&apos;s you before it opens. Your phone does the check and only tells the app whether it passed: your face or fingerprint data never leaves your device and never reaches us. Your sign-in is kept in your phone&apos;s secure storage (the iOS Keychain or Android Keystore) and removed when you sign out.</li>
-              <li><strong>Camera access</strong> — used only for scanning QR codes when syncing your account across devices. No images are ever uploaded or stored.</li>
+              <li><strong>Camera access</strong> — used to scan QR codes when syncing your account across devices, and, if you choose, to photograph proof of service. QR scans are never uploaded or stored; a proof photo is handled like any other proof file (see <em>Proof files</em> below).</li>
               <li><strong>Notifications</strong> — in the mobile app, only if you allow them, to deliver the reminders you set. They are scheduled on your phone itself, so your reminders never reach us.</li>
             </ul>
           </Section>
@@ -67,7 +70,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Analytics">
-            <p>We use privacy-friendly, anonymous page-view analytics (Vercel Analytics) to understand overall usage. It does not use cookies and does not track you individually across sites.</p>
+            <p>We use privacy-friendly, anonymous page-view analytics (Vercel Analytics) to understand overall usage. It does not use cookies and does not track you individually across sites. The iOS and Android apps don&apos;t load it.</p>
           </Section>
 
           <Section title="Data Retention">
@@ -92,7 +95,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Service Providers">
-            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, email delivery, bot protection on public forms, and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
+            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, email delivery, bot protection on public forms, place search (the text you type and an approximate position, only when you search for a place), and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
           </Section>
 
           <Section title="Children's Privacy">
