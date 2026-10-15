@@ -4,6 +4,10 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { normalizePromo, publicPromo, NO_PROMO } from '../promo.js'
+import { hasEncryptionKey } from '../secrets.js'
+import { emailStatus, emailHealthSnapshot, refreshEmailHealth, sendEmail } from '../email.js'
+import { EMAIL_KEY_FIELDS, saveEmailOverrides } from '../emailSettings.js'
+import { recordAudit, AUDIT } from '../audit.js'
 
 const router = express.Router()
 
@@ -263,6 +267,81 @@ router.put('/blueprint-docs', limiter, requireDb, requireAuth('admin'), async (r
     console.error('update blueprint docs failed:', err)
     return res.status(500).json({ error: 'Could not save the blueprints.' })
   }
+})
+
+// ----- Email provider keys (#302) -----
+// Lets an admin replace a revoked Brevo key or Gmail app password from Admin →
+// Settings instead of editing Render. The keys are write-only: nothing here
+// ever returns one, only whether it is set and where it came from.
+
+const emailTestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many test emails. Please try again later.' },
+})
+
+function requireEncryption(_req, res, next) {
+  if (!hasEncryptionKey()) {
+    return res.status(503).json({ error: 'Email keys cannot be saved: APP_ENCRYPTION_KEY is not configured.' })
+  }
+  next()
+}
+
+function emailSettingsResponse() {
+  return { ...emailStatus(), encryptionAvailable: hasEncryptionKey(), health: emailHealthSnapshot() }
+}
+
+router.get('/email', limiter, requireDb, requireAuth('admin'), (_req, res) => {
+  res.json(emailSettingsResponse())
+})
+
+router.patch('/email', limiter, requireDb, requireAuth('admin'), requireEncryption, async (req, res) => {
+  const set = {}
+  for (const field of Object.keys(EMAIL_KEY_FIELDS)) {
+    const raw = req.body?.[field]
+    if (raw == null || raw === '') continue
+    const value = typeof raw === 'string' ? raw.trim() : ''
+    // Brevo keys are ~90 characters and Gmail app passwords 16; anything far
+    // outside that is a paste mistake, not a key.
+    if (value.length < 8 || value.length > 512) {
+      return res.status(400).json({ error: `${field === 'brevoApiKey' ? 'Brevo API key' : 'SMTP password'} doesn't look right — check what you pasted.` })
+    }
+    set[field] = value
+  }
+  const clear = Array.isArray(req.body?.clear)
+    ? [...new Set(req.body.clear)].filter((f) => f in EMAIL_KEY_FIELDS && !(f in set))
+    : []
+  if (Object.keys(set).length === 0 && clear.length === 0) {
+    return res.status(400).json({ error: 'Nothing to change.' })
+  }
+
+  try {
+    await saveEmailOverrides({ set, clear })
+  } catch (error) {
+    console.error('update email keys failed:', error.message)
+    return res.status(500).json({ error: 'Could not save the email keys.' })
+  }
+  // Field names only — never a key in the audit trail.
+  recordAudit(req, { action: AUDIT.EMAIL_PROVIDER_CHANGED, objectType: 'site_settings', objectId: 'email_overrides', meta: { set: Object.keys(set), cleared: clear } })
+  // Probe the new key now so the health shown back reflects it.
+  await refreshEmailHealth()
+  return res.json(emailSettingsResponse())
+})
+
+// Sends a real message to the signed-in admin, which is the only check that
+// covers the sender address too — the health probe only proves the key works.
+router.post('/email/test', emailTestLimiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const to = req.auth.email
+  if (!to || !validator.isEmail(to)) return res.status(400).json({ error: 'Your account has no email address to send to.' })
+  const result = await sendEmail({
+    to,
+    subject: 'VolunTrack test email',
+    html: '<p>This is a test from Admin → Settings. If you can read it, email is working.</p>',
+  })
+  await refreshEmailHealth()
+  return res.json({ sent: result.sent, error: result.sent ? null : (result.error || 'No email provider is configured.'), to, ...emailSettingsResponse() })
 })
 
 export default router

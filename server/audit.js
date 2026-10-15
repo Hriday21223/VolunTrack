@@ -46,6 +46,9 @@ export const AUDIT = {
   // whose entries count, so the current value of the column is not enough of
   // an answer on its own.
   REQUIREMENTS_CHANGED: 'requirements.changed',
+  // An admin replaced or cleared an email provider key. Which keys, never the
+  // values: whoever holds a key can send mail as VolunTrack.
+  EMAIL_PROVIDER_CHANGED: 'email.provider_changed',
 }
 
 // Correlates events by the same person after their account is deleted (the

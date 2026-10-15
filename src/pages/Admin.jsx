@@ -146,9 +146,10 @@ function WeeklySignups({ weeks }) {
 
 const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'users', 'api', 'blueprint']
 
-// Living reference pages for how this app is actually built, kept outside the
-// repo so they can be updated without a deploy. Admin-only: they describe every
-// role's powers and the server's gates, which is not public documentation.
+// The backend service's Render dashboard, where the env-var values the Email
+// provider card falls back to are set (Environment tab).
+const RENDER_BACKEND_DASHBOARD_URL = 'https://dashboard.render.com/web/srv-d9pmh1ajnfac73f017fg'
+
 // What the Blueprint tab says when it can't load the saved links. `problem` is
 // 'network' or the HTTP status from GET /settings/blueprint-docs.
 function blueprintsProblemText(problem) {
@@ -160,6 +161,9 @@ function blueprintsProblemText(problem) {
   return `The server couldn't load your saved links (error ${problem}).`
 }
 
+// Living reference pages for how this app is actually built, kept outside the
+// repo so they can be updated without a deploy. Admin-only: they describe every
+// role's powers and the server's gates, which is not public documentation.
 const BLUEPRINT_DOCS = [
   {
     title: 'The VolunTrack Field Guide',
@@ -260,6 +264,13 @@ export default function Admin() {
   const [invoiceActionId, setInvoiceActionId] = useState(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [officeHoursDraft, setOfficeHoursDraft] = useState({ days: '', hours: '', note: '' })
+  // Email provider keys (#302). The keys themselves are write-only: the server
+  // only ever says whether each is set and where it comes from.
+  const [emailSettings, setEmailSettings] = useState(null)
+  const [emailSettingsError, setEmailSettingsError] = useState('')
+  const [emailKeyDraft, setEmailKeyDraft] = useState({ brevoApiKey: '', smtpPassword: '' })
+  const [savingEmailKeys, setSavingEmailKeys] = useState(false)
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
   const [paymentDraft, setPaymentDraft] = useState({ bankName: '', accountName: '', accountNumber: '', routingNumber: '', swift: '', reference: '', notes: '' })
   const [savingPaymentInfo, setSavingPaymentInfo] = useState(false)
   const [loadingOfficeHours, setLoadingOfficeHours] = useState(false)
@@ -903,6 +914,53 @@ export default function Admin() {
     } catch { setToastMessage('Failed to update payment instructions'); setToast(true) } finally { setSavingPaymentInfo(false) }
   }
 
+  const loadEmailSettings = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/email`, { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) { setEmailSettings(data); setEmailSettingsError('') }
+      else { setEmailSettings(null); setEmailSettingsError(res.status === 401 ? 'Your admin session has expired — sign in again.' : (data.error || `Could not load email settings (error ${res.status}).`)) }
+    } catch {
+      setEmailSettings(null)
+      setEmailSettingsError("Couldn't reach the server.")
+    }
+  }, [])
+
+  // body is either new keys ({ brevoApiKey, smtpPassword }) or { clear: [field] }.
+  const saveEmailKeys = async (body) => {
+    setSavingEmailKeys(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/email`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not save the email keys')
+      setEmailSettings(data)
+      setEmailKeyDraft({ brevoApiKey: '', smtpPassword: '' })
+      setToastMessage(body.clear ? "Using Render's value again" : 'Email key saved — in use now')
+    } catch (e) {
+      setToastMessage(e.message || 'Could not save the email keys')
+    } finally { setToast(true); setSavingEmailKeys(false) }
+  }
+
+  const sendTestEmail = async () => {
+    setSendingTestEmail(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/settings/email/test`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not send a test email')
+      setEmailSettings(data)
+      setToastMessage(data.sent ? `Test email sent to ${data.to}` : `Test email failed: ${data.error}`)
+    } catch (e) {
+      setToastMessage(e.message || 'Could not send a test email')
+    } finally { setToast(true); setSendingTestEmail(false) }
+  }
+
   const loadPromo = useCallback(async () => {
     setLoadingPromo(true)
     try {
@@ -1064,13 +1122,13 @@ export default function Admin() {
     if (tab === 'schools') loadSchools()
     else if (tab === 'invites') loadInvites()
     else if (tab === 'organizations') loadOrganizations()
-    else if (tab === 'settings') { loadOfficeHours(); loadPaymentInstructions(); loadPromo() }
+    else if (tab === 'settings') { loadOfficeHours(); loadPaymentInstructions(); loadPromo(); loadEmailSettings() }
     // The inbox annotates a quoted coupon with whether it is the live one.
     else if (tab === 'inbox') loadPromo()
     else if (tab === 'users') loadUserStats()
     else if (tab === 'api') loadApiInfo()
     else if (tab === 'blueprint') loadBlueprints()
-  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadPromo, loadUserStats, loadApiInfo, loadBlueprints])
+  }, [tab, loadSchools, loadInvites, loadOrganizations, loadOfficeHours, loadPaymentInstructions, loadPromo, loadEmailSettings, loadUserStats, loadApiInfo, loadBlueprints])
 
   // One box filters both customer lists — name, contact email, or the account
   // ID an admin has just read off an incoming bank transfer.
@@ -1320,7 +1378,7 @@ export default function Admin() {
   return (
     <AppLayout
       title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Invites & registration codes' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'users' ? 'Users' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content and payment instructions' : tab === 'users' ? (userStats ? `${userStats.total} ${userStats.total === 1 ? 'person has' : 'people have'} registered` : 'Who has registered') : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content, payments and email' : tab === 'users' ? (userStats ? `${userStats.total} ${userStats.total === 1 ? 'person has' : 'people have'} registered` : 'Who has registered') : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       actionWide
       action={
         <div className="flex gap-2">
@@ -2260,6 +2318,82 @@ export default function Admin() {
             </button>
           </div>
         </Card>
+        <Card>
+          <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+            <Mail className="w-4 h-4 text-brand-600" /> Email provider
+          </h3>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+            If email stops sending because a key was revoked or expired, paste a new one here. It's stored encrypted and used
+            straight away, with no redeploy. Clearing it goes back to the value set on Render.
+          </p>
+          <a
+            href={RENDER_BACKEND_DASHBOARD_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1 -mt-2 mb-4"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> Open the backend on Render
+          </a>
+          {!emailSettings ? (
+            <p className="text-sm text-earth-400 py-2">{emailSettingsError || 'Loading…'}</p>
+          ) : (
+            <div className="space-y-4 max-w-sm">
+              <div className="text-sm space-y-1">
+                <p>
+                  <span className="text-earth-500 dark:text-earth-400">Sending with: </span>
+                  <span className="font-medium">{emailSettings.provider === 'brevo' ? 'Brevo' : emailSettings.provider === 'smtp' ? 'SMTP' : 'nothing — email is off'}</span>
+                </p>
+                <p>
+                  <span className="text-earth-500 dark:text-earth-400">Status: </span>
+                  {emailSettings.health?.ok === true ? 'connected' : emailSettings.health?.ok === false ? `failing${emailSettings.health.errorCode ? ` (${emailSettings.health.errorCode})` : ''}` : 'not checked yet'}
+                </p>
+              </div>
+              {!emailSettings.encryptionAvailable && (
+                <p className="text-sm text-earth-500 dark:text-earth-400 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Keys can't be saved here until APP_ENCRYPTION_KEY is set on the server.
+                </p>
+              )}
+              {[
+                { field: 'brevoApiKey', label: 'Brevo API key', status: emailSettings.brevo, placeholder: 'xkeysib-…' },
+                { field: 'smtpPassword', label: 'SMTP password', status: emailSettings.smtp, placeholder: 'Gmail app password' },
+              ].map(({ field, label, status, placeholder }) => (
+                <div key={field}>
+                  <label htmlFor={`email-key-${field}`} className="text-xs font-medium text-earth-500 dark:text-earth-400">
+                    {label} <span className="text-earth-400">— {status.override ? 'set here (overrides Render)' : status.env ? 'from Render' : 'not set'}</span>
+                  </label>
+                  <input
+                    id={`email-key-${field}`}
+                    type="password"
+                    autoComplete="off"
+                    value={emailKeyDraft[field]}
+                    onChange={(e) => setEmailKeyDraft({ ...emailKeyDraft, [field]: e.target.value })}
+                    placeholder={status.override || status.env ? 'Paste a new key to replace it' : placeholder}
+                    disabled={!emailSettings.encryptionAvailable}
+                    className="input mt-1"
+                  />
+                  {status.override && (
+                    <button onClick={() => saveEmailKeys({ clear: [field] })} disabled={savingEmailKeys} className="text-xs text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 mt-1">
+                      {status.env ? "Use Render's value" : 'Remove'}
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => saveEmailKeys(emailKeyDraft)}
+                  disabled={savingEmailKeys || !emailSettings.encryptionAvailable || !(emailKeyDraft.brevoApiKey.trim() || emailKeyDraft.smtpPassword.trim())}
+                  className="btn-primary btn-sm"
+                >
+                  {savingEmailKeys ? 'Saving…' : 'Save key'}
+                </button>
+                <button onClick={sendTestEmail} disabled={sendingTestEmail || !emailSettings.provider} className="btn-ghost btn-sm">
+                  {sendingTestEmail ? 'Sending…' : 'Send test email'}
+                </button>
+              </div>
+            </div>
+          )}
+        </Card>
         </div>
       ) : tab === 'users' ? (
         <div className="space-y-6">
@@ -2389,7 +2523,7 @@ export default function Admin() {
                   detail={apiHealth.checks.database.ok === null ? 'not configured' : apiHealth.checks.database.ok ? 'connected' : 'unreachable'}
                 />
                 <ApiHealthPill
-                  label="Email (SMTP)"
+                  label="Email"
                   ok={apiHealth.checks.email.ok}
                   detail={!(apiHealth.checks.email.configured ?? apiHealth.checks.email.ok) ? 'not configured' : apiHealth.checks.email.ok ? 'connected' : 'unreachable'}
                 />

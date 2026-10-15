@@ -14,8 +14,17 @@ import { escapeHtml } from './html.js'
 // config change rather than a rewrite. See #205.
 const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 
+// Keys an admin set in Admin → Settings (server/emailSettings.js). Each one,
+// when present, wins over its env var, so a revoked key can be swapped without
+// a redeploy. Held in memory because every reader below is synchronous.
+let overrides = { brevoKey: null, smtpPassword: null }
+
 function brevoKey() {
-  return process.env.BREVO_API_KEY || null
+  return overrides.brevoKey || process.env.BREVO_API_KEY || null
+}
+
+function smtpPassword() {
+  return overrides.smtpPassword || process.env.EMAIL_PASSWORD || null
 }
 
 // The address every message is sent as. Brevo rejects a sender it has not had
@@ -28,7 +37,7 @@ let transport = null
 function smtpTransport() {
   const host = process.env.EMAIL_HOST
   const user = process.env.EMAIL_USER
-  const pass = process.env.EMAIL_PASSWORD
+  const pass = smtpPassword()
   if (!host || !user || !pass) return null
   if (!transport) {
     transport = nodemailer.createTransport({
@@ -57,7 +66,18 @@ function smtpTransport() {
 
 export function hasEmail() {
   if (brevoKey() && fromAddress()) return true
-  return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD)
+  return Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && smtpPassword())
+}
+
+// Which provider sendEmail() would use and where each key comes from — never
+// the keys themselves. Mirrors the branch order in sendEmail().
+export function emailStatus() {
+  const brevo = { env: Boolean(process.env.BREVO_API_KEY), override: Boolean(overrides.brevoKey) }
+  const smtp = { env: Boolean(process.env.EMAIL_PASSWORD), override: Boolean(overrides.smtpPassword) }
+  let provider = null
+  if (brevoKey() && fromAddress()) provider = 'brevo'
+  else if (smtpTransport()) provider = 'smtp'
+  return { provider, brevo, smtp }
 }
 
 // Real SMTP reachability, not just "the env vars are set": transport.verify()
@@ -67,6 +87,21 @@ export function hasEmail() {
 const EMAIL_CHECK_INTERVAL_MS = 5 * 60 * 1000
 const emailHealth = { ok: null, consecutiveFailures: 0, errorCode: null, checkedAt: 0 }
 let emailCheckInFlight = null
+// Bumped whenever the keys change, so a probe that started with the old key
+// can't record its result over the new key's.
+let keyGeneration = 0
+
+// Swaps in admin-set keys and forgets everything derived from the old ones: the
+// cached SMTP transport (it holds the password it was built with) and the
+// health result, so the next check probes the new key instead of waiting out
+// the interval.
+export function setEmailOverrides(next = {}) {
+  overrides = { brevoKey: next.brevoKey || null, smtpPassword: next.smtpPassword || null }
+  transport = null
+  keyGeneration += 1
+  emailCheckInFlight = null
+  Object.assign(emailHealth, { ok: null, consecutiveFailures: 0, errorCode: null, checkedAt: 0 })
+}
 
 // Last known result; ok is null until the first probe finishes.
 export function emailHealthSnapshot() {
@@ -105,13 +140,16 @@ export function refreshEmailHealth() {
   if (!probe) return null
 
   emailHealth.checkedAt = Date.now()
-  emailCheckInFlight = probe
+  const generation = keyGeneration
+  const inFlight = probe
     .then(() => {
+      if (generation !== keyGeneration) return
       emailHealth.ok = true
       emailHealth.consecutiveFailures = 0
       emailHealth.errorCode = null
     })
     .catch((error) => {
+      if (generation !== keyGeneration) return
       console.error('Email health check failed:', error.message)
       emailHealth.ok = false
       emailHealth.consecutiveFailures += 1
@@ -120,8 +158,9 @@ export function refreshEmailHealth() {
       emailHealth.errorCode = /^[A-Z_]{2,32}$/.test(error.code || '') ? error.code : null
     })
     .then(() => emailHealthSnapshot())
-    .finally(() => { emailCheckInFlight = null })
-  return emailCheckInFlight
+    .finally(() => { if (emailCheckInFlight === inFlight) emailCheckInFlight = null })
+  emailCheckInFlight = inFlight
+  return inFlight
 }
 
 // Strip CR/LF so a caller-supplied value can't forge extra log lines when
