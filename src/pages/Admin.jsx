@@ -58,6 +58,10 @@ function generatePromoDetails(offer) {
   return templates[promoDetailsTurn++ % templates.length]
 }
 
+// Where a drafted reply points a new customer: the configured public site,
+// so a reply drafted on a local or preview build never links to localhost.
+const SIGNUP_ORIGIN = import.meta.env.VITE_SITE_URL || window.location.origin
+
 function generateDraft(contact) {
   const subject = contact.subject || 'General question'
   const name = contact.name || 'there'
@@ -91,7 +95,7 @@ function generateDraft(contact) {
       `Really appreciate the suggestion — this is exactly the kind of feedback that shapes what gets built next.\n\nFor context, VolunTrack today covers hour logging, goals, badges, reminders, printable reports and certificates, and full school accounts (dashboards, PDF verification, payment tracking, admin invites). Your idea sounds like it'd fit well alongside that.\n\nMind opening it as an issue on GitHub so it doesn't get lost? https://github.com/Hriday21223/VolunTrack/issues — or just reply here and I'll take it from there.`
     ),
     'School or organization partnership': (
-      `Great timing — school accounts are live on VolunTrack today, not just on a roadmap. Once your school is set up, you get:\n- A dashboard to review and verify student volunteer hours (with PDF proof uploads)\n- A school code students use to link their accounts\n- Co-admin accounts if you've got more than one staff member managing it\n\nPricing is based on your school's size, so once I know a bit more (student count, semester vs. year-round use) I'll send over a quote alongside the invite. Rather than asking you to fill out a signup form yourself, I'll go ahead and send your school an invite email with a link to finish setup — you'll just need to set a password and pick a school code. Expect that shortly; let me know if you'd like me to use a different contact email than this one.\n\nHappy to answer any questions in the meantime.`
+      `Great timing — school accounts are live on VolunTrack today, not just on a roadmap. Once your school is set up, you get:\n- A dashboard to review and verify student volunteer hours (with PDF proof uploads)\n- A school code students use to link their accounts\n- Co-admin accounts if you've got more than one staff member managing it\n\nRunning several schools? A district or organization account manages them all from one place.\n\nPricing is based on size, so once I know a bit more (number of schools and students, semester vs. year-round use) I'll send over a quote. Along with it you'll get a one-time registration code — enter it at ${SIGNUP_ORIGIN}/school/register (or /organization/register for a district) and set up the account yourself. If you'd rather not type a code, I can email an invite link instead. Let me know if you'd like me to use a different contact email than this one.\n\nHappy to answer any questions in the meantime.`
     ),
   }
 
