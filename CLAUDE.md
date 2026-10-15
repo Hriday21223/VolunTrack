@@ -35,7 +35,7 @@ Seven roles gate routes and dashboards: `student`, `volunteer`, `parent`, `schoo
 ### Notable conventions
 
 - Path alias `@` → `src/` (configured in `vite.config.js` and `jsconfig.json`).
-- Dark mode is opt-in per device, persisted at `voluntrack:theme`.
+- Dark is the default theme (`useTheme.js` falls back to `'dark'`); a device's choice persists at `voluntrack:theme`.
 - Drag-and-drop proof uploads are read via `FileReader` and stored as base64 in localStorage — keep proof files under ~1MB, since this inflates localStorage.
 - Backend security posture (see `SECURITY.md`): rate limiting, input validation, parameterized Postgres queries via `pg`. Preserve parameterized queries when touching `server/db.js` or route handlers — no string-concatenated SQL.
 - `server/turnstile.js` (`verifyTurnstile()` middleware) guards the public unauthenticated write endpoints (`POST /api/contact`, `POST /api/auth/register`, `POST /api/{school,organization}/register`) and the two sign-in endpoints a bot can guess against (`POST /api/auth/login`, and `POST /api/auth/sync-login`, where a 5-digit PIN with no email is the whole credential — its QR-scan paths on `SyncLogin.jsx` spend a token too) with Cloudflare Turnstile; the client widget is `src/components/Turnstile.jsx` (config in `src/lib/turnstile.js`). Both are no-ops unless `TURNSTILE_SECRET_KEY` / `VITE_TURNSTILE_SITE_KEY` are set — if you add the check to a new endpoint, wire the widget into its form in the same change so the two stay in sync.
