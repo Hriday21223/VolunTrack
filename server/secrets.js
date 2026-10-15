@@ -1,9 +1,10 @@
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto'
 
 // Symmetric encryption for third-party credentials we must be able to read
-// back — currently only SSO client secrets (server/routes/authSso.js). These
-// can't be hashed like a password: we have to send the original value to the
-// IdP's token endpoint on every login.
+// back — SSO client secrets (server/routes/authSso.js), tenant storage keys
+// (server/routes/storage.js) and email provider keys (server/emailSettings.js).
+// These can't be hashed like a password: we have to send the original value to
+// the third party on every use.
 //
 // APP_ENCRYPTION_KEY should be 32 bytes of base64 or hex (generate with
 // `openssl rand -base64 32`). Anything else is accepted and hashed down to 32
@@ -16,7 +17,7 @@ const TAG_LENGTH = 16
 function key() {
   const raw = process.env.APP_ENCRYPTION_KEY
   if (!raw) {
-    throw new Error('APP_ENCRYPTION_KEY is required to store or read SSO client secrets.')
+    throw new Error('APP_ENCRYPTION_KEY is required to store or read encrypted credentials.')
   }
   for (const encoding of ['base64', 'hex']) {
     const buf = Buffer.from(raw, encoding)
