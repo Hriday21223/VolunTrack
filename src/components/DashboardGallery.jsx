@@ -89,7 +89,9 @@ function useWide() {
 // and inside each, the screens a visitor can click through — like using the
 // app, but every view is a screenshot of sample data. Only the screen on show
 // is in the page, so the rest download only when someone asks to see them.
-export default function DashboardGallery() {
+// `onRoleChange(roleId)` lets the page follow the visitor's pick — the "How it
+// works" section below swaps to that role's steps.
+export default function DashboardGallery({ onRoleChange }) {
   const [roleIndex, setRoleIndex] = useState(0)
   const [screenIndex, setScreenIndex] = useState(0)
   const roleTabs = useRef([])
@@ -99,7 +101,7 @@ export default function DashboardGallery() {
   const hasMenu = role.screens.length > 1
   const wide = useWide()
 
-  const selectRole = (i) => { setRoleIndex(i); setScreenIndex(0) }
+  const selectRole = (i) => { setRoleIndex(i); setScreenIndex(0); onRoleChange?.(ROLES[i].id) }
   const onRoleKeys = tabKeyHandler(ROLES.length, roleIndex, selectRole, roleTabs)
   const onScreenKeys = tabKeyHandler(role.screens.length, screenIndex, setScreenIndex, screenTabs)
 

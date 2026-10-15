@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Zap, Menu, X, FileSignature } from 'lucide-react'
+import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Zap, Menu, X, FileSignature, UserPlus, Link2, Mail, ClipboardList } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
@@ -27,12 +27,45 @@ const DETAILED_FEATURES = [
   { icon: TrendingUp, title: 'Visual progress tracking', body: 'Monitor your monthly trends with bar charts, watch goal rings fill up, and see your all-time stats at a glance on a single dashboard.' },
 ]
 
-const STEPS = [
-  { icon: Users, title: 'Create your account', body: 'Sign up free in under a minute. No credit card needed.' },
-  { icon: Clock, title: 'Log your hours', body: 'Record activity, duration, location, and supervisor details on the go.' },
-  { icon: BarChart3, title: 'Track progress', body: 'Watch your monthly totals, goal rings, and achievements fill up.' },
-  { icon: Trophy, title: 'Earn & export', body: 'Unlock badges and export polished reports for school or scholarships.' },
-]
+// "How it works" (and the line under Categories) for whichever account the
+// visitor picked in the gallery above them. Student is the default, so the page reads as it always has until
+// someone switches tabs. Parents and organizers get their own steps rather
+// than ones about logging hours and earning badges.
+const HOW_IT_WORKS = {
+  student: {
+    heading: 'How do you start tracking volunteer hours?',
+    intro: 'Create a free account, log your hours, track progress toward a goal, and export a report — no credit card, in under five minutes.',
+    categories: 'VolunTrack supports a wide range of volunteer categories so you can log whatever service you do.',
+    steps: [
+      { icon: Users, title: 'Create your account', body: 'Sign up free in under a minute. No credit card needed.' },
+      { icon: Clock, title: 'Log your hours', body: 'Record activity, duration, location, and supervisor details on the go.' },
+      { icon: BarChart3, title: 'Track progress', body: 'Watch your monthly totals, goal rings, and achievements fill up.' },
+      { icon: Trophy, title: 'Earn & export', body: 'Unlock badges and export polished reports for school or scholarships.' },
+    ],
+  },
+  parent: {
+    heading: 'How do you follow your child’s hours?',
+    intro: 'A free parent account shows what your child has logged and how close they are to their goal — read only, so the record stays theirs.',
+    categories: 'Whatever kind of service your child does, it counts — and you’ll see each entry with its category.',
+    steps: [
+      { icon: UserPlus, title: 'Create a parent account', body: 'Sign up free and choose “I’m a Parent.” No credit card needed.' },
+      { icon: Link2, title: 'Link to your child', body: 'Your child finds their link code in Settings → Family. Enter it once to connect.' },
+      { icon: TrendingUp, title: 'Follow their progress', body: 'See every entry, what’s approved or still waiting, and whether they’re on pace for their school’s requirement.' },
+      { icon: Mail, title: 'Get a weekly summary', body: 'Every Monday, an email with what they logged last week. Turn it off any time.' },
+    ],
+  },
+  volunteer: {
+    heading: 'How do you find volunteers?',
+    intro: 'Post an opportunity, approve who signs up, and sign off their hours in VolunTrack — no paperwork for you or the students.',
+    categories: 'Whatever your cause — a food bank, a park cleanup, tutoring, an animal shelter — the students who help can log it.',
+    steps: [
+      { icon: Users, title: 'Create your account', body: 'Sign up free and choose “I’m a Volunteer Task Maker.”' },
+      { icon: ClipboardList, title: 'Post a task', body: 'Add what, where, when, and how many volunteers you need. Students find it on their Opportunities page.' },
+      { icon: CheckCircle, title: 'Approve sign-ups', body: 'Approve or decline each volunteer who signs up, and message them all at once.' },
+      { icon: FileSignature, title: 'Sign off their hours', body: 'Log everyone’s hours in one go and see the impact your events add up to.' },
+    ],
+  },
+}
 
 const CATEGORIES = [
   { icon: Heart,     label: 'Community Service', color: 'bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200' },
@@ -108,6 +141,9 @@ function FaqItem({ q, a }) {
 
 export default function About() {
   const [navOpen, setNavOpen] = useState(false)
+  // Which account the visitor picked in the dashboard gallery.
+  const [audience, setAudience] = useState('student')
+  const howItWorks = HOW_IT_WORKS[audience] || HOW_IT_WORKS.student
   const [testimonials, setTestimonials] = useState([])
 
   useEffect(() => {
@@ -260,16 +296,16 @@ export default function About() {
           </section>
 
           {/* The product itself, for every kind of account — see DashboardGallery. */}
-          <DashboardGallery />
+          <DashboardGallery onRoleChange={setAudience} />
 
-          <section data-animate className="mt-16 text-center">
+          <section data-animate className="mt-16 text-center" aria-live="polite">
             <p className="text-sm uppercase tracking-[0.35em] text-brand-600">How it works</p>
-            <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">How do you start tracking volunteer hours?</h2>
+            <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{howItWorks.heading}</h2>
             <p className="mt-3 text-earth-300 max-w-xl mx-auto font-semibold">
-              Create a free account, log your hours, track progress toward a goal, and export a report — no credit card, in under five minutes.
+              {howItWorks.intro}
             </p>
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {STEPS.map(({ icon: Icon, title, body }, i) => (
+              {howItWorks.steps.map(({ icon: Icon, title, body }, i) => (
                 <div key={title} className="relative" style={{ animationDelay: `${i * 120}ms` }}>
                   <div className="w-14 h-14 rounded-full bg-brand-900/30 border border-brand-700/30 grid place-items-center text-brand-300 mx-auto mb-4 text-lg font-bold">
                     {i + 1}
@@ -289,7 +325,7 @@ export default function About() {
               <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Categories</p>
               <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">Track every type of service.</h2>
               <p className="mt-3 text-earth-400 max-w-xl mx-auto">
-                VolunTrack supports a wide range of volunteer categories so you can log whatever service you do.
+                {howItWorks.categories}
               </p>
             </div>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
