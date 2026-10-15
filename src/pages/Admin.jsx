@@ -149,6 +149,10 @@ const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', '
 // Living reference pages for how this app is actually built, kept outside the
 // repo so they can be updated without a deploy. Admin-only: they describe every
 // role's powers and the server's gates, which is not public documentation.
+// The backend service's Render dashboard, where the env-var values the Email
+// provider card falls back to are set (Environment tab).
+const RENDER_BACKEND_DASHBOARD_URL = 'https://dashboard.render.com/web/srv-d9pmh1ajnfac73f017fg'
+
 const BLUEPRINT_DOCS = [
   {
     title: 'The VolunTrack Field Guide',
@@ -2305,6 +2309,14 @@ export default function Admin() {
             If email stops sending because a key was revoked or expired, paste a new one here. It's stored encrypted and used
             straight away, with no redeploy. Clearing it goes back to the value set on Render.
           </p>
+          <a
+            href={RENDER_BACKEND_DASHBOARD_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1 -mt-2 mb-4"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> Open the backend on Render
+          </a>
           {!emailSettings ? (
             <p className="text-sm text-earth-400 py-2">{emailSettingsError || 'Loading…'}</p>
           ) : (
