@@ -13,7 +13,16 @@ import puppeteer from 'puppeteer'
 
 const SITE = (process.env.SITE_URL || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
 const API = (process.env.API_URL || 'https://voluntrack-backend-frrh.onrender.com/api').replace(/\/$/, '')
-const PAGES = ['/', '/login', '/register', '/privacy', '/terms', '/status']
+// Every page that opens without signing in (src/App.jsx), bar /auth/sso/return,
+// which only works mid sign-in. The verify pages load without a token and
+// show their own "link missing" message, which is still a working page.
+const PAGES = [
+  '/', '/about', '/help', '/contact', '/terms', '/privacy',
+  '/login', '/register', '/forgot-password', '/reset-password', '/reset-pin', '/sync-login',
+  '/school/register', '/organization/register',
+  '/status', '/status/incidents', '/status/system',
+  '/verify-hours', '/verify-transcript',
+]
 
 const results = []
 async function check(name, fn) {
@@ -127,7 +136,9 @@ try {
       const { page, problems } = await openPage(browser, path)
       try {
         const textLength = await page.evaluate(() => document.body.innerText.trim().length)
-        if (textLength < 50) throw new Error('page rendered almost nothing')
+        // A blank app shell is just the "VolunTrack" brand (10 characters);
+        // the shortest real page, /verify-hours with no token, is about 40.
+        if (textLength < 25) throw new Error('page rendered almost nothing')
         const found = await pageProblems(page, problems)
         if (found.length) throw new Error(found.slice(0, 3).join('; '))
         return 'loads cleanly'
