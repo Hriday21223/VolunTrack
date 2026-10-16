@@ -518,23 +518,6 @@ router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req
   }
 })
 
-// Grant admin role to the ADMIN_EMAIL user (self-service promotion)
-router.post('/grant-admin', authLimiter, requireDb, requireAuth(), async (req, res) => {
-  const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase()
-  if (!adminEmail) return res.status(500).json({ error: 'ADMIN_EMAIL not configured.' })
-  if (req.auth.email !== adminEmail) return res.status(403).json({ error: 'Not allowed.' })
-  try {
-    await query('UPDATE users SET role = $1 WHERE id = $2 AND email = $3', ['admin', req.auth.sub, adminEmail])
-    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
-    if (rows.length === 0) return res.status(404).json({ error: 'User not found.' })
-    const user = publicUser(rows[0])
-    return res.json({ token: signToken(user), user })
-  } catch (error) {
-    console.error('grant-admin failed:', error)
-    return res.status(500).json({ error: 'Could not grant admin role.' })
-  }
-})
-
 // ---------------------------------------------------------------------------
 // TOTP Two-Factor Authentication
 // ---------------------------------------------------------------------------
