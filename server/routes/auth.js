@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'
 import * as OTPAuth from 'otpauth'
 import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
-import { uid, generateToken } from '../ids.js'
+import { uid, generateToken, generateNumericCode } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole, endSessions } from '../auth.js'
@@ -13,7 +13,7 @@ import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from '../validate.js'
 import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
-import { sendWelcomeEmail, sendParentConsentEmail, hasEmail } from '../email.js'
+import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, hasEmail } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
 
@@ -127,63 +127,151 @@ function requireDb(_req, res, next) {
   next()
 }
 
-router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
-  const name = validateName(req.body.name || '')
-  const email = validateEmail(req.body.email || '')
-  const password = validatePassword(req.body.password || '')
-  const grade = validateGrade(req.body.grade || '')
-  const studentIdNumber = validateStudentIdNumber(req.body.studentIdNumber || '')
-  const role = ['volunteer', 'parent'].includes(req.body.role) ? req.body.role : 'student'
+// Checks a self sign-up (student, Volunteer Task Maker or parent). Shared by
+// /register/send-code, so a code is only emailed for a sign-up that would
+// otherwise succeed, and /register itself. → { error } or the cleaned fields.
+function readSignup(body) {
+  const name = validateName(body.name || '')
+  const email = validateEmail(body.email || '')
+  const password = validatePassword(body.password || '')
+  const grade = validateGrade(body.grade || '')
+  const studentIdNumber = validateStudentIdNumber(body.studentIdNumber || '')
+  const role = ['volunteer', 'parent'].includes(body.role) ? body.role : 'student'
 
-  if (!name) {
-    return res.status(400).json({ error: 'Name is required and must be valid.' })
-  }
-  if (!email) {
-    return res.status(400).json({ error: 'Enter a valid email address.' })
-  }
-  if (!password) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' })
-  }
-  if (isWeakPassword(password)) {
-    return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
-  }
+  if (!name) return { error: 'Name is required and must be valid.' }
+  if (!email) return { error: 'Enter a valid email address.' }
+  if (!password) return { error: 'Password must be at least 8 characters.' }
+  if (isWeakPassword(password)) return { error: WEAK_PASSWORD_MESSAGE }
 
   // Every self sign-up gives a date of birth, used only for the age rules in
   // server/ageRules.js and never stored. A student under 13 needs a parent or
   // guardian to approve by email before the account can be used (see
   // parentConsent.js). Only this route asks: a student a school adds, or one
   // arriving through school SSO, is covered by the school's own consent.
-  const ageCheck = checkSignupAge(role, req.body.dateOfBirth)
-  if (ageCheck.error) return res.status(400).json({ error: ageCheck.error })
+  const ageCheck = checkSignupAge(role, body.dateOfBirth)
+  if (ageCheck.error) return { error: ageCheck.error }
   // `under13: true` from the form is honoured too: it is set when this device
   // already entered an under-13 date, and it can only make the check stricter.
-  const under13 = role === 'student' && (ageCheck.under13 || req.body.under13 === true)
-  const parentEmail = under13 ? validateEmail(req.body.parentEmail || '') : ''
+  const under13 = role === 'student' && (ageCheck.under13 || body.under13 === true)
+  const parentEmail = under13 ? validateEmail(body.parentEmail || '') : ''
   if (under13) {
-    if (!parentEmail) {
-      return res.status(400).json({ error: "Enter your parent or guardian's email address." })
-    }
-    if (parentEmail === email) {
-      return res.status(400).json({ error: "Your parent or guardian's email must be different from yours." })
-    }
+    if (!parentEmail) return { error: "Enter your parent or guardian's email address." }
+    if (parentEmail === email) return { error: "Your parent or guardian's email must be different from yours." }
     // Without a way to reach the parent the account could never be unlocked.
-    if (!hasEmail()) {
-      return res.status(503).json({ error: 'We cannot send the approval email right now. Please try again later.' })
-    }
+    if (!hasEmail()) return { error: 'We cannot send the approval email right now. Please try again later.', status: 503 }
+  }
+  return { name, email, password, grade, studentIdNumber, role, under13, parentEmail }
+}
+
+// The emailed sign-up code (#310): six digits, good for 10 minutes and one
+// use, and dead after SIGNUP_CODE_MAX_ATTEMPTS wrong guesses — 5 tries at a
+// million values is what makes six digits enough.
+const SIGNUP_CODE_TTL_MINUTES = 10
+const SIGNUP_CODE_MAX_ATTEMPTS = 5
+const SIGNUP_CODE_RESEND_SECONDS = 60
+
+// Under-13 requests nobody approved are not kept: 14 days, then the account
+// goes — before the email check, so the address can be used again. Sign-up
+// codes go a day after expiring; until then a late entry is told it expired.
+async function pruneStaleSignups() {
+  await query(
+    `DELETE FROM users
+      WHERE parental_consent_status = 'pending'
+        AND parent_consent_requested_at < now() - interval '${PARENT_CONSENT_TTL_DAYS} days'`,
+  ).catch((e) => console.error('pending-consent prune failed:', e.message))
+  await query("DELETE FROM signup_codes WHERE expires_at < now() - interval '1 day'")
+    .catch((e) => console.error('sign-up code prune failed:', e.message))
+}
+
+// Sends the code. This, not /register, carries the CAPTCHA: it is the request
+// that makes us email an address, and /register can't succeed without a code
+// that came from here.
+router.post('/register/send-code', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
+  const signup = readSignup(req.body)
+  if (signup.error) return res.status(signup.status || 400).json({ error: signup.error })
+  const { email } = signup
+  const devLog = !hasEmail() && process.env.NODE_ENV !== 'production'
+  if (!hasEmail() && !devLog) {
+    return res.status(503).json({ error: 'We cannot send the verification email right now. Please try again later.' })
   }
 
   try {
-    // Requests nobody approved are not kept: 14 days, then the account goes.
-    await query(
-      `DELETE FROM users
-        WHERE parental_consent_status = 'pending'
-          AND parent_consent_requested_at < now() - interval '${PARENT_CONSENT_TTL_DAYS} days'`,
-    ).catch((e) => console.error('pending-consent prune failed:', e.message))
-
+    await pruneStaleSignups()
     const existing = await query('SELECT 1 FROM users WHERE email = $1', [email])
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: 'An account with that email already exists.' })
     }
+    const code = generateNumericCode(6)
+    const codeHash = await bcrypt.hash(code, 10)
+    // The WHERE on the upsert is the resend limit: a row sent less than a
+    // minute ago is left alone and nothing comes back.
+    const { rowCount } = await query(
+      `INSERT INTO signup_codes (email, code_hash, expires_at, attempts, sent_at)
+       VALUES ($1, $2, now() + interval '${SIGNUP_CODE_TTL_MINUTES} minutes', 0, now())
+       ON CONFLICT (email) DO UPDATE
+         SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, sent_at = now()
+         WHERE signup_codes.sent_at < now() - interval '${SIGNUP_CODE_RESEND_SECONDS} seconds'`,
+      [email, codeHash],
+    )
+    if (rowCount === 0) {
+      return res.status(429).json({ error: 'We just sent a code. Wait a minute before asking for another.' })
+    }
+    if (devLog) {
+      console.log(`[dev] No email provider configured — sign-up code for ${email}: ${code}`)
+    } else {
+      const sent = await sendSignupCodeEmail({ to: email, code, minutes: SIGNUP_CODE_TTL_MINUTES })
+      if (!sent.sent) {
+        await query('DELETE FROM signup_codes WHERE email = $1', [email])
+        return res.status(502).json({ error: 'We could not send the verification email. Check the address and try again.' })
+      }
+    }
+    return res.json({ ok: true, expiresInMinutes: SIGNUP_CODE_TTL_MINUTES })
+  } catch (error) {
+    console.error('send sign-up code failed:', error)
+    return res.status(500).json({ error: 'Could not send the verification code.' })
+  }
+})
+
+// Checks and spends the code for `email`. → null when it matched (the row is
+// gone, so it can't be used again), otherwise { status, error }.
+async function useSignupCode(email, code) {
+  if (typeof code !== 'string' || !/^\d{6}$/.test(code)) {
+    return { status: 400, error: 'Enter the 6-digit code we emailed you.' }
+  }
+  const { rows } = await query('SELECT code_hash, expires_at, attempts FROM signup_codes WHERE email = $1', [email])
+  const row = rows[0]
+  if (!row) return { status: 400, error: 'No code is waiting for this email. Ask for a new one.' }
+  if (new Date(row.expires_at) < new Date()) {
+    await query('DELETE FROM signup_codes WHERE email = $1', [email])
+    return { status: 410, error: 'That code expired. Ask for a new one.' }
+  }
+  if (row.attempts >= SIGNUP_CODE_MAX_ATTEMPTS) {
+    return { status: 429, error: 'Too many wrong codes. Ask for a new one.' }
+  }
+  if (!(await bcrypt.compare(code, row.code_hash))) {
+    await query('UPDATE signup_codes SET attempts = attempts + 1 WHERE email = $1', [email])
+    const left = SIGNUP_CODE_MAX_ATTEMPTS - row.attempts - 1
+    return { status: 401, error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask for a new one.' }
+  }
+  // Two requests racing on one good code: only the one that deletes the row wins.
+  const spent = await query('DELETE FROM signup_codes WHERE email = $1 AND code_hash = $2', [email, row.code_hash])
+  if (spent.rowCount === 0) return { status: 400, error: 'No code is waiting for this email. Ask for a new one.' }
+  return null
+}
+
+router.post('/register', authLimiter, requireDb, async (req, res) => {
+  const signup = readSignup(req.body)
+  if (signup.error) return res.status(signup.status || 400).json({ error: signup.error })
+  const { name, email, password, grade, studentIdNumber, role, under13, parentEmail } = signup
+
+  try {
+    await pruneStaleSignups()
+    const existing = await query('SELECT 1 FROM users WHERE email = $1', [email])
+    if (existing.rowCount > 0) {
+      return res.status(409).json({ error: 'An account with that email already exists.' })
+    }
+    const codeProblem = await useSignupCode(email, req.body.emailCode)
+    if (codeProblem) return res.status(codeProblem.status).json({ error: codeProblem.error })
     const hash = await hashPassword(password)
     const id = uid('usr')
     const { rows } = await query(

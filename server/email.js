@@ -315,6 +315,20 @@ ${emailFooterHtml()}`,
   })
 }
 
+// The 6-digit code that proves a sign-up owns its email (#310). Awaited, not
+// fire-and-log: without it the account can't be created, so the form needs
+// to know whether it went.
+export async function sendSignupCodeEmail({ to, code, minutes }) {
+  return sendEmail({
+    to,
+    subject: `${code} is your VolunTrack code`,
+    html: `<p>Enter this code to finish creating your VolunTrack account:</p>
+<p style="font-size:28px;font-weight:600;letter-spacing:0.2em;">${code}</p>
+<p>It works once and expires in ${minutes} minutes. If you didn't try to sign up, you can ignore this email — no account is created without the code.</p>
+${emailFooterHtml()}`,
+  })
+}
+
 function backendUrl() {
   return (process.env.PUBLIC_BACKEND_URL || 'https://voluntrack-backend-frrh.onrender.com').replace(/\/$/, '')
 }

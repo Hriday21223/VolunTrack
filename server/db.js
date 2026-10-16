@@ -246,6 +246,17 @@ CREATE TABLE IF NOT EXISTS reviews (
   expires_at                TIMESTAMPTZ,
   created_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- The 6-digit code emailed to prove a sign-up owns its address (#310). One
+-- row per address; a new code replaces the old one, and the row is deleted
+-- when the account is created.
+CREATE TABLE IF NOT EXISTS signup_codes (
+  email       TEXT PRIMARY KEY,
+  code_hash   TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  sent_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `
 
 // Idempotent: safe to run on every boot. Creates tables if missing.
