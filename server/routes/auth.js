@@ -90,6 +90,27 @@ function validateSyncPin(pin) {
   return trimmed
 }
 
+// A sync PIN is the whole credential for POST /sync-login, so it lives only
+// long enough to type into the other device (#313). One without an expiry
+// was set before this existed and counts as expired.
+const SYNC_PIN_TTL_MINUTES = 15
+
+function syncPinLive(row) {
+  return Boolean(row.sync_pin && row.sync_pin_expires_at && new Date(row.sync_pin_expires_at) > new Date())
+}
+
+// Frees the numbers held by expired PINs, so the uniqueness check doesn't
+// refuse a PIN nobody can use any more.
+async function clearExpiredSyncPins() {
+  await query(
+    `UPDATE users SET sync_pin = NULL, sync_pin_expires_at = NULL
+      WHERE sync_pin IS NOT NULL AND (sync_pin_expires_at IS NULL OR sync_pin_expires_at <= now())`,
+  )
+}
+
+const SET_SYNC_PIN = `UPDATE users SET sync_pin = $1, sync_pin_expires_at = now() + interval '${SYNC_PIN_TTL_MINUTES} minutes'
+                       WHERE id = $2 RETURNING *`
+
 export function publicUser(row) {
   return {
     id: row.id,
@@ -103,7 +124,9 @@ export function publicUser(row) {
     // Self-declared at sign-up (parent-approved). The app keeps public-facing
     // asks, like the review popup, away from these accounts.
     under13: row.under_13 === true,
-    syncPin: row.sync_pin,
+    // An expired PIN no longer signs anyone in, so it isn't shown either.
+    syncPin: syncPinLive(row) ? row.sync_pin : null,
+    syncPinExpiresAt: syncPinLive(row) ? row.sync_pin_expires_at : null,
     totpEnabled: row.totp_enabled,
     // 'sso' accounts have no password, so the UI asks them to confirm
     // sensitive actions (account deletion) a different way.
@@ -506,15 +529,13 @@ router.put('/sync-pin', requireDb, requireAuth(), async (req, res) => {
 
   try {
     // Check if PIN is already taken by another user
+    await clearExpiredSyncPins()
     const existing = await query('SELECT 1 FROM users WHERE sync_pin = $1 AND id != $2', [syncPin, req.auth.sub])
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: 'This sync PIN is already in use.' })
     }
 
-    const { rows } = await query(
-      'UPDATE users SET sync_pin = $1 WHERE id = $2 RETURNING *',
-      [syncPin, req.auth.sub]
-    )
+    const { rows } = await query(SET_SYNC_PIN, [syncPin, req.auth.sub])
     if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
     return res.json({ user: publicUser(rows[0]) })
   } catch (error) {
@@ -567,13 +588,11 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
     const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
 
+    await clearExpiredSyncPins()
     const existing = await query('SELECT 1 FROM users WHERE sync_pin = $1 AND id != $2', [syncPin, rows[0].id])
     if (existing.rowCount > 0) return res.status(409).json({ error: 'This sync PIN is already in use.' })
 
-    const { rows: updated } = await query(
-      'UPDATE users SET sync_pin = $1 WHERE id = $2 RETURNING *',
-      [syncPin, rows[0].id]
-    )
+    const { rows: updated } = await query(SET_SYNC_PIN, [syncPin, rows[0].id])
     const user = publicUser(updated[0])
     return res.json({ token: signToken(user), user })
   } catch (error) {
@@ -593,14 +612,19 @@ router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req
   }
 
   try {
-    const { rows } = await query('SELECT * FROM users WHERE sync_pin = $1', [syncPin])
+    const { rows } = await query('SELECT * FROM users WHERE sync_pin = $1 AND sync_pin_expires_at > now()', [syncPin])
     if (rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid sync PIN.' })
+      return res.status(401).json({ error: 'Invalid or expired sync PIN. Make a new one in Settings.' })
     }
-    const user = publicUser(rows[0])
     // Clear the sync PIN so it can't be reused — including when a second
-    // factor is still outstanding, since the PIN has now been spent.
-    await query('UPDATE users SET sync_pin = NULL WHERE id = $1', [rows[0].id])
+    // factor is still outstanding, since the PIN has now been spent. The
+    // WHERE makes the spend atomic: of two requests with one PIN, only the
+    // one that clears it goes on to get a session.
+    const spent = await query('UPDATE users SET sync_pin = NULL, sync_pin_expires_at = NULL WHERE id = $1 AND sync_pin = $2', [rows[0].id, syncPin])
+    if (spent.rowCount === 0) {
+      return res.status(401).json({ error: 'Invalid or expired sync PIN. Make a new one in Settings.' })
+    }
+    const user = publicUser({ ...rows[0], sync_pin: null, sync_pin_expires_at: null })
 
     const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
