@@ -351,19 +351,20 @@ const GRADE_WORDS = {
   sophomore: '10', soph: '10',
   junior: '11', jr: '11',
   senior: '12', sr: '12',
+  college: 'College', university: 'College', uni: 'College',
 }
 
-// High school only: service-hour requirements are a high-school thing here,
-// and a shorter list is a faster pick. The matcher below still understands
-// other years, so a school's own older data keeps resolving.
-export const SCHOOL_GRADES = ['9', '10', '11', '12']
+// 5th grade through 12th, plus College, for the sign-up and profile pickers.
+// The matcher below still understands other years, so a school's own older
+// data keeps resolving.
+export const SCHOOL_GRADES = ['5', '6', '7', '8', '9', '10', '11', '12', 'College']
 
 // What a student in each year is called. Middle school goes by the ordinal,
 // high school by the class name a US transcript or reference letter uses —
 // which is also what a school admin is most likely to type into a per-grade
 // rule, so these double as matching vocabulary in GRADE_WORDS above.
 export const GRADE_NAMES = {
-  6: 'Sixth grader', 7: 'Seventh grader', 8: 'Eighth grader',
+  5: 'Fifth grader', 6: 'Sixth grader', 7: 'Seventh grader', 8: 'Eighth grader',
   9: 'Freshman', 10: 'Sophomore', 11: 'Junior', 12: 'Senior',
 }
 
