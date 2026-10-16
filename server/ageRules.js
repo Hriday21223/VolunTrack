@@ -4,14 +4,14 @@
 // keeps just users.under_13.
 //
 // - student:   under 13 needs a parent or guardian's emailed approval
-// - volunteer: 13 or older
+// - volunteer: 18 or older
 // - parent:    18 or older
 
-export const MIN_AGE = { volunteer: 13, parent: 18 }
+export const MIN_AGE = { volunteer: 18, parent: 18 }
 export const CONSENT_AGE = 13
 
 const ROLE_TOO_YOUNG = {
-  volunteer: "Volunteer Task Maker accounts are for people 13 or older. If you're younger, sign up as a student instead — we'll ask a parent or guardian to approve it.",
+  volunteer: 'Volunteer Task Maker accounts are for adults 18 or older. If you are a student, sign up as a student instead.',
   parent: 'Parent accounts are for adults 18 or older. If you are a student, sign up as a student instead.',
 }
 

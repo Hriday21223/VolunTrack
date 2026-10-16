@@ -158,8 +158,8 @@ only, part of the account).
 
 The app's users include minors. Sign-up asks everyone for a date of birth
 (`server/ageRules.js`; checked again by the server and never stored — only
-`users.under_13` is kept). Volunteer Task Maker accounts need 13+, parent
-accounts 18+. An under-13 student account is created locked and only opens once the parent or
+`users.under_13` is kept). Volunteer Task Maker and parent accounts need
+18+. An under-13 student account is created locked and only opens once the parent or
 guardian they name approves it from an emailed link (declined or unanswered
 for 14 days: deleted). Accounts a school creates, or that arrive through school
 sign-in, rely on the school's consent. The parent's email address is collected
