@@ -94,7 +94,9 @@ export function DataProvider({ children }) {
     const log = createLog(data)
     setLogs((prev) => {
       const next = [log, ...prev]
-      if (isStudentLike && next.length >= 1 && getReviews().length === 0 && !isReviewDismissed()) {
+      // Never for under-13 accounts: an approved review can be published
+      // with the reviewer's name.
+      if (isStudentLike && !user?.under13 && next.length >= 1 && getReviews().length === 0 && !isReviewDismissed()) {
         setShowReview(true)
       }
       return next
@@ -125,7 +127,7 @@ export function DataProvider({ children }) {
       return null
     })
     return { ...log, whenSynced }
-  }, [isStudentLike])
+  }, [isStudentLike, user?.under13])
   const editLog = useCallback((id, patch) => {
     // The edit form pre-fills from the existing log, so it resubmits the
     // verification fields untouched. Mirror the server's rule (PATCH

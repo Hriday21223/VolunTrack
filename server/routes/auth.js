@@ -99,6 +99,9 @@ export function publicUser(row) {
     schoolPaymentStatus: row.school_payment_status ?? null,
     grade: row.grade,
     studentIdNumber: row.student_id_number,
+    // Self-declared at sign-up (parent-approved). The app keeps public-facing
+    // asks, like the review popup, away from these accounts.
+    under13: row.under_13 === true,
     syncPin: row.sync_pin,
     totpEnabled: row.totp_enabled,
     // 'sso' accounts have no password, so the UI asks them to confirm

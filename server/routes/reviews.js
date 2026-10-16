@@ -79,6 +79,12 @@ router.post('/', submitLimiter, requireDb, async (req, res) => {
   if (comment && comment.length > 2000) return res.status(400).json({ error: 'Comment is too long.' })
 
   try {
+    // An approved review can be published with the reviewer's name, so
+    // under-13 accounts can't submit one (the app doesn't ask them either).
+    if (req.auth?.sub) {
+      const { rows } = await query('SELECT under_13 FROM users WHERE id = $1', [req.auth.sub])
+      if (rows[0]?.under_13) return res.status(403).json({ error: 'Reviews are not available for this account.' })
+    }
     const id = uid('rev')
     await query(
       'INSERT INTO reviews (id, rating, comment, name, email, role, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
