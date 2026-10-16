@@ -112,6 +112,9 @@ export default defineConfig(({ mode }) => {
         // pure module instead — deliberately not an alias to server/, which
         // would put db.js and the signing keys one import away from client code.
         { find: '@promo', replacement: resolve('./server/promo.js') },
+        // Sign-up age rules: the form explains them, POST /api/auth/register
+        // enforces them. Same single-pure-module alias as above.
+        { find: '@ageRules', replacement: resolve('./server/ageRules.js') },
       ],
     },
 

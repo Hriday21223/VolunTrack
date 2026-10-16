@@ -29,12 +29,13 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 15, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 16, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
             <ul className="list-disc pl-5 space-y-1.5">
               <li><strong>Name and email address</strong> — required to create and manage your account.</li>
+              <li><strong>Date of birth</strong> — asked when you create an account, only to apply our age rules: students under 13 need a parent or guardian&apos;s approval, Volunteer Task Maker and parent accounts are for adults 18 and up. We don&apos;t store it; we keep only whether a student is under 13. If a date entered is too young for the account type, your device remembers that for a day so the rules can&apos;t be skipped by changing it, and this never leaves your device.</li>
               <li><strong>Where you signed up</strong> — whether your account was created on the website, in the Android app or in the iPhone app. We use it only to count sign-ups, so we know which versions of VolunTrack people use.</li>
               <li><strong>School sign-in</strong> — if your school has set up single sign-on, we receive your name, email address, and an account identifier from your school&apos;s sign-in provider (such as Google or Microsoft). We never see your school password.</li>
               <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app, plus any extra fields your school or organization requires on an entry.</li>
@@ -99,7 +100,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Children's Privacy">
-            <p>VolunTrack is used by students and volunteers of all ages. We only collect information that is necessary for the service. If you are under 13 and sign up yourself, we ask for a parent or guardian&apos;s email address and send them a request to approve the account. The account is locked until they approve; if they decline, or do not answer within 14 days, it is deleted. We use that email address only for this request. An account your school creates for you, or that you reach through your school&apos;s sign-in, is covered by your school&apos;s consent instead. If you believe a child has provided more information than necessary, please contact us.</p>
+            <p>VolunTrack is used by students and volunteers of all ages. We only collect information that is necessary for the service. When you sign up yourself we ask for your date of birth (which we don&apos;t keep). If you are under 13, we ask for a parent or guardian&apos;s email address and send them a request to approve the account. The account is locked until they approve; if they decline, or do not answer within 14 days, it is deleted. We use that email address only for this request. An account your school creates for you, or that you reach through your school&apos;s sign-in, is covered by your school&apos;s consent instead. If you believe a child has provided more information than necessary, please contact us.</p>
           </Section>
 
           <Section title="Changes to This Policy">

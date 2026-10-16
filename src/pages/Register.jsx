@@ -1,14 +1,48 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check, Users } from 'lucide-react'
+import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check, Users, Cake } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { SCHOOL_GRADES, gradeOptionLabel } from '@policy'
+import { checkSignupAge } from '@ageRules'
 import { markWelcomePending, clearWelcomePending } from '@/lib/welcome.js'
 import { useSeo } from '@/hooks/useSeo.js'
+
+// Remembers, on this device only, that a too-young date of birth was entered
+// for a role, so going back and picking an older year doesn't get around the
+// age rules (FTC COPPA guidance on neutral age screens). Never sent to the
+// server. Expires after a day so a family sharing one device isn't locked
+// out for good — e.g. a parent signing up after their child tried.
+const AGE_GATE_KEY = 'voluntrack:age_gate'
+const AGE_GATE_TTL_MS = 24 * 60 * 60 * 1000
+
+function readAgeGate(role) {
+  try {
+    const at = JSON.parse(localStorage.getItem(AGE_GATE_KEY) || '{}')[role]
+    return typeof at === 'number' && Date.now() - at < AGE_GATE_TTL_MS
+  } catch {
+    return false
+  }
+}
+
+function recordAgeGate(role) {
+  try {
+    const gate = JSON.parse(localStorage.getItem(AGE_GATE_KEY) || '{}')
+    localStorage.setItem(AGE_GATE_KEY, JSON.stringify({ ...gate, [role]: Date.now() }))
+  } catch {
+    // Storage unavailable (private mode): the server-side rules still apply.
+  }
+}
+
+const AGE_GATED_MESSAGE = 'A younger date of birth was entered for this account type on this device, so it can\'t be created here right now. Ask a parent or guardian for help.'
+
+function todayIso() {
+  const t = new Date()
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+}
 
 const ROLES = [
   {
@@ -41,7 +75,7 @@ export default function Register() {
   const { register } = useAuth()
   const nav = useNavigate()
   const [role, setRole] = useState('student')
-  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', studentIdNumber: '', schoolCode: '', ageBand: '', parentEmail: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', studentIdNumber: '', schoolCode: '', dateOfBirth: '', parentEmail: '' })
   // Set once an under-13 sign-up is waiting on its parent's emailed approval.
   const [awaitingParent, setAwaitingParent] = useState('')
   const [busy, setBusy] = useState(false)
@@ -64,13 +98,37 @@ export default function Register() {
 
   const onChange = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
+  // Age rules (server/ageRules.js). The date of birth is sent with the sign-up
+  // so the server can apply them too, and is never stored.
+  const ageCheck = checkSignupAge(role, form.dateOfBirth)
+  // Bumped after recordAgeGate() so the form re-reads the device lock.
+  const [, setAgeGateTick] = useState(0)
+  const ageGated = readAgeGate(role)
+  // An under-13 date entered earlier on this device still counts for students.
+  const under13 = role === 'student' && Boolean(form.dateOfBirth) && (ageCheck.under13 || ageGated)
+
+  // Recorded as soon as a too-young date is entered (on leaving the field),
+  // not on submit: the parent-email field appearing would otherwise show a
+  // child which date to change before anything was remembered.
+  const onDobBlur = () => {
+    if (ageCheck.tooYoung) recordAgeGate(role)
+    else if (role === 'student' && ageCheck.under13) recordAgeGate('student')
+    else return
+    setAgeGateTick((n) => n + 1)
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
     if (form.password.length < 6) { setErr('Password must be at least 6 characters.'); return }
     if (form.pin && !/^[0-9]{4}$/.test(form.pin)) { setErr('PIN must be exactly 4 digits.'); return }
-    const under13 = role === 'student' && form.ageBand === 'under13'
-    if (role === 'student' && !form.ageBand) { setErr('Please tell us whether you are 13 or older.'); return }
+    if (ageCheck.error) {
+      if (ageCheck.tooYoung) recordAgeGate(role)
+      setErr(ageCheck.error)
+      return
+    }
+    if (ageGated && role !== 'student') { setErr(AGE_GATED_MESSAGE); return }
+    if (under13) recordAgeGate('student')
     if (under13 && !form.parentEmail.trim()) { setErr("Enter your parent or guardian's email address."); return }
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
@@ -177,22 +235,26 @@ export default function Register() {
               <Field icon={Lock}      label="Optional PIN" type="password" value={form.pin} onChange={onChange('pin')} placeholder="4-digit PIN" autoComplete="one-time-code" />
             </div>
 
+            <div className="animate-fade-in-up" style={{ animationDelay: '625ms' }}>
+              <Field icon={Cake} label="Date of birth" type="date" value={form.dateOfBirth} onChange={onChange('dateOfBirth')} onBlur={onDobBlur} max={todayIso()} autoComplete="bday" required />
+              <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                Only used to check our age rules — we don&apos;t keep it.
+              </p>
+            </div>
+
             {role === 'student' && (
               <>
-                <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
-                  <label className="label" htmlFor="register-age">How old are you?</label>
-                  <select id="register-age" className="input" value={form.ageBand} onChange={onChange('ageBand')} required>
-                    <option value="">Select one</option>
-                    <option value="13plus">13 or older</option>
-                    <option value="under13">Under 13</option>
-                  </select>
-                </div>
-                {form.ageBand === 'under13' && (
+                {under13 && (
                   <div className="animate-fade-in-up">
                     <Field icon={Mail} label="Parent or guardian's email" type="email" value={form.parentEmail} onChange={onChange('parentEmail')} placeholder="parent@example.com" autoComplete="off" required />
                     <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
                       We&apos;ll email them to ask for permission. You can sign in once they approve. If your school gave you a VolunTrack account, use that instead.
                     </p>
+                    {!ageCheck.under13 && (
+                      <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                        An under-13 date of birth was entered on this device earlier, so a parent or guardian still needs to approve.
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
