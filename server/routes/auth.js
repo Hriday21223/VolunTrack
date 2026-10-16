@@ -15,6 +15,7 @@ import { verifyTurnstile } from '../turnstile.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail, sendParentConsentEmail, hasEmail } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
+import { checkSignupAge } from '../ageRules.js'
 
 const router = express.Router()
 
@@ -144,11 +145,16 @@ router.post('/register', authLimiter, requireDb, verifyTurnstile(), async (req, 
     return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
   }
 
-  // A student under 13 signing up on their own needs a parent or guardian to
-  // approve by email before the account can be used (see parentConsent.js).
-  // Only this route asks: a student a school adds, or one arriving through
-  // school SSO, is covered by the school's own consent.
-  const under13 = role === 'student' && req.body.under13 === true
+  // Every self sign-up gives a date of birth, used only for the age rules in
+  // server/ageRules.js and never stored. A student under 13 needs a parent or
+  // guardian to approve by email before the account can be used (see
+  // parentConsent.js). Only this route asks: a student a school adds, or one
+  // arriving through school SSO, is covered by the school's own consent.
+  const ageCheck = checkSignupAge(role, req.body.dateOfBirth)
+  if (ageCheck.error) return res.status(400).json({ error: ageCheck.error })
+  // `under13: true` from the form is honoured too: it is set when this device
+  // already entered an under-13 date, and it can only make the check stricter.
+  const under13 = role === 'student' && (ageCheck.under13 || req.body.under13 === true)
   const parentEmail = under13 ? validateEmail(req.body.parentEmail || '') : ''
   if (under13) {
     if (!parentEmail) {

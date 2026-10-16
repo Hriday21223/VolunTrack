@@ -94,6 +94,7 @@ cost of the app running letterboxed on iPads.
 | Personal info → Name | Yes | No | Required for an account | App functionality, Account management |
 | Personal info → Email address | Yes | No | Required for an account | App functionality, Account management |
 | Personal info → User IDs (account ID; the student ID number, if entered) | Yes | No | Required for an account | App functionality, Account management |
+| Personal info → Other info (date of birth, at sign-up — tick *processed ephemerally*: used for the age rules, never stored) | Yes | No | Required for an account | App functionality |
 | Location → Approximate location | Yes | No | Optional | App functionality |
 | Location → Precise location | Yes | No | Optional | App functionality |
 | Photos and videos → Photos | Yes | No | Optional | App functionality |
@@ -145,14 +146,20 @@ One more, *Linked to the user*, *not used for tracking*, purpose *Analytics*:
 - Usage Data → Product Interaction (only which app the account was created
   in — website, Android or iPhone — for the admin's sign-up counts)
 
+Nothing to declare for the date of birth: Apple counts data as collected only
+when it is kept longer than needed to answer the request, and the server
+discards it after the age check.
+
 Nothing to declare for Face ID (the app never receives biometric data; its
 `NSFaceIDUsageDescription` is in `Info.plist`) or for passkeys (public key
 only, part of the account).
 
 ## Age rating / audience
 
-The app's users include minors. Sign-up asks a student whether they are 13 or
-older; an under-13 account is created locked and only opens once the parent or
+The app's users include minors. Sign-up asks everyone for a date of birth
+(`server/ageRules.js`; checked again by the server and never stored — only
+`users.under_13` is kept). Volunteer Task Maker accounts need 13+, parent
+accounts 18+. An under-13 student account is created locked and only opens once the parent or
 guardian they name approves it from an emailed link (declined or unanswered
 for 14 days: deleted). Accounts a school creates, or that arrive through school
 sign-in, rely on the school's consent. The parent's email address is collected
