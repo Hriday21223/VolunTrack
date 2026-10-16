@@ -32,6 +32,17 @@ function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children })
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
+// A uniform integer in [0, n) from the CSPRNG. Plain `% n` would favour the
+// low values slightly, since 2^32 isn't a multiple of n; values from the
+// incomplete top range are drawn again instead.
+function randomBelow(n) {
+  const limit = Math.floor(0x100000000 / n) * n
+  const buf = new Uint32Array(1)
+  do crypto.getRandomValues(buf)
+  while (buf[0] >= limit)
+  return buf[0] % n
+}
+
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
   const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp, verifyPasskey } = useAuth()
@@ -487,7 +498,7 @@ export default function Settings() {
     try {
       // From the CSPRNG, not Math.random(): the PIN is the whole credential
       // for /sync-login. 10000–99999, so it never starts with a zero.
-      const newPin = String(10000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000))
+      const newPin = String(10000 + randomBelow(90000))
 
       const token = localStorage.getItem('voluntrack:auth_token')
       if (!token) {
