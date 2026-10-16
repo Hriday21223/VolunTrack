@@ -225,6 +225,17 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 CREATE INDEX IF NOT EXISTS idx_contact_messages_thread ON contact_messages(thread_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_contact_messages_email ON contact_messages(email);
 
+-- One row per run of the live-site test robot (#315,
+-- scripts/live-check.mjs). Admin-only: never served on the public /status.
+CREATE TABLE IF NOT EXISTS live_check_runs (
+  id        TEXT PRIMARY KEY,
+  ran_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ok        BOOLEAN NOT NULL,
+  results   JSONB NOT NULL,
+  run_url   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_live_check_runs_ran_at ON live_check_runs(ran_at DESC);
+
 -- App reviews (rating + optional comment), prompted after a user's first
 -- logged hour. Submitted by both server-backed and client-only (no
 -- account) users, so name/email are nullable.

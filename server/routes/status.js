@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
+import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { uid, generateToken } from '../ids.js'
 import { sendEmail, emailFooterHtml, hasEmail, emailHealthSnapshot, refreshEmailHealth } from '../email.js'
 import { escapeHtml } from '../html.js'
@@ -302,6 +303,108 @@ router.get('/routes', limiter, requireDb, requireAuth('admin'), (_req, res) => {
 
   routes.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method))
   res.json({ count: routes.length, routes })
+})
+
+// ---------------------------------------------------------------------------
+// Live-site test robot (#315)
+// ---------------------------------------------------------------------------
+// scripts/live-check.mjs runs from GitHub Actions every few hours, tests the
+// live site in a headless browser, and posts its results here. Unlike the
+// incidents above these stay admin-only: a check's detail names internals
+// (a blocked script, a failing route) that don't belong on the public page.
+
+// A check must fail this many runs in a row before the admin is emailed, so
+// one flaky page load doesn't send mail. Recovery is announced on the first
+// passing run after an alert.
+const LIVE_CHECK_FAILURES_BEFORE_ALERT = 2
+const LIVE_CHECK_RUNS_KEPT = 200
+
+function cleanLiveResults(input) {
+  if (!Array.isArray(input) || input.length === 0 || input.length > 50) return null
+  const results = []
+  for (const r of input) {
+    const name = String(r?.name || '').trim().slice(0, 80)
+    if (!name || typeof r.ok !== 'boolean') return null
+    results.push({ name, ok: r.ok, detail: r.detail ? String(r.detail).slice(0, 500) : null })
+  }
+  return results
+}
+
+// For each check, how many of the newest runs (this one included) it failed
+// in a row. `runs` is newest first.
+function failureStreaks(runs) {
+  const streaks = new Map()
+  const names = new Set(runs.flatMap((run) => run.results.map((r) => r.name)))
+  for (const name of names) {
+    let streak = 0
+    for (const run of runs) {
+      const r = run.results.find((x) => x.name === name)
+      if (!r || r.ok) break
+      streak += 1
+    }
+    streaks.set(name, streak)
+  }
+  return streaks
+}
+
+async function alertLiveChecks({ broken, fixed, runUrl }) {
+  const admin = notifyRecipient()
+  if (!admin || (broken.length === 0 && fixed.length === 0)) return
+  const list = (items) => `<ul>${items.map((r) => `<li><strong>${escapeHtml(r.name)}</strong>${r.detail ? ` — ${escapeHtml(r.detail)}` : ''}</li>`).join('')}</ul>`
+  const subject = broken.length > 0
+    ? `VolunTrack live check failing: ${broken.map((r) => r.name).join(', ')}`
+    : `VolunTrack live check fixed: ${fixed.map((r) => r.name).join(', ')}`
+  const html = (broken.length > 0
+    ? `<p>The live-site test robot found ${broken.length === 1 ? 'a check' : 'checks'} failing ${LIVE_CHECK_FAILURES_BEFORE_ALERT} runs in a row:</p>${list(broken)}`
+    : '')
+    + (fixed.length > 0 ? `<p>Passing again:</p>${list(fixed)}` : '')
+    + `<p><a href="${frontendUrl()}/admin/incidents">Open Admin → Incidents</a>${runUrl ? ` · <a href="${escapeHtml(runUrl)}">GitHub run</a>` : ''}</p>`
+  await sendEmail({ to: admin, subject, html })
+}
+
+router.post('/live-checks', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const results = cleanLiveResults(req.body?.results)
+  if (!results) return res.status(400).json({ error: 'results must be a list of { name, ok, detail }.' })
+  const runUrl = /^https:\/\/github\.com\//.test(String(req.body?.runUrl || '')) ? String(req.body.runUrl).slice(0, 300) : null
+  const ok = results.every((r) => r.ok)
+
+  try {
+    await query(
+      'INSERT INTO live_check_runs (id, ok, results, run_url) VALUES ($1, $2, $3, $4)',
+      [uid('lcr'), ok, JSON.stringify(results), runUrl],
+    )
+    // This run plus enough history to tell a new streak from an old one.
+    const { rows } = await query(
+      `SELECT results FROM live_check_runs ORDER BY ran_at DESC LIMIT ${LIVE_CHECK_FAILURES_BEFORE_ALERT + 1}`,
+    )
+    const now = failureStreaks(rows)
+    const before = failureStreaks(rows.slice(1))
+    // Alert exactly when a streak reaches the threshold; announce a fix when
+    // a check that had reached it passes.
+    const broken = results.filter((r) => !r.ok && now.get(r.name) === LIVE_CHECK_FAILURES_BEFORE_ALERT)
+    const fixed = results.filter((r) => r.ok && (before.get(r.name) || 0) >= LIVE_CHECK_FAILURES_BEFORE_ALERT)
+    await alertLiveChecks({ broken, fixed, runUrl })
+
+    await query(
+      `DELETE FROM live_check_runs WHERE id NOT IN (SELECT id FROM live_check_runs ORDER BY ran_at DESC LIMIT ${LIVE_CHECK_RUNS_KEPT})`,
+    ).catch((e) => console.error('live check prune failed:', e.message))
+
+    return res.json({ ok, alerted: broken.map((r) => r.name), fixed: fixed.map((r) => r.name) })
+  } catch (error) {
+    console.error('record live checks failed:', error)
+    return res.status(500).json({ error: 'Could not record the live checks.' })
+  }
+})
+
+// Admin-only: the newest runs, for the "Live checks" card in Admin → Incidents.
+router.get('/live-checks', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
+  try {
+    const { rows } = await query('SELECT ran_at, ok, results, run_url FROM live_check_runs ORDER BY ran_at DESC LIMIT 20')
+    return res.json(rows.map((r) => ({ ranAt: r.ran_at, ok: r.ok, results: r.results, runUrl: r.run_url })))
+  } catch (error) {
+    console.error('list live checks failed:', error)
+    return res.status(500).json({ error: 'Could not load the live checks.' })
+  }
 })
 
 // Public: real, shared incident history (not per-browser localStorage).

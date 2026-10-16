@@ -5,6 +5,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import RegistrationCodesPanel from '@/components/RegistrationCodesPanel.jsx'
 import AnnouncementComposer from '@/components/AnnouncementComposer.jsx'
+import LiveChecksCard from '@/components/LiveChecksCard.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -1859,6 +1860,7 @@ export default function Admin() {
         )
       ) : tab === 'incidents' ? (
         <>
+          <LiveChecksCard />
           {loadingIncidents ? (
             <Card><p className="text-sm text-earth-400 py-4">Loading…</p></Card>
           ) : incidents.filter((i) => i.status !== 'resolved').length === 0 ? (
