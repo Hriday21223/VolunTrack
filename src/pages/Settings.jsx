@@ -240,13 +240,39 @@ export default function Settings() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  // Load sync PIN from user profile on mount
+  // When the shown sync PIN expires (ms), and a clock for its countdown.
+  const [syncPinExpiresAt, setSyncPinExpiresAt] = useState(null)
+  const [syncClock, setSyncClock] = useState(() => Date.now())
+
+  // Load sync PIN from user profile on mount. The server only sends one that
+  // hasn't expired, along with when it does (#313).
   useEffect(() => {
-    if (user?.syncPin) {
-      setDisplaySyncPin(user.syncPin)
-      setShowSyncPin(true)
+    if (!user?.syncPin) return
+    // A server-backed session saved before PINs expired has a PIN with no
+    // expiry, which the server already refuses — don't show it.
+    const serverBacked = Boolean(localStorage.getItem('voluntrack:auth_token'))
+    if (serverBacked && !user.syncPinExpiresAt) return
+    setDisplaySyncPin(user.syncPin)
+    setShowSyncPin(true)
+    setSyncPinExpiresAt(user.syncPinExpiresAt ? new Date(user.syncPinExpiresAt).getTime() : null)
+    setSyncClock(Date.now())
+  }, [user?.syncPin, user?.syncPinExpiresAt])
+
+  // Counts the PIN down, and hides it once the server would refuse it.
+  // A local-only demo account has no expiry and no countdown.
+  useEffect(() => {
+    if (!showSyncPin || !syncPinExpiresAt) return undefined
+    if (syncClock >= syncPinExpiresAt) {
+      setShowSyncPin(false)
+      setShowQR(false)
+      setDisplaySyncPin('')
+      setSyncPinExpiresAt(null)
+      return undefined
     }
-  }, [user?.syncPin])
+    const t = setTimeout(() => setSyncClock(Date.now()), 1000)
+    return () => clearTimeout(t)
+  }, [showSyncPin, syncPinExpiresAt, syncClock])
+  const syncSecondsLeft = syncPinExpiresAt ? Math.max(0, Math.ceil((syncPinExpiresAt - syncClock) / 1000)) : null
 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('')
@@ -459,7 +485,9 @@ export default function Settings() {
 
   const generateSyncPin = async () => {
     try {
-      const newPin = Math.floor(10000 + Math.random() * 90000).toString()
+      // From the CSPRNG, not Math.random(): the PIN is the whole credential
+      // for /sync-login. 10000–99999, so it never starts with a zero.
+      const newPin = String(10000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000))
 
       const token = localStorage.getItem('voluntrack:auth_token')
       if (!token) {
@@ -469,8 +497,10 @@ export default function Settings() {
         return
       }
 
-      await setSyncPinAuth(newPin)
+      const updated = await setSyncPinAuth(newPin)
       setDisplaySyncPin(newPin)
+      setSyncPinExpiresAt(updated?.syncPinExpiresAt ? new Date(updated.syncPinExpiresAt).getTime() : null)
+      setSyncClock(Date.now())
       setShowSyncPin(true)
       setToastMessage('Sync PIN generated')
       setToast(true)
@@ -503,6 +533,8 @@ export default function Settings() {
       }
 
       localStorage.setItem('voluntrack:auth_token', data.token)
+      setSyncPinExpiresAt(data.user?.syncPinExpiresAt ? new Date(data.user.syncPinExpiresAt).getTime() : null)
+      setSyncClock(Date.now())
       setShowSyncPin(true)
       setShowSyncPasswordPrompt(false)
       setSyncPassword('')
@@ -525,7 +557,9 @@ export default function Settings() {
     try {
       if (passkey) await verifyPasskey(syncTotpTempToken)
       else await verifyTotp(syncTotpTempToken, syncTotpCode.trim())
-      await setSyncPinAuth(displaySyncPin)
+      const updated = await setSyncPinAuth(displaySyncPin)
+      setSyncPinExpiresAt(updated?.syncPinExpiresAt ? new Date(updated.syncPinExpiresAt).getTime() : null)
+      setSyncClock(Date.now())
       setSyncTotpTempToken('')
       setSyncTotpCode('')
       setShowSyncPin(true)
@@ -804,8 +838,8 @@ export default function Settings() {
             </div>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
               {isMobile
-                ? 'Generate a 5-digit PIN to sync your account with your laptop. Share this PIN with your computer to access your data.'
-                : 'Generate a 5-digit PIN to sync your account with the mobile app. Share this PIN with your mobile device to access your data.'}
+                ? 'Generate a 5-digit PIN to sync your account with your laptop. Enter it on your computer within 15 minutes — it works once.'
+                : 'Generate a 5-digit PIN to sync your account with the mobile app. Enter it on your phone within 15 minutes — it works once.'}
             </p>
             {showSyncPasswordPrompt && syncTotpTempToken ? (
               <div className="space-y-3">
@@ -898,6 +932,11 @@ export default function Settings() {
                 <div className="p-4 bg-slate-900/80 rounded-xl border border-white/10">
                   <div className="text-xs text-earth-400 mb-1">Your sync PIN</div>
                   <div className="text-2xl font-mono font-bold text-white tracking-wider">{displaySyncPin}</div>
+                  {syncSecondsLeft != null && (
+                    <div className="text-xs text-earth-400 mt-1" aria-live="polite">
+                      Works once · expires in {Math.floor(syncSecondsLeft / 60)}:{String(syncSecondsLeft % 60).padStart(2, '0')}
+                    </div>
+                  )}
                 </div>
                 {showQR ? (
                   <div className="flex justify-center p-4 bg-white rounded-xl">

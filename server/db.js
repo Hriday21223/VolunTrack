@@ -352,6 +352,8 @@ export async function initSchema() {
   // Tokens issued before this moment are refused, so a password change or
   // reset signs every other device out. NULL means no cutoff.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sessions_valid_after TIMESTAMPTZ`) } catch {}
+  // A sync PIN stops working 15 minutes after it is set (#313).
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sync_pin_expires_at TIMESTAMPTZ`) } catch {}
   // The last TOTP time step accepted, so a code cannot be used twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_last_step BIGINT`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected'))`) } catch {}
