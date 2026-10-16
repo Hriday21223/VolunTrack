@@ -1,0 +1,44 @@
+name: Live check
+
+# The live-site test robot (#315): scripts/live-check.mjs loads the deployed
+# site in headless Chrome, checks the backend, pages, CAPTCHA, map/form
+# security policy and security headers, and reports to the backend
+# (POST /api/status/live-checks), which emails the admin when a check fails
+# twice in a row and shows every run in Admin → Incidents.
+#
+# The run is only red when the report couldn't be delivered: failing checks
+# are the backend's to announce, and a red run would also set off the
+# CI-failure routines (#58) for what is a site problem, not a CI one.
+#
+# Setup: repo secret CRON_SECRET (already used by the reminder workflows).
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chrome for Puppeteer
+        run: npx puppeteer browsers install chrome
+      - name: Test the live site and report
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/live-check.mjs
