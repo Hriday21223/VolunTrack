@@ -161,7 +161,11 @@ async function main() {
         try {
           await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 })
           await page.waitForSelector('h1', { timeout: 8000 }).catch(() => {})
-          html = await page.content()
+          // Vite's preload helper writes absolute <link rel="modulepreload">
+          // URLs into the DOM, so the snapshot carried this throwaway server's
+          // origin — dead links on the live site that the CSP also blocks.
+          // Root-relative, they preload the same deployed assets.
+          html = (await page.content()).split(`http://127.0.0.1:${port}/`).join('/')
           break
         } catch (err) {
           if (attempt >= 2) throw err
