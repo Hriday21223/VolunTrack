@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Bot, CheckCircle2, XCircle, RefreshCw, ExternalLink } from 'lucide-react'
+import { Bot, CheckCircle2, XCircle, RefreshCw, ExternalLink, Sparkles } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 
 // The live-site test robot's results (#315): scripts/live-check.mjs runs from
@@ -62,6 +62,14 @@ export default function LiveChecksCard() {
               </a>
             )}
           </div>
+          {latest.summary && (
+            <div className="mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 mb-1">
+                <Sparkles className="w-3.5 h-3.5" /> What probably happened · written by AI, check before acting
+              </div>
+              <p className="text-earth-700 dark:text-earth-200 whitespace-pre-line">{latest.summary}</p>
+            </div>
+          )}
           <ul className="space-y-1.5">
             {[...failing, ...latest.results.filter((r) => r.ok)].map((r) => (
               <li key={r.name} className="flex items-start gap-2 text-sm">
