@@ -29,12 +29,14 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 16, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 17, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
             <ul className="list-disc pl-5 space-y-1.5">
               <li><strong>Name and email address</strong> — required to create and manage your account.</li>
+              <li><strong>Sign-up code</strong> — when you create an account we email you a 6-digit code to confirm the address is yours. We keep only a scrambled (hashed) copy, it stops working after 10 minutes, and it is deleted once used; expired codes are cleaned up afterwards.</li>
+              <li><strong>School, grade and student ID</strong> — only if you enter them, so your school and your reports show the right details.</li>
               <li><strong>Date of birth</strong> — asked when you create an account, only to apply our age rules: students under 13 need a parent or guardian&apos;s approval, Volunteer Task Maker and parent accounts are for adults 18 and up. We don&apos;t store it; we keep only whether a student is under 13. If a date entered is too young for the account type, your device remembers that for a day so the rules can&apos;t be skipped by changing it, and this never leaves your device.</li>
               <li><strong>Where you signed up</strong> — whether your account was created on the website, in the Android app or in the iPhone app. We use it only to count sign-ups, so we know which versions of VolunTrack people use.</li>
               <li><strong>School sign-in</strong> — if your school has set up single sign-on, we receive your name, email address, and an account identifier from your school&apos;s sign-in provider (such as Google or Microsoft). We never see your school password.</li>
@@ -46,11 +48,11 @@ export default function Privacy() {
               <li><strong>Access records</strong> — when a school or organization staff member opens a student&apos;s record, we record who did it and when, along with the IP address and browser, so that access to a minor&apos;s record can be accounted for.</li>
               <li><strong>Billing details</strong> — for school and organization accounts only: invoices, payment confirmations you submit, and any discount or referral code used.</li>
               <li><strong>Your location</strong> — only with your permission, to fill in where you volunteered and to show volunteer tasks near you. In the mobile apps it is asked for only when you tap <em>Use current location</em> or turn on nearby tasks. You can always edit or clear a filled-in location.</li>
-              <li><strong>Student ID number</strong> — only if you enter it, so it appears on your verification forms and exported records.</li>
               <li><strong>Messages you send us</strong> — your name, email address and message when you use the contact form, kept so we can reply.</li>
               <li><strong>App reviews</strong> — if you rate VolunTrack, your rating, comment, and the name you give. A review appears publicly on our website only if you agree to it and we approve it.</li>
               <li><strong>Passkeys</strong> — if you add a passkey as a sign-in step, we store its public key, an identifier for it, a name such as &quot;iPhone&quot;, and when it was added and last used. The private key stays on your device (or in your iCloud Keychain or Google Password Manager); we never receive it.</li>
               <li><strong>Face ID, Touch ID and fingerprint (apps only)</strong> — if you choose <em>Keep me signed in</em>, the app asks your phone to confirm it&apos;s you before it opens. Your phone does the check and only tells the app whether it passed: your face or fingerprint data never leaves your device and never reaches us. Your sign-in is kept in your phone&apos;s secure storage (the iOS Keychain or Android Keystore) and removed when you sign out.</li>
+              <li><strong>Sync PIN</strong> — if you generate one to sign in on another device, it works once, stops working after 15 minutes, and is then cleared from our database.</li>
               <li><strong>Camera access</strong> — used to scan QR codes when syncing your account across devices, and, if you choose, to photograph proof of service. QR scans are never uploaded or stored; a proof photo is handled like any other proof file (see <em>Proof files</em> below).</li>
               <li><strong>Notifications</strong> — in the mobile app, only if you allow them, to deliver the reminders you set. They are scheduled on your phone itself, so your reminders never reach us.</li>
             </ul>
@@ -61,8 +63,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Data Storage">
-            <p>Without an account, VolunTrack runs entirely in your browser: your hours stay in that browser&apos;s local storage and never reach us.</p>
-            <p className="mt-2">When you create an account, your name, email address and a hashed version of your password are stored in our PostgreSQL database. From then on the hours you log are also saved to our servers as you enter them — this is what lets your school, a linked parent, and your other devices see them. That happens as soon as you are signed in; it is not limited to schools that have set up their own storage. Your browser keeps its own copy as well. Traffic between the app and our servers is encrypted with HTTPS.</p>
+            <p>When you create an account, your name, email address and a hashed version of your password are stored in our PostgreSQL database. From then on the hours you log are also saved to our servers as you enter them — this is what lets your school, a linked parent, and your other devices see them. That happens as soon as you are signed in; it is not limited to schools that have set up their own storage. Your browser keeps its own copy as well. Traffic between the app and our servers is encrypted with HTTPS.</p>
           </Section>
 
           <Section title="Proof Files and Documents">
