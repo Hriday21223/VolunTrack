@@ -347,14 +347,22 @@ async function askOpenRouter(key, prompt) {
     },
     body: JSON.stringify({
       model: process.env.LIVE_CHECK_MODEL || 'openrouter/free',
-      max_tokens: 400,
+      // openrouter/free can land on a reasoning model, which spends tokens
+      // thinking before it answers: room for both, as little thinking as the
+      // model allows, and the thinking itself left out of the response.
+      max_tokens: 2000,
+      reasoning: { effort: 'low', exclude: true },
       messages: [{ role: 'user', content: prompt }],
     }),
-    signal: AbortSignal.timeout(90_000),
+    signal: AbortSignal.timeout(120_000),
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(`OpenRouter ${res.status} ${body.error?.message || ''}`)
-  return body.choices?.[0]?.message?.content?.trim() || null
+  const choice = body.choices?.[0]
+  const content = choice?.message?.content
+  const text = (Array.isArray(content) ? content.map((part) => part?.text || '').join('') : content || '').trim()
+  if (!text) throw new Error(`OpenRouter's ${body.model || 'model'} returned no text (finish_reason: ${choice?.finish_reason || 'none'}${body.error?.message ? `, ${body.error.message}` : ''})`)
+  return text
 }
 
 async function askAnthropic(key, prompt) {
