@@ -1004,6 +1004,14 @@ router.post('/public-tasks/:id/approve/:userId', limiter, requireDb, requireAuth
     if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
     if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can approve signups.' })
 
+    // Only a real signup gets a decision, and only a change sends the email:
+    // otherwise any task creator could email any user ID, as often as they liked.
+    const { rows: signupRows } = await query(
+      'SELECT status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
+      [req.params.id, req.params.userId],
+    )
+    if (signupRows.length === 0) return res.status(404).json({ error: 'Signup not found.' })
+    if (signupRows[0].status === 'approved') return res.json({ ok: true })
     await query(
       "UPDATE public_task_signups SET status = 'approved' WHERE task_id = $1 AND user_id = $2",
       [req.params.id, req.params.userId],
@@ -1025,6 +1033,14 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
     if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
     if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can reject signups.' })
 
+    // Only a real signup gets a decision, and only a change sends the email:
+    // otherwise any task creator could email any user ID, as often as they liked.
+    const { rows: signupRows } = await query(
+      'SELECT status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
+      [req.params.id, req.params.userId],
+    )
+    if (signupRows.length === 0) return res.status(404).json({ error: 'Signup not found.' })
+    if (signupRows[0].status === 'rejected') return res.json({ ok: true })
     await query(
       "UPDATE public_task_signups SET status = 'rejected' WHERE task_id = $1 AND user_id = $2",
       [req.params.id, req.params.userId],
