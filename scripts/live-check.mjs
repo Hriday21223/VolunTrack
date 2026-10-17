@@ -12,8 +12,8 @@
 // With MONITOR_EMAIL / MONITOR_PASSWORD / MONITOR_SECRET it also signs in as
 // its own empty student account (server/monitor.js, #318) and loads the
 // signed-in pages, read-only; without them those checks are skipped. With
-// ANTHROPIC_API_KEY, a failing run gets a short AI-written summary of what
-// probably broke.
+// OPENROUTER_API_KEY (or ANTHROPIC_API_KEY), a failing run gets a short
+// AI-written summary of what probably broke.
 import { execSync } from 'node:child_process'
 import puppeteer from 'puppeteer'
 
@@ -289,9 +289,9 @@ console.log(`\n${results.length - failed.length}/${results.length} passed`)
 
 // Only for a failing run, and only with a key: a few sentences an owner who
 // isn't a developer can act on. Never fatal — the checks are the report.
-async function aiSummary() {
-  const key = process.env.ANTHROPIC_API_KEY
-  if (!key || failed.length === 0) return null
+// OPENROUTER_API_KEY (free models via openrouter/free) is used if set, else
+// ANTHROPIC_API_KEY. LIVE_CHECK_MODEL picks a specific model on either.
+function summaryPrompt() {
   const recentChanges = (() => {
     try {
       return execSync('git log -8 --format="%h %ad %s" --date=short', { encoding: 'utf8' }).trim()
@@ -299,7 +299,7 @@ async function aiSummary() {
       return '(not available)'
     }
   })()
-  const prompt = [
+  return [
     'You are summarising an automated test run of VolunTrack, a volunteer-hour tracking web app, for its owner, who is not a developer.',
     'Setup: React/Vite frontend on Vercel with a Content-Security-Policy in vercel.json; Express backend on Render; Neon Postgres; Cloudflare Turnstile CAPTCHA on sign-in and sign-up; Leaflet + OpenStreetMap map with HERE/Nominatim place search on Log Hours; email via Brevo or Gmail SMTP.',
     '',
@@ -313,20 +313,54 @@ async function aiSummary() {
     '',
     'In 2-4 short plain-English sentences, no markdown: say what is broken for users, the most likely cause, and the first thing to check. If several checks fail together, say whether they look like one problem. If you are unsure, say so rather than guessing.',
   ].join('\n')
+}
+
+async function askOpenRouter(key, prompt) {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${key}`,
+      'content-type': 'application/json',
+      // Optional attribution headers OpenRouter shows on its dashboard.
+      'http-referer': SITE,
+      'x-title': 'VolunTrack live check',
+    },
+    body: JSON.stringify({
+      model: process.env.LIVE_CHECK_MODEL || 'openrouter/free',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(90_000),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(`OpenRouter ${res.status} ${body.error?.message || ''}`)
+  return body.choices?.[0]?.message?.content?.trim() || null
+}
+
+async function askAnthropic(key, prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: process.env.LIVE_CHECK_MODEL || 'claude-haiku-5-5',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(60_000),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(`Anthropic ${res.status} ${body.error?.message || ''}`)
+  return (body.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim() || null
+}
+
+async function aiSummary() {
+  if (failed.length === 0) return null
+  const openRouterKey = process.env.OPENROUTER_API_KEY
+  const anthropicKey = process.env.ANTHROPIC_API_KEY
+  if (!openRouterKey && !anthropicKey) return null
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.LIVE_CHECK_MODEL || 'claude-haiku-5-5',
-        max_tokens: 400,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-      signal: AbortSignal.timeout(60_000),
-    })
-    const body = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(`${res.status} ${body.error?.message || ''}`)
-    return (body.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim() || null
+    const prompt = summaryPrompt()
+    return openRouterKey ? await askOpenRouter(openRouterKey, prompt) : await askAnthropic(anthropicKey, prompt)
   } catch (error) {
     console.error(`AI summary skipped: ${error.message}`)
     return null
