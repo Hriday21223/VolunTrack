@@ -478,6 +478,9 @@ export default function Status() {
                 </span>
               )}
             </h2>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+              Besides the checks on the Overview tab, an automated test opens the live site every 6 hours, including signing in and loading the main pages. Anything that fails twice in a row is listed here automatically and marked resolved once it works again.
+            </p>
             {incidents.length === 0 ? (
               <div className="text-sm text-earth-500 dark:text-earth-400">No incidents recorded.</div>
             ) : (

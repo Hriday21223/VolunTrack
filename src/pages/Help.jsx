@@ -23,8 +23,8 @@ const TABS = [
 // injected via useSeo() — so an AI answer engine can cite these verbatim and
 // the page never drifts from its schema.
 const FAQ_ITEMS = [
-  { q: 'Is my data private?', a: 'Yes. Without an account, your volunteer logs, goals, and profile stay in your browser\'s local storage and never leave your device. With an account, your hours are stored in a secure database, protected by your password, optional two-factor authentication, and an optional app unlock PIN, and visible only to you, your school, and parents you invite. Signature drawings stay on your device — the server only records that an entry was signed. We never sell your data or show ads.' },
-  { q: 'Can I use VolunTrack without an account?', a: 'Yes. The app works entirely in your browser using local storage — no account is needed to log hours, set goals, or earn badges. You won\'t have cross-device sync, school integration, or cloud backup.' },
+  { q: 'Is my data private?', a: "Yes. Your hours are stored in a secure database, protected by your password and, if you turn them on, two-factor authentication or a passkey. They're visible only to you, the school you join, and parents you invite. Signature drawings stay on your device — the server only records that an entry was signed. We never sell your data or show ads." },
+  { q: 'Do I need an account?', a: "Yes — a free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first." },
   { q: 'How does supervisor verification work?', a: 'When you log hours, add your supervisor\'s email and they get a one-time link to approve or reject those specific hours — no account needed. Approving asks them to sign; rejecting skips that step. If your school requires signatures, Log Hours asks whether the person signing is next to you: if yes, they sign on your device; if not, you get a ready-made email with the signing link to send yourself (or have VolunTrack send it). On a laptop, they can scan a QR code and sign on their phone. Hours on an Opportunities task are signed off by the organizer from their own account instead. Each log then shows Pending, Approved, or Rejected.' },
   { q: 'How do I let a parent see my hours?', a: 'In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. They\'ll only see hours you log from the moment they link — anything earlier stays private — and they can\'t change anything. Linked parents also get a weekly progress email, which they can unsubscribe from at any time from a link in the email.' },
   { q: 'What\'s the difference between a school account and an organization account?', a: 'A school account manages one school\'s students, report reviews, announcements, and co-admins. An organization account sits above multiple schools: it adds them and tracks their setup and payment status, but each school still runs its own dashboard.' },
@@ -35,13 +35,12 @@ const FAQ_ITEMS = [
   { q: 'Where can I find volunteer opportunities?', a: 'Open the Opportunities page. It lists public tasks posted by schools and organizations, sorted by distance if you allow location access. Sign up in one click; once the organizer approves you, pick the task when you log your hours and the organizer signs them off on their My Tasks page.' },
   { q: 'My school requires signatures — what do I do?', a: 'Log Hours shows a Signatures section with exactly what your school asks for: your own signature, your supervisor\'s (in person or by a link you email), or your school\'s form. If it\'s a Google Form, fill it in right on the page and tick the box; for any other form, download it, get it signed, and upload a photo or scan.' },
   { q: 'Can I log hours for a past date?', a: 'Yes. Set any past date when you add the entry — there\'s no cutoff. If you tend to forget, the Reminders page lets you schedule recurring nudges, delivered as browser notifications and in-app toasts.' },
-  { q: 'How do I sync across devices?', a: 'Create a server account (register with email + password). On your first device, go to Settings and generate a sync PIN (the card is called Mobile sync PIN on a computer, Laptop sync PIN on a phone). On your second device, go to the login page → Use sync PIN → enter the 5-digit code, or scan the QR code instead of typing it. Your data syncs automatically.' },
-  { q: 'What\'s the app unlock PIN?', a: 'An optional PIN, set in Settings, that locks the app on your device. It\'s separate from your password and from 2FA — it just stops someone casually opening the app on an unlocked phone.' },
+  { q: 'How do I sync across devices?', a: 'Sign in on the new device with your email and password and your hours come with you. To skip typing your password, go to Settings on a signed-in device and generate a sync PIN (the card is called Mobile sync PIN on a computer, Laptop sync PIN on a phone). On the new device, choose Use sync PIN on the login page and enter the 5-digit code, or scan its QR code. A sync PIN works once and expires after 15 minutes.' },
   { q: 'How do I enable two-factor authentication (2FA)?', a: 'Go to Settings → Two-Factor Authentication, scan the QR code with an authenticator app, confirm with the 6-digit code it shows, and save your backup codes. You\'ll enter a code each time you sign in. You can also add a passkey in Settings → Passkeys — instead of an authenticator app or as well as one — so after your password you confirm with Face ID, Touch ID, your fingerprint or your device PIN instead of typing a code.' },
   { q: 'I lost my authenticator — how do I log in?', a: 'On the login screen, after entering your password, click \'Use a backup code instead\' and enter one of the 10 backup codes you saved during 2FA setup. Each code works once. If you don\'t have any, use the password reset flow from the login page.' },
   { q: 'How do I generate a PDF report?', a: 'Go to the Reports page, narrow it by category or dates if you like, and click \'Download PDF.\' The same page has \'Export CSV\' for spreadsheets and \'Print certificate\' for a certificate of service. If you\'re linked to a school, you can also submit a report directly and track its approve/reject status.' },
   { q: 'Can I undo a deleted log entry?', a: 'No — once a log entry is deleted, it cannot be recovered. Make sure you really want to delete it before confirming.' },
-  { q: 'How do I change my password?', a: 'Go to Settings → Change password. Enter your current password and a new one (at least 8 characters for server accounts). Click \'Update password.\'' },
+  { q: 'How do I change my password?', a: 'Go to Settings → Change password. Enter your current password and a new one (at least 8 characters). Click \'Update password.\'' },
   { q: 'What categories can I use when logging hours?', a: 'Community Service, Environmental, Education & Tutoring, Health & Wellness, Animal Welfare, Arts & Culture, Sports & Coaching, Religious & Faith, Political & Advocacy, Disaster Relief, and Other. Pick the one that best fits your activity.' },
   { q: 'How do volunteer badges work?', a: 'You earn badges automatically as you log hours — 12 in all. They include your first hour; 10, 50 and 100 hours; reaching your goal; logging on 3 and on 7 different days; trying 3 and 5 categories; 5 hours in one month; a weekend session; and logging in two different months. Check the Achievements page to see your progress.' },
   { q: 'Is there a mobile app?', a: 'Android and iPhone apps are on their way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App (PWA) — open it in your phone\'s browser and tap \'Add to Home Screen\' to install it like an app. It works offline after the first visit, and anything that needs the server catches up once you\'re back online.' },
@@ -50,7 +49,7 @@ const FAQ_ITEMS = [
 
 // Drives the Quick Start panel below and the HowTo structured data.
 const QUICKSTART_STEPS = [
-  { name: 'Create your account', text: 'Go to the Sign Up page and pick a role: Student if you\'re logging your own hours, Volunteer Task Maker if you\'re organizing events for others, or Parent if you want to follow a student\'s hours. Schools and multi-school organizations have their own signup pages.' },
+  { name: 'Create your account', text: 'Go to the Sign Up page and pick a role: Student if you\'re logging your own hours, Volunteer Task Maker if you\'re organizing events for others, or Parent if you want to follow a student\'s hours. Enter your date of birth, then the 6-digit code we email you to confirm your address. If you\'re under 13, a parent or guardian approves the account by email first. Schools and multi-school organizations have their own signup pages.' },
   { name: 'Join your school (optional)', text: 'If your school uses VolunTrack, ask an administrator for a school code. Open Settings, find "Join school," and enter the code. Your school can also add you directly by email.' },
   { name: 'Log your first hours', text: 'Click Log Hours (or the + button on mobile). Fill in the date, hours, activity, and category, and optionally a supervisor email so they can verify the hours. Click Save — your hours appear on the dashboard, calendar, and reports instantly.' },
   { name: 'Set a goal', text: 'Go to Settings and scroll to Goals. Set a target (e.g. "50 hours by June") to track your progress with a visual ring on the dashboard.' },
@@ -112,7 +111,7 @@ function QuickStart() {
       </HandbookIntro>
 
       <Section title="1. Create your account">
-        <p>Go to the <Link to="/register" className="text-brand-400 hover:underline">Sign Up</Link> page and pick a role: <strong>Student</strong> if you're logging your own hours, <strong>Volunteer Task Maker</strong> if you're organizing events for others, or <strong>Parent</strong> if you want to follow a student's hours. Schools and multi-school organizations have their own signup pages (linked from the login screen).</p>
+        <p>Go to the <Link to="/register" className="text-brand-400 hover:underline">Sign Up</Link> page and pick a role: <strong>Student</strong> if you're logging your own hours, <strong>Volunteer Task Maker</strong> if you're organizing events for others, or <strong>Parent</strong> if you want to follow a student's hours. Enter your date of birth, then the 6-digit code we email you to confirm your address — it expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first. Schools and multi-school organizations have their own signup pages (linked from the login screen).</p>
       </Section>
 
       <Section title="2. Join your school (optional)">
@@ -217,18 +216,18 @@ function StudentHandbook() {
 
       <Section title="Signing in on another device">
         <div className="mt-3 space-y-2">
-          <Step icon={Link2} label="Sync PIN" description="Settings → generate a sync PIN on one device, then on the login page choose 'Use sync PIN' on the other. Your data syncs automatically." />
-          <Step icon={Lock} label="App unlock PIN" description="An optional PIN that locks the app on a device. Separate from your password and 2FA — it just stops someone casually opening the app." />
+          <Step icon={Lock} label="Email and password" description="Sign in with the same email and password on any device; your hours sync automatically." />
+          <Step icon={Link2} label="Sync PIN" description="Settings → generate a sync PIN on a signed-in device, then on the login page choose 'Use sync PIN' on the other. It works once and expires after 15 minutes." />
         </div>
       </Section>
 
       <Section title="Two-Factor Authentication (2FA)">
-        <p>For extra security, enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>. Choose either an authenticator app (like Google Authenticator or Authy) or a code texted to your phone — only one method can be active at a time. Once enabled, you'll enter that 6-digit code every time you sign in.</p>
-        <p className="mt-2">If you use the authenticator-app method, setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator.</p>
+        <p>For extra security, enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>. Scan the QR code with an authenticator app (like Google Authenticator or Authy) and confirm with the 6-digit code it shows; after that, you'll enter a code each time you sign in. You can also add a passkey in Settings → Passkeys, instead of an authenticator app or as well as one, and confirm with Face ID, Touch ID, your fingerprint or your device PIN.</p>
+        <p className="mt-2">Setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator or passkey.</p>
       </Section>
 
       <Section title="Profile & Settings">
-        <p>Your Profile page shows your account info, total hours, and earned badges. In Settings you can change your password, manage your school link, set goals, enable 2FA, set a sync or app-unlock PIN, and manage reminders.</p>
+        <p>Your Profile page shows your account info, total hours, and earned badges. In Settings you can change your password, manage your school link, set goals, enable 2FA or add a passkey, generate a sync PIN, and manage reminders.</p>
       </Section>
     </div>
   )
@@ -437,7 +436,7 @@ function SchoolStaffHandbook() {
       </Section>
 
       <Section title="Your Account & Security">
-        <p>Co-admin accounts use the same <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link> as any other account: change your password, enable two-factor authentication, and set an app unlock PIN. Because you can read every student's records, 2FA is worth turning on.</p>
+        <p>Co-admin accounts use the same <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link> as any other account: change your password, and enable two-factor authentication or add a passkey. Because you can read every student's records, 2FA is worth turning on.</p>
         <p className="mt-2">If you leave the role, the primary admin removes you from School setup → Co-admins and your access ends immediately.</p>
       </Section>
     </div>
@@ -490,7 +489,7 @@ function AdminHandbook() {
   return (
     <div>
       <HandbookIntro title="Admin Handbook">
-        The admin dashboard lives at <code className="text-brand-300">/admin</code> and is restricted to accounts with the admin role. It has eight tabs.
+        The admin dashboard lives at <code className="text-brand-300">/admin</code> and is restricted to accounts with the admin role. It has ten tabs.
       </HandbookIntro>
 
       <Section title="Inbox">
@@ -518,7 +517,7 @@ function AdminHandbook() {
       </Section>
 
       <Section title="Invites">
-        <p>Create school or organization invites, resend them, or delete them. These are the same invite emails the organization dashboard sends.</p>
+        <p>Create school or organization invites, resend them, or delete them — the same invite emails the organization dashboard sends. One-time registration codes for school and organization sign-up are made and revoked here too.</p>
       </Section>
 
       <Section title="Organizations">
@@ -527,14 +526,23 @@ function AdminHandbook() {
 
       <Section title="Incidents">
         <p>Backend and database health checks surface here automatically. Resolve an incident once it's fixed, or log one manually. This feeds the public status page.</p>
+        <p className="mt-2">At the top, <strong>Live checks</strong> shows the live-site test robot's recent runs. Every 6 hours it loads every public page and, signed in as its own test account, the main student pages. When a check fails twice in a row you get an email — with an AI-written guess at the cause, to check before acting — and the public status page lists an incident until it passes again.</p>
       </Section>
 
       <Section title="Settings">
-        <p>Edits the office-hours text shown on the public Contact page (days, hours, and an optional note).</p>
+        <p>Edits the office-hours text shown on the public Contact page (days, hours, and an optional note), the payment instructions on invoices, the join offer, and the email provider key.</p>
+      </Section>
+
+      <Section title="Users">
+        <p>How many people have registered, by account type and by where they signed up (website, Android or iPhone app). Test accounts aren't counted.</p>
       </Section>
 
       <Section title="API">
         <p>Live backend health checks plus a list of every registered API route currently serving traffic.</p>
+      </Section>
+
+      <Section title="Blueprint">
+        <p>How the app is built, end to end, with saved links to the services behind it.</p>
       </Section>
     </div>
   )

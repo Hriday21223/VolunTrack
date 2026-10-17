@@ -24,7 +24,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 10, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 17, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -38,7 +38,7 @@ export default function Terms() {
           </Section>
 
           <Section title="Your Account">
-            <p>You're responsible for the accuracy of the information you provide and for keeping your login credentials confidential. If your school has set up single sign-on, you sign in with your school account instead of a VolunTrack password, and your school, not VolunTrack, controls that sign-in. You must be old enough to use this app under the laws of your location, or have permission from a parent, guardian, or supervising school/organization. If you are under 13, you must have parental, guardian, or school/teacher consent to create an account.</p>
+            <p>You're responsible for the accuracy of the information you provide and for keeping your login credentials confidential. If your school has set up single sign-on, you sign in with your school account instead of a VolunTrack password, and your school, not VolunTrack, controls that sign-in. You must be old enough to use this app under the laws of your location, or have permission from a parent, guardian, or supervising school/organization. If you are under 13, you must have parental, guardian, or school/teacher consent to create an account: when you sign up yourself, a parent or guardian approves it by email first. Volunteer Task Maker and parent accounts are for adults 18 and over. The date of birth you enter at sign-up must be your own.</p>
           </Section>
 
           <Section title="Accurate Logging">
