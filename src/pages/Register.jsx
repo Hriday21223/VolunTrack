@@ -78,7 +78,7 @@ export default function Register() {
   const { sendSignupCode, register } = useAuth()
   const nav = useNavigate()
   const [role, setRole] = useState('student')
-  const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', school: '', grade: '', studentIdNumber: '', schoolCode: '', dateOfBirth: '', parentEmail: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', school: '', grade: '', studentIdNumber: '', schoolCode: '', dateOfBirth: '', parentEmail: '' })
   // Set once an under-13 sign-up is waiting on its parent's emailed approval.
   const [awaitingParent, setAwaitingParent] = useState('')
   // The checked form, kept while the person enters the emailed code (#310).
@@ -137,8 +137,7 @@ export default function Register() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
-    if (form.password.length < 6) { setErr('Password must be at least 6 characters.'); return }
-    if (form.pin && !/^[0-9]{4}$/.test(form.pin)) { setErr('PIN must be exactly 4 digits.'); return }
+    if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
     if (ageCheck.error) {
       if (ageCheck.tooYoung) recordAgeGate(role)
       setErr(ageCheck.error)
@@ -355,10 +354,7 @@ export default function Register() {
               <Field icon={Mail}      label="Email" type="email" value={form.email} onChange={onChange('email')} placeholder="you@email.com" autoComplete="email" required />
             </div>
             <div className="animate-fade-in-up" style={{ animationDelay: '550ms' }}>
-              <Field icon={Lock}      label="Password" type="password" value={form.password} onChange={onChange('password')} placeholder="6+ characters" autoComplete="new-password" required />
-            </div>
-            <div className="animate-fade-in-up" style={{ animationDelay: '600ms' }}>
-              <Field icon={Lock}      label="Optional PIN" type="password" value={form.pin} onChange={onChange('pin')} placeholder="4-digit PIN" autoComplete="one-time-code" />
+              <Field icon={Lock}      label="Password" type="password" value={form.password} onChange={onChange('password')} placeholder="8+ characters" autoComplete="new-password" required />
             </div>
 
             <div className="animate-fade-in-up" style={{ animationDelay: '625ms' }}>

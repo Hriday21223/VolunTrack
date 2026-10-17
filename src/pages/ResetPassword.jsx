@@ -22,7 +22,7 @@ export default function ResetPassword() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
-    if (pw1.length < 6) { setErr('Password must be at least 6 characters.'); return }
+    if (pw1.length < 8) { setErr('Password must be at least 8 characters.'); return }
     if (pw1 !== pw2) { setErr("Passwords don't match."); return }
 
     try {
@@ -61,7 +61,7 @@ export default function ResetPassword() {
             <div className="animate-fade-in-up">
               <h1 className="text-2xl font-bold mb-1">Choose a new password</h1>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-                Make it at least 6 characters. If you requested a reset, use the recovery code sent above.
+                Make it at least 8 characters. If you requested a reset, use the recovery code sent above.
               </p>
 
               <form onSubmit={onSubmit} className="space-y-4">
@@ -107,7 +107,7 @@ export default function ResetPassword() {
                     <input
                       type="password"
                       required
-                      minLength={6}
+                      minLength={8}
                       className="input pl-9"
                       value={pw1}
                       onChange={(e) => setPw1(e.target.value)}
@@ -121,7 +121,7 @@ export default function ResetPassword() {
                     <input
                       type="password"
                       required
-                      minLength={6}
+                      minLength={8}
                       className="input pl-9"
                       value={pw2}
                       onChange={(e) => setPw2(e.target.value)}

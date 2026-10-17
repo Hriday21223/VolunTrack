@@ -97,6 +97,13 @@ export function verifyPin(user, pin) {
   return user && user.pinHash && user.pinHash === hashPin(pin)
 }
 
+// The app unlock PIN only exists for accounts stored on this device (the
+// offline demo mode); server accounts have nowhere to keep one. Reads storage
+// directly so asking doesn't seed the demo account like getUsers() does.
+export function hasLocalPinAccount() {
+  return read(keys.users, []).some((u) => u.pinHash)
+}
+
 // 6-digit recovery code from the platform CSPRNG. Rejection-sampled so the
 // value is uniform over 100000–999999 (a bare `% 900000` would skew low).
 function generateRecoveryCode() {
