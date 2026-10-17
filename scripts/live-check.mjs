@@ -39,6 +39,26 @@ const MONITOR = {
   key: process.env.MONITOR_SECRET,
 }
 
+// "Test the AI summary" (workflow input test_summary): skip the real checks,
+// ask the AI about a made-up failure, print its answer, report nothing.
+if (process.env.LIVE_CHECK_TEST_SUMMARY === 'true') {
+  const fake = [
+    { name: 'Backend health', ok: true, detail: 'backend and database ok' },
+    { name: 'Page /login', ok: true, detail: 'loads cleanly' },
+    { name: 'Sign-in CAPTCHA', ok: false, detail: 'the Cloudflare CAPTCHA never appeared' },
+  ]
+  console.log('TEST MODE — made-up failure: Sign-in CAPTCHA (nothing is reported or emailed)')
+  // Always a green run: a red one would set off the CI-failure routines for
+  // what is only a test. A ::warning:: shows on the run page instead.
+  if (!process.env.OPENROUTER_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    console.log('::warning::No OPENROUTER_API_KEY or ANTHROPIC_API_KEY secret is set.')
+    process.exit(0)
+  }
+  const answer = await aiSummary(fake.filter((r) => !r.ok), fake)
+  console.log(answer ? `\nAI summary:\n${answer}` : '::warning::No AI summary came back — see the error above.')
+  process.exit(0)
+}
+
 const results = []
 async function check(name, fn) {
   try {
@@ -291,7 +311,7 @@ console.log(`\n${results.length - failed.length}/${results.length} passed`)
 // isn't a developer can act on. Never fatal — the checks are the report.
 // OPENROUTER_API_KEY (free models via openrouter/free) is used if set, else
 // ANTHROPIC_API_KEY. LIVE_CHECK_MODEL picks a specific model on either.
-function summaryPrompt() {
+function summaryPrompt(failed, results) {
   const recentChanges = (() => {
     try {
       return execSync('git log -8 --format="%h %ad %s" --date=short', { encoding: 'utf8' }).trim()
@@ -353,13 +373,13 @@ async function askAnthropic(key, prompt) {
   return (body.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim() || null
 }
 
-async function aiSummary() {
+async function aiSummary(failed, results) {
   if (failed.length === 0) return null
   const openRouterKey = process.env.OPENROUTER_API_KEY
   const anthropicKey = process.env.ANTHROPIC_API_KEY
   if (!openRouterKey && !anthropicKey) return null
   try {
-    const prompt = summaryPrompt()
+    const prompt = summaryPrompt(failed, results)
     return openRouterKey ? await askOpenRouter(openRouterKey, prompt) : await askAnthropic(anthropicKey, prompt)
   } catch (error) {
     console.error(`AI summary skipped: ${error.message}`)
@@ -367,7 +387,7 @@ async function aiSummary() {
   }
 }
 
-const summary = await aiSummary()
+const summary = await aiSummary(failed, results)
 if (summary) console.log(`\nAI summary:\n${summary}`)
 
 if (!process.env.CRON_SECRET) process.exit(failed.length ? 1 : 0)
