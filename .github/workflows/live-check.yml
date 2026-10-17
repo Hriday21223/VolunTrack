@@ -20,7 +20,12 @@ name: Live check
 on:
   schedule:
     - cron: '17 */6 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      test_summary:
+        description: Only test the AI summary on a made-up failure (runs no checks, reports and emails nothing)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -55,4 +60,5 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           LIVE_CHECK_MODEL: ${{ vars.LIVE_CHECK_MODEL }}
+          LIVE_CHECK_TEST_SUMMARY: ${{ inputs.test_summary }}
         run: node scripts/live-check.mjs
