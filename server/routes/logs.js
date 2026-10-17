@@ -147,6 +147,15 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
   }
 })
 
+// [request field, column] for the optional text PATCH lets a student clear.
+const CLEARABLE_FIELDS = [
+  ['notes', 'notes'],
+  ['location', 'location'],
+  ['orgName', 'org_name'],
+  ['supervisorName', 'supervisor_name'],
+  ['supervisorEmail', 'supervisor_email_hash'],
+]
+
 router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
@@ -163,6 +172,13 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 
     const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
     const signoff = signoffFlags(req.body)
+    // Optional text a student can empty out. COALESCE alone treats an empty
+    // value as "not sent", which kept the old text on the server, so a field
+    // sent empty is named here and set to NULL instead.
+    const cleared = CLEARABLE_FIELDS
+      .filter(([field]) => Object.hasOwn(req.body, field) && !String(req.body[field] ?? '').trim())
+      .map(([, column]) => column)
+    const isCleared = (column) => cleared.includes(column)
     // Match POST's validation — an update must not be able to slip a
     // non-positive or non-numeric value past the check the insert enforces.
     let hoursNum = null
@@ -196,14 +212,14 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       activity: activity || existing.activity,
       category: category || existing.category,
       hours: hoursNum ?? Number(existing.hours),
-      notes: notes != null ? notes : existing.notes,
-      location: location || existing.location,
-      orgName: orgName || existing.org_name,
-      supervisorName: supervisorName || existing.supervisor_name,
+      notes: isCleared('notes') ? '' : (notes != null ? notes : existing.notes),
+      location: isCleared('location') ? '' : (location || existing.location),
+      orgName: isCleared('org_name') ? '' : (orgName || existing.org_name),
+      supervisorName: isCleared('supervisor_name') ? '' : (supervisorName || existing.supervisor_name),
       // Only the hash is kept (#186), so presence is all that can be checked
       // here — enough for a "supervisor required" rule, which asks whether one
       // was named, not who.
-      supervisorEmail: supervisorEmail || (existing.supervisor_email_hash ? 'on-file' : ''),
+      supervisorEmail: isCleared('supervisor_email_hash') ? '' : (supervisorEmail || (existing.supervisor_email_hash ? 'on-file' : '')),
       hasProof: existing.has_proof || hasLocalProof === true,
       hasStudentSignature: existing.student_signed || signoff.hasStudentSignature,
       formSubmitted: existing.form_submitted || signoff.formSubmitted,
@@ -235,6 +251,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       OR COALESCE($3, category) IS DISTINCT FROM category
       OR COALESCE($4, hours) IS DISTINCT FROM hours
       OR COALESCE($5, notes) IS DISTINCT FROM notes
+      OR ('notes' = ANY($17::text[]) AND notes IS NOT NULL)
     )`
     await query(
       `UPDATE logs SET
@@ -242,11 +259,11 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          activity = COALESCE($2, activity),
          category = COALESCE($3, category),
          hours = COALESCE($4, hours),
-         notes = COALESCE($5, notes),
-         location = COALESCE($6, location),
-         org_name = COALESCE($7, org_name),
-         supervisor_name = COALESCE($8, supervisor_name),
-         supervisor_email_hash = COALESCE($9, supervisor_email_hash),
+         notes = CASE WHEN 'notes' = ANY($17::text[]) THEN NULL ELSE COALESCE($5, notes) END,
+         location = CASE WHEN 'location' = ANY($17::text[]) THEN NULL ELSE COALESCE($6, location) END,
+         org_name = CASE WHEN 'org_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($7, org_name) END,
+         supervisor_name = CASE WHEN 'supervisor_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($8, supervisor_name) END,
+         supervisor_email_hash = CASE WHEN 'supervisor_email_hash' = ANY($17::text[]) THEN NULL ELSE COALESCE($9, supervisor_email_hash) END,
          task_id = COALESCE($10, task_id),
          custom_fields = CASE WHEN $12::boolean THEN $13::jsonb ELSE custom_fields END,
          student_signed = student_signed OR $14::boolean,
@@ -259,7 +276,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
        WHERE id = $11`,
-      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson],
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared],
     )
     return res.json({ ok: true })
   } catch (error) {
