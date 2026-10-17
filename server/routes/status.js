@@ -347,7 +347,7 @@ function failureStreaks(runs) {
   return streaks
 }
 
-async function alertLiveChecks({ broken, fixed, runUrl }) {
+async function alertLiveChecks({ broken, fixed, runUrl, summary }) {
   const admin = notifyRecipient()
   if (!admin || (broken.length === 0 && fixed.length === 0)) return
   const list = (items) => `<ul>${items.map((r) => `<li><strong>${escapeHtml(r.name)}</strong>${r.detail ? ` — ${escapeHtml(r.detail)}` : ''}</li>`).join('')}</ul>`
@@ -356,6 +356,7 @@ async function alertLiveChecks({ broken, fixed, runUrl }) {
     : `VolunTrack live check fixed: ${fixed.map((r) => r.name).join(', ')}`
   const html = (broken.length > 0
     ? `<p>The live-site test robot found ${broken.length === 1 ? 'a check' : 'checks'} failing ${LIVE_CHECK_FAILURES_BEFORE_ALERT} runs in a row:</p>${list(broken)}`
+      + (summary ? `<p><strong>What probably happened</strong> (written by AI — check before acting):<br>${escapeHtml(summary)}</p>` : '')
     : '')
     + (fixed.length > 0 ? `<p>Passing again:</p>${list(fixed)}` : '')
     + `<p><a href="${frontendUrl()}/admin/incidents">Open Admin → Incidents</a>${runUrl ? ` · <a href="${escapeHtml(runUrl)}">GitHub run</a>` : ''}</p>`
@@ -367,11 +368,13 @@ router.post('/live-checks', cronLimiter(), requireCronKey, requireDb, async (req
   if (!results) return res.status(400).json({ error: 'results must be a list of { name, ok, detail }.' })
   const runUrl = /^https:\/\/github\.com\//.test(String(req.body?.runUrl || '')) ? String(req.body.runUrl).slice(0, 300) : null
   const ok = results.every((r) => r.ok)
+  // Only a failing run gets one (see scripts/live-check.mjs).
+  const summary = !ok && req.body?.summary ? String(req.body.summary).trim().slice(0, 1500) || null : null
 
   try {
     await query(
-      'INSERT INTO live_check_runs (id, ok, results, run_url) VALUES ($1, $2, $3, $4)',
-      [uid('lcr'), ok, JSON.stringify(results), runUrl],
+      'INSERT INTO live_check_runs (id, ok, results, run_url, summary) VALUES ($1, $2, $3, $4, $5)',
+      [uid('lcr'), ok, JSON.stringify(results), runUrl, summary],
     )
     // This run plus enough history to tell a new streak from an old one.
     const { rows } = await query(
@@ -383,7 +386,7 @@ router.post('/live-checks', cronLimiter(), requireCronKey, requireDb, async (req
     // a check that had reached it passes.
     const broken = results.filter((r) => !r.ok && now.get(r.name) === LIVE_CHECK_FAILURES_BEFORE_ALERT)
     const fixed = results.filter((r) => r.ok && (before.get(r.name) || 0) >= LIVE_CHECK_FAILURES_BEFORE_ALERT)
-    await alertLiveChecks({ broken, fixed, runUrl })
+    await alertLiveChecks({ broken, fixed, runUrl, summary })
 
     await query(
       `DELETE FROM live_check_runs WHERE id NOT IN (SELECT id FROM live_check_runs ORDER BY ran_at DESC LIMIT ${LIVE_CHECK_RUNS_KEPT})`,
@@ -399,8 +402,8 @@ router.post('/live-checks', cronLimiter(), requireCronKey, requireDb, async (req
 // Admin-only: the newest runs, for the "Live checks" card in Admin → Incidents.
 router.get('/live-checks', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
   try {
-    const { rows } = await query('SELECT ran_at, ok, results, run_url FROM live_check_runs ORDER BY ran_at DESC LIMIT 20')
-    return res.json(rows.map((r) => ({ ranAt: r.ran_at, ok: r.ok, results: r.results, runUrl: r.run_url })))
+    const { rows } = await query('SELECT ran_at, ok, results, run_url, summary FROM live_check_runs ORDER BY ran_at DESC LIMIT 20')
+    return res.json(rows.map((r) => ({ ranAt: r.ran_at, ok: r.ok, results: r.results, runUrl: r.run_url, summary: r.summary })))
   } catch (error) {
     console.error('list live checks failed:', error)
     return res.status(500).json({ error: 'Could not load the live checks.' })

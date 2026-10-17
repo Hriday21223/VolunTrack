@@ -36,6 +36,7 @@ import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 import { loadEmailOverrides } from './server/emailSettings.js'
 import { isLocalDatabaseUrl } from './server/localDb.js'
+import { seedMonitor } from './server/monitor.js'
 import { startKeepAwake } from './server/keepAwake.js'
 import { isSignatureImage } from './server/signature.js'
 
@@ -794,6 +795,7 @@ async function start() {
     try {
       await initSchema()
       await seedAdmin()
+      await seedMonitor()
       await loadEmailOverrides()
       console.log('Database ready.')
     } catch (error) {

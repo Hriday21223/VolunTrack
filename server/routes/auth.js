@@ -12,6 +12,7 @@ import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from '../validate.js'
 import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
+import { turnstileUnlessMonitor } from '../monitor.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, hasEmail } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
@@ -356,7 +357,7 @@ async function secondFactorChallenge(row) {
   return { requiresTotp: true, methods, tempToken: signTempToken(publicUser(row)) }
 }
 
-router.post('/login', authLimiter, requireDb, verifyTurnstile(), async (req, res) => {
+router.post('/login', authLimiter, requireDb, turnstileUnlessMonitor(), async (req, res) => {
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')
 

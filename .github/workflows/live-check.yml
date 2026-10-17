@@ -11,6 +11,9 @@ name: Live check
 # CI-failure routines (#58) for what is a site problem, not a CI one.
 #
 # Setup: repo secret CRON_SECRET (already used by the reminder workflows).
+# Optional (#318): MONITOR_EMAIL / MONITOR_PASSWORD / MONITOR_SECRET — the same
+# three values as on Render — let it sign in and test the signed-in pages;
+# ANTHROPIC_API_KEY adds an AI-written summary to a failing run's alert.
 
 on:
   schedule:
@@ -30,6 +33,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Recent commits give the AI summary something to point at.
+          fetch-depth: 10
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -41,4 +47,8 @@ jobs:
       - name: Test the live site and report
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MONITOR_EMAIL: ${{ secrets.MONITOR_EMAIL }}
+          MONITOR_PASSWORD: ${{ secrets.MONITOR_PASSWORD }}
+          MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: node scripts/live-check.mjs

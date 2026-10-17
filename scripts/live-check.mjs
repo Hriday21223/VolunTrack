@@ -6,9 +6,15 @@
 //   CRON_SECRET=… node scripts/live-check.mjs   …and report them
 //
 // SITE_URL / API_URL point it somewhere other than production. Run by
-// .github/workflows/live-check.yml. It never signs in or finishes a sign-up:
-// the CAPTCHA exists to stop exactly this kind of visitor, and a robot that
+// .github/workflows/live-check.yml. It never finishes a sign-up: a robot that
 // made real accounts or sent real email every few hours would be noise.
+//
+// With MONITOR_EMAIL / MONITOR_PASSWORD / MONITOR_SECRET it also signs in as
+// its own empty student account (server/monitor.js, #318) and loads the
+// signed-in pages, read-only; without them those checks are skipped. With
+// ANTHROPIC_API_KEY, a failing run gets a short AI-written summary of what
+// probably broke.
+import { execSync } from 'node:child_process'
 import puppeteer from 'puppeteer'
 
 const SITE = (process.env.SITE_URL || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
@@ -23,6 +29,15 @@ const PAGES = [
   '/status', '/status/incidents', '/status/system',
   '/verify-hours', '/verify-transcript',
 ]
+
+// Pages a signed-in student sees. Each must stay on its own URL — a bounce
+// to /login means the session didn't hold.
+const SIGNED_IN_PAGES = ['/', '/log', '/calendar', '/achievements', '/reports', '/reminders', '/opportunities', '/profile', '/settings']
+const MONITOR = {
+  email: process.env.MONITOR_EMAIL,
+  password: process.env.MONITOR_PASSWORD,
+  key: process.env.MONITOR_SECRET,
+}
 
 const results = []
 async function check(name, fn) {
@@ -58,8 +73,17 @@ async function getHealth() {
 
 // A page with listeners for the two ways a visitor's page quietly breaks:
 // an uncaught script error, and something the Content-Security-Policy blocks.
-async function openPage(browser, path) {
+async function openPage(browser, path, session) {
   const page = await browser.newPage()
+  if (session) {
+    // Signed in the way the app itself stores a session (src/hooks/useAuth.jsx).
+    await page.evaluateOnNewDocument((token, user) => {
+      try {
+        localStorage.setItem('voluntrack:auth_token', token)
+        localStorage.setItem('voluntrack:user::session', user)
+      } catch { /* a cross-origin frame has no access; the app's page does */ }
+    }, session.token, JSON.stringify(session.user))
+  }
   // Every check is a first visit; a cached 304 would hide what visitors get.
   await page.setCacheEnabled(false)
   const problems = []
@@ -196,6 +220,65 @@ try {
       await page.close()
     }
   })
+
+  if (MONITOR.email && MONITOR.password && MONITOR.key) {
+    let session = null
+    await check('Robot sign-in', async () => {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-monitor-key': MONITOR.key },
+        body: JSON.stringify({ email: MONITOR.email, password: MONITOR.password }),
+        signal: AbortSignal.timeout(30_000),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(`sign-in returned ${res.status}: ${body.error || 'no message'}`)
+      if (!body.token) throw new Error(body.requiresTotp ? 'the monitor account is asking for two-factor' : 'no session came back')
+      session = { token: body.token, user: body.user }
+      return 'signed in'
+    })
+
+    for (const path of SIGNED_IN_PAGES) {
+      await check(`Signed in ${path}`, async () => {
+        if (!session) throw new Error('skipped: the robot could not sign in')
+        const { page, problems } = await openPage(browser, path, session)
+        try {
+          await sleep(1500)
+          const landed = new URL(page.url()).pathname
+          if (landed !== path) throw new Error(`sent to ${landed} instead — the session didn't hold`)
+          const textLength = await page.evaluate(() => document.body.innerText.trim().length)
+          if (textLength < 25) throw new Error('page rendered almost nothing')
+          const found = await pageProblems(page, problems)
+          if (found.length) throw new Error(found.slice(0, 3).join('; '))
+          return 'loads cleanly'
+        } finally {
+          await page.close()
+        }
+      })
+    }
+
+    // The real flow on Log Hours: search a place, pick it, see the map draw.
+    await check('Log Hours place search & map', async () => {
+      if (!session) throw new Error('skipped: the robot could not sign in')
+      const { page, problems } = await openPage(browser, '/log', session)
+      try {
+        const input = await page.waitForSelector('input[name="voluntrack-location-search"]', { timeout: 15_000 })
+          .catch(() => { throw new Error('the location search box never appeared') })
+        await input.type('Austin Central Library', { delay: 40 })
+        const suggestion = await page.waitForSelector('ul[class*="z-[1000]"] li button', { timeout: 20_000 })
+          .catch(() => { throw new Error('place search returned no suggestions') })
+        await suggestion.click()
+        await page.waitForSelector('.leaflet-tile-loaded', { timeout: 20_000 })
+          .catch(() => { throw new Error('a place was picked but the map tiles never loaded') })
+        const found = await pageProblems(page, problems)
+        if (found.length) throw new Error(found.slice(0, 3).join('; '))
+        return 'search found the place and the map drew'
+      } finally {
+        await page.close()
+      }
+    })
+  } else {
+    console.log('Signed-in checks skipped: MONITOR_EMAIL / MONITOR_PASSWORD / MONITOR_SECRET not set.')
+  }
 } finally {
   await browser.close()
 }
@@ -203,6 +286,55 @@ try {
 const failed = results.filter((r) => !r.ok)
 for (const r of results) console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ` — ${r.detail}` : ''}`)
 console.log(`\n${results.length - failed.length}/${results.length} passed`)
+
+// Only for a failing run, and only with a key: a few sentences an owner who
+// isn't a developer can act on. Never fatal — the checks are the report.
+async function aiSummary() {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key || failed.length === 0) return null
+  const recentChanges = (() => {
+    try {
+      return execSync('git log -8 --format="%h %ad %s" --date=short', { encoding: 'utf8' }).trim()
+    } catch {
+      return '(not available)'
+    }
+  })()
+  const prompt = [
+    'You are summarising an automated test run of VolunTrack, a volunteer-hour tracking web app, for its owner, who is not a developer.',
+    'Setup: React/Vite frontend on Vercel with a Content-Security-Policy in vercel.json; Express backend on Render; Neon Postgres; Cloudflare Turnstile CAPTCHA on sign-in and sign-up; Leaflet + OpenStreetMap map with HERE/Nominatim place search on Log Hours; email via Brevo or Gmail SMTP.',
+    '',
+    'Failed checks:',
+    ...failed.map((r) => `- ${r.name}: ${r.detail}`),
+    '',
+    `Passed checks: ${results.filter((r) => r.ok).map((r) => r.name).join(', ')}`,
+    '',
+    'Recent changes (newest first):',
+    recentChanges,
+    '',
+    'In 2-4 short plain-English sentences, no markdown: say what is broken for users, the most likely cause, and the first thing to check. If several checks fail together, say whether they look like one problem. If you are unsure, say so rather than guessing.',
+  ].join('\n')
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: process.env.LIVE_CHECK_MODEL || 'claude-haiku-5-5',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      signal: AbortSignal.timeout(60_000),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(`${res.status} ${body.error?.message || ''}`)
+    return (body.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim() || null
+  } catch (error) {
+    console.error(`AI summary skipped: ${error.message}`)
+    return null
+  }
+}
+
+const summary = await aiSummary()
+if (summary) console.log(`\nAI summary:\n${summary}`)
 
 if (!process.env.CRON_SECRET) process.exit(failed.length ? 1 : 0)
 
@@ -218,7 +350,7 @@ for (let attempt = 0; attempt < 3 && !delivered; attempt++) {
     const res = await fetch(`${API}/status/live-checks`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-cron-key': process.env.CRON_SECRET },
-      body: JSON.stringify({ results, runUrl }),
+      body: JSON.stringify({ results, runUrl, summary }),
       signal: AbortSignal.timeout(30_000),
     })
     const body = await res.json().catch(() => ({}))
