@@ -118,11 +118,14 @@ router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) =
       [id, name, email, subject, message, accountCode || null, couponCode || null],
     )
 
-    const to = process.env.CONTACT_EMAIL || 'volunteertrack@googlegroups.com'
+    // The message is already saved for Admin → Inbox; this is the heads-up.
+    // Falls back to the admin's own address — the old hard-coded Google Group
+    // was deleted, and mail to it went nowhere.
+    const to = process.env.CONTACT_EMAIL || process.env.ADMIN_EMAIL || process.env.EMAIL_USER
     const accountLine = accountCode ? `Customer ID: ${escapeHtml(accountCode)}<br>` : ''
     const couponLine = couponCode ? `Coupon: ${escapeHtml(couponCode)}<br>` : ''
     const body = `New contact message from ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;<br>Subject: ${escapeHtml(subject)}<br>${accountLine}${couponLine}<br>${escapeHtml(message).replace(/\n/g, '<br>')}`
-    await sendEmail({ to, subject: `VolunTrack contact: ${subject}`, html: body })
+    if (to) await sendEmail({ to, subject: `VolunTrack contact: ${subject}`, html: body })
 
     return res.status(201).json({ ok: true, threadId: id })
   } catch (error) {
