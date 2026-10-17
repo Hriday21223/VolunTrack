@@ -13,7 +13,9 @@ name: Live check
 # Setup: repo secret CRON_SECRET (already used by the reminder workflows).
 # Optional (#318): MONITOR_EMAIL / MONITOR_PASSWORD / MONITOR_SECRET — the same
 # three values as on Render — let it sign in and test the signed-in pages;
-# ANTHROPIC_API_KEY adds an AI-written summary to a failing run's alert.
+# OPENROUTER_API_KEY (free models) or ANTHROPIC_API_KEY adds an AI-written
+# summary to a failing run's alert. Repo variable LIVE_CHECK_MODEL overrides
+# the model (default openrouter/free, or claude-haiku-5-5 for Anthropic).
 
 on:
   schedule:
@@ -50,5 +52,7 @@ jobs:
           MONITOR_EMAIL: ${{ secrets.MONITOR_EMAIL }}
           MONITOR_PASSWORD: ${{ secrets.MONITOR_PASSWORD }}
           MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LIVE_CHECK_MODEL: ${{ vars.LIVE_CHECK_MODEL }}
         run: node scripts/live-check.mjs
