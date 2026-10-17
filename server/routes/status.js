@@ -35,13 +35,13 @@ function notifyRecipient() {
 // Fires once per incident (on creation only, not on every health poll) —
 // unlike the old system, which emailed on every visitor's browser quirk.
 // Notifies both the admin and every visitor who opted in on /status.
-async function notifyIncident({ service, detail, source }) {
+async function notifyIncident({ service, detail, source, skipAdmin = false }) {
   const when = new Date().toLocaleString()
   const safeService = escapeHtml(service)
   const bodyHtml = `<p><strong>${safeService}</strong> was flagged ${source === 'admin' ? 'by an admin' : 'automatically'} at ${when}.</p>`
     + (detail ? `<p>${escapeHtml(detail)}</p>` : '')
 
-  const admin = notifyRecipient()
+  const admin = skipAdmin ? null : notifyRecipient()
   if (admin) {
     sendEmail({ to: admin, subject: `VolunTrack incident: ${service}`, html: bodyHtml }).catch(() => {})
   }
@@ -363,6 +363,64 @@ async function alertLiveChecks({ broken, fixed, runUrl, summary }) {
   await sendEmail({ to: admin, subject, html })
 }
 
+// What a failing live check means to a visitor (#324). Each maps to a public
+// service on /status with one plain sentence — the technical detail stays in
+// Admin → Live checks. null keeps a check admin-only: security headers aren't
+// an outage anyone notices, the /health SMTP probe already opens "Email", and
+// TEST checks are drills. Names differ from the /health incidents ("Database",
+// "Email") so the robot never resolves an incident it didn't open.
+const PUBLIC_LIVE_SERVICES = {
+  'Backend API': 'The VolunTrack server is not responding as it should. Some actions may fail.',
+  'Sign-in': 'Signing in may not be working.',
+  'Website pages': 'Some public pages are not loading correctly.',
+  'App pages': 'Some pages inside the app are not loading correctly after signing in.',
+  'Maps & forms': 'The map on Log Hours or embedded forms may not be working.',
+}
+
+function publicServiceFor(checkName) {
+  if (checkName.startsWith('TEST')) return null
+  if (checkName === 'Backend health' || checkName === 'API routes respond') return 'Backend API'
+  if (checkName === 'Sign-in CAPTCHA' || checkName === 'Robot sign-in') return 'Sign-in'
+  if (checkName.startsWith('Page ')) return 'Website pages'
+  if (checkName.startsWith('Signed in ')) return 'App pages'
+  if (checkName === 'Map & Google Form allowed' || checkName === 'Log Hours place search & map') return 'Maps & forms'
+  return null
+}
+
+// Opens a public incident for each service with a check that just reached the
+// alert threshold, and resolves the robot's open incidents for services whose
+// checks all passed this run. Subscribers hear about new ones the usual way;
+// the admin doesn't, having had the live-check alert already.
+async function syncLiveCheckIncidents({ results, broken }) {
+  const services = new Map()
+  for (const r of results) {
+    const service = publicServiceFor(r.name)
+    if (!service) continue
+    if (!services.has(service)) services.set(service, { allOk: true, newlyBroken: false })
+    const entry = services.get(service)
+    if (!r.ok) entry.allOk = false
+    if (broken.some((b) => b.name === r.name)) entry.newlyBroken = true
+  }
+  for (const [service, { allOk, newlyBroken }] of services) {
+    const detail = `${PUBLIC_LIVE_SERVICES[service]} Automated monitoring found the problem and we're looking into it.`
+    if (newlyBroken) {
+      // idx_incidents_one_open_auto keeps this to one open incident per service.
+      const { rowCount } = await query(
+        `INSERT INTO incidents (id, service, detail, status, source) VALUES ($1, $2, $3, 'detected', 'auto')
+         ON CONFLICT DO NOTHING`,
+        [uid('inc'), service, detail],
+      )
+      if (rowCount > 0) await notifyIncident({ service, detail, source: 'auto', skipAdmin: true })
+    } else if (allOk) {
+      await query(
+        `UPDATE incidents SET status = 'resolved', resolved_at = now()
+          WHERE service = $1 AND status = 'detected' AND source = 'auto'`,
+        [service],
+      )
+    }
+  }
+}
+
 router.post('/live-checks', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
   const results = cleanLiveResults(req.body?.results)
   if (!results) return res.status(400).json({ error: 'results must be a list of { name, ok, detail }.' })
@@ -387,6 +445,8 @@ router.post('/live-checks', cronLimiter(), requireCronKey, requireDb, async (req
     const broken = results.filter((r) => !r.ok && now.get(r.name) === LIVE_CHECK_FAILURES_BEFORE_ALERT)
     const fixed = results.filter((r) => r.ok && (before.get(r.name) || 0) >= LIVE_CHECK_FAILURES_BEFORE_ALERT)
     await alertLiveChecks({ broken, fixed, runUrl, summary })
+    await syncLiveCheckIncidents({ results, broken })
+      .catch((error) => console.error('live check incidents failed:', error))
 
     await query(
       `DELETE FROM live_check_runs WHERE id NOT IN (SELECT id FROM live_check_runs ORDER BY ran_at DESC LIMIT ${LIVE_CHECK_RUNS_KEPT})`,
