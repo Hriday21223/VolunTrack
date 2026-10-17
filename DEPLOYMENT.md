@@ -56,7 +56,7 @@ After creating the service, add these environment variables in Render:
 - `EMAIL_SECURE`: `false`
 - `EMAIL_USER`: (your Gmail address)
 - `EMAIL_PASSWORD`: (your Gmail app password)
-- `EMAIL_FROM`: `volunteertrack@googlegroups.com`
+- `EMAIL_FROM`: `volunteertrackinfo@gmail.com`
 
 ### Optional Admin Account:
 - `ADMIN_EMAIL`: Your admin email
