@@ -482,7 +482,11 @@ export default function Settings() {
     if (!user) return
     if (!/^[0-9]{4}$/.test(pin)) return
     if (pin !== pinConfirm) return
-    updateProfile({ pinHash: hashPin(pin) })
+    if (!updateProfile({ pinHash: hashPin(pin) })) {
+      setToastMessage('Could not save the PIN on this device.')
+      setToast(true)
+      return
+    }
     setPin('')
     setPinConfirm('')
     setPinSaved(true)
@@ -675,7 +679,7 @@ export default function Settings() {
               </div>
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" /> New password</label>
-                <input type={showPw ? 'text' : 'password'} className="input" value={pwForm.newPw} onChange={(e) => setPwForm((f) => ({ ...f, newPw: e.target.value }))} required minLength={6} />
+                <input type={showPw ? 'text' : 'password'} className="input" value={pwForm.newPw} onChange={(e) => setPwForm((f) => ({ ...f, newPw: e.target.value }))} required minLength={8} />
               </div>
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" /> Confirm new</label>
@@ -796,7 +800,8 @@ export default function Settings() {
           {/* Server accounts only; a school-SSO account's second factor is its school's. */}
           {localStorage.getItem('voluntrack:auth_token') && !isSsoAccount && <PasskeySettings />}
 
-          <Card>
+          {/* Device-only accounts: a server account has nowhere to store this PIN. */}
+          {!hasServerAccount && <Card>
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-brand-600" />
               <h3 className="font-display font-semibold">App unlock PIN</h3>
@@ -838,7 +843,7 @@ export default function Settings() {
               </div>
               {pinSaved && <div className="text-sm text-emerald-300">App unlock PIN saved. Use it on the login screen.</div>}
             </div>
-          </Card>
+          </Card>}
 
           <Card>
             <div className="flex items-center gap-2 mb-3">

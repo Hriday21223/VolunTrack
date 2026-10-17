@@ -13,6 +13,7 @@ import QRCode from 'qrcode'
 import { isNativeApp } from '@/lib/platform.js'
 import { deviceLockAvailable, setKeepSignedIn } from '@/lib/appSession.js'
 import { isPasskeyCancel } from '@/lib/passkey.js'
+import { hasLocalPinAccount } from '@/api/index.js'
 
 export default function Login() {
   useSeo({
@@ -27,6 +28,8 @@ export default function Login() {
   const loc = useLocation()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState('password')
+  // Only offered when a PIN was set on this device; see hasLocalPinAccount().
+  const [pinAvailable] = useState(hasLocalPinAccount)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [pin, setPin] = useState('')
@@ -322,7 +325,7 @@ export default function Login() {
                 <img src={logoSrc} alt={logoAlt} className="w-12 h-12 object-contain" />
               </div>
 
-              <div className="mb-4 inline-flex rounded-full bg-white/10 p-1 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              {pinAvailable && <div className="mb-4 inline-flex rounded-full bg-white/10 p-1 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                 <button
                   type="button"
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${mode === 'password' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:text-white'}`}
@@ -337,7 +340,7 @@ export default function Login() {
                 >
                   PIN
                 </button>
-              </div>
+              </div>}
 
               {enroll ? (
                 <form onSubmit={onEnrollSubmit} className="space-y-4">
