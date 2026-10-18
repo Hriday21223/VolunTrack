@@ -322,13 +322,17 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     }
   }
 
-  // No server account and no client code: answer exactly as a real send
-  // would, without sending. A different status here would tell anyone asking
-  // whether the address is registered.
-  if (!code && type === 'password' && hasDatabase()) {
+  // No server account: answer exactly as a real send would, without sending.
+  // A different status here would tell anyone asking whether the address is
+  // registered. A client-chosen code is never relayed for a password: with a
+  // database, every real password reset uses the code minted above, so
+  // relaying one would only let anyone mail any address through us.
+  if (!serverGenerated && type === 'password' && hasDatabase()) {
     return res.status(200).json({ ok: true, serverGenerated: true })
   }
-  if (!code || code.length > 20) {
+  // The app's own codes are 6 digits. Anything else would put caller-written
+  // text (a link, say) into an email from our address.
+  if (!/^\d{6}$/.test(code)) {
     return res.status(400).json({ error: 'Invalid code.' })
   }
 
@@ -347,7 +351,7 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     ? 'VolunTrack PIN recovery code'
     : 'VolunTrack password recovery code'
   const text = `Your VolunTrack recovery code is ${code}. It expires in 15 minutes. ${emailFooterText()}`
-  const html = `<p>Your VolunTrack recovery code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>${emailFooterHtml()}`
+  const html = `<p>Your VolunTrack recovery code is <strong>${escapeHtml(code)}</strong>.</p><p>It expires in 15 minutes.</p>${emailFooterHtml()}`
 
   try {
     await transport.sendMail({
