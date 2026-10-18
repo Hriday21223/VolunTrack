@@ -390,7 +390,7 @@ router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'
   }
 })
 
-// Add a student to the school by email (school admin only)
+// Invite a student to the school by email (school admin only)
 router.post('/add-student', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase()
   if (!email || !validator.isEmail(email)) return res.status(400).json({ error: 'Valid email required.' })
@@ -404,11 +404,91 @@ router.post('/add-student', limiter, requireDb, requireAuth('school', 'school_st
     if (target[0].school_id) return res.status(409).json({ error: 'This student is already linked to a school.' })
     if (target[0].role !== 'student') return res.status(400).json({ error: 'That user is not a student.' })
 
-    await query('UPDATE users SET school_id = $1 WHERE id = $2', [userRows[0].school_id, target[0].id])
-    return res.json({ ok: true })
+    // An invite, not a link: the student accepts in Settings before this
+    // school can see their hours. Linking straight away let any school claim
+    // any student account whose email it knew.
+    const { rows: invited } = await query(
+      `INSERT INTO school_student_invites (id, school_id, user_id, invited_by)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (school_id, user_id) WHERE status = 'pending' DO NOTHING
+       RETURNING id`,
+      [uid('sinv'), userRows[0].school_id, target[0].id, req.auth.sub],
+    )
+    if (invited.length > 0) notifyStudentInvite(userRows[0].school_id, target[0].id)
+    return res.json({ ok: true, invited: true })
   } catch (error) {
     console.error('add-student failed:', error)
     return res.status(500).json({ error: 'Could not add student.' })
+  }
+})
+
+async function notifyStudentInvite(schoolId, userId) {
+  try {
+    const { rows } = await query(
+      'SELECT s.name AS school_name, u.email, u.name FROM schools s, users u WHERE s.id = $1 AND u.id = $2',
+      [schoolId, userId],
+    )
+    const row = rows[0]
+    if (!row?.email) return
+    const link = `${String(process.env.FRONTEND_URL || '').replace(/\/$/, '')}/settings`
+    await sendEmail({
+      to: row.email,
+      subject: `${row.school_name} wants to add you on VolunTrack`,
+      html: `<p>Hi ${escapeHtml(row.name || 'there')},</p><p>${escapeHtml(row.school_name)} would like to add you to their school on VolunTrack. If you accept, they'll be able to see the hours you log and review them.</p><p>Open <a href="${link}">Settings → Join school</a> to accept or decline. Nothing is shared unless you accept.</p>${emailFooterHtml()}`,
+    })
+  } catch (error) {
+    console.error('student invite email failed:', error)
+  }
+}
+
+// A student's pending invites from schools.
+router.get('/invites/mine', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT i.id, s.name AS school_name, i.created_at
+         FROM school_student_invites i JOIN schools s ON s.id = i.school_id
+        WHERE i.user_id = $1 AND i.status = 'pending'
+        ORDER BY i.created_at DESC`,
+      [req.auth.sub],
+    )
+    return res.json({ invites: rows.map((r) => ({ id: r.id, schoolName: r.school_name, createdAt: r.created_at })) })
+  } catch (error) {
+    console.error('student invites fetch failed:', error)
+    return res.status(500).json({ error: 'Could not load invites.' })
+  }
+})
+
+// The student accepts or declines. Accepting links them, if they aren't at a
+// school already (moving schools is a transfer, which the new school accepts).
+router.post('/invites/:id/decide', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  const decision = req.body?.decision
+  if (decision !== 'accept' && decision !== 'decline') return res.status(400).json({ error: 'Decision must be accept or decline.' })
+  try {
+    const { rows } = await query(
+      "SELECT school_id FROM school_student_invites WHERE id = $1 AND user_id = $2 AND status = 'pending'",
+      [req.params.id, req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'That invite is no longer open.' })
+    if (decision === 'accept') {
+      const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+      if (me[0]?.school_id) {
+        return res.status(409).json({ error: "You're already at a school. To move, enter the new school's code in Settings to request a transfer." })
+      }
+      await query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].school_id, req.auth.sub])
+      // Other schools' invites can't be accepted now, so they're closed too.
+      await query(
+        "UPDATE school_student_invites SET status = 'declined', decided_at = now() WHERE user_id = $1 AND status = 'pending' AND id <> $2",
+        [req.auth.sub, req.params.id],
+      )
+    }
+    await query(
+      'UPDATE school_student_invites SET status = $1, decided_at = now() WHERE id = $2',
+      [decision === 'accept' ? 'accepted' : 'declined', req.params.id],
+    )
+    return res.json({ ok: true, joined: decision === 'accept' })
+  } catch (error) {
+    console.error('student invite decision failed:', error)
+    return res.status(500).json({ error: 'Could not save your answer.' })
   }
 })
 

@@ -1222,6 +1222,24 @@ export async function initSchema() {
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_school_transfers_pending ON school_transfers(user_id) WHERE status = 'pending'`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_school_transfers_inbox ON school_transfers(to_school_id, status, created_at DESC)`) } catch {}
 
+  // A school adding a student by email only invites them: the student
+  // accepts in Settings before the school can see anything of theirs.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_student_invites (
+        id          TEXT PRIMARY KEY,
+        school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invited_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+        status      TEXT NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending','accepted','declined')),
+        decided_at  TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_school_student_invites_pending ON school_student_invites(school_id, user_id) WHERE status = 'pending'`) } catch {}
+
   // ---------------------------------------------------------------------
   // Append-only audit trail. VolunTrack records *decisions* in several places
   // (logs.verified_by, pdf_uploads.reviewed_by, supervisor_verifications

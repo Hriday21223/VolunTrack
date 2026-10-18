@@ -87,6 +87,9 @@ export default function Settings() {
   // A student who already belongs to a school can ask to move to another one,
   // but nothing happens until the receiving school accepts (#143 step 5).
   const [pendingTransfer, setPendingTransfer] = useState(null)
+  // Schools that invited this student by email; nothing is shared until they accept.
+  const [schoolInvites, setSchoolInvites] = useState([])
+  const [inviteBusy, setInviteBusy] = useState(null)
   const [transferBusy, setTransferBusy] = useState(false)
 
   // One path for both cases: the server decides whether a code links straight
@@ -142,6 +145,46 @@ export default function Settings() {
       setToast(true)
     } finally {
       setTransferBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    if (user?.role !== 'student' || user?.schoolId) return
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    let cancelled = false
+    fetch(`${apiUrl}/school/invites/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled && data) setSchoolInvites(data.invites || []) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user?.role, user?.schoolId])
+
+  const decideSchoolInvite = async (id, decision) => {
+    setInviteBusy(id)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/invites/${encodeURIComponent(id)}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ decision }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not save your answer.')
+      if (data.joined) {
+        setToastMessage('School linked!')
+        setToast(true)
+        window.location.reload()
+        return
+      }
+      setSchoolInvites((list) => list.filter((i) => i.id !== id))
+      setToastMessage('Invite declined.')
+      setToast(true)
+    } catch (e) {
+      setToastMessage(e.message)
+      setToast(true)
+    } finally {
+      setInviteBusy(null)
     }
   }
 
@@ -1067,6 +1110,16 @@ export default function Settings() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {schoolInvites.map((inv) => (
+                    <div key={inv.id} className="rounded-xl border border-brand-500/40 bg-brand-500/10 p-3 space-y-2">
+                      <p className="text-sm"><span className="font-medium">{inv.schoolName}</span> wants to add you to their school.</p>
+                      <p className="text-xs text-earth-500 dark:text-earth-400">If you accept, they can see the hours you log and review them.</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => decideSchoolInvite(inv.id, 'accept')} disabled={inviteBusy === inv.id} className="btn-primary flex-1 text-sm">Accept</button>
+                        <button onClick={() => decideSchoolInvite(inv.id, 'decline')} disabled={inviteBusy === inv.id} className="btn-ghost flex-1 text-sm">Decline</button>
+                      </div>
+                    </div>
+                  ))}
                   <p className="text-sm text-earth-500 dark:text-earth-400">Enter your school code to link your account.</p>
                   <input
                     type="text"
