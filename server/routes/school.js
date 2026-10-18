@@ -2252,7 +2252,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
         const result = await sendEmail({
           to: school.contact_email,
           subject: 'Payment confirmation rejected — VolunTrack',
-          html: `<p>${rejectMsg}</p>${emailFooterHtml()}`,
+          html: `<p>${escapeHtml(rejectMsg)}</p>${emailFooterHtml()}`,
         })
         emailSent = result.sent
       }
