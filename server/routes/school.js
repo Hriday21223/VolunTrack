@@ -623,6 +623,10 @@ function usableStorage(row) {
 }
 
 // Upload a PDF (student or admin)
+const SUBMITTED_DOCUMENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp']
+// Per student, for documents held in our database (base64, so ~4/3 of the file).
+const MAX_STORED_DOCUMENT_BYTES_PER_STUDENT = 25 * 1024 * 1024
+
 router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), async (req, res, next) => {
   if (req.auth.role === 'admin') return next()
   return requirePaidSchool(req, res, next)
@@ -631,6 +635,14 @@ router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), asyn
 
   if (!filename) return res.status(400).json({ error: 'Filename required.' })
   if (!fileData && !objectKey) return res.status(400).json({ error: 'Filename and file data required.' })
+  if (String(filename).length > 200) return res.status(400).json({ error: 'That file name is too long.' })
+  // The school opens these in the browser, so the type a student declares is
+  // limited to what it shows safely (src/components/SubmittedDocument.jsx).
+  const type = String(fileType || 'application/pdf').toLowerCase()
+  if (!SUBMITTED_DOCUMENT_TYPES.includes(type)) {
+    return res.status(400).json({ error: 'Submit a PDF or an image (PNG, JPEG or WebP).' })
+  }
+  if (fileData && typeof fileData !== 'string') return res.status(400).json({ error: 'Invalid file data.' })
 
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
@@ -678,6 +690,15 @@ router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), asyn
           error: 'Your school stores documents in its own storage. Please retry the upload.',
         })
       }
+      // These bytes live in our database, so one account can't be allowed to
+      // fill it: a cap on what each student keeps here.
+      const { rows: usage } = await query(
+        'SELECT COALESCE(SUM(octet_length(file_data)), 0)::bigint AS bytes FROM pdf_uploads WHERE user_id = $1',
+        [req.auth.sub],
+      )
+      if (Number(usage[0].bytes) + fileData.length > MAX_STORED_DOCUMENT_BYTES_PER_STUDENT) {
+        return res.status(413).json({ error: 'You have reached the storage limit for submitted documents. Ask your school to review the ones already sent.' })
+      }
     }
 
     const id = uid('pdf')
@@ -690,7 +711,7 @@ router.post('/upload', limiter, requireDb, requireAuth('student', 'admin'), asyn
         schoolId,
         filename,
         storedKey ? null : fileData,
-        fileType || 'application/pdf',
+        type,
         storedId,
         storedKey,
         storedKey && Number.isInteger(fileBytes) ? fileBytes : null,

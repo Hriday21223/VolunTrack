@@ -15,6 +15,7 @@ import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
+import SubmittedDocument from '@/components/SubmittedDocument.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
@@ -336,11 +337,7 @@ export default function SchoolDashboard() {
             <div className="bg-white rounded-xl overflow-hidden" style={{ height: '80vh' }}>
               {/* Documents in the school's own storage arrive as a short-lived
                   URL; rows still held by us arrive as base64 (#143 step 6). */}
-              <embed
-                src={selectedPdf.url || `data:${selectedPdf.fileType};base64,${selectedPdf.fileData}`}
-                type={selectedPdf.fileType || 'application/pdf'}
-                className="w-full h-full"
-              />
+              <SubmittedDocument doc={selectedPdf} />
             </div>
             {isSchoolAdmin && selectedPdf.status === 'pending' && (
               <div className="flex gap-2 mt-4">
