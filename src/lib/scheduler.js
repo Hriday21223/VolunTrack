@@ -10,14 +10,17 @@ import { addDays, addWeeks, addMonths, isAfter, isBefore, parseISO, set, startOf
  * - `endDate`: optional ISO date string — reminders stop firing after this
  */
 export function computeNextAt(r, now = new Date()) {
+  const next = nextOccurrence(r, now)
+  // The end date bounds when it fires, not when the next time is worked out:
+  // checking only `now` let a daily reminder ending on the 15th fire on the 16th.
+  if (next && r.endDate && isAfter(startOfDay(parseISO(next)), startOfDay(parseISO(r.endDate)))) return null
+  return next
+}
+
+function nextOccurrence(r, now) {
   if (!r.enabled) return null
   const start = r.startDate ? startOfDay(parseISO(r.startDate)) : null
   if (start && isBefore(now, start)) return combineDateTime(start, r.time).toISOString()
-
-  if (r.endDate) {
-    const end = startOfDay(parseISO(r.endDate))
-    if (isAfter(startOfDay(now), end)) return null
-  }
 
   const [hh, mm] = (r.time || '09:00').split(':').map(Number)
 
