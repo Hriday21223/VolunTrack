@@ -5,7 +5,7 @@ import { listLogs, createLog, updateLog, deleteLog,
          isReviewDismissed, dismissReview as dismissReviewApi } from '@/api/index.js'
 import { evaluateAchievements } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
-import { syncCreateLog, syncUpdateLog, syncDeleteLog, syncPullLogs } from '@/lib/logSync.js'
+import { createLogOnServer, syncUpdateLog, syncDeleteLog, syncPullLogs, flushLogOutbox } from '@/lib/logSync.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 const DataContext = createContext(null)
@@ -106,8 +106,16 @@ export function DataProvider({ children }) {
     // before this synced never gets a serverId, and that's fine (no
     // backfill of history predating this feature).
     creatingLogsRef.current.add(log.id)
-    const whenSynced = syncCreateLog(log).then((serverId) => {
+    const whenSynced = createLogOnServer(log).then(({ id: serverId, retry }) => {
       creatingLogsRef.current.delete(log.id)
+      // Couldn't reach the server: flushLogOutbox() sends it later, with any
+      // edits made meanwhile (they're already on the local copy).
+      if (retry && !pendingDeletesRef.current.has(log.id)) {
+        pendingEditsRef.current.delete(log.id)
+        const marked = updateLog(log.id, { syncPending: true })
+        if (marked) setLogs((prev) => prev.map((l) => (l.id === log.id ? marked : l)))
+        return null
+      }
       const queued = pendingEditsRef.current.get(log.id)
       pendingEditsRef.current.delete(log.id)
       if (pendingDeletesRef.current.delete(log.id)) {
@@ -161,8 +169,12 @@ export function DataProvider({ children }) {
     checkedVerificationsFor.current = account
     // Decisions made on the server (a task organizer's sign-off, a supervisor
     // answering a request sent from another device) only arrive by pulling.
+    // Writes that couldn't reach the server earlier go first, so the pull
+    // that follows already knows their server ids.
     if (account && localStorage.getItem('voluntrack:auth_token')) {
-      syncPullLogs(account).then((n) => { if (n > 0) setLogs(listLogs()) })
+      flushLogOutbox()
+        .then((sent) => syncPullLogs(account).then((pulled) => sent + pulled))
+        .then((n) => { if (n > 0) setLogs(listLogs()) })
     }
     const pending = listLogs().filter((l) => l.verificationStatus === 'pending' && l.verificationToken)
     pending.forEach(async (l) => {
@@ -177,6 +189,18 @@ export function DataProvider({ children }) {
       }
     })
   }, [user?.id])
+  // Back online: send what queued up while the server was out of reach.
+  useEffect(() => {
+    const account = user?.id
+    if (!account) return
+    const onOnline = () => {
+      if (!localStorage.getItem('voluntrack:auth_token')) return
+      flushLogOutbox().then((n) => { if (n > 0) setLogs(listLogs()) })
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [user?.id])
+
   const removeLog = useCallback((id) => {
     const target = logs.find((l) => l.id === id)
     deleteLog(id)

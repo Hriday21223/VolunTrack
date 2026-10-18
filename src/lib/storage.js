@@ -12,6 +12,7 @@ export const keys = {
   fired:        `${NS}fired-reminders`, // dedupe list of reminder ids that already fired this cycle
   reviews:      `${NS}reviews`,          // list of review submissions
   reviewDismissed: `${NS}review-dismissed`, // set when the user closes the review prompt without submitting
+  logOutbox:    `${NS}log-outbox`,     // log edits/deletes that couldn't reach the server yet
 }
 
 export function read(key, fallback = null) {
