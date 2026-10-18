@@ -125,7 +125,10 @@ router.put('/sync', limiter, requireDb, requireAuth(), async (req, res) => {
            time = EXCLUDED.time, weekday = EXCLUDED.weekday,
            day_of_month = EXCLUDED.day_of_month, start_date = EXCLUDED.start_date,
            end_date = EXCLUDED.end_date, enabled = EXCLUDED.enabled,
-           timezone = EXCLUDED.timezone, updated_at = now()`,
+           timezone = EXCLUDED.timezone, updated_at = now()
+         -- The id comes from the client: never let it rewrite (and so push
+         -- text to) another account's reminder.
+         WHERE reminders.user_id = EXCLUDED.user_id`,
         row,
       )
     }
