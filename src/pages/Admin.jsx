@@ -14,6 +14,7 @@ import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
 import { fmtDate } from '@/utils/date.js'
 import { parseISO } from 'date-fns'
+import { csvCell } from '@/lib/csv.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
@@ -627,8 +628,10 @@ export default function Admin() {
 
   const exportCsv = () => {
     const header = 'Name,Account ID,Code,Contact Email,Payment Status,Payment Notes,Students,Joined\n'
+    // Through csvCell: school names and payment notes are typed by schools.
     const rows = schools.map((s) =>
-      `"${s.name}","${s.account_code || ''}","${s.pin}","${s.contact_email || ''}","${s.payment_status}","${s.payment_notes || ''}",${s.student_count},"${new Date(s.created_at).toLocaleDateString()}"`
+      [s.name, s.account_code || '', s.pin, s.contact_email || '', s.payment_status, s.payment_notes || '', s.student_count, new Date(s.created_at).toLocaleDateString()]
+        .map(csvCell).join(',')
     ).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
