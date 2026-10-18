@@ -33,6 +33,14 @@ function fromAddress() {
   return process.env.EMAIL_FROM || process.env.EMAIL_USER || null
 }
 
+// Where a reply goes. Brevo can't send as an @gmail.com address (Gmail's DMARC
+// policy), so it swaps the sender for its own brevosend.com address, and a
+// reply would land there instead of in our inbox. EMAIL_REPLY_TO can point
+// replies elsewhere; by default they go back to the address we send as.
+function replyToAddress() {
+  return process.env.EMAIL_REPLY_TO || fromAddress()
+}
+
 let transport = null
 function smtpTransport() {
   const host = process.env.EMAIL_HOST
@@ -266,6 +274,7 @@ export async function sendEmail({ to, subject, html }) {
         headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
         body: JSON.stringify({
           sender: { email: from, name: 'VolunTrack' },
+          replyTo: { email: replyToAddress() },
           to: [{ email: to }],
           subject,
           htmlContent: html,
@@ -293,7 +302,7 @@ export async function sendEmail({ to, subject, html }) {
     return { sent: false }
   }
   try {
-    const info = await t.sendMail({ from, to, subject, html })
+    const info = await t.sendMail({ from, to, replyTo: replyToAddress(), subject, html })
     return { sent: true, id: info.messageId }
   } catch (error) {
     console.error('SMTP send failed:', error.message)

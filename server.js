@@ -165,6 +165,12 @@ function logDevCode(entry) {
   if (devCodeLog.length > DEV_LOG_LIMIT) devCodeLog.length = DEV_LOG_LIMIT
 }
 
+// The address the recovery email comes from, so the page can tell people what
+// to look for in their inbox. Same answer whether or not the account exists.
+function senderAddress() {
+  return process.env.EMAIL_FROM || process.env.EMAIL_USER || null
+}
+
 function transporter() {
   const host = process.env.EMAIL_HOST
   const smtpPort = Number(process.env.EMAIL_PORT || 587)
@@ -328,7 +334,7 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
   // database, every real password reset uses the code minted above, so
   // relaying one would only let anyone mail any address through us.
   if (!serverGenerated && type === 'password' && hasDatabase()) {
-    return res.status(200).json({ ok: true, serverGenerated: true })
+    return res.status(200).json({ ok: true, serverGenerated: true, from: senderAddress() })
   }
   // The app's own codes are 6 digits. Anything else would put caller-written
   // text (a link, say) into an email from our address.
@@ -363,7 +369,7 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     })
     // `serverGenerated` tells the client its own locally-generated code is not
     // the one that was emailed, so it must not show it on screen.
-    return res.status(200).json({ ok: true, serverGenerated })
+    return res.status(200).json({ ok: true, serverGenerated, from: senderAddress() })
   } catch (error) {
     console.error('Email send failed:', error)
     return res.status(500).json({ error: 'Failed to send email.', serverGenerated })

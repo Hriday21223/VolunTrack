@@ -57,7 +57,7 @@ export default function ForgotPassword() {
 
       setDelivery(
         result.ok
-          ? { status: 'sent', reason: '', missingVars: [] }
+          ? { status: 'sent', reason: '', missingVars: [], from: result.from || null }
           : { status: 'fallback', reason: result.reason, missingVars: result.missingVars || [] }
       )
     } catch (error) {
@@ -108,6 +108,7 @@ export default function ForgotPassword() {
                   <Inbox className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
                     A password recovery code has been emailed to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
+                    {delivery.from && <> Look for an email from <span className="font-semibold">VolunTrack</span> ({delivery.from}).</>}{' '}
                     Don't see it? Check the Spam folder and Promotions/Updates tab.
                   </span>
                 </div>

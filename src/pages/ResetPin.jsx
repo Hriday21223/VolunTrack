@@ -54,7 +54,7 @@ export default function ResetPin() {
 
       setDelivery(
         finalResult.ok
-          ? { status: 'sent', reason: '', missingVars: [] }
+          ? { status: 'sent', reason: '', missingVars: [], from: finalResult.from || null }
           : { status: 'fallback', reason: finalResult.reason, missingVars: finalResult.missingVars || [] }
       )
       setStage('verify')
@@ -75,7 +75,7 @@ export default function ResetPin() {
     }
     const result = await sendRecoveryEmail({ email, code: sentCode, type: 'pin' })
     if (result.ok) {
-      setDelivery({ status: 'sent', reason: '', missingVars: [] })
+      setDelivery({ status: 'sent', reason: '', missingVars: [], from: result.from || null })
     } else {
       setDelivery({ status: 'fallback', reason: result.reason, missingVars: result.missingVars || [] })
     }
@@ -247,6 +247,7 @@ function DeliveryBanner({ delivery, email, sentCode, onResend, retrying }) {
         <Inbox className="w-4 h-4 mt-0.5 shrink-0" />
         <span>
           A PIN recovery code has been sent to <span className="font-semibold">{email}</span>. It expires in 15 minutes.
+          {delivery.from && <> Look for an email from <span className="font-semibold">VolunTrack</span> ({delivery.from}).</>}{' '}
           Don't see it? Check the Spam folder and Promotions/Updates tab.
         </span>
       </div>
