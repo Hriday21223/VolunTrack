@@ -334,7 +334,9 @@ function AddGrade({ existing, onAdd }) {
       <button
         type="button"
         className="btn-sm btn-secondary"
-        disabled={!grade.trim() || Object.hasOwn(existing, grade.trim())}
+        // By the normalized grade: "Junior" is grade 11, and adding it again
+        // used to reset an existing grade 11 override to the default.
+        disabled={!grade.trim() || Object.hasOwn(existing, gradeKey(grade) ?? grade.trim())}
         onClick={() => { onAdd(gradeKey(grade)); setGrade('') }}
       >
         <Plus className="w-3.5 h-3.5 mr-1" /> Add
