@@ -560,7 +560,7 @@ export default function SchoolDashboard() {
                       <p className="text-xs text-brand-600 dark:text-brand-400 mt-0.5">{inv.discount_label}</p>
                     )}
                     <p className="text-xs text-earth-500 mt-0.5">
-                      {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
+                      {inv.due_date ? `Due ${fmtDate(String(inv.due_date).slice(0, 10))}` : new Date(inv.created_at).toLocaleDateString()}
                       {inv.po_number && ` · ${poLabel(inv.po_number)}`}
                     </p>
                   </div>
