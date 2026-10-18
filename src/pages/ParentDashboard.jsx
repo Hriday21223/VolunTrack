@@ -12,6 +12,7 @@ import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { gradeOptionLabel } from '@policy'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { exportLogsPDF, exportLogsCSV } from '@/lib/export.js'
+import { countedLogs } from '@/lib/achievements.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -208,10 +209,12 @@ function ChildCard({ child }) {
     // typo. It is still their total, but it is not something they did this
     // month and it is certainly not when they last volunteered.
     const past = logs.filter((l) => String(l.date || '') <= today)
+    // Rejected hours are listed but never counted, same as the school's total.
+    const counted = countedLogs(logs)
     return {
-      total: sum(logs),
-      filtered: sum(filtered),
-      thisMonth: sum(logs.filter((l) => String(l.date || '').slice(0, 7) === monthKey)),
+      total: sum(counted),
+      filtered: sum(countedLogs(filtered)),
+      thisMonth: sum(counted.filter((l) => String(l.date || '').slice(0, 7) === monthKey)),
       approved: sum(logs.filter((l) => l.verification_status === 'approved')),
       pending: sum(logs.filter((l) => !l.verification_status || l.verification_status === 'pending')),
       rejected: logs.filter((l) => l.verification_status === 'rejected').length,
@@ -224,7 +227,7 @@ function ChildCard({ child }) {
     target: requirement?.goalHours,
     total: stats.total,
     deadline: requirement?.deadline,
-    logs,
+    logs: countedLogs(logs),
   }), [requirement?.goalHours, requirement?.deadline, stats.total, logs])
 
   const visible = showAll ? filtered : filtered.slice(0, ROWS_BEFORE_FOLD)

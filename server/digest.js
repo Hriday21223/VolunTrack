@@ -139,7 +139,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
     const childSummaries = await Promise.all(children.map(async (child) => {
       const [{ rows: agg }, { rows: entryRows }, { rows: allTime }] = await Promise.all([
         query(
-          `SELECT COALESCE(SUM(hours), 0)                                               AS week_hours,
+          `SELECT COALESCE(SUM(hours) FILTER (WHERE verification_status IS DISTINCT FROM 'rejected'), 0) AS week_hours,
                   COUNT(*)                                                              AS entry_count,
                   COALESCE(SUM(hours) FILTER (WHERE verification_status = 'approved'), 0) AS verified_hours,
                   COALESCE(SUM(hours) FILTER (WHERE verification_status = 'pending'), 0)  AS pending_hours
@@ -159,7 +159,8 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
         query(
           // "All time" for a parent means since they linked — earlier entries
           // stay private (see logReadScope in server/routes/logs.js).
-          `SELECT COALESCE(SUM(hours), 0) AS all_time_hours FROM logs WHERE user_id = $1 AND created_at >= $2`,
+          `SELECT COALESCE(SUM(hours), 0) AS all_time_hours FROM logs
+            WHERE user_id = $1 AND created_at >= $2 AND verification_status IS DISTINCT FROM 'rejected'`,
           [child.id, child.linked_at],
         ),
       ])
