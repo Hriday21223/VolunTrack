@@ -7,6 +7,7 @@ import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { uid } from '../ids.js'
 import { checkRoundTrip, checkCors, trimSlashes, presign, withPrefix } from '../storage/s3.js'
 import { recordAudit, AUDIT } from '../audit.js'
+import { isPublicHost } from '../publicHost.js'
 
 const router = express.Router()
 
@@ -170,6 +171,10 @@ router.put(
       return res.status(400).json({ error: error.message })
     }
     // R2 and other S3-compatible stores are only reachable via their endpoint.
+    // The checks above go by the name; this goes by where it actually points.
+    if (endpoint && !(await isPublicHost(new URL(endpoint).hostname))) {
+      return res.status(400).json({ error: 'That endpoint is not a public storage host.' })
+    }
     if (provider === 'r2' && !endpoint) {
       return res.status(400).json({ error: 'R2 needs its account endpoint (https://<account>.r2.cloudflarestorage.com).' })
     }

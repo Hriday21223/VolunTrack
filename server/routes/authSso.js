@@ -6,6 +6,7 @@ import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { signToken, requireAuth } from '../auth.js'
 import { recordAudit, AUDIT } from '../audit.js'
+import { isPublicHost } from '../publicHost.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { publicUser, USER_WITH_SCHOOL_SELECT } from './auth.js'
 
@@ -559,6 +560,11 @@ router.post('/connections', requireDb, requireAuth('school', 'org', 'admin'), as
           ? 'A Microsoft directory (tenant) ID is required.'
           : 'A valid https issuer URL is required.',
       })
+    }
+    // Our server fetches the issuer's discovery document, so it must be a
+    // public host, not one that points into our own network.
+    if (provider === 'oidc' && !(await isPublicHost(new URL(issuer).hostname))) {
+      return res.status(400).json({ error: 'The issuer must be a public https address.' })
     }
 
     const displayName = String(req.body.displayName || '').trim().slice(0, 100)
