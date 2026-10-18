@@ -211,7 +211,7 @@ router.get('/domains', tenantAdminLimiter, requireDb, requireAuth('school', 'sch
 })
 
 // POST /api/tenant/domains { hostname } — claim a hostname.
-router.post('/domains', tenantAdminLimiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.post('/domains', tenantAdminLimiter, requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const owner = await ownerFor(req.auth)
     if (!owner) return res.status(400).json({ error: 'Your account is not linked to a school or organization.' })
@@ -265,7 +265,7 @@ router.post('/domains', tenantAdminLimiter, requireDb, requireAuth('school', 'sc
 
 // POST /api/tenant/domains/:id/verify — check the TXT record, then ask
 // Cloudflare to start issuing a certificate.
-router.post('/domains/:id/verify', tenantProvisionLimiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.post('/domains/:id/verify', tenantProvisionLimiter, requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const { rows: found } = await query('SELECT * FROM tenant_domains WHERE id = $1', [req.params.id])
     const row = found[0]
@@ -345,7 +345,7 @@ router.post('/domains/:id/verify', tenantProvisionLimiter, requireDb, requireAut
 // POST /api/tenant/domains/:id/refresh — re-read certificate progress.
 // Certificate issuance is asynchronous, so the admin needs a way to check
 // without us polling Cloudflare on a timer.
-router.post('/domains/:id/refresh', tenantProvisionLimiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.post('/domains/:id/refresh', tenantProvisionLimiter, requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const { rows: found } = await query('SELECT * FROM tenant_domains WHERE id = $1', [req.params.id])
     const row = found[0]
@@ -376,7 +376,7 @@ router.post('/domains/:id/refresh', tenantProvisionLimiter, requireDb, requireAu
 })
 
 // DELETE /api/tenant/domains/:id — release a hostname.
-router.delete('/domains/:id', tenantAdminLimiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.delete('/domains/:id', tenantAdminLimiter, requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const { rows: found } = await query('SELECT * FROM tenant_domains WHERE id = $1', [req.params.id])
     const row = found[0]
