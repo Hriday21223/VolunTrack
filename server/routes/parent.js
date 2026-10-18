@@ -49,7 +49,8 @@ router.get('/child-link-code', limiter, requireDb, requireAuth('student'), async
 })
 
 // A student generates or regenerates their link code. Regenerating does not
-// unlink parents who already linked with the old code.
+// unlink parents who already linked with the old code. A code works once:
+// POST /link clears it, so a code that leaks can't be used by someone else.
 router.post('/child-link-code', limiter, requireDb, requireAuth('student'), async (req, res) => {
   for (let i = 0; i < 5; i++) {
     const code = generateChildLinkCode()
@@ -84,10 +85,40 @@ router.post('/link', limiter, requireDb, requireAuth('parent'), async (req, res)
       'INSERT INTO parent_child_links (parent_id, child_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
       [req.auth.sub, rows[0].id],
     )
+    await query('UPDATE users SET child_link_code = NULL WHERE id = $1 AND child_link_code = $2', [rows[0].id, code])
     return res.json({ ok: true, child: { id: rows[0].id, name: rows[0].name, email: rows[0].email, grade: rows[0].grade } })
   } catch (error) {
     console.error('parent link failed:', error)
     return res.status(500).json({ error: 'Could not link to student.' })
+  }
+})
+
+// The parents linked to a student, so the student can see who follows their
+// hours and remove anyone they didn't mean to share with.
+router.get('/my-parents', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT u.id, u.name, u.email, l.created_at AS linked_at
+         FROM parent_child_links l JOIN users u ON u.id = l.parent_id
+        WHERE l.child_id = $1
+        ORDER BY l.created_at`,
+      [req.auth.sub],
+    )
+    return res.json({ parents: rows.map((r) => ({ id: r.id, name: r.name, email: r.email, linkedAt: r.linked_at })) })
+  } catch (error) {
+    console.error('my-parents fetch failed:', error)
+    return res.status(500).json({ error: 'Could not load linked parents.' })
+  }
+})
+
+router.delete('/my-parents/:parentId', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const del = await query('DELETE FROM parent_child_links WHERE parent_id = $1 AND child_id = $2', [req.params.parentId, req.auth.sub])
+    if (del.rowCount === 0) return res.status(404).json({ error: 'That parent is not linked to you.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('my-parents remove failed:', error)
+    return res.status(500).json({ error: 'Could not remove the parent.' })
   }
 })
 

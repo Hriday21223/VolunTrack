@@ -5,7 +5,7 @@ import { listLogs, createLog, updateLog, deleteLog,
          isReviewDismissed, dismissReview as dismissReviewApi } from '@/api/index.js'
 import { evaluateAchievements } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
-import { syncCreateLog, syncUpdateLog, syncDeleteLog } from '@/lib/logSync.js'
+import { syncCreateLog, syncUpdateLog, syncDeleteLog, syncPullLogs } from '@/lib/logSync.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
 const DataContext = createContext(null)
@@ -159,6 +159,11 @@ export function DataProvider({ children }) {
     const account = user?.id ?? null
     if (checkedVerificationsFor.current === account) return
     checkedVerificationsFor.current = account
+    // Decisions made on the server (a task organizer's sign-off, a supervisor
+    // answering a request sent from another device) only arrive by pulling.
+    if (account && localStorage.getItem('voluntrack:auth_token')) {
+      syncPullLogs(account).then((n) => { if (n > 0) setLogs(listLogs()) })
+    }
     const pending = listLogs().filter((l) => l.verificationStatus === 'pending' && l.verificationToken)
     pending.forEach(async (l) => {
       const result = await getVerificationStatus(l.verificationToken)

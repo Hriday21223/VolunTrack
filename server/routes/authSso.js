@@ -111,6 +111,11 @@ function scopeFor(auth) {
   return null
 }
 
+// Changing a connection is School setup, which co-admins don't get: the
+// write routes leave 'school_staff' out of requireAuth, because a connection
+// whose default role is school_staff could otherwise mint co-admins past the
+// primary admin's limit, or let a removed co-admin back in. Co-admins can
+// still read the settings.
 async function assertCanManage(auth, connection) {
   if (auth.role === 'admin') return true
   const { rows } = await query('SELECT school_id, organization_id FROM users WHERE id = $1', [auth.sub])
@@ -539,7 +544,7 @@ function resolveIssuer(provider, issuer, tenantId) {
   return v.replace(/\/$/, '')
 }
 
-router.post('/connections', requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.post('/connections', requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   if (!hasEncryptionKey()) {
     return res.status(503).json({ error: 'APP_ENCRYPTION_KEY is not configured on the server.' })
   }
@@ -616,7 +621,7 @@ router.post('/connections', requireDb, requireAuth('school', 'school_staff', 'or
   }
 })
 
-router.patch('/connections/:id', requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.patch('/connections/:id', requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const connection = await loadConnection(req.params.id)
     if (!connection) return res.status(404).json({ error: 'Unknown SSO connection.' })
@@ -686,7 +691,7 @@ router.patch('/connections/:id', requireDb, requireAuth('school', 'school_staff'
   }
 })
 
-router.delete('/connections/:id', requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.delete('/connections/:id', requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const connection = await loadConnection(req.params.id)
     if (!connection) return res.status(404).json({ error: 'Unknown SSO connection.' })
@@ -718,7 +723,7 @@ router.delete('/connections/:id', requireDb, requireAuth('school', 'school_staff
 // the caller is authenticated by bearer header, and a top-level navigation
 // can't carry one. Putting the JWT in the query string instead would leak it
 // into browser history, the Referer header, and access logs.
-router.post('/connections/:id/test-start', requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.post('/connections/:id/test-start', requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const connection = await loadConnection(req.params.id)
     if (!connection) return res.status(404).json({ error: 'Unknown SSO connection.' })
@@ -744,7 +749,7 @@ router.post('/connections/:id/test-start', requireDb, requireAuth('school', 'sch
 })
 
 // Adds a domain for a generic-OIDC connection, which must be proven by DNS TXT.
-router.post('/connections/:id/domains', requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.post('/connections/:id/domains', requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const connection = await loadConnection(req.params.id)
     if (!connection) return res.status(404).json({ error: 'Unknown SSO connection.' })
@@ -775,7 +780,7 @@ router.post('/connections/:id/domains', requireDb, requireAuth('school', 'school
 })
 
 // Checks the DNS TXT record for a pending generic-OIDC domain.
-router.post('/connections/:id/domains/verify', requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+router.post('/connections/:id/domains/verify', requireDb, requireAuth('school', 'org', 'admin'), async (req, res) => {
   try {
     const connection = await loadConnection(req.params.id)
     if (!connection) return res.status(404).json({ error: 'Unknown SSO connection.' })

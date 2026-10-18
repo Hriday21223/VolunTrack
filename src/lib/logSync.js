@@ -104,8 +104,10 @@ export async function syncDeleteLog(serverId) {
 // and leaves local storage untouched — the sync-login itself still succeeds.
 //
 // Dedup is by serverId: a server row already represented locally (this
-// device pushed it, or a previous pull brought it down) is skipped, so
-// re-syncing never duplicates. Rows are mapped from the server's snake_case
+// device pushed it, or a previous pull brought it down) isn't added again, so
+// re-syncing never duplicates. Its approval is still brought up to date: a
+// task organizer's sign-off, or a supervisor's on another device, happens on
+// the server, and the device holding the entry otherwise never heard of it. Rows are mapped from the server's snake_case
 // columns to the camelCase shape the Log Hours form produces, and each gets
 // a fresh local id with the server id kept as serverId — that's what lets a
 // later edit/delete on this device sync back through syncUpdateLog /
@@ -119,15 +121,38 @@ export async function syncPullLogs(userId) {
     const res = await fetch(`${apiUrl}/logs/${userId}`, { headers })
     if (!res.ok) return 0
     const body = await res.json().catch(() => ({}))
-    serverLogs = Array.isArray(body.logs) ? body.logs : []
+    // Anything but a real list tells us nothing, and is never read as
+    // "the server has no logs", which would remove them here (below).
+    if (!Array.isArray(body.logs)) return 0
+    serverLogs = body.logs
   } catch {
     return 0
   }
-  if (serverLogs.length === 0) return 0
-
   const local = read(keys.logs, [])
+  // An entry the server once held but no longer does was deleted on another
+  // device; keeping it here would count those hours on this one forever.
+  // Entries that never reached the server (no serverId) are left alone.
+  const onServer = new Set(serverLogs.map((row) => row?.id).filter(Boolean))
+  const kept = local.filter((l) => !l.serverId || onServer.has(l.serverId))
+  const removed = local.length - kept.length
+  local.length = 0
+  local.push(...kept)
   const known = new Set(local.map((l) => l.serverId).filter(Boolean))
   const additions = []
+  // Only a final decision is taken from the server. A request this device sent
+  // is 'pending' here before the server row says so, and must not be undone.
+  const decided = new Map(serverLogs
+    .filter((row) => row?.id && (row.verification_status === 'approved' || row.verification_status === 'rejected'))
+    .map((row) => [row.id, row]))
+  const updated = []
+  for (const l of local) {
+    const row = l.serverId && decided.get(l.serverId)
+    if (!row || l.verificationStatus === row.verification_status) continue
+    l.verificationStatus = row.verification_status
+    l.verified = row.verification_status === 'approved'
+    l.organizerSigned = Boolean(row.organizerSigned)
+    updated.push(l)
+  }
   for (const row of serverLogs) {
     if (!row || !row.id || known.has(row.id)) continue
     known.add(row.id)
@@ -166,16 +191,17 @@ export async function syncPullLogs(userId) {
       createdAt: row.created_at ?? new Date().toISOString(),
     })
   }
-  if (additions.length === 0) return 0
+  if (additions.length === 0 && updated.length === 0 && removed === 0) return 0
 
   // A task organizer signs in VolunTrack itself, so their signature is the one
-  // image that comes back — fetched only for the entries just added.
-  const organizerSigned = additions.filter((l) => l.organizerSigned).map((l) => l.serverId)
+  // image that comes back — fetched only for the entries just added or decided.
+  const changed = [...additions, ...updated]
+  const organizerSigned = changed.filter((l) => l.organizerSigned && !l.supervisorSignature).map((l) => l.serverId)
   if (organizerSigned.length > 0) {
     try {
       const res = await fetch(`${apiUrl}/logs/${userId}/organizer-signatures?ids=${organizerSigned.map(encodeURIComponent).join(',')}`, { headers })
       const { signatures = {} } = res.ok ? await res.json() : {}
-      for (const l of additions) if (signatures[l.serverId]) l.supervisorSignature = signatures[l.serverId]
+      for (const l of changed) if (signatures[l.serverId]) l.supervisorSignature = signatures[l.serverId]
     } catch {
       // The hours still come back; only the signature image is missing.
     }
@@ -186,5 +212,5 @@ export async function syncPullLogs(userId) {
   } catch {
     return 0
   }
-  return additions.length
+  return additions.length + updated.length + removed
 }

@@ -341,6 +341,12 @@ router.post('/transfers/:id/decide', limiter, requireDb, requireAuth('school', '
 
     if (decision === 'accept') {
       await query('UPDATE users SET school_id = $1 WHERE id = $2', [transfer.to_school_id, transfer.user_id])
+      // The student's submitted reports go with them. One in the former
+      // school's own storage stays there: the new school can't reach that bucket.
+      await query(
+        'UPDATE pdf_uploads SET school_id = $1 WHERE user_id = $2 AND school_id = $3 AND storage_id IS NULL',
+        [transfer.to_school_id, transfer.user_id, transfer.from_school_id],
+      )
     }
 
     recordAudit(req, {
@@ -626,7 +632,7 @@ router.get('/pdfs', limiter, requireDb, requireAuth(), async (req, res) => {
       const { rows } = await query(
         `SELECT p.id, p.user_id, u.name AS user_name, u.email AS user_email, p.filename, p.file_type, p.status, p.notes, p.created_at
          FROM pdf_uploads p JOIN users u ON p.user_id = u.id
-         WHERE p.school_id = $1
+         WHERE p.school_id = $1 AND u.school_id = $1
          ORDER BY p.created_at DESC`,
         [userRows[0].school_id],
       )
@@ -662,8 +668,12 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     } else if (role === 'student') {
       allowed = pdf.user_id === sub
     } else if (role === 'school' || role === 'school_staff') {
-      const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [sub])
-      allowed = Boolean(userRows[0]?.school_id) && pdf.school_id === userRows[0].school_id
+      // Only while the student is still at this school: a former school no
+      // longer sees their record (see the transfer step above).
+      const { rows: userRows } = await query('SELECT id, school_id FROM users WHERE id = ANY($1::text[])', [[sub, pdf.user_id]])
+      const staffSchool = userRows.find((u) => u.id === sub)?.school_id
+      const studentSchool = userRows.find((u) => u.id === pdf.user_id)?.school_id
+      allowed = Boolean(staffSchool) && pdf.school_id === staffSchool && studentSchool === staffSchool
     }
     if (!allowed) {
       // An attempt is as interesting as a success.
@@ -729,6 +739,8 @@ router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'schoo
     const { rows } = await query('SELECT * FROM pdf_uploads WHERE id = $1', [req.params.id])
     if (rows.length === 0) return res.status(404).json({ error: 'PDF not found.' })
     if (rows[0].school_id !== userRows[0]?.school_id) return res.status(403).json({ error: 'Not your school.' })
+    const { rows: studentRows } = await query('SELECT school_id FROM users WHERE id = $1', [rows[0].user_id])
+    if (studentRows[0]?.school_id !== rows[0].school_id) return res.status(403).json({ error: 'This student is no longer at your school.' })
 
     await query(
       'UPDATE pdf_uploads SET status = $1, notes = $2, reviewed_by = $3, reviewed_at = now() WHERE id = $4',
@@ -1489,6 +1501,33 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
 })
 
 // Log hours for a volunteer on a task (task creator only, no approval needed)
+// Hours an organizer logs are approved on the spot, so they must be for a day
+// that has happened, and a second click mustn't double them. "Today" is UTC's,
+// which is never behind a US date, so a same-day entry is never refused.
+// Tasks carry no category of their own; this is the app's closest one.
+const ORGANIZER_LOG_CATEGORY = 'Community Service'
+
+// A task's DATE column arrives as a Date at local midnight; a request's as text.
+function dayString(value) {
+  if (!(value instanceof Date)) return String(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+}
+
+function organizerLogDateError(day) {
+  return String(day) > new Date().toISOString().slice(0, 10)
+    ? 'These hours are for a day that hasn\'t happened yet. Log them on or after the day of the task.'
+    : null
+}
+
+async function alreadyLogged(taskId, userId, day) {
+  const { rows } = await query(
+    "SELECT 1 FROM logs WHERE task_id = $1 AND user_id = $2 AND date = $3::date LIMIT 1",
+    [taskId, userId, day],
+  )
+  return rows.length > 0
+}
+
 router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), async (req, res) => {
   const { volunteerId, hours, date } = req.body
   const hoursNum = Number(hours)
@@ -1517,6 +1556,13 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
     if (signupRows.length === 0) return res.status(400).json({ error: 'Volunteer is not an approved signup for this task.' })
     if (signupRows[0].attendance_status === 'absent') return res.status(400).json({ error: 'Cannot log hours for a volunteer marked absent.' })
 
+    const day = dayString(date || taskRows[0].date)
+    const dateError = organizerLogDateError(day)
+    if (dateError) return res.status(400).json({ error: dateError })
+    if (await alreadyLogged(req.params.id, volunteerId, day)) {
+      return res.status(409).json({ error: 'This volunteer already has hours logged for this task on that day.' })
+    }
+
     const lid = uid('log')
     await query(
       // verification_status is set explicitly: the task organizer entering these
@@ -1529,9 +1575,9 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
       [
         lid,
         volunteerId,
-        date || taskRows[0].date,
+        day,
         taskRows[0].title,
-        'volunteer',
+        ORGANIZER_LOG_CATEGORY,
         hoursNum,
         `Logged by task organizer (${taskRows[0].title})`,
         req.auth.sub,
@@ -1566,12 +1612,17 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
       [req.params.id],
     )
     const approvedIds = new Set(approvedRows.map((r) => r.user_id))
+    const day = dayString(date || taskRows[0].date)
+    const dateError = organizerLogDateError(day)
+    if (dateError) return res.status(400).json({ error: dateError })
 
     let logged = 0
+    let skipped = 0
     for (const entry of entries) {
       const entryHours = Number(entry.hours)
       if (!entry.volunteerId || !Number.isFinite(entryHours) || entryHours <= 0) continue
       if (!approvedIds.has(entry.volunteerId)) continue
+      if (await alreadyLogged(req.params.id, entry.volunteerId, day)) { skipped++; continue }
 
       const lid = uid('log')
       await query(
@@ -1585,9 +1636,9 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
         [
           lid,
           entry.volunteerId,
-          date || taskRows[0].date,
+          day,
           taskRows[0].title,
-          'volunteer',
+          ORGANIZER_LOG_CATEGORY,
           entryHours,
           `Logged by task organizer (${taskRows[0].title})`,
           req.auth.sub,
@@ -1596,7 +1647,7 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
       )
       logged++
     }
-    return res.status(201).json({ ok: true, logged })
+    return res.status(201).json({ ok: true, logged, skipped })
   } catch (error) {
     console.error('batch log hours failed:', error)
     return res.status(500).json({ error: 'Could not log hours.' })

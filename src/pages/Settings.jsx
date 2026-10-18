@@ -70,6 +70,7 @@ export default function Settings() {
   const [schoolName, setSchoolName] = useState('')
   const [schoolBusy, setSchoolBusy] = useState(false)
   const [childLinkCode, setChildLinkCode] = useState(null)
+  const [linkedParents, setLinkedParents] = useState([])
   const [childLinkBusy, setChildLinkBusy] = useState(false)
   const [linkChildInput, setLinkChildInput] = useState('')
   const [linkChildBusy, setLinkChildBusy] = useState(false)
@@ -405,6 +406,15 @@ export default function Settings() {
     return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
   }
 
+  const loadLinkedParents = async () => {
+    try {
+      const res = await fetch(`${familyApiUrl}/parent/my-parents`, { headers: authHeaders() })
+      if (!res.ok) return
+      const data = await res.json()
+      setLinkedParents(data.parents || [])
+    } catch {}
+  }
+
   useEffect(() => {
     if (user?.role !== 'student') return
     ;(async () => {
@@ -415,7 +425,22 @@ export default function Settings() {
         setChildLinkCode(data.childLinkCode)
       } catch {}
     })()
+    loadLinkedParents()
   }, [user?.role])
+
+  const removeLinkedParent = async (parentId) => {
+    try {
+      const res = await fetch(`${familyApiUrl}/parent/my-parents/${encodeURIComponent(parentId)}`, { method: 'DELETE', headers: authHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not remove the parent.')
+      setLinkedParents((list) => list.filter((p) => p.id !== parentId))
+      setToastMessage('Parent removed')
+      setToast(true)
+    } catch (error) {
+      setToastMessage(error.message)
+      setToast(true)
+    }
+  }
 
   const loadLinkedChildren = async () => {
     try {
@@ -1192,7 +1217,7 @@ export default function Settings() {
                   <h3 className="font-display font-semibold">Share with a parent</h3>
                 </div>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-                  Generate a code and share it with a parent so they can follow your logged hours and verification status. Only hours logged from now on will be visible to them.
+                  Generate a code and share it with a parent so they can follow your logged hours and verification status. Only hours logged from now on will be visible to them. Each code works once — generate another for a second parent.
                 </p>
                 {childLinkCode ? (
                   <div className="space-y-3">
@@ -1209,6 +1234,24 @@ export default function Settings() {
                     {childLinkBusy ? 'Generating…' : 'Generate link code'}
                   </button>
                 )}
+                <div className="mt-5 border-t border-white/10 pt-4">
+                  <div className="text-sm font-medium mb-2">Parents who can see your hours</div>
+                  {linkedParents.length === 0 ? (
+                    <div className="text-sm text-earth-500 dark:text-earth-400">No one yet.</div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {linkedParents.map((p) => (
+                        <li key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{p.name}</div>
+                            <div className="text-xs text-earth-400 truncate">{p.email}</div>
+                          </div>
+                          <button onClick={() => removeLinkedParent(p.id)} className="btn-ghost text-sm shrink-0">Remove</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </Card>
             )}
 
