@@ -454,7 +454,7 @@ async function requestingStudent(req) {
 async function createSupervisorVerification(req, { student, supervisorEmail, supervisorName, activity, hours, logId, appUrl, delivery }) {
   // Only when a DB is available can we hold tamper-proof verification state
   // (the student's browser can't be trusted to self-report "verified").
-  if (!hasDatabase()) return { token: null, statusToken: null, verifyUrl: null }
+  if (!hasDatabase()) return { token: null, statusToken: null, verifyUrl: null, activity, hours }
   const token = generateToken()
   const statusToken = generateToken()
 
@@ -465,8 +465,14 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
   let linkedLogId = null
   if (logId) {
     try {
-      const { rows } = await query('SELECT 1 FROM logs WHERE id = $1 AND user_id = $2', [logId, req.auth.sub])
-      if (rows.length) linkedLogId = logId
+      // What the supervisor is shown, and so approves, is the entry as stored —
+      // not the activity and hours the request claims, which could differ.
+      const { rows } = await query('SELECT activity, hours FROM logs WHERE id = $1 AND user_id = $2', [logId, req.auth.sub])
+      if (rows.length) {
+        linkedLogId = logId
+        activity = rows[0].activity
+        hours = Number(rows[0].hours)
+      }
     } catch (error) {
       console.error('Could not check verification log owner:', error)
     }
@@ -493,13 +499,13 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
     }
   } catch (error) {
     console.error('Could not create supervisor verification record:', error)
-    return { token: null, statusToken: null, verifyUrl: null }
+    return { token: null, statusToken: null, verifyUrl: null, activity, hours }
   }
 
   const u = new URL(appUrl)
   u.pathname = u.pathname.replace(/\/register\/?$/, '/verify-hours')
   u.search = `?token=${token}`
-  return { token, statusToken, verifyUrl: u.toString() }
+  return { token, statusToken, verifyUrl: u.toString(), activity, hours }
 }
 
 // This route sends mail from VolunTrack's own SMTP identity to a
@@ -508,10 +514,9 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
 // The sender's identity comes from the session, never the body, and the
 // links in the message may only point at origins we serve.
 app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res) => {
-  const { supervisorEmail, supervisorName, activity, signupUrl, logId } = req.body
+  const { supervisorEmail, supervisorName, signupUrl, logId } = req.body
   const parsed = parseVerificationRequest(req.body)
   if (parsed.error) return res.status(400).json({ error: parsed.error })
-  const hoursNum = parsed.hours
 
   const { transport, missing } = transporter()
   if (!transport) {
@@ -525,9 +530,12 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
   if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
   const studentName = student.name
 
-  const { statusToken, verifyUrl } = await createSupervisorVerification(req, {
-    student, supervisorEmail, supervisorName, activity, hours: hoursNum, logId, appUrl, delivery: 'voluntrack',
+  const verification = await createSupervisorVerification(req, {
+    student, supervisorEmail, supervisorName, activity: req.body.activity, hours: parsed.hours, logId, appUrl, delivery: 'voluntrack',
   })
+  const { statusToken, verifyUrl } = verification
+  const activity = verification.activity
+  const hoursNum = verification.hours
 
   const safeStudent = escapeHtml(studentName)
   const safeActivity = escapeHtml(activity)
