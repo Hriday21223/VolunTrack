@@ -121,13 +121,22 @@ export async function syncPullLogs(userId) {
     const res = await fetch(`${apiUrl}/logs/${userId}`, { headers })
     if (!res.ok) return 0
     const body = await res.json().catch(() => ({}))
-    serverLogs = Array.isArray(body.logs) ? body.logs : []
+    // Anything but a real list tells us nothing, and is never read as
+    // "the server has no logs", which would remove them here (below).
+    if (!Array.isArray(body.logs)) return 0
+    serverLogs = body.logs
   } catch {
     return 0
   }
-  if (serverLogs.length === 0) return 0
-
   const local = read(keys.logs, [])
+  // An entry the server once held but no longer does was deleted on another
+  // device; keeping it here would count those hours on this one forever.
+  // Entries that never reached the server (no serverId) are left alone.
+  const onServer = new Set(serverLogs.map((row) => row?.id).filter(Boolean))
+  const kept = local.filter((l) => !l.serverId || onServer.has(l.serverId))
+  const removed = local.length - kept.length
+  local.length = 0
+  local.push(...kept)
   const known = new Set(local.map((l) => l.serverId).filter(Boolean))
   const additions = []
   // Only a final decision is taken from the server. A request this device sent
@@ -182,7 +191,7 @@ export async function syncPullLogs(userId) {
       createdAt: row.created_at ?? new Date().toISOString(),
     })
   }
-  if (additions.length === 0 && updated.length === 0) return 0
+  if (additions.length === 0 && updated.length === 0 && removed === 0) return 0
 
   // A task organizer signs in VolunTrack itself, so their signature is the one
   // image that comes back — fetched only for the entries just added or decided.
@@ -203,5 +212,5 @@ export async function syncPullLogs(userId) {
   } catch {
     return 0
   }
-  return additions.length + updated.length
+  return additions.length + updated.length + removed
 }
