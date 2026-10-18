@@ -5,6 +5,11 @@
 // a year of logging on the website must not open on 0 hours. Never throws — a
 // failed sync just means that log stays local-only, matching the app's
 // existing dual-mode design.
+//
+// A write that fails because the server couldn't be reached (offline, or the
+// backend still waking up) is retried by flushLogOutbox() rather than lost:
+// a new log is marked syncPending, and edits and deletes wait in an outbox
+// kept in local storage. A refusal (4xx) isn't retried — it would fail again.
 
 import { keys, read, write } from '@/lib/storage.js'
 import { uid } from '@/utils/id.js'
@@ -62,17 +67,41 @@ function toServerLog(log, only = null) {
   return body
 }
 
-export async function syncCreateLog(log) {
+const unreachable = (res) => !res || res.status >= 500
+
+function readOutbox() {
+  const box = read(keys.logOutbox, null)
+  return { deletes: Array.isArray(box?.deletes) ? box.deletes : [], edits: box?.edits && typeof box.edits === 'object' ? box.edits : {} }
+}
+
+function writeOutbox(box) {
+  try { write(keys.logOutbox, box) } catch { /* storage full: nothing more we can do */ }
+}
+
+// { id, retry }: retry is true when the server couldn't be reached, so the
+// caller can mark the log for flushLogOutbox() instead of leaving it local.
+export async function createLogOnServer(log) {
   const headers = authHeaders()
-  if (!headers) return null
+  if (!headers) return { id: null, retry: false }
+  let res = null
   try {
-    const res = await fetch(`${apiUrl}/logs`, { method: 'POST', headers, body: JSON.stringify(toServerLog(log)) })
-    if (!res.ok) return null
-    const body = await res.json().catch(() => ({}))
-    return body.id || null
-  } catch {
-    return null
-  }
+    res = await fetch(`${apiUrl}/logs`, { method: 'POST', headers, body: JSON.stringify(toServerLog(log)) })
+  } catch { /* unreachable */ }
+  if (!res || !res.ok) return { id: null, retry: unreachable(res) }
+  const body = await res.json().catch(() => ({}))
+  return { id: body.id || null, retry: false }
+}
+
+export async function syncCreateLog(log) {
+  return (await createLogOnServer(log)).id
+}
+
+async function sendUpdate(headers, serverId, body) {
+  let res = null
+  try {
+    res = await fetch(`${apiUrl}/logs/${serverId}`, { method: 'PATCH', headers, body: JSON.stringify(body) })
+  } catch { /* unreachable */ }
+  return !unreachable(res)
 }
 
 export async function syncUpdateLog(serverId, patch) {
@@ -81,21 +110,55 @@ export async function syncUpdateLog(serverId, patch) {
   const body = toServerLog(patch, patch)
   // Nothing the server keeps changed (e.g. a local verification status).
   if (Object.keys(body).length === 0) return
+  if (await sendUpdate(headers, serverId, body)) return
+  const box = readOutbox()
+  box.edits[serverId] = { ...(box.edits[serverId] || {}), ...body }
+  writeOutbox(box)
+}
+
+async function sendDelete(headers, serverId) {
+  let res = null
   try {
-    await fetch(`${apiUrl}/logs/${serverId}`, { method: 'PATCH', headers, body: JSON.stringify(body) })
-  } catch {
-    // best-effort
-  }
+    res = await fetch(`${apiUrl}/logs/${serverId}`, { method: 'DELETE', headers })
+  } catch { /* unreachable */ }
+  return !unreachable(res)
 }
 
 export async function syncDeleteLog(serverId) {
   const headers = authHeaders()
   if (!headers || !serverId) return
-  try {
-    await fetch(`${apiUrl}/logs/${serverId}`, { method: 'DELETE', headers })
-  } catch {
-    // best-effort
+  if (await sendDelete(headers, serverId)) return
+  // Until it lands, syncPullLogs must not bring the entry back from the server.
+  const box = readOutbox()
+  delete box.edits[serverId]
+  if (!box.deletes.includes(serverId)) box.deletes.push(serverId)
+  writeOutbox(box)
+}
+
+// Retries what couldn't reach the server earlier: logs created while
+// unreachable (syncPending), then queued deletes and edits. Returns how many
+// local logs changed, so the caller knows to re-read them.
+export async function flushLogOutbox() {
+  const headers = authHeaders()
+  if (!headers) return 0
+  let changed = 0
+  for (const log of read(keys.logs, []).filter((l) => l.syncPending && !l.serverId)) {
+    const { id, retry } = await createLogOnServer(log)
+    if (!id && retry) break // still unreachable; try again next time
+    const logs = read(keys.logs, [])
+    const i = logs.findIndex((l) => l.id === log.id)
+    if (i === -1) continue
+    logs[i] = { ...logs[i], syncPending: false, ...(id ? { serverId: id } : {}) }
+    write(keys.logs, logs)
+    changed++
   }
+  const box = readOutbox()
+  const deletes = []
+  for (const serverId of box.deletes) if (!(await sendDelete(headers, serverId))) deletes.push(serverId)
+  const edits = {}
+  for (const [serverId, body] of Object.entries(box.edits)) if (!(await sendUpdate(headers, serverId, body))) edits[serverId] = body
+  writeOutbox({ deletes, edits })
+  return changed
 }
 
 // Pull the account's logs from the server into local storage. Called right
@@ -128,6 +191,10 @@ export async function syncPullLogs(userId) {
   } catch {
     return 0
   }
+  // A delete still waiting in the outbox: the server has the row, this device
+  // doesn't want it back.
+  const deleting = new Set(readOutbox().deletes)
+  serverLogs = serverLogs.filter((row) => !deleting.has(row?.id))
   const local = read(keys.logs, [])
   // An entry the server once held but no longer does was deleted on another
   // device; keeping it here would count those hours on this one forever.

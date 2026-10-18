@@ -171,6 +171,7 @@ export function clearUserData() {
   write(keys.achievements, [])
   write(keys.reminders, [])
   write(keys.fired, [])
+  write(keys.logOutbox, null)
   // The review prompt is suppressed by either of these, so leaving them
   // behind would hide it from every later account on a shared device.
   write(keys.reviews, [])
