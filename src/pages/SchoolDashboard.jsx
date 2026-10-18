@@ -22,7 +22,7 @@ import ReferralCard from '@/components/ReferralCard.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 const SCHOOL_TOUR_STEPS = [
-  { selector: '[data-tour="tab-students"]', title: 'Students', description: 'See everyone linked to your school, and add students by email.' },
+  { selector: '[data-tour="tab-students"]', title: 'Students', description: 'See everyone linked to your school, and invite students by email.' },
   { selector: '[data-tour="tab-reports"]', title: 'Reports', description: 'Review the PDF proof documents students upload and approve or reject each one — and export every student\'s hours for a date range.' },
   { selector: '[data-tour="tab-chat"]', title: 'Announcements', description: 'Send a message to every student linked to your school at once.' },
 ]
@@ -724,13 +724,14 @@ export default function SchoolDashboard() {
                 <Search className="w-3.5 h-3.5 mr-1" /> Student list ({students.length})
               </button>
               <button onClick={() => setSubTab('add')} className={`btn-sm ${subTab === 'add' ? 'btn-primary' : 'btn-ghost'}`}>
-                <Upload className="w-3.5 h-3.5 mr-1" /> Add student
+                <Upload className="w-3.5 h-3.5 mr-1" /> Invite student
               </button>
             </div>
 
             {subTab === 'add' && (
               <Card>
-                <h3 className="font-semibold mb-3">Add student by email</h3>
+                <h3 className="font-semibold mb-1">Invite a student by email</h3>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">They get an email and accept in their Settings. You'll see them in your student list once they do. Students can also join with your school code.</p>
                 <form onSubmit={async (e) => {
                   e.preventDefault()
                   setAddErr('')
@@ -744,7 +745,7 @@ export default function SchoolDashboard() {
                     })
                     const data = await res.json()
                     if (!res.ok) throw new Error(data.error || 'Failed')
-                    setToastMsg('Student added!')
+                    setToastMsg('Invite sent. They\'ll appear once they accept.')
                     setToast(true)
                     setAddEmail('')
                     loadData()
@@ -752,7 +753,7 @@ export default function SchoolDashboard() {
                 }} className="space-y-3">
                   <div className="flex gap-2">
                     <input type="email" className="input flex-1" placeholder="student@school.edu" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} required />
-                    <button type="submit" className="btn-primary" disabled={adding}>{adding ? 'Adding…' : 'Add'}</button>
+                    <button type="submit" className="btn-primary" disabled={adding}>{adding ? 'Sending…' : 'Invite'}</button>
                   </div>
                   {addErr && <p className="text-sm text-red-500">{addErr}</p>}
                 </form>

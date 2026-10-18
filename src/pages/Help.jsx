@@ -31,7 +31,7 @@ const FAQ_ITEMS = [
   { q: 'Can more than one person manage a school account?', a: 'Yes. The primary school account can add up to 10 co-admins from School setup \u2192 Co-admins, entering each person\'s name, email, and a temporary password they change after signing in. Co-admins share the dashboard \u2014 reviewing reports, managing students, and sending announcements \u2014 but don\'t get the School setup tab, so they can\'t add or remove other co-admins, change the school code, configure sign-in, or handle billing.' },
   { q: 'How does a school or organization sign up?', a: 'Contact us through the Contact page. We\'ll send a quote along with a one-time registration code (or, if you prefer, an invite link). Enter the code at the School or Organization sign-up page to create the account and choose your own password. Each code works once and expires, so ask us for a new one if yours has run out.' },
   { q: 'Who sets the price for a school or organization account?', a: 'The VolunTrack admin, based on your size and how you\'ll use it. You\'ll get a quote before you sign up, and invoices arrive by email with a downloadable PDF.' },
-  { q: 'How do I join a school?', a: 'Ask your school administrator for their school code. Go to Settings → Join school and enter it — your account links immediately. A school can also add you directly by email.' },
+  { q: 'How do I join a school?', a: 'Ask your school administrator for their school code. Go to Settings → Join school and enter it — your account links immediately. A school can also invite you by email: you\'ll see the invite in Settings → Join school, and nothing is shared unless you accept.' },
   { q: 'Where can I find volunteer opportunities?', a: 'Open the Opportunities page. It lists public tasks posted by schools and organizations, sorted by distance if you allow location access. Sign up in one click; once the organizer approves you, pick the task when you log your hours and the organizer signs them off on their My Tasks page.' },
   { q: 'My school requires signatures — what do I do?', a: 'Log Hours shows a Signatures section with exactly what your school asks for: your own signature, your supervisor\'s (in person or by a link you email), or your school\'s form. If it\'s a Google Form, fill it in right on the page and tick the box; for any other form, download it, get it signed, and upload a photo or scan.' },
   { q: 'Can I log hours for a past date?', a: 'Yes. Set any past date when you add the entry — there\'s no cutoff. If you tend to forget, the Reminders page lets you schedule recurring nudges, delivered as browser notifications and in-app toasts.' },
@@ -50,7 +50,7 @@ const FAQ_ITEMS = [
 // Drives the Quick Start panel below and the HowTo structured data.
 const QUICKSTART_STEPS = [
   { name: 'Create your account', text: 'Go to the Sign Up page and pick a role: Student if you\'re logging your own hours, Volunteer Task Maker if you\'re organizing events for others, or Parent if you want to follow a student\'s hours. Enter your date of birth, then the 6-digit code we email you to confirm your address. If you\'re under 13, a parent or guardian approves the account by email first. Schools and multi-school organizations have their own signup pages.' },
-  { name: 'Join your school (optional)', text: 'If your school uses VolunTrack, ask an administrator for a school code. Open Settings, find "Join school," and enter the code. Your school can also add you directly by email.' },
+  { name: 'Join your school (optional)', text: 'If your school uses VolunTrack, ask an administrator for a school code. Open Settings, find "Join school," and enter the code. Your school can also invite you by email; accept it in Settings.' },
   { name: 'Log your first hours', text: 'Click Log Hours (or the + button on mobile). Fill in the date, hours, activity, and category, and optionally a supervisor email so they can verify the hours. Click Save — your hours appear on the dashboard, calendar, and reports instantly.' },
   { name: 'Set a goal', text: 'Go to Settings and scroll to Goals. Set a target (e.g. "50 hours by June") to track your progress with a visual ring on the dashboard.' },
   { name: 'Explore your dashboard', text: 'Return to Home to see your total hours, goal progress, weekly chart, recent activity, and earned badges — all in one place.' },
@@ -115,7 +115,7 @@ function QuickStart() {
       </Section>
 
       <Section title="2. Join your school (optional)">
-        <p>If your school uses VolunTrack, ask an administrator for a school code. Open <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>, find "Join school," and enter the code. Your school can also add you directly by email — in that case you'll already be linked when you log in.</p>
+        <p>If your school uses VolunTrack, ask an administrator for a school code. Open <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>, find "Join school," and enter the code. Your school can also invite you by email: the invite shows up under Join school, and nothing is shared until you accept.</p>
       </Section>
 
       <Section title="3. Log your first hours">
@@ -345,7 +345,7 @@ function SchoolHandbook() {
         <p>The Students tab shows everyone linked to your school. There are two ways to add students:</p>
         <div className="mt-3 space-y-2">
           <Step icon={School} label="Share your school code" description="Students enter it in Settings → Join school." />
-          <Step icon={Mail} label="Add by email" description="Invite a student directly from the Students tab." />
+          <Step icon={Mail} label="Invite by email" description="Invite a student from the Students tab; they join once they accept in their Settings." />
         </div>
       </Section>
 
@@ -415,7 +415,7 @@ function SchoolStaffHandbook() {
         <div className="mt-3 space-y-2">
           <Step icon={FileText} label="Review reports" description="Open student submissions in the Reports tab and approve or reject them with notes, and upload the school's own verification documents." />
           <Step icon={Download} label="Export hours" description="Reports → Hours exports every student's logged hours for a date range as a CSV." />
-          <Step icon={Users} label="Manage students" description="See the full student list, share the school code, and add students by email." />
+          <Step icon={Users} label="Manage students" description="See the full student list, share the school code, and invite students by email." />
           <Step icon={MessageSquare} label="Send announcements" description="Post to every student's dashboard from the announcements button." />
           <Step icon={Hand} label="Post volunteer tasks" description="Publish public volunteer opportunities from the Volunteer tab, the same way the school admin does." />
         </div>
