@@ -499,7 +499,9 @@ export function validateLogAgainstPolicy(policy, entry = {}, { now = new Date() 
     if (!rules.allowFutureDates && dayDiff(date, today) > 0) {
       add('date', 'Your school does not accept hours dated in the future.')
     }
-    if (rules.maxBackdateDays != null && dayDiff(today, date) > rules.maxBackdateDays) {
+    // One day of slack: "today" here is UTC's, already tomorrow on a US
+    // evening, which would refuse an entry exactly maxBackdateDays old.
+    if (rules.maxBackdateDays != null && dayDiff(today, date) > rules.maxBackdateDays + 1) {
       add('date', `Your school requires hours to be logged within ${rules.maxBackdateDays} day(s) of the activity.`)
     }
   }
