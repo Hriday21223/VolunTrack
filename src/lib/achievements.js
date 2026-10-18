@@ -114,7 +114,16 @@ export const BADGES = [
 ]
 
 /** Build the derived state we evaluate against. */
-export function deriveAchievementState(logs, goals) {
+// Hours a supervisor or school rejected don't count: not toward a badge, a
+// goal, the school's requirement, or a certificate of service. The school's
+// own totals already leave them out (server/routes/school.js), and the
+// student's must agree with them.
+export function countedLogs(logs) {
+  return (logs || []).filter((l) => (l.verificationStatus || l.verification_status) !== 'rejected')
+}
+
+export function deriveAchievementState(allLogs, goals) {
+  const logs = countedLogs(allLogs)
   const dates = logs.map((l) => l.date).filter(Boolean)
   const totalHours = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
   const distinctDays = new Set(dates).size

@@ -8,6 +8,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { fmtHours } from '@/utils/date.js'
 import { useMyRequirements } from '@/lib/requirements.js'
+import { countedLogs } from '@/lib/achievements.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -118,7 +119,7 @@ export default function Profile() {
     setToast(true)
   }
 
-  const total = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
+  const total = countedLogs(logs).reduce((s, l) => s + (Number(l.hours) || 0), 0)
   const sessions = logs.length
 
   return (

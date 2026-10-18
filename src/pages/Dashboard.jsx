@@ -9,7 +9,7 @@ import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
 import { useMyRequirements } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
-import { nextBadgeProgress } from '@/lib/achievements.js'
+import { nextBadgeProgress, countedLogs } from '@/lib/achievements.js'
 import { listReminders } from '@/api/index.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -80,15 +80,17 @@ export default function Dashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [dashTab])
 
-  const total = useMemo(() => logs.reduce((s, l) => s + (Number(l.hours) || 0), 0), [logs])
+  // Rejected hours are listed, but never counted toward anything.
+  const counted = useMemo(() => countedLogs(logs), [logs])
+  const total = useMemo(() => counted.reduce((s, l) => s + (Number(l.hours) || 0), 0), [counted])
 
   // Recomputes when the calendar month changes; identity is stable across renders
   // within the same month so the memo below doesn't invalidate every keystroke.
   const monthStart = useMemo(() => startOfMonth(new Date()), [])
   const thisMonth = useMemo(
-    () => logs.filter((l) => l.date && parseISO(l.date) >= monthStart)
+    () => counted.filter((l) => l.date && parseISO(l.date) >= monthStart)
               .reduce((s, l) => s + (Number(l.hours) || 0), 0),
-    [logs, monthStart],
+    [counted, monthStart],
   )
 
   // What this student's school asks of them, if anything (server/requirements.js).
@@ -107,15 +109,15 @@ export default function Dashboard() {
     total,
     deadline: primary?.deadline,
     startedAt: primary?.createdAt,
-    logs,
-  }), [target, total, primary?.deadline, primary?.createdAt, logs])
+    logs: counted,
+  }), [target, total, primary?.deadline, primary?.createdAt, counted])
 
   const requirementPace = useMemo(() => goalPace({
     target: requirements.goalHours,
     total,
     deadline: requirements.policy?.goals?.deadline,
-    logs,
-  }), [requirements.goalHours, requirements.policy?.goals?.deadline, total, logs])
+    logs: counted,
+  }), [requirements.goalHours, requirements.policy?.goals?.deadline, total, counted])
 
   // Weekly chart: last 7 days ending today
   const weekly = useMemo(() => {
