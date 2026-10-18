@@ -13,7 +13,7 @@ import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteRe
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
 import { fmtDate } from '@/utils/date.js'
-import { parseISO } from 'date-fns'
+import { parseISO, format } from 'date-fns'
 import { csvCell } from '@/lib/csv.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -1208,7 +1208,7 @@ export default function Admin() {
   const openSchedule = (r) => {
     setSchedulingId(r.id)
     setScheduleDraft({
-      publishAt: r.publish_at ? r.publish_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      publishAt: r.publish_at ? r.publish_at.slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
       removeAfterDays: 30,
     })
   }

@@ -13,6 +13,7 @@ import { gradeOptionLabel } from '@policy'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { exportLogsPDF, exportLogsCSV } from '@/lib/export.js'
 import { countedLogs } from '@/lib/achievements.js'
+import { format } from 'date-fns'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -204,7 +205,7 @@ function ChildCard({ child }) {
     const sum = (rows) => rows.reduce((s, l) => s + (Number(l.hours) || 0), 0)
     const now = new Date()
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const today = now.toISOString().slice(0, 10)
+    const today = format(now, 'yyyy-MM-dd')
     // A log can carry a future date — a shift entered ahead of time, or a
     // typo. It is still their total, but it is not something they did this
     // month and it is certainly not when they last volunteered.

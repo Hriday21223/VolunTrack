@@ -4,6 +4,7 @@ import { schoolHoursCSV, schoolSummaryCSV, schoolHoursPDF } from '@/lib/export.j
 import { fmtHours } from '@/utils/date.js'
 import { gradeLabel } from '@policy'
 import PdfPreview from '@/components/PdfPreview.jsx'
+import { format } from 'date-fns'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -12,8 +13,10 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+// The viewer's own calendar day; toISOString() is UTC's, a day ahead in a
+// US evening.
 function isoDate(d) {
-  return d.toISOString().slice(0, 10)
+  return format(d, 'yyyy-MM-dd')
 }
 
 // Defaults to the current school year so the common case is one click. A
