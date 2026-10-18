@@ -8,6 +8,25 @@ function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : null
 }
 
+// This prompt mounts with every page, and the answer rarely changes, so it's
+// asked once per signed-in session. Asking on every navigation ran into the
+// endpoint's per-IP limit after a dozen pages, sooner on a shared school
+// network. Cleared once the consent step finishes.
+let mineCache = { token: null, request: null }
+
+function loadMyReview(headers) {
+  const token = headers.Authorization
+  if (mineCache.token !== token) {
+    const request = fetch(`${apiUrl}/reviews/mine`, { headers })
+      .then((r) => (r.ok ? r.json() : { review: null, failed: true }))
+      .catch(() => ({ review: null, failed: true }))
+    // A failed check is asked again next page rather than remembered.
+    request.then((data) => { if (data.failed && mineCache.request === request) mineCache = { token: null, request: null } })
+    mineCache = { token, request }
+  }
+  return mineCache.request
+}
+
 // A submitted-but-undecided review (see ReviewPopup.jsx) gets a self-serve
 // consent step here: the reviewer confirms, via a one-time PIN emailed to
 // their account, whether they want it considered for the public testimonials
@@ -26,8 +45,7 @@ export default function ReviewConsentPrompt() {
   useEffect(() => {
     const headers = authHeaders()
     if (!headers) return
-    fetch(`${apiUrl}/reviews/mine`, { headers })
-      .then((r) => (r.ok ? r.json() : { review: null }))
+    loadMyReview(headers)
       .then((data) => {
         const r = data.review
         if (!r || r.consent_choice) return
@@ -35,7 +53,6 @@ export default function ReviewConsentPrompt() {
         setStep(r.pending_consent_choice ? 'pin' : 'ask')
         if (r.pending_consent_choice) setChoice(r.pending_consent_choice)
       })
-      .catch(() => {})
   }, [])
 
   if (dismissed || !review || !step) return null
@@ -74,6 +91,7 @@ export default function ReviewConsentPrompt() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Incorrect code.')
+      mineCache = { token: null, request: null }
       setStep('done')
     } catch (e) {
       setError(e.message)
