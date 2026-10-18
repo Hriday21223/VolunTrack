@@ -1004,7 +1004,14 @@ router.delete('/account', authLimiter, requireDb, requireAuth(), async (req, res
       meta: { role: row.role },
     })
 
-    // Everything the account owns cascades: logs, goals, pdf_uploads, task
+    // Two things carry this person's details without cascading: reviews
+    // (user_id has no foreign key, so a published one kept their name on the
+    // public site) and supervisor requests (student_user_id is SET NULL, which
+    // left their name and email and the supervisor's on the row).
+    await query('DELETE FROM reviews WHERE user_id = $1', [row.id])
+    await query('DELETE FROM supervisor_verifications WHERE student_user_id = $1', [row.id])
+
+    // Everything else the account owns cascades: logs, goals, pdf_uploads, task
     // signups, reminders, push subscriptions, parent links. What survives is
     // exactly what the privacy policy says survives — audit events with the
     // identity dropped, proof files in a school's own bucket, and transcripts
