@@ -3,7 +3,7 @@ import { listLogs, createLog, updateLog, deleteLog,
          listGoals, upsertGoal, deleteGoal,
          getEarned, markEarned, getReviews, saveReview,
          isReviewDismissed, dismissReview as dismissReviewApi } from '@/api/index.js'
-import { evaluateAchievements } from '@/lib/achievements.js'
+import { evaluateAchievements, countedLogs } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 import { createLogOnServer, syncUpdateLog, syncDeleteLog, syncPullLogs, flushLogOutbox } from '@/lib/logSync.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -39,7 +39,7 @@ export function DataProvider({ children }) {
   const [showReview, setShowReview] = useState(false)
   const [reviewSubmitted, setReviewSubmitted] = useState(() => getReviews().length > 0)
 
-  const totalHours = useMemo(() => logs.reduce((s, l) => s + (Number(l.hours) || 0), 0), [logs])
+  const totalHours = useMemo(() => countedLogs(logs).reduce((s, l) => s + (Number(l.hours) || 0), 0), [logs])
 
   // Local logs/goals/achievements live under one global localStorage key,
   // not scoped per account (see clearUserData() in useAuth.jsx's logout).

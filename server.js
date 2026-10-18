@@ -322,13 +322,17 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     }
   }
 
-  // No server account and no client code: answer exactly as a real send
-  // would, without sending. A different status here would tell anyone asking
-  // whether the address is registered.
-  if (!code && type === 'password' && hasDatabase()) {
+  // No server account: answer exactly as a real send would, without sending.
+  // A different status here would tell anyone asking whether the address is
+  // registered. A client-chosen code is never relayed for a password: with a
+  // database, every real password reset uses the code minted above, so
+  // relaying one would only let anyone mail any address through us.
+  if (!serverGenerated && type === 'password' && hasDatabase()) {
     return res.status(200).json({ ok: true, serverGenerated: true })
   }
-  if (!code || code.length > 20) {
+  // The app's own codes are 6 digits. Anything else would put caller-written
+  // text (a link, say) into an email from our address.
+  if (!/^\d{6}$/.test(code)) {
     return res.status(400).json({ error: 'Invalid code.' })
   }
 
@@ -347,7 +351,7 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     ? 'VolunTrack PIN recovery code'
     : 'VolunTrack password recovery code'
   const text = `Your VolunTrack recovery code is ${code}. It expires in 15 minutes. ${emailFooterText()}`
-  const html = `<p>Your VolunTrack recovery code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>${emailFooterHtml()}`
+  const html = `<p>Your VolunTrack recovery code is <strong>${escapeHtml(code)}</strong>.</p><p>It expires in 15 minutes.</p>${emailFooterHtml()}`
 
   try {
     await transport.sendMail({
@@ -376,70 +380,6 @@ app.get('/api/dev-recovery-code', (req, res) => {
   const hit = devCodeLog.find((entry) => entry.email.toLowerCase() === email)
   if (!hit) return res.status(404).json({ error: 'No recent code for that email.' })
   return res.json({ code: hit.code, type: hit.type, at: hit.at })
-})
-
-// Signed-in only: this sends caller-written text to a caller-chosen address,
-// which without a session is an open relay for whoever finds the URL.
-app.post('/api/send-report', emailLimiter, requireAuth(), async (req, res) => {
-  const { to, school, student, totalHours, entries } = req.body
-  if (!to || typeof to !== 'string' || !to.includes('@') || to.length > 254) {
-    return res.status(400).json({ error: 'Valid recipient email is required.' })
-  }
-  if (!student || typeof student !== 'string' || student.length > 200) {
-    return res.status(400).json({ error: 'Student name is required.' })
-  }
-  if (school != null && (typeof school !== 'string' || school.length > 200)) {
-    return res.status(400).json({ error: 'Invalid school name.' })
-  }
-  if (entries != null && (!Array.isArray(entries) || entries.length > 1000)) {
-    return res.status(400).json({ error: 'Invalid entries.' })
-  }
-
-  const { transport, missing } = transporter()
-  if (!transport) {
-    return res.status(503).json({
-      error: 'Email backend is not configured.',
-      missingVars: missing,
-    })
-  }
-
-  const rows = Array.isArray(entries) ? entries : []
-  const total = typeof totalHours === 'number'
-    ? totalHours
-    : rows.reduce((s, e) => s + (Number(e.hours) || 0), 0)
-
-  const textRows = rows
-    .map((e) => `  ${e.date || ''}  ${e.activity || ''} (${e.category || '-'}) — ${Number(e.hours) || 0}h`)
-    .join('\n')
-  const text = `Volunteer report for ${student}${school ? ` (${school})` : ''}\n`
-    + `Total hours: ${total}\nSessions: ${rows.length}\n\n${textRows}\n\n${emailFooterText()}`
-
-  const htmlRows = rows
-    .map((e) => `<tr><td>${escapeHtml(e.date)}</td><td>${escapeHtml(e.activity)}</td>`
-      + `<td>${escapeHtml(e.category)}</td><td style="text-align:right">${Number(e.hours) || 0}h</td></tr>`)
-    .join('')
-  const html = `
-    <h2>Volunteer report for ${escapeHtml(student)}${school ? ` <small>(${escapeHtml(school)})</small>` : ''}</h2>
-    <p><strong>Total hours:</strong> ${total} &nbsp;|&nbsp; <strong>Sessions:</strong> ${rows.length}</p>
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:14px">
-      <thead><tr><th>Date</th><th>Activity</th><th>Category</th><th>Hours</th></tr></thead>
-      <tbody>${htmlRows}</tbody>
-    </table>
-    ${emailFooterHtml()}`
-
-  try {
-    await transport.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to,
-      subject: `VolunTrack volunteer report — ${student}`,
-      text,
-      html,
-    })
-    return res.status(200).json({ ok: true })
-  } catch (error) {
-    console.error('Report email failed:', error)
-    return res.status(500).json({ error: 'Failed to send report.' })
-  }
 })
 
 // POST /api/contact now lives in server/routes/contact.js (persists to
@@ -514,7 +454,7 @@ async function requestingStudent(req) {
 async function createSupervisorVerification(req, { student, supervisorEmail, supervisorName, activity, hours, logId, appUrl, delivery }) {
   // Only when a DB is available can we hold tamper-proof verification state
   // (the student's browser can't be trusted to self-report "verified").
-  if (!hasDatabase()) return { token: null, statusToken: null, verifyUrl: null }
+  if (!hasDatabase()) return { token: null, statusToken: null, verifyUrl: null, activity, hours }
   const token = generateToken()
   const statusToken = generateToken()
 
@@ -525,8 +465,14 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
   let linkedLogId = null
   if (logId) {
     try {
-      const { rows } = await query('SELECT 1 FROM logs WHERE id = $1 AND user_id = $2', [logId, req.auth.sub])
-      if (rows.length) linkedLogId = logId
+      // What the supervisor is shown, and so approves, is the entry as stored —
+      // not the activity and hours the request claims, which could differ.
+      const { rows } = await query('SELECT activity, hours FROM logs WHERE id = $1 AND user_id = $2', [logId, req.auth.sub])
+      if (rows.length) {
+        linkedLogId = logId
+        activity = rows[0].activity
+        hours = Number(rows[0].hours)
+      }
     } catch (error) {
       console.error('Could not check verification log owner:', error)
     }
@@ -553,13 +499,13 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
     }
   } catch (error) {
     console.error('Could not create supervisor verification record:', error)
-    return { token: null, statusToken: null, verifyUrl: null }
+    return { token: null, statusToken: null, verifyUrl: null, activity, hours }
   }
 
   const u = new URL(appUrl)
   u.pathname = u.pathname.replace(/\/register\/?$/, '/verify-hours')
   u.search = `?token=${token}`
-  return { token, statusToken, verifyUrl: u.toString() }
+  return { token, statusToken, verifyUrl: u.toString(), activity, hours }
 }
 
 // This route sends mail from VolunTrack's own SMTP identity to a
@@ -568,10 +514,9 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
 // The sender's identity comes from the session, never the body, and the
 // links in the message may only point at origins we serve.
 app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res) => {
-  const { supervisorEmail, supervisorName, activity, signupUrl, logId } = req.body
+  const { supervisorEmail, supervisorName, signupUrl, logId } = req.body
   const parsed = parseVerificationRequest(req.body)
   if (parsed.error) return res.status(400).json({ error: parsed.error })
-  const hoursNum = parsed.hours
 
   const { transport, missing } = transporter()
   if (!transport) {
@@ -585,9 +530,12 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
   if (!appUrl) return res.status(400).json({ error: 'Invalid signup URL.' })
   const studentName = student.name
 
-  const { statusToken, verifyUrl } = await createSupervisorVerification(req, {
-    student, supervisorEmail, supervisorName, activity, hours: hoursNum, logId, appUrl, delivery: 'voluntrack',
+  const verification = await createSupervisorVerification(req, {
+    student, supervisorEmail, supervisorName, activity: req.body.activity, hours: parsed.hours, logId, appUrl, delivery: 'voluntrack',
   })
+  const { statusToken, verifyUrl } = verification
+  const activity = verification.activity
+  const hoursNum = verification.hours
 
   const safeStudent = escapeHtml(studentName)
   const safeActivity = escapeHtml(activity)

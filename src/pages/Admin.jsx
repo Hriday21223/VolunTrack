@@ -12,6 +12,9 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
+import { fmtDate } from '@/utils/date.js'
+import { parseISO, format } from 'date-fns'
+import { csvCell } from '@/lib/csv.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
@@ -625,8 +628,10 @@ export default function Admin() {
 
   const exportCsv = () => {
     const header = 'Name,Account ID,Code,Contact Email,Payment Status,Payment Notes,Students,Joined\n'
+    // Through csvCell: school names and payment notes are typed by schools.
     const rows = schools.map((s) =>
-      `"${s.name}","${s.account_code || ''}","${s.pin}","${s.contact_email || ''}","${s.payment_status}","${s.payment_notes || ''}",${s.student_count},"${new Date(s.created_at).toLocaleDateString()}"`
+      [s.name, s.account_code || '', s.pin, s.contact_email || '', s.payment_status, s.payment_notes || '', s.student_count, new Date(s.created_at).toLocaleDateString()]
+        .map(csvCell).join(',')
     ).join('\n')
     const blob = new Blob([header + rows], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -1203,7 +1208,7 @@ export default function Admin() {
   const openSchedule = (r) => {
     setSchedulingId(r.id)
     setScheduleDraft({
-      publishAt: r.publish_at ? r.publish_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      publishAt: r.publish_at ? r.publish_at.slice(0, 10) : format(new Date(), 'yyyy-MM-dd'),
       removeAfterDays: 30,
     })
   }
@@ -1540,7 +1545,7 @@ export default function Admin() {
               {(() => {
                 const upcoming = schools
                   .filter((s) => s.payment_due_date && s.payment_status !== 'paid')
-                  .map((s) => ({ ...s, daysLeft: Math.ceil((new Date(s.payment_due_date) - new Date()) / (1000 * 60 * 60 * 24)) }))
+                  .map((s) => ({ ...s, daysLeft: Math.ceil((parseISO(String(s.payment_due_date).slice(0, 10)) - new Date()) / (1000 * 60 * 60 * 24)) }))
                   .filter((s) => s.daysLeft >= 0 && s.daysLeft <= 10)
                   .sort((a, b) => a.daysLeft - b.daysLeft)
                 if (upcoming.length > 0) {
@@ -1615,7 +1620,7 @@ export default function Admin() {
                         )}
                         {s.payment_due_date && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-earth-500/10 text-earth-400">
-                            Due {new Date(s.payment_due_date).toLocaleDateString()}
+                            Due {fmtDate(String(s.payment_due_date).slice(0, 10))}
                           </span>
                         )}
                       </div>
@@ -1801,7 +1806,7 @@ export default function Admin() {
                         )}
                         {org.payment_due_date && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-earth-500/10 text-earth-400">
-                            Due {new Date(org.payment_due_date).toLocaleDateString()}
+                            Due {fmtDate(String(org.payment_due_date).slice(0, 10))}
                           </span>
                         )}
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

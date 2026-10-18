@@ -2,6 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { fmtDate, fmtHours, hoursBetween } from '@/utils/date.js'
 import { csvCell } from '@/lib/csv.js'
+import { countedLogs } from '@/lib/achievements.js'
 
 // The VolunTrack logo is fetched once and cached as a data URL so every PDF
 // (service log, invoice) can stamp it in the header — keep this on every
@@ -35,7 +36,8 @@ export function poLabel(poNumber) {
 
 export async function exportLogsPDF({ user, logs, returnBlob }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
-  const total = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
+  // Rejected entries stay in the table with their status, but not in the total.
+  const total = countedLogs(logs).reduce((s, l) => s + (Number(l.hours) || 0), 0)
   const logo = await getLogoDataUrl()
 
   // Header
@@ -120,7 +122,7 @@ export async function generateInvoicePDF({ invoiceNumber, poNumber, entityName, 
   doc.setFont('helvetica', 'normal').setFontSize(10)
   doc.setTextColor(90)
   doc.text(`Issued ${createdAt ? new Date(createdAt).toLocaleDateString() : new Date().toLocaleDateString()}`, 400, 66)
-  if (dueDate) doc.text(`Due ${new Date(dueDate).toLocaleDateString()}`, 400, 80)
+  if (dueDate) doc.text(`Due ${fmtDate(String(dueDate).slice(0, 10))}`, 400, 80)
   if (poNumber) doc.text(poLabel(poNumber), 400, dueDate ? 94 : 80)
   doc.setTextColor(0)
 

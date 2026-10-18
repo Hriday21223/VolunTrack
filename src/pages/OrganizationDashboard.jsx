@@ -12,6 +12,7 @@ import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
+import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -183,7 +184,7 @@ export default function OrganizationDashboard() {
                     <p className="text-xs text-brand-600 dark:text-brand-400 mt-0.5">{inv.discount_label}</p>
                   )}
                   <p className="text-xs text-earth-500 mt-0.5">
-                    {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
+                    {inv.due_date ? `Due ${fmtDate(String(inv.due_date).slice(0, 10))}` : new Date(inv.created_at).toLocaleDateString()}
                     {inv.po_number && ` · ${poLabel(inv.po_number)}`}
                   </p>
                 </div>

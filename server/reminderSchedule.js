@@ -115,9 +115,10 @@ export function nextOccurrenceUtc(reminder, afterTs = Date.now()) {
     const ts = zonedWallClockToUtc({ ...candidate, hour, minute }, tz)
     if (ts <= afterTs) continue
     if (ts < startTs) continue
-    // endDate is inclusive of the whole day, matching the client's
-    // startOfDay comparison in src/lib/scheduler.js.
-    if (end && ts > end.getTime() + 24 * 60 * 60 * 1000 - 1) return null
+    // endDate is inclusive of the whole day in the reminder's own timezone,
+    // matching src/lib/scheduler.js. Compared by local date, not UTC instant:
+    // a 9 PM reminder in Texas on its last day is already the next day in UTC.
+    if (end && Date.UTC(candidate.year, candidate.month - 1, candidate.day) > end.getTime()) return null
     return ts
   }
   return null

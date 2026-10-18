@@ -30,6 +30,17 @@ const limiter = rateLimit({
   message: { error: 'Too many requests. Please try again later.' },
 })
 
+// The admin's own moderation routes. Sharing the public limiter meant the
+// admin, clicking through the dashboard (which loads the list on each tab),
+// ran out of requests alongside anyone else on the same network.
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+})
+
 // Tighter than the general limiter — guards PIN request/confirm, which are
 // otherwise only rate-limited per-review by consent_pin_attempts.
 const consentLimiter = rateLimit({
@@ -228,7 +239,7 @@ router.get('/public', limiter, requireDb, async (req, res) => {
 })
 
 // List all reviews, in any state (admin only).
-router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+router.get('/admin/list', adminLimiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
       `SELECT id, rating, comment, name, email, role, approved, consent_choice, publish_at, expires_at, created_at
@@ -249,7 +260,7 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
 // actually visible. Notifies the reviewer by email the first time their
 // review is scheduled — not on every reschedule/toggle, so re-approving
 // after an accidental unpublish doesn't re-send it.
-router.patch('/admin/:id/approve', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+router.patch('/admin/:id/approve', adminLimiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query('SELECT approved, email, consent_choice FROM reviews WHERE id = $1', [req.params.id])
     if (rows.length === 0) return res.status(404).json({ error: 'Review not found.' })
@@ -295,7 +306,7 @@ router.patch('/admin/:id/approve', limiter, requireDb, requireAuth('admin'), asy
 })
 
 // Delete a review (admin only).
-router.delete('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+router.delete('/admin/:id', adminLimiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     await query('DELETE FROM reviews WHERE id = $1', [req.params.id])
     return res.json({ ok: true })

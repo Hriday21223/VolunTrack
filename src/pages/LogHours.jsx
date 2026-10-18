@@ -15,7 +15,7 @@ import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, des
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
-import { format } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 import { hapticSuccess } from '@/lib/platform.js'
 
 // Rotating appreciation notes for the student once a supervisor approves.
@@ -163,9 +163,14 @@ export default function LogHours({ editId, onCloseEdit }) {
   const setCustomField = (key) => (value) =>
     setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [key]: value } }))
 
+  // An end time earlier than the start is an overnight session (10 PM to
+  // 1 AM), not a mistake to refuse: it ends the next day. Shown beside the
+  // duration so a typo still stands out.
+  const endsNextDay = Boolean(form.date && form.startTime && form.endTime && form.endTime < form.startTime)
+  const endDate = endsNextDay ? format(addDays(parseISO(form.date), 1), 'yyyy-MM-dd') : form.date
   const hours = hoursBetween(
     form.date && form.startTime ? `${form.date}T${form.startTime}:00` : null,
-    form.date && form.endTime   ? `${form.date}T${form.endTime}:00`   : null,
+    form.date && form.endTime   ? `${endDate}T${form.endTime}:00`   : null,
   )
 
   const onChange = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -174,7 +179,7 @@ export default function LogHours({ editId, onCloseEdit }) {
     e.preventDefault()
     setError('')
     if (!form.activity.trim()) { setError('Please enter an activity name.'); return }
-    if (hours <= 0)             { setError('End time must be after start time.'); return }
+    if (hours <= 0)             { setError('The start and end times are the same.'); return }
     if (required.locationRequired && !form.location.trim()) { setError('Please enter a location or use the button below to detect it.'); return }
     if (required.supervisorNameRequired && !form.supervisorName.trim()) { setError("Please enter your supervisor's name."); return }
     if (required.supervisorEmailRequired && !form.supervisorEmail.trim()) {
@@ -402,6 +407,7 @@ export default function LogHours({ editId, onCloseEdit }) {
             </div>
             <div className="mt-4 text-sm text-earth-600 dark:text-earth-300">
               Duration: <span className="font-semibold text-brand-700 dark:text-brand-300">{fmtHours(hours)}</span>
+              {endsNextDay && <span className="ml-1 text-earth-500 dark:text-earth-400">(ends the next day)</span>}
             </div>
           </Card>
 

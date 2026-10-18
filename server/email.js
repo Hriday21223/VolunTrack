@@ -307,7 +307,7 @@ export async function sendWelcomeEmail({ to, name }) {
   return sendEmail({
     to,
     subject: 'Welcome to VolunTrack!',
-    html: `<p>Hi ${name},</p>
+    html: `<p>Hi ${escapeHtml(name)},</p>
 <p>Thank you for choosing VolunTrack! We're glad to have you on board.</p>
 <p>VolunTrack makes it easy to log volunteer hours, track progress toward your goals, and earn achievements along the way. Schools and organizations can verify hours, and parents can follow their student's progress — all in one place.</p>
 <p>— The VolunTrack Team</p>

@@ -15,9 +15,11 @@ import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
+import SubmittedDocument from '@/components/SubmittedDocument.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
+import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -335,11 +337,7 @@ export default function SchoolDashboard() {
             <div className="bg-white rounded-xl overflow-hidden" style={{ height: '80vh' }}>
               {/* Documents in the school's own storage arrive as a short-lived
                   URL; rows still held by us arrive as base64 (#143 step 6). */}
-              <embed
-                src={selectedPdf.url || `data:${selectedPdf.fileType};base64,${selectedPdf.fileData}`}
-                type={selectedPdf.fileType || 'application/pdf'}
-                className="w-full h-full"
-              />
+              <SubmittedDocument doc={selectedPdf} />
             </div>
             {isSchoolAdmin && selectedPdf.status === 'pending' && (
               <div className="flex gap-2 mt-4">
@@ -559,7 +557,7 @@ export default function SchoolDashboard() {
                       <p className="text-xs text-brand-600 dark:text-brand-400 mt-0.5">{inv.discount_label}</p>
                     )}
                     <p className="text-xs text-earth-500 mt-0.5">
-                      {inv.due_date ? `Due ${new Date(inv.due_date).toLocaleDateString()}` : new Date(inv.created_at).toLocaleDateString()}
+                      {inv.due_date ? `Due ${fmtDate(String(inv.due_date).slice(0, 10))}` : new Date(inv.created_at).toLocaleDateString()}
                       {inv.po_number && ` · ${poLabel(inv.po_number)}`}
                     </p>
                   </div>
@@ -931,7 +929,7 @@ export default function SchoolDashboard() {
                       <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}{t.time ? ` · ${t.time}` : ''}</span>
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                         <span>{filled}/{total} filled</span>
                       </div>
                       {approved && t.phone && (

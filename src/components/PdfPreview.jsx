@@ -57,7 +57,7 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
     a.download = filename || 'document.pdf'
     a.click()
     // The anchor holds its own URL, so revoke that one rather than the
-    // preview's — revoking the preview's would blank the embed.
+    // preview's — revoking the preview's would blank the frame.
     URL.revokeObjectURL(a.href)
   }
 
@@ -87,7 +87,9 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
           {!error && !url && <Loader2 className="w-6 h-6 animate-spin text-earth-500" />}
           {/* Some browsers (notably iOS Safari) won't render a PDF inline; the
               Download button above stays the fallback. */}
-          {url && <embed src={url} type="application/pdf" className="w-full h-full" />}
+          {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
+              every preview blank on the live site. frame-src allows blob:. */}
+          {url && <iframe src={url} title={title || 'PDF preview'} className="w-full h-full" />}
         </div>
       </div>
     </div>
