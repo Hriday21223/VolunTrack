@@ -55,7 +55,7 @@ export async function sendRecoveryEmail({ email, code, type }) {
     // the local one, because it is not what landed in the inbox.
     if (response.ok) {
       const body = await response.json().catch(() => ({}))
-      return { ok: true, backendAvailable: true, serverGenerated: Boolean(body?.serverGenerated) }
+      return { ok: true, backendAvailable: true, serverGenerated: Boolean(body?.serverGenerated), from: typeof body?.from === 'string' ? body.from : null }
     }
 
     let reason = `Email backend returned ${response.status}.`
