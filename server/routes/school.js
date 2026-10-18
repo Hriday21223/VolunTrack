@@ -341,6 +341,12 @@ router.post('/transfers/:id/decide', limiter, requireDb, requireAuth('school', '
 
     if (decision === 'accept') {
       await query('UPDATE users SET school_id = $1 WHERE id = $2', [transfer.to_school_id, transfer.user_id])
+      // The student's submitted reports go with them. One in the former
+      // school's own storage stays there: the new school can't reach that bucket.
+      await query(
+        'UPDATE pdf_uploads SET school_id = $1 WHERE user_id = $2 AND school_id = $3 AND storage_id IS NULL',
+        [transfer.to_school_id, transfer.user_id, transfer.from_school_id],
+      )
     }
 
     recordAudit(req, {
@@ -626,7 +632,7 @@ router.get('/pdfs', limiter, requireDb, requireAuth(), async (req, res) => {
       const { rows } = await query(
         `SELECT p.id, p.user_id, u.name AS user_name, u.email AS user_email, p.filename, p.file_type, p.status, p.notes, p.created_at
          FROM pdf_uploads p JOIN users u ON p.user_id = u.id
-         WHERE p.school_id = $1
+         WHERE p.school_id = $1 AND u.school_id = $1
          ORDER BY p.created_at DESC`,
         [userRows[0].school_id],
       )
@@ -662,8 +668,12 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     } else if (role === 'student') {
       allowed = pdf.user_id === sub
     } else if (role === 'school' || role === 'school_staff') {
-      const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [sub])
-      allowed = Boolean(userRows[0]?.school_id) && pdf.school_id === userRows[0].school_id
+      // Only while the student is still at this school: a former school no
+      // longer sees their record (see the transfer step above).
+      const { rows: userRows } = await query('SELECT id, school_id FROM users WHERE id = ANY($1::text[])', [[sub, pdf.user_id]])
+      const staffSchool = userRows.find((u) => u.id === sub)?.school_id
+      const studentSchool = userRows.find((u) => u.id === pdf.user_id)?.school_id
+      allowed = Boolean(staffSchool) && pdf.school_id === staffSchool && studentSchool === staffSchool
     }
     if (!allowed) {
       // An attempt is as interesting as a success.
@@ -729,6 +739,8 @@ router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'schoo
     const { rows } = await query('SELECT * FROM pdf_uploads WHERE id = $1', [req.params.id])
     if (rows.length === 0) return res.status(404).json({ error: 'PDF not found.' })
     if (rows[0].school_id !== userRows[0]?.school_id) return res.status(403).json({ error: 'Not your school.' })
+    const { rows: studentRows } = await query('SELECT school_id FROM users WHERE id = $1', [rows[0].user_id])
+    if (studentRows[0]?.school_id !== rows[0].school_id) return res.status(403).json({ error: 'This student is no longer at your school.' })
 
     await query(
       'UPDATE pdf_uploads SET status = $1, notes = $2, reviewed_by = $3, reviewed_at = now() WHERE id = $4',
