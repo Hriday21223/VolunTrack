@@ -10,7 +10,7 @@ import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { categoryColor } from '@/lib/categories.js'
-import { deriveAchievementState } from '@/lib/achievements.js'
+import { deriveAchievementState, countedLogs } from '@/lib/achievements.js'
 import { downloadSignedTranscript, hasAccountSession, importTranscript, readTranscriptFile } from '@/lib/transcript.js'
 import { syncPullLogs } from '@/lib/logSync.js'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
@@ -36,7 +36,7 @@ export default function Reports() {
     })
   }, [logs, category, from, to])
 
-  const total = filtered.reduce((s, l) => s + (Number(l.hours) || 0), 0)
+  const total = countedLogs(filtered).reduce((s, l) => s + (Number(l.hours) || 0), 0)
   const submitToSchool = async () => {
     setSubmitting(true)
     try {
