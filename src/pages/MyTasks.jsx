@@ -309,7 +309,7 @@ export default function MyTasks() {
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
       const d = await res.json()
-      setToastMsg(`Logged hours for ${d.logged} volunteer${d.logged === 1 ? '' : 's'}`); setToast(true)
+      setToastMsg(`Logged hours for ${d.logged} volunteer${d.logged === 1 ? '' : 's'}${d.skipped ? ` · ${d.skipped} already had hours for that day` : ''}`); setToast(true)
       setBatchHours({}); setBatchDate('')
       refreshLogs(); loadTasks()
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setBatchBusy(false) }
