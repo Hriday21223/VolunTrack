@@ -18,6 +18,7 @@ import PdfPreview from '@/components/PdfPreview.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
+import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -931,7 +932,7 @@ export default function SchoolDashboard() {
                       <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                         <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}{t.time ? ` · ${t.time}` : ''}</span>
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                         <span>{filled}/{total} filled</span>
                       </div>
                       {approved && t.phone && (

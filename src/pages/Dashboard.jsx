@@ -323,7 +323,7 @@ export default function Dashboard() {
                       >
                         <MapPin className="w-3 h-3" /> {t.location}
                       </a>
-                      <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}{t.time ? ` · ${t.time}` : ''}</span>
+                      <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} needed</span>
                       {t.distance != null && (
                         <span className="flex items-center gap-1 text-brand-400">{fmtDist(t.distance)} away</span>
@@ -482,7 +482,7 @@ export default function Dashboard() {
                         <p className="text-sm font-medium">{t.title}</p>
                         <p className="text-xs text-earth-400 mt-0.5">
                           <MapPin className="w-3 h-3 inline mr-1" />{t.location}
-                          {' · '}<CalIcon className="w-3 h-3 inline mr-1" />{new Date(t.date).toLocaleDateString()}
+                          {' · '}<CalIcon className="w-3 h-3 inline mr-1" />{fmtDate(t.date)}
                         </p>
                         <p className="text-xs text-earth-500 mt-0.5">{filled}/{total} filled{t.distance != null ? ` · ${fmtDist(t.distance)} away` : ''}</p>
                       </div>

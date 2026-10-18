@@ -7,6 +7,7 @@ import SignaturePad from '@/components/SignaturePad.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { csvCell } from '@/lib/csv.js'
+import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -486,7 +487,7 @@ export default function MyTasks() {
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>
-                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}{t.time ? ` · ${t.time}` : ''}</span>
+                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} signed up</span>
                   </div>
                   {t.phone && (
@@ -702,7 +703,7 @@ export default function MyTasks() {
                         <div className="flex items-center gap-3">
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{log.activity} · {log.hours}h</p>
-                            <p className="text-xs text-earth-500">{new Date(log.date).toLocaleDateString()}</p>
+                            <p className="text-xs text-earth-500">{fmtDate(log.date)}</p>
                           </div>
                           {log.verification_status === 'approved' ? (
                             <span className="text-xs text-emerald-400 shrink-0">Signed &amp; approved</span>

@@ -1003,14 +1003,16 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
 
     const { rows } = await query(
       `SELECT * FROM (
-        SELECT t.id, t.title, t.description, t.location, t.date, t.time, t.slots_total, t.status,
+        SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id) AS slots_filled,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'}
         FROM public_tasks t
-        WHERE t.status = 'open'
+        -- A task whose day has passed isn't an opportunity any more. One day
+        -- of slack, since the server's "today" is UTC's, ahead of US dates.
+        WHERE t.status = 'open' AND t.date >= CURRENT_DATE - 1
        ) sub
        ${filterClause}
        ${useDist ? `ORDER BY distance ASC NULLS LAST, date ASC, created_at DESC` : 'ORDER BY date ASC, created_at DESC'}`,
@@ -1034,7 +1036,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   const client = await getPool().connect()
   try {
     await client.query('BEGIN')
-    const { rows } = await client.query('SELECT status, slots_total, created_by FROM public_tasks WHERE id = $1 FOR UPDATE', [req.params.id])
+    const { rows } = await client.query('SELECT status, slots_total, created_by, date < CURRENT_DATE - 1 AS past FROM public_tasks WHERE id = $1 FOR UPDATE', [req.params.id])
     if (rows.length === 0) {
       await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Task not found.' })
@@ -1050,6 +1052,10 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     if (rows[0].status === 'closed') {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: 'Task is closed.' })
+    }
+    if (rows[0].past) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'This task has already happened.' })
     }
 
     // Already signed up: return the existing row instead of reporting "full".
@@ -1171,7 +1177,7 @@ function taskEmailHtml({ heading, lines, task }) {
 async function notifySignupDecision(taskId, userId, decision) {
   try {
     const { rows } = await query(
-      `SELECT t.title, t.date, t.time, t.location, t.creator_name, t.important_info, u.email, u.name
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info, u.email, u.name
          FROM public_tasks t, users u
         WHERE t.id = $1 AND u.id = $2`,
       [taskId, userId],
@@ -1395,7 +1401,7 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
   const dryRun = req.body?.dryRun === true
   try {
     const { rows: tasks } = await query(
-      `SELECT t.id, t.title, t.date, t.time, t.location, t.creator_name, t.important_info
+      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info
          FROM public_tasks t
         WHERE t.status = 'open'
           AND t.date = (current_date + interval '1 day')::date
@@ -1467,7 +1473,7 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
     // aggregate gets its own subquery, which is also why there is no GROUP BY
     // here any more.
     const { rows } = await query(
-      `SELECT t.id, t.title, t.date, t.location, t.status, t.slots_total,
+      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.location, t.status, t.slots_total,
               (SELECT COUNT(*) FROM public_task_signups s
                 WHERE s.task_id = t.id AND s.status = 'approved')            AS approved,
               (SELECT COUNT(*) FROM public_task_signups s
@@ -1538,7 +1544,7 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
 router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT t.id, t.title, t.description, t.location, t.date, t.time, t.slots_total, t.status, t.phone, t.latitude, t.longitude, t.created_at,
+      `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.phone, t.latitude, t.longitude, t.created_at,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
@@ -1564,7 +1570,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
     const { rows } = await query(
       // The organizer's email only reaches volunteers they approved — it is who
       // those students ask to sign off their hours on the task.
-      `SELECT t.id, t.title, t.location, t.date, t.time, t.creator_name, t.status AS task_status,
+      `SELECT t.id, t.title, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at
        FROM public_task_signups s

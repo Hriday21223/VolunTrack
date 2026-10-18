@@ -2,8 +2,15 @@ import { useState, useEffect, useCallback } from 'react'
 import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3, ClipboardList } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
+import { format } from 'date-fns'
+import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// Task dates are calendar days (YYYY-MM-DD); compare them as days in the
+// viewer's own timezone, never as UTC instants.
+const todayDay = () => format(new Date(), 'yyyy-MM-dd')
+const dayOf = (date) => String(date || '').slice(0, 10)
 
 const SIGNUP_LABELS = {
   approved: { label: 'Approved', className: 'bg-emerald-500/10 text-emerald-400' },
@@ -22,7 +29,7 @@ function SignupRow({ s }) {
   const cancelled = s.task_status === 'cancelled'
   const signup = cancelled ? CANCELLED_LABEL : (SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending)
   const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
-  const isPast = new Date(s.date) < new Date().setHours(0, 0, 0, 0)
+  const isPast = dayOf(s.date) < todayDay()
 
   return (
     <Card padded={false} className="p-4">
@@ -32,7 +39,7 @@ function SignupRow({ s }) {
           {s.creator_name && <p className="text-xs text-earth-500 mt-0.5">Posted by {s.creator_name}</p>}
           <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.location}</span>
-            <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {new Date(s.date).toLocaleDateString()}{s.time ? ` · ${s.time}` : ''}</span>
+            <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{s.time ? ` · ${s.time}` : ''}</span>
           </div>
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1.5">
@@ -69,9 +76,9 @@ export default function Attendance() {
 
   useEffect(() => { load() }, [load])
 
-  const today = new Date().setHours(0, 0, 0, 0)
+  const today = todayDay()
   // A cancelled task is never upcoming, even when its date is still ahead.
-  const isUpcoming = (s) => s.task_status !== 'cancelled' && new Date(s.date) >= today
+  const isUpcoming = (s) => s.task_status !== 'cancelled' && dayOf(s.date) >= today
   const upcoming = signups.filter(isUpcoming)
   const past = signups.filter((s) => !isUpcoming(s))
 

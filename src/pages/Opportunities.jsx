@@ -4,6 +4,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { isNativeApp } from '@/lib/platform.js'
+import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -139,7 +140,7 @@ export default function Opportunities() {
                     >
                       <MapPin className="w-3 h-3" /> {t.location}
                     </a>
-                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {new Date(t.date).toLocaleDateString()}{t.time ? ` · ${t.time}` : ''}</span>
+                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} slots</span>
                   </div>
                   <p className="text-xs text-earth-600 mt-1">Posted by {t.creator_name}</p>
