@@ -935,9 +935,15 @@ router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) =>
       return res.status(401).json({ error: 'Invalid backup code.' })
     }
 
-    // Remove the used backup code
+    // Remove the used backup code. Conditional on the list being unchanged
+    // since it was read, so two requests racing with the same code can't
+    // both spend it: the second finds the list already shorter and fails.
     hashedCodes.splice(matchedIndex, 1)
-    await query('UPDATE users SET backup_codes = $1 WHERE id = $2', [JSON.stringify(hashedCodes), row.id])
+    const spent = await query(
+      'UPDATE users SET backup_codes = $1 WHERE id = $2 AND backup_codes = $3',
+      [JSON.stringify(hashedCodes), row.id, row.backup_codes],
+    )
+    if (spent.rowCount === 0) return res.status(401).json({ error: 'Invalid backup code.' })
     await query(
       'UPDATE users SET totp_failed_attempts = 0, totp_locked_until = NULL WHERE id = $1',
       [row.id],
