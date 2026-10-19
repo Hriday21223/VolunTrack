@@ -367,13 +367,19 @@ export default function LogHours({ editId, onCloseEdit }) {
                   onChange={(e) => {
                     const taskId = e.target.value
                     const task = myTasks.find((t) => t.id === taskId)
-                    // The task's organizer is who signs off hours on it, so
-                    // fill them in — without overwriting anything typed.
+                    // The task's organizer is who signs off hours on it, and
+                    // the task says where it happened, so fill both in —
+                    // without overwriting anything the student typed.
+                    const lat = task?.latitude != null ? Number(task.latitude) : null
+                    const lng = task?.longitude != null ? Number(task.longitude) : null
                     setForm((f) => ({
                       ...f,
                       taskId,
                       supervisorName: f.supervisorName || task?.creator_name || '',
                       supervisorEmail: f.supervisorEmail || task?.creator_email || '',
+                      ...(!f.location?.trim() && task?.location
+                        ? { location: task.location, latitude: Number.isFinite(lat) ? lat : null, longitude: Number.isFinite(lng) ? lng : null }
+                        : {}),
                     }))
                   }}
                 >
