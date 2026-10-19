@@ -412,6 +412,12 @@ export async function initSchema() {
   // from the free-text "location" (where the service happened) — the org's
   // own name/address/phone for their records.
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS location TEXT`) } catch {}
+  // Hours an organizer logged used to be filed under 'volunteer', which isn't
+  // one of the app's categories. Corrected in place; cheap once there are none.
+  try { await query(`UPDATE logs SET category = 'Community Service' WHERE category = 'volunteer'`) } catch {}
+  // Personal goals sync across a student's devices (src/lib/goalSync.js).
+  try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
+  try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_name TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_address TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_phone TEXT`) } catch {}

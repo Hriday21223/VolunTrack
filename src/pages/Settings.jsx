@@ -87,6 +87,8 @@ export default function Settings() {
   // A student who already belongs to a school can ask to move to another one,
   // but nothing happens until the receiving school accepts (#143 step 5).
   const [pendingTransfer, setPendingTransfer] = useState(null)
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const [leaveBusy, setLeaveBusy] = useState(false)
   // Schools that invited this student by email; nothing is shared until they accept.
   const [schoolInvites, setSchoolInvites] = useState([])
   const [inviteBusy, setInviteBusy] = useState(null)
@@ -124,6 +126,23 @@ export default function Settings() {
       setToast(true)
     } finally {
       setSchoolBusy(false)
+    }
+  }
+
+  const leaveSchool = async () => {
+    setLeaveBusy(true)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/leave`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not leave the school.')
+      setToastMessage('You left your school.')
+      setToast(true)
+      window.location.reload()
+    } catch (e) {
+      setToastMessage(e.message)
+      setToast(true)
+      setLeaveBusy(false)
     }
   }
 
@@ -1105,6 +1124,28 @@ export default function Settings() {
                           {schoolBusy ? 'Requesting…' : 'Request transfer'}
                         </button>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Leaving outright, not moving: graduated, homeschooling. */}
+                  <div className="pt-3 border-t border-white/10">
+                    {confirmLeave ? (
+                      <div className="space-y-2">
+                        <p className="text-sm">Leave {schoolInfo?.name || 'your school'}?</p>
+                        <p className="text-xs text-earth-500 dark:text-earth-400">
+                          They will no longer see your hours or the reports you sent them. Your hours stay in your account, and you can join a school again with its code.
+                        </p>
+                        <div className="flex gap-2">
+                          <button onClick={leaveSchool} disabled={leaveBusy} className="btn-danger flex-1 text-sm">
+                            {leaveBusy ? 'Leaving…' : 'Leave school'}
+                          </button>
+                          <button onClick={() => setConfirmLeave(false)} disabled={leaveBusy} className="btn-ghost flex-1 text-sm">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmLeave(true)} className="btn-ghost w-full text-sm text-red-400">
+                        Leave school
+                      </button>
                     )}
                   </div>
                 </div>

@@ -23,6 +23,7 @@ import settingsRoutes from './server/routes/settings.js'
 import statusRoutes, { handleGithubWebhook } from './server/routes/status.js'
 import tenantRoutes from './server/routes/tenant.js'
 import remindersRoutes from './server/routes/reminders.js'
+import goalsRoutes from './server/routes/goals.js'
 import auditRoutes from './server/routes/audit.js'
 import { isAllowedTenantOrigin } from './server/tenantOrigins.js'
 import storageRoutes from './server/routes/storage.js'
@@ -143,6 +144,7 @@ app.use('/api/settings', settingsRoutes)
 app.use('/api/status', statusRoutes)
 app.use('/api/tenant', tenantRoutes)
 app.use('/api/reminders', remindersRoutes)
+app.use('/api/goals', goalsRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/storage', storageRoutes)
 app.use('/api/transcript', transcriptRoutes)

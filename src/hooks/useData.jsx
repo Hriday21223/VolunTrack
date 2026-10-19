@@ -7,6 +7,7 @@ import { evaluateAchievements, countedLogs } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 import { createLogOnServer, syncUpdateLog, syncDeleteLog, syncPullLogs, flushLogOutbox } from '@/lib/logSync.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { pushGoals, syncGoals } from '@/lib/goalSync.js'
 
 const DataContext = createContext(null)
 
@@ -172,6 +173,7 @@ export function DataProvider({ children }) {
     // Writes that couldn't reach the server earlier go first, so the pull
     // that follows already knows their server ids.
     if (account && localStorage.getItem('voluntrack:auth_token')) {
+      syncGoals().then((changed) => { if (changed) setGoals(listGoals()) })
       flushLogOutbox()
         .then((sent) => syncPullLogs(account).then((pulled) => sent + pulled))
         .then((n) => { if (n > 0) setLogs(listLogs()) })
@@ -212,10 +214,12 @@ export function DataProvider({ children }) {
   const saveGoal = useCallback((g) => {
     const next = upsertGoal(g)
     setGoals(next)
+    pushGoals()
   }, [])
   const removeGoal = useCallback((id) => {
     deleteGoal(id)
-    setGoals((prev) => prev.filter((g) => g.id !== id))
+    setGoals(listGoals())
+    pushGoals()
   }, [])
 
   const refreshLogs = useCallback(() => setLogs(listLogs()), [])
