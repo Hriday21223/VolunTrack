@@ -2440,6 +2440,7 @@ router.delete('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req
 // Set a single school's payment due date (admin only)
 router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const dueDate = req.body.dueDate ? String(req.body.dueDate).trim() : null
+  if (dueDate && !isValidDateString(dueDate)) return res.status(400).json({ error: 'Enter the due date as YYYY-MM-DD.' })
   try {
     await query('UPDATE schools SET payment_due_date = $1 WHERE id = $2', [dueDate || null, req.params.id])
     return res.json({ ok: true })

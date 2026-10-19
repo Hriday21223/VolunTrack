@@ -5,7 +5,7 @@ import { query, hasDatabase, nextAccountCode, assignReferralCode, settleSingleOp
 import { uid, generateToken } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
-import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from '../validate.js'
+import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
@@ -232,6 +232,7 @@ router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async
 // Set an organization's payment due date. Mirrors PATCH /school/admin/:id/due-date.
 router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const dueDate = req.body.dueDate ? String(req.body.dueDate).trim() : null
+  if (dueDate && !isValidDateString(dueDate)) return res.status(400).json({ error: 'Enter the due date as YYYY-MM-DD.' })
   try {
     await query('UPDATE organizations SET payment_due_date = $1 WHERE id = $2', [dueDate || null, req.params.id])
     return res.json({ ok: true })
