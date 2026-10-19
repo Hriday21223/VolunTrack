@@ -173,6 +173,7 @@ export function clearUserData() {
   write(keys.fired, [])
   write(keys.logOutbox, null)
   write(keys.goalsUnsent, false)
+  write(keys.goalsSyncedFor, null)
   // The review prompt is suppressed by either of these, so leaving them
   // behind would hide it from every later account on a shared device.
   write(keys.reviews, [])
