@@ -18,7 +18,9 @@ function loadMyReview(headers) {
   const token = headers.Authorization
   if (mineCache.token !== token) {
     const request = fetch(`${apiUrl}/reviews/mine`, { headers })
-      .then((r) => (r.ok ? r.json() : { review: null, failed: true }))
+      // 429 counts as an answer ("not now"), not a failure: retrying it on
+      // every page only adds more requests the limiter will refuse.
+      .then((r) => (r.ok ? r.json() : { review: null, failed: r.status !== 429 }))
       .catch(() => ({ review: null, failed: true }))
     // A failed check is asked again next page rather than remembered.
     request.then((data) => { if (data.failed && mineCache.request === request) mineCache = { token: null, request: null } })
