@@ -1019,7 +1019,10 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
     const lat = req.query.lat ? Number(req.query.lat) : null
     const lng = req.query.lng ? Number(req.query.lng) : null
     const maxDistance = req.query.maxDistance ? Number(req.query.maxDistance) : null
-    const useDist = lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)
+    // Out-of-range coordinates made the distance maths fail (ASIN of a value
+    // above 1) and took the whole list down with it; they're ignored instead.
+    const useDist = lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng)
+      && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
 
     const params = userId ? [userId] : []
 
