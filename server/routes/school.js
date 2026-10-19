@@ -1000,8 +1000,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   }
   // A negative or non-integer slot count is truthy and numeric, so it would
   // slip past the `|| 1` default below and permanently lock the task as full.
-  if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1)) {
-    return res.status(400).json({ error: 'Slots must be a positive whole number.' })
+  // Same bounds as editing the task (PATCH below); a huge number overflowed
+  // the INTEGER column and came back as a server error.
+  if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1 || Number(slotsTotal) > 1000)) {
+    return res.status(400).json({ error: 'Volunteers needed must be between 1 and 1000.' })
   }
 
   try {
