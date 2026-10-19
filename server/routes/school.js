@@ -1007,8 +1007,12 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   }
 
   try {
-    const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [req.auth.sub])
+    const { rows } = await query('SELECT name, email, posting_suspended_at FROM users WHERE id = $1', [req.auth.sub])
     if (rows.length === 0) return res.status(404).json({ error: 'User not found.' })
+    // Suspended by the admin after a report (server/routes/reports.js).
+    if (rows[0].posting_suspended_at) {
+      return res.status(403).json({ error: "Your account can't post volunteer tasks right now. Contact us if you think this is a mistake." })
+    }
 
     const id = uid('ptask')
     await query(
@@ -1073,6 +1077,10 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
         -- A task whose day has passed isn't an opportunity any more. One day
         -- of slack, since the server's "today" is UTC's, ahead of US dates.
         WHERE t.status = 'open' AND t.date >= CURRENT_DATE - 1
+          -- Report and block (server/routes/reports.js): nothing from an
+          -- organizer the admin suspended, or one this viewer blocked.
+          AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
+          ${userId ? 'AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $1 AND b.blocked_id = t.created_by)' : ''}
        ) sub
        ${filterClause}
        ${useDist ? `ORDER BY distance ASC NULLS LAST, date ASC, created_at DESC` : 'ORDER BY date ASC, created_at DESC'}`,
@@ -1096,7 +1104,13 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   const client = await getPool().connect()
   try {
     await client.query('BEGIN')
-    const { rows } = await client.query('SELECT status, slots_total, created_by, date < CURRENT_DATE - 1 AS past FROM public_tasks WHERE id = $1 FOR UPDATE', [req.params.id])
+    const { rows } = await client.query(
+      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past,
+              (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
+              EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = t.created_by) AS host_blocked
+         FROM public_tasks t WHERE t.id = $1 FOR UPDATE OF t`,
+      [req.params.id, req.auth.sub],
+    )
     if (rows.length === 0) {
       await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Task not found.' })
@@ -1116,6 +1130,11 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     if (rows[0].past) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: 'This task has already happened.' })
+    }
+    // Hidden from the list already (reports.js); refused here too.
+    if (rows[0].host_suspended || rows[0].host_blocked) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: "This task isn't available." })
     }
 
     // Already signed up: return the existing row instead of reporting "full".
@@ -1424,9 +1443,12 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
     if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can message volunteers.' })
 
     const { rows: people } = await query(
+      // Not to anyone who blocked this organizer (server/routes/reports.js).
       `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
-        WHERE s.task_id = $1 AND s.status = 'approved'`,
-      [req.params.id],
+        WHERE s.task_id = $1 AND s.status = 'approved'
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $2)`,
+      // Only the task's creator gets this far, so they're the organizer.
+      [req.params.id, req.auth.sub],
     )
     if (people.length === 0) return res.status(400).json({ error: 'No approved volunteers to message yet.' })
 

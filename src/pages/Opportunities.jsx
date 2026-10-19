@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapPin, Calendar as CalIcon, Users } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { isNativeApp } from '@/lib/platform.js'
 import { fmtDate } from '@/utils/date.js'
+import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -21,12 +22,17 @@ export default function Opportunities() {
   const [nearbyRadius, setNearbyRadius] = useState(25)
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
+  const [reporting, setReporting] = useState(null)
 
   const loadNearbyTasks = useCallback(async (lat, lng, radius) => {
     try {
       let url = `${apiUrl}/school/public-tasks?maxDistance=${radius}`
       if (lat != null && lng != null) url += `&lat=${lat}&lng=${lng}`
-      const res = await fetch(url)
+      // Signed in, so the server knows whose list this is: your sign-up status,
+      // the organizer's phone once you're approved, and organizers you blocked
+      // left out. It used to load anonymously, so none of those worked here.
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
       if (res.ok) { const d = await res.json(); setNearbyTasks(d.tasks || []) }
     } catch {}
   }, [])
@@ -143,7 +149,16 @@ export default function Opportunities() {
                     <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} slots</span>
                   </div>
-                  <p className="text-xs text-earth-600 mt-1">Posted by {t.creator_name}</p>
+                  <p className="text-xs text-earth-600 mt-1 flex items-center gap-3">
+                    <span>Posted by {t.creator_name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setReporting(t) }}
+                      className="inline-flex items-center gap-1 text-earth-500 hover:text-red-400"
+                    >
+                      <Flag className="w-3 h-3" /> Report
+                    </button>
+                  </p>
                   {approved && t.phone && (
                     <p className="text-xs text-emerald-400 mt-1 font-medium">Contact: {t.phone}</p>
                   )}
@@ -190,6 +205,19 @@ export default function Opportunities() {
       </div>
 
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
+      {reporting && (
+        <ReportTaskDialog
+          task={reporting}
+          onClose={() => setReporting(null)}
+          onDone={({ blocked }) => {
+            setReporting(null)
+            setToastMsg(blocked ? "Thanks — reported, and you won't see this organizer's tasks." : 'Thanks — we review reports within 24 hours.')
+            setToast(true)
+            // A blocked organizer's tasks drop out of the list.
+            if (blocked) loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius)
+          }}
+        />
+      )}
     </AppLayout>
   )
 }

@@ -24,7 +24,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 17, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 19, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -61,6 +61,7 @@ export default function Terms() {
 
           <Section title="Acceptable Use">
             <p>Don't use VolunTrack to upload harmful content, attempt to access accounts or data that aren't yours, interfere with the service's operation, or use it for anything unlawful.</p>
+            <p className="mt-2">Volunteer tasks are seen by students, many of them minors. A task must be a real volunteer opportunity, described honestly, and safe and appropriate for young people. Anyone can report a task or block its organizer; we review reports within 24 hours and may remove a task or stop an organizer from posting.</p>
           </Section>
 
           <Section title="Account Termination">

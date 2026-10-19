@@ -138,8 +138,9 @@ purpose *App Functionality* — matching `PrivacyInfo.xcprivacy`:
 - Identifiers → User ID
 - Location → Precise Location (only when the user taps *Use current location*
   or turns on nearby tasks)
-- User Content → Photos or Videos, Other User Content (entries, and app
-  reviews), Customer Support (contact-form messages)
+- User Content → Photos or Videos, Other User Content (entries, app
+  reviews, and reports about volunteer tasks), Customer Support
+  (contact-form messages)
 
 One more, *Linked to the user*, *not used for tracking*, purpose *Analytics*:
 
@@ -210,16 +211,40 @@ Paste into *App Review Information → Notes* (Apple) / *App access* (Play):
 > Demo student account: <email> / <password>. It belongs to a demo school, so
 > you can log hours (Log Hours tab), attach proof, request supervisor
 > verification, and see goals and badges.
-> School single sign-on appears only for schools that configured it; the demo
-> account uses a password. Camera is used only to scan a sign-in QR code or
-> photograph proof; location only when the user taps "Use current location" or turns on
-> nearby tasks.
+>
+> **Why sign-in is required:** a student's hours are records their school
+> reviews and approves, and that a linked parent can follow, so they belong
+> to an account rather than one device. School single sign-on appears only
+> for schools that configured it; the demo account uses a password.
+>
+> **Native features in this build** (it is not a website in a frame):
+> - Face ID / Touch ID / passcode app lock with "Keep me signed in" (the
+>   session lives in the iOS Keychain and is restored only after biometrics).
+> - Passkeys as a second sign-in factor (Settings → Passkeys).
+> - Reminders delivered as native local notifications, even when the app is
+>   closed (Reminders tab).
+> - Camera: scan a QR code to sign in on another device, or photograph proof
+>   of service.
+> - Works offline: hours logged without a connection are saved on the device
+>   and sync when it's back.
+> - Native tab bar, haptics, status bar and splash screen.
+>
+> **User-generated content (guideline 1.2):** volunteer tasks on the
+> Opportunities tab are posted by organizers. Every task has a **Report**
+> button (reasons: unsafe or inappropriate, spam or a scam, misleading, other)
+> with an option to **block the organizer**, which hides their tasks and
+> stops their messages; blocks are listed and undone in Settings → Blocked
+> organizers. Reports reach us by email and in our admin dashboard, and we act
+> within 24 hours: dismiss, remove the task, or suspend the organizer from
+> posting.
+>
+> Camera is used only to scan a sign-in QR code or photograph proof; location
+> only when the user taps "Use current location" or turns on nearby tasks.
 
 **Guideline 4.2 (minimum functionality)** is the main rejection risk for an
-app that shares its UI with a website. Mention the native parts: the native
-app shell and tab bar, haptics, the status bar and splash screen, camera QR
-sign-in, and reminders delivered as native notifications
-while the app is closed.
+app that shares its UI with a website. The note above lists the native
+parts; keep it in step with the build (Face ID lock, passkeys, native
+notifications, camera, offline, tab bar, haptics, status bar, splash).
 
 ## Signing
 

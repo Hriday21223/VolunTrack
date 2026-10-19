@@ -12,6 +12,7 @@ import QRCode from 'qrcode'
 import { format, parseISO } from 'date-fns'
 import { isNativeApp } from '@/lib/platform.js'
 import PasskeySettings from '@/components/PasskeySettings.jsx'
+import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -1427,6 +1428,7 @@ export default function Settings() {
         </CollapsibleSection>
 
         <CollapsibleSection icon={Info} label="About & Account" defaultOpen={false}>
+          {(user?.role === 'student' || user?.role === 'volunteer') && <BlockedOrganizers />}
           {isNativeApp ? (
             // The app has no website footer, so the links it carried live here.
             <Card className="p-0 overflow-hidden">
