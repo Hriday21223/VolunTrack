@@ -962,8 +962,19 @@ router.patch('/code', limiter, requireDb, requireAuth('school'), async (req, res
 // --- Public volunteer tasks (any user can post, any user can sign up) ---
 
 // Create a public task (phone required)
+// A task's map position. Stored values feed everyone's distance search, so
+// they're range-checked: undefined/'' means none, anything else must be real.
+function coordinate(value, max) {
+  if (value === undefined || value === null || value === '') return { ok: true, value: null }
+  const n = Number(value)
+  return Number.isFinite(n) && Math.abs(n) <= max ? { ok: true, value: n } : { ok: false }
+}
+
 router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res) => {
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
+  const lat = coordinate(latitude, 90)
+  const lng = coordinate(longitude, 180)
+  if (!lat.ok || !lng.ok) return res.status(400).json({ error: 'Invalid map position.' })
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
   if (!isValidDateString(date)) return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
@@ -1001,7 +1012,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     await query(
       `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-      [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, latitude || null, longitude || null, importantInfo || null],
+      [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null],
     )
     return res.status(201).json({ ok: true, id })
   } catch (error) {
@@ -1028,11 +1039,11 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
 
     const distExpr = useDist
       ? `CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN
-           6371 * 2 * ASIN(SQRT(
+           6371 * 2 * ASIN(LEAST(1, SQRT(
              POWER(SIN(RADIANS(t.latitude - $${params.length + 1}) / 2), 2) +
              COS(RADIANS($${params.length + 1})) * COS(RADIANS(t.latitude)) *
              POWER(SIN(RADIANS(t.longitude - $${params.length + 2}) / 2), 2)
-           ))
+           )))
          ELSE NULL END AS distance`
       : 'NULL AS distance'
 
@@ -1290,9 +1301,9 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
         }
         values.push(slots)
       } else if (field === 'latitude' || field === 'longitude') {
-        const n = req.body[field] === null || req.body[field] === '' ? null : Number(req.body[field])
-        if (n !== null && !Number.isFinite(n)) return res.status(400).json({ error: 'Invalid map position.' })
-        values.push(n)
+        const c = coordinate(req.body[field], field === 'latitude' ? 90 : 180)
+        if (!c.ok) return res.status(400).json({ error: 'Invalid map position.' })
+        values.push(c.value)
       } else {
         const text = String(req.body[field] ?? '').trim()
         if (limits[field] && text.length > limits[field]) {
