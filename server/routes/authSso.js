@@ -66,7 +66,7 @@ function entraTenantId(issuer) {
 // (which the browser would treat as a different origin).
 function safeReturnTo(value) {
   const v = String(value || '')
-  if (!v.startsWith('/') || v.startsWith('//')) return '/dashboard'
+  if (!v.startsWith('/') || v.startsWith('//')) return '/'
   return v
 }
 

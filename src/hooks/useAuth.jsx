@@ -392,7 +392,7 @@ export function AuthProvider({ children }) {
 
   // Full-page navigation, not fetch — the IdP needs to own the browser for the
   // redirect dance (and may need to show its own login/consent screens).
-  const ssoStart = useCallback((connectionId, returnTo = '/dashboard') => {
+  const ssoStart = useCallback((connectionId, returnTo = '/') => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const url = `${apiUrl}/auth/sso/${encodeURIComponent(connectionId)}/start?returnTo=${encodeURIComponent(returnTo)}`
     window.location.assign(url.startsWith('http') ? url : `${window.location.origin}${url}`)

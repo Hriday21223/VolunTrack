@@ -159,7 +159,7 @@ export default function Login() {
     // needs clearing — it just holds the button in its pending state.
     if (ssoActive) {
       setBusy(true)
-      ssoStart(offeredSso.connectionId, loc.state?.from?.pathname || '/dashboard')
+      ssoStart(offeredSso.connectionId, loc.state?.from?.pathname || '/')
       return
     }
     setBusy(true)
