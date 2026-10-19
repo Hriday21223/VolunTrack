@@ -172,6 +172,7 @@ export function clearUserData() {
   write(keys.reminders, [])
   write(keys.fired, [])
   write(keys.logOutbox, null)
+  write(keys.goalsUnsent, false)
   // The review prompt is suppressed by either of these, so leaving them
   // behind would hide it from every later account on a shared device.
   write(keys.reviews, [])
@@ -186,11 +187,15 @@ export function clearUserData() {
 function normalizeLogDates(logs) {
   let changed = false
   const fixed = logs.map((l) => {
+    let next = l
     if (typeof l.date === 'string' && l.date.length > 10 && l.date[10] === 'T') {
-      changed = true
-      return { ...l, date: l.date.slice(0, 10) }
+      next = { ...next, date: l.date.slice(0, 10) }
     }
-    return l
+    // Organizer-logged hours used to come down as category 'volunteer', which
+    // the app doesn't have; the server has since corrected its own copy.
+    if (l.category === 'volunteer') next = { ...next, category: 'Community Service' }
+    if (next !== l) changed = true
+    return next
   })
   if (changed) write(keys.logs, fixed)
   return fixed

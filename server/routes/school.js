@@ -285,6 +285,29 @@ router.delete('/transfer/mine', limiter, requireDb, requireAuth('student'), asyn
   }
 })
 
+// A student leaves their school (graduated, homeschooling, changed their
+// mind). Moving to another school is a transfer instead. From here the school
+// no longer sees their hours or reports, which only go to a student's current
+// school; the hours themselves stay in the student's account.
+router.post('/leave', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      'UPDATE users SET school_id = NULL WHERE id = $1 AND school_id IS NOT NULL RETURNING id',
+      [req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: "You aren't linked to a school." })
+    await query(
+      `UPDATE school_transfers SET status = 'cancelled', decided_at = now()
+        WHERE user_id = $1 AND status = 'pending'`,
+      [req.auth.sub],
+    )
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('leave school failed:', error)
+    return res.status(500).json({ error: 'Could not leave the school.' })
+  }
+})
+
 // GET /api/school/transfers — requests waiting on this school.
 router.get('/transfers', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   try {

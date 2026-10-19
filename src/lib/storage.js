@@ -13,6 +13,7 @@ export const keys = {
   reviews:      `${NS}reviews`,          // list of review submissions
   reviewDismissed: `${NS}review-dismissed`, // set when the user closes the review prompt without submitting
   logOutbox:    `${NS}log-outbox`,     // log edits/deletes that couldn't reach the server yet
+  goalsUnsent:  `${NS}goals-unsent`,   // true while a goal change hasn't reached the server
 }
 
 export function read(key, fallback = null) {
