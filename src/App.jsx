@@ -28,6 +28,7 @@ const SsoReturn = lazy(() => import('@/pages/SsoReturn.jsx'))
 const Contact = lazy(() => import('@/pages/Contact.jsx'))
 const Terms = lazy(() => import('@/pages/Terms.jsx'))
 const Privacy = lazy(() => import('@/pages/Privacy.jsx'))
+const NotFound = lazy(() => import('@/pages/NotFound.jsx'))
 const Dashboard = lazy(() => import('@/pages/Dashboard.jsx'))
 const Opportunities = lazy(() => import('@/pages/Opportunities.jsx'))
 const LogHours = lazy(() => import('@/pages/LogHours.jsx'))
@@ -145,7 +146,9 @@ function Shell() {
           <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
           <Route path="/organization/dashboard" element={<Protected roles={['org']}><OrganizationDashboard /></Protected>} />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* The home page is the dashboard; older sign-in links used /dashboard. */}
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
       <MobileTabBar />

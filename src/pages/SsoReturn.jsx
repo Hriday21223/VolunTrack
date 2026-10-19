@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 // clears that test and still resolves to https://evil.com. So resolve the
 // value and compare origins instead of guessing from its shape, and hand back
 // only the path portion so the result can never carry an origin of its own.
-function safeReturnTo(raw, fallback = '/dashboard') {
+function safeReturnTo(raw, fallback = '/') {
   if (!raw) return fallback
   try {
     const url = new URL(raw, window.location.origin)
