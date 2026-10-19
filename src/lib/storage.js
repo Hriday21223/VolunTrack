@@ -14,6 +14,7 @@ export const keys = {
   reviewDismissed: `${NS}review-dismissed`, // set when the user closes the review prompt without submitting
   logOutbox:    `${NS}log-outbox`,     // log edits/deletes that couldn't reach the server yet
   goalsUnsent:  `${NS}goals-unsent`,   // true while a goal change hasn't reached the server
+  goalsSyncedFor: `${NS}goals-synced-for`, // which account this device's goals were first merged for
 }
 
 export function read(key, fallback = null) {

@@ -56,7 +56,7 @@ export function pushGoals() {
 
 // Brings this device and the server into line. Returns true when the local
 // list changed, so the caller re-reads it.
-export async function syncGoals() {
+export async function syncGoals(accountId) {
   const headers = authHeaders()
   if (!headers) return false
   const local = read(keys.goals, [])
@@ -74,7 +74,22 @@ export async function syncGoals() {
   } catch {
     return false
   }
-  // First sync for an account whose goals so far lived only on this device.
+  // The first sync on this device for this account combines, not replaces:
+  // goals set here before sync existed would otherwise be dropped when
+  // another device got its list onto the server first.
+  if (accountId && read(keys.goalsSyncedFor, null) !== accountId) {
+    const known = new Set(server.map((g) => g.id))
+    const merged = [...server, ...local.filter((g) => !known.has(g.id))]
+    // One primary goal: the server's if it has one.
+    if (merged.filter((g) => g.primary).length > 1) {
+      const keep = merged.find((g) => g.primary)
+      for (const g of merged) g.primary = g === keep
+    }
+    write(keys.goals, merged)
+    if (merged.length > server.length) await pushGoals()
+    write(keys.goalsSyncedFor, accountId)
+    return merged.length !== local.length || merged.some((g, i) => g.id !== local[i]?.id)
+  }
   if (server.length === 0) {
     if (local.length > 0) await pushGoals()
     return false

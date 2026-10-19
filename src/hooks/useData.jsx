@@ -173,7 +173,7 @@ export function DataProvider({ children }) {
     // Writes that couldn't reach the server earlier go first, so the pull
     // that follows already knows their server ids.
     if (account && localStorage.getItem('voluntrack:auth_token')) {
-      syncGoals().then((changed) => { if (changed) setGoals(listGoals()) })
+      syncGoals(account).then((changed) => { if (changed) setGoals(listGoals()) })
       flushLogOutbox()
         .then((sent) => syncPullLogs(account).then((pulled) => sent + pulled))
         .then((n) => { if (n > 0) setLogs(listLogs()) })

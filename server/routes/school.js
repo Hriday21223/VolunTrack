@@ -962,8 +962,19 @@ router.patch('/code', limiter, requireDb, requireAuth('school'), async (req, res
 // --- Public volunteer tasks (any user can post, any user can sign up) ---
 
 // Create a public task (phone required)
+// A task's map position. Stored values feed everyone's distance search, so
+// they're range-checked: undefined/'' means none, anything else must be real.
+function coordinate(value, max) {
+  if (value === undefined || value === null || value === '') return { ok: true, value: null }
+  const n = Number(value)
+  return Number.isFinite(n) && Math.abs(n) <= max ? { ok: true, value: n } : { ok: false }
+}
+
 router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res) => {
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
+  const lat = coordinate(latitude, 90)
+  const lng = coordinate(longitude, 180)
+  if (!lat.ok || !lng.ok) return res.status(400).json({ error: 'Invalid map position.' })
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
   if (!isValidDateString(date)) return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
@@ -989,8 +1000,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   }
   // A negative or non-integer slot count is truthy and numeric, so it would
   // slip past the `|| 1` default below and permanently lock the task as full.
-  if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1)) {
-    return res.status(400).json({ error: 'Slots must be a positive whole number.' })
+  // Same bounds as editing the task (PATCH below); a huge number overflowed
+  // the INTEGER column and came back as a server error.
+  if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1 || Number(slotsTotal) > 1000)) {
+    return res.status(400).json({ error: 'Volunteers needed must be between 1 and 1000.' })
   }
 
   try {
@@ -1001,7 +1014,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     await query(
       `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-      [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, latitude || null, longitude || null, importantInfo || null],
+      [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null],
     )
     return res.status(201).json({ ok: true, id })
   } catch (error) {
@@ -1019,17 +1032,20 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
     const lat = req.query.lat ? Number(req.query.lat) : null
     const lng = req.query.lng ? Number(req.query.lng) : null
     const maxDistance = req.query.maxDistance ? Number(req.query.maxDistance) : null
-    const useDist = lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)
+    // Out-of-range coordinates made the distance maths fail (ASIN of a value
+    // above 1) and took the whole list down with it; they're ignored instead.
+    const useDist = lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng)
+      && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
 
     const params = userId ? [userId] : []
 
     const distExpr = useDist
       ? `CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN
-           6371 * 2 * ASIN(SQRT(
+           6371 * 2 * ASIN(LEAST(1, SQRT(
              POWER(SIN(RADIANS(t.latitude - $${params.length + 1}) / 2), 2) +
              COS(RADIANS($${params.length + 1})) * COS(RADIANS(t.latitude)) *
              POWER(SIN(RADIANS(t.longitude - $${params.length + 2}) / 2), 2)
-           ))
+           )))
          ELSE NULL END AS distance`
       : 'NULL AS distance'
 
@@ -1287,9 +1303,9 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
         }
         values.push(slots)
       } else if (field === 'latitude' || field === 'longitude') {
-        const n = req.body[field] === null || req.body[field] === '' ? null : Number(req.body[field])
-        if (n !== null && !Number.isFinite(n)) return res.status(400).json({ error: 'Invalid map position.' })
-        values.push(n)
+        const c = coordinate(req.body[field], field === 'latitude' ? 90 : 180)
+        if (!c.ok) return res.status(400).json({ error: 'Invalid map position.' })
+        values.push(c.value)
       } else {
         const text = String(req.body[field] ?? '').trim()
         if (limits[field] && text.length > limits[field]) {
@@ -2049,7 +2065,12 @@ router.patch('/admin/:id/notes', limiter, requireDb, requireAuth('admin'), async
 // Set a school's custom price (e.g. amount "$200" billed "monthly" or
 // "yearly"). Used as the default when sending that school a payment notice.
 router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async (req, res) => {
-  const amount = String(req.body.amount ?? '').trim()
+  const amount = String(req.body.amount ?? '').trim().replace(/^\$/, '').replace(/,/g, '')
+  // Shown to the customer and used to pre-fill their invoices, so a typo is
+  // refused here rather than billed: a plain amount, up to two decimals.
+  if (amount && !/^\d{1,7}(\.\d{1,2})?$/.test(amount)) {
+    return res.status(400).json({ error: 'Enter the price as an amount, like 499 or 499.00.' })
+  }
   const period = req.body.period ? String(req.body.period).trim() : null
   if (period && !['monthly', 'yearly', 'one_time'].includes(period)) {
     return res.status(400).json({ error: 'Invalid billing period.' })
@@ -2419,6 +2440,7 @@ router.delete('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req
 // Set a single school's payment due date (admin only)
 router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const dueDate = req.body.dueDate ? String(req.body.dueDate).trim() : null
+  if (dueDate && !isValidDateString(dueDate)) return res.status(400).json({ error: 'Enter the due date as YYYY-MM-DD.' })
   try {
     await query('UPDATE schools SET payment_due_date = $1 WHERE id = $2', [dueDate || null, req.params.id])
     return res.json({ ok: true })
