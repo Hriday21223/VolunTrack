@@ -28,11 +28,25 @@ export default defineConfig(({ mode }) => {
   // so no new global needs declaring for eslint or jsconfig.
   process.env.VITE_APP_VERSION = pkg.version
 
+  // The landing page calls the backend as it loads; when that's another origin
+  // (production: VITE_API_URL is the Render URL), opening the connection early
+  // saves ~270 ms (Lighthouse "preconnect to required origins"). crossorigin
+  // matches the CORS fetches. A relative '/api' (dev) needs nothing.
+  let apiOrigin = null
+  try { apiOrigin = new URL(env.VITE_API_URL || '').origin } catch { /* relative or unset */ }
+  const preconnectApi = {
+    name: 'preconnect-api',
+    transformIndexHtml: () => (apiOrigin
+      ? [{ tag: 'link', attrs: { rel: 'preconnect', href: apiOrigin, crossorigin: '' }, injectTo: 'head' }]
+      : []),
+  }
+
   return {
     base: '/',
 
     plugins: [
       react(),
+      preconnectApi,
 
       VitePWA({
         // The native apps (npm run build:app) ship the bundle inside the app
@@ -45,9 +59,11 @@ export default defineConfig(({ mode }) => {
         },
 
         includeAssets: [
-          'logo.png',
+          'favicon-32.png',
+          'apple-touch-icon.png',
           'icons/icon-192.png',
-          'icons/icon-512.png'
+          'icons/icon-512.png',
+          'icons/icon-512-maskable.png',
         ],
 
         manifest: {
@@ -62,25 +78,13 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           scope: '/',
 
+          // Square icons made from the 1024px app icon. The maskable one keeps
+          // the logo inside the middle 80%, since Android crops to a circle.
+          // (These files used to be missing, so installs had no icon.)
           icons: [
-            {
-              src: 'logo.png',
-              sizes: 'any',
-              type: 'image/png',
-              purpose: 'maskable any',
-            },
-            {
-              src: 'icons/icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'maskable any',
-            },
-            {
-              src: 'icons/icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable any',
-            },
+            { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
         },
 

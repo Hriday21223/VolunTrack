@@ -45,7 +45,8 @@ export default function Footer({ tone = 'auto', className }) {
               'inline-flex items-center gap-1.5 transition-colors',
               dark ? 'hover:text-white' : 'hover:text-earth-900 dark:hover:text-white',
             )}
-            aria-label="Instagram"
+            // Contains the visible text, so "click volunteertrackofficial" works by voice.
+            aria-label="@volunteertrackofficial on Instagram"
           >
             <Instagram className="w-4 h-4" />
             @volunteertrackofficial
