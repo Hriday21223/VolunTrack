@@ -39,7 +39,7 @@ function ClickToPlace({ onPick }) {
 
 // Address + business/POI autocomplete with a draggable-pin map. Search and
 // reverse-geocoding go through src/lib/geocode.js, which prefers HERE (real
-// worldwide business data — set VITE_HERE_API_KEY) and falls back to
+// worldwide business data, via our server with HERE_API_KEY) and falls back to
 // Nominatim/OpenStreetMap (no key required, but its POI coverage has real
 // gaps — e.g. a business OSM hasn't been tagged with yet won't show up).
 // Leaflet renders the map tiles either way.

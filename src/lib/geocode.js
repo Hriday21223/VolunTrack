@@ -1,20 +1,26 @@
 // Location search backing LocationPicker. HERE has its own worldwide business/POI
 // database (not OpenStreetMap-derived), so it finds places OSM hasn't been tagged
-// with yet; Nominatim (OSM, no key required) is the always-available fallback so
-// search still works before VITE_HERE_API_KEY is configured, or if HERE errors out.
-const HERE_KEY = import.meta.env.VITE_HERE_API_KEY
+// with yet. It's reached through our server (server/routes/places.js), which
+// holds the key; the key used to ship in the website, where anyone could copy
+// it. Nominatim (OSM, no key required) is the always-available fallback, for
+// when the server has no HERE key, HERE errors out, or the user is signed out.
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
+function authHeaders() {
+  const token = localStorage.getItem('voluntrack:auth_token')
+  return token ? { Authorization: `Bearer ${token}` } : null
+}
+
+// null means "no answer from HERE" (no key, signed out, error): use Nominatim.
 async function hereSearch(query, bias) {
-  const at = bias ? `${bias.lat},${bias.lng}` : '20,0'
-  const url = `https://autosuggest.search.hereapi.com/v1/autosuggest?q=${encodeURIComponent(query)}&at=${at}&limit=5&apiKey=${HERE_KEY}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`HERE autosuggest failed: ${res.status}`)
+  const headers = authHeaders()
+  if (!headers) return null
+  const params = new URLSearchParams({ q: query })
+  if (bias) { params.set('lat', bias.lat); params.set('lng', bias.lng) }
+  const res = await fetch(`${apiUrl}/places/search?${params}`, { headers })
+  if (!res.ok) return null
   const data = await res.json()
-  // resultType "categoryQuery" items are refine-your-search hints, not places —
-  // they carry no position, so drop anything without one.
-  return (data.items || [])
-    .filter((item) => item.position && item.address?.label)
-    .map((item) => ({ label: item.address.label, lat: item.position.lat, lng: item.position.lng }))
+  return Array.isArray(data.results) ? data.results : null
 }
 
 async function nominatimSearch(query, bias) {
@@ -39,12 +45,11 @@ async function nominatimSearch(query, bias) {
 // total failure (both providers down / network error) rather than throwing —
 // callers treat an empty suggestion list as "no matches", same as zero results.
 export async function searchPlaces(query, bias) {
-  if (HERE_KEY) {
-    try {
-      return await hereSearch(query, bias)
-    } catch {
-      // fall through to Nominatim — bad/quota-exhausted key or network hiccup
-    }
+  try {
+    const here = await hereSearch(query, bias)
+    if (here) return here
+  } catch {
+    // fall through to Nominatim — server unreachable or a network hiccup
   }
   try {
     return await nominatimSearch(query, bias)
@@ -54,10 +59,12 @@ export async function searchPlaces(query, bias) {
 }
 
 async function hereReverse(lat, lng) {
-  const res = await fetch(`https://revgeocode.search.hereapi.com/v1/revgeocode?at=${lat},${lng}&limit=1&apiKey=${HERE_KEY}`)
-  if (!res.ok) throw new Error(`HERE revgeocode failed: ${res.status}`)
+  const headers = authHeaders()
+  if (!headers) return null
+  const res = await fetch(`${apiUrl}/places/reverse?${new URLSearchParams({ lat, lng })}`, { headers })
+  if (!res.ok) return null
   const data = await res.json()
-  return data.items?.[0]?.address?.label || null
+  return data.label || null
 }
 
 async function nominatimReverse(lat, lng) {
@@ -73,13 +80,11 @@ async function nominatimReverse(lat, lng) {
 // Returns null (not a throw) when both providers fail to resolve a label —
 // callers already have the raw lat/lng to fall back to.
 export async function reverseGeocode(lat, lng) {
-  if (HERE_KEY) {
-    try {
-      const label = await hereReverse(lat, lng)
-      if (label) return label
-    } catch {
-      // fall through to Nominatim
-    }
+  try {
+    const label = await hereReverse(lat, lng)
+    if (label) return label
+  } catch {
+    // fall through to Nominatim
   }
   try {
     return await nominatimReverse(lat, lng)
