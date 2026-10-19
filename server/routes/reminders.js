@@ -100,7 +100,8 @@ router.put('/sync', limiter, requireDb, requireAuth(), async (req, res) => {
   const rows = []
   for (const r of incoming) {
     if (!r || typeof r.id !== 'string' || !KINDS.includes(r.kind)) continue
-    if (!/^\d{1,2}:\d{2}$/.test(String(r.time || ''))) continue
+    // A real time of day: '99:99' matched the old pattern and scheduled oddly.
+    if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(String(r.time || ''))) continue
     rows.push([
       r.id.slice(0, 64), req.auth.sub,
       String(r.title || 'VolunTrack reminder').slice(0, 120),
