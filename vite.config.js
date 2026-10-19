@@ -45,9 +45,11 @@ export default defineConfig(({ mode }) => {
         },
 
         includeAssets: [
-          'logo.png',
+          'favicon-32.png',
+          'apple-touch-icon.png',
           'icons/icon-192.png',
-          'icons/icon-512.png'
+          'icons/icon-512.png',
+          'icons/icon-512-maskable.png',
         ],
 
         manifest: {
@@ -62,25 +64,13 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           scope: '/',
 
+          // Square icons made from the 1024px app icon. The maskable one keeps
+          // the logo inside the middle 80%, since Android crops to a circle.
+          // (These files used to be missing, so installs had no icon.)
           icons: [
-            {
-              src: 'logo.png',
-              sizes: 'any',
-              type: 'image/png',
-              purpose: 'maskable any',
-            },
-            {
-              src: 'icons/icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'maskable any',
-            },
-            {
-              src: 'icons/icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable any',
-            },
+            { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
         },
 
