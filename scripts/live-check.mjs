@@ -321,7 +321,7 @@ function summaryPrompt(failed, results) {
   })()
   return [
     'You are summarising an automated test run of VolunTrack, a volunteer-hour tracking web app, for its owner, who is not a developer.',
-    'Setup: React/Vite frontend on Vercel with a Content-Security-Policy in vercel.json; Express backend on Render; Neon Postgres; Cloudflare Turnstile CAPTCHA on sign-in and sign-up; Leaflet + OpenStreetMap map with HERE/Nominatim place search on Log Hours; email via Brevo or Gmail SMTP.',
+    'Setup: React/Vite frontend on Vercel with a Content-Security-Policy in vercel.json; Express backend on Render; Neon Postgres; Cloudflare Turnstile CAPTCHA on sign-in and sign-up; Leaflet + OpenStreetMap map with Nominatim place search on Log Hours; email via Brevo or Gmail SMTP.',
     '',
     'Failed checks:',
     ...failed.map((r) => `- ${r.name}: ${r.detail}`),
