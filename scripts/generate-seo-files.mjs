@@ -67,6 +67,9 @@ const SITEMAP_ENTRIES = [
   { path: '/login', changefreq: 'monthly', priority: '0.5' },
   { path: '/help', changefreq: 'monthly', priority: '0.5' },
   { path: '/status', changefreq: 'daily', priority: '0.3' },
+  // Schools and districts reviewing an app look for these.
+  { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
+  { path: '/terms', changefreq: 'monthly', priority: '0.4' },
 ]
 
 // AI / LLM crawlers we explicitly welcome so the marketing pages can be read,
