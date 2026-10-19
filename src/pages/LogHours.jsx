@@ -413,7 +413,9 @@ export default function LogHours({ editId, onCloseEdit }) {
 
           <Card>
             <SectionTitle>Where</SectionTitle>
-            <div className="grid sm:grid-cols-2 gap-4">
+            {/* Location gets the full width: beside Notes, with the "Current"
+                button next to it, a place name was cut off while typing. */}
+            <div className="grid gap-4">
               <div>
                 <label className="label">Location {required.locationRequired ? '*' : ''}</label>
                 <LocationPicker

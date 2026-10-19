@@ -77,7 +77,11 @@ const STORAGE_NOTE = {
   parent: "Your linked children's hour records are stored on our servers so you can follow their progress.",
 }
 STORAGE_NOTE.school_staff = STORAGE_NOTE.school
-const DEFAULT_STORAGE_NOTE = 'Your hours are stored on this device. Creating an account also stores some data (Family sharing, school linking, sync) on our server.'
+// Students and volunteers: a signed-in account keeps its hours on our servers
+// (synced to every device); an account that exists only on this device
+// (no server connection when it was made) keeps them here.
+const ACCOUNT_STORAGE_NOTE = 'Your hours are saved to your account and synced across your devices. A copy stays on this device so the app works offline.'
+const DEVICE_STORAGE_NOTE = 'This account and its hours are stored only on this device.'
 
 export default function Sidebar() {
   const { user } = useAuth()
@@ -119,7 +123,7 @@ export default function Sidebar() {
 
       <div className="px-5 pb-6 pt-4 text-xs text-earth-400 border-t border-earth-900/80">
         <div className="rounded-3xl bg-white/5 p-3 text-earth-300">
-          {STORAGE_NOTE[role] || DEFAULT_STORAGE_NOTE}
+          {STORAGE_NOTE[role] || (localStorage.getItem('voluntrack:auth_token') ? ACCOUNT_STORAGE_NOTE : DEVICE_STORAGE_NOTE)}
         </div>
         <div className="mt-4 flex gap-3">
           <Link to="/contact" className="text-earth-300 hover:text-white">Contact</Link>
