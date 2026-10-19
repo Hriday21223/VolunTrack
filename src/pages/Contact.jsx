@@ -172,8 +172,8 @@ export default function Contact() {
                 </div>
               </div>
               <div>
-                <label className="label">What is it about?</label>
-                <select className="input" value={form.subject} onChange={onChange('subject')}>
+                <label className="label" htmlFor="contact-subject">What is it about?</label>
+                <select id="contact-subject" className="input" value={form.subject} onChange={onChange('subject')}>
                   <option>General question</option>
                   <option>Bug report</option>
                   <option>Feature request</option>

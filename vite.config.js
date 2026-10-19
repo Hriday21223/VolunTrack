@@ -28,11 +28,25 @@ export default defineConfig(({ mode }) => {
   // so no new global needs declaring for eslint or jsconfig.
   process.env.VITE_APP_VERSION = pkg.version
 
+  // The landing page calls the backend as it loads; when that's another origin
+  // (production: VITE_API_URL is the Render URL), opening the connection early
+  // saves ~270 ms (Lighthouse "preconnect to required origins"). crossorigin
+  // matches the CORS fetches. A relative '/api' (dev) needs nothing.
+  let apiOrigin = null
+  try { apiOrigin = new URL(env.VITE_API_URL || '').origin } catch { /* relative or unset */ }
+  const preconnectApi = {
+    name: 'preconnect-api',
+    transformIndexHtml: () => (apiOrigin
+      ? [{ tag: 'link', attrs: { rel: 'preconnect', href: apiOrigin, crossorigin: '' }, injectTo: 'head' }]
+      : []),
+  }
+
   return {
     base: '/',
 
     plugins: [
       react(),
+      preconnectApi,
 
       VitePWA({
         // The native apps (npm run build:app) ship the bundle inside the app
