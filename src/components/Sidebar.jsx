@@ -2,6 +2,8 @@ import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCi
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { tr } from '@/lib/i18n.js'
+import LanguagePicker from '@/components/LanguagePicker.jsx'
 
 const ROLE_ITEMS = {
   student: [
@@ -95,7 +97,7 @@ export default function Sidebar() {
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-11 h-11 object-contain" />
           <div>
             <div className="font-display font-bold text-lg leading-none">VolunTrack</div>
-            <div className="text-xs text-earth-400 mt-0.5">Volunteer hour tracker</div>
+            <div className="text-xs text-earth-400 mt-0.5">{tr('Volunteer hour tracker')}</div>
           </div>
         </div>
       </div>
@@ -116,20 +118,21 @@ export default function Sidebar() {
             }
           >
             <Icon className="w-4 h-4" />
-            {label}
+            {tr(label)}
           </NavLink>
         ))}
       </nav>
 
       <div className="px-5 pb-6 pt-4 text-xs text-earth-400 border-t border-earth-900/80">
         <div className="rounded-3xl bg-white/5 p-3 text-earth-300">
-          {STORAGE_NOTE[role] || (localStorage.getItem('voluntrack:auth_token') ? ACCOUNT_STORAGE_NOTE : DEVICE_STORAGE_NOTE)}
+          {tr(STORAGE_NOTE[role] || (localStorage.getItem('voluntrack:auth_token') ? ACCOUNT_STORAGE_NOTE : DEVICE_STORAGE_NOTE))}
         </div>
+        <LanguagePicker compact className="mt-4" />
         <div className="mt-4 flex gap-3">
-          <Link to="/contact" className="text-earth-300 hover:text-white">Contact</Link>
-          <Link to="/status" className="text-earth-300 hover:text-white">System Status</Link>
+          <Link to="/contact" className="text-earth-300 hover:text-white">{tr('Contact')}</Link>
+          <Link to="/status" className="text-earth-300 hover:text-white">{tr('System Status')}</Link>
         </div>
-        <div className="mt-4 text-earth-500">© {new Date().getFullYear()} VolunTrack. All rights reserved.</div>
+        <div className="mt-4 text-earth-500">© {new Date().getFullYear()}{' '}{tr('VolunTrack. All rights reserved.')}</div>
       </div>
     </aside>
   )

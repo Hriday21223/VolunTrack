@@ -10,6 +10,7 @@ import { isNativeApp } from '@/lib/platform.js'
 import { fmtDate } from '@/utils/date.js'
 import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -23,11 +24,11 @@ const fmtDist = (km) => {
 // The "When" filter: each choice is a range of calendar days, inclusive, in
 // the viewer's own time zone (task dates are plain days).
 const WHEN_OPTIONS = [
-  { value: '', label: 'Any date' },
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'Next 7 days' },
-  { value: 'weekend', label: 'This weekend' },
-  { value: 'month', label: 'Next 30 days' },
+  { value: '', label: tr('Any date') },
+  { value: 'today', label: tr('Today') },
+  { value: 'week', label: tr('Next 7 days') },
+  { value: 'weekend', label: tr('This weekend') },
+  { value: 'month', label: tr('Next 30 days') },
 ]
 function whenRange(when) {
   const now = new Date()
@@ -69,7 +70,7 @@ export default function Opportunities() {
       if (!res.ok) throw new Error(d.error || 'Failed')
       setToastMsg(d.waitlisted
         ? `You're #${d.position} on the waitlist. We'll email you if a spot opens up.`
-        : 'Signed up — awaiting organizer approval')
+        : tr('Signed up — awaiting organizer approval'))
       setToast(true)
       reload()
     } catch (e) { setToastMsg(e.message); setToast(true) }
@@ -92,7 +93,7 @@ export default function Opportunities() {
       // left out. It used to load anonymously, so none of those worked here.
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
-      if (!res.ok) throw new Error('unavailable')
+      if (!res.ok) throw new Error(tr('unavailable'))
       const d = await res.json()
       setNearbyTasks(d.tasks || [])
       setLoadFailed(false)
@@ -126,45 +127,45 @@ export default function Opportunities() {
 
   // The apps' tab bar calls this page Events; its title should match.
   return (
-    <AppLayout title={isNativeApp ? 'Events' : 'Opportunities'} subtitle="Volunteer tasks near you">
+    <AppLayout title={isNativeApp ? tr('Events') : tr('Opportunities')} subtitle={tr('Volunteer tasks near you')}>
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-xl font-bold">Opportunities near you</h2>
+            <h2 className="text-xl font-bold">{tr('Opportunities near you')}</h2>
             <p className="text-sm text-earth-400 mt-1">
-              {userLoc ? `Showing tasks within ${nearbyRadius}km of your location` : 'Enable location to see nearby tasks'}
+              {userLoc ? tr('Showing tasks within {km} km of your location', { km: nearbyRadius }) : tr('Enable location to see nearby tasks')}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-earth-400">Radius:</label>
+            <label className="text-xs text-earth-400">{tr('Radius:')}</label>
             <select
               value={nearbyRadius}
               onChange={(e) => setNearbyRadius(Number(e.target.value))}
               className="input py-1 px-2 text-sm w-24"
             >
-              <option value={5}>5 km</option>
-              <option value={10}>10 km</option>
-              <option value={25}>25 km</option>
-              <option value={50}>50 km</option>
-              <option value={100}>100 km</option>
+              <option value={5}>{tr('5 km')}</option>
+              <option value={10}>{tr('10 km')}</option>
+              <option value={25}>{tr('25 km')}</option>
+              <option value={50}>{tr('50 km')}</option>
+              <option value={100}>{tr('100 km')}</option>
             </select>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label="Category">
-            <option value="">All categories</option>
-            {ACTIVITY_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label={tr('Category')}>
+            <option value="">{tr('All categories')}</option>
+            {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
           </select>
-          <select value={when} onChange={(e) => setWhen(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label="When">
+          <select value={when} onChange={(e) => setWhen(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label={tr('When')}>
             {WHEN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           {filtering && (
             <>
               <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-ghost btn-sm">
-                <X className="w-3.5 h-3.5 mr-1" /> Clear
+                <X className="w-3.5 h-3.5 mr-1" />{' '}{tr('Clear')}
               </button>
-              {loaded && <span className="text-xs text-earth-500">{shownTasks.length} of {nearbyTasks.length} tasks</span>}
+              {loaded && <span className="text-xs text-earth-500">{shownTasks.length}{' '}{tr('of')}{' '}{nearbyTasks.length}{' '}{tr('tasks')}</span>}
             </>
           )}
         </div>
@@ -174,8 +175,8 @@ export default function Opportunities() {
             <div className="flex items-center gap-3">
               <MapPin className="w-5 h-5 text-brand-400 shrink-0" />
               <div className="flex-1">
-                <p className="font-medium text-sm text-white">Location access needed</p>
-                <p className="text-xs text-earth-400 mt-0.5">Allow location access to see volunteer opportunities near you.</p>
+                <p className="font-medium text-sm text-white">{tr('Location access needed')}</p>
+                <p className="text-xs text-earth-400 mt-0.5">{tr('Allow location access to see volunteer opportunities near you.')}</p>
               </div>
               <button onClick={() => {
                 navigator.geolocation.getCurrentPosition(
@@ -187,35 +188,35 @@ export default function Opportunities() {
                   () => {},
                   { enableHighAccuracy: true, timeout: 10000 },
                 )
-              }} className="btn-primary text-xs">Enable</button>
+              }} className="btn-primary text-xs">{tr('Enable')}</button>
             </div>
           </Card>
         )}
 
         {!loaded ? (
           <Card>
-            <p className="text-center py-8 text-earth-400">Loading opportunities…</p>
+            <p className="text-center py-8 text-earth-400">{tr('Loading opportunities…')}</p>
           </Card>
         ) : loadFailed && nearbyTasks.length === 0 ? (
           <Card>
             <div className="text-center py-8">
-              <p className="text-earth-400">Couldn't reach VolunTrack to load opportunities.</p>
-              <button onClick={() => { setLoaded(false); loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius) }} className="btn-secondary mt-3">Try again</button>
+              <p className="text-earth-400">{tr("Couldn't reach VolunTrack to load opportunities.")}</p>
+              <button onClick={() => { setLoaded(false); loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius) }} className="btn-secondary mt-3">{tr('Try again')}</button>
             </div>
           </Card>
         ) : nearbyTasks.length === 0 ? (
           <Card>
             <div className="text-center py-8">
               <MapPin className="w-10 h-10 text-earth-600 mx-auto mb-3" />
-              <p className="text-earth-400">No volunteer opportunities within {nearbyRadius}km.</p>
-              <p className="text-xs text-earth-500 mt-1">Try increasing the radius or check back later.</p>
+              <p className="text-earth-400">{tr('No volunteer opportunities within')}{' '}{nearbyRadius}{tr('km.')}</p>
+              <p className="text-xs text-earth-500 mt-1">{tr('Try increasing the radius or check back later.')}</p>
             </div>
           </Card>
         ) : shownTasks.length === 0 ? (
           <Card>
             <div className="text-center py-8">
-              <p className="text-earth-400">No tasks match these filters.</p>
-              <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-secondary mt-3">Clear filters</button>
+              <p className="text-earth-400">{tr('No tasks match these filters.')}</p>
+              <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-secondary mt-3">{tr('Clear filters')}</button>
             </div>
           </Card>
         ) : shownTasks.map((t) => {
@@ -231,11 +232,11 @@ export default function Opportunities() {
                     <p className="font-medium">{t.title}</p>
                     {t.distance != null && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 font-medium shrink-0">
-                        {fmtDist(t.distance)} away
+                        {fmtDist(t.distance)}{' '}{tr('away')}
                       </span>
                     )}
                   </div>
-                  {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{t.category}</span>}
+                  {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     <a
@@ -248,51 +249,51 @@ export default function Opportunities() {
                       <MapPin className="w-3 h-3" /> {t.location}
                     </a>
                     <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
-                    <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} slots</span>
+                    <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total}{' '}{tr('slots')}</span>
                   </div>
                   <p className="text-xs text-earth-600 mt-1 flex items-center gap-3">
-                    <span>Posted by {t.creator_name}</span>
+                    <span>{tr('Posted by')}{' '}{t.creator_name}</span>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setReporting(t) }}
                       className="inline-flex items-center gap-1 text-earth-500 hover:text-red-400"
                     >
-                      <Flag className="w-3 h-3" /> Report
+                      <Flag className="w-3 h-3" />{' '}{tr('Report')}
                     </button>
                   </p>
                   {approved && t.phone && (
-                    <p className="text-xs text-emerald-400 mt-1 font-medium">Contact: {t.phone}</p>
+                    <p className="text-xs text-emerald-400 mt-1 font-medium">{tr('Contact:')}{' '}{t.phone}</p>
                   )}
                   {approved && t.important_info && (
                     <div className="mt-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                      <p className="text-xs font-semibold text-emerald-300 mb-0.5">Important info</p>
+                      <p className="text-xs font-semibold text-emerald-300 mb-0.5">{tr('Important info')}</p>
                       <p className="text-xs text-emerald-200/80">{t.important_info}</p>
                     </div>
                   )}
                   {t.my_signup_status === 'pending' && (
-                    <p className="text-xs text-amber-400 mt-1">Awaiting organizer approval</p>
+                    <p className="text-xs text-amber-400 mt-1">{tr('Awaiting organizer approval')}</p>
                   )}
                   {t.my_signup_status === 'rejected' && (
-                    <p className="text-xs text-red-400 mt-1">Signup rejected</p>
+                    <p className="text-xs text-red-400 mt-1">{tr('Signup rejected')}</p>
                   )}
                   {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
                   {t.my_signup_status === 'approved' ? (
-                    <span className="text-xs text-emerald-400 font-medium">Approved</span>
+                    <span className="text-xs text-emerald-400 font-medium">{tr('Approved')}</span>
                   ) : t.my_signup_status === 'pending' ? (
-                    <span className="text-xs text-amber-400 font-medium">Pending</span>
+                    <span className="text-xs text-amber-400 font-medium">{tr('Pending')}</span>
                   ) : t.my_signup_status === 'rejected' ? (
-                    <span className="text-xs text-red-400 font-medium">Rejected</span>
+                    <span className="text-xs text-red-400 font-medium">{tr('Rejected')}</span>
                   ) : t.my_signup_status === 'waitlisted' ? (
-                    <span className="text-xs text-sky-300 font-medium">Waitlist #{t.my_waitlist_position || 1}</span>
+                    <span className="text-xs text-sky-300 font-medium">{tr('Waitlist #')}{t.my_waitlist_position || 1}</span>
                   ) : (
                     <button onClick={() => signUp(t, full)} className={full ? 'btn-secondary text-sm' : 'btn-primary text-sm'}>
-                      {full ? 'Join waitlist' : 'Sign up'}
+                      {full ? tr('Join waitlist') : tr('Sign up')}
                     </button>
                   )}
                   {full && !t.my_signup_status && (
-                    <span className="text-xs text-earth-500">Full{Number(t.waitlist_count) > 0 ? ` · ${t.waitlist_count} waiting` : ''}</span>
+                    <span className="text-xs text-earth-500">{tr('Full')}{Number(t.waitlist_count) > 0 ? ` · ${tr('{n} waiting', { n: t.waitlist_count })}` : ''}</span>
                   )}
                   {['pending', 'approved', 'waitlisted'].includes(t.my_signup_status) && (
                     <CancelSignup task={t} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} />
@@ -311,7 +312,7 @@ export default function Opportunities() {
           onClose={() => setReporting(null)}
           onDone={({ blocked }) => {
             setReporting(null)
-            setToastMsg(blocked ? "Thanks — reported, and you won't see this organizer's tasks." : 'Thanks — we review reports within 24 hours.')
+            setToastMsg(blocked ? tr("Thanks — reported, and you won't see this organizer's tasks.") : tr('Thanks — we review reports within 24 hours.'))
             setToast(true)
             // A blocked organizer's tasks drop out of the list.
             if (blocked) loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius)

@@ -14,6 +14,7 @@ import { deriveAchievementState, countedLogs } from '@/lib/achievements.js'
 import { downloadSignedTranscript, hasAccountSession, importTranscript, readTranscriptFile } from '@/lib/transcript.js'
 import { syncPullLogs } from '@/lib/logSync.js'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -47,7 +48,7 @@ export default function Reports() {
         filename: `report-${Date.now()}.pdf`,
         fileType: 'application/pdf',
       })
-      setToastMsg('Report submitted to school!')
+      setToastMsg(tr('Report submitted to school!'))
       setToastOpen(true)
     } catch (e) {
       setToastMsg(e.message)
@@ -79,8 +80,8 @@ export default function Reports() {
 
   return (
     <AppLayout
-      title="Reports"
-      subtitle="Export your record or print a certificate of service."
+      title={tr('Reports')}
+      subtitle={tr('Export your record or print a certificate of service.')}
     >
       {/* grid-cols-1, not an implicit column: an implicit track grows to its
           content's min width, and the date inputs below are wide enough on
@@ -88,37 +89,37 @@ export default function Reports() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-1 space-y-5">
         <Card>
-          <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Filter className="w-4 h-4 text-brand-600" /> Filter</h3>
+          <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Filter className="w-4 h-4 text-brand-600" />{' '}{tr('Filter')}</h3>
           <div className="space-y-3">
             <div>
-              <label className="label">Category</label>
+              <label className="label">{tr('Category')}</label>
               <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
-                {categories.map((c) => <option key={c} value={c}>{c === 'all' ? 'All categories' : c}</option>)}
+                {categories.map((c) => <option key={c} value={c}>{c === 'all' ? tr('All categories') : c}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="label">From</label>
+                <label className="label">{tr('From')}</label>
                 <input type="date" className="input min-w-0" value={from} onChange={(e) => setFrom(e.target.value)} />
               </div>
               <div>
-                <label className="label">To</label>
+                <label className="label">{tr('To')}</label>
                 <input type="date" className="input min-w-0" value={to} onChange={(e) => setTo(e.target.value)} />
               </div>
             </div>
             <div className="pt-2 space-y-2">
               <button className="btn-primary w-full" onClick={() => exportLogsPDF({ user, logs: filtered })}>
-                <FileDown className="w-4 h-4" /> Download PDF
+                <FileDown className="w-4 h-4" />{' '}{tr('Download PDF')}
               </button>
               <button className="btn-secondary w-full" onClick={onCSV}>
-                <Download className="w-4 h-4" /> Export CSV
+                <Download className="w-4 h-4" />{' '}{tr('Export CSV')}
               </button>
               <button className="btn-ghost w-full" onClick={() => printCertificate({ user, totalHours: state.totalHours, goalReached: state.goalReached })}>
-                <Printer className="w-4 h-4" /> Print certificate
+                <Printer className="w-4 h-4" />{' '}{tr('Print certificate')}
               </button>
               {user?.schoolId && (
                 <button className="btn-primary w-full" onClick={submitToSchool} disabled={submitting}>
-                  <Send className="w-4 h-4" /> {submitting ? 'Sending…' : 'Submit to school'}
+                  <Send className="w-4 h-4" /> {submitting ? tr('Sending…') : tr('Submit to school')}
                 </button>
               )}
             </div>
@@ -129,15 +130,15 @@ export default function Reports() {
 
         <div className="lg:col-span-2 space-y-5">
           <div className="grid sm:grid-cols-3 gap-4">
-            <Stat label="Total hours" value={fmtHours(total)} />
-            <Stat label="Sessions"    value={filtered.length} />
-            <Stat label="Categories"  value={byCategory.length} />
+            <Stat label={tr('Total hours')} value={fmtHours(total)} />
+            <Stat label={tr('Sessions')}    value={filtered.length} />
+            <Stat label={tr('Categories')}  value={byCategory.length} />
           </div>
 
           <Card>
-            <h3 className="font-display font-semibold mb-3">Hours by category</h3>
+            <h3 className="font-display font-semibold mb-3">{tr('Hours by category')}</h3>
             {byCategory.length === 0 ? (
-              <div className="text-sm text-earth-500 dark:text-earth-400 py-4 text-center">No data to summarize.</div>
+              <div className="text-sm text-earth-500 dark:text-earth-400 py-4 text-center">{tr('No data to summarize.')}</div>
             ) : (
               <ul className="space-y-2">
                 {byCategory.map(([cat, hrs]) => {
@@ -145,7 +146,7 @@ export default function Reports() {
                   return (
                     <li key={cat}>
                       <div className="flex items-center justify-between text-sm">
-                        <span className={`chip ${categoryColor(cat)}`}>{cat}</span>
+                        <span className={`chip ${categoryColor(cat)}`}>{tr(cat)}</span>
                         <span className="font-medium">{fmtHours(hrs)} · {pct.toFixed(0)}%</span>
                       </div>
                       <div className="h-2 mt-1 rounded-full bg-earth-100 dark:bg-[#1b2a22] overflow-hidden">
@@ -160,21 +161,21 @@ export default function Reports() {
 
           <Card padded={false} className="overflow-hidden">
             <div className="px-5 py-3 border-b border-earth-100 dark:border-[#1f2e25] font-display font-semibold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-brand-600" /> Entries
+              <FileText className="w-4 h-4 text-brand-600" />{' '}{tr('Entries')}
             </div>
             {filtered.length === 0 ? (
-              <div className="p-8 text-center text-earth-500 dark:text-earth-400">No entries match these filters.</div>
+              <div className="p-8 text-center text-earth-500 dark:text-earth-400">{tr('No entries match these filters.')}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-earth-50 dark:bg-[#0f1a14] text-earth-500 dark:text-earth-400">
                     <tr>
-                      <th className="text-left px-4 py-2">Date</th>
-                      <th className="text-left px-4 py-2">Activity</th>
-                      <th className="text-left px-4 py-2">Category</th>
-                      <th className="text-left px-4 py-2">Supervisor</th>
-                      <th className="text-left px-4 py-2">Status</th>
-                      <th className="text-right px-4 py-2">Hours</th>
+                      <th className="text-left px-4 py-2">{tr('Date')}</th>
+                      <th className="text-left px-4 py-2">{tr('Activity')}</th>
+                      <th className="text-left px-4 py-2">{tr('Category')}</th>
+                      <th className="text-left px-4 py-2">{tr('Supervisor')}</th>
+                      <th className="text-left px-4 py-2">{tr('Status')}</th>
+                      <th className="text-right px-4 py-2">{tr('Hours')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -182,7 +183,7 @@ export default function Reports() {
                       <tr key={l.id} className="border-t border-earth-100 dark:border-[#1f2e25]">
                         <td className="px-4 py-2 whitespace-nowrap">{fmtDate(l.date)}</td>
                         <td className="px-4 py-2">{l.activity || '—'}</td>
-                        <td className="px-4 py-2">{l.category && <span className={`chip ${categoryColor(l.category)}`}>{l.category}</span>}</td>
+                        <td className="px-4 py-2">{l.category && <span className={`chip ${categoryColor(l.category)}`}>{tr(l.category)}</span>}</td>
                         <td className="px-4 py-2">{l.supervisorName || '—'}</td>
                         <td className="px-4 py-2"><VerificationBadge status={l.verificationStatus} /></td>
                         <td className="px-4 py-2 text-right font-medium">{fmtHours(Number(l.hours) || 0)}</td>
@@ -247,17 +248,16 @@ function TranscriptCard({ notify }) {
 
   return (
     <Card>
-      <h3 className="font-display font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Verified transcript</h3>
+      <h3 className="font-display font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" />{' '}{tr('Verified transcript')}</h3>
       <p className="text-xs text-earth-500 dark:text-earth-400 mb-3">
-        A signed copy of every entry saved to your account, ignoring the filters above. A new school can import it with
-        approvals intact, and anyone can check it at <Link to="/verify-transcript" className="underline">verify-transcript</Link>.
+        {tr('A signed copy of every entry saved to your account, ignoring the filters above. A new school can import it with approvals intact, and anyone can check it at')}{' '}<Link to="/verify-transcript" className="underline">{tr('verify-transcript')}</Link>.
       </p>
       <div className="space-y-2">
         <button className="btn-secondary w-full" onClick={onDownload} disabled={Boolean(busy)}>
-          <Download className="w-4 h-4" /> {busy === 'download' ? 'Signing…' : 'Download signed transcript'}
+          <Download className="w-4 h-4" /> {busy === 'download' ? tr('Signing…') : tr('Download signed transcript')}
         </button>
         <button className="btn-ghost w-full" onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>
-          <Upload className="w-4 h-4" /> {busy === 'import' ? 'Importing…' : 'Import a transcript'}
+          <Upload className="w-4 h-4" /> {busy === 'import' ? tr('Importing…') : tr('Import a transcript')}
         </button>
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={onImport} />
       </div>

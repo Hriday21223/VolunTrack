@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Flag, X } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -23,7 +24,7 @@ export default function ReportTaskDialog({ task, onClose, onDone }) {
 
   const send = async (e) => {
     e.preventDefault()
-    if (!reason) { setError('Choose a reason.'); return }
+    if (!reason) { setError(tr('Choose a reason.')); return }
     setBusy(true)
     setError('')
     try {
@@ -53,14 +54,14 @@ export default function ReportTaskDialog({ task, onClose, onDone }) {
       <form onSubmit={send} className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1813] p-5 text-white shadow-soft space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="report-title" className="font-display font-semibold text-lg flex items-center gap-2"><Flag className="w-4 h-4 text-red-400" /> Report this task</h2>
+            <h2 id="report-title" className="font-display font-semibold text-lg flex items-center gap-2"><Flag className="w-4 h-4 text-red-400" />{' '}{tr('Report this task')}</h2>
             <p className="text-sm text-earth-400 mt-0.5">{task.title}</p>
           </div>
-          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost p-1" aria-label="Close"><X className="w-4 h-4" /></button>
+          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost p-1" aria-label={tr('Close')}><X className="w-4 h-4" /></button>
         </div>
 
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium mb-1">What's wrong?</legend>
+          <legend className="text-sm font-medium mb-1">{tr("What's wrong?")}</legend>
           {REASONS.map(([key, label]) => (
             <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
               <input type="radio" name="report-reason" value={key} checked={reason === key} onChange={() => setReason(key)} />
@@ -70,21 +71,21 @@ export default function ReportTaskDialog({ task, onClose, onDone }) {
         </fieldset>
 
         <div>
-          <label className="label" htmlFor="report-details">Anything else we should know? (optional)</label>
+          <label className="label" htmlFor="report-details">{tr('Anything else we should know? (optional)')}</label>
           <textarea id="report-details" className="input min-h-[80px] resize-y" maxLength={1000} value={details} onChange={(e) => setDetails(e.target.value)} />
         </div>
 
         <label className="flex items-start gap-2 text-sm cursor-pointer">
           <input type="checkbox" className="mt-1" checked={block} onChange={(e) => setBlock(e.target.checked)} />
-          <span>Also block this organizer — you won't see their tasks or get their messages. You can undo this in Settings.</span>
+          <span>{tr("Also block this organizer — you won't see their tasks or get their messages. You can undo this in Settings.")}</span>
         </label>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
-        <p className="text-xs text-earth-500">VolunTrack reviews reports within 24 hours. The organizer isn't told who reported.</p>
+        <p className="text-xs text-earth-500">{tr("VolunTrack reviews reports within 24 hours. The organizer isn't told who reported.")}</p>
 
         <div className="flex gap-2">
-          <button type="submit" disabled={busy} className="btn-danger flex-1">{busy ? 'Sending…' : 'Send report'}</button>
-          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost flex-1">Cancel</button>
+          <button type="submit" disabled={busy} className="btn-danger flex-1">{busy ? tr('Sending…') : tr('Send report')}</button>
+          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost flex-1">{tr('Cancel')}</button>
         </div>
       </form>
     </div>

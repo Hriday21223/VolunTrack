@@ -7,6 +7,7 @@ import { fmtDate } from '@/utils/date.js'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import Toast from '@/components/Toast.jsx'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -16,17 +17,17 @@ const todayDay = () => format(new Date(), 'yyyy-MM-dd')
 const dayOf = (date) => String(date || '').slice(0, 10)
 
 const SIGNUP_LABELS = {
-  approved: { label: 'Approved', className: 'bg-emerald-500/10 text-emerald-400' },
-  pending: { label: 'Pending approval', className: 'bg-amber-500/10 text-amber-400' },
-  rejected: { label: 'Rejected', className: 'bg-red-500/10 text-red-400' },
-  waitlisted: { label: 'Waitlist', className: 'bg-sky-500/10 text-sky-300' },
+  approved: { label: tr('Approved'), className: 'bg-emerald-500/10 text-emerald-400' },
+  pending: { label: tr('Pending approval'), className: 'bg-amber-500/10 text-amber-400' },
+  rejected: { label: tr('Rejected'), className: 'bg-red-500/10 text-red-400' },
+  waitlisted: { label: tr('Waitlist'), className: 'bg-sky-500/10 text-sky-300' },
 }
-const CANCELLED_LABEL = { label: 'Cancelled', className: 'bg-earth-500/10 text-earth-400' }
+const CANCELLED_LABEL = { label: tr('Cancelled'), className: 'bg-earth-500/10 text-earth-400' }
 
 const ATTENDANCE_META = {
-  present: { label: 'Present', icon: CheckCircle, className: 'text-emerald-400' },
-  absent: { label: 'Absent', icon: XCircle, className: 'text-red-400' },
-  excused: { label: 'Excused', icon: MinusCircle, className: 'text-amber-400' },
+  present: { label: tr('Present'), icon: CheckCircle, className: 'text-emerald-400' },
+  absent: { label: tr('Absent'), icon: XCircle, className: 'text-red-400' },
+  excused: { label: tr('Excused'), icon: MinusCircle, className: 'text-amber-400' },
 }
 
 function SignupRow({ s, onChanged }) {
@@ -40,12 +41,12 @@ function SignupRow({ s, onChanged }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <p className="font-medium">{s.title}</p>
-          {s.creator_name && <p className="text-xs text-earth-500 mt-0.5">Posted by {s.creator_name}</p>}
+          {s.creator_name && <p className="text-xs text-earth-500 mt-0.5">{tr('Posted by')}{' '}{s.creator_name}</p>}
           <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.location}</span>
             <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{s.time ? ` · ${s.time}` : ''}</span>
           </div>
-          {!cancelled && !isPast && s.signup_status !== 'rejected' && <AddToCalendar task={s} className="mt-2" />}
+          {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1.5">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${signup.className}`}>{signup.label}{!cancelled && s.signup_status === 'waitlisted' && s.waitlist_position ? ` #${s.waitlist_position}` : ''}</span>
@@ -55,7 +56,7 @@ function SignupRow({ s, onChanged }) {
             </span>
           ) : !cancelled && s.signup_status === 'approved' && isPast ? (
             <span className="text-xs flex items-center gap-1 text-earth-500">
-              <Clock3 className="w-3.5 h-3.5" /> Not marked yet
+              <Clock3 className="w-3.5 h-3.5" />{' '}{tr('Not marked yet')}
             </span>
           ) : null}
           {!cancelled && !isPast && !s.attendance_status && ['pending', 'approved', 'waitlisted'].includes(s.signup_status) && (
@@ -93,29 +94,29 @@ export default function Attendance() {
   const past = signups.filter((s) => !isUpcoming(s))
 
   return (
-    <AppLayout title="Attendance" subtitle="Your signup and attendance status across tasks">
+    <AppLayout title={tr('Attendance')} subtitle={tr('Your signup and attendance status across tasks')}>
       <div className="max-w-3xl mx-auto space-y-6">
         {loading ? (
-          <Card><p className="text-center text-earth-500 py-8">Loading…</p></Card>
+          <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
         ) : signups.length === 0 ? (
           <Card>
             <div className="text-center py-12 text-earth-500">
               <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <p className="font-medium text-earth-900 dark:text-earth-100">No signups yet</p>
-              <p className="text-sm mt-1">Sign up for a volunteer opportunity from the dashboard to see your attendance here.</p>
+              <p className="font-medium text-earth-900 dark:text-earth-100">{tr('No signups yet')}</p>
+              <p className="text-sm mt-1">{tr('Sign up for a volunteer opportunity from the dashboard to see your attendance here.')}</p>
             </div>
           </Card>
         ) : (
           <>
             {upcoming.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Upcoming</p>
+                <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">{tr('Upcoming')}</p>
                 {upcoming.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} />)}
               </div>
             )}
             {past.length > 0 && (
               <div className="space-y-3">
-                <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Past</p>
+                <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">{tr('Past')}</p>
                 {past.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} />)}
               </div>
             )}

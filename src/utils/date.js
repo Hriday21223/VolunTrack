@@ -1,9 +1,16 @@
-import { format, formatDistanceToNow, parseISO, differenceInMinutes } from 'date-fns'
+import { format as dfFormat, formatDistanceToNow as dfDistance, parseISO, differenceInMinutes } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { language } from '@/lib/i18n.js'
 
-export const fmtDate = (iso) => (iso ? format(parseISO(iso), 'MMM d, yyyy') : '—')
-export const fmtDateLong = (iso) => (iso ? format(parseISO(iso), 'MMMM d, yyyy') : '')
+// Month and day names follow the app's language (src/lib/i18n.js).
+const locale = language === 'es' ? es : undefined
+const format = (d, f) => dfFormat(d, f, { locale })
+const formatDistanceToNow = (d, o) => dfDistance(d, { ...o, locale })
+
+export const fmtDate = (iso) => (iso ? format(parseISO(iso), language === 'es' ? 'd MMM yyyy' : 'MMM d, yyyy') : '—')
+export const fmtDateLong = (iso) => (iso ? format(parseISO(iso), language === 'es' ? "d 'de' MMMM 'de' yyyy" : 'MMMM d, yyyy') : '')
 export const fmtTime = (iso) => (iso ? format(parseISO(iso), 'h:mm a') : '—')
-export const fmtDateTime = (iso) => (iso ? format(parseISO(iso), "MMM d, yyyy 'at' h:mm a") : '—')
+export const fmtDateTime = (iso) => (iso ? format(parseISO(iso), language === 'es' ? "d MMM yyyy 'a las' h:mm a" : "MMM d, yyyy 'at' h:mm a") : '—')
 export const fromNow = (iso) => (iso ? formatDistanceToNow(parseISO(iso), { addSuffix: true }) : '')
 
 export function hoursBetween(start, end) {

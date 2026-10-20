@@ -5,6 +5,7 @@ import { SESSION_KEY } from '@/hooks/useAuth.jsx'
 import {
   loadKeptSession, unlockWithDevice, restoreSession, dropUnkeptSession, clearKeptSession,
 } from '@/lib/appSession.js'
+import { tr } from '@/lib/i18n.js'
 
 // How long the app may sit in the background before it asks again.
 const RELOCK_AFTER_MS = 60 * 1000
@@ -98,15 +99,15 @@ export default function AppLock({ children }) {
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#071117] px-8 text-center text-earth-100">
       <img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" className="h-20 w-20 rounded-2xl" />
       <div className="mt-6 flex items-center gap-2 text-lg font-semibold">
-        <Lock className="h-5 w-5" /> VolunTrack is locked
+        <Lock className="h-5 w-5" />{' '}{tr('VolunTrack is locked')}
       </div>
-      <p className="mt-2 text-sm text-earth-400">Use Face ID, your fingerprint or your passcode to continue.</p>
+      <p className="mt-2 text-sm text-earth-400">{tr('Use Face ID, your fingerprint or your passcode to continue.')}</p>
       {err && <p className="mt-4 text-sm text-rose-300">{err}</p>}
       <button type="button" onClick={unlock} disabled={busy} className="btn-primary mt-8 w-full max-w-xs py-3">
-        {busy ? 'Waiting…' : 'Unlock'}
+        {busy ? tr('Waiting…') : tr('Unlock')}
       </button>
       <button type="button" onClick={signOut} className="mt-4 text-sm text-earth-400 underline">
-        Sign out instead
+        {tr('Sign out instead')}
       </button>
     </div>
   )

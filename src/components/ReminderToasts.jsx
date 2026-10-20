@@ -1,6 +1,7 @@
 import { useReminderRunner } from '@/hooks/useReminders.js'
 import { Bell, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { tr } from '@/lib/i18n.js'
 
 /** Renders toasts for reminders that just fired in this session. */
 export default function ReminderToasts() {
@@ -18,7 +19,7 @@ export default function ReminderToasts() {
             <Bell className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium text-brand-700 dark:text-brand-300">Reminder</div>
+            <div className="text-xs font-medium text-brand-700 dark:text-brand-300">{tr('Reminder')}</div>
             <div className="text-sm font-semibold text-brand-900 dark:text-brand-100 truncate">{r.title}</div>
             {r.body && <div className="text-xs text-brand-800/80 dark:text-brand-200/80 truncate">{r.body}</div>}
           </div>
@@ -26,12 +27,12 @@ export default function ReminderToasts() {
             onClick={() => { dismiss(r.id); nav('/log') }}
             className="text-xs font-medium text-brand-700 dark:text-brand-200 px-2 py-1 rounded-lg hover:bg-brand-200/50"
           >
-            Log now
+            {tr('Log now')}
           </button>
           <button
             onClick={() => dismiss(r.id)}
             className="p-1 rounded-md text-brand-700/70 hover:bg-brand-200/50"
-            aria-label="Dismiss"
+            aria-label={tr('Dismiss')}
           >
             <X className="w-4 h-4" />
           </button>

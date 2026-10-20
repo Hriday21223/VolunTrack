@@ -4,6 +4,7 @@ import { CheckCircle, Clock, LogIn, AlertTriangle } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { useData } from '@/hooks/useData.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const time = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')
@@ -24,7 +25,7 @@ export default function CheckIn() {
     // Once per page: React's development double-run must not scan twice.
     if (sent.current) return
     sent.current = true
-    if (!code) { setError('This link has no check-in code. Scan the QR code on the organizer\'s screen.'); return }
+    if (!code) { setError(tr("This link has no check-in code. Scan the QR code on the organizer's screen.")); return }
     ;(async () => {
       try {
         const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(taskId)}/checkin`, {
@@ -72,15 +73,15 @@ export default function CheckIn() {
   }
 
   return (
-    <AppLayout title="Check-in" subtitle="Volunteer task">
+    <AppLayout title={tr('Check-in')} subtitle={tr('Volunteer task')}>
       <div className="max-w-md mx-auto">
         <Card className="text-center py-8">
           <div className="grid place-items-center">{icon}</div>
           <h1 className="text-xl font-bold mt-3">{heading}</h1>
           {lines.map((l) => <p key={l} className="text-sm text-earth-400 mt-2">{l}</p>)}
           <div className="mt-6 flex justify-center gap-2">
-            <Link to="/" className="btn-primary">Go to dashboard</Link>
-            <Link to="/attendance" className="btn-ghost">My sign-ups</Link>
+            <Link to="/" className="btn-primary">{tr('Go to dashboard')}</Link>
+            <Link to="/attendance" className="btn-ghost">{tr('My sign-ups')}</Link>
           </div>
         </Card>
       </div>

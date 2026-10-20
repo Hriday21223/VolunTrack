@@ -14,6 +14,7 @@ import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { exportLogsPDF, exportLogsCSV } from '@/lib/export.js'
 import { countedLogs } from '@/lib/achievements.js'
 import { format } from 'date-fns'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -315,7 +316,7 @@ function ChildCard({ child }) {
               <label htmlFor={`cat-${child.id}`} className="block text-[11px] text-earth-400 mb-1">Category</label>
               <select id={`cat-${child.id}`} className="input w-[170px]" value={category} onChange={(e) => setCategory(e.target.value)}>
                 <option value="">All categories</option>
-                {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
               </select>
             </div>
             {filtering && (

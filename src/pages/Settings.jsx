@@ -13,6 +13,7 @@ import { format, parseISO } from 'date-fns'
 import { isNativeApp } from '@/lib/platform.js'
 import PasskeySettings from '@/components/PasskeySettings.jsx'
 import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
+import LanguagePicker from '@/components/LanguagePicker.jsx'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -686,6 +687,9 @@ export default function Settings() {
   return (
     <AppLayout title="Settings" subtitle="Make VolunTrack your own.">
       <div className="space-y-3">
+        <Card>
+          <LanguagePicker />
+        </Card>
 
         <CollapsibleSection icon={Star} label="Goals & Data" defaultOpen={true}>
           <Card>

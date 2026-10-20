@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Upload, FileText, X } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
+import { tr } from '@/lib/i18n.js'
 
 /**
  * File picker with drag-and-drop.
@@ -22,7 +23,7 @@ export default function FileDrop({ onFile, accept = 'image/*,application/pdf', m
     }
     const reader = new FileReader()
     reader.onload = () => onFile({ name: file.name, size: file.size, mimeType: file.type, dataUrl: reader.result })
-    reader.onerror = () => setError('Could not read that file. Try another.')
+    reader.onerror = () => setError(tr('Could not read that file. Try another.'))
     reader.readAsDataURL(file)
   }
 
@@ -48,10 +49,10 @@ export default function FileDrop({ onFile, accept = 'image/*,application/pdf', m
         >
           <Upload className="w-7 h-7 mx-auto text-brand-600 mb-2" />
           <div className="text-sm font-medium text-earth-800 dark:text-earth-100">
-            Drop a file or click to upload
+            {tr('Drop a file or click to upload')}
           </div>
           <div className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-            Images or PDFs · up to {Math.round(maxBytes / 1024)} KB
+            {tr('Images or PDFs · up to')}{' '}{Math.round(maxBytes / 1024)}{' '}{tr('KB')}
           </div>
           <input
             ref={inputRef}
@@ -72,13 +73,13 @@ export default function FileDrop({ onFile, accept = 'image/*,application/pdf', m
           )}
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{value.name}</div>
-            <div className="text-xs text-earth-500">{Math.round(value.size / 1024)} KB</div>
+            <div className="text-xs text-earth-500">{Math.round(value.size / 1024)}{' '}{tr('KB')}</div>
           </div>
           <button
             type="button"
             onClick={onClear}
             className="p-1.5 rounded-lg hover:bg-earth-200 dark:hover:bg-[#243529] text-earth-500"
-            aria-label="Remove file"
+            aria-label={tr('Remove file')}
           >
             <X className="w-4 h-4" />
           </button>

@@ -8,6 +8,7 @@ import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { fmtHours, fmtTime } from '@/utils/date.js'
 import { categoryColor } from '@/lib/categories.js'
 import { addMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, parseISO } from 'date-fns'
+import { tr } from '@/lib/i18n.js'
 
 export default function CalendarView() {
   const { logs, removeLog } = useData()
@@ -38,21 +39,21 @@ export default function CalendarView() {
 
   return (
     <AppLayout
-      title="Calendar"
-      subtitle="Tap a day to see what you did."
+      title={tr('Calendar')}
+      subtitle={tr('Tap a day to see what you did.')}
       action={
         <button onClick={() => setEditing('new')} className="btn-primary">
-          <Plus className="w-4 h-4" /> Log hours
+          <Plus className="w-4 h-4" />{' '}{tr('Log hours')}
         </button>
       }
     >
       <Card padded={false} className="p-4">
         <div className="flex items-center justify-between mb-3 px-1">
-          <button className="btn-ghost p-2" onClick={() => setCursor((c) => addMonths(c, -1))} aria-label="Previous month">
+          <button className="btn-ghost p-2" onClick={() => setCursor((c) => addMonths(c, -1))} aria-label={tr('Previous month')}>
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="font-display text-lg font-semibold">{format(cursor, 'MMMM yyyy')}</div>
-          <button className="btn-ghost p-2" onClick={() => setCursor((c) => addMonths(c, 1))} aria-label="Next month">
+          <button className="btn-ghost p-2" onClick={() => setCursor((c) => addMonths(c, 1))} aria-label={tr('Next month')}>
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
@@ -90,7 +91,7 @@ export default function CalendarView() {
                     </div>
                   ))}
                   {dayLogs.length > 2 && (
-                    <div className="text-[10px] text-earth-500">+{dayLogs.length - 2} more</div>
+                    <div className="text-[10px] text-earth-500">+{dayLogs.length - 2}{' '}{tr('more')}</div>
                   )}
                 </div>
               </button>
@@ -128,7 +129,7 @@ function DayModal({ day, logs, onClose, onEdit, onDelete }) {
         </div>
         {logs.length === 0 ? (
           <div className="py-8 text-center text-earth-500 dark:text-earth-400">
-            No volunteer hours logged this day.
+            {tr('No volunteer hours logged this day.')}
           </div>
         ) : (
           <ul className="space-y-3">
@@ -143,20 +144,20 @@ function DayModal({ day, logs, onClose, onEdit, onDelete }) {
                     <div className="text-xs text-earth-500 dark:text-earth-400 flex items-center gap-2 flex-wrap mt-0.5">
                       {l.startTime && <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{fmtTime(`${l.date}T${l.startTime}:00`)} – {fmtTime(`${l.date}T${l.endTime}:00`)}</span>}
                       {l.location && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{l.location}</span>}
-                      {l.category && <span className={`chip ${categoryColor(l.category)}`}>{l.category}</span>}
+                      {l.category && <span className={`chip ${categoryColor(l.category)}`}>{tr(l.category)}</span>}
                       <VerificationBadge status={l.verificationStatus} />
                     </div>
                     {l.notes && <p className="text-sm text-earth-600 dark:text-earth-300 mt-1.5">{l.notes}</p>}
                   </div>
                   <div className="flex flex-col gap-1">
-                    <button onClick={() => onEdit(l.id)} className="p-1.5 rounded-lg hover:bg-earth-100 dark:hover:bg-[#1b2a22]" title="Edit"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => onEdit(l.id)} className="p-1.5 rounded-lg hover:bg-earth-100 dark:hover:bg-[#1b2a22]" title={tr('Edit')}><Edit2 className="w-4 h-4" /></button>
                     {confirmId === l.id ? (
                       <div className="flex gap-1">
-                        <button onClick={() => { onDelete(l.id); setConfirmId(null) }} className="px-2 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold" title="Confirm delete">Yes</button>
-                        <button onClick={() => setConfirmId(null)} className="px-2 py-1 rounded-lg bg-earth-200 dark:bg-[#243529] text-xs font-semibold" title="Cancel">No</button>
+                        <button onClick={() => { onDelete(l.id); setConfirmId(null) }} className="px-2 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold" title={tr('Confirm delete')}>{tr('Yes')}</button>
+                        <button onClick={() => setConfirmId(null)} className="px-2 py-1 rounded-lg bg-earth-200 dark:bg-[#243529] text-xs font-semibold" title={tr('Cancel')}>{tr('No')}</button>
                       </div>
                     ) : (
-                      <button onClick={() => setConfirmId(l.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20" title="Delete"><X className="w-4 h-4" /></button>
+                      <button onClick={() => setConfirmId(l.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20" title={tr('Delete')}><X className="w-4 h-4" /></button>
                     )}
                   </div>
                 </div>

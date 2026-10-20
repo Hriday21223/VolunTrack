@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Eraser } from 'lucide-react'
 import { isTouchDevice } from '@/lib/platform.js'
+import { tr } from '@/lib/i18n.js'
 
 // Draw-to-sign pad, backed by a canvas. Stores/emits the result as a base64
 // PNG data URL (same shape FileDrop.jsx uses for the proof upload), so it
@@ -104,13 +105,13 @@ export default function SignaturePad({ value, onChange }) {
         />
         {!hasStroke && (
           <span className="absolute inset-0 grid place-items-center text-sm text-earth-400 pointer-events-none">
-            {isTouchDevice ? 'Touch to sign' : 'Sign here'}
+            {isTouchDevice ? tr('Touch to sign') : tr('Sign here')}
           </span>
         )}
       </div>
       {hasStroke && (
         <button type="button" onClick={clear} className="btn-ghost text-xs mt-2 inline-flex items-center gap-1.5">
-          <Eraser className="w-3.5 h-3.5" /> Clear signature
+          <Eraser className="w-3.5 h-3.5" />{' '}{tr('Clear signature')}
         </button>
       )}
     </div>

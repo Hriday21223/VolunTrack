@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Trophy, X } from 'lucide-react'
 import { BADGES } from '@/lib/achievements.js'
 import { cn } from '@/utils/cn.js'
+import { tr } from '@/lib/i18n.js'
 
 /** Slides a list of newly-earned badges in from the bottom. */
 export default function BadgeToasts({ badgeIds, onDone }) {
@@ -38,13 +39,13 @@ export default function BadgeToasts({ badgeIds, onDone }) {
               <Trophy className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-medium text-amber-700 dark:text-amber-300">Achievement earned!</div>
+              <div className="text-xs font-medium text-amber-700 dark:text-amber-300">{tr('Achievement earned!')}</div>
               <div className="text-sm font-semibold text-amber-900 dark:text-amber-100 truncate">{b.title}</div>
             </div>
             <button
               onClick={() => setVisible((v) => v.filter((x) => x !== id))}
               className="p-1 rounded-md text-amber-700/70 hover:bg-amber-200/50"
-              aria-label="Dismiss"
+              aria-label={tr('Dismiss')}
             >
               <X className="w-4 h-4" />
             </button>
