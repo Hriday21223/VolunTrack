@@ -1105,6 +1105,73 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
   }
 })
 
+// Add to calendar: a task as an .ics file, which phones and calendar apps
+// open as "add this event". Public, like the task list: no sign-in, and only
+// for a task the list would show. A task has a start time but no end, so the
+// event runs two hours; without a time it is an all-day event. Times are
+// "floating" (no time zone), so the calendar reads them in the device's own.
+const icsText = (v) => String(v ?? '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/([,;])/g, '\\$1')
+// Lines over 75 bytes are folded: a line break and a space (RFC 5545 3.1).
+function icsFold(line) {
+  const out = []
+  let cur = ''
+  for (const ch of line) {
+    if (Buffer.byteLength(cur + ch) > (out.length ? 74 : 75)) { out.push(cur); cur = '' }
+    cur += ch
+  }
+  out.push(cur)
+  return out.join('\r\n ')
+}
+const icsLocal = (d) => d.toISOString().replace(/[-:]/g, '').slice(0, 15)
+const icsDay = (d) => d.toISOString().slice(0, 10).replace(/-/g, '')
+
+router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
+              t.creator_name, t.latitude, t.longitude
+         FROM public_tasks t
+        WHERE t.id = $1 AND t.status <> 'cancelled'
+          AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)`,
+      [req.params.id],
+    )
+    const t = rows[0]
+    if (!t) return res.status(404).json({ error: 'Task not found.' })
+    // Built in UTC only as a way to do date arithmetic; written out floating.
+    const [y, m, d] = t.date.split('-').map(Number)
+    const hm = /^(\d{1,2}):(\d{2})/.exec(t.time || '')
+    const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
+    const lines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//VolunTrack//Tasks//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${t.id}@voluntrack`,
+      `DTSTAMP:${icsLocal(new Date())}Z`,
+    ]
+    if (hm) {
+      const start = new Date(Date.UTC(y, m - 1, d, Number(hm[1]), Number(hm[2])))
+      lines.push(`DTSTART:${icsLocal(start)}`, `DTEND:${icsLocal(new Date(start.getTime() + 2 * 3600e3))}`)
+    } else {
+      const day = new Date(Date.UTC(y, m - 1, d))
+      lines.push(`DTSTART;VALUE=DATE:${icsDay(day)}`, `DTEND;VALUE=DATE:${icsDay(new Date(day.getTime() + 86400e3))}`)
+    }
+    lines.push(
+      `SUMMARY:${icsText(t.title)}`,
+      `LOCATION:${icsText(t.location)}`,
+      `DESCRIPTION:${icsText([t.description, t.creator_name && `Posted by ${t.creator_name}`, hm && 'End time is an estimate. Check with the organizer.', site && `${site}/opportunities`].filter(Boolean).join('\n\n'))}`,
+    )
+    if (t.latitude != null && t.longitude != null) lines.push(`GEO:${Number(t.latitude)};${Number(t.longitude)}`)
+    if (site) lines.push(`URL:${site}/opportunities`)
+    lines.push('END:VEVENT', 'END:VCALENDAR')
+    res.set('Content-Type', 'text/calendar; charset=utf-8')
+    res.set('Content-Disposition', 'attachment; filename="volunteer-task.ics"')
+    res.set('Cache-Control', 'no-store')
+    return res.send(lines.map(icsFold).join('\r\n') + '\r\n')
+  } catch (error) {
+    console.error('task calendar file failed:', error)
+    return res.status(500).json({ error: 'Could not make the calendar file.' })
+  }
+})
+
 // Sign up for a public task
 router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async (req, res) => {
   // The capacity check and the insert must be atomic, or two concurrent
