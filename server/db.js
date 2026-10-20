@@ -415,6 +415,37 @@ export async function initSchema() {
   // Hours an organizer logged used to be filed under 'volunteer', which isn't
   // one of the app's categories. Corrected in place; cheap once there are none.
   try { await query(`UPDATE logs SET category = 'Community Service' WHERE category = 'volunteer'`) } catch {}
+  // Report and block (App Store guideline 1.2): tasks posted by Volunteer Task
+  // Makers are seen by minors, so anyone can report one, block its organizer,
+  // and the admin can remove it or stop the organizer posting.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS content_reports (
+        id           TEXT PRIMARY KEY,
+        reporter_id  TEXT REFERENCES users(id) ON DELETE SET NULL,
+        task_id      TEXT REFERENCES public_tasks(id) ON DELETE CASCADE,
+        reported_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+        reason       TEXT NOT NULL,
+        details      TEXT,
+        status       TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','dismissed','task_removed','poster_suspended')),
+        resolved_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+        resolved_at  TIMESTAMPTZ,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_content_reports_open ON content_reports(reporter_id, task_id) WHERE status = 'pending'`) } catch {}
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_blocks (
+        blocker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (blocker_id, blocked_id)
+      )
+    `)
+  } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS posting_suspended_at TIMESTAMPTZ`) } catch {}
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, ExternalLink, Megaphone } from 'lucide-react'
+import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, ExternalLink, Megaphone, Flag } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import RegistrationCodesPanel from '@/components/RegistrationCodesPanel.jsx'
@@ -15,6 +15,7 @@ import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining,
 import { fmtDate } from '@/utils/date.js'
 import { parseISO, format } from 'date-fns'
 import { csvCell } from '@/lib/csv.js'
+import ReportsPanel from '@/components/ReportsPanel.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
@@ -148,7 +149,7 @@ function WeeklySignups({ weeks }) {
   )
 }
 
-const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'settings', 'users', 'api', 'blueprint']
+const ADMIN_TABS = ['inbox', 'reviews', 'schools', 'invites', 'organizations', 'incidents', 'reports', 'settings', 'users', 'api', 'blueprint']
 
 // The backend service's Render dashboard, where the env-var values the Email
 // provider card falls back to are set (Environment tab).
@@ -1383,8 +1384,8 @@ export default function Admin() {
 
   return (
     <AppLayout
-      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Invites & registration codes' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'users' ? 'Users' : tab === 'api' ? 'API' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
-      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content, payments and email' : tab === 'users' ? (userStats ? `${userStats.total} ${userStats.total === 1 ? 'person has' : 'people have'} registered` : 'Who has registered') : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
+      title={tab === 'inbox' ? 'Contact inbox' : tab === 'reviews' ? 'Reviews' : tab === 'incidents' ? 'Incidents' : tab === 'invites' ? 'Invites & registration codes' : tab === 'organizations' ? 'Organizations' : tab === 'settings' ? 'Site settings' : tab === 'users' ? 'Users' : tab === 'api' ? 'API' : tab === 'reports' ? 'Reports' : tab === 'blueprint' ? 'Blueprint' : 'Manage schools'}
+      subtitle={tab === 'inbox' ? `${threads.length} conversation${threads.length === 1 ? '' : 's'}` : tab === 'reviews' ? `${reviews.length} review${reviews.length === 1 ? '' : 's'} submitted` : tab === 'incidents' ? `${incidents.length} incident${incidents.length === 1 ? '' : 's'} logged` : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent` : tab === 'organizations' ? `${organizations.length} organization${organizations.length === 1 ? '' : 's'}` : tab === 'settings' ? 'Contact page content, payments and email' : tab === 'users' ? (userStats ? `${userStats.total} ${userStats.total === 1 ? 'person has' : 'people have'} registered` : 'Who has registered') : tab === 'api' ? `${apiRoutes.length} route${apiRoutes.length === 1 ? '' : 's'} live` : tab === 'reports' ? 'Volunteer tasks people reported' : tab === 'blueprint' ? 'How this app is built, end to end' : `${schools.length} school${schools.length === 1 ? '' : 's'} registered`}
       actionWide
       action={
         <div className="flex gap-2">
@@ -1408,6 +1409,9 @@ export default function Admin() {
             {activeIncidentCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{activeIncidentCount > 9 ? '9+' : activeIncidentCount}</span>
             )}
+          </button>
+          <button onClick={() => setTab('reports')} className={`btn-sm ${tab === 'reports' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Flag className="w-3.5 h-3.5 mr-1" /> Reports
           </button>
           <button onClick={() => setTab('settings')} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
             <Wrench className="w-3.5 h-3.5 mr-1" /> Settings
@@ -2605,6 +2609,8 @@ export default function Admin() {
             })()}
           </Card>
         </div>
+      ) : tab === 'reports' ? (
+        <ReportsPanel />
       ) : tab === 'blueprint' ? (
         <div className="space-y-6">
           <Card>
