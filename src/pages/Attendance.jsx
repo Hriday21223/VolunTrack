@@ -4,6 +4,8 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { format } from 'date-fns'
 import { fmtDate } from '@/utils/date.js'
+import CancelSignup from '@/components/CancelSignup.jsx'
+import Toast from '@/components/Toast.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -16,6 +18,7 @@ const SIGNUP_LABELS = {
   approved: { label: 'Approved', className: 'bg-emerald-500/10 text-emerald-400' },
   pending: { label: 'Pending approval', className: 'bg-amber-500/10 text-amber-400' },
   rejected: { label: 'Rejected', className: 'bg-red-500/10 text-red-400' },
+  waitlisted: { label: 'Waitlist', className: 'bg-sky-500/10 text-sky-300' },
 }
 const CANCELLED_LABEL = { label: 'Cancelled', className: 'bg-earth-500/10 text-earth-400' }
 
@@ -25,7 +28,7 @@ const ATTENDANCE_META = {
   excused: { label: 'Excused', icon: MinusCircle, className: 'text-amber-400' },
 }
 
-function SignupRow({ s }) {
+function SignupRow({ s, onChanged }) {
   const cancelled = s.task_status === 'cancelled'
   const signup = cancelled ? CANCELLED_LABEL : (SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending)
   const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
@@ -43,7 +46,7 @@ function SignupRow({ s }) {
           </div>
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1.5">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${signup.className}`}>{signup.label}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${signup.className}`}>{signup.label}{!cancelled && s.signup_status === 'waitlisted' && s.waitlist_position ? ` #${s.waitlist_position}` : ''}</span>
           {attendance ? (
             <span className={`text-xs flex items-center gap-1 font-medium ${attendance.className}`}>
               <attendance.icon className="w-3.5 h-3.5" /> {attendance.label}
@@ -53,6 +56,9 @@ function SignupRow({ s }) {
               <Clock3 className="w-3.5 h-3.5" /> Not marked yet
             </span>
           ) : null}
+          {!cancelled && !isPast && !s.attendance_status && ['pending', 'approved', 'waitlisted'].includes(s.signup_status) && (
+            <CancelSignup task={s} onDone={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />
+          )}
         </div>
       </div>
     </Card>
@@ -62,6 +68,8 @@ function SignupRow({ s }) {
 export default function Attendance() {
   const [signups, setSignups] = useState([])
   const [loading, setLoading] = useState(true)
+  const [toastMsg, setToastMsg] = useState('')
+  const changed = (msg, failed) => { setToastMsg(msg); if (!failed) load() }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -100,18 +108,19 @@ export default function Attendance() {
             {upcoming.length > 0 && (
               <div className="space-y-3">
                 <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Upcoming</p>
-                {upcoming.map((s) => <SignupRow key={s.id} s={s} />)}
+                {upcoming.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} />)}
               </div>
             )}
             {past.length > 0 && (
               <div className="space-y-3">
                 <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Past</p>
-                {past.map((s) => <SignupRow key={s.id} s={s} />)}
+                {past.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} />)}
               </div>
             )}
           </>
         )}
       </div>
+      <Toast open={Boolean(toastMsg)} onClose={() => setToastMsg('')}>{toastMsg}</Toast>
     </AppLayout>
   )
 }

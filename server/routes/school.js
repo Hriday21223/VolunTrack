@@ -1069,8 +1069,10 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
-               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id) AS slots_filled,
+               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
+               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
+               ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'}
         FROM public_tasks t
@@ -1147,15 +1149,28 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       return res.json({ ok: true, id: existing[0].id })
     }
 
-    // Rejected signups must not hold a slot: turning three applicants away on
-    // a four-slot task used to leave room for one, and then report "full".
+    // Rejected and waitlisted signups don't hold a slot: turning three
+    // applicants away on a four-slot task used to leave room for one, and
+    // then report "full".
     const { rows: signups } = await client.query(
-      "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status <> 'rejected'",
+      "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
       [req.params.id],
     )
     if (Number(signups[0].cnt) >= rows[0].slots_total) {
-      await client.query('ROLLBACK')
-      return res.status(400).json({ error: 'Task is full.' })
+      // Full: join the waitlist only when asked to, so an older client that
+      // didn't know a task was full still gets "full" rather than a surprise.
+      if (req.body?.waitlist !== true) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: 'Task is full.' })
+      }
+      const wid = uid('psig')
+      await client.query(
+        "INSERT INTO public_task_signups (id, task_id, user_id, status) VALUES ($1, $2, $3, 'waitlisted') ON CONFLICT DO NOTHING",
+        [wid, req.params.id, req.auth.sub],
+      )
+      const { rows: pos } = await client.query(`SELECT ${WAITLIST_POSITION_SQL('$1', '$2')} AS position`, [req.params.id, req.auth.sub])
+      await client.query('COMMIT')
+      return res.json({ ok: true, id: wid, waitlisted: true, position: Number(pos[0].position) || 1 })
     }
 
     const sid = uid('psig')
@@ -1174,6 +1189,117 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   }
 })
 
+// --- Waitlist ---------------------------------------------------------------
+//
+// A full task takes sign-ups as 'waitlisted', first come first served. They
+// hold no slot. Whenever a slot frees up (a volunteer cancels, the organizer
+// rejects someone, adds spots or reopens the task) the earliest waiting moves
+// to 'pending' (the slot is theirs; the organizer still approves as usual)
+// and is emailed.
+
+// A waitlisted user's place in line (1 = next), as an SQL expression.
+const WAITLIST_POSITION_SQL = (taskExpr, userExpr) => `(
+  SELECT CASE WHEN me.status = 'waitlisted' THEN (
+           SELECT COUNT(*) FROM public_task_signups w
+            WHERE w.task_id = me.task_id AND w.status = 'waitlisted'
+              AND (w.signed_up_at, w.id) <= (me.signed_up_at, me.id))
+         END
+    FROM public_task_signups me WHERE me.task_id = ${taskExpr} AND me.user_id = ${userExpr})`
+
+async function promoteFromWaitlist(taskId) {
+  const client = await getPool().connect()
+  let promoted = []
+  try {
+    await client.query('BEGIN')
+    // The same row lock as sign-up, so a sign-up and a promotion can't both
+    // take the last slot.
+    const { rows } = await client.query(
+      'SELECT status, slots_total, date < CURRENT_DATE - 1 AS past FROM public_tasks WHERE id = $1 FOR UPDATE',
+      [taskId],
+    )
+    const task = rows[0]
+    if (task && task.status === 'open' && !task.past) {
+      const { rows: taken } = await client.query(
+        "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
+        [taskId],
+      )
+      const free = task.slots_total - Number(taken[0].cnt)
+      if (free > 0) {
+        const { rows: moved } = await client.query(
+          `UPDATE public_task_signups SET status = 'pending'
+            WHERE id IN (SELECT id FROM public_task_signups WHERE task_id = $1 AND status = 'waitlisted'
+                          ORDER BY signed_up_at, id LIMIT $2)
+            RETURNING user_id`,
+          [taskId, free],
+        )
+        promoted = moved.map((r) => r.user_id)
+      }
+    }
+    await client.query('COMMIT')
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
+    console.error('waitlist promotion failed:', error)
+  } finally {
+    client.release()
+  }
+  for (const userId of promoted) notifyWaitlistSpot(taskId, userId)
+  return promoted
+}
+
+async function notifyWaitlistSpot(taskId, userId) {
+  try {
+    const { rows } = await query(
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, u.email, u.name
+         FROM public_tasks t, users u
+        WHERE t.id = $1 AND u.id = $2`,
+      [taskId, userId],
+    )
+    const row = rows[0]
+    if (!row?.email) return
+    await sendEmail({
+      to: row.email,
+      subject: `A spot opened up: ${row.title}`,
+      html: taskEmailHtml({
+        heading: "You're off the waitlist",
+        lines: [
+          `Hi ${row.name || 'there'}, a spot opened up and it's yours. The organizer will confirm your sign-up, and you'll get another email when they do.`,
+          "Can't make it any more? Cancel from Attendance in VolunTrack so the next person gets the spot.",
+        ],
+        task: row,
+      }),
+    })
+  } catch (error) {
+    console.error('waitlist notification failed:', error)
+  }
+}
+
+// DELETE /api/school/public-tasks/:id/signup — a volunteer cancels their own
+// sign-up or leaves the waitlist. Not once the day has passed or attendance
+// is marked (that's a record now), and not a rejected one: deleting it would
+// let them sign up again.
+router.delete('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.status, s.attendance_status, t.date < CURRENT_DATE - 1 AS past
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+        WHERE s.task_id = $1 AND s.user_id = $2`,
+      [req.params.id, req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: "You aren't signed up for this task." })
+    const signup = rows[0]
+    if (signup.status === 'rejected') return res.status(400).json({ error: 'The organizer already declined this sign-up.' })
+    if (signup.past || signup.attendance_status) {
+      return res.status(400).json({ error: 'This task has already happened, so the sign-up stays on your record.' })
+    }
+    await query('DELETE FROM public_task_signups WHERE task_id = $1 AND user_id = $2', [req.params.id, req.auth.sub])
+    if (signup.status !== 'waitlisted') await promoteFromWaitlist(req.params.id)
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('cancel signup failed:', error)
+    return res.status(500).json({ error: 'Could not cancel the sign-up.' })
+  }
+})
+
 // Approve a signup (organizer only) — reveals phone number to volunteer
 router.post('/public-tasks/:id/approve/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
@@ -1189,6 +1315,10 @@ router.post('/public-tasks/:id/approve/:userId', limiter, requireDb, requireAuth
     )
     if (signupRows.length === 0) return res.status(404).json({ error: 'Signup not found.' })
     if (signupRows[0].status === 'approved') return res.json({ ok: true })
+    // Approving from the waitlist would put the task over its slots.
+    if (signupRows[0].status === 'waitlisted') {
+      return res.status(400).json({ error: 'This person is on the waitlist. Add a spot (Edit → volunteers needed) and they move up automatically.' })
+    }
     await query(
       "UPDATE public_task_signups SET status = 'approved' WHERE task_id = $1 AND user_id = $2",
       [req.params.id, req.params.userId],
@@ -1223,6 +1353,8 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
       [req.params.id, req.params.userId],
     )
     notifySignupDecision(req.params.id, req.params.userId, 'rejected')
+    // Their slot goes to the first person waiting.
+    if (signupRows[0].status !== 'waitlisted') await promoteFromWaitlist(req.params.id)
     return res.json({ ok: true })
   } catch (error) {
     console.error('reject signup failed:', error)
@@ -1345,6 +1477,8 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       `UPDATE public_tasks SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length} RETURNING *`,
       values,
     )
+    // More spots: the waitlist moves up into them.
+    if (req.body.slotsTotal !== undefined) await promoteFromWaitlist(req.params.id)
     return res.json({ task: updated[0] })
   } catch (error) {
     console.error('task edit failed:', error)
@@ -1366,6 +1500,7 @@ router.post('/public-tasks/:id/status', limiter, requireDb, requireAuth(), async
     if (rows[0].status === 'cancelled') return res.status(400).json({ error: 'A cancelled task cannot be reopened.' })
 
     await query('UPDATE public_tasks SET status = $1, updated_at = now() WHERE id = $2', [status, req.params.id])
+    if (status === 'open') await promoteFromWaitlist(req.params.id)
     return res.json({ ok: true, status })
   } catch (error) {
     console.error('task status change failed:', error)
@@ -1627,7 +1762,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.phone, t.latitude, t.longitude, t.created_at,
-              (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id) AS slots_filled,
+              (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
                 'attendance_status', s.attendance_status, 'attendance_marked_at', s.attendance_marked_at
@@ -1654,7 +1789,8 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
       // those students ask to sign off their hours on the task.
       `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
-              s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at
+              s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
+              ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
        WHERE s.user_id = $1
