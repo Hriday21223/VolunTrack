@@ -16,6 +16,7 @@ import { fmtDate } from '@/utils/date.js'
 import { parseISO, format } from 'date-fns'
 import { csvCell } from '@/lib/csv.js'
 import ReportsPanel from '@/components/ReportsPanel.jsx'
+import AppErrorsCard from '@/components/AppErrorsCard.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
@@ -1870,6 +1871,7 @@ export default function Admin() {
       ) : tab === 'incidents' ? (
         <>
           <LiveChecksCard />
+          <AppErrorsCard />
           {loadingIncidents ? (
             <Card><p className="text-sm text-earth-400 py-4">Loading…</p></Card>
           ) : incidents.filter((i) => i.status !== 'resolved').length === 0 ? (

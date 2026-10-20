@@ -450,6 +450,24 @@ export async function initSchema() {
   // without these each was a scan of the whole table.
   try { await query(`CREATE INDEX IF NOT EXISTS idx_logs_verification_token ON logs(verification_token) WHERE verification_token IS NOT NULL`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_supervisor_verifications_log ON supervisor_verifications(log_id) WHERE log_id IS NOT NULL`) } catch {}
+  // Errors from people's browsers and the apps (src/lib/errorReporting.js),
+  // grouped by fingerprint so one bug hitting many people is one row with a
+  // count. No user identity is stored; see server/routes/clientErrors.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS client_errors (
+        fingerprint TEXT PRIMARY KEY,
+        message     TEXT NOT NULL,
+        stack       TEXT,
+        path        TEXT,
+        user_agent  TEXT,
+        app_version TEXT,
+        count       INTEGER NOT NULL DEFAULT 1,
+        first_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_seen   TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
