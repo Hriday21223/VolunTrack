@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList, FileSignature, ExternalLink, Copy, Send, X } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
@@ -95,6 +95,10 @@ export default function LogHours({ editId, onCloseEdit }) {
   const [form, setForm] = useState(blank())
   const [toast, setToast] = useState(false)
   const [error, setError] = useState('')
+  // A second tap on Save while the first is still working saved the entry
+  // twice. The ref blocks it at once (state only updates on the next render).
+  const savingRef = useRef(false)
+  const [saving, setSaving] = useState(false)
   const [myTasks, setMyTasks] = useState([])
   // What this student's school asks for. Starts at the permissive default, so
   // the form is usable on the first paint and in client-only mode, and
@@ -177,6 +181,7 @@ export default function LogHours({ editId, onCloseEdit }) {
 
   const onSubmit = async (e) => {
     e.preventDefault()
+    if (savingRef.current) return
     setError('')
     if (!form.activity.trim()) { setError('Please enter an activity name.'); return }
     if (hours <= 0)             { setError('The start and end times are the same.'); return }
@@ -214,6 +219,8 @@ export default function LogHours({ editId, onCloseEdit }) {
     })
     if (violations.length > 0) { setError(violations[0].message); return }
 
+    savingRef.current = true
+    setSaving(true)
     try {
       // hasLocalProof tells the API that a proof file exists even when it never
       // leaves this device — without tenant storage the bytes stay in
@@ -304,6 +311,9 @@ export default function LogHours({ editId, onCloseEdit }) {
       }
     } catch (err) {
       setError('Could not save — your proof file might be too large. Try a smaller image.')
+    } finally {
+      savingRef.current = false
+      setSaving(false)
     }
   }
 
@@ -664,8 +674,8 @@ export default function LogHours({ editId, onCloseEdit }) {
 
           <Card>
             {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg mb-3">{error}</div>}
-            <button type="submit" className="btn-primary w-full">
-              <Save className="w-4 h-4" /> {editId ? 'Save changes' : 'Save hours'}
+            <button type="submit" disabled={saving} className="btn-primary w-full disabled:opacity-60">
+              <Save className="w-4 h-4" /> {saving ? 'Saving…' : editId ? 'Save changes' : 'Save hours'}
             </button>
             {editId && (
               <button

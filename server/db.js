@@ -446,6 +446,10 @@ export async function initSchema() {
     `)
   } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS posting_suspended_at TIMESTAMPTZ`) } catch {}
+  // Looked up on every supervisor decision and every new verification request;
+  // without these each was a scan of the whole table.
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_logs_verification_token ON logs(verification_token) WHERE verification_token IS NOT NULL`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_supervisor_verifications_log ON supervisor_verifications(log_id) WHERE log_id IS NOT NULL`) } catch {}
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
