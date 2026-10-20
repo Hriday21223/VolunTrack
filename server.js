@@ -25,6 +25,7 @@ import tenantRoutes from './server/routes/tenant.js'
 import remindersRoutes from './server/routes/reminders.js'
 import goalsRoutes from './server/routes/goals.js'
 import reportsRoutes from './server/routes/reports.js'
+import clientErrorsRoutes from './server/routes/clientErrors.js'
 import auditRoutes from './server/routes/audit.js'
 import { isAllowedTenantOrigin } from './server/tenantOrigins.js'
 import storageRoutes from './server/routes/storage.js'
@@ -147,6 +148,7 @@ app.use('/api/tenant', tenantRoutes)
 app.use('/api/reminders', remindersRoutes)
 app.use('/api/goals', goalsRoutes)
 app.use('/api/reports', reportsRoutes)
+app.use('/api/client-errors', clientErrorsRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/storage', storageRoutes)
 app.use('/api/transcript', transcriptRoutes)

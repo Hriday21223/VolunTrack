@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import { AlertTriangle, RotateCcw, Home } from 'lucide-react'
+import { reportError } from '@/lib/errorReporting.js'
 
 export default class ErrorBoundary extends Component {
   state = { error: null }
@@ -10,6 +11,8 @@ export default class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     console.error('Unhandled error in app tree:', error, info)
+    // A crash that reached this screen is the one most worth knowing about.
+    reportError(error, info?.componentStack || '')
   }
 
   render() {

@@ -101,6 +101,7 @@ cost of the app running letterboxed on iPads.
 | Files and docs | Yes | No | Optional | App functionality |
 | App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
+| App info and performance → Crash logs (error message, technical details, page and app version, with no account, name or email attached) | Yes | No | Required | App functionality |
 
 Not collected: financial info (school invoices are paid by bank transfer outside
 the app), contacts, messages, health, audio, web history, device IDs,
@@ -123,8 +124,9 @@ Reminders page's *Allow* tap.
 service provider processing on our behalf (hosting, email, bot protection)
 or someone the user chose to send it to (their school, a supervisor they
 asked to verify), both of which Play excludes from "sharing". Location
-search sends the typed text and an approximate position to the HERE /
-OpenStreetMap geocoders only when the user searches for a place.
+search sends the typed text and an approximate position to Photon and
+Nominatim (both OpenStreetMap services) only when the user searches for a place
+or moves the map pin.
 
 ## Privacy — Apple "App Privacy"
 
@@ -141,6 +143,11 @@ purpose *App Functionality* — matching `PrivacyInfo.xcprivacy`:
 - User Content → Photos or Videos, Other User Content (entries, app
   reviews, and reports about volunteer tasks), Customer Support
   (contact-form messages)
+
+*Not linked to the user*, *not used for tracking*, purpose *App Functionality*:
+
+- Diagnostics → Crash Data (error message, technical details, page and app
+  version when something breaks; no account, name or email is attached)
 
 One more, *Linked to the user*, *not used for tracking*, purpose *Analytics*:
 
