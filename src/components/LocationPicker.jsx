@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import { Navigation, MapPin } from 'lucide-react'
 import { searchPlaces, reverseGeocode } from '@/lib/geocode.js'
 import { isNativeApp } from '@/lib/platform.js'
+import { tr } from '@/lib/i18n.js'
 
 // Bundlers break Leaflet's default marker icon URLs — point them at the CDN
 // copies that ship in the same package version instead of asset-resolving.
@@ -117,7 +118,7 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.')
+      setError(tr('Geolocation is not supported by your browser.'))
       return
     }
     setLocating(true)
@@ -142,7 +143,7 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
         <div className="flex gap-2">
           <input
             className="input flex-1"
-            placeholder={placeholder || 'Search for an address or place…'}
+            placeholder={placeholder || tr('Search for an address or place…')}
             value={query}
             onChange={onInputChange}
             onFocus={() => setOpen(true)}
@@ -156,10 +157,10 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
             onClick={useCurrentLocation}
             disabled={locating}
             className="btn-ghost inline-flex items-center gap-1.5 whitespace-nowrap"
-            title="Use current location"
+            title={tr('Use current location')}
           >
             <Navigation className={`w-4 h-4 ${locating ? 'animate-spin' : ''}`} />
-            {locating ? 'Locating…' : 'Current'}
+            {locating ? tr('Locating…') : tr('Current')}
           </button>
         </div>
         {open && suggestions.length > 0 && (
@@ -181,7 +182,7 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
         )}
         {open && noMatches && suggestions.length === 0 && (
           <div className="absolute z-[1000] left-0 right-0 mt-1 rounded-lg border border-earth-800 bg-white dark:bg-earth-900 shadow-lg px-3 py-2 text-xs text-earth-500 dark:text-earth-400">
-            No matches for "{query}". Business names aren't always mapped yet — try the full street address instead, or tap "Current" to pin your exact location.
+            {tr('No matches for "')}{query}{tr("\". Business names aren't always mapped yet — try the full street address instead, or tap \"Current\" to pin your exact location.")}
           </div>
         )}
       </div>
@@ -213,7 +214,7 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
               />
             </MapContainer>
           </div>
-          <p className="text-xs text-earth-500 mt-1.5">Not quite right? Drag the pin or click the map to adjust.</p>
+          <p className="text-xs text-earth-500 mt-1.5">{tr('Not quite right? Drag the pin or click the map to adjust.')}</p>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Megaphone, X } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const DISMISSED_KEY = 'voluntrack:dismissed-announcements'
@@ -46,7 +47,7 @@ export default function AnnouncementBanner() {
             <p className="font-semibold text-sm">{a.title}</p>
             <p className="text-sm text-earth-600 dark:text-earth-300 whitespace-pre-line mt-0.5">{a.message}</p>
           </div>
-          <button onClick={() => dismiss(a.id)} className="p-1 text-earth-400 hover:text-earth-600 dark:hover:text-earth-200" aria-label={`Dismiss: ${a.title}`}>
+          <button onClick={() => dismiss(a.id)} className="p-1 text-earth-400 hover:text-earth-600 dark:hover:text-earth-200" aria-label={tr('Dismiss: {title}', { title: a.title })}>
             <X className="w-4 h-4" />
           </button>
         </div>

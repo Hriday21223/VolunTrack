@@ -9,15 +9,16 @@ import Toast from '@/components/Toast.jsx'
 import { fmtHours } from '@/utils/date.js'
 import { useMyRequirements } from '@/lib/requirements.js'
 import { countedLogs } from '@/lib/achievements.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 // Shown under the name for accounts that don't have a school/grade of their own.
 const ROLE_LABEL = {
-  school: 'School account',
-  school_staff: 'School co-admin',
-  org: 'Organization account',
-  parent: 'Parent account',
+  school: tr('School account'),
+  school_staff: tr('School co-admin'),
+  org: tr('Organization account'),
+  parent: tr('Parent account'),
 }
 
 export default function Profile() {
@@ -77,7 +78,7 @@ export default function Profile() {
 
   const onPickAvatar = (file) => {
     if (!file) return
-    if (file.size > 800_000) { setError('Avatar must be under 800 KB.'); return }
+    if (file.size > 800_000) { setError(tr('Avatar must be under 800 KB.')); return }
     const reader = new FileReader()
     reader.onload = () => setForm((f) => ({ ...f, avatar: reader.result }))
     reader.readAsDataURL(file)
@@ -86,7 +87,7 @@ export default function Profile() {
   const onSave = async (e) => {
     e.preventDefault()
     setError('')
-    if (!form.name.trim()) { setError('Please enter your name.'); return }
+    if (!form.name.trim()) { setError(tr('Please enter your name.')); return }
     updateProfile({
       name: form.name.trim(),
       school: isVolunteerProfile ? form.school.trim() : '',
@@ -115,7 +116,7 @@ export default function Profile() {
         // best-effort — the local save above already went through
       }
     }
-    setToastMsg('Profile saved')
+    setToastMsg(tr('Profile saved'))
     setToast(true)
   }
 
@@ -123,7 +124,7 @@ export default function Profile() {
   const sessions = logs.length
 
   return (
-    <AppLayout title="Profile" subtitle="Manage your info and how you appear in VolunTrack.">
+    <AppLayout title={tr('Profile')} subtitle={tr('Manage your info and how you appear in VolunTrack.')}>
       <div className="grid lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-1 text-center">
           <div className="relative inline-block">
@@ -134,7 +135,7 @@ export default function Profile() {
               type="button"
               onClick={() => fileRef.current?.click()}
               className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-white dark:bg-[#14201a] border border-earth-200 dark:border-[#243529] grid place-items-center text-brand-700 dark:text-brand-300 shadow-card"
-              aria-label="Change avatar"
+              aria-label={tr('Change avatar')}
             >
               <Camera className="w-4 h-4" />
             </button>
@@ -143,10 +144,10 @@ export default function Profile() {
               onChange={(e) => onPickAvatar(e.target.files?.[0])}
             />
           </div>
-          <div className="mt-3 font-display font-semibold text-lg">{form.name || 'Volunteer'}</div>
+          <div className="mt-3 font-display font-semibold text-lg">{form.name || tr('Volunteer')}</div>
           {isVolunteerProfile ? (
             <>
-              <div className="text-sm text-earth-500 dark:text-earth-400">{linkedSchoolName || form.school || 'No school set'}</div>
+              <div className="text-sm text-earth-500 dark:text-earth-400">{linkedSchoolName || form.school || tr('No school set')}</div>
               <div className="text-xs text-earth-500 dark:text-earth-400">{form.grade}</div>
             </>
           ) : (
@@ -155,50 +156,50 @@ export default function Profile() {
         </Card>
 
         <Card className="lg:col-span-2">
-          <h3 className="font-display font-semibold mb-3">Account</h3>
+          <h3 className="font-display font-semibold mb-3">{tr('Account')}</h3>
           <form onSubmit={onSave} className="grid sm:grid-cols-2 gap-4">
-            <Field icon={UserIcon}      label="Full name" value={form.name}  onChange={onChange('name')} required />
+            <Field icon={UserIcon}      label={tr('Full name')} value={form.name}  onChange={onChange('name')} required />
             <Field icon={Mail}          label="Email"     value={form.email} onChange={onChange('email')} disabled />
             {isVolunteerProfile && (
               <>
-                <Field icon={School}        label="School / Organization" value={form.school} onChange={onChange('school')} />
+                <Field icon={School}        label={tr('School / Organization')} value={form.school} onChange={onChange('school')} />
                 {isStudent ? (
                   <GradeField value={form.grade} onChange={onChange('grade')} />
                 ) : (
-                  <Field icon={GraduationCap} label="Role" value={form.grade} onChange={onChange('grade')} placeholder="Volunteer lead" />
+                  <Field icon={GraduationCap} label={tr('Role')} value={form.grade} onChange={onChange('grade')} placeholder={tr('Volunteer lead')} />
                 )}
-                <Field icon={Hash}          label="Student ID number"    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />
+                <Field icon={Hash}          label={tr('Student ID number')}    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder={tr('For school verification forms')} />
               </>
             )}
             {accountCode && (
               <div className="sm:col-span-2">
-                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" /> Customer ID</label>
+                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('Customer ID')}</label>
                 <div className="flex items-center gap-2">
                   <input className="input font-mono flex-1" value={accountCode} readOnly disabled />
-                  <button type="button" onClick={copyAccountCode} className="btn-ghost btn-sm shrink-0" title="Copy customer ID">
+                  <button type="button" onClick={copyAccountCode} className="btn-ghost btn-sm shrink-0" title={tr('Copy customer ID')}>
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
                 <p className="text-xs text-earth-500 mt-1">
-                  Issued once and permanent — it can't be changed or removed. Quote it on payments and when you contact us.
+                  {tr("Issued once and permanent — it can't be changed or removed. Quote it on payments and when you contact us.")}
                 </p>
               </div>
             )}
             {error && <div className="sm:col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{error}</div>}
             <div className="sm:col-span-2">
               <button className="btn-primary" type="submit">
-                <Save className="w-4 h-4" /> Save changes
+                <Save className="w-4 h-4" />{' '}{tr('Save changes')}
               </button>
             </div>
           </form>
         </Card>
 
         <Card className="lg:col-span-3">
-          <h3 className="font-display font-semibold mb-3">Your stats at a glance</h3>
+          <h3 className="font-display font-semibold mb-3">{tr('Your stats at a glance')}</h3>
           <div className="grid sm:grid-cols-3 gap-3">
-            <Stat label="Total hours" value={fmtHours(total)} />
-            <Stat label="Sessions"    value={sessions} />
-            <Stat label="Member since" value={new Date(user?.createdAt || Date.now()).getFullYear()} />
+            <Stat label={tr('Total hours')} value={fmtHours(total)} />
+            <Stat label={tr('Sessions')}    value={sessions} />
+            <Stat label={tr('Member since')} value={new Date(user?.createdAt || Date.now()).getFullYear()} />
           </div>
         </Card>
       </div>
@@ -225,15 +226,15 @@ function GradeField({ value, onChange }) {
   return (
     <div>
       <label className="label flex items-center gap-1.5" htmlFor="profile-grade">
-        <GraduationCap className="w-4 h-4" /> Grade
+        <GraduationCap className="w-4 h-4" />{' '}{tr('Grade')}
       </label>
       <select id="profile-grade" className="input" value={selected} onChange={onChange}>
-        <option value="">Select your grade</option>
+        <option value="">{tr('Select your grade')}</option>
         {SCHOOL_GRADES.map((g) => (
           <option key={g} value={g}>{gradeOptionLabel(g)}</option>
         ))}
       </select>
-      <p className="text-xs text-earth-400 mt-1">Your school sees this on its roster, and uses it to set your hour requirement.</p>
+      <p className="text-xs text-earth-400 mt-1">{tr('Your school sees this on its roster, and uses it to set your hour requirement.')}</p>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
+import LanguagePicker from '@/components/LanguagePicker.jsx'
 
 // The signed-out start screen inside the native apps. On the website "/" is
 // the marketing page (About.jsx); someone who has installed the app has
@@ -22,24 +24,25 @@ export default function AppWelcome() {
           />
           <h1 className="font-display text-4xl font-bold tracking-tight">VolunTrack</h1>
           <p className="mt-3 max-w-xs text-base text-earth-300">
-            Log your volunteer hours, hit your goals, and share your record with your school.
+            {tr('Log your volunteer hours, hit your goals, and share your record with your school.')}
           </p>
         </div>
 
         <div className="space-y-3">
           <Link to="/login" className="btn-primary flex w-full items-center justify-center gap-2 py-4 text-base">
-            Sign in <ArrowRight className="h-5 w-5" />
+            {tr('Sign in')}{' '}<ArrowRight className="h-5 w-5" />
           </Link>
           <Link
             to="/register"
             className="flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 py-4 text-base font-semibold text-earth-100 active:bg-white/10"
           >
-            Create an account
+            {tr('Create an account')}
           </Link>
+          <div className="pt-2 flex justify-center"><LanguagePicker compact /></div>
           <p className="pt-3 text-center text-xs text-earth-500">
-            By continuing you agree to the{' '}
-            <Link to="/terms" className="underline">Terms</Link> and{' '}
-            <Link to="/privacy" className="underline">Privacy Policy</Link>.
+            {tr('By continuing you agree to the')}{' '}
+            <Link to="/terms" className="underline">{tr('Terms')}</Link>{' '}{tr('and')}{' '}
+            <Link to="/privacy" className="underline">{tr('Privacy Policy')}</Link>.
           </p>
         </div>
       </div>

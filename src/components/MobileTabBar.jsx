@@ -4,6 +4,7 @@ import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, 
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { isNativeApp, APP_BACK_EVENT } from '@/lib/platform.js'
+import { tr } from '@/lib/i18n.js'
 
 // Labels here match Sidebar.jsx exactly (same route, same label) so the
 // nav doesn't appear to rename itself between desktop and mobile. "Log"
@@ -188,7 +189,7 @@ export default function MobileTabBar() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl border-b border-earth-200/50 dark:border-white/10 px-5 py-4 flex items-center justify-between z-10">
-              <h3 className="font-display font-semibold text-lg">More</h3>
+              <h3 className="font-display font-semibold text-lg">{tr('More')}</h3>
               <button
                 onClick={() => setMoreOpen(false)}
                 className="w-8 h-8 rounded-full bg-earth-100 dark:bg-white/10 flex items-center justify-center"
@@ -212,7 +213,7 @@ export default function MobileTabBar() {
                     )}
                   >
                     <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
-                    <span className="font-medium text-sm flex-1">{label}</span>
+                    <span className="font-medium text-sm flex-1">{tr(label)}</span>
                     <ChevronRight className="w-4 h-4 opacity-40" />
                   </NavLink>
                 )
@@ -240,7 +241,7 @@ export default function MobileTabBar() {
         <span className="block h-0.5 w-5 rounded-full bg-current" />
         <span className="block h-0.5 w-5 rounded-full bg-current" />
       </div>
-      More
+      {tr('More')}
     </button>
   )
 
@@ -259,7 +260,7 @@ export default function MobileTabBar() {
             )}
           >
             <Icon className="h-6 w-6" strokeWidth={active ? 2.4 : 1.8} />
-            {label}
+            {tr(label)}
           </NavLink>
         </li>
       )
@@ -279,7 +280,7 @@ export default function MobileTabBar() {
               <li className="flex justify-center">
                 <Link
                   to="/log"
-                  aria-label="Log hours"
+                  aria-label={tr('Log hours')}
                   className="-mt-5 mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-900/60 ring-4 ring-[#0b161c] active:scale-90 transition-transform"
                 >
                   <Plus className="h-7 w-7" strokeWidth={2.6} />
@@ -318,7 +319,7 @@ export default function MobileTabBar() {
                       <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full bg-brand-500 dark:bg-brand-400" />
                     )}
                     <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
-                    {label}
+                    {tr(label)}
                   </NavLink>
                 </li>
               )
@@ -341,7 +342,7 @@ export default function MobileTabBar() {
                   <span className="block w-4 h-0.5 rounded-full bg-current" />
                   <span className="block w-4 h-0.5 rounded-full bg-current" />
                 </div>
-                More
+                {tr('More')}
               </button>
             </li>
           </ul>

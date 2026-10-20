@@ -11,12 +11,13 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { cn } from '@/utils/cn.js'
+import { tr } from '@/lib/i18n.js'
 
 const KINDS = [
-  { value: 'one-off',  label: 'One time' },
-  { value: 'daily',    label: 'Daily' },
-  { value: 'weekly',   label: 'Weekly' },
-  { value: 'monthly',  label: 'Monthly' },
+  { value: 'one-off',  label: tr('One time') },
+  { value: 'daily',    label: tr('Daily') },
+  { value: 'weekly',   label: tr('Weekly') },
+  { value: 'monthly',  label: tr('Monthly') },
 ]
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -112,7 +113,7 @@ export default function Reminders() {
   const onSubmit = (e) => {
     e.preventDefault()
     setErr('')
-    if (!form.title.trim()) { setErr('Give your reminder a title.'); return }
+    if (!form.title.trim()) { setErr(tr('Give your reminder a title.')); return }
     const payload = { ...form, title: form.title.trim(), body: form.body.trim() }
     if (editing) reminderApi.update(editing, payload)
     else         reminderApi.create(payload)
@@ -145,29 +146,29 @@ export default function Reminders() {
 
   return (
     <AppLayout
-      title="Reminders"
-      subtitle="Nudges to help you log and stay on track."
+      title={tr('Reminders')}
+      subtitle={tr('Nudges to help you log and stay on track.')}
     >
       <div className="grid lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-1">
           <h3 className="font-display font-semibold mb-1 flex items-center gap-2">
             <BellRing className="w-4 h-4 text-brand-600" />
-            {editing ? 'Edit reminder' : 'New reminder'}
+            {editing ? tr('Edit reminder') : tr('New reminder')}
           </h3>
-          <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">Set when and how often to be reminded.</p>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">{tr('Set when and how often to be reminded.')}</p>
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
-              <label className="label">Title</label>
-              <input className="input" placeholder="Log your hours" value={form.title} onChange={(e) => onChange('title', e.target.value)} required />
+              <label className="label">{tr('Title')}</label>
+              <input className="input" placeholder={tr('Log your hours')} value={form.title} onChange={(e) => onChange('title', e.target.value)} required />
             </div>
             <div>
-              <label className="label">Note (optional)</label>
-              <input className="input" placeholder="Take a moment to record this week." value={form.body} onChange={(e) => onChange('body', e.target.value)} />
+              <label className="label">{tr('Note (optional)')}</label>
+              <input className="input" placeholder={tr('Take a moment to record this week.')} value={form.body} onChange={(e) => onChange('body', e.target.value)} />
             </div>
 
             <div>
-              <label className="label">How often</label>
+              <label className="label">{tr('How often')}</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {KINDS.map((k) => (
                   <button
@@ -186,7 +187,7 @@ export default function Reminders() {
 
             {form.kind === 'weekly' && (
               <div>
-                <label className="label">Day of week</label>
+                <label className="label">{tr('Day of week')}</label>
                 <div className="grid grid-cols-7 gap-1">
                   {WEEKDAYS.map((d, i) => (
                     <button
@@ -206,21 +207,21 @@ export default function Reminders() {
 
             {form.kind === 'monthly' && (
               <div>
-                <label className="label">Day of month</label>
+                <label className="label">{tr('Day of month')}</label>
                 <input type="number" min="1" max="31" className="input" value={form.dayOfMonth} onChange={(e) => onChange('dayOfMonth', Number(e.target.value))} />
               </div>
             )}
 
             {form.kind !== 'one-off' && (
               <div>
-                <label className="label">Time of day</label>
+                <label className="label">{tr('Time of day')}</label>
                 <input type="time" className="input" value={form.time} onChange={(e) => onChange('time', e.target.value)} />
               </div>
             )}
 
             {form.kind === 'one-off' && (
               <div>
-                <label className="label">When</label>
+                <label className="label">{tr('When')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <input type="date" className="input" value={form.startDate} onChange={(e) => onChange('startDate', e.target.value)} />
                   <input type="time" className="input" value={form.time} onChange={(e) => onChange('time', e.target.value)} />
@@ -229,14 +230,14 @@ export default function Reminders() {
             )}
 
             <div>
-              <label className="label">Window (optional)</label>
+              <label className="label">{tr('Window (optional)')}</label>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-[11px] text-earth-500 dark:text-earth-400 mb-0.5">Starts</div>
+                  <div className="text-[11px] text-earth-500 dark:text-earth-400 mb-0.5">{tr('Starts')}</div>
                   <input type="date" className="input" value={form.startDate} onChange={(e) => onChange('startDate', e.target.value)} />
                 </div>
                 <div>
-                  <div className="text-[11px] text-earth-500 dark:text-earth-400 mb-0.5">Ends</div>
+                  <div className="text-[11px] text-earth-500 dark:text-earth-400 mb-0.5">{tr('Ends')}</div>
                   <input type="date" className="input" value={form.endDate} onChange={(e) => onChange('endDate', e.target.value)} />
                 </div>
               </div>
@@ -246,10 +247,10 @@ export default function Reminders() {
 
             <div className="flex gap-2">
               <button type="submit" className="btn-primary flex-1">
-                {editing ? 'Save changes' : 'Add reminder'}
+                {editing ? tr('Save changes') : tr('Add reminder')}
               </button>
               {editing && (
-                <button type="button" onClick={cancelEdit} className="btn-secondary">Cancel</button>
+                <button type="button" onClick={cancelEdit} className="btn-secondary">{tr('Cancel')}</button>
               )}
             </div>
           </form>
@@ -259,27 +260,27 @@ export default function Reminders() {
           <Card>
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div className="font-display font-semibold flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> {isNativeApp ? 'Notifications' : 'Browser notifications'}</div>
+                <div className="font-display font-semibold flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> {isNativeApp ? tr('Notifications') : tr('Browser notifications')}</div>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">
                   {isNativeApp ? (
                     <>
-                      {perm === 'granted' && 'On — reminders arrive even when VolunTrack is closed.'}
-                      {perm === 'default' && 'Allow notifications so your reminders reach you when VolunTrack is closed.'}
-                      {perm === 'denied'  && 'Turned off for VolunTrack in your phone’s settings. Turn them on there to get reminders when the app is closed.'}
-                      {perm === 'unsupported' && 'Notifications aren’t available on this device. Reminders still show while the app is open.'}
+                      {perm === 'granted' && tr('On — reminders arrive even when VolunTrack is closed.')}
+                      {perm === 'default' && tr('Allow notifications so your reminders reach you when VolunTrack is closed.')}
+                      {perm === 'denied'  && tr('Turned off for VolunTrack in your phone’s settings. Turn them on there to get reminders when the app is closed.')}
+                      {perm === 'unsupported' && tr('Notifications aren’t available on this device. Reminders still show while the app is open.')}
                     </>
                   ) : (
                     <>
-                      {perm === 'granted'  && 'Enabled — reminders will pop on your device.'}
-                      {perm === 'default'  && 'Not yet requested. We can ask for permission.'}
-                      {perm === 'denied'   && 'Blocked in your browser settings. You can re-enable it there.'}
-                      {perm === 'unsupported' && 'Your browser does not support notifications. In-app toasts will still fire.'}
+                      {perm === 'granted'  && tr('Enabled — reminders will pop on your device.')}
+                      {perm === 'default'  && tr('Not yet requested. We can ask for permission.')}
+                      {perm === 'denied'   && tr('Blocked in your browser settings. You can re-enable it there.')}
+                      {perm === 'unsupported' && tr('Your browser does not support notifications. In-app toasts will still fire.')}
                     </>
                   )}
                 </p>
               </div>
               {perm === 'default' && (
-                <button onClick={onAskPermission} className="btn-secondary">{isNativeApp ? 'Allow' : 'Enable notifications'}</button>
+                <button onClick={onAskPermission} className="btn-secondary">{isNativeApp ? tr('Allow') : tr('Enable notifications')}</button>
               )}
             </div>
 
@@ -288,15 +289,15 @@ export default function Reminders() {
             {pushCfg.pushEnabled && pushSupported() && (
               <div className="mt-4 border-t border-earth-100 dark:border-[#1f2e25] pt-4 flex items-start justify-between gap-4">
                 <div>
-                  <div className="font-display font-semibold">Notify me when VolunTrack is closed</div>
+                  <div className="font-display font-semibold">{tr('Notify me when VolunTrack is closed')}</div>
                   <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">
                     {pushOn
-                      ? 'On — your reminders are synced so we can notify you even with every tab closed.'
-                      : 'Reminders above only fire while a VolunTrack tab is open. Turn this on to be notified anyway.'}
+                      ? tr('On — your reminders are synced so we can notify you even with every tab closed.')
+                      : tr('Reminders above only fire while a VolunTrack tab is open. Turn this on to be notified anyway.')}
                   </p>
                 </div>
                 <button onClick={onTogglePush} className={pushOn ? 'btn-ghost' : 'btn-secondary'} disabled={pushBusy}>
-                  {pushBusy ? 'Working…' : pushOn ? 'Turn off' : 'Turn on'}
+                  {pushBusy ? tr('Working…') : pushOn ? tr('Turn off') : tr('Turn on')}
                 </button>
               </div>
             )}
@@ -305,7 +306,7 @@ export default function Reminders() {
           {items.length === 0 ? (
             <Card className="text-center py-10 text-earth-500 dark:text-earth-400">
               <BellOff className="w-8 h-8 mx-auto mb-2 text-earth-400" />
-              No reminders yet. Add one on the left to get started.
+              {tr('No reminders yet. Add one on the left to get started.')}
             </Card>
           ) : (
             <ul className="space-y-3">
@@ -324,7 +325,7 @@ export default function Reminders() {
       </div>
 
       <Toast open={toast} onClose={() => setToast(false)}>
-        {editing ? 'Reminder updated' : 'Reminder added'}
+        {editing ? tr('Reminder updated') : tr('Reminder added')}
       </Toast>
     </AppLayout>
   )
@@ -357,19 +358,19 @@ function ReminderCard({ r, onEdit, onDelete, onToggle }) {
           <div className="text-xs text-earth-500 dark:text-earth-400 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="flex items-center gap-1"><Repeat className="w-3 h-3" />{summary}</span>
             {next && r.enabled && (
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Next: {formatDistanceToNow(parseISO(next), { addSuffix: true })}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{tr('Next:')}{' '}{formatDistanceToNow(parseISO(next), { addSuffix: true })}</span>
             )}
-            {r.endDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Ends {format(parseISO(r.endDate), 'MMM d')}</span>}
+            {r.endDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{tr('Ends')}{' '}{format(parseISO(r.endDate), 'MMM d')}</span>}
           </div>
         </div>
         <div className="flex gap-1">
-          <button onClick={onToggle} className="p-2 rounded-lg text-earth-500 hover:bg-earth-100 dark:hover:bg-[#1b2a22]" title={r.enabled ? 'Pause' : 'Resume'}>
+          <button onClick={onToggle} className="p-2 rounded-lg text-earth-500 hover:bg-earth-100 dark:hover:bg-[#1b2a22]" title={r.enabled ? tr('Pause') : tr('Resume')}>
             <Power className="w-4 h-4" />
           </button>
-          <button onClick={onEdit} className="p-2 rounded-lg text-earth-500 hover:bg-earth-100 dark:hover:bg-[#1b2a22]" title="Edit">
+          <button onClick={onEdit} className="p-2 rounded-lg text-earth-500 hover:bg-earth-100 dark:hover:bg-[#1b2a22]" title={tr('Edit')}>
             <Pencil className="w-4 h-4" />
           </button>
-          <button onClick={onDelete} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete">
+          <button onClick={onDelete} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title={tr('Delete')}>
             <Trash2 className="w-4 h-4" />
           </button>
         </div>

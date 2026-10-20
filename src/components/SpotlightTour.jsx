@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { read, write } from '@/lib/storage.js'
+import { tr } from '@/lib/i18n.js'
 
 const PAD = 8
 
@@ -113,7 +114,7 @@ export default function SpotlightTour({ storageKey, steps }) {
       >
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-sm text-earth-50">{step.title}</h3>
-          <button onClick={finish} aria-label="Skip tour" className="text-earth-500 hover:text-earth-200 -mt-1 -mr-1 p-1">
+          <button onClick={finish} aria-label={tr('Skip tour')} className="text-earth-500 hover:text-earth-200 -mt-1 -mr-1 p-1">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -122,13 +123,13 @@ export default function SpotlightTour({ storageKey, steps }) {
           <span className="text-xs text-earth-500">{stepIndex + 1} / {steps.length}</span>
           <div className="flex gap-2">
             {stepIndex > 0 && (
-              <button onClick={() => setStepIndex((i) => i - 1)} className="btn-sm btn-ghost">Back</button>
+              <button onClick={() => setStepIndex((i) => i - 1)} className="btn-sm btn-ghost">{tr('Back')}</button>
             )}
             <button
               onClick={() => (isLast ? finish() : setStepIndex((i) => i + 1))}
               className="btn-sm btn-primary"
             >
-              {isLast ? 'Done' : 'Next'}
+              {isLast ? tr('Done') : tr('Next')}
             </button>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { BADGES, deriveAchievementState } from '@/lib/achievements.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { cn } from '@/utils/cn.js'
+import { tr } from '@/lib/i18n.js'
 
 const ICONS = { Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp }
 
@@ -28,8 +29,8 @@ export default function Achievements() {
 
   return (
     <AppLayout
-      title="Achievements"
-      subtitle={`${earned.length} of ${BADGES.length} earned`}
+      title={tr('Achievements')}
+      subtitle={tr('{earned} of {total} earned', { earned: earned.length, total: BADGES.length })}
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {BADGES.map((b) => {
@@ -53,9 +54,9 @@ export default function Achievements() {
               </div>
               <div className="mt-4 text-xs">
                 {isEarned ? (
-                  <span className="chip-brand">Earned</span>
+                  <span className="chip-brand">{tr('Earned')}</span>
                 ) : (
-                  <span className="chip-earth">Locked</span>
+                  <span className="chip-earth">{tr('Locked')}</span>
                 )}
               </div>
               {isEarned && (
@@ -67,12 +68,12 @@ export default function Achievements() {
       </div>
 
       <Card className="mt-6">
-        <h3 className="font-display font-semibold mb-2">Your progress</h3>
+        <h3 className="font-display font-semibold mb-2">{tr('Your progress')}</h3>
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <Stat label="Total hours"      value={state.totalHours.toFixed(1)} />
-          <Stat label="Distinct days"    value={state.distinctDays} />
-          <Stat label="Categories used"  value={state.distinctCategories} />
-          <Stat label="Best month"       value={state.bestMonthHours.toFixed(1)} />
+          <Stat label={tr('Total hours')}      value={state.totalHours.toFixed(1)} />
+          <Stat label={tr('Distinct days')}    value={state.distinctDays} />
+          <Stat label={tr('Categories used')}  value={state.distinctCategories} />
+          <Stat label={tr('Best month')}       value={state.bestMonthHours.toFixed(1)} />
         </div>
       </Card>
     </AppLayout>

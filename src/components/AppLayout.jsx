@@ -7,6 +7,7 @@ import { isNativeApp } from '@/lib/platform.js'
 import Sidebar from './Sidebar.jsx'
 import ReviewPopup from './ReviewPopup.jsx'
 import ReviewConsentPrompt from './ReviewConsentPrompt.jsx'
+import { tr } from '@/lib/i18n.js'
 
 export default function AppLayout({ children, title, subtitle, action, actionWide = false }) {
   const { user, logout } = useAuth()
@@ -75,7 +76,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
               <button
                 className="md:hidden p-2 -ml-2 rounded-lg text-earth-200 hover:bg-white/10"
                 onClick={() => setDrawerOpen(true)}
-                aria-label="Open menu"
+                aria-label={tr('Open menu')}
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -95,15 +96,15 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
                   {user?.name?.[0]?.toUpperCase() || 'V'}
                 </div>
                 <div className="text-sm">
-                  <div className="font-medium leading-tight">{user?.name || 'Volunteer'}</div>
+                  <div className="font-medium leading-tight">{user?.name || tr('Volunteer')}</div>
                   <div className="text-xs text-earth-400 leading-tight">{user?.school || '—'}</div>
                 </div>
               </div>
               <button
                 onClick={() => { logout(); navigate('/login') }}
                 className="p-2 rounded-lg text-earth-200 hover:text-red-400 hover:bg-red-500/10"
-                title="Log out"
-                aria-label="Log out"
+                title={tr('Log out')}
+                aria-label={tr('Log out')}
               >
                 <LogOut className="w-5 h-5" />
               </button>

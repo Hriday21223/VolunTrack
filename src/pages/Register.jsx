@@ -10,6 +10,7 @@ import { SCHOOL_GRADES, gradeOptionLabel } from '@policy'
 import { checkSignupAge } from '@ageRules'
 import { markWelcomePending, clearWelcomePending } from '@/lib/welcome.js'
 import { useSeo } from '@/hooks/useSeo.js'
+import { tr } from '@/lib/i18n.js'
 
 // Remembers, on this device only, that a too-young date of birth was entered
 // for a role, so going back and picking an older year doesn't get around the
@@ -50,28 +51,28 @@ function todayIso() {
 const ROLES = [
   {
     id: 'student',
-    label: "I'm a Student",
-    description: 'Track volunteer hours, join a school, earn badges, and submit reports.',
+    label: tr("I'm a Student"),
+    description: tr('Track volunteer hours, join a school, earn badges, and submit reports.'),
     icon: GraduationCap,
   },
   {
     id: 'volunteer',
-    label: "I'm a Volunteer Task Maker",
-    description: 'Post volunteer opportunities, manage signups, and log hours for your team.',
+    label: tr("I'm a Volunteer Task Maker"),
+    description: tr('Post volunteer opportunities, manage signups, and log hours for your team.'),
     icon: Hand,
   },
   {
     id: 'parent',
-    label: "I'm a Parent",
-    description: "Follow your child's logged volunteer hours and verification status — read only. Ask your child for their link code in Settings → Family to get started.",
+    label: tr("I'm a Parent"),
+    description: tr("Follow your child's logged volunteer hours and verification status — read only. Ask your child for their link code in Settings → Family to get started."),
     icon: Users,
   },
 ]
 
 export default function Register() {
   useSeo({
-    title: 'Create an Account',
-    description: 'Create a free VolunTrack account to start tracking volunteer hours, setting goals, and earning badges.',
+    title: tr('Create an Account'),
+    description: tr('Create a free VolunTrack account to start tracking volunteer hours, setting goals, and earning badges.'),
     path: '/register',
   })
 
@@ -137,7 +138,7 @@ export default function Register() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
-    if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
+    if (form.password.length < 8) { setErr(tr('Password must be at least 8 characters.')); return }
     if (ageCheck.error) {
       if (ageCheck.tooYoung) recordAgeGate(role)
       setErr(ageCheck.error)
@@ -145,9 +146,9 @@ export default function Register() {
     }
     if (ageGated && role !== 'student') { setErr(AGE_GATED_MESSAGE); return }
     if (under13) recordAgeGate('student')
-    if (under13 && !form.parentEmail.trim()) { setErr("Enter your parent or guardian's email address."); return }
-    if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
-    if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
+    if (under13 && !form.parentEmail.trim()) { setErr(tr("Enter your parent or guardian's email address.")); return }
+    if (!agreed) { setErr(tr('Please agree to the Terms of Service and Privacy Policy.')); return }
+    if (turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
     const signup = { ...form, role, under13, parentEmail: under13 ? form.parentEmail.trim() : '' }
     setBusy(true)
     try {
@@ -194,7 +195,7 @@ export default function Register() {
   const onVerify = async (e) => {
     e.preventDefault()
     setErr('')
-    if (!/^\d{6}$/.test(emailCode)) { setErr('Enter the 6-digit code from the email.'); return }
+    if (!/^\d{6}$/.test(emailCode)) { setErr(tr('Enter the 6-digit code from the email.')); return }
     setBusy(true)
     try {
       await createAccount(pendingSignup, emailCode)
@@ -205,7 +206,7 @@ export default function Register() {
 
   const onResend = async () => {
     setErr('')
-    if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
+    if (turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
     setBusy(true)
     try {
       await sendSignupCode({ ...pendingSignup, turnstileToken: captchaToken })
@@ -234,14 +235,14 @@ export default function Register() {
         <div className="w-full max-w-lg">
           <Card padded={false} className="p-7 text-center">
             <Mail className="w-10 h-10 mx-auto mb-3 text-brand-600" />
-            <h1 className="text-2xl font-bold mb-2">Ask your parent to check their email</h1>
+            <h1 className="text-2xl font-bold mb-2">{tr('Ask your parent to check their email')}</h1>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-2">
-              We sent a message to <strong>{awaitingParent}</strong>. Your account is ready as soon as they approve it — then sign in with the email and password you just chose.
+              {tr('We sent a message to')}{' '}<strong>{awaitingParent}</strong>{tr('. Your account is ready as soon as they approve it — then sign in with the email and password you just chose.')}
             </p>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-              If they don&apos;t answer within 14 days, the account is deleted and you can sign up again.
+              {tr("If they don't answer within 14 days, the account is deleted and you can sign up again.")}
             </p>
-            <Link to="/login" className="btn-primary inline-flex justify-center">Go to sign in</Link>
+            <Link to="/login" className="btn-primary inline-flex justify-center">{tr('Go to sign in')}</Link>
           </Card>
         </div>
       </div>
@@ -255,13 +256,13 @@ export default function Register() {
         <div className="w-full max-w-lg">
           <Card padded={false} className="p-7">
             <Mail className="w-10 h-10 mx-auto mb-3 text-brand-600" />
-            <h1 className="text-2xl font-bold mb-2 text-center">Check your email</h1>
+            <h1 className="text-2xl font-bold mb-2 text-center">{tr('Check your email')}</h1>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-6 text-center">
-              We sent a 6-digit code to <strong>{pendingSignup.email.trim()}</strong>. Enter it below to create your account. It expires in 10 minutes.
+              {tr('We sent a 6-digit code to')}{' '}<strong>{pendingSignup.email.trim()}</strong>{tr('. Enter it below to create your account. It expires in 10 minutes.')}
             </p>
             <form onSubmit={onVerify} className="space-y-4">
               <div>
-                <label className="label" htmlFor="register-email-code">Verification code</label>
+                <label className="label" htmlFor="register-email-code">{tr('Verification code')}</label>
                 <input
                   id="register-email-code"
                   className="input text-center text-2xl tracking-[0.4em] font-semibold"
@@ -277,15 +278,15 @@ export default function Register() {
               </div>
 
               {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
-              {resent && !err && <div className="text-sm text-brand-700 dark:text-brand-300">We sent a new code. Only the newest one works.</div>}
+              {resent && !err && <div className="text-sm text-brand-700 dark:text-brand-300">{tr('We sent a new code. Only the newest one works.')}</div>}
 
               <button type="submit" className="btn-primary w-full" disabled={busy || emailCode.length !== 6}>
-                {busy ? 'Creating account…' : <>Verify and create account <ArrowRight className="w-4 h-4" /></>}
+                {busy ? tr('Creating account…') : <>{tr('Verify and create account')}{' '}<ArrowRight className="w-4 h-4" /></>}
               </button>
             </form>
 
             <div className="mt-6 pt-5 border-t border-earth-200 dark:border-earth-800 space-y-3 text-center text-sm text-earth-500 dark:text-earth-400">
-              <p>Didn&apos;t get it? Check your spam folder, or send a new one.</p>
+              <p>{tr("Didn't get it? Check your spam folder, or send a new one.")}</p>
               {resendIn === 0 && <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="register" />}
               <button
                 type="button"
@@ -293,10 +294,10 @@ export default function Register() {
                 onClick={onResend}
                 disabled={busy || resendIn > 0 || (turnstileEnabled && !captchaToken)}
               >
-                {resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
+                {resendIn > 0 ? tr('Send a new code in {n}s', { n: resendIn }) : tr('Send a new code')}
               </button>
               <button type="button" onClick={backToForm} className="text-brand-700 dark:text-brand-300 font-medium hover:underline">
-                Use a different email
+                {tr('Use a different email')}
               </button>
             </div>
           </Card>
@@ -314,8 +315,8 @@ export default function Register() {
         </Link>
 
         <Card padded={false} className="p-7 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-          <h1 className="text-2xl font-bold mb-1 animate-fade-in-up" style={{ animationDelay: '150ms' }}>Create your account</h1>
-          <p className="text-sm text-earth-500 dark:text-earth-400 mb-6 animate-fade-in-up" style={{ animationDelay: '200ms' }}>Choose your account type to get started.</p>
+          <h1 className="text-2xl font-bold mb-1 animate-fade-in-up" style={{ animationDelay: '150ms' }}>{tr('Create your account')}</h1>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-6 animate-fade-in-up" style={{ animationDelay: '200ms' }}>{tr('Choose your account type to get started.')}</p>
 
           <div className="grid gap-3 mb-6">
             {ROLES.map((r, i) => (
@@ -348,19 +349,19 @@ export default function Register() {
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="animate-fade-in-up" style={{ animationDelay: '450ms' }}>
-              <Field icon={UserIcon}  label="Full name" value={form.name} onChange={onChange('name')} placeholder="Jane Doe" required />
+              <Field icon={UserIcon}  label={tr('Full name')} value={form.name} onChange={onChange('name')} placeholder={tr('Jane Doe')} required />
             </div>
             <div className="animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-              <Field icon={Mail}      label="Email" type="email" value={form.email} onChange={onChange('email')} placeholder="you@email.com" autoComplete="email" required />
+              <Field icon={Mail}      label="Email" type="email" value={form.email} onChange={onChange('email')} placeholder={tr('you@email.com')} autoComplete="email" required />
             </div>
             <div className="animate-fade-in-up" style={{ animationDelay: '550ms' }}>
-              <Field icon={Lock}      label="Password" type="password" value={form.password} onChange={onChange('password')} placeholder="8+ characters" autoComplete="new-password" required />
+              <Field icon={Lock}      label={tr('Password')} type="password" value={form.password} onChange={onChange('password')} placeholder={tr('8+ characters')} autoComplete="new-password" required />
             </div>
 
             <div className="animate-fade-in-up" style={{ animationDelay: '625ms' }}>
-              <Field icon={Cake} label="Date of birth" type="date" value={form.dateOfBirth} onChange={onChange('dateOfBirth')} onBlur={onDobBlur} max={todayIso()} autoComplete="bday" required />
+              <Field icon={Cake} label={tr('Date of birth')} type="date" value={form.dateOfBirth} onChange={onChange('dateOfBirth')} onBlur={onDobBlur} max={todayIso()} autoComplete="bday" required />
               <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-                Only used to check our age rules — we don&apos;t keep it.
+                {tr("Only used to check our age rules — we don't keep it.")}
               </p>
             </div>
 
@@ -368,29 +369,29 @@ export default function Register() {
               <>
                 {under13 && (
                   <div className="animate-fade-in-up">
-                    <Field icon={Mail} label="Parent or guardian's email" type="email" value={form.parentEmail} onChange={onChange('parentEmail')} placeholder="parent@example.com" autoComplete="off" required />
+                    <Field icon={Mail} label={tr("Parent or guardian's email")} type="email" value={form.parentEmail} onChange={onChange('parentEmail')} placeholder={tr('parent@example.com')} autoComplete="off" required />
                     <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-                      We&apos;ll email them to ask for permission. You can sign in once they approve. If your school gave you a VolunTrack account, use that instead.
+                      {tr("We'll email them to ask for permission. You can sign in once they approve. If your school gave you a VolunTrack account, use that instead.")}
                     </p>
                     {!ageCheck.under13 && (
                       <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-                        An under-13 date of birth was entered on this device earlier, so a parent or guardian still needs to approve.
+                        {tr('An under-13 date of birth was entered on this device earlier, so a parent or guardian still needs to approve.')}
                       </p>
                     )}
                   </div>
                 )}
                 <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
-                  <Field icon={School}        label="School / Organization" value={form.school} onChange={onChange('school')} placeholder="Lincoln High School" />
+                  <Field icon={School}        label={tr('School / Organization')} value={form.school} onChange={onChange('school')} placeholder={tr('Lincoln High School')} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '700ms' }}>
-                  <Field icon={Hash}          label="School code (optional)" value={form.schoolCode} onChange={onChange('schoolCode')} placeholder="cisd-12345" />
+                  <Field icon={Hash}          label={tr('School code (optional)')} value={form.schoolCode} onChange={onChange('schoolCode')} placeholder={tr('cisd-12345')} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
-                  <label className="label" htmlFor="register-grade">Grade (optional)</label>
+                  <label className="label" htmlFor="register-grade">{tr('Grade (optional)')}</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                     <select id="register-grade" className="input pl-9" value={form.grade} onChange={onChange('grade')}>
-                      <option value="">Select your grade</option>
+                      <option value="">{tr('Select your grade')}</option>
                       {SCHOOL_GRADES.map((g) => (
                         <option key={g} value={g}>{gradeOptionLabel(g)}</option>
                       ))}
@@ -398,7 +399,7 @@ export default function Register() {
                   </div>
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '800ms' }}>
-                  <Field icon={Hash} label="Student ID number (optional)" value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder="For school verification forms" />
+                  <Field icon={Hash} label={tr('Student ID number (optional)')} value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder={tr('For school verification forms')} />
                 </div>
               </>
             )}
@@ -411,10 +412,10 @@ export default function Register() {
                 onChange={(e) => setAgreed(e.target.checked)}
               />
               <span>
-                I agree to the{' '}
-                <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Terms of Service</Link>
-                {' '}and{' '}
-                <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Privacy Policy</Link>.
+                {tr('I agree to the')}{' '}
+                <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Terms of Service')}</Link>
+                {' '}{tr('and')}{' '}
+                <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Privacy Policy')}</Link>.
               </span>
             </label>
 
@@ -423,23 +424,23 @@ export default function Register() {
             <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="register" className="animate-fade-in-up" />
 
             <button type="submit" className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '800ms' }} disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
-              {busy ? 'Sending code…' : <>Create account <ArrowRight className="w-4 h-4" /></>}
+              {busy ? tr('Sending code…') : <>{tr('Create account')}{' '}<ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
 
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-6">
-            Already have an account?{' '}
-            <Link to="/login" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Sign in</Link>
+            {tr('Already have an account?')}{' '}
+            <Link to="/login" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Sign in')}</Link>
           </div>
 
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-2">
-            {isMobile ? 'Syncing from laptop?' : 'Syncing from mobile?'}{' '}
-            <Link to="/sync-login" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Use sync PIN</Link>
+            {isMobile ? tr('Syncing from laptop?') : tr('Syncing from mobile?')}{' '}
+            <Link to="/sync-login" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Use sync PIN')}</Link>
           </div>
         </Card>
       </div>
 
-      <Toast open={toast} onClose={() => setToast(false)}>Welcome to VolunTrack!</Toast>
+      <Toast open={toast} onClose={() => setToast(false)}>{tr('Welcome to VolunTrack!')}</Toast>
     </div>
   )
 }

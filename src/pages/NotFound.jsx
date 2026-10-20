@@ -6,6 +6,7 @@ import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
+import { tr } from '@/lib/i18n.js'
 
 // Shown for any address the app doesn't have. It used to redirect to the home
 // page, which hid a mistyped or broken link instead of saying so.
@@ -32,16 +33,16 @@ export default function NotFound() {
             <Compass className="w-6 h-6" />
           </div>
           <p className="mt-4 text-sm font-semibold text-brand-700 dark:text-brand-300">404</p>
-          <h1 className="text-2xl font-bold mt-1">Page not found</h1>
+          <h1 className="text-2xl font-bold mt-1">{tr('Page not found')}</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mt-2 break-all">
-            There&apos;s no page at <span className="font-mono">{pathname}</span>. The link may be mistyped, or the page may have moved.
+            {tr("There's no page at")}{' '}<span className="font-mono">{pathname}</span>{tr('. The link may be mistyped, or the page may have moved.')}
           </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
             <Link to="/" className="btn-primary inline-flex items-center justify-center">
-              <Home className="w-4 h-4 mr-2" /> {user ? 'Go to your dashboard' : 'Go to the home page'}
+              <Home className="w-4 h-4 mr-2" /> {user ? tr('Go to your dashboard') : tr('Go to the home page')}
             </Link>
             <Link to="/help" className="btn-ghost inline-flex items-center justify-center">
-              <HelpCircle className="w-4 h-4 mr-2" /> Help
+              <HelpCircle className="w-4 h-4 mr-2" />{' '}{tr('Help')}
             </Link>
           </div>
         </Card>

@@ -3,12 +3,13 @@
 // IDs must not change once shipped.
 
 import { differenceInCalendarDays, parseISO, isAfter, startOfDay } from 'date-fns'
+import { tr } from '@/lib/i18n.js'
 
 export const BADGES = [
   {
     id: 'first-hour',
-    title: 'First Volunteer Hour',
-    description: 'Logged your very first hour of service.',
+    title: tr('First Volunteer Hour'),
+    description: tr('Logged your very first hour of service.'),
     icon: 'Sprout',
     color: 'brand',
     isEarned: ({ totalHours }) => totalHours >= 1,
@@ -16,8 +17,8 @@ export const BADGES = [
   },
   {
     id: 'streak-3',
-    title: '3-Day Streak',
-    description: 'Logged hours on three different days.',
+    title: tr('3-Day Streak'),
+    description: tr('Logged hours on three different days.'),
     icon: 'Flame',
     color: 'amber',
     isEarned: ({ distinctDays }) => distinctDays >= 3,
@@ -25,8 +26,8 @@ export const BADGES = [
   },
   {
     id: 'streak-7',
-    title: 'Week-Long Dedication',
-    description: 'Logged hours on seven different days.',
+    title: tr('Week-Long Dedication'),
+    description: tr('Logged hours on seven different days.'),
     icon: 'Flame',
     color: 'orange',
     isEarned: ({ distinctDays }) => distinctDays >= 7,
@@ -34,8 +35,8 @@ export const BADGES = [
   },
   {
     id: 'ten-hours',
-    title: '10 Hours Completed',
-    description: 'You crossed the ten-hour mark.',
+    title: tr('10 Hours Completed'),
+    description: tr('You crossed the ten-hour mark.'),
     icon: 'Award',
     color: 'sky',
     isEarned: ({ totalHours }) => totalHours >= 10,
@@ -43,8 +44,8 @@ export const BADGES = [
   },
   {
     id: 'fifty-hours',
-    title: '50 Hours Completed',
-    description: 'Halfway to community hero status.',
+    title: tr('50 Hours Completed'),
+    description: tr('Halfway to community hero status.'),
     icon: 'Medal',
     color: 'violet',
     isEarned: ({ totalHours }) => totalHours >= 50,
@@ -52,8 +53,8 @@ export const BADGES = [
   },
   {
     id: 'hundred-hours',
-    title: '100 Hours Completed',
-    description: 'A full hundred hours of service.',
+    title: tr('100 Hours Completed'),
+    description: tr('A full hundred hours of service.'),
     icon: 'Trophy',
     color: 'amber',
     isEarned: ({ totalHours }) => totalHours >= 100,
@@ -61,16 +62,16 @@ export const BADGES = [
   },
   {
     id: 'community-hero',
-    title: 'Community Hero',
-    description: 'Reached your primary goal.',
+    title: tr('Community Hero'),
+    description: tr('Reached your primary goal.'),
     icon: 'Crown',
     color: 'amber',
     isEarned: ({ goalReached }) => goalReached,
   },
   {
     id: 'category-explorer',
-    title: 'Category Explorer',
-    description: 'Logged hours in three different categories.',
+    title: tr('Category Explorer'),
+    description: tr('Logged hours in three different categories.'),
     icon: 'Compass',
     color: 'emerald',
     isEarned: ({ distinctCategories }) => distinctCategories >= 3,
@@ -78,8 +79,8 @@ export const BADGES = [
   },
   {
     id: 'category-master',
-    title: 'Category Master',
-    description: 'Logged hours in five or more categories.',
+    title: tr('Category Master'),
+    description: tr('Logged hours in five or more categories.'),
     icon: 'Sparkles',
     color: 'fuchsia',
     isEarned: ({ distinctCategories }) => distinctCategories >= 5,
@@ -87,8 +88,8 @@ export const BADGES = [
   },
   {
     id: 'monthly-five',
-    title: 'Monthly Momentum',
-    description: 'Logged five or more hours in a single month.',
+    title: tr('Monthly Momentum'),
+    description: tr('Logged five or more hours in a single month.'),
     icon: 'CalendarCheck',
     color: 'indigo',
     isEarned: ({ bestMonthHours }) => bestMonthHours >= 5,
@@ -96,16 +97,16 @@ export const BADGES = [
   },
   {
     id: 'weekend-warrior',
-    title: 'Weekend Warrior',
-    description: 'Logged hours on a Saturday or Sunday.',
+    title: tr('Weekend Warrior'),
+    description: tr('Logged hours on a Saturday or Sunday.'),
     icon: 'Sun',
     color: 'rose',
     isEarned: ({ hasWeekend }) => hasWeekend,
   },
   {
     id: 'consistent',
-    title: 'Consistent Contributor',
-    description: 'Logged hours across two different months.',
+    title: tr('Consistent Contributor'),
+    description: tr('Logged hours across two different months.'),
     icon: 'TrendingUp',
     color: 'teal',
     isEarned: ({ distinctMonths }) => distinctMonths >= 2,

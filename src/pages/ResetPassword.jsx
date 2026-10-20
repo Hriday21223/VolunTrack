@@ -4,6 +4,7 @@ import { Lock, CheckCircle2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { updateUser, hashPassword } from '@/api/index.js'
+import { tr } from '@/lib/i18n.js'
 
 export default function ResetPassword() {
   const { user, completePasswordReset } = useAuth()
@@ -22,8 +23,8 @@ export default function ResetPassword() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
-    if (pw1.length < 8) { setErr('Password must be at least 8 characters.'); return }
-    if (pw1 !== pw2) { setErr("Passwords don't match."); return }
+    if (pw1.length < 8) { setErr(tr('Password must be at least 8 characters.')); return }
+    if (pw1 !== pw2) { setErr(tr("Passwords don't match.")); return }
 
     try {
       if (user && user.email.toLowerCase() === email.toLowerCase()) {
@@ -52,16 +53,16 @@ export default function ResetPassword() {
               <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/30 grid place-items-center text-brand-700 mx-auto animate-bounce-in">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h1 className="text-2xl font-bold mt-3">Password updated</h1>
+              <h1 className="text-2xl font-bold mt-3">{tr('Password updated')}</h1>
               <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">
-                Taking you back to sign in…
+                {tr('Taking you back to sign in…')}
               </p>
             </div>
           ) : (
             <div className="animate-fade-in-up">
-              <h1 className="text-2xl font-bold mb-1">Choose a new password</h1>
+              <h1 className="text-2xl font-bold mb-1">{tr('Choose a new password')}</h1>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-                Make it at least 8 characters. If you requested a reset, use the recovery code sent above.
+                {tr('Make it at least 8 characters. If you requested a reset, use the recovery code sent above.')}
               </p>
 
               <form onSubmit={onSubmit} className="space-y-4">
@@ -73,7 +74,7 @@ export default function ResetPassword() {
                       type="email"
                       required
                       className="input pl-9"
-                      placeholder="you@school.edu"
+                      placeholder={tr('you@school.edu')}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
@@ -82,7 +83,7 @@ export default function ResetPassword() {
 
                 {!user && (
                   <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                    <label className="label">Recovery code</label>
+                    <label className="label">{tr('Recovery code')}</label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                       <input
@@ -101,7 +102,7 @@ export default function ResetPassword() {
                 )}
 
                 <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-                  <label className="label">New password</label>
+                  <label className="label">{tr('New password')}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                     <input
@@ -115,7 +116,7 @@ export default function ResetPassword() {
                   </div>
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-                  <label className="label">Confirm new password</label>
+                  <label className="label">{tr('Confirm new password')}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                     <input
@@ -130,7 +131,7 @@ export default function ResetPassword() {
                 </div>
 
                 {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
-                <button className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '500ms' }} type="submit">Update password</button>
+                <button className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '500ms' }} type="submit">{tr('Update password')}</button>
               </form>
             </div>
           )}

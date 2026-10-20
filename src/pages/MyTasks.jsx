@@ -10,6 +10,7 @@ import { csvCell } from '@/lib/csv.js'
 import { fmtDate } from '@/utils/date.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -371,7 +372,7 @@ export default function MyTasks() {
                 <label className="label text-xs" htmlFor="task-category">Category</label>
                 <select id="task-category" className="input" value={taskForm.category} onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}>
                   <option value="">No category</option>
-                  {ACTIVITY_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -558,7 +559,7 @@ export default function MyTasks() {
                       />
                       <select className="input" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} aria-label="Category">
                         <option value="">No category</option>
-                        {ACTIVITY_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                        {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                       </select>
                       <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder="Important info — approved volunteers only" />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

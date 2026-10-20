@@ -1,19 +1,20 @@
 import { Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const VARIANTS = {
   pending: {
     icon: Clock,
-    label: 'Pending supervisor approval',
+    label: tr('Pending supervisor approval'),
     className: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
   },
   approved: {
     icon: CheckCircle2,
-    label: 'Approved by supervisor',
+    label: tr('Approved by supervisor'),
     className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
   },
   rejected: {
     icon: XCircle,
-    label: 'Rejected by supervisor',
+    label: tr('Rejected by supervisor'),
     className: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30',
   },
 }

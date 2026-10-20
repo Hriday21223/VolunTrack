@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Ban } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -40,20 +41,20 @@ export default function BlockedOrganizers() {
     <Card>
       <div className="flex items-center gap-2 mb-2">
         <Ban className="w-4 h-4 text-brand-600" />
-        <h3 className="font-display font-semibold">Blocked organizers</h3>
+        <h3 className="font-display font-semibold">{tr('Blocked organizers')}</h3>
       </div>
       <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-        You don't see these organizers' volunteer tasks, and their messages don't reach you.
+        {tr("You don't see these organizers' volunteer tasks, and their messages don't reach you.")}
       </p>
       {blocks.length === 0 ? (
-        <p className="text-sm text-earth-500 dark:text-earth-400">You haven't blocked anyone. You can block an organizer when you report one of their tasks.</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400">{tr("You haven't blocked anyone. You can block an organizer when you report one of their tasks.")}</p>
       ) : (
         <ul className="space-y-2">
           {blocks.map((b) => (
             <li key={b.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-2">
               <span className="text-sm font-medium truncate">{b.name}</span>
               <button onClick={() => unblock(b.id)} disabled={busy === b.id} className="btn-ghost text-sm shrink-0">
-                {busy === b.id ? 'Unblocking…' : 'Unblock'}
+                {busy === b.id ? tr('Unblocking…') : tr('Unblock')}
               </button>
             </li>
           ))}

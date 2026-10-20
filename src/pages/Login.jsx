@@ -14,6 +14,8 @@ import { isNativeApp } from '@/lib/platform.js'
 import { deviceLockAvailable, setKeepSignedIn } from '@/lib/appSession.js'
 import { isPasskeyCancel } from '@/lib/passkey.js'
 import { hasLocalPinAccount } from '@/api/index.js'
+import { tr } from '@/lib/i18n.js'
+import LanguagePicker from '@/components/LanguagePicker.jsx'
 
 // Where to go after signing in: the page that sent you here, query string
 // included — a scanned check-in link (/checkin/<task>?c=…) carries its code
@@ -25,8 +27,8 @@ function fromPath(loc) {
 
 export default function Login() {
   useSeo({
-    title: 'Sign In',
-    description: 'Sign in to your VolunTrack account to log volunteer hours and track your progress.',
+    title: tr('Sign In'),
+    description: tr('Sign in to your VolunTrack account to log volunteer hours and track your progress.'),
     path: '/login',
   })
 
@@ -173,7 +175,7 @@ export default function Login() {
     setBusy(true)
     try {
       if (needsCaptcha && !captchaToken) {
-        setErr('Please complete the CAPTCHA below.')
+        setErr(tr('Please complete the CAPTCHA below.'))
         setBusy(false)
         return
       }
@@ -264,7 +266,7 @@ export default function Login() {
       setToast(true)
       setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
     } catch (e) {
-      setErr(isPasskeyCancel(e) ? 'Passkey check was cancelled.' : e.message)
+      setErr(isPasskeyCancel(e) ? tr('Passkey check was cancelled.') : e.message)
     } finally {
       setBusy(false)
     }
@@ -296,24 +298,24 @@ export default function Login() {
           <div className="space-y-8 animate-fade-in-up">
             <Link to="/" className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-brand-100 shadow-soft backdrop-blur transition hover:bg-slate-800/60 hover:text-white">
               <img src={logoSrc} alt={logoAlt} className="w-5 h-5 object-contain" />
-              {tenant ? `${tenant.name} · VolunTrack` : 'VolunTrack login'}
+              {tenant ? `${tenant.name} · VolunTrack` : tr('VolunTrack login')}
             </Link>
 
             <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-white animate-fade-in-up" style={{ animationDelay: '100ms' }}>Welcome back to the volunteer dashboard.</h1>
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-white animate-fade-in-up" style={{ animationDelay: '100ms' }}>{tr('Welcome back to the volunteer dashboard.')}</h1>
               <p className="max-w-2xl text-lg text-slate-300 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                Sign in and pick up where you left off—track hours, keep goals moving, and export your service record with confidence.
+                {tr('Sign in and pick up where you left off—track hours, keep goals moving, and export your service record with confidence.')}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-              <FeatureCard title="Fast logging" description="Jump straight to the hours form and save every session with proof and supervisor details." />
-              <FeatureCard title="Progress tracking" description="See goal completion, weekly activity, and earned badges in one clean view." />
+              <FeatureCard title={tr('Fast logging')} description={tr('Jump straight to the hours form and save every session with proof and supervisor details.')} />
+              <FeatureCard title={tr('Progress tracking')} description={tr('See goal completion, weekly activity, and earned badges in one clean view.')} />
             </div>
 
             <Link to="/help" className="block rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-soft backdrop-blur text-sm text-slate-300 hover:bg-slate-800/60 transition animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-              <div className="font-semibold text-white">Need help getting started?</div>
-              <p className="mt-2 leading-6">Create an account, set your first goal, and log your first volunteer hours to earn a badge.</p>
+              <div className="font-semibold text-white">{tr('Need help getting started?')}</div>
+              <p className="mt-2 leading-6">{tr('Create an account, set your first goal, and log your first volunteer hours to earn a badge.')}</p>
             </Link>
           </div>
         )}
@@ -327,8 +329,8 @@ export default function Login() {
             <div className="bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_25%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.14),transparent_25%)] p-8">
               <div className="flex items-center justify-between mb-6 animate-fade-in-up">
                 <div>
-                  <p className="text-sm text-brand-200 uppercase tracking-[0.3em]" style={tenantColor ? { color: tenantColor } : undefined}>Secure sign in</p>
-                  <h2 className="text-3xl font-bold text-white">Welcome back</h2>
+                  <p className="text-sm text-brand-200 uppercase tracking-[0.3em]" style={tenantColor ? { color: tenantColor } : undefined}>{tr('Secure sign in')}</p>
+                  <h2 className="text-3xl font-bold text-white">{tr('Welcome back')}</h2>
                 </div>
                 <img src={logoSrc} alt={logoAlt} className="w-12 h-12 object-contain" />
               </div>
@@ -339,14 +341,14 @@ export default function Login() {
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${mode === 'password' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:text-white'}`}
                   onClick={() => setMode('password')}
                 >
-                  Password
+                  {tr('Password')}
                 </button>
                 <button
                   type="button"
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${mode === 'pin' ? 'bg-slate-900 text-white' : 'text-slate-300 hover:text-white'}`}
                   onClick={() => setMode('pin')}
                 >
-                  PIN
+                  {tr('PIN')}
                 </button>
               </div>}
 
@@ -354,10 +356,9 @@ export default function Login() {
                 <form onSubmit={onEnrollSubmit} className="space-y-4">
                   <div className="text-center">
                     <ShieldCheck className="w-10 h-10 text-amber-400 mx-auto mb-2" />
-                    <h3 className="font-semibold text-white">Two-factor authentication required</h3>
+                    <h3 className="font-semibold text-white">{tr('Two-factor authentication required')}</h3>
                     <p className="mt-1 text-sm text-slate-300">
-                      This account can see student records, so it needs an authenticator app.
-                      Scan the code below, then enter the 6-digit code to finish signing in.
+                      {tr('This account can see student records, so it needs an authenticator app. Scan the code below, then enter the 6-digit code to finish signing in.')}
                     </p>
                   </div>
 
@@ -367,20 +368,20 @@ export default function Login() {
 
                   {enrollSetup?.secret && (
                     <p className="text-center text-xs text-slate-400">
-                      Can&apos;t scan? Enter this key: <code className="text-slate-200">{enrollSetup.secret}</code>
+                      {tr("Can't scan? Enter this key:")}{' '}<code className="text-slate-200">{enrollSetup.secret}</code>
                     </p>
                   )}
 
                   {enrollSetup?.backupCodes?.length > 0 && (
                     <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-                      <div className="font-semibold mb-1">Save these backup codes now</div>
+                      <div className="font-semibold mb-1">{tr('Save these backup codes now')}</div>
                       <div className="font-mono leading-5 break-all">{enrollSetup.backupCodes.join('  ')}</div>
-                      <div className="mt-1">They are shown once and are the only way in if you lose your device.</div>
+                      <div className="mt-1">{tr('They are shown once and are the only way in if you lose your device.')}</div>
                     </div>
                   )}
 
                   <div>
-                    <label className="label text-slate-300" htmlFor="enroll-code">Authenticator code</label>
+                    <label className="label text-slate-300" htmlFor="enroll-code">{tr('Authenticator code')}</label>
                     <input
                       id="enroll-code" type="text" required inputMode="numeric" maxLength={6} autoFocus
                       className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-[0.5em] font-mono"
@@ -393,7 +394,7 @@ export default function Login() {
                   {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
 
                   <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy || enrollCode.length !== 6 || !enrollSetup}>
-                    {busy ? 'Verifying…' : <>Turn on and sign in <ArrowRight className="w-4 h-4" /></>}
+                    {busy ? tr('Verifying…') : <>{tr('Turn on and sign in')}{' '}<ArrowRight className="w-4 h-4" /></>}
                   </button>
                 </form>
               ) : totpPending ? (
@@ -401,29 +402,29 @@ export default function Login() {
                   <div className="space-y-5">
                     <div className="text-center mb-2">
                       <KeyRound className="w-10 h-10 text-sky-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-300">Confirm it’s you with your passkey</p>
+                      <p className="text-sm text-slate-300">{tr('Confirm it’s you with your passkey')}</p>
                     </div>
                     {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
                     <button type="button" onClick={onPasskey} className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
-                      {busy ? 'Waiting for passkey…' : <>Use passkey <ArrowRight className="w-4 h-4" /></>}
+                      {busy ? tr('Waiting for passkey…') : <>{tr('Use passkey')}{' '}<ArrowRight className="w-4 h-4" /></>}
                     </button>
                     {methods.includes('totp') && (
                       <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(false); setErr('') }}>
-                        Use authenticator code instead
+                        {tr('Use authenticator code instead')}
                       </button>
                     )}
                     <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(false); setBackupMode(true); setErr('') }}>
-                      Lost your device? Use a backup code
+                      {tr('Lost your device? Use a backup code')}
                     </button>
                   </div>
                 ) : backupMode ? (
                   <form onSubmit={onBackupSubmit} className="space-y-5">
                     <div className="text-center mb-2">
                       <ShieldCheck className="w-10 h-10 text-sky-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-300">Enter one of your backup codes</p>
+                      <p className="text-sm text-slate-300">{tr('Enter one of your backup codes')}</p>
                     </div>
                     <div>
-                      <label className="label text-slate-300" htmlFor="backup-code">Backup code</label>
+                      <label className="label text-slate-300" htmlFor="backup-code">{tr('Backup code')}</label>
                       <input
                         id="backup-code"
                         type="text"
@@ -436,16 +437,16 @@ export default function Login() {
                     </div>
                     {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
                     <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
-                      {busy ? 'Verifying…' : <>Verify backup code <ArrowRight className="w-4 h-4" /></>}
+                      {busy ? tr('Verifying…') : <>{tr('Verify backup code')}{' '}<ArrowRight className="w-4 h-4" /></>}
                     </button>
                     {methods.includes('totp') && (
                       <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setBackupMode(false); setErr('') }}>
-                        Use authenticator code instead
+                        {tr('Use authenticator code instead')}
                       </button>
                     )}
                     {methods.includes('passkey') && (
                       <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setBackupMode(false); setPasskeyMode(true); setErr('') }}>
-                        Use your passkey instead
+                        {tr('Use your passkey instead')}
                       </button>
                     )}
                   </form>
@@ -453,10 +454,10 @@ export default function Login() {
                   <form onSubmit={onTotpSubmit} className="space-y-5">
                     <div className="text-center mb-2">
                       <ShieldCheck className="w-10 h-10 text-sky-400 mx-auto mb-2" />
-                      <p className="text-sm text-slate-300">Enter the 6-digit code from your authenticator app</p>
+                      <p className="text-sm text-slate-300">{tr('Enter the 6-digit code from your authenticator app')}</p>
                     </div>
                     <div>
-                      <label className="label text-slate-300" htmlFor="totp-code">Authenticator code</label>
+                      <label className="label text-slate-300" htmlFor="totp-code">{tr('Authenticator code')}</label>
                       <input
                         id="totp-code"
                         type="text"
@@ -474,14 +475,14 @@ export default function Login() {
                     </div>
                     {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
                     <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy || totpCode.length !== 6}>
-                      {busy ? 'Verifying…' : <>Verify <ArrowRight className="w-4 h-4" /></>}
+                      {busy ? tr('Verifying…') : <>{tr('Verify')}{' '}<ArrowRight className="w-4 h-4" /></>}
                     </button>
                     <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setBackupMode(true); setErr('') }}>
-                      Use a backup code instead
+                      {tr('Use a backup code instead')}
                     </button>
                     {methods.includes('passkey') && (
                       <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(true); setErr('') }}>
-                        Use a passkey instead
+                        {tr('Use a passkey instead')}
                       </button>
                     )}
                   </form>
@@ -495,7 +496,7 @@ export default function Login() {
                     <input
                       id="email" type="email" required autoComplete="email"
                       className="input pl-9 bg-slate-900/80 text-white border-white/10"
-                      placeholder="you@school.edu"
+                      placeholder={tr('you@school.edu')}
                       value={email} onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
@@ -503,22 +504,22 @@ export default function Login() {
                 {ssoActive && (
                   <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                     <span className="inline-flex items-center gap-2 font-semibold"><Building2 className="w-4 h-4" /> {offeredSso.displayName}</span>
-                    <div className="mt-1">Your school uses single sign-on — leave the password blank and press Sign in.</div>
+                    <div className="mt-1">{tr('Your school uses single sign-on — leave the password blank and press Sign in.')}</div>
                   </div>
                 )}
 
                 {isAdmin && mode === 'password' ? (
                   <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-                    Admin — click Sign in to continue (no password needed).
+                    {tr('Admin — click Sign in to continue (no password needed).')}
                   </div>
                 ) : (
                   <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                     <div className="flex items-center justify-between gap-4">
-                      <label className="label text-slate-300" htmlFor="credential">{mode === 'pin' ? '4-digit PIN' : 'Password'}</label>
+                      <label className="label text-slate-300" htmlFor="credential">{mode === 'pin' ? tr('4-digit PIN') : tr('Password')}</label>
                       {/* An SSO student has no VolunTrack password, so a reset link would lead nowhere. */}
                       {!ssoActive && (
                         <Link to={mode === 'pin' ? '/reset-pin' : '/forgot-password'} className="text-xs text-sky-200 hover:text-white">
-                          {mode === 'pin' ? 'Forgot PIN?' : 'Forgot?'}
+                          {mode === 'pin' ? tr('Forgot PIN?') : tr('Forgot?')}
                         </Link>
                       )}
                     </div>
@@ -533,7 +534,7 @@ export default function Login() {
                         inputMode={mode === 'pin' ? 'numeric' : 'text'}
                         pattern={mode === 'pin' ? '[0-9]*' : undefined}
                         className={`input pl-9 pr-10 bg-slate-900/80 text-white border-white/10${ssoActive ? ' opacity-50 cursor-not-allowed' : ''}`}
-                        placeholder={ssoActive ? 'Not needed for single sign-on' : mode === 'pin' ? '••••' : '••••••••'}
+                        placeholder={ssoActive ? tr('Not needed for single sign-on') : mode === 'pin' ? '••••' : '••••••••'}
                         value={ssoActive ? '' : mode === 'pin' ? pin : password}
                         onChange={(e) => (mode === 'pin' ? setPin(e.target.value) : setPassword(e.target.value))}
                       />
@@ -543,7 +544,7 @@ export default function Login() {
                           onClick={() => setShowCredential((v) => !v)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                           tabIndex={-1}
-                          title={showCredential ? 'Hide' : 'Show'}
+                          title={showCredential ? tr('Hide') : tr('Show')}
                         >
                           {showCredential ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -561,8 +562,8 @@ export default function Login() {
                       className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-900/70 accent-brand-500"
                     />
                     <span>
-                      Keep me signed in
-                      <span className="block text-xs text-slate-400">You’ll unlock the app with Face ID, your fingerprint or your passcode.</span>
+                      {tr('Keep me signed in')}
+                      <span className="block text-xs text-slate-400">{tr('You’ll unlock the app with Face ID, your fingerprint or your passcode.')}</span>
                     </span>
                   </label>
                 )}
@@ -575,8 +576,8 @@ export default function Login() {
 
                 <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold animate-fade-in-up" style={{ animationDelay: '400ms' }} disabled={busy || (needsCaptcha && !captchaToken)}>
                   {busy
-                    ? (ssoActive ? 'Redirecting…' : mode === 'pin' ? 'Unlocking…' : 'Signing in…')
-                    : (mode === 'pin' ? <>Unlock <ArrowRight className="w-4 h-4" /></> : <>Sign in <ArrowRight className="w-4 h-4" /></>)}
+                    ? (ssoActive ? tr('Redirecting…') : mode === 'pin' ? tr('Unlocking…') : tr('Signing in…'))
+                    : (mode === 'pin' ? <>{tr('Unlock')}{' '}<ArrowRight className="w-4 h-4" /></> : <>{tr('Sign in')}{' '}<ArrowRight className="w-4 h-4" /></>)}
                 </button>
 
                 {/* A school admin or staff member on the SSO domain still needs the
@@ -587,20 +588,24 @@ export default function Login() {
                     className="w-full text-center text-sm text-sky-200 hover:text-white"
                     onClick={() => setForcePassword(true)}
                   >
-                    Use a VolunTrack password instead
+                    {tr('Use a VolunTrack password instead')}
                   </button>
                 )}
               </form>
               )}
 
-              <div className="mt-6 text-center text-sm text-slate-400">
-                New to VolunTrack?{' '}
-                <Link to="/register" className="text-sky-200 font-semibold hover:text-white">Create an account</Link>
+              <div className="mt-6 flex justify-center">
+                <LanguagePicker compact />
               </div>
 
               <div className="mt-4 text-center text-sm text-slate-400">
-                {isMobile ? 'Syncing from laptop?' : 'Syncing from mobile?'}{' '}
-                <Link to="/sync-login" className="text-sky-200 font-semibold hover:text-white">Use sync PIN</Link>
+                {tr('New to VolunTrack?')}{' '}
+                <Link to="/register" className="text-sky-200 font-semibold hover:text-white">{tr('Create an account')}</Link>
+              </div>
+
+              <div className="mt-4 text-center text-sm text-slate-400">
+                {isMobile ? tr('Syncing from laptop?') : tr('Syncing from mobile?')}{' '}
+                <Link to="/sync-login" className="text-sky-200 font-semibold hover:text-white">{tr('Use sync PIN')}</Link>
               </div>
 
             </div>
@@ -610,7 +615,7 @@ export default function Login() {
         </div>
       </div>
 
-      <Toast open={toast} onClose={() => setToast(false)}>Welcome back!</Toast>
+      <Toast open={toast} onClose={() => setToast(false)}>{tr('Welcome back!')}</Toast>
     </div>
   )
 }

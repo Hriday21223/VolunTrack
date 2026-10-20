@@ -17,6 +17,7 @@ import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { addDays, format, parseISO } from 'date-fns'
 import { hapticSuccess } from '@/lib/platform.js'
+import { tr } from '@/lib/i18n.js'
 
 // Rotating appreciation notes for the student once a supervisor approves.
 // Built as opener x closer combinations (10 x 10 = 100 unique notes) rather
@@ -225,21 +226,21 @@ export default function LogHours({ editId, onCloseEdit }) {
     e.preventDefault()
     if (savingRef.current) return
     setError('')
-    if (!form.activity.trim()) { setError('Please enter an activity name.'); return }
-    if (hours <= 0)             { setError('The start and end times are the same.'); return }
-    if (required.locationRequired && !form.location.trim()) { setError('Please enter a location or use the button below to detect it.'); return }
-    if (required.supervisorNameRequired && !form.supervisorName.trim()) { setError("Please enter your supervisor's name."); return }
+    if (!form.activity.trim()) { setError(tr('Please enter an activity name.')); return }
+    if (hours <= 0)             { setError(tr('The start and end times are the same.')); return }
+    if (required.locationRequired && !form.location.trim()) { setError(tr('Please enter a location or use the button below to detect it.')); return }
+    if (required.supervisorNameRequired && !form.supervisorName.trim()) { setError(tr("Please enter your supervisor's name.")); return }
     if (required.supervisorEmailRequired && !form.supervisorEmail.trim()) {
       setError(signing.supervisorSignature
-        ? "Please enter your supervisor's email so you can send them the signing link."
-        : "Please enter your supervisor's email.")
+        ? tr("Please enter your supervisor's email so you can send them the signing link.")
+        : tr("Please enter your supervisor's email."))
       return
     }
-    if (signsInPerson && !form.supervisorSignature) { setError('Have your supervisor sign in the box under Signatures.'); return }
+    if (signsInPerson && !form.supervisorSignature) { setError(tr('Have your supervisor sign in the box under Signatures.')); return }
     if (required.proofRequired && !form.proof) {
       setError(signing.signedFormUpload
-        ? 'Please upload a photo or scan of your signed school form.'
-        : 'Please upload proof — a sign-in sheet, thank-you email, or other supporting document.')
+        ? tr('Please upload a photo or scan of your signed school form.')
+        : tr('Please upload proof — a sign-in sheet, thank-you email, or other supporting document.'))
       return
     }
 
@@ -333,7 +334,7 @@ export default function LogHours({ editId, onCloseEdit }) {
               serverId,
             }))
           } else {
-            setError('Your hours are saved, but we couldn’t make the signing link — check you’re online and signed in. Your supervisor can still sign in person.')
+            setError(tr('Your hours are saved, but we couldn’t make the signing link — check you’re online and signed in. Your supervisor can still sign in person.'))
           }
         } else if (payload.supervisorEmail?.trim() && !organizerOnFile) {
           // No signature rule: the named supervisor is emailed to verify —
@@ -353,7 +354,7 @@ export default function LogHours({ editId, onCloseEdit }) {
         }
       }
     } catch (err) {
-      setError('Could not save — your proof file might be too large. Try a smaller image.')
+      setError(tr('Could not save — your proof file might be too large. Try a smaller image.'))
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -362,8 +363,8 @@ export default function LogHours({ editId, onCloseEdit }) {
 
   return (
     <AppLayout
-      title={editId ? 'Edit volunteer hours' : 'Log volunteer hours'}
-      subtitle="Capture the who, what, when, and where of your service."
+      title={editId ? tr('Edit volunteer hours') : tr('Log volunteer hours')}
+      subtitle={tr('Capture the who, what, when, and where of your service.')}
     >
       <form onSubmit={onSubmit} className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
@@ -385,15 +386,15 @@ export default function LogHours({ editId, onCloseEdit }) {
                   setEmailDraft(null)
                   setToast(true)
                 } else {
-                  setError('We couldn’t send the email. Copy it and send it yourself instead.')
+                  setError(tr('We couldn’t send the email. Copy it and send it yourself instead.'))
                 }
               }}
             />
           )}
           {repeatable.length > 0 && (
             <Card>
-              <SectionTitle>Log again</SectionTitle>
-              <p className="text-sm text-earth-400 -mt-2 mb-3">Same place as before? Copy a recent entry, dated today.</p>
+              <SectionTitle>{tr('Log again')}</SectionTitle>
+              <p className="text-sm text-earth-400 -mt-2 mb-3">{tr('Same place as before? Copy a recent entry, dated today.')}</p>
               <div className="flex flex-wrap gap-2">
                 {repeatable.map((l) => (
                   <button key={l.id} type="button" onClick={() => logAgain(l)} className={`btn-sm ${repeatedFrom?.id === l.id ? 'btn-primary' : 'btn-ghost'}`}>
@@ -404,35 +405,35 @@ export default function LogHours({ editId, onCloseEdit }) {
               </div>
               {repeatedFrom && (
                 <p className="text-xs text-earth-400 mt-3">
-                  Copied from {fmtDate(repeatedFrom.date)}. {repeatedFrom.startTime && repeatedFrom.endTime ? 'Check the times, then save.' : 'Add the start and end times, then save.'}
+                  {tr('Copied from')}{' '}{fmtDate(repeatedFrom.date)}. {repeatedFrom.startTime && repeatedFrom.endTime ? tr('Check the times, then save.') : tr('Add the start and end times, then save.')}
                 </p>
               )}
             </Card>
           )}
           <Card>
-            <SectionTitle>Activity</SectionTitle>
+            <SectionTitle>{tr('Activity')}</SectionTitle>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="label">What did you do? *</label>
+                <label className="label">{tr('What did you do? *')}</label>
                 <input
                   className="input"
-                  placeholder="Park cleanup, food drive, tutoring…"
+                  placeholder={tr('Park cleanup, food drive, tutoring…')}
                   value={form.activity} onChange={onChange('activity')} required
                 />
               </div>
               <div>
-                <label className="label">Category</label>
+                <label className="label">{tr('Category')}</label>
                 <select className="input" value={form.category} onChange={onChange('category')}>
-                  {categories.map((c) => <option key={c}>{c}</option>)}
+                  {categories.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                 </select>
                 <div className="mt-2">
-                  <span className={`chip ${categoryColor(form.category)}`}>{form.category}</span>
+                  <span className={`chip ${categoryColor(form.category)}`}>{tr(form.category)}</span>
                 </div>
               </div>
             </div>
             {myTasks.length > 0 && (
               <div className="mt-4">
-                <label className="label">Link to a task you're approved for (optional)</label>
+                <label className="label">{tr("Link to a task you're approved for (optional)")}</label>
                 <select
                   className="input"
                   value={form.taskId}
@@ -455,100 +456,100 @@ export default function LogHours({ editId, onCloseEdit }) {
                     }))
                   }}
                 >
-                  <option value="">Not linked to a task</option>
+                  <option value="">{tr('Not linked to a task')}</option>
                   {myTasks.map((t) => (
                     <option key={t.id} value={t.id}>{t.title}{t.date ? ` — ${fmtDate(t.date)}` : ''}</option>
                   ))}
                 </select>
                 <p className="text-xs text-earth-400 mt-1">
-                  Linking lets the task's organizer review and verify this entry directly.
+                  {tr("Linking lets the task's organizer review and verify this entry directly.")}
                 </p>
               </div>
             )}
           </Card>
 
           <Card>
-            <SectionTitle>When</SectionTitle>
+            <SectionTitle>{tr('When')}</SectionTitle>
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
-                <label className="label">Date *</label>
+                <label className="label">{tr('Date *')}</label>
                 <input className="input" type="date" required value={form.date} onChange={onChange('date')} />
               </div>
               <div>
-                <label className="label">Start time *</label>
+                <label className="label">{tr('Start time *')}</label>
                 <input className="input" type="time" required value={form.startTime} onChange={onChange('startTime')} />
               </div>
               <div>
-                <label className="label">End time *</label>
+                <label className="label">{tr('End time *')}</label>
                 <input className="input" type="time" required value={form.endTime} onChange={onChange('endTime')} />
               </div>
             </div>
             <div className="mt-4 text-sm text-earth-600 dark:text-earth-300">
-              Duration: <span className="font-semibold text-brand-700 dark:text-brand-300">{fmtHours(hours)}</span>
-              {endsNextDay && <span className="ml-1 text-earth-500 dark:text-earth-400">(ends the next day)</span>}
+              {tr('Duration:')}{' '}<span className="font-semibold text-brand-700 dark:text-brand-300">{fmtHours(hours)}</span>
+              {endsNextDay && <span className="ml-1 text-earth-500 dark:text-earth-400">{tr('(ends the next day)')}</span>}
             </div>
           </Card>
 
           <Card>
-            <SectionTitle>Where</SectionTitle>
+            <SectionTitle>{tr('Where')}</SectionTitle>
             {/* Location gets the full width: beside Notes, with the "Current"
                 button next to it, a place name was cut off while typing. */}
             <div className="grid gap-4">
               <div>
-                <label className="label">Location {required.locationRequired ? '*' : ''}</label>
+                <label className="label">{tr('Location')}{' '}{required.locationRequired ? '*' : ''}</label>
                 <LocationPicker
                   address={form.location}
                   lat={form.latitude}
                   lng={form.longitude}
-                  placeholder="123 Main St, Library, Online, etc."
+                  placeholder={tr('123 Main St, Library, Online, etc.')}
                   required={required.locationRequired}
                   onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
                 />
               </div>
               <div>
-                <label className="label">Notes</label>
-                <textarea className="input min-h-[100px] resize-y" placeholder="Anything worth remembering…" value={form.notes} onChange={onChange('notes')} />
+                <label className="label">{tr('Notes')}</label>
+                <textarea className="input min-h-[100px] resize-y" placeholder={tr('Anything worth remembering…')} value={form.notes} onChange={onChange('notes')} />
               </div>
             </div>
           </Card>
 
           <Card>
-            <SectionTitle icon={Building2}>Organization</SectionTitle>
+            <SectionTitle icon={Building2}>{tr('Organization')}</SectionTitle>
             <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
-              The nonprofit or group you volunteered with — many schools require this on a verification form.
+              {tr('The nonprofit or group you volunteered with — many schools require this on a verification form.')}
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field icon={Building2} label={`Organization name ${required.orgNameRequired ? '*' : ''}`} value={form.orgName} onChange={onChange('orgName')} placeholder="Riverside Food Bank" />
-              <Field icon={Phone}     label="Organization phone" value={form.orgPhone} onChange={onChange('orgPhone')} placeholder="(555) 123-4567" type="tel" />
+              <Field icon={Building2} label={`${tr('Organization name')} ${required.orgNameRequired ? '*' : ''}`} value={form.orgName} onChange={onChange('orgName')} placeholder={tr('Riverside Food Bank')} />
+              <Field icon={Phone}     label={tr('Organization phone')} value={form.orgPhone} onChange={onChange('orgPhone')} placeholder="(555) 123-4567" type="tel" />
               <div className="sm:col-span-2">
-                <label className="label flex items-center gap-1.5"><MapPin className="w-4 h-4" /> Organization address</label>
-                <input className="input" placeholder="123 Main St, Springfield, IL" value={form.orgAddress} onChange={onChange('orgAddress')} />
+                <label className="label flex items-center gap-1.5"><MapPin className="w-4 h-4" />{' '}{tr('Organization address')}</label>
+                <input className="input" placeholder={tr('123 Main St, Springfield, IL')} value={form.orgAddress} onChange={onChange('orgAddress')} />
               </div>
             </div>
           </Card>
 
           <Card>
-            <SectionTitle icon={ShieldCheck}>Supervisor verification</SectionTitle>
+            <SectionTitle icon={ShieldCheck}>{tr('Supervisor verification')}</SectionTitle>
             <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
-              Capture who can vouch for this work. Schools typically require a name and email.
+              {tr('Capture who can vouch for this work. Schools typically require a name and email.')}
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field icon={User}        label={`Supervisor name ${required.supervisorNameRequired ? '*' : ''}`}  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder="Mr. Johnson" required={required.supervisorNameRequired} />
-              <Field icon={Mail}        label={`Supervisor email ${required.supervisorEmailRequired ? '*' : ''}`} value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder="johnson@school.edu" type="email" required={required.supervisorEmailRequired} />
+              <Field icon={User}        label={`${tr('Supervisor name')} ${required.supervisorNameRequired ? '*' : ''}`}  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder={tr('Mr. Johnson')} required={required.supervisorNameRequired} />
+              <Field icon={Mail}        label={`${tr('Supervisor email')} ${required.supervisorEmailRequired ? '*' : ''}`} value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder={tr('johnson@school.edu')} type="email" required={required.supervisorEmailRequired} />
               {form.supervisorEmail?.trim() ? (
                 <div className="sm:col-span-2">
                   <VerificationBadge status={form.verificationStatus} />
                   {(!form.verificationStatus || form.verificationStatus === 'none') && (
                     <p className="text-xs text-earth-400 mt-1">
                       {organizerOnFile
-                        ? `${linkedTask.creator_name || 'The task organizer'} reviews and signs this on their My Tasks page in VolunTrack — no email is sent.`
-                        : "Your supervisor will get an email with a link to review these hours. If they approve, they'll sign right there to confirm it — if they reject, no signature is needed. This usually takes a day or two."}
+                        ? tr('{organizer} reviews and signs this on their My Tasks page in VolunTrack — no email is sent.', { organizer: linkedTask.creator_name || tr('The task organizer') })
+                        : tr("Your supervisor will get an email with a link to review these hours. If they approve, they'll sign right there to confirm it — if they reject, no signature is needed. This usually takes a day or two.")}
                     </p>
                   )}
                   {form.verificationStatus === 'approved' && (
                     <>
                       {form.supervisorSignature && (
-                        <img src={form.supervisorSignature} alt="Supervisor signature" className="mt-2 h-16 rounded-lg border border-earth-200 dark:border-[#1f2e25] bg-white" />
+                        <img src={form.supervisorSignature} alt={tr('Supervisor signature')} className="mt-2 h-16 rounded-lg border border-earth-200 dark:border-[#1f2e25] bg-white" />
                       )}
                       <p className="text-xs text-brand-600 dark:text-brand-400 mt-1 font-medium">
                         {studentThanksNote}
@@ -560,10 +561,10 @@ export default function LogHours({ editId, onCloseEdit }) {
                 <div className="sm:col-span-2">
                   <p className="text-xs text-amber-500">
                     {signsInPerson && !required.supervisorEmailRequired
-                      ? 'Add your supervisor’s name — they’ll sign under Signatures below.'
+                      ? tr('Add your supervisor’s name — they’ll sign under Signatures below.')
                       : required.supervisorEmailRequired
-                        ? 'Supervisor name and email are required so this entry can be verified.'
-                        : 'Add a supervisor to have this entry verified — optional at your school.'}
+                        ? tr('Supervisor name and email are required so this entry can be verified.')
+                        : tr('Add a supervisor to have this entry verified — optional at your school.')}
                   </p>
                 </div>
               )}
@@ -573,7 +574,7 @@ export default function LogHours({ editId, onCloseEdit }) {
           {signatures.mode !== 'none' && (
             <Card>
               <SectionTitle icon={FileSignature}>
-                {signatures.mode === 'paperForm' ? 'Your school’s form' : 'Signatures'}
+                {signatures.mode === 'paperForm' ? tr('Your school’s form') : tr('Signatures')}
               </SectionTitle>
               {signatures.note && (
                 <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">{signatures.note}</p>
@@ -582,7 +583,7 @@ export default function LogHours({ editId, onCloseEdit }) {
               {signoffRoute && linkedTask && (
                 <div className="mb-5">
                   <p className="text-sm text-earth-600 dark:text-earth-300">
-                    <strong>{linkedTask.creator_name || 'The task organizer'}</strong> will sign this on their My Tasks page — nothing to send.
+                    <strong>{linkedTask.creator_name || tr('The task organizer')}</strong>{' '}{tr('will sign this on their My Tasks page — nothing to send.')}
                   </p>
                   <label className="flex items-center gap-2 text-sm mt-3">
                     <input
@@ -590,15 +591,15 @@ export default function LogHours({ editId, onCloseEdit }) {
                       checked={signerHere}
                       onChange={(e) => setForm((f) => ({ ...f, signerHere: e.target.checked }))}
                     />
-                    They’re next to me now — have them sign here instead
+                    {tr('They’re next to me now — have them sign here instead')}
                   </label>
-                  {signerHere && <SignatureField label="Organizer signature *" form={form} setForm={setForm} field="supervisorSignature" />}
+                  {signerHere && <SignatureField label={tr('Organizer signature *')} form={form} setForm={setForm} field="supervisorSignature" />}
                 </div>
               )}
 
               {signoffRoute && !linkedTask && (
                 <div className="mb-5">
-                  <p className="label">Is the person signing next to you right now?</p>
+                  <p className="label">{tr('Is the person signing next to you right now?')}</p>
                   <div className="flex flex-wrap gap-2">
                     {[[true, 'Yes, they’re next to me'], [false, 'No, they’re not next to me']].map(([here, label]) => (
                       <button
@@ -613,7 +614,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                   </div>
                   {signerHere ? (
                     <SignatureField
-                      label="Supervisor signature *"
+                      label={tr('Supervisor signature *')}
                       form={form}
                       setForm={setForm}
                       field="supervisorSignature"
@@ -621,7 +622,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                     />
                   ) : (
                     <p className="text-sm text-earth-500 dark:text-earth-400 mt-3">
-                      Add their name and email above. When you save, we’ll give you a ready-made email to send them with a link to sign.
+                      {tr('Add their name and email above. When you save, we’ll give you a ready-made email to send them with a link to sign.')}
                     </p>
                   )}
                 </div>
@@ -629,7 +630,7 @@ export default function LogHours({ editId, onCloseEdit }) {
 
               {signing.studentSignature && (
                 <SignatureField
-                  label="Your signature *"
+                  label={tr('Your signature *')}
                   form={form}
                   setForm={setForm}
                   field="studentSignature"
@@ -641,12 +642,12 @@ export default function LogHours({ editId, onCloseEdit }) {
                 <div className="space-y-3">
                   <iframe
                     src={signing.googleForm}
-                    title="Your school’s form"
+                    title={tr('Your school’s form')}
                     className="w-full h-[640px] rounded-xl border border-earth-200 dark:border-[#1f2e25] bg-white"
                     loading="lazy"
                   />
                   <a href={signatures.formUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 dark:text-brand-400 inline-flex items-center gap-1">
-                    <ExternalLink className="w-3.5 h-3.5" /> Form not loading? Open it in a new tab
+                    <ExternalLink className="w-3.5 h-3.5" />{' '}{tr('Form not loading? Open it in a new tab')}
                   </a>
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <input
@@ -654,7 +655,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                       checked={Boolean(form.formSubmitted)}
                       onChange={(e) => setForm((f) => ({ ...f, formSubmitted: e.target.checked }))}
                     />
-                    I filled in and sent the form *
+                    {tr('I filled in and sent the form *')}
                   </label>
                 </div>
               )}
@@ -663,9 +664,9 @@ export default function LogHours({ editId, onCloseEdit }) {
                 <p className="text-sm text-earth-500 dark:text-earth-400">
                   {signatures.formUrl ? (
                     <a href={signatures.formUrl} target="_blank" rel="noopener noreferrer" className="text-brand-600 dark:text-brand-400 font-medium inline-flex items-center gap-1">
-                      <ExternalLink className="w-4 h-4" /> Download your school’s form
+                      <ExternalLink className="w-4 h-4" />{' '}{tr('Download your school’s form')}
                     </a>
-                  ) : 'Use the form your school gave you.'}
+                  ) : tr('Use the form your school gave you.')}
                   {' '}
                   {FORM_SIGNING_STEPS[signatures.signer]}
                 </p>
@@ -676,10 +677,10 @@ export default function LogHours({ editId, onCloseEdit }) {
           {customFields.length > 0 && (
             <Card>
               <SectionTitle icon={ClipboardList}>
-                {requirements.schoolName ? `${requirements.schoolName} asks` : 'Your school asks'}
+                {requirements.schoolName ? tr('{school} asks', { school: requirements.schoolName }) : tr('Your school asks')}
               </SectionTitle>
               <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
-                Extra questions your school added to this form.
+                {tr('Extra questions your school added to this form.')}
               </p>
               <div className="grid sm:grid-cols-2 gap-4">
                 {customFields.map((field) => (
@@ -699,12 +700,12 @@ export default function LogHours({ editId, onCloseEdit }) {
           {(policyNotes.length > 0 || requirements.goalHours != null) && (
             <Card>
               <SectionTitle icon={ClipboardList}>
-                {requirements.schoolName ? `${requirements.schoolName} requires` : 'Your requirements'}
+                {requirements.schoolName ? tr('{school} requires', { school: requirements.schoolName }) : tr('Your requirements')}
               </SectionTitle>
               {requirements.goalHours != null && (
                 <p className="text-sm mb-2">
-                  <span className="font-semibold text-brand-700 dark:text-brand-300">{requirements.goalHours} hours</span>
-                  {policy.goals.deadline ? ` by ${policy.goals.deadline}` : ' total'}
+                  <span className="font-semibold text-brand-700 dark:text-brand-300">{requirements.goalHours}{' '}{tr('hours')}</span>
+                  {policy.goals.deadline ? ` ${tr('by')} ${policy.goals.deadline}` : tr(' total')}
                 </p>
               )}
               {policy.goals.note && (
@@ -716,16 +717,16 @@ export default function LogHours({ editId, onCloseEdit }) {
                 </ul>
               )}
               {sources.logRules === 'organization' && requirements.organizationName && (
-                <p className="text-xs text-earth-400 mt-2">Set by {requirements.organizationName}.</p>
+                <p className="text-xs text-earth-400 mt-2">{tr('Set by')}{' '}{requirements.organizationName}.</p>
               )}
             </Card>
           )}
           <Card>
-            <SectionTitle icon={Upload}>{signing.signedFormUpload ? 'Signed form' : 'Proof'} {required.proofRequired ? '*' : ''}</SectionTitle>
+            <SectionTitle icon={Upload}>{signing.signedFormUpload ? tr('Signed form') : tr('Proof')} {required.proofRequired ? '*' : ''}</SectionTitle>
             <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
               {signing.signedFormUpload
-                ? 'Upload a photo or scan of your school’s form, signed.'
-                : 'Upload a photo of a sign-in sheet, a thank-you email, or any supporting document.'}
+                ? tr('Upload a photo or scan of your school’s form, signed.')
+                : tr('Upload a photo of a sign-in sheet, a thank-you email, or any supporting document.')}
             </p>
             <FileDrop
               value={form.proof}
@@ -737,7 +738,7 @@ export default function LogHours({ editId, onCloseEdit }) {
           <Card>
             {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg mb-3">{error}</div>}
             <button type="submit" disabled={saving} className="btn-primary w-full disabled:opacity-60">
-              <Save className="w-4 h-4" /> {saving ? 'Saving…' : editId ? 'Save changes' : 'Save hours'}
+              <Save className="w-4 h-4" /> {saving ? tr('Saving…') : editId ? tr('Save changes') : tr('Save hours')}
             </button>
             {editId && (
               <button
@@ -745,7 +746,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                 className="btn-ghost w-full mt-2 text-red-600"
                 onClick={() => { removeLog(editId); onCloseEdit?.() }}
               >
-                <Trash2 className="w-4 h-4" /> Delete this entry
+                <Trash2 className="w-4 h-4" />{' '}{tr('Delete this entry')}
               </button>
             )}
             <button
@@ -753,14 +754,14 @@ export default function LogHours({ editId, onCloseEdit }) {
               className="btn-ghost w-full mt-2"
               onClick={() => nav('/calendar')}
             >
-              View all entries
+              {tr('View all entries')}
             </button>
           </Card>
         </div>
       </form>
 
       <Toast open={toast} onClose={() => setToast(false)}>
-        {editId ? 'Entry updated' : 'Hours saved — nice work!'}
+        {editId ? tr('Entry updated') : tr('Hours saved — nice work!')}
       </Toast>
     </AppLayout>
   )
@@ -768,9 +769,9 @@ export default function LogHours({ editId, onCloseEdit }) {
 
 // What to do with the school's printable form, by who has to sign it.
 const FORM_SIGNING_STEPS = {
-  student: 'Sign it, then upload a photo or scan under Signed form.',
-  supervisor: 'Have your supervisor sign it, then upload a photo or scan under Signed form.',
-  both: 'Sign it and have your supervisor sign it, then upload a photo or scan under Signed form.',
+  student: tr('Sign it, then upload a photo or scan under Signed form.'),
+  supervisor: tr('Have your supervisor sign it, then upload a photo or scan under Signed form.'),
+  both: tr('Sign it and have your supervisor sign it, then upload a photo or scan under Signed form.'),
 }
 
 // A signature pad bound to one form field (a PNG data URL).
@@ -830,7 +831,7 @@ function CustomField({ field, value, onChange }) {
       <div>
         {label}
         <select className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)} required={field.required}>
-          <option value="">Select…</option>
+          <option value="">{tr('Select…')}</option>
           {field.options.map((o) => <option key={o}>{o}</option>)}
         </select>
         {help}
@@ -915,38 +916,38 @@ function SigningEmailCard({ draft, onChange, onClose, onSendForMe }) {
   return (
     <Card>
       <div className="flex items-start justify-between gap-2">
-        <SectionTitle icon={Mail}>Send this to get it signed</SectionTitle>
-        <button type="button" onClick={onClose} className="btn-sm btn-ghost" aria-label="Close">
+        <SectionTitle icon={Mail}>{tr('Send this to get it signed')}</SectionTitle>
+        <button type="button" onClick={onClose} className="btn-sm btn-ghost" aria-label={tr('Close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
       <p className="text-sm text-earth-500 dark:text-earth-400 -mt-2 mb-4">
-        Your hours are saved. Send this from your own email — the link lets them sign, and this entry updates once they do.
+        {tr('Your hours are saved. Send this from your own email — the link lets them sign, and this entry updates once they do.')}
       </p>
       <div className="space-y-3">
         <div>
-          <label className="label">To</label>
+          <label className="label">{tr('To')}</label>
           <input className="input" type="email" value={draft.to || ''} onChange={(e) => onChange({ ...draft, to: e.target.value })} />
         </div>
         <div>
-          <label className="label">Subject</label>
+          <label className="label">{tr('Subject')}</label>
           <input className="input" value={draft.subject} onChange={(e) => onChange({ ...draft, subject: e.target.value })} />
         </div>
         <div>
-          <label className="label">Message</label>
+          <label className="label">{tr('Message')}</label>
           <textarea className="input min-h-[220px] resize-y font-mono text-xs" value={draft.body} onChange={(e) => onChange({ ...draft, body: e.target.value })} />
         </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-4">
-        <a href={mailto} className="btn-primary btn-sm"><Send className="w-4 h-4" /> Open in my email app</a>
-        <button type="button" onClick={copy} className="btn-secondary btn-sm"><Copy className="w-4 h-4" /> {copied ? 'Copied!' : 'Copy email'}</button>
+        <a href={mailto} className="btn-primary btn-sm"><Send className="w-4 h-4" />{' '}{tr('Open in my email app')}</a>
+        <button type="button" onClick={copy} className="btn-secondary btn-sm"><Copy className="w-4 h-4" /> {copied ? tr('Copied!') : tr('Copy email')}</button>
         <button
           type="button"
           disabled={sending || !draft.to}
           onClick={async () => { setSending(true); await onSendForMe(); setSending(false) }}
           className="btn-ghost btn-sm"
         >
-          {sending ? 'Sending…' : 'Email it for me instead'}
+          {sending ? tr('Sending…') : tr('Email it for me instead')}
         </button>
       </div>
     </Card>
