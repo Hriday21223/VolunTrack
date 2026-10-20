@@ -10,6 +10,7 @@ const ROLE_ITEMS = {
     { to: '/',             label: 'Dashboard',   icon: Home },
     { to: '/opportunities', label: 'Opportunities', icon: MapPin },
     { to: '/log',          label: 'Log Hours',   icon: Clock },
+    { to: '/attendance',   label: 'Attendance',  icon: ClipboardCheck },
     { to: '/calendar',     label: 'Calendar',    icon: Calendar },
     { to: '/achievements', label: 'Achievements', icon: Trophy },
     { to: '/reports',      label: 'Reports',     icon: FileText },
@@ -18,13 +19,9 @@ const ROLE_ITEMS = {
     { to: '/help',         label: 'Help',        icon: HelpCircle },
     { to: '/status',       label: 'System Status',      icon: Activity },
   ],
-  // This list was the student one with My Tasks and Attendance added and
-  // nothing taken away, so an account that signed up to run events was
-  // offered a personal hour-tracking app: Log Hours, Calendar, Achievements
-  // and Reports are all about tracking your *own* volunteering, and an
-  // organizer logs hours for their team from inside My Tasks. Those four
-  // routes still work if someone types the URL — only the nav is trimmed,
-  // so nothing is taken away from an organizer who does also volunteer.
+  // An account that runs events, not one that tracks its own volunteering:
+  // organizers log hours for their team from inside My Tasks. Log Hours,
+  // Calendar, Achievements and Reports are student pages (roleAccess.js).
   volunteer: [
     { to: '/my-tasks',     label: 'My Tasks',    icon: ClipboardList },
     { to: '/attendance',   label: 'Attendance',  icon: ClipboardCheck },

@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -54,6 +55,13 @@ const STUDENT_TOUR_STEPS = [
   { selector: '[data-tour="weekly-chart"]', title: tr('Weekly chart'), description: tr('See your hours for the current week broken down by day, so you can keep momentum going.') },
   { selector: '[data-tour="recent-activity"]', title: tr('Recent activity'), description: tr('Your most recently logged sessions show up here — jump back in any time to log more.') },
 ]
+
+// Students and Task Makers share this page; a Task Maker can't open the
+// student pages (src/lib/roleAccess.js), so links to them aren't drawn.
+function RoleLink(props) {
+  const { user } = useAuth()
+  return canOpen(user?.role, props.to) ? <Link {...props} /> : null
+}
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -285,9 +293,9 @@ export default function Dashboard() {
             </button>
           )}
           {dashTab === 'home' && (
-            <Link to="/log" data-tour="log-hours" className="btn-primary">
+            <RoleLink to="/log" data-tour="log-hours" className="btn-primary">
               <Plus className="w-4 h-4" />{' '}{tr('Log hours')}
-            </Link>
+            </RoleLink>
           )}
         </div>
       }
@@ -542,8 +550,8 @@ export default function Dashboard() {
                   {tr('Log sessions fast, keep your goals moving, and export polished records for school, club, or scholarship review.')}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <Link to="/log" className="btn-primary btn-sm">{tr('Log hours')}</Link>
-                  <Link to="/calendar" className="btn-secondary btn-sm">{tr('View calendar')}</Link>
+                  <RoleLink to="/log" className="btn-primary btn-sm">{tr('Log hours')}</RoleLink>
+                  <RoleLink to="/calendar" className="btn-secondary btn-sm">{tr('View calendar')}</RoleLink>
                 </div>
               </div>
               <div className="rounded-[1.5rem] bg-slate-950/95 p-4 ring-1 ring-white/10 shadow-soft">
@@ -609,7 +617,7 @@ export default function Dashboard() {
                 <li key={l.id} className="text-sm flex flex-wrap items-baseline gap-x-2">
                   <span className="text-red-400 font-medium">{tr('Rejected')}</span>
                   <span className="text-earth-200">{l.activity || tr('Entry')} · {fmtDate(l.date)}</span>
-                  <Link to="/log" className="text-xs text-brand-400 hover:underline">{tr('Edit and resubmit')}</Link>
+                  <RoleLink to="/log" className="text-xs text-brand-400 hover:underline">{tr('Edit and resubmit')}</RoleLink>
                 </li>
               ))}
               {attention.stale.length > 0 && (
@@ -618,7 +626,7 @@ export default function Dashboard() {
                   <span className="text-earth-200">
                     {attention.stale.length === 1 ? tr('An entry has') : tr('Entries have')}{' '}{tr('been pending over')}{' '}{STALE_PENDING_DAYS}{' '}{tr('days')}
                   </span>
-                  <Link to="/reports" className="text-xs text-brand-400 hover:underline">{tr('Review them')}</Link>
+                  <RoleLink to="/reports" className="text-xs text-brand-400 hover:underline">{tr('Review them')}</RoleLink>
                 </li>
               )}
             </ul>
@@ -631,7 +639,7 @@ export default function Dashboard() {
           <Card className="p-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-display font-semibold">{tr('Coming up')}</h3>
-              <Link to="/calendar" className="text-xs text-brand-400 hover:underline">{tr('Calendar')}</Link>
+              <RoleLink to="/calendar" className="text-xs text-brand-400 hover:underline">{tr('Calendar')}</RoleLink>
             </div>
             <ul className="divide-y divide-white/5">
               {upcoming.map((item) => (
@@ -767,9 +775,9 @@ export default function Dashboard() {
         <Card className="p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="font-display font-semibold text-sm">{tr('Recent badges')}</div>
-            <Link to="/achievements" className="text-xs text-brand-500 hover:underline flex items-center gap-0.5">
+            <RoleLink to="/achievements" className="text-xs text-brand-500 hover:underline flex items-center gap-0.5">
               {tr('All')}{' '}<ChevronRight className="w-3 h-3" />
-            </Link>
+            </RoleLink>
           </div>
           {earned.length === 0 ? (
             <div className="text-xs text-earth-400 py-4 text-center">
@@ -789,14 +797,14 @@ export default function Dashboard() {
         <Card className="lg:col-span-3" data-tour="recent-activity">
           <div className="flex items-center justify-between mb-2">
             <div className="font-display font-semibold text-sm">{tr('Recent activity')}</div>
-            <Link to="/log" className="text-xs text-brand-500 hover:underline flex items-center gap-0.5">
+            <RoleLink to="/log" className="text-xs text-brand-500 hover:underline flex items-center gap-0.5">
               {tr('Log new hours')}{' '}<ChevronRight className="w-3 h-3" />
-            </Link>
+            </RoleLink>
           </div>
           {recent.length === 0 ? (
             <div className="py-8 text-center text-earth-400">
               <p className="text-sm">{tr('No hours logged yet.')}</p>
-              <Link to="/log" className="btn-primary mt-3 btn-sm inline-flex">{tr('Log your first hours')}</Link>
+              <RoleLink to="/log" className="btn-primary mt-3 btn-sm inline-flex">{tr('Log your first hours')}</RoleLink>
             </div>
           ) : (
             <ul className="divide-y divide-earth-900">

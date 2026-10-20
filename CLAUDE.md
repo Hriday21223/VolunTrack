@@ -32,6 +32,8 @@ Request-handling flow, middleware order, and the auth-gating pattern for `server
 
 Seven roles gate routes and dashboards: `student`, `volunteer`, `parent`, `school`, `school_staff`, `org`, `admin` (see `users_role_check` constraints in `server/db.js` and `requireAuth(...)` calls in `server/routes/*.js`). `organizations` can own multiple `schools` (`schools.organization_id`); `org` accounts manage their schools' invites, `school`/`school_staff` manage their own students/staff, `parent` accounts link to student accounts via `parent_child_links`, and `admin` has cross-cutting access (school/org approval, payment status, review moderation, contact-message replies).
 
+Which pages each role may open is one table, `ROUTE_ROLES` in `src/lib/roleAccess.js`, passed to `<Protected roles>` in `src/App.jsx`; admin opens every page, and a blocked page sends the account to its own home. Keep `Sidebar.jsx` / `MobileTabBar.jsx` in step with it, and draw links to other roles' pages with `canOpen()` (Dashboard's `RoleLink`) so they don't bounce.
+
 ### Notable conventions
 
 - Path alias `@` → `src/` (configured in `vite.config.js` and `jsconfig.json`).
