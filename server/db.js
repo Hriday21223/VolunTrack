@@ -474,6 +474,9 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // A volunteer task's category, so Opportunities can be filtered by it.
+  // NULL for tasks posted before categories existed.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS category TEXT`) } catch {}
   // QR check-in (server/routes/school.js): a per-task secret the rotating
   // code is derived from, and when each volunteer scanned in and out.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkin_secret TEXT`) } catch {}
