@@ -30,6 +30,7 @@ const Contact = lazy(() => import('@/pages/Contact.jsx'))
 const Terms = lazy(() => import('@/pages/Terms.jsx'))
 const Privacy = lazy(() => import('@/pages/Privacy.jsx'))
 const NotFound = lazy(() => import('@/pages/NotFound.jsx'))
+const CheckIn = lazy(() => import('@/pages/CheckIn.jsx'))
 const Dashboard = lazy(() => import('@/pages/Dashboard.jsx'))
 const Opportunities = lazy(() => import('@/pages/Opportunities.jsx'))
 const LogHours = lazy(() => import('@/pages/LogHours.jsx'))
@@ -148,6 +149,7 @@ function Shell() {
           <Route path="/organization/dashboard" element={<Protected roles={['org']}><OrganizationDashboard /></Protected>} />
 
           {/* The home page is the dashboard; older sign-in links used /dashboard. */}
+          <Route path="/checkin/:taskId" element={<Protected><CheckIn /></Protected>} />
           <Route path="/dashboard" element={<Navigate to="/" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

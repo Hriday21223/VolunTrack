@@ -15,6 +15,14 @@ import { deviceLockAvailable, setKeepSignedIn } from '@/lib/appSession.js'
 import { isPasskeyCancel } from '@/lib/passkey.js'
 import { hasLocalPinAccount } from '@/api/index.js'
 
+// Where to go after signing in: the page that sent you here, query string
+// included — a scanned check-in link (/checkin/<task>?c=…) carries its code
+// there, and dropping it meant scanning again after signing in.
+function fromPath(loc) {
+  const from = loc.state?.from
+  return from?.pathname ? `${from.pathname}${from.search || ''}` : '/'
+}
+
 export default function Login() {
   useSeo({
     title: 'Sign In',
@@ -159,7 +167,7 @@ export default function Login() {
     // needs clearing — it just holds the button in its pending state.
     if (ssoActive) {
       setBusy(true)
-      ssoStart(offeredSso.connectionId, loc.state?.from?.pathname || '/')
+      ssoStart(offeredSso.connectionId, fromPath(loc))
       return
     }
     setBusy(true)
@@ -177,7 +185,7 @@ export default function Login() {
           setCaptchaKey((k) => k + 1)
         }
         setToast(true)
-        setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
+        setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
       } else {
         let result
         setKeepSignedIn(canKeep && keep)
@@ -208,7 +216,7 @@ export default function Login() {
           return
         }
         setToast(true)
-        setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
+        setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
       }
     } catch (e) {
       setErr(e.message)
@@ -225,7 +233,7 @@ export default function Login() {
       // Returns a real session token, so the user lands signed in.
       await verifyTotpSetup(enrollCode, enroll.enrollmentToken)
       setToast(true)
-      setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
+      setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -240,7 +248,7 @@ export default function Login() {
     try {
       await verifyTotp(tempToken, totpCode)
       setToast(true)
-      setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
+      setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -254,7 +262,7 @@ export default function Login() {
     try {
       await verifyPasskey(tempToken)
       setToast(true)
-      setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
+      setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
     } catch (e) {
       setErr(isPasskeyCancel(e) ? 'Passkey check was cancelled.' : e.message)
     } finally {
@@ -269,7 +277,7 @@ export default function Login() {
     try {
       await verifyBackupCode(tempToken, backupCode)
       setToast(true)
-      setTimeout(() => nav(loc.state?.from?.pathname || '/', { replace: true }), 600)
+      setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
     } catch (e) {
       setErr(e.message)
     } finally {
