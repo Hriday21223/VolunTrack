@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { MapPin, Calendar as CalIcon, Users, Flag } from 'lucide-react'
+import AddToCalendar from '@/components/AddToCalendar.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -194,6 +195,7 @@ export default function Opportunities() {
                   {t.my_signup_status === 'rejected' && (
                     <p className="text-xs text-red-400 mt-1">Signup rejected</p>
                   )}
+                  {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
                 </div>
                 <div className="shrink-0">
                   {t.my_signup_status === 'approved' ? (
