@@ -18,6 +18,10 @@ const fmtDist = (km) => {
 
 export default function Opportunities() {
   const [nearbyTasks, setNearbyTasks] = useState([])
+  // Until the first answer, "no opportunities" would be a guess — and on a
+  // server waking up it's a guess people believe.
+  const [loaded, setLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [userLoc, setUserLoc] = useState(null)
   const [nearbyRadius, setNearbyRadius] = useState(25)
   const [toast, setToast] = useState(false)
@@ -33,8 +37,13 @@ export default function Opportunities() {
       // left out. It used to load anonymously, so none of those worked here.
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
-      if (res.ok) { const d = await res.json(); setNearbyTasks(d.tasks || []) }
-    } catch {}
+      if (!res.ok) throw new Error('unavailable')
+      const d = await res.json()
+      setNearbyTasks(d.tasks || [])
+      setLoadFailed(false)
+    } catch {
+      setLoadFailed(true)
+    } finally { setLoaded(true) }
   }, [])
 
   useEffect(() => {
@@ -110,7 +119,18 @@ export default function Opportunities() {
           </Card>
         )}
 
-        {nearbyTasks.length === 0 ? (
+        {!loaded ? (
+          <Card>
+            <p className="text-center py-8 text-earth-400">Loading opportunities…</p>
+          </Card>
+        ) : loadFailed && nearbyTasks.length === 0 ? (
+          <Card>
+            <div className="text-center py-8">
+              <p className="text-earth-400">Couldn't reach VolunTrack to load opportunities.</p>
+              <button onClick={() => { setLoaded(false); loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius) }} className="btn-secondary mt-3">Try again</button>
+            </div>
+          </Card>
+        ) : nearbyTasks.length === 0 ? (
           <Card>
             <div className="text-center py-8">
               <MapPin className="w-10 h-10 text-earth-600 mx-auto mb-3" />
