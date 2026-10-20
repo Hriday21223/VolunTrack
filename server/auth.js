@@ -17,6 +17,18 @@ function secret() {
   return s
 }
 
+// A short JWT_SECRET can be brute-forced from any token, which would let
+// someone mint tokens for any account. Warn rather than refuse so a weak
+// secret already in use doesn't take the site down; server.js calls this
+// once at startup.
+export const MIN_JWT_SECRET_LENGTH = 32
+export function warnIfWeakJwtSecret() {
+  const s = process.env.JWT_SECRET
+  if (s && s.length < MIN_JWT_SECRET_LENGTH) {
+    console.warn(`WARNING: JWT_SECRET is shorter than ${MIN_JWT_SECRET_LENGTH} characters. Generate a new one with: openssl rand -base64 48`)
+  }
+}
+
 export async function hashPassword(password) {
   return bcrypt.hash(password, SALT_ROUNDS)
 }

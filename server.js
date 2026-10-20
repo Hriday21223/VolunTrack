@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import nodemailer from 'nodemailer'
 import { initSchema, hasDatabase, query } from './server/db.js'
-import { authenticate, requireAuth, hashPassword, verifyPassword, endSessions } from './server/auth.js'
+import { authenticate, requireAuth, hashPassword, verifyPassword, endSessions, warnIfWeakJwtSecret } from './server/auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from './server/validate.js'
 import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
@@ -746,6 +746,7 @@ async function seedAdmin() {
 }
 
 async function start() {
+  warnIfWeakJwtSecret()
   if (hasDatabase() && !isProd && !isLocalDatabaseUrl()) {
     console.warn('\n⚠️  WARNING: this local server is using a database that is not on this machine —')
     console.warn('   probably the live one. Accounts and data you create now are real, on the live site.')

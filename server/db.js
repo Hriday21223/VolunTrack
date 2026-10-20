@@ -18,7 +18,13 @@ export function getPool() {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       // Managed Postgres (Render/Neon/etc.) requires TLS; local dev does not.
-      ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false },
+      // The certificate is verified so nothing in between can pose as the
+      // database. PGSSL=no-verify is an escape hatch for a host with a
+      // self-signed certificate. A `sslmode` in DATABASE_URL overrides this
+      // (pg treats require as verify-full).
+      ssl: process.env.PGSSL === 'disable'
+        ? false
+        : { rejectUnauthorized: process.env.PGSSL !== 'no-verify' },
     })
     // Managed Postgres (e.g. Neon) closes idle connections; without this
     // listener that surfaces as an unhandled 'error' event that crashes the
