@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { X, QrCode, CheckCircle, LogIn } from 'lucide-react'
+import { isNativeApp } from '@/lib/platform.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+// Where the QR code points. The phone app's own origin is a localhost the
+// volunteer's camera can't open, so the app uses the public site instead.
+const SITE = (isNativeApp && import.meta.env.VITE_SITE_URL) || window.location.origin
 
 // The organizer's check-in screen: a QR code volunteers scan on arrival and
 // again when they leave (server/routes/school.js, "QR check-in"). The code in
@@ -42,7 +46,7 @@ export default function CheckinQrModal({ task, onClose }) {
     return () => { stopped = true; clearTimeout(timer) }
   }, [load])
 
-  const url = data ? `${window.location.origin}/checkin/${task.id}?c=${encodeURIComponent(data.code)}` : ''
+  const url = data ? `${SITE}/checkin/${task.id}?c=${encodeURIComponent(data.code)}` : ''
   useEffect(() => {
     if (url && canvasRef.current) QRCode.toCanvas(canvasRef.current, url, { width: 300, margin: 2 }, () => {})
   }, [url])
