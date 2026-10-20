@@ -614,6 +614,11 @@ export default function MyTasks() {
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}
+                              {s.status === 'waitlisted' && (
+                                <p className="text-xs text-sky-300 mt-0.5">
+                                  Waitlist #{signups.filter((w) => w.status === 'waitlisted').indexOf(s) + 1} · moves up when a spot opens
+                                </p>
+                              )}
                               {isApproved && s.attendance_status && (
                                 <p className={`text-xs mt-0.5 capitalize ${s.attendance_status === 'present' ? 'text-emerald-400' : s.attendance_status === 'absent' ? 'text-red-400' : 'text-amber-400'}`}>
                                   Attendance: {s.attendance_status}

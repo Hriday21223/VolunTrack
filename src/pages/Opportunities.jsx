@@ -9,6 +9,7 @@ import Toast from '@/components/Toast.jsx'
 import { isNativeApp } from '@/lib/platform.js'
 import { fmtDate } from '@/utils/date.js'
 import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
+import CancelSignup from '@/components/CancelSignup.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -61,6 +62,26 @@ export default function Opportunities() {
     (!category || t.category === category)
     && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1])))
   const filtering = Boolean(category || when)
+  const reload = () => loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius)
+  // A full task offers the waitlist instead: no slot is held, and the first
+  // person waiting moves up (and is emailed) when someone cancels.
+  const signUp = async (t, full) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(full ? { waitlist: true } : {}),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'Failed')
+      setToastMsg(d.waitlisted
+        ? `You're #${d.position} on the waitlist. We'll email you if a spot opens up.`
+        : 'Signed up — awaiting organizer approval')
+      setToast(true)
+      reload()
+    } catch (e) { setToastMsg(e.message); setToast(true) }
+  }
 
   const loadNearbyTasks = useCallback(async (lat, lng, radius) => {
     try {
@@ -256,27 +277,25 @@ export default function Opportunities() {
                   )}
                   {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
                 </div>
-                <div className="shrink-0">
+                <div className="shrink-0 flex flex-col items-end gap-1.5">
                   {t.my_signup_status === 'approved' ? (
                     <span className="text-xs text-emerald-400 font-medium">Approved</span>
                   ) : t.my_signup_status === 'pending' ? (
                     <span className="text-xs text-amber-400 font-medium">Pending</span>
                   ) : t.my_signup_status === 'rejected' ? (
                     <span className="text-xs text-red-400 font-medium">Rejected</span>
-                  ) : full ? (
-                    <span className="text-xs text-red-400 font-medium">Full</span>
+                  ) : t.my_signup_status === 'waitlisted' ? (
+                    <span className="text-xs text-sky-300 font-medium">Waitlist #{t.my_waitlist_position || 1}</span>
                   ) : (
-                    <button onClick={async () => {
-                      try {
-                        const token = localStorage.getItem('voluntrack:auth_token')
-                        const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
-                          method: 'POST',
-                          headers: { Authorization: `Bearer ${token}` },
-                        })
-                        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
-                        setToastMsg('Signed up — awaiting organizer approval'); setToast(true); loadNearbyTasks(userLoc?.lat, userLoc?.lng, nearbyRadius)
-                      } catch (e) { setToastMsg(e.message); setToast(true) }
-                    }} className="btn-primary text-sm">Sign up</button>
+                    <button onClick={() => signUp(t, full)} className={full ? 'btn-secondary text-sm' : 'btn-primary text-sm'}>
+                      {full ? 'Join waitlist' : 'Sign up'}
+                    </button>
+                  )}
+                  {full && !t.my_signup_status && (
+                    <span className="text-xs text-earth-500">Full{Number(t.waitlist_count) > 0 ? ` · ${t.waitlist_count} waiting` : ''}</span>
+                  )}
+                  {['pending', 'approved', 'waitlisted'].includes(t.my_signup_status) && (
+                    <CancelSignup task={t} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} />
                   )}
                 </div>
               </div>

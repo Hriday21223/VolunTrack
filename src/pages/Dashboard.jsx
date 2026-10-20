@@ -229,7 +229,7 @@ export default function Dashboard() {
   const upcoming = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd')
     const tasks = signups
-      .filter((s) => s.date >= today && s.signup_status !== 'rejected' && s.task_status !== 'closed')
+      .filter((s) => s.date >= today && !['rejected', 'waitlisted'].includes(s.signup_status) && s.task_status !== 'closed')
       .map((s) => ({
         kind: 'task',
         id: s.id,

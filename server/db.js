@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS public_task_signups (
   id              TEXT PRIMARY KEY,
   task_id         TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
   user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','waitlisted')),
   signed_up_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(task_id, user_id)
 );
@@ -476,6 +476,16 @@ export async function initSchema() {
   // A volunteer task's category, so Opportunities can be filtered by it.
   // NULL for tasks posted before categories existed.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS category TEXT`) } catch {}
+  // Waitlist for full tasks (server/routes/school.js, promoteFromWaitlist):
+  // 'waitlisted' holds no slot; the earliest one moves to 'pending' when a
+  // slot frees up. Re-adding the check is skipped once it allows the value.
+  try {
+    const { rows } = await query(`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'public_task_signups_status_check'`)
+    if (!rows[0]?.def?.includes('waitlisted')) {
+      await query(`ALTER TABLE public_task_signups DROP CONSTRAINT IF EXISTS public_task_signups_status_check`)
+      await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_status_check CHECK (status IN ('pending','approved','rejected','waitlisted'))`)
+    }
+  } catch (error) { console.error('waitlist status migration failed:', error.message) }
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
