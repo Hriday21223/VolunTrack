@@ -7,6 +7,7 @@ import { fmtDate } from '@/utils/date.js'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import Toast from '@/components/Toast.jsx'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
+import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -94,7 +95,7 @@ export default function Attendance() {
   const past = signups.filter((s) => !isUpcoming(s))
 
   return (
-    <AppLayout title={tr('Attendance')} subtitle={tr('Your signup and attendance status across tasks')}>
+    <AppLayout title={tr('Attendance')} subtitle={tr('Your signup and attendance status across tasks')} action={<ScanCheckinButton />}>
       <div className="max-w-3xl mx-auto space-y-6">
         {loading ? (
           <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
