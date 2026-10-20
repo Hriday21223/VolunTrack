@@ -55,14 +55,6 @@ export default function Opportunities() {
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [reporting, setReporting] = useState(null)
-  // Filters run on the list already loaded; distance is the server's radius.
-  const [category, setCategory] = useState('')
-  const [when, setWhen] = useState('')
-  const range = whenRange(when)
-  const shownTasks = nearbyTasks.filter((t) =>
-    (!category || t.category === category)
-    && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1])))
-  const filtering = Boolean(category || when)
   const reload = () => loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius)
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
@@ -83,6 +75,14 @@ export default function Opportunities() {
       reload()
     } catch (e) { setToastMsg(e.message); setToast(true) }
   }
+  // Filters run on the list already loaded; distance is the server's radius.
+  const [category, setCategory] = useState('')
+  const [when, setWhen] = useState('')
+  const range = whenRange(when)
+  const shownTasks = nearbyTasks.filter((t) =>
+    (!category || t.category === category)
+    && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1])))
+  const filtering = Boolean(category || when)
 
   const loadNearbyTasks = useCallback(async (lat, lng, radius) => {
     try {

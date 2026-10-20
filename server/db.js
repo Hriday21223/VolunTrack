@@ -18,7 +18,13 @@ export function getPool() {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       // Managed Postgres (Render/Neon/etc.) requires TLS; local dev does not.
-      ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false },
+      // The certificate is verified so nothing in between can pose as the
+      // database. PGSSL=no-verify is an escape hatch for a host with a
+      // self-signed certificate. A `sslmode` in DATABASE_URL overrides this
+      // (pg treats require as verify-full).
+      ssl: process.env.PGSSL === 'disable'
+        ? false
+        : { rejectUnauthorized: process.env.PGSSL !== 'no-verify' },
     })
     // Managed Postgres (e.g. Neon) closes idle connections; without this
     // listener that surfaces as an unhandled 'error' event that crashes the
@@ -468,14 +474,6 @@ export async function initSchema() {
       )
     `)
   } catch {}
-  // QR check-in (server/routes/school.js): a per-task secret the rotating
-  // code is derived from, and when each volunteer scanned in and out.
-  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkin_secret TEXT`) } catch {}
-  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ`) } catch {}
-  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_out_at TIMESTAMPTZ`) } catch {}
-  // A volunteer task's category, so Opportunities can be filtered by it.
-  // NULL for tasks posted before categories existed.
-  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS category TEXT`) } catch {}
   // Waitlist for full tasks (server/routes/school.js, promoteFromWaitlist):
   // 'waitlisted' holds no slot; the earliest one moves to 'pending' when a
   // slot frees up. Re-adding the check is skipped once it allows the value.
@@ -486,6 +484,14 @@ export async function initSchema() {
       await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_status_check CHECK (status IN ('pending','approved','rejected','waitlisted'))`)
     }
   } catch (error) { console.error('waitlist status migration failed:', error.message) }
+  // A volunteer task's category, so Opportunities can be filtered by it.
+  // NULL for tasks posted before categories existed.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS category TEXT`) } catch {}
+  // QR check-in (server/routes/school.js): a per-task secret the rotating
+  // code is derived from, and when each volunteer scanned in and out.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkin_secret TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_out_at TIMESTAMPTZ`) } catch {}
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
