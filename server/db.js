@@ -468,6 +468,9 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // A volunteer task's category, so Opportunities can be filtered by it.
+  // NULL for tasks posted before categories existed.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS category TEXT`) } catch {}
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

@@ -970,8 +970,19 @@ function coordinate(value, max) {
   return Number.isFinite(n) && Math.abs(n) <= max ? { ok: true, value: n } : { ok: false }
 }
 
+// A task's category: one of the app's activity categories (the same list as
+// src/lib/categories.js), or none. '' and null both mean none.
+const TASK_CATEGORIES = [
+  'Community Service', 'Environmental', 'Education & Tutoring', 'Health & Wellness', 'Animal Welfare',
+  'Arts & Culture', 'Sports & Coaching', 'Religious & Faith', 'Political & Advocacy', 'Disaster Relief', 'Other',
+]
+const taskCategory = (v) => (v == null || v === '' ? { ok: true, value: null }
+  : TASK_CATEGORIES.includes(v) ? { ok: true, value: v } : { ok: false })
+
 router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res) => {
   const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
+  const category = taskCategory(req.body.category)
+  if (!category.ok) return res.status(400).json({ error: 'Pick a category from the list.' })
   const lat = coordinate(latitude, 90)
   const lng = coordinate(longitude, 180)
   if (!lat.ok || !lng.ok) return res.status(400).json({ error: 'Invalid map position.' })
@@ -1016,9 +1027,9 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
 
     const id = uid('ptask')
     await query(
-      `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-      [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null],
+      `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value],
     )
     return res.status(201).json({ ok: true, id })
   } catch (error) {
@@ -1067,7 +1078,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
 
     const { rows } = await query(
       `SELECT * FROM (
-        SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status,
+        SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id) AS slots_filled,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
@@ -1290,7 +1301,7 @@ async function notifySignupDecision(taskId, userId, decision) {
 // re-send the description. Slots cannot drop below the people already
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
-  const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude']
+  const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
 
   try {
@@ -1321,6 +1332,10 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
           return res.status(400).json({ error: `You have already approved ${approved[0].cnt} volunteers — reject someone first to go below that.` })
         }
         values.push(slots)
+      } else if (field === 'category') {
+        const c = taskCategory(req.body.category)
+        if (!c.ok) return res.status(400).json({ error: 'Pick a category from the list.' })
+        values.push(c.value)
       } else if (field === 'latitude' || field === 'longitude') {
         const c = coordinate(req.body[field], field === 'latitude' ? 90 : 180)
         if (!c.ok) return res.status(400).json({ error: 'Invalid map position.' })
@@ -1626,7 +1641,7 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
 router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.phone, t.latitude, t.longitude, t.created_at,
+      `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.latitude, t.longitude, t.created_at,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
