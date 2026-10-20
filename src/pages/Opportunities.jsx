@@ -3,6 +3,7 @@ import { MapPin, Calendar as CalIcon, Users, Flag, X } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
+import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -277,6 +278,9 @@ export default function Opportunities() {
                     <p className="text-xs text-red-400 mt-1">{tr('Signup rejected')}</p>
                   )}
                   {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
+                  {approved && String(t.date).slice(0, 10) === format(new Date(), 'yyyy-MM-dd') && (
+                    <div className="mt-2"><ScanCheckinButton className="btn-secondary text-sm" /></div>
+                  )}
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
                   {t.my_signup_status === 'approved' ? (
