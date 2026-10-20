@@ -478,6 +478,11 @@ export async function initSchema() {
       await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_status_check CHECK (status IN ('pending','approved','rejected','waitlisted'))`)
     }
   } catch (error) { console.error('waitlist status migration failed:', error.message) }
+  // QR check-in (server/routes/school.js): a per-task secret the rotating
+  // code is derived from, and when each volunteer scanned in and out.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkin_secret TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_out_at TIMESTAMPTZ`) } catch {}
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

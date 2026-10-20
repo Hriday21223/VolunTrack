@@ -2,6 +2,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
+import { createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
@@ -1831,6 +1832,143 @@ async function alreadyLogged(taskId, userId, day) {
   )
   return rows.length > 0
 }
+
+// --- QR check-in --------------------------------------------------------------
+//
+// The organizer shows a QR code at the event; a volunteer scans it on arrival
+// (checked in, marked present) and again when leaving (checked out, and the
+// hours between are logged and approved, signed off by the organizer exactly
+// like POST /log-hours below). The QR holds a plain URL to /checkin/<task>,
+// so any phone camera can open it.
+//
+// The code in it changes every minute — HMAC of the task's secret and the
+// minute — and is accepted for that minute and the one before, so a photo sent
+// to a friend who isn't there stops working within two minutes. Nothing is
+// stored per code. Only approved volunteers can check in, and only around the
+// task's date (a day either side, since the server's date is UTC's).
+
+const CHECKIN_WINDOW_MS = 60 * 1000
+const CHECKOUT_AFTER_MS = 10 * 60 * 1000
+
+function checkinCode(secret, taskId, windowIndex) {
+  return createHmac('sha256', secret).update(`${taskId}:${windowIndex}`).digest('base64url').slice(0, 16)
+}
+
+function checkinCodeValid(secret, taskId, code) {
+  const now = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
+  const given = Buffer.from(String(code || ''))
+  return [now, now - 1].some((w) => {
+    const expected = Buffer.from(checkinCode(secret, taskId, w))
+    return given.length === expected.length && timingSafeEqual(given, expected)
+  })
+}
+
+// Quarter hours between the two scans, at least a quarter, at most a day.
+function scannedHours(inAt, outAt) {
+  const quarters = Math.round((new Date(outAt) - new Date(inAt)) / (15 * 60 * 1000))
+  return Math.min(MAX_HOURS_PER_ENTRY, Math.max(1, quarters) / 4)
+}
+
+const checkinLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many check-in attempts. Please wait a few minutes.' },
+})
+
+// GET: the organizer's current code and who has scanned (polled by the QR screen).
+router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT id, created_by, status, checkin_secret FROM public_tasks WHERE id = $1', [req.params.id])
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (task.created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can show the check-in code.' })
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    let secret = task.checkin_secret
+    if (!secret) {
+      secret = generateToken()
+      await query('UPDATE public_tasks SET checkin_secret = $1 WHERE id = $2 AND checkin_secret IS NULL', [secret, task.id])
+      secret = (await query('SELECT checkin_secret FROM public_tasks WHERE id = $1', [task.id])).rows[0].checkin_secret
+    }
+    const windowIndex = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
+    const { rows: people } = await query(
+      `SELECT u.name, s.checked_in_at, s.checked_out_at FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
+      [task.id],
+    )
+    return res.json({
+      code: checkinCode(secret, task.id, windowIndex),
+      // Seconds until the code changes, so the screen refreshes on time.
+      refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at })),
+    })
+  } catch (error) {
+    console.error('checkin code failed:', error)
+    return res.status(500).json({ error: 'Could not prepare the check-in code.' })
+  }
+})
+
+// POST { code }: the volunteer's scan — checks in, or out on the second scan.
+router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, title, created_by, status, checkin_secret, date,
+              date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
+         FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.checkin_secret || !checkinCodeValid(task.checkin_secret, task.id, req.body?.code)) {
+      return res.status(400).json({ error: 'This check-in code has expired. Scan the QR code on the organizer\'s screen again.' })
+    }
+    if (!task.today) return res.status(400).json({ error: 'Check-in only works on the day of the task.' })
+    const { rows: signupRows } = await query(
+      "SELECT id, checked_in_at, checked_out_at FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+      [task.id, req.auth.sub],
+    )
+    const signup = signupRows[0]
+    if (!signup) return res.status(403).json({ error: "You aren't an approved volunteer for this task. Ask the organizer." })
+
+    if (!signup.checked_in_at) {
+      const { rows: done } = await query(
+        `UPDATE public_task_signups SET checked_in_at = now(), attendance_status = 'present', attendance_marked_at = now()
+          WHERE id = $1 AND checked_in_at IS NULL RETURNING checked_in_at`,
+        [signup.id],
+      )
+      return res.json({ state: 'checked_in', title: task.title, checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
+    }
+    if (signup.checked_out_at) {
+      return res.json({ state: 'done', title: task.title, checkedInAt: signup.checked_in_at, checkedOutAt: signup.checked_out_at, hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
+    }
+    if (Date.now() - new Date(signup.checked_in_at).getTime() < CHECKOUT_AFTER_MS) {
+      return res.json({ state: 'checked_in', title: task.title, checkedInAt: signup.checked_in_at, tooSoon: true })
+    }
+    // The UPDATE is the atomic step: two scans racing can't both log hours.
+    const { rows: out } = await query(
+      'UPDATE public_task_signups SET checked_out_at = now() WHERE id = $1 AND checked_out_at IS NULL RETURNING checked_in_at, checked_out_at',
+      [signup.id],
+    )
+    if (out.length === 0) return res.json({ state: 'done', title: task.title })
+    const hours = scannedHours(out[0].checked_in_at, out[0].checked_out_at)
+    const day = dayString(task.date)
+    let logged = false
+    if (!(await alreadyLogged(task.id, req.auth.sub, day))) {
+      await query(
+        `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
+        [uid('log'), req.auth.sub, day, task.title, ORGANIZER_LOG_CATEGORY, hours, 'Checked in and out with the task\'s QR code', task.created_by, task.id],
+      )
+      logged = true
+    }
+    return res.json({ state: 'checked_out', title: task.title, checkedInAt: out[0].checked_in_at, checkedOutAt: out[0].checked_out_at, hours, logged })
+  } catch (error) {
+    console.error('checkin failed:', error)
+    return res.status(500).json({ error: 'Could not check you in.' })
+  }
+})
 
 router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), async (req, res) => {
   const { volunteerId, hours, date } = req.body
