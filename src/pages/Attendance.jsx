@@ -46,7 +46,7 @@ function SignupRow({ s, onChanged }) {
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.location}</span>
             <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{s.time ? ` · ${s.time}` : ''}</span>
           </div>
-          {!cancelled && !isPast && s.signup_status !== 'rejected' && <AddToCalendar task={s} className="mt-2" />}
+          {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1.5">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${signup.className}`}>{signup.label}{!cancelled && s.signup_status === 'waitlisted' && s.waitlist_position ? ` #${s.waitlist_position}` : ''}</span>
