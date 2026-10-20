@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, ChevronRight, Users, X, HelpCircle, Mail, Activity, FileText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
 import { hashPin } from '@/api/index.js'
@@ -1397,15 +1398,17 @@ export default function Settings() {
         )}
 
         <CollapsibleSection icon={Bell} label="Reminders & Notifications" defaultOpen={false}>
-          <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> Reminders</h3>
-            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Set up weekly or one-time reminders so you never forget to log your volunteer hours.
-            </p>
-            <Link to="/reminders" className="btn-primary inline-flex items-center gap-2">
-              <Bell className="w-4 h-4" /> Manage reminders
-            </Link>
-          </Card>
+          {canOpen(user?.role, '/reminders') && (
+            <Card>
+              <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> Reminders</h3>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
+                Set up weekly or one-time reminders so you never forget to log your volunteer hours.
+              </p>
+              <Link to="/reminders" className="btn-primary inline-flex items-center gap-2">
+                <Bell className="w-4 h-4" /> Manage reminders
+              </Link>
+            </Card>
+          )}
 
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Privacy</h3>

@@ -9,6 +9,7 @@ import BadgeToasts from '@/components/BadgeToasts.jsx'
 import ReminderToasts from '@/components/ReminderToasts.jsx'
 import ErrorBoundary from '@/components/ErrorBoundary.jsx'
 import { isNativeApp } from '@/lib/platform.js'
+import { ROUTE_ROLES } from '@/lib/roleAccess.js'
 import { readWelcomePending } from '@/lib/welcome.js'
 
 // About is the logged-out landing page served at "/" — kept as a static import
@@ -67,7 +68,8 @@ function Protected({ children, roles }) {
   const { user } = useAuth()
   const loc = useLocation()
   if (!user) return <Navigate to="/login" state={{ from: loc }} replace />
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />
+  // Admin may open every page; anyone else only their own (src/lib/roleAccess.js).
+  if (roles && user.role !== 'admin' && !roles.includes(user.role)) return <Navigate to="/" replace />
   return children
 }
 
@@ -97,7 +99,7 @@ function Home() {
   if (user.role === 'school' || user.role === 'school_staff') return <Navigate to="/school/dashboard" replace />
   // Just signed up in this tab (see src/lib/welcome.js).
   if ((user.role === 'student' || user.role === 'volunteer') && readWelcomePending()) return <Navigate to="/welcome" replace />
-  return <Protected><Dashboard /></Protected>
+  return <Protected roles={ROUTE_ROLES['/']}><Dashboard /></Protected>
 }
 
 function Shell() {
@@ -131,25 +133,25 @@ function Shell() {
           <Route path="/verify-transcript" element={<VerifyTranscript />} />
 
           <Route path="/"             element={<Home />} />
-          <Route path="/welcome"      element={<Protected roles={['student', 'volunteer']}><Welcome /></Protected>} />
-          <Route path="/opportunities" element={<Protected><Opportunities /></Protected>} />
-          <Route path="/parent"       element={<Protected roles={['parent']}><ParentDashboard /></Protected>} />
-          <Route path="/log"          element={<Protected><LogHours /></Protected>} />
-          <Route path="/calendar"     element={<Protected><CalendarView /></Protected>} />
-          <Route path="/achievements" element={<Protected><Achievements /></Protected>} />
-          <Route path="/reminders"    element={<Protected><Reminders /></Protected>} />
-          <Route path="/reports"      element={<Protected><Reports /></Protected>} />
-          <Route path="/profile"      element={<Protected><Profile /></Protected>} />
-          <Route path="/settings"     element={<Protected><Settings /></Protected>} />
+          <Route path="/welcome"      element={<Protected roles={ROUTE_ROLES['/welcome']}><Welcome /></Protected>} />
+          <Route path="/opportunities" element={<Protected roles={ROUTE_ROLES['/opportunities']}><Opportunities /></Protected>} />
+          <Route path="/parent"       element={<Protected roles={ROUTE_ROLES['/parent']}><ParentDashboard /></Protected>} />
+          <Route path="/log"          element={<Protected roles={ROUTE_ROLES['/log']}><LogHours /></Protected>} />
+          <Route path="/calendar"     element={<Protected roles={ROUTE_ROLES['/calendar']}><CalendarView /></Protected>} />
+          <Route path="/achievements" element={<Protected roles={ROUTE_ROLES['/achievements']}><Achievements /></Protected>} />
+          <Route path="/reminders"    element={<Protected roles={ROUTE_ROLES['/reminders']}><Reminders /></Protected>} />
+          <Route path="/reports"      element={<Protected roles={ROUTE_ROLES['/reports']}><Reports /></Protected>} />
+          <Route path="/profile"      element={<Protected roles={ROUTE_ROLES['/profile']}><Profile /></Protected>} />
+          <Route path="/settings"     element={<Protected roles={ROUTE_ROLES['/settings']}><Settings /></Protected>} />
           <Route path="/help"         element={<Help />} />
-          <Route path="/my-tasks"    element={<Protected><MyTasks /></Protected>} />
-          <Route path="/attendance"  element={<Protected><Attendance /></Protected>} />
+          <Route path="/my-tasks"    element={<Protected roles={ROUTE_ROLES['/my-tasks']}><MyTasks /></Protected>} />
+          <Route path="/attendance"  element={<Protected roles={ROUTE_ROLES['/attendance']}><Attendance /></Protected>} />
           <Route path="/admin/:tab?"  element={<AdminProtected><Admin /></AdminProtected>} />
-          <Route path="/school/dashboard" element={<Protected><SchoolDashboard /></Protected>} />
-          <Route path="/organization/dashboard" element={<Protected roles={['org']}><OrganizationDashboard /></Protected>} />
+          <Route path="/school/dashboard" element={<Protected roles={ROUTE_ROLES['/school/dashboard']}><SchoolDashboard /></Protected>} />
+          <Route path="/organization/dashboard" element={<Protected roles={ROUTE_ROLES['/organization/dashboard']}><OrganizationDashboard /></Protected>} />
 
           {/* The home page is the dashboard; older sign-in links used /dashboard. */}
-          <Route path="/checkin/:taskId" element={<Protected><CheckIn /></Protected>} />
+          <Route path="/checkin/:taskId" element={<Protected roles={ROUTE_ROLES['/checkin']}><CheckIn /></Protected>} />
           <Route path="/dashboard" element={<Navigate to="/" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

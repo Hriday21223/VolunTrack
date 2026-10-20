@@ -5,6 +5,7 @@ import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { isNativeApp, APP_BACK_EVENT } from '@/lib/platform.js'
 import { tr } from '@/lib/i18n.js'
+import { canOpen } from '@/lib/roleAccess.js'
 
 // Labels here match Sidebar.jsx exactly (same route, same label) so the
 // nav doesn't appear to rename itself between desktop and mobile. "Log"
@@ -47,6 +48,7 @@ CORE_ITEMS.school_staff = CORE_ITEMS.school
 
 const MORE_ITEMS = {
   student: [
+    { to: '/attendance',   label: 'Attendance',    icon: ClipboardCheck },
     { to: '/calendar',     label: 'Calendar',      icon: Calendar },
     { to: '/achievements', label: 'Achievements',  icon: Trophy },
     { to: '/reports',      label: 'Reports',       icon: FileText },
@@ -56,12 +58,8 @@ const MORE_ITEMS = {
   volunteer: [
     { to: '/',             label: 'Dashboard',     icon: Home },
     { to: '/attendance',   label: 'Attendance',    icon: ClipboardCheck },
-    { to: '/log',          label: 'Log Hours',     icon: Clock },
     { to: '/profile',      label: 'Profile',       icon: User },
     { to: '/settings',     label: 'Settings',      icon: Settings },
-    { to: '/calendar',     label: 'Calendar',      icon: Calendar },
-    { to: '/achievements', label: 'Achievements',  icon: Trophy },
-    { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
@@ -117,7 +115,7 @@ export default function MobileTabBar() {
   const native = isNativeApp ? nativeTabs(baseCore, baseMore) : null
   const coreItems = native ? native.tabs : baseCore
   const moreItems = native ? native.sheet : baseMore
-  const showLogFab = !!user && role !== 'parent'
+  const showLogFab = !!user && canOpen(role, '/log')
 
   const isActive = (to) => {
     if (to.includes('?')) {
