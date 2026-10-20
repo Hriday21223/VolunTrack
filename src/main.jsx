@@ -5,7 +5,9 @@ import App from './App.jsx'
 import './index.css'
 import { applyStoredTheme } from './hooks/useTheme.js'
 import { applyNativeAppChrome, startNativeApp } from './lib/platform.js'
+import { installApiFetchGuard } from './lib/apiFetch.js'
 
+installApiFetchGuard()
 applyStoredTheme()
 applyNativeAppChrome()
 

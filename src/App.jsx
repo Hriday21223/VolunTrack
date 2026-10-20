@@ -16,6 +16,7 @@ import { readWelcomePending } from '@/lib/welcome.js'
 // route is code-split since only one is ever active at a time.
 import About from '@/pages/About.jsx'
 import AppLock from '@/components/AppLock.jsx'
+import SlowServerNotice from '@/components/SlowServerNotice.jsx'
 const AppWelcome = lazy(() => import('@/pages/AppWelcome.jsx'))
 const Login = lazy(() => import('@/pages/Login.jsx'))
 const Register = lazy(() => import('@/pages/Register.jsx'))
@@ -167,6 +168,7 @@ export default function App() {
         <AuthProvider>
           <DataProvider>
             <Shell />
+            <SlowServerNotice />
             {/* Vercel Analytics counts website visits; inside the apps its
                 script isn't served, and the stores' privacy forms are simpler
                 with nothing collected. */}
