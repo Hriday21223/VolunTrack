@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet, QrCode } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -9,6 +9,7 @@ import { useData } from '@/hooks/useData.jsx'
 import { csvCell } from '@/lib/csv.js'
 import { fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
+import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -35,6 +36,7 @@ export default function MyTasks() {
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [cancellingId, setCancellingId] = useState(null)
+  const [checkinTask, setCheckinTask] = useState(null)
   const [cancelReason, setCancelReason] = useState('')
   const [messagingId, setMessagingId] = useState(null)
   const [messageDraft, setMessageDraft] = useState('')
@@ -525,6 +527,9 @@ export default function MyTasks() {
                       the verbs an organizer has always needed. */}
                   {t.status !== 'cancelled' && (
                     <div className="flex flex-wrap gap-2 mb-4">
+                      <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
+                        <QrCode className="w-3.5 h-3.5 mr-1" /> Check-in QR
+                      </button>
                       <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
                         <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
                       </button>
@@ -785,6 +790,7 @@ export default function MyTasks() {
         </div>
       )}
 
+      {checkinTask && <CheckinQrModal task={checkinTask} onClose={() => { setCheckinTask(null); loadTasks() }} />}
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
     </AppLayout>
   )
