@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapPin, Calendar as CalIcon, Users, Flag } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag, X } from 'lucide-react'
+import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
+import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -17,6 +19,29 @@ const fmtDist = (km) => {
   return `${n.toFixed(1)}km`
 }
 
+// The "When" filter: each choice is a range of calendar days, inclusive, in
+// the viewer's own time zone (task dates are plain days).
+const WHEN_OPTIONS = [
+  { value: '', label: 'Any date' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'Next 7 days' },
+  { value: 'weekend', label: 'This weekend' },
+  { value: 'month', label: 'Next 30 days' },
+]
+function whenRange(when) {
+  const now = new Date()
+  const day = (d) => format(d, 'yyyy-MM-dd')
+  if (when === 'today') return [day(now), day(now)]
+  if (when === 'week') return [day(now), day(addDays(now, 6))]
+  if (when === 'month') return [day(now), day(addDays(now, 29))]
+  if (when === 'weekend') {
+    if (isSunday(now)) return [day(now), day(now)]
+    const sat = isSaturday(now) ? now : nextSaturday(now)
+    return [day(sat), day(addDays(sat, 1))]
+  }
+  return null
+}
+
 export default function Opportunities() {
   const [nearbyTasks, setNearbyTasks] = useState([])
   // Until the first answer, "no opportunities" would be a guess — and on a
@@ -28,6 +53,14 @@ export default function Opportunities() {
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [reporting, setReporting] = useState(null)
+  // Filters run on the list already loaded; distance is the server's radius.
+  const [category, setCategory] = useState('')
+  const [when, setWhen] = useState('')
+  const range = whenRange(when)
+  const shownTasks = nearbyTasks.filter((t) =>
+    (!category || t.category === category)
+    && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1])))
+  const filtering = Boolean(category || when)
 
   const loadNearbyTasks = useCallback(async (lat, lng, radius) => {
     try {
@@ -97,6 +130,24 @@ export default function Opportunities() {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label="Category">
+            <option value="">All categories</option>
+            {ACTIVITY_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+          </select>
+          <select value={when} onChange={(e) => setWhen(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label="When">
+            {WHEN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {filtering && (
+            <>
+              <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-ghost btn-sm">
+                <X className="w-3.5 h-3.5 mr-1" /> Clear
+              </button>
+              {loaded && <span className="text-xs text-earth-500">{shownTasks.length} of {nearbyTasks.length} tasks</span>}
+            </>
+          )}
+        </div>
+
         {!userLoc && (
           <Card className="border border-dashed border-brand-700/40 bg-brand-900/10">
             <div className="flex items-center gap-3">
@@ -139,7 +190,14 @@ export default function Opportunities() {
               <p className="text-xs text-earth-500 mt-1">Try increasing the radius or check back later.</p>
             </div>
           </Card>
-        ) : nearbyTasks.map((t) => {
+        ) : shownTasks.length === 0 ? (
+          <Card>
+            <div className="text-center py-8">
+              <p className="text-earth-400">No tasks match these filters.</p>
+              <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-secondary mt-3">Clear filters</button>
+            </div>
+          </Card>
+        ) : shownTasks.map((t) => {
           const filled = Number(t.slots_filled)
           const total = Number(t.slots_total)
           const full = filled >= total
@@ -156,6 +214,7 @@ export default function Opportunities() {
                       </span>
                     )}
                   </div>
+                  {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{t.category}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     <a

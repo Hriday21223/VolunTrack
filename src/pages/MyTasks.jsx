@@ -9,6 +9,7 @@ import { useData } from '@/hooks/useData.jsx'
 import { csvCell } from '@/lib/csv.js'
 import { fmtDate } from '@/utils/date.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
+import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -23,7 +24,7 @@ export default function MyTasks() {
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [showPostTask, setShowPostTask] = useState(false)
-  const [taskForm, setTaskForm] = useState({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null })
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '' })
   const [taskBusy, setTaskBusy] = useState(false)
   const [batchHours, setBatchHours] = useState({})
   const [batchDate, setBatchDate] = useState('')
@@ -122,6 +123,7 @@ export default function MyTasks() {
       importantInfo: t.important_info || '',
       latitude: t.latitude ?? null,
       longitude: t.longitude ?? null,
+      category: t.category || '',
     })
   }
 
@@ -328,7 +330,7 @@ export default function MyTasks() {
         body: JSON.stringify(taskForm),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
-      setTaskForm({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null })
+      setTaskForm({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '' })
       setShowPostTask(false); loadTasks()
       setToastMsg('Task posted!'); setToast(true)
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
@@ -365,6 +367,13 @@ export default function MyTasks() {
               </div>
               <textarea className="input" rows={2} maxLength={2000} placeholder="Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)" value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
               <input className="input" type="tel" maxLength={30} placeholder="Phone number — shown to approved volunteers" value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
+              <div>
+                <label className="label text-xs" htmlFor="task-category">Category</label>
+                <select id="task-category" className="input" value={taskForm.category} onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}>
+                  <option value="">No category</option>
+                  {ACTIVITY_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="label text-xs">Date *</label>
@@ -547,6 +556,10 @@ export default function MyTasks() {
                         placeholder="Location"
                         onChange={({ address, lat, lng }) => setEditForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
                       />
+                      <select className="input" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} aria-label="Category">
+                        <option value="">No category</option>
+                        {ACTIVITY_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                      </select>
                       <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder="Important info — approved volunteers only" />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <input type="date" className="input" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} aria-label="Date" />
