@@ -18,7 +18,13 @@ export function getPool() {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       // Managed Postgres (Render/Neon/etc.) requires TLS; local dev does not.
-      ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false },
+      // The certificate is verified so nothing in between can pose as the
+      // database. PGSSL=no-verify is an escape hatch for a host with a
+      // self-signed certificate. A `sslmode` in DATABASE_URL overrides this
+      // (pg treats require as verify-full).
+      ssl: process.env.PGSSL === 'disable'
+        ? false
+        : { rejectUnauthorized: process.env.PGSSL !== 'no-verify' },
     })
     // Managed Postgres (e.g. Neon) closes idle connections; without this
     // listener that surfaces as an unhandled 'error' event that crashes the
@@ -478,6 +484,9 @@ export async function initSchema() {
       await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_status_check CHECK (status IN ('pending','approved','rejected','waitlisted'))`)
     }
   } catch (error) { console.error('waitlist status migration failed:', error.message) }
+  // A volunteer task's category, so Opportunities can be filtered by it.
+  // NULL for tasks posted before categories existed.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS category TEXT`) } catch {}
   // QR check-in (server/routes/school.js): a per-task secret the rotating
   // code is derived from, and when each volunteer scanned in and out.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkin_secret TEXT`) } catch {}

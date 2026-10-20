@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList, FileSignature, ExternalLink, Copy, Send, X } from 'lucide-react'
+import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList, FileSignature, ExternalLink, Copy, Send, X, Repeat } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { uploadProof } from '@/lib/proofUpload.js'
@@ -179,6 +179,48 @@ export default function LogHours({ editId, onCloseEdit }) {
 
   const onChange = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
+  // "Log again": the student's last few regular activities, one tap to copy
+  // into a new entry dated today. Entries from a one-off task or an imported
+  // transcript aren't repeats, and neither the paperwork (signatures, proof,
+  // sign-off) nor the old date comes along.
+  const [repeatedFrom, setRepeatedFrom] = useState(null)
+  const repeatable = useMemo(() => {
+    if (editId) return []
+    const seen = new Set()
+    const out = []
+    const recent = [...logs]
+      .filter((l) => !l.taskId && !l.importedTranscriptId && l.activity)
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''))
+    for (const l of recent) {
+      const key = `${l.activity.trim().toLowerCase()}|${(l.orgName || '').trim().toLowerCase()}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(l)
+      if (out.length === 3) break
+    }
+    return out
+  }, [logs, editId])
+  const logAgain = (l) => {
+    setForm({
+      ...blank(),
+      activity: l.activity,
+      category: l.category || blank().category,
+      startTime: l.startTime || '',
+      endTime: l.endTime || '',
+      location: l.location || '',
+      latitude: l.latitude ?? null,
+      longitude: l.longitude ?? null,
+      orgName: l.orgName || '',
+      orgAddress: l.orgAddress || '',
+      orgPhone: l.orgPhone || '',
+      supervisorName: l.supervisorName || '',
+      supervisorEmail: l.supervisorEmail || '',
+      customFields: l.customFields || {},
+    })
+    setRepeatedFrom(l)
+    setError('')
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault()
     if (savingRef.current) return
@@ -260,6 +302,7 @@ export default function LogHours({ editId, onCloseEdit }) {
       } else {
         const created = addLog(payload)
         setForm(blank())
+        setRepeatedFrom(null)
         setToast(true)
         hapticSuccess()
         if (signoffRoute === 'inPerson' || signoffRoute === 'organizer') {
@@ -346,6 +389,25 @@ export default function LogHours({ editId, onCloseEdit }) {
                 }
               }}
             />
+          )}
+          {repeatable.length > 0 && (
+            <Card>
+              <SectionTitle>Log again</SectionTitle>
+              <p className="text-sm text-earth-400 -mt-2 mb-3">Same place as before? Copy a recent entry, dated today.</p>
+              <div className="flex flex-wrap gap-2">
+                {repeatable.map((l) => (
+                  <button key={l.id} type="button" onClick={() => logAgain(l)} className={`btn-sm ${repeatedFrom?.id === l.id ? 'btn-primary' : 'btn-ghost'}`}>
+                    <Repeat className="w-3.5 h-3.5 mr-1" />
+                    {l.activity}{l.orgName ? ` · ${l.orgName}` : ''}
+                  </button>
+                ))}
+              </div>
+              {repeatedFrom && (
+                <p className="text-xs text-earth-400 mt-3">
+                  Copied from {fmtDate(repeatedFrom.date)}. {repeatedFrom.startTime && repeatedFrom.endTime ? 'Check the times, then save.' : 'Add the start and end times, then save.'}
+                </p>
+              )}
+            </Card>
           )}
           <Card>
             <SectionTitle>Activity</SectionTitle>
