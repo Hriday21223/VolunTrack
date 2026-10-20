@@ -1630,7 +1630,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
     const { rows } = await query(
       // The organizer's email only reaches volunteers they approved — it is who
       // those students ask to sign off their hours on the task.
-      `SELECT t.id, t.title, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
+      `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at
        FROM public_task_signups s
