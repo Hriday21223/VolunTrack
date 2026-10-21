@@ -547,6 +547,12 @@ export async function initSchema() {
   } catch (error) { console.error('notifications table failed:', error.message) }
   try { await query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)`) } catch {}
 
+  // Calendar feed: the secret in a user's subscribe-to-my-tasks .ics link
+  // (GET /api/school/calendar/:token.ics). Made on first request, replaced by
+  // a reset, which kills the old link.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_token TEXT`) } catch {}
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_calendar_token ON users(calendar_token) WHERE calendar_token IS NOT NULL`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
