@@ -694,6 +694,7 @@ export default {
   "{n} hours were already logged for today.": "Ya se habían registrado {n} horas para hoy.",
   "1 hour logged and approved.": "1 hora registrada y aprobada.",
   "{n} hours logged and approved.": "{n} horas registradas y aprobadas.",
+  "didn't check out": "no registraron su salida",
   "Something went wrong. Try again.": "Algo salió mal. Inténtalo de nuevo.",
   "Following — we'll email you when they post a new task.": "Siguiendo: te enviaremos un correo cuando publique una nueva tarea.",
   "Unfollowed.": "Dejaste de seguirlo.",

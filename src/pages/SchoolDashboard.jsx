@@ -13,6 +13,7 @@ import { gradeLabel } from '@policy'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
+import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
@@ -721,10 +722,17 @@ export default function SchoolDashboard() {
               <button onClick={() => setSubTab('list')} className={`btn-sm ${subTab === 'list' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Search className="w-3.5 h-3.5 mr-1" /> Student list ({students.length})
               </button>
+              <button onClick={() => setSubTab('progress')} className={`btn-sm ${subTab === 'progress' ? 'btn-primary' : 'btn-ghost'}`}>
+                <Clock className="w-3.5 h-3.5 mr-1" /> Hours progress
+              </button>
               <button onClick={() => setSubTab('add')} className={`btn-sm ${subTab === 'add' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Upload className="w-3.5 h-3.5 mr-1" /> Invite student
               </button>
             </div>
+
+            {subTab === 'progress' && (
+              <StudentProgressPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
+            )}
 
             {subTab === 'add' && (
               <Card>

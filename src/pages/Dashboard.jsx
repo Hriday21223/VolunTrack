@@ -232,7 +232,9 @@ export default function Dashboard() {
     const unmarked = live
       .filter((t) => String(t.date || '').slice(0, 10) < today)
       .reduce((n, t) => n + (t.signups || []).filter((s) => (s.signup_status || s.status) === 'approved' && !s.attendance_status).length, 0)
-    return { total: live.length, soon, pendingApprovals, unmarked }
+    // Checked in with the QR code but never out, now the day is over.
+    const missedCheckouts = live.reduce((n, t) => n + (t.signups || []).filter((s) => s.missed_checkout).length, 0)
+    return { total: live.length, soon, pendingApprovals, unmarked, missedCheckouts }
   }, [myTasks])
 
   const upcoming = useMemo(() => {
@@ -585,7 +587,12 @@ export default function Dashboard() {
                   {organizing.unmarked}{' '}{tr('attendance unmarked')}
                 </Link>
               )}
-              {organizing.pendingApprovals === 0 && organizing.unmarked === 0 && (
+              {organizing.missedCheckouts > 0 && (
+                <Link to="/my-tasks" className="text-amber-400 hover:underline">
+                  {organizing.missedCheckouts}{' '}{tr("didn't check out")}
+                </Link>
+              )}
+              {organizing.pendingApprovals === 0 && organizing.unmarked === 0 && organizing.missedCheckouts === 0 && (
                 <span className="text-earth-500">{tr('Nothing waiting on you')}</span>
               )}
             </div>
