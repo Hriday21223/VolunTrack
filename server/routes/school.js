@@ -1112,6 +1112,19 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1 || Number(slotsTotal) > 1000)) {
     return res.status(400).json({ error: 'Volunteers needed must be between 1 and 1000.' })
   }
+  // "Repeat every week for N more weeks": N copies, each 7 days after the
+  // last. Absent or 0 is the plain single task.
+  const { repeatWeeks } = req.body
+  const repeat = repeatWeeks == null || repeatWeeks === '' ? 0 : Number(repeatWeeks)
+  if (!['number', 'string'].includes(typeof (repeatWeeks ?? 0)) || !Number.isInteger(repeat) || repeat < 0 || repeat > 12) {
+    return res.status(400).json({ error: 'Repeat weekly must be between 0 and 12 more weeks.' })
+  }
+  // Day arithmetic in UTC, so a daylight-saving change can't shift a copy.
+  const dates = Array.from({ length: repeat + 1 }, (_, i) => {
+    const d = new Date(`${date}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + 7 * i)
+    return d.toISOString().slice(0, 10)
+  })
 
   try {
     const { rows } = await query('SELECT name, email, posting_suspended_at FROM users WHERE id = $1', [req.auth.sub])
@@ -1121,13 +1134,29 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
       return res.status(403).json({ error: "Your account can't post volunteer tasks right now. Contact us if you think this is a mistake." })
     }
 
-    const id = uid('ptask')
-    await query(
-      `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-      [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value],
-    )
-    return res.status(201).json({ ok: true, id })
+    // Every week of a repeat goes in together or not at all, so a failure
+    // can't leave the organizer with half a series to find and fix.
+    const created = []
+    const client = await getPool().connect()
+    try {
+      await client.query('BEGIN')
+      for (const day of dates) {
+        const id = uid('ptask')
+        await client.query(
+          `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value],
+        )
+        created.push({ id, date: day })
+      }
+      await client.query('COMMIT')
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw error
+    } finally {
+      client.release()
+    }
+    return res.status(201).json({ ok: true, id: created[0].id, createdCount: created.length, tasks: created })
   } catch (error) {
     console.error('create public task failed:', error)
     return res.status(500).json({ error: 'Could not create task.' })
@@ -1935,11 +1964,13 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
 
 // --- Organizer endpoints (my tasks + log hours for volunteers) ---
 
-// List tasks I created, with signups (includes phone + signup status)
+// List tasks I created, with signups (includes phone + signup status).
+// important_info is the organizer's own text: Edit and Post again prefill it,
+// and without it here saving an edit blanked it.
 router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.latitude, t.longitude, t.created_at,
+      `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
