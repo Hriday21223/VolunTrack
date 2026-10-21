@@ -15,6 +15,7 @@ import { isNativeApp } from '@/lib/platform.js'
 import PasskeySettings from '@/components/PasskeySettings.jsx'
 import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
 import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
+import PortfolioCard from '@/components/PortfolioCard.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
@@ -747,6 +748,7 @@ export default function Settings() {
             </form>
             <p className="text-xs text-earth-400 mt-2">Add a deadline and the dashboard works out the pace you need to keep.</p>
           </Card>
+          {user?.role === 'student' && <PortfolioCard />}
         </CollapsibleSection>
 
         <CollapsibleSection icon={Lock} label="Account & Security" defaultOpen={true}>

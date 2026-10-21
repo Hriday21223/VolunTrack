@@ -52,6 +52,9 @@ export const AUDIT = {
   // A linked parent looked at which volunteer tasks their child signed up
   // for — where a minor will be, and when.
   CHILD_TASKS_READ: 'child.tasks_read',
+  // A student turned their public volunteer portfolio on or off, changed what
+  // it shows, or replaced its link: who can see a minor's record changed.
+  PORTFOLIO_CHANGED: 'portfolio.changed',
 }
 
 // Correlates events by the same person after their account is deleted (the
