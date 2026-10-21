@@ -14,6 +14,7 @@ import { format, parseISO } from 'date-fns'
 import { isNativeApp } from '@/lib/platform.js'
 import PasskeySettings from '@/components/PasskeySettings.jsx'
 import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
+import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
@@ -1409,6 +1410,8 @@ export default function Settings() {
               </Link>
             </Card>
           )}
+
+          {(user?.role === 'student' || user?.role === 'volunteer') && <CalendarFeedCard />}
 
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Privacy</h3>
