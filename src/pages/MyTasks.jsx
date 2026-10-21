@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet, QrCode } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet, QrCode, Copy } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -13,6 +13,9 @@ import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1 }
 
 export default function MyTasks() {
   const { refreshLogs } = useData()
@@ -25,7 +28,11 @@ export default function MyTasks() {
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [showPostTask, setShowPostTask] = useState(false)
-  const [taskForm, setTaskForm] = useState({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '' })
+  const [taskForm, setTaskForm] = useState(EMPTY_TASK_FORM)
+  // The title of the task the form was copied from by "Post again", if any.
+  const [postAgainFrom, setPostAgainFrom] = useState(null)
+  // "Repeat weekly" ticked: taskForm.repeatWeeks more copies, 7 days apart.
+  const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [taskBusy, setTaskBusy] = useState(false)
   const [batchHours, setBatchHours] = useState({})
   const [batchDate, setBatchDate] = useState('')
@@ -328,16 +335,43 @@ export default function MyTasks() {
       const res = await fetch(`${apiUrl}/school/public-tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(taskForm),
+        body: JSON.stringify({ ...taskForm, repeatWeeks: repeatWeekly ? Number(taskForm.repeatWeeks) : 0 }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
-      setTaskForm({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '' })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || 'Failed')
+      setTaskForm(EMPTY_TASK_FORM); setPostAgainFrom(null); setRepeatWeekly(false)
       setShowPostTask(false); loadTasks()
-      setToastMsg('Task posted!'); setToast(true)
+      setToastMsg(d.createdCount > 1 ? `Posted ${d.createdCount} tasks, one a week` : 'Task posted!'); setToast(true)
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
   }
 
-  const togglePostForm = () => setShowPostTask((s) => !s)
+  const togglePostForm = () => {
+    // Closing a copied form drops the copy, so "Post a task" starts blank.
+    if (showPostTask && postAgainFrom) { setPostAgainFrom(null); setTaskForm(EMPTY_TASK_FORM) }
+    setShowPostTask((s) => !s)
+  }
+
+  // "Post again": the create form, filled in from an earlier task. The date
+  // is left empty so it can't go out on the old day by mistake, and nothing
+  // about who signed up or showed up carries over — it's a new task.
+  const postAgain = (t) => {
+    setTaskForm({
+      ...EMPTY_TASK_FORM,
+      title: t.title || '',
+      description: t.description || '',
+      location: t.location || '',
+      time: t.time || '',
+      slotsTotal: Number(t.slots_total) || 1,
+      phone: t.phone || '',
+      importantInfo: t.important_info || '',
+      latitude: t.latitude ?? null,
+      longitude: t.longitude ?? null,
+      category: t.category || '',
+    })
+    setPostAgainFrom(t.title || 'an earlier task')
+    setShowPostTask(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <AppLayout
@@ -353,6 +387,9 @@ export default function MyTasks() {
         {showPostTask && (
           <Card>
             <h3 className="font-semibold mb-3">Post a volunteer opportunity</h3>
+            {postAgainFrom && (
+              <p className="text-xs text-earth-500 -mt-2 mb-3">Copied from “{postAgainFrom}”. Pick a new date, check the details and post.</p>
+            )}
             <form onSubmit={handlePostTask} className="space-y-3">
               <input className="input" maxLength={200} placeholder="Task title" value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
               <textarea className="input" rows={2} maxLength={5000} placeholder="Description — what volunteers will do" value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
@@ -392,6 +429,19 @@ export default function MyTasks() {
               {!(taskForm.latitude && taskForm.longitude) && (
                 <p className="text-xs text-earth-500">Pick a pin on the map above so this task can be sorted by distance.</p>
               )}
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={repeatWeekly} onChange={(e) => setRepeatWeekly(e.target.checked)} />
+                  Repeat weekly
+                </label>
+                {repeatWeekly && (
+                  <span className="flex items-center gap-2 text-earth-400">
+                    — every week for
+                    <input type="number" className="input w-20 py-1" min={1} max={12} aria-label="More weeks" value={taskForm.repeatWeeks} onChange={(e) => setTaskForm({ ...taskForm, repeatWeeks: e.target.value })} required />
+                    more week{Number(taskForm.repeatWeeks) === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
               <button type="submit" className="btn-primary w-full" disabled={taskBusy}>{taskBusy ? 'Posting…' : 'Post task — no paperwork needed'}</button>
             </form>
           </Card>
@@ -526,25 +576,30 @@ export default function MyTasks() {
                 <div className="mt-4 pt-4 border-t border-white/10">
                   {/* A posted task used to be unchangeable — these four are
                       the verbs an organizer has always needed. */}
-                  {t.status !== 'cancelled' && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
-                        <QrCode className="w-3.5 h-3.5 mr-1" /> Check-in QR
-                      </button>
-                      <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
-                        <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
-                      </button>
-                      <button onClick={() => setTaskStatus(t.id, t.status === 'open' ? 'closed' : 'open')} className="btn-sm btn-ghost" disabled={actionBusy}>
-                        {t.status === 'open' ? <><Lock className="w-3.5 h-3.5 mr-1" /> Close signups</> : <><Unlock className="w-3.5 h-3.5 mr-1" /> Reopen signups</>}
-                      </button>
-                      <button onClick={() => { setMessagingId(messagingId === t.id ? null : t.id); setEditingId(null); setCancellingId(null) }} className="btn-sm btn-ghost" disabled={actionBusy}>
-                        <Mail className="w-3.5 h-3.5 mr-1" /> Message volunteers
-                      </button>
-                      <button onClick={() => { setCancellingId(cancellingId === t.id ? null : t.id); setEditingId(null); setMessagingId(null) }} className="btn-sm btn-ghost text-red-400" disabled={actionBusy}>
-                        <Ban className="w-3.5 h-3.5 mr-1" /> Cancel event
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {t.status !== 'cancelled' && (
+                      <>
+                        <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
+                          <QrCode className="w-3.5 h-3.5 mr-1" /> Check-in QR
+                        </button>
+                        <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
+                          <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
+                        </button>
+                        <button onClick={() => setTaskStatus(t.id, t.status === 'open' ? 'closed' : 'open')} className="btn-sm btn-ghost" disabled={actionBusy}>
+                          {t.status === 'open' ? <><Lock className="w-3.5 h-3.5 mr-1" /> Close signups</> : <><Unlock className="w-3.5 h-3.5 mr-1" /> Reopen signups</>}
+                        </button>
+                        <button onClick={() => { setMessagingId(messagingId === t.id ? null : t.id); setEditingId(null); setCancellingId(null) }} className="btn-sm btn-ghost" disabled={actionBusy}>
+                          <Mail className="w-3.5 h-3.5 mr-1" /> Message volunteers
+                        </button>
+                        <button onClick={() => { setCancellingId(cancellingId === t.id ? null : t.id); setEditingId(null); setMessagingId(null) }} className="btn-sm btn-ghost text-red-400" disabled={actionBusy}>
+                          <Ban className="w-3.5 h-3.5 mr-1" /> Cancel event
+                        </button>
+                      </>
+                    )}
+                    <button onClick={() => postAgain(t)} className="btn-sm btn-ghost" disabled={actionBusy}>
+                      <Copy className="w-3.5 h-3.5 mr-1" /> Post again
+                    </button>
+                  </div>
 
                   {editingId === t.id && editForm && (
                     <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">
@@ -623,6 +678,16 @@ export default function MyTasks() {
                               {isApproved && s.attendance_status && (
                                 <p className={`text-xs mt-0.5 capitalize ${s.attendance_status === 'present' ? 'text-emerald-400' : s.attendance_status === 'absent' ? 'text-red-400' : 'text-amber-400'}`}>
                                   Attendance: {s.attendance_status}
+                                </p>
+                              )}
+                              {isApproved && s.missed_checkout ? (
+                                <p className="text-xs text-amber-300 mt-0.5">
+                                  Checked in at {clock(s.checked_in_at)} but didn&apos;t check out ·{' '}
+                                  <button onClick={() => openLogForm(t.id, s.id, t.date)} className="underline hover:text-white">log their hours</button>
+                                </p>
+                              ) : isApproved && s.checked_in_at && (
+                                <p className="text-xs text-earth-400 mt-0.5">
+                                  QR: in {clock(s.checked_in_at)}{s.checked_out_at ? ` · out ${clock(s.checked_out_at)}` : ' · still here'}
                                 </p>
                               )}
                             </div>

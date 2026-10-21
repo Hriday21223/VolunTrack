@@ -16,6 +16,9 @@ export default function CheckinQrModal({ task, onClose }) {
   const canvasRef = useRef(null)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
+  const [confirmClose, setConfirmClose] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [closeMsg, setCloseMsg] = useState(null) // { text, ok }
 
   const load = useCallback(async () => {
     try {
@@ -60,6 +63,28 @@ export default function CheckinQrModal({ task, onClose }) {
   const people = data?.people || []
   const inCount = people.filter((p) => p.checkedInAt).length
   const outCount = people.filter((p) => p.checkedOutAt).length
+  const stillHere = inCount - outCount
+
+  // Everyone still checked in leaves now: for volunteers who forget the
+  // second scan. Their hours are logged as approved by you.
+  const checkEveryoneOut = async () => {
+    setClosing(true)
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${task.id}/checkin/close`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Could not check volunteers out.')
+      setCloseMsg({ ok: true, text: body.checkedOut === 1 ? '1 volunteer checked out and their hours logged.' : `${body.checkedOut} volunteers checked out and their hours logged.` })
+      await load()
+    } catch (e) {
+      setCloseMsg({ ok: false, text: e.message })
+    } finally {
+      setClosing(false)
+      setConfirmClose(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center bg-black/80 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="checkin-title">
@@ -100,6 +125,23 @@ export default function CheckinQrModal({ task, onClose }) {
               ))}
             </ul>
           )}
+          {stillHere > 0 && (
+            <div className="mt-3 border-t border-white/10 pt-3">
+              {confirmClose ? (
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-earth-300">Check out {stillHere === 1 ? 'the 1 volunteer' : `all ${stillHere} volunteers`} still here, and log their hours until now?</span>
+                  <button onClick={checkEveryoneOut} disabled={closing} className="btn-primary btn-sm">{closing ? 'Checking out…' : 'Yes'}</button>
+                  <button onClick={() => setConfirmClose(false)} disabled={closing} className="btn-ghost btn-sm">No</button>
+                </div>
+              ) : (
+                <button onClick={() => { setCloseMsg(null); setConfirmClose(true) }} className="btn-secondary btn-sm">
+                  Check everyone out ({stillHere})
+                </button>
+              )}
+              <p className="text-xs text-earth-500 mt-1">For volunteers who leave without scanning again.</p>
+            </div>
+          )}
+          {closeMsg && <p className={`text-sm mt-2 ${closeMsg.ok ? 'text-emerald-300' : 'text-red-400'}`} role="status">{closeMsg.text}</p>}
         </div>
       </div>
     </div>
