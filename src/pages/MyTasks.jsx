@@ -693,6 +693,7 @@ export default function MyTasks() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{s.name}</p>
                               <p className="text-xs text-earth-400 truncate">{s.email}</p>
+                              {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}

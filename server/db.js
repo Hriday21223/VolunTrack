@@ -511,6 +511,23 @@ export async function initSchema() {
     `)
   } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_organizer_follows_organizer ON organizer_follows(organizer_id)`) } catch {}
+  // Inviting friends to a task (server/routes/school.js, POST
+  // /public-tasks/:id/invite). Only a one-way hash of each address is kept —
+  // enough to cap invites per task per student and to check, when a friend
+  // signs up with invitedBy, that this student really invited them.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS task_invites (
+        task_id    TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+        inviter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email_hash TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (task_id, inviter_id, email_hash)
+      )
+    `)
+  } catch {}
+  // Who brought this volunteer (shown to the organizer as "came with").
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS invited_by TEXT REFERENCES users(id) ON DELETE SET NULL`) } catch {}
   // A student's rating of a task they volunteered at (PUT /public-tasks/:id/rating
   // in server/routes/school.js): one per student per task, editable. The
   // comment is shown only to the task's organizer, never with the student's
