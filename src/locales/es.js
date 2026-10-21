@@ -694,4 +694,5 @@ export default {
   "{n} hours were already logged for today.": "Ya se habían registrado {n} horas para hoy.",
   "1 hour logged and approved.": "1 hora registrada y aprobada.",
   "{n} hours logged and approved.": "{n} horas registradas y aprobadas.",
+  "didn't check out": "no registraron su salida",
 }
