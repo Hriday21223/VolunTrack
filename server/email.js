@@ -338,7 +338,7 @@ ${emailFooterHtml()}`,
   })
 }
 
-function backendUrl() {
+export function backendUrl() {
   return (process.env.PUBLIC_BACKEND_URL || 'https://voluntrack-backend-frrh.onrender.com').replace(/\/$/, '')
 }
 
@@ -355,6 +355,7 @@ export async function sendParentConsentEmail({ to, childName, childEmail, token 
 <p><strong>${escapeHtml(childName)}</strong> (${escapeHtml(childEmail)}) signed up for VolunTrack, a volunteer-hour tracker for students, and told us they are under 13. They gave this address as their parent or guardian.</p>
 <p>The account is locked and cannot be used until you approve it. If approved, VolunTrack stores the name, email, grade and volunteer hours your child enters, and shares those hours with their school if they link one. We show no ads and sell no data. Details are in our <a href="${privacy}">Privacy Policy</a>.</p>
 <p><a href="${link}">Review this request</a></p>
+<p>Once the account is open, each volunteer task your child signs up for also waits for your OK before the organizer sees it. If you link a VolunTrack parent account to theirs you'll answer on your dashboard; otherwise we'll email this address.</p>
 <p>If you decline, or do nothing for 14 days, the account and everything in it is deleted. If you don't know this child, decline or ignore this email.</p>
 ${emailFooterHtml()}`,
   })

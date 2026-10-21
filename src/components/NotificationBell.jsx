@@ -22,6 +22,9 @@ const KIND_LABELS = {
   hours_rejected: tr('Hours not approved'),
   hours_reminder: tr('Hours reminder'),
   friend_joined: tr('A friend joined'),
+  parent_ok_request: tr('Needs your OK'),
+  parent_ok_given: tr('Your parent said yes'),
+  parent_ok_declined: tr('Your parent said no'),
 }
 
 const getToken = () => {

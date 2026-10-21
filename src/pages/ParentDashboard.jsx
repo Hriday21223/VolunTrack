@@ -128,6 +128,8 @@ export default function ParentDashboard() {
 
       <AnnouncementBanner />
 
+      <TaskApprovals onDecided={loadData} />
+
       {loading ? (
         <Card><p className="text-center text-earth-400 py-8">Loading…</p></Card>
       ) : error ? (
@@ -392,6 +394,7 @@ const TASK_STATUS_TONE = {
   approved: 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300',
   pending: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
   waitlisted: 'bg-earth-100 text-earth-600 dark:bg-[#1f2e25] dark:text-earth-300',
+  parent_pending: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
 }
 
 function taskStatusLabel(t) {
@@ -399,6 +402,7 @@ function taskStatusLabel(t) {
   if (t.checkedInAt) return 'Checked in'
   if (t.status === 'approved') return 'Approved'
   if (t.status === 'waitlisted') return t.waitlistPosition ? `Waitlist #${t.waitlistPosition}` : 'On the waitlist'
+  if (t.status === 'parent_pending') return 'Waiting for your OK'
   return 'Waiting for approval'
 }
 
@@ -486,5 +490,96 @@ function Stat({ label, value, tone }) {
       <div className="text-[11px] text-earth-500 dark:text-earth-400">{label}</div>
       <div className={`font-semibold mt-0.5 ${tone === 'amber' ? 'text-amber-600 dark:text-amber-400' : ''}`}>{value}</div>
     </div>
+  )
+}
+
+// Under-13 sign-ups waiting for a parent (GET /api/parent/task-approvals).
+// The organizer doesn't see one until a parent approves; any linked parent
+// may decide, and the first answer counts. Renders nothing when none wait.
+function TaskApprovals({ onDecided }) {
+  const [items, setItems] = useState([])
+  const [busy, setBusy] = useState(null)
+  const [message, setMessage] = useState('')
+
+  const load = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/parent/task-approvals`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) setItems((await res.json()).approvals || [])
+    } catch {
+      // The children's cards still load; this panel just stays empty.
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const decide = async (item, approve) => {
+    setBusy(item.signupId)
+    setMessage('')
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/parent/task-approvals/${encodeURIComponent(item.signupId)}/${approve ? 'approve' : 'decline'}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'Could not save your answer.')
+      const first = String(item.childName || '').split(/\s+/)[0] || 'Your child'
+      setMessage(!approve
+        ? `Declined. ${first}'s sign-up for ${item.title} was not sent to the organizer.`
+        : d.status === 'waitlisted'
+          ? `Approved. ${item.title} filled up meanwhile, so ${first} is on the waitlist.`
+          : `Approved. The organizer will now confirm ${first}'s sign-up for ${item.title}.`)
+      await load()
+      onDecided?.()
+    } catch (e) {
+      setMessage(e.message)
+      load()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  if (items.length === 0 && !message) return null
+  return (
+    <Card className="mb-5">
+      <h3 className="font-display font-semibold text-sm flex items-center gap-1.5">
+        <CalendarClock className="w-4 h-4 text-amber-600 shrink-0" /> Waiting for your OK
+      </h3>
+      <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
+        Your child is under 13, so these sign-ups reach the organizer only after you approve them.
+      </p>
+      {message && <p className="text-sm mt-2 text-brand-700 dark:text-brand-300" role="status">{message}</p>}
+      {items.length > 0 && (
+        <ul className="divide-y divide-earth-100 dark:divide-[#1f2e25] mt-2">
+          {items.map((item) => (
+            <li key={item.signupId} className="py-3 flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium break-words">{item.childName} · {item.title}</p>
+                <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
+                  {fmtDate(item.date)}{item.time && <> · {item.time}</>}
+                </p>
+                <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5 flex items-start gap-1">
+                  <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                  <span className="break-words">
+                    {item.location}
+                    {item.organizerName && <> · Organized by {item.organizerName}</>}
+                  </span>
+                </p>
+                {item.description && <p className="text-xs text-earth-500 dark:text-earth-400 mt-1 break-words">{item.description}</p>}
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => decide(item, true)} disabled={busy === item.signupId} className="btn-primary btn-sm disabled:opacity-50">
+                  {busy === item.signupId ? 'Saving…' : 'Approve'}
+                </button>
+                <button onClick={() => decide(item, false)} disabled={busy === item.signupId} className="btn-ghost btn-sm disabled:opacity-50">
+                  Decline
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   )
 }

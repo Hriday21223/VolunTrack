@@ -114,9 +114,15 @@ export default function Opportunities() {
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Failed')
-      setToastMsg(d.waitlisted
-        ? `You're #${d.position} on the waitlist. We'll email you if a spot opens up.`
-        : tr('Signed up — awaiting organizer approval'))
+      // Under 13: a parent says yes first (server/routes/school.js,
+      // requestParentOk). parentAsked says who was asked.
+      setToastMsg(d.parentPending
+        ? (d.parentAsked === 'none'
+          ? tr('Signed up. A parent needs to OK this first: ask them to make a VolunTrack parent account and link to you with the code from Settings → Family.')
+          : tr("Signed up. We asked your parent to OK it — the organizer sees it once they do."))
+        : d.waitlisted
+          ? `You're #${d.position} on the waitlist. We'll email you if a spot opens up.`
+          : tr('Signed up — awaiting organizer approval'))
       setToast(true)
       reload()
     } catch (e) { setToastMsg(e.message); setToast(true) }
@@ -381,6 +387,12 @@ export default function Opportunities() {
                   {t.my_signup_status === 'rejected' && (
                     <p className="text-xs text-red-400 mt-1">{tr('Signup rejected')}</p>
                   )}
+                  {t.my_signup_status === 'parent_pending' && (
+                    <p className="text-xs text-amber-400 mt-1">{tr("Waiting for a parent's OK. The organizer sees your sign-up once a parent approves it.")}</p>
+                  )}
+                  {t.my_signup_status === 'parent_declined' && (
+                    <p className="text-xs text-red-400 mt-1">{tr('Your parent said no to this one. Talk with them, then you can ask again.')}</p>
+                  )}
                   {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
                   {canInvite && (approved || t.my_signup_status === 'pending') && <InviteFriends task={t} className="mt-2" />}
                   {approved && String(t.date).slice(0, 10) === format(new Date(), 'yyyy-MM-dd') && (
@@ -396,6 +408,10 @@ export default function Opportunities() {
                     <span className="text-xs text-red-400 font-medium">{tr('Rejected')}</span>
                   ) : t.my_signup_status === 'waitlisted' ? (
                     <span className="text-xs text-sky-300 font-medium">{tr('Waitlist #')}{t.my_waitlist_position || 1}</span>
+                  ) : t.my_signup_status === 'parent_pending' ? (
+                    <span className="text-xs text-amber-400 font-medium">{tr("Waiting for a parent's OK")}</span>
+                  ) : t.my_signup_status === 'parent_declined' ? (
+                    <button onClick={() => signUp(t, full)} className="btn-secondary text-sm">{tr('Ask again')}</button>
                   ) : (
                     <button onClick={() => signUp(t, full)} className={full ? 'btn-secondary text-sm' : 'btn-primary text-sm'}>
                       {full ? tr('Join waitlist') : tr('Sign up')}
@@ -404,7 +420,7 @@ export default function Opportunities() {
                   {full && !t.my_signup_status && (
                     <span className="text-xs text-earth-500">{tr('Full')}{Number(t.waitlist_count) > 0 ? ` · ${tr('{n} waiting', { n: t.waitlist_count })}` : ''}</span>
                   )}
-                  {['pending', 'approved', 'waitlisted'].includes(t.my_signup_status) && (
+                  {['pending', 'approved', 'waitlisted', 'parent_pending'].includes(t.my_signup_status) && (
                     <CancelSignup task={t} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} />
                   )}
                 </div>

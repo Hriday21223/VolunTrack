@@ -25,6 +25,8 @@ const SIGNUP_LABELS = {
   pending: { label: tr('Pending approval'), className: 'bg-amber-500/10 text-amber-400' },
   rejected: { label: tr('Rejected'), className: 'bg-red-500/10 text-red-400' },
   waitlisted: { label: tr('Waitlist'), className: 'bg-sky-500/10 text-sky-300' },
+  parent_pending: { label: tr("Waiting for a parent's OK"), className: 'bg-amber-500/10 text-amber-400' },
+  parent_declined: { label: tr('Parent said no'), className: 'bg-red-500/10 text-red-400' },
 }
 const CANCELLED_LABEL = { label: tr('Cancelled'), className: 'bg-earth-500/10 text-earth-400' }
 
@@ -53,6 +55,12 @@ function SignupRow({ s, onChanged, canRate }) {
             <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{s.time ? ` · ${s.time}` : ''}</span>
           </div>
           {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
+          {!cancelled && !isPast && s.signup_status === 'parent_pending' && (
+            <p className="text-xs text-amber-400 mt-2">{tr('The organizer sees your sign-up once a parent approves it. No parent linked yet? Ask them to make a VolunTrack parent account and enter the link code from Settings → Family.')}</p>
+          )}
+          {!cancelled && !isPast && s.signup_status === 'parent_declined' && (
+            <p className="text-xs text-red-400 mt-2">{tr('Your parent said no to this one. Talk with them, then you can ask again from Opportunities.')}</p>
+          )}
           {canInvite && s.task_status === 'open' && !isPast && ['pending', 'approved'].includes(s.signup_status) && (
             <InviteFriends task={s} className="mt-2" />
           )}
@@ -68,7 +76,7 @@ function SignupRow({ s, onChanged, canRate }) {
               <Clock3 className="w-3.5 h-3.5" />{' '}{tr('Not marked yet')}
             </span>
           ) : null}
-          {!cancelled && !isPast && !s.attendance_status && ['pending', 'approved', 'waitlisted'].includes(s.signup_status) && (
+          {!cancelled && !isPast && !s.attendance_status && ['pending', 'approved', 'waitlisted', 'parent_pending', 'parent_declined'].includes(s.signup_status) && (
             <CancelSignup task={s} onDone={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />
           )}
         </div>

@@ -9,8 +9,11 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 export default function CancelSignup({ task, onDone, onError }) {
   const [asking, setAsking] = useState(false)
   const [busy, setBusy] = useState(false)
-  const waitlisted = (task.my_signup_status || task.signup_status) === 'waitlisted'
-  const label = waitlisted ? tr('Leave waitlist') : tr('Cancel sign-up')
+  const status = task.my_signup_status || task.signup_status
+  const waitlisted = status === 'waitlisted'
+  // Nothing held a slot yet while a parent decides (or after they said no).
+  const parentHeld = status === 'parent_pending' || status === 'parent_declined'
+  const label = waitlisted ? tr('Leave waitlist') : status === 'parent_declined' ? tr('Remove') : tr('Cancel sign-up')
 
   const cancel = async () => {
     setBusy(true)
@@ -21,7 +24,7 @@ export default function CancelSignup({ task, onDone, onError }) {
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Could not cancel.')
-      onDone?.(waitlisted ? 'You left the waitlist.' : 'Sign-up cancelled. Your spot goes to the next person waiting.')
+      onDone?.(waitlisted ? 'You left the waitlist.' : parentHeld ? tr('Sign-up removed.') : 'Sign-up cancelled. Your spot goes to the next person waiting.')
     } catch (e) {
       onError?.(e.message)
     } finally {
