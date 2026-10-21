@@ -410,15 +410,19 @@ function localToday() {
 
 // The volunteer tasks a child signed up for on Opportunities. The server
 // counts "upcoming" from yesterday in UTC, so re-split on this device's date.
+// A task checked out of today is finished, so it's recent, not upcoming.
 function ChildTasks({ tasks }) {
   const [showAll, setShowAll] = useState(false)
   const { upcoming, recent } = useMemo(() => {
     if (!tasks) return { upcoming: [], recent: [] }
     const today = localToday()
     const all = [...(tasks.upcoming || []), ...(tasks.recent || [])]
+    const done = (t) => t.date < today || Boolean(t.checkedOutAt)
     return {
-      upcoming: all.filter((t) => t.date >= today),
-      recent: all.filter((t) => t.date < today).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3),
+      upcoming: all.filter((t) => !done(t)),
+      recent: all.filter(done)
+        .sort((a, b) => b.date.localeCompare(a.date) || String(b.checkedOutAt || '').localeCompare(String(a.checkedOutAt || '')))
+        .slice(0, 3),
     }
   }, [tasks])
 
