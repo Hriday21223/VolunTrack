@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Users, AlertTriangle, RefreshCw, Mail, Download, FileSpreadsheet, Calendar as CalIcon } from 'lucide-react'
+import { Users, AlertTriangle, RefreshCw, Mail, Download, FileSpreadsheet, Calendar as CalIcon, CalendarClock, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -71,7 +71,16 @@ export default function ParentDashboard() {
             .catch(() => ({ logs: [] })),
         ),
       )
-      setChildren((kids || []).map((c, i) => ({ ...c, logs: logsByChild[i].logs || [] })))
+      // Tasks are a side panel: a failure leaves `tasks` null so the card says
+      // it couldn't load them, rather than claiming there are none.
+      const tasksByChild = await Promise.all(
+        (kids || []).map((c) =>
+          fetch(`${apiUrl}/parent/children/${encodeURIComponent(c.id)}/tasks`, { headers })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
+        ),
+      )
+      setChildren((kids || []).map((c, i) => ({ ...c, logs: logsByChild[i].logs || [], tasks: tasksByChild[i] })))
     } catch (err) {
       console.error('Could not load children:', err)
       setError(true)
@@ -299,6 +308,8 @@ function ChildCard({ child }) {
         </p>
       )}
 
+      <ChildTasks tasks={child.tasks} />
+
       {logs.length === 0 ? (
         <p className="text-sm text-earth-500 dark:text-earth-400">No hours logged yet.</p>
       ) : (
@@ -374,6 +385,94 @@ function ChildCard({ child }) {
         </>
       )}
     </Card>
+  )
+}
+
+const TASK_STATUS_TONE = {
+  approved: 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300',
+  pending: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
+  waitlisted: 'bg-earth-100 text-earth-600 dark:bg-[#1f2e25] dark:text-earth-300',
+}
+
+function taskStatusLabel(t) {
+  if (t.checkedOutAt) return 'Checked out'
+  if (t.checkedInAt) return 'Checked in'
+  if (t.status === 'approved') return 'Approved'
+  if (t.status === 'waitlisted') return t.waitlistPosition ? `Waitlist #${t.waitlistPosition}` : 'On the waitlist'
+  return 'Waiting for approval'
+}
+
+const TASKS_BEFORE_FOLD = 5
+
+function localToday() {
+  return format(new Date(), 'yyyy-MM-dd')
+}
+
+// The volunteer tasks a child signed up for on Opportunities. The server
+// counts "upcoming" from yesterday in UTC, so re-split on this device's date.
+function ChildTasks({ tasks }) {
+  const [showAll, setShowAll] = useState(false)
+  const { upcoming, recent } = useMemo(() => {
+    if (!tasks) return { upcoming: [], recent: [] }
+    const today = localToday()
+    const all = [...(tasks.upcoming || []), ...(tasks.recent || [])]
+    return {
+      upcoming: all.filter((t) => t.date >= today),
+      recent: all.filter((t) => t.date < today).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3),
+    }
+  }, [tasks])
+
+  return (
+    <div className="mb-4 p-3 rounded-xl border border-earth-100 dark:border-[#1f2e25]">
+      <h4 className="text-sm font-medium flex items-center gap-1.5 mb-2">
+        <CalendarClock className="w-4 h-4 text-brand-600 shrink-0" /> Upcoming tasks
+      </h4>
+      {tasks == null ? (
+        <p className="text-sm text-earth-500 dark:text-earth-400">Could not load their volunteer tasks right now.</p>
+      ) : upcoming.length === 0 ? (
+        <p className="text-sm text-earth-500 dark:text-earth-400">No upcoming tasks.</p>
+      ) : (
+        <ul className="divide-y divide-earth-100 dark:divide-[#1f2e25]">
+          {(showAll ? upcoming : upcoming.slice(0, TASKS_BEFORE_FOLD)).map((t) => <TaskRow key={t.signupId} task={t} />)}
+        </ul>
+      )}
+      {upcoming.length > TASKS_BEFORE_FOLD && (
+        <button onClick={() => setShowAll((v) => !v)} className="mt-2 text-xs text-brand-600 hover:underline">
+          {showAll ? 'Show fewer' : `Show all ${upcoming.length} upcoming tasks`}
+        </button>
+      )}
+      {recent.length > 0 && (
+        <>
+          <p className="text-[11px] text-earth-400 mt-3 mb-1">Recently</p>
+          <ul className="divide-y divide-earth-100 dark:divide-[#1f2e25] opacity-80">
+            {recent.map((t) => <TaskRow key={t.signupId} task={t} />)}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
+
+function TaskRow({ task }) {
+  const tone = task.checkedInAt || task.checkedOutAt ? TASK_STATUS_TONE.approved : TASK_STATUS_TONE[task.status] || TASK_STATUS_TONE.pending
+  return (
+    <li className="py-2 flex items-start justify-between gap-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium break-words">{task.title}</p>
+        <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
+          {task.date === localToday() ? 'Today' : fmtDate(task.date)}
+          {task.time && <> · {task.time}</>}
+        </p>
+        <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5 flex items-start gap-1">
+          <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+          <span className="break-words">
+            {task.location}
+            {task.organizerName && <> · Organized by {task.organizerName}</>}
+          </span>
+        </p>
+      </div>
+      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${tone}`}>{taskStatusLabel(task)}</span>
+    </li>
   )
 }
 

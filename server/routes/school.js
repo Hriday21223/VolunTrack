@@ -1277,7 +1277,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
 // and is emailed.
 
 // A waitlisted user's place in line (1 = next), as an SQL expression.
-const WAITLIST_POSITION_SQL = (taskExpr, userExpr) => `(
+export const WAITLIST_POSITION_SQL = (taskExpr, userExpr) => `(
   SELECT CASE WHEN me.status = 'waitlisted' THEN (
            SELECT COUNT(*) FROM public_task_signups w
             WHERE w.task_id = me.task_id AND w.status = 'waitlisted'
