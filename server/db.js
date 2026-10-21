@@ -511,6 +511,23 @@ export async function initSchema() {
     `)
   } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_organizer_follows_organizer ON organizer_follows(organizer_id)`) } catch {}
+  // A student's rating of a task they volunteered at (PUT /public-tasks/:id/rating
+  // in server/routes/school.js): one per student per task, editable. The
+  // comment is shown only to the task's organizer, never with the student's
+  // name; Opportunities shows the organizer's average once it has 3+ ratings.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS task_ratings (
+        task_id    TEXT REFERENCES public_tasks(id) ON DELETE CASCADE,
+        user_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
+        stars      SMALLINT NOT NULL CHECK (stars BETWEEN 1 AND 5),
+        comment    TEXT CHECK (comment IS NULL OR char_length(comment) <= 500),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (task_id, user_id)
+      )
+    `)
+  } catch (error) { console.error('task_ratings migration failed:', error.message) }
 
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}

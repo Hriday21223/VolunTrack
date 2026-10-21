@@ -315,6 +315,14 @@ export default function Opportunities() {
                   </div>
                   <p className="text-xs text-earth-600 mt-1 flex items-center gap-3">
                     <span>{tr('Posted by')}{' '}{t.creator_name}</span>
+                    {t.organizer_rating_count > 0 && (
+                      <span
+                        className="inline-flex items-center gap-0.5 text-amber-400"
+                        title={tr('Average of {n} ratings from volunteers across this organizer\'s tasks', { n: t.organizer_rating_count })}
+                      >
+                        ★ {Number(t.organizer_rating_avg).toFixed(1)} <span className="text-earth-500">({t.organizer_rating_count})</span>
+                      </span>
+                    )}
                     {canFollow && t.organizer_id && t.organizer_id !== user?.id && (
                       <button
                         type="button"

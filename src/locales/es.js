@@ -703,4 +703,17 @@ export default {
   "Unfollow": "Dejar de seguir",
   "Following": "Siguiendo",
   "Follow": "Seguir",
+  // Rating a task (RateTask.jsx, Opportunities)
+  "Stars": "Estrellas",
+  "1 star": "1 estrella",
+  "{n} stars": "{n} estrellas",
+  "Save": "Guardar",
+  "Could not save your rating.": "No se pudo guardar tu calificación.",
+  "Thanks — your rating was saved.": "Gracias — guardamos tu calificación.",
+  "Your rating": "Tu calificación",
+  "Rate this task": "Califica esta tarea",
+  "How was it?": "¿Qué tal estuvo?",
+  "Anything the organizer should know? (optional)": "¿Algo que el organizador deba saber? (opcional)",
+  "Only the organizer sees your comment, and not your name.": "Solo el organizador ve tu comentario, y no ve tu nombre.",
+  "Average of {n} ratings from volunteers across this organizer's tasks": "Promedio de {n} calificaciones de voluntarios en las tareas de este organizador",
 }
