@@ -13,6 +13,7 @@ import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 export default function MyTasks() {
   const { refreshLogs } = useData()
@@ -623,6 +624,16 @@ export default function MyTasks() {
                               {isApproved && s.attendance_status && (
                                 <p className={`text-xs mt-0.5 capitalize ${s.attendance_status === 'present' ? 'text-emerald-400' : s.attendance_status === 'absent' ? 'text-red-400' : 'text-amber-400'}`}>
                                   Attendance: {s.attendance_status}
+                                </p>
+                              )}
+                              {isApproved && s.missed_checkout ? (
+                                <p className="text-xs text-amber-300 mt-0.5">
+                                  Checked in at {clock(s.checked_in_at)} but didn&apos;t check out ·{' '}
+                                  <button onClick={() => openLogForm(t.id, s.id, t.date)} className="underline hover:text-white">log their hours</button>
+                                </p>
+                              ) : isApproved && s.checked_in_at && (
+                                <p className="text-xs text-earth-400 mt-0.5">
+                                  QR: in {clock(s.checked_in_at)}{s.checked_out_at ? ` · out ${clock(s.checked_out_at)}` : ' · still here'}
                                 </p>
                               )}
                             </div>
