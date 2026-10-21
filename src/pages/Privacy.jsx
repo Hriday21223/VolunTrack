@@ -29,7 +29,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 20, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 21, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -50,8 +50,10 @@ export default function Privacy() {
               <li><strong>Your location</strong> — only with your permission, to fill in where you volunteered and to show volunteer tasks near you. In the mobile apps it is asked for only when you tap <em>Use current location</em> or turn on nearby tasks. You can always edit or clear a filled-in location.</li>
               <li><strong>Error reports</strong> — when something breaks in the website or the app, the error message, technical details, the page it happened on, your browser or device type and the app version are sent to us so we can fix it. Your name, email and account are not attached, and nothing you typed is included. We keep the most recent few hundred.</li>
               <li><strong>Reports and blocks</strong> — if you report a volunteer task, the reason and any details you add, and who sent it, so we can review it; the organizer isn't told who reported. If you block an organizer, we keep that so their tasks stay hidden from you and their messages don't reach you.</li>
+              <li><strong>In-app notifications</strong> — the bell at the top of the app lists updates for you, such as a sign-up being approved, a waitlist spot opening, a new task from an organizer you follow, or a decision on your hours. Each one is stored on our servers with when you read it, is visible only to you, and is deleted after 90 days or when you delete your account.</li>
               <li><strong>Organizers you follow</strong> — if you follow an organizer on Opportunities, we keep who you follow and when we last emailed you about them, so we can email you when they post a new task (at most once an hour). The organizer isn't shown who follows them. Unfollowing deletes it.</li>
               <li><strong>Calendar feed link</strong> — if you turn on the calendar feed in Settings, we store a random secret that is part of your feed link. Anyone who has the link can see the tasks you signed up for or posted (titles, dates, times and places) without signing in, so share it only with your own calendar app. Reset link replaces the secret and the old link stops working; deleting your account deletes it.</li>
+              <li><strong>Task ratings</strong> — if you rate a task you volunteered at, we keep your stars, any comment you write and when, linked to your account so you can change it. The task's organizer sees the stars, comment and date, but never your name. Other students see only an organizer's average and the number of ratings, once there are three or more. Ratings are deleted with your account.</li>
               <li><strong>Messages you send us</strong> — your name, email address and message when you use the contact form, kept so we can reply.</li>
               <li><strong>App reviews</strong> — if you rate VolunTrack, your rating, comment, and the name you give. A review appears publicly on our website only if you agree to it and we approve it.</li>
               <li><strong>Passkeys</strong> — if you add a passkey as a sign-in step, we store its public key, an identifier for it, a name such as &quot;iPhone&quot;, and when it was added and last used. The private key stays on your device (or in your iCloud Keychain or Google Password Manager); we never receive it.</li>

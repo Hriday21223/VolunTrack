@@ -21,6 +21,7 @@ import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
+import { notify } from '../notifications.js'
 
 const router = express.Router()
 
@@ -490,6 +491,12 @@ router.post('/students/remind', limiter, requireDb, requireAuth('school', 'schoo
         [s.id, schoolId],
       )
       if (!rowCount) { skipped++; continue }
+      notify(s.id, {
+        kind: 'hours_reminder',
+        title: `You have ${s.remaining} hours to go`,
+        body: `${schoolName || 'Your school'} asks for ${s.target} volunteer hours${deadline ? ` by ${deadline}` : ''}. You have ${s.hours} so far.`,
+        link: '/opportunities',
+      })
       await sendEmail({
         to: s.email,
         subject: `${s.remaining} volunteer hours to go`,
@@ -1215,8 +1222,17 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
                t.created_by AS organizer_id,
-               ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer
+               ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer,
+               -- The organizer's average across all their tasks, only once
+               -- three students have rated: one or two ratings say too little.
+               CASE WHEN orating.n >= 3 THEN orating.avg END AS organizer_rating_avg,
+               CASE WHEN orating.n >= 3 THEN orating.n END AS organizer_rating_count
         FROM public_tasks t
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int AS n, ROUND(AVG(r.stars)::numeric, 1)::float8 AS avg
+            FROM task_ratings r JOIN public_tasks rt ON rt.id = r.task_id
+           WHERE rt.created_by = t.created_by
+        ) orating ON true
         -- A task whose day has passed isn't an opportunity any more. One day
         -- of slack, since the server's "today" is UTC's, ahead of US dates.
         WHERE t.status = 'open' AND t.date >= CURRENT_DATE - 1
@@ -1309,6 +1325,24 @@ async function notifyFollowers(organizerId, taskId) {
     )
     const task = taskRows[0]
     if (!task) return
+    // The bell gets every post, unthrottled: an in-app entry costs nobody an
+    // email. Same skips as the email, minus the @test.com one.
+    const { rows: followers } = await query(
+      `SELECT f.user_id FROM organizer_follows f JOIN users u ON u.id = f.user_id
+        WHERE f.organizer_id = $1
+          AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = f.user_id AND b.blocked_id = $1)`,
+      [organizerId],
+    )
+    const when = [task.date, task.time].filter(Boolean).join(' at ')
+    for (const f of followers) {
+      notify(f.user_id, {
+        kind: 'new_task',
+        title: task.title,
+        body: `New from ${task.creator_name || 'an organizer you follow'}${when ? ` · ${when}` : ''}`,
+        link: `/opportunities?task=${encodeURIComponent(taskId)}`,
+      })
+    }
     const { rows } = await query(
       `UPDATE organizer_follows f SET last_notified_at = now()
          FROM users u
@@ -1653,7 +1687,14 @@ async function notifyWaitlistSpot(taskId, userId) {
       [taskId, userId],
     )
     const row = rows[0]
-    if (!row?.email) return
+    if (!row) return
+    notify(userId, {
+      kind: 'waitlist_spot',
+      title: row.title,
+      body: "A spot opened up and it's yours. The organizer will confirm your sign-up.",
+      link: '/attendance',
+    })
+    if (!row.email) return
     await sendEmail({
       to: row.email,
       subject: `A spot opened up: ${row.title}`,
@@ -1792,8 +1833,17 @@ async function notifySignupDecision(taskId, userId, decision) {
       [taskId, userId],
     )
     const row = rows[0]
-    if (!row?.email) return
+    if (!row) return
     const approved = decision === 'approved'
+    notify(userId, {
+      kind: approved ? 'signup_approved' : 'signup_rejected',
+      title: row.title,
+      body: approved
+        ? [row.date, row.time].filter(Boolean).join(' at ') || 'The organizer approved your sign-up.'
+        : 'The organizer could not take your sign-up for this one.',
+      link: approved ? '/attendance' : '/opportunities',
+    })
+    if (!row.email) return
     await sendEmail({
       to: row.email,
       subject: approved ? `You're in: ${row.title}` : `Update on your signup: ${row.title}`,
@@ -2175,7 +2225,16 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'missed_checkout', s.checked_in_at IS NOT NULL AND s.checked_out_at IS NULL AND t.date < CURRENT_DATE - 1
                   AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id)
               ) ORDER BY s.signed_up_at), '[]'::json)
-               FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups
+               FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups,
+              -- Ratings (PUT /public-tasks/:id/rating): the average, the count
+              -- and the comments with their stars and date — never the
+              -- student's name or id, so a comment can't be traced to a row.
+              (SELECT ROUND(AVG(r.stars)::numeric, 1)::float8 FROM task_ratings r WHERE r.task_id = t.id) AS rating_avg,
+              (SELECT COUNT(*)::int FROM task_ratings r WHERE r.task_id = t.id) AS rating_count,
+              (SELECT COALESCE(json_agg(json_build_object(
+                'stars', r.stars, 'comment', r.comment, 'date', to_char(r.updated_at, 'YYYY-MM-DD')
+              ) ORDER BY r.updated_at DESC), '[]'::json)
+               FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments
        FROM public_tasks t WHERE t.created_by = $1
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.auth.sub],
@@ -2184,6 +2243,61 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   } catch (error) {
     console.error('my tasks failed:', error)
     return res.status(500).json({ error: 'Could not fetch your tasks.' })
+  }
+})
+
+// --- Rating a task -------------------------------------------------------------
+//
+// A student who volunteered at a task rates it 1–5 stars with an optional
+// comment, once the task's day is over. The comment reaches only the task's
+// organizer (GET /public-tasks/mine), without the student's name; Opportunities
+// shows the organizer's average once they have 3 or more ratings.
+//
+// Who may rate, over a signup `s` joined to its task `t`: an approved signup
+// that attended — marked present or checked in, and not since marked absent or
+// excused — on a task that wasn't cancelled and whose day is over. "Over" has
+// the check-in code's day of slack, since the server's date is UTC's, ahead of
+// US dates; a volunteer who has already checked out is done, so may rate then.
+// COALESCE: a NULL attendance would otherwise make the answer NULL, not false.
+const RATING_OPEN_SQL = `COALESCE(s.status = 'approved' AND t.status <> 'cancelled'
+  AND (s.attendance_status = 'present' OR (s.checked_in_at IS NOT NULL AND s.attendance_status IS NULL))
+  AND (t.date < CURRENT_DATE - 1 OR s.checked_out_at IS NOT NULL), false)`
+
+const RATING_COMMENT_MAX = 500
+
+// PUT { stars, comment? }: add or change the caller's rating of a task.
+router.put('/public-tasks/:id/rating', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  const { stars } = req.body || {}
+  if (typeof stars !== 'number' || !Number.isInteger(stars) || stars < 1 || stars > 5) {
+    return res.status(400).json({ error: 'Choose from 1 to 5 stars.' })
+  }
+  const rawComment = req.body?.comment
+  if (rawComment != null && typeof rawComment !== 'string') return res.status(400).json({ error: 'The comment must be text.' })
+  const comment = (rawComment || '').trim() || null
+  if (comment && comment.length > RATING_COMMENT_MAX) {
+    return res.status(400).json({ error: `Keep the comment to ${RATING_COMMENT_MAX} characters.` })
+  }
+  try {
+    const { rows } = await query(
+      `SELECT ${RATING_OPEN_SQL} AS can_rate
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+        WHERE s.task_id = $1 AND s.user_id = $2`,
+      [req.params.id, req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'You didn\'t sign up for this task.' })
+    if (!rows[0].can_rate) {
+      return res.status(403).json({ error: 'You can rate a task once its day is over, if you were there.' })
+    }
+    const { rows: saved } = await query(
+      `INSERT INTO task_ratings (task_id, user_id, stars, comment) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (task_id, user_id) DO UPDATE SET stars = EXCLUDED.stars, comment = EXCLUDED.comment, updated_at = now()
+       RETURNING stars, comment, updated_at`,
+      [req.params.id, req.auth.sub, stars, comment],
+    )
+    return res.json({ ok: true, rating: saved[0] })
+  } catch (error) {
+    console.error('rate task failed:', error)
+    return res.status(500).json({ error: 'Could not save your rating.' })
   }
 })
 
@@ -2198,7 +2312,10 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
       `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
-              ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position
+              ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position,
+              ${RATING_OPEN_SQL} AS can_rate,
+              (SELECT json_build_object('stars', r.stars, 'comment', r.comment, 'updated_at', r.updated_at)
+                 FROM task_ratings r WHERE r.task_id = t.id AND r.user_id = s.user_id) AS my_rating
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
        WHERE s.user_id = $1
@@ -2670,6 +2787,7 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
       'UPDATE logs SET verification_status = $1, verified_by = $2, organizer_signature = $4 WHERE id = $3',
       [status, req.auth.sub, req.params.logId, status === 'approved' ? signature : null],
     )
+    if (status !== previousStatus) notifyHoursDecision(req.params.studentId, req.params.logId, status)
 
     // Spend any still-pending supervisor link for this log. Without this the
     // emailed link stays 'pending', so a supervisor clicking it days later
@@ -2697,6 +2815,30 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
     return res.status(500).json({ error: 'Could not update log.' })
   }
 })
+
+// The student hears about an organizer's decision on their hours in the bell.
+// Fire-and-forget: never awaited, and notify() itself never throws.
+async function notifyHoursDecision(studentId, logId, status) {
+  try {
+    const { rows } = await query(
+      `SELECT l.hours, to_char(l.date, 'YYYY-MM-DD') AS date, COALESCE(t.title, l.activity) AS title
+         FROM logs l LEFT JOIN public_tasks t ON t.id = l.task_id
+        WHERE l.id = $1 AND l.user_id = $2`,
+      [logId, studentId],
+    )
+    const row = rows[0]
+    if (!row) return
+    const approved = status === 'approved'
+    notify(studentId, {
+      kind: approved ? 'hours_approved' : 'hours_rejected',
+      title: row.title || 'Volunteer hours',
+      body: `${Number(row.hours) || 0} hours${row.date ? ` on ${row.date}` : ''} ${approved ? 'were approved by the organizer.' : 'were not approved by the organizer.'}`,
+      link: '/reports',
+    })
+  } catch (error) {
+    console.error('hours decision notification failed:', error)
+  }
+}
 
 // Mark attendance for a signed-up student on one of my tasks.
 router.post('/public-tasks/:id/attendance/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
