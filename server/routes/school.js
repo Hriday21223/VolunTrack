@@ -1221,8 +1221,17 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
                t.created_by AS organizer_id,
-               ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer
+               ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer,
+               -- The organizer's average across all their tasks, only once
+               -- three students have rated: one or two ratings say too little.
+               CASE WHEN orating.n >= 3 THEN orating.avg END AS organizer_rating_avg,
+               CASE WHEN orating.n >= 3 THEN orating.n END AS organizer_rating_count
         FROM public_tasks t
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int AS n, ROUND(AVG(r.stars)::numeric, 1)::float8 AS avg
+            FROM task_ratings r JOIN public_tasks rt ON rt.id = r.task_id
+           WHERE rt.created_by = t.created_by
+        ) orating ON true
         -- A task whose day has passed isn't an opportunity any more. One day
         -- of slack, since the server's "today" is UTC's, ahead of US dates.
         WHERE t.status = 'open' AND t.date >= CURRENT_DATE - 1
@@ -2136,7 +2145,16 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'missed_checkout', s.checked_in_at IS NOT NULL AND s.checked_out_at IS NULL AND t.date < CURRENT_DATE - 1
                   AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id)
               ) ORDER BY s.signed_up_at), '[]'::json)
-               FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups
+               FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups,
+              -- Ratings (PUT /public-tasks/:id/rating): the average, the count
+              -- and the comments with their stars and date — never the
+              -- student's name or id, so a comment can't be traced to a row.
+              (SELECT ROUND(AVG(r.stars)::numeric, 1)::float8 FROM task_ratings r WHERE r.task_id = t.id) AS rating_avg,
+              (SELECT COUNT(*)::int FROM task_ratings r WHERE r.task_id = t.id) AS rating_count,
+              (SELECT COALESCE(json_agg(json_build_object(
+                'stars', r.stars, 'comment', r.comment, 'date', to_char(r.updated_at, 'YYYY-MM-DD')
+              ) ORDER BY r.updated_at DESC), '[]'::json)
+               FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments
        FROM public_tasks t WHERE t.created_by = $1
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.auth.sub],
@@ -2145,6 +2163,61 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   } catch (error) {
     console.error('my tasks failed:', error)
     return res.status(500).json({ error: 'Could not fetch your tasks.' })
+  }
+})
+
+// --- Rating a task -------------------------------------------------------------
+//
+// A student who volunteered at a task rates it 1–5 stars with an optional
+// comment, once the task's day is over. The comment reaches only the task's
+// organizer (GET /public-tasks/mine), without the student's name; Opportunities
+// shows the organizer's average once they have 3 or more ratings.
+//
+// Who may rate, over a signup `s` joined to its task `t`: an approved signup
+// that attended — marked present or checked in, and not since marked absent or
+// excused — on a task that wasn't cancelled and whose day is over. "Over" has
+// the check-in code's day of slack, since the server's date is UTC's, ahead of
+// US dates; a volunteer who has already checked out is done, so may rate then.
+// COALESCE: a NULL attendance would otherwise make the answer NULL, not false.
+const RATING_OPEN_SQL = `COALESCE(s.status = 'approved' AND t.status <> 'cancelled'
+  AND (s.attendance_status = 'present' OR (s.checked_in_at IS NOT NULL AND s.attendance_status IS NULL))
+  AND (t.date < CURRENT_DATE - 1 OR s.checked_out_at IS NOT NULL), false)`
+
+const RATING_COMMENT_MAX = 500
+
+// PUT { stars, comment? }: add or change the caller's rating of a task.
+router.put('/public-tasks/:id/rating', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  const { stars } = req.body || {}
+  if (typeof stars !== 'number' || !Number.isInteger(stars) || stars < 1 || stars > 5) {
+    return res.status(400).json({ error: 'Choose from 1 to 5 stars.' })
+  }
+  const rawComment = req.body?.comment
+  if (rawComment != null && typeof rawComment !== 'string') return res.status(400).json({ error: 'The comment must be text.' })
+  const comment = (rawComment || '').trim() || null
+  if (comment && comment.length > RATING_COMMENT_MAX) {
+    return res.status(400).json({ error: `Keep the comment to ${RATING_COMMENT_MAX} characters.` })
+  }
+  try {
+    const { rows } = await query(
+      `SELECT ${RATING_OPEN_SQL} AS can_rate
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+        WHERE s.task_id = $1 AND s.user_id = $2`,
+      [req.params.id, req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'You didn\'t sign up for this task.' })
+    if (!rows[0].can_rate) {
+      return res.status(403).json({ error: 'You can rate a task once its day is over, if you were there.' })
+    }
+    const { rows: saved } = await query(
+      `INSERT INTO task_ratings (task_id, user_id, stars, comment) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (task_id, user_id) DO UPDATE SET stars = EXCLUDED.stars, comment = EXCLUDED.comment, updated_at = now()
+       RETURNING stars, comment, updated_at`,
+      [req.params.id, req.auth.sub, stars, comment],
+    )
+    return res.json({ ok: true, rating: saved[0] })
+  } catch (error) {
+    console.error('rate task failed:', error)
+    return res.status(500).json({ error: 'Could not save your rating.' })
   }
 })
 
@@ -2159,7 +2232,10 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
       `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
-              ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position
+              ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position,
+              ${RATING_OPEN_SQL} AS can_rate,
+              (SELECT json_build_object('stars', r.stars, 'comment', r.comment, 'updated_at', r.updated_at)
+                 FROM task_ratings r WHERE r.task_id = t.id AND r.user_id = s.user_id) AS my_rating
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
        WHERE s.user_id = $1
