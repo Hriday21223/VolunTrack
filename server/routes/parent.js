@@ -9,6 +9,8 @@ import { runWeeklyDigest, previousWeekWindow, weekWindowFromStart } from '../dig
 import { checkCronKey } from '../cronAuth.js'
 import { policyForUser } from '../policy.js'
 import { goalHoursFor } from '../requirements.js'
+import { recordAudit, AUDIT } from '../audit.js'
+import { WAITLIST_POSITION_SQL } from './school.js'
 
 const router = express.Router()
 
@@ -162,6 +164,92 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
   } catch (error) {
     console.error('parent children fetch failed:', error)
     return res.status(500).json({ error: 'Could not fetch children.' })
+  }
+})
+
+// How many already-happened tasks a child's card shows under the upcoming ones.
+const RECENT_TASKS = 3
+
+// A linked child's volunteer task sign-ups: what's coming up, plus the last
+// few that already happened. Access is the same as reading the child's logs
+// (logReadScope in server/routes/logs.js): a parent_child_links row, with past
+// tasks cut off at the moment of linking, since a link shares a child's
+// activity "from that point onward". Upcoming ones are all shown — they
+// haven't happened yet, and where a minor will be is what a parent is asking.
+//
+// Only what a parent needs to know where and when: no organizer phone or
+// email, no important_info, and nothing about the other volunteers. Cancelled
+// tasks and rejected sign-ups are left out — the child isn't going.
+//
+// "Upcoming" starts yesterday in UTC so a task later today in the US is never
+// filed as past; the client re-splits on its own local date.
+const CHILD_TASK_COLUMNS = `
+  s.id AS signup_id, t.id AS task_id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location,
+  t.creator_name, s.status AS signup_status, s.checked_in_at, s.checked_out_at,
+  ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position`
+
+router.get('/children/:childId/tasks', limiter, requireDb, requireAuth('parent'), async (req, res) => {
+  const { childId } = req.params
+  try {
+    const { rows: link } = await query(
+      'SELECT created_at FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
+      [req.auth.sub, childId],
+    )
+    if (link.length === 0) {
+      recordAudit(req, {
+        action: AUDIT.CHILD_TASKS_READ,
+        outcome: 'denied',
+        // Not subjectUserId: that is a foreign key, and a probed id may not
+        // be anyone at all.
+        objectType: 'task_signups',
+        objectId: String(childId).slice(0, 64),
+      })
+      return res.status(403).json({ error: 'That student is not linked to you.' })
+    }
+
+    const { rows: upcoming } = await query(
+      `SELECT ${CHILD_TASK_COLUMNS}
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+        WHERE s.user_id = $1 AND t.status <> 'cancelled' AND s.status <> 'rejected'
+          AND t.date >= CURRENT_DATE - 1
+        ORDER BY t.date, t.time NULLS LAST, t.title
+        LIMIT 50`,
+      [childId],
+    )
+    const { rows: recent } = await query(
+      `SELECT ${CHILD_TASK_COLUMNS}
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+        WHERE s.user_id = $1 AND t.status <> 'cancelled' AND s.status <> 'rejected'
+          AND t.date < CURRENT_DATE - 1 AND t.date >= $2::date
+        ORDER BY t.date DESC, t.time DESC NULLS LAST
+        LIMIT $3`,
+      [childId, link[0].created_at, RECENT_TASKS],
+    )
+
+    const shape = (r) => ({
+      signupId: r.signup_id,
+      taskId: r.task_id,
+      title: r.title,
+      date: r.date,
+      time: r.time || null,
+      location: r.location,
+      organizerName: r.creator_name || null,
+      status: r.signup_status,
+      waitlistPosition: r.waitlist_position == null ? null : Number(r.waitlist_position),
+      checkedInAt: r.checked_in_at,
+      checkedOutAt: r.checked_out_at,
+    })
+
+    recordAudit(req, {
+      action: AUDIT.CHILD_TASKS_READ,
+      subjectUserId: childId,
+      objectType: 'task_signups',
+      meta: { upcoming: upcoming.length, recent: recent.length },
+    })
+    return res.json({ upcoming: upcoming.map(shape), recent: recent.map(shape) })
+  } catch (error) {
+    console.error('parent child tasks fetch failed:', error)
+    return res.status(500).json({ error: 'Could not fetch tasks.' })
   }
 })
 
