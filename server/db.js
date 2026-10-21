@@ -529,6 +529,24 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('task_ratings migration failed:', error.message) }
 
+  // In-app notifications: the bell in the app header (server/notifications.js,
+  // server/routes/notifications.js). Kept 90 days, pruned on insert.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind       TEXT NOT NULL,
+        title      TEXT NOT NULL,
+        body       TEXT,
+        link       TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        read_at    TIMESTAMPTZ
+      )
+    `)
+  } catch (error) { console.error('notifications table failed:', error.message) }
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
