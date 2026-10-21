@@ -1607,6 +1607,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       )
       const { rows: pos } = await client.query(`SELECT ${WAITLIST_POSITION_SQL('$1', '$2')} AS position`, [req.params.id, req.auth.sub])
       await client.query('COMMIT')
+      if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
       return res.json({ ok: true, id: wid, waitlisted: true, position: Number(pos[0].position) || 1 })
     }
 
@@ -1616,6 +1617,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       [sid, req.params.id, req.auth.sub, 'pending', invitedBy],
     )
     await client.query('COMMIT')
+    if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
     return res.json({ ok: true, id: sid })
   } catch (error) {
     try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
@@ -1625,6 +1627,23 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     client.release()
   }
 })
+
+// The inviter's bell: a friend they invited signed up from the link. Fire and
+// forget, like notify() itself.
+async function notifyFriendJoined(inviterId, taskId, friendId) {
+  try {
+    const { rows } = await query('SELECT t.title, u.name FROM public_tasks t, users u WHERE t.id = $1 AND u.id = $2', [taskId, friendId])
+    if (!rows[0]) return
+    notify(inviterId, {
+      kind: 'friend_joined',
+      title: `${rows[0].name || 'A friend'} is coming to ${rows[0].title}`,
+      body: 'They signed up from your invite.',
+      link: `/opportunities?task=${encodeURIComponent(taskId)}`,
+    })
+  } catch (error) {
+    console.error('friend joined notification failed:', error)
+  }
+}
 
 // --- Inviting friends --------------------------------------------------------
 //

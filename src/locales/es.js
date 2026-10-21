@@ -757,4 +757,16 @@ export default {
   "You're all caught up.": "Estás al día.",
   "Update": "Novedad",
   "unread": "sin leer",
+  // Invite friends to a task (InviteFriends, Opportunities, Attendance)
+  "Invite friends": "Invitar amigos",
+  "You can invite up to {n} friends at a time.": "Puedes invitar hasta {n} amigos a la vez.",
+  "Invited {n}.": "Invitaste a {n}.",
+  "You can invite {n} more.": "Puedes invitar a {n} más.",
+  "That's the most for this task.": "Ese es el máximo para esta tarea.",
+  "Friends' email addresses, separated by commas (up to {n})": "Correos de tus amigos, separados por comas (hasta {n})",
+  "friend@example.com, another@example.com": "amigo@ejemplo.com, otro@ejemplo.com",
+  "We email each friend once with a link to this task, and don't keep their address.": "Enviamos un solo correo a cada amigo con un enlace a esta tarea, y no guardamos su dirección.",
+  "Send": "Enviar",
+  "A friend invited you to this one.": "Un amigo te invitó a esta.",
+  "A friend joined": "Se unió un amigo",
 }
