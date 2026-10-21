@@ -1032,6 +1032,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [id, title, description, location, date, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value],
     )
+    notifyFollowers(req.auth.sub, id)
     return res.status(201).json({ ok: true, id })
   } catch (error) {
     console.error('create public task failed:', error)
@@ -1086,7 +1087,9 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
                ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
-               ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'}
+               ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
+               t.created_by AS organizer_id,
+               ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer
         FROM public_tasks t
         -- A task whose day has passed isn't an opportunity any more. One day
         -- of slack, since the server's "today" is UTC's, ahead of US dates.
@@ -1106,6 +1109,117 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
     return res.status(500).json({ error: 'Could not fetch tasks.' })
   }
 })
+
+// --- Following an organizer --------------------------------------------------
+// A student follows an organizer from a task card on Opportunities and is
+// emailed when that organizer posts a new task (notifyFollowers below).
+
+// GET /api/school/public-tasks/organizers/following — who the caller follows.
+router.get('/public-tasks/organizers/following', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT u.id, u.name FROM organizer_follows f JOIN users u ON u.id = f.organizer_id
+        WHERE f.user_id = $1 ORDER BY f.created_at DESC`,
+      [req.auth.sub],
+    )
+    return res.json({ following: rows })
+  } catch (error) {
+    console.error('following list failed:', error)
+    return res.status(500).json({ error: 'Could not load who you follow.' })
+  }
+})
+
+// POST /api/school/public-tasks/organizers/:organizerId/follow
+router.post('/public-tasks/organizers/:organizerId/follow', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  const organizerId = String(req.params.organizerId)
+  if (organizerId === req.auth.sub) return res.status(400).json({ error: "You can't follow yourself." })
+  try {
+    // Only someone who has posted a volunteer task can be followed, so this
+    // can't be used to probe for arbitrary account IDs.
+    const { rows } = await query(
+      `SELECT EXISTS (SELECT 1 FROM public_tasks WHERE created_by = $1) AS posts,
+              EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = $2 AND blocked_id = $1) AS blocked`,
+      [organizerId, req.auth.sub],
+    )
+    if (!rows[0].posts) return res.status(404).json({ error: 'Organizer not found.' })
+    if (rows[0].blocked) return res.status(400).json({ error: 'You blocked this organizer. Unblock them in Settings to follow them.' })
+    await query(
+      'INSERT INTO organizer_follows (user_id, organizer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [req.auth.sub, organizerId],
+    )
+    return res.json({ ok: true, following: true })
+  } catch (error) {
+    console.error('follow organizer failed:', error)
+    return res.status(500).json({ error: 'Could not follow this organizer.' })
+  }
+})
+
+// DELETE /api/school/public-tasks/organizers/:organizerId/follow
+router.delete('/public-tasks/organizers/:organizerId/follow', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    await query('DELETE FROM organizer_follows WHERE user_id = $1 AND organizer_id = $2', [req.auth.sub, String(req.params.organizerId)])
+    return res.json({ ok: true, following: false })
+  } catch (error) {
+    console.error('unfollow organizer failed:', error)
+    return res.status(500).json({ error: 'Could not unfollow this organizer.' })
+  }
+})
+
+// Emails each follower about a new task. Fire-and-forget, like
+// notifySignupDecision: never awaited, so it can't fail or slow the post.
+// One message per address (never a shared thread — see taskEmailHtml).
+// Skipped: a suspended organizer, a closed task, followers who blocked the
+// organizer, under-13 accounts still waiting on a parent, and — as
+// announcements do — the @test.com fixtures. Throttle: the UPDATE claims only
+// follows not emailed in the last hour and stamps them in the same statement,
+// so a burst of postings (or a repeating task) sends each follower one email.
+async function notifyFollowers(organizerId, taskId) {
+  try {
+    const { rows: taskRows } = await query(
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name
+         FROM public_tasks t JOIN users o ON o.id = t.created_by
+        WHERE t.id = $1 AND t.created_by = $2 AND t.status = 'open' AND o.posting_suspended_at IS NULL`,
+      [taskId, organizerId],
+    )
+    const task = taskRows[0]
+    if (!task) return
+    const { rows } = await query(
+      `UPDATE organizer_follows f SET last_notified_at = now()
+         FROM users u
+        WHERE f.organizer_id = $1 AND u.id = f.user_id AND u.email IS NOT NULL
+          AND (f.last_notified_at IS NULL OR f.last_notified_at < now() - interval '1 hour')
+          AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = f.user_id AND b.blocked_id = $1)
+        RETURNING u.email, u.name`,
+      [organizerId],
+    )
+    const subject = `New task from ${task.creator_name || 'an organizer'}: ${task.title}`
+    const seen = new Set()
+    for (const r of rows) {
+      const email = String(r.email).trim().toLowerCase()
+      if (!email || seen.has(email)) continue
+      seen.add(email)
+      if (email.endsWith('@test.com')) {
+        console.log(`[follow] skipped @test.com fixture ${email}: ${subject}`)
+        continue
+      }
+      await sendEmail({
+        to: email,
+        subject,
+        html: taskEmailHtml({
+          heading: 'A new volunteer task',
+          lines: [
+            `Hi ${r.name || 'there'}, ${task.creator_name || 'an organizer you follow'} just posted a new task. Sign up from Opportunities in VolunTrack.`,
+            'You get these because you follow this organizer. Unfollow from Opportunities to stop them.',
+          ],
+          task,
+        }),
+      })
+    }
+  } catch (error) {
+    console.error('follower notification failed:', error)
+  }
+}
 
 // Add to calendar: a task as an .ics file, which phones and calendar apps
 // open as "add this event". Public, like the task list: no sign-in, and only

@@ -492,6 +492,22 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkin_secret TEXT`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_out_at TIMESTAMPTZ`) } catch {}
+  // A student following an organizer (server/routes/school.js, notifyFollowers):
+  // they're emailed when that organizer posts a new task. last_notified_at
+  // throttles it to one email per follower per organizer per hour, so a burst
+  // of postings (or a repeating task) is one email, not many.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS organizer_follows (
+        user_id          TEXT REFERENCES users(id) ON DELETE CASCADE,
+        organizer_id     TEXT REFERENCES users(id) ON DELETE CASCADE,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_notified_at TIMESTAMPTZ,
+        PRIMARY KEY (user_id, organizer_id)
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_organizer_follows_organizer ON organizer_follows(organizer_id)`) } catch {}
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

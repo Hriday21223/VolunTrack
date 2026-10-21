@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapPin, Calendar as CalIcon, Users, Flag, X } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
@@ -12,6 +12,7 @@ import { fmtDate } from '@/utils/date.js'
 import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import { tr } from '@/lib/i18n.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -56,6 +57,37 @@ export default function Opportunities() {
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [reporting, setReporting] = useState(null)
+  // Following an organizer (students only): an email when they post a new task.
+  const { user } = useAuth()
+  const canFollow = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
+  const [following, setFollowing] = useState(null)
+  const [followOpen, setFollowOpen] = useState(false)
+  const [followBusy, setFollowBusy] = useState(null)
+  const loadFollowing = useCallback(async () => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/organizers/following`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) setFollowing((await res.json()).following || [])
+    } catch { /* the list just stays hidden */ }
+  }, [])
+  useEffect(() => { if (canFollow) loadFollowing() }, [canFollow, loadFollowing])
+  const setFollow = async (organizerId, follow) => {
+    setFollowBusy(organizerId)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/public-tasks/organizers/${encodeURIComponent(organizerId)}/follow`, {
+        method: follow ? 'POST' : 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || tr('Something went wrong. Try again.'))
+      setNearbyTasks((list) => list.map((t) => (t.organizer_id === organizerId ? { ...t, i_follow_organizer: follow } : t)))
+      loadFollowing()
+      setToastMsg(follow ? tr("Following — we'll email you when they post a new task.") : tr('Unfollowed.'))
+      setToast(true)
+    } catch (e) { setToastMsg(e.message); setToast(true) } finally { setFollowBusy(null) }
+  }
   const reload = () => loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius)
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
@@ -171,6 +203,35 @@ export default function Opportunities() {
           )}
         </div>
 
+        {canFollow && following?.length > 0 && (
+          <Card padded={false} className="p-3">
+            <button
+              type="button"
+              onClick={() => setFollowOpen((o) => !o)}
+              aria-expanded={followOpen}
+              className="w-full flex items-center justify-between gap-2 text-sm font-medium"
+            >
+              <span className="flex items-center gap-2"><Bell className="w-4 h-4 text-brand-400" />{tr('Following ({n})', { n: following.length })}</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${followOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {followOpen && (
+              <>
+                <p className="text-xs text-earth-500 mt-2">{tr('We email you when these organizers post a new task.')}</p>
+                <ul className="mt-2 space-y-2">
+                  {following.map((o) => (
+                    <li key={o.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-2">
+                      <span className="text-sm truncate">{o.name}</span>
+                      <button type="button" onClick={() => setFollow(o.id, false)} disabled={followBusy === o.id} className="btn-ghost btn-sm shrink-0">
+                        {tr('Unfollow')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Card>
+        )}
+
         {!userLoc && (
           <Card className="border border-dashed border-brand-700/40 bg-brand-900/10">
             <div className="flex items-center gap-3">
@@ -254,6 +315,17 @@ export default function Opportunities() {
                   </div>
                   <p className="text-xs text-earth-600 mt-1 flex items-center gap-3">
                     <span>{tr('Posted by')}{' '}{t.creator_name}</span>
+                    {canFollow && t.organizer_id && t.organizer_id !== user?.id && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setFollow(t.organizer_id, !t.i_follow_organizer) }}
+                        disabled={followBusy === t.organizer_id}
+                        aria-pressed={Boolean(t.i_follow_organizer)}
+                        className={`inline-flex items-center gap-1 ${t.i_follow_organizer ? 'text-brand-400' : 'text-earth-500 hover:text-brand-400'}`}
+                      >
+                        {t.i_follow_organizer ? <BellRing className="w-3 h-3" /> : <Bell className="w-3 h-3" />}{' '}{t.i_follow_organizer ? tr('Following') : tr('Follow')}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setReporting(t) }}
