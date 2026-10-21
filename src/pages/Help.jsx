@@ -26,7 +26,8 @@ const FAQ_ITEMS = [
   { q: 'Is my data private?', a: "Yes. Your hours are stored in a secure database, protected by your password and, if you turn them on, two-factor authentication or a passkey. They're visible only to you, the school you join, and parents you invite. Signature drawings stay on your device — the server only records that an entry was signed. We never sell your data or show ads." },
   { q: 'Do I need an account?', a: "Yes — a free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first." },
   { q: 'How does supervisor verification work?', a: 'When you log hours, add your supervisor\'s email and they get a one-time link to approve or reject those specific hours — no account needed. Approving asks them to sign; rejecting skips that step. If your school requires signatures, Log Hours asks whether the person signing is next to you: if yes, they sign on your device; if not, you get a ready-made email with the signing link to send yourself (or have VolunTrack send it). On a laptop, they can scan a QR code and sign on their phone. Hours on an Opportunities task are signed off by the organizer from their own account instead. Each log then shows Pending, Approved, or Rejected.' },
-  { q: 'How do I let a parent see my hours?', a: 'In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. Each code works once, and the same card lists every parent who can see your hours, with a Remove button. They\'ll only see hours you log from the moment they link — anything earlier stays private — and they can\'t change anything. Linked parents also get a weekly progress email, which they can unsubscribe from at any time from a link in the email.' },
+  { q: 'How do I let a parent see my hours?', a: 'In Settings → Family, generate a link code and share it with your parent. They enter it in their own Settings → Family. Each code works once, and the same card lists every parent who can see your hours, with a Remove button. They\'ll only see hours you log from the moment they link — anything earlier stays private — plus the volunteer tasks you\'ve signed up for, and they can\'t change anything. Linked parents also get a weekly progress email, which they can unsubscribe from at any time from a link in the email.' },
+  { q: 'Can I see which volunteer tasks my child signed up for?', a: 'Yes. On your Family dashboard, each linked child\'s card has an Upcoming tasks section listing the tasks they signed up for on Opportunities: the date, time, title, where it is and who is organizing it, with their status — Approved, Waiting for approval, or their place on the waitlist (for example Waitlist #2) — and Checked in once they scan in on the day. A few recent ones show underneath. Cancelled tasks and sign-ups the organizer turned down are left out. You see only your child\'s own sign-up, not the organizer\'s phone number or the other volunteers.' },
   { q: 'What\'s the difference between a school account and an organization account?', a: 'A school account manages one school\'s students, report reviews, announcements, and co-admins. An organization account sits above multiple schools: it adds them and tracks their setup and payment status, but each school still runs its own dashboard.' },
   { q: 'Can more than one person manage a school account?', a: 'Yes. The primary school account can add up to 10 co-admins from School setup \u2192 Co-admins, entering each person\'s name, email, and a temporary password they change after signing in. Co-admins share the dashboard \u2014 reviewing reports, managing students, and sending announcements \u2014 but don\'t get the School setup tab, so they can\'t add or remove other co-admins, change the school code, configure sign-in, or handle billing.' },
   { q: 'How does a school or organization sign up?', a: 'Contact us through the Contact page. We\'ll send a quote along with a one-time registration code (or, if you prefer, an invite link). Enter the code at the School or Organization sign-up page to create the account and choose your own password. Each code works once and expires, so ask us for a new one if yours has run out.' },
@@ -218,7 +219,7 @@ function StudentHandbook() {
 
       <Section title="Family Sharing">
         <p>Want a parent to be able to follow your logged hours and verification status? Go to <Link to="/settings" className="text-brand-400 hover:underline">Settings → Family</Link> and generate a link code. Share that code with your parent — they'll enter it in their own account to link to yours.</p>
-        <p className="mt-2">Only hours you log from the moment your parent links are visible to them; earlier entries stay private. Your parent can only view your hours — they can't edit or delete anything.</p>
+        <p className="mt-2">Only hours you log from the moment your parent links are visible to them; earlier entries stay private. Your parent also sees the volunteer tasks you've signed up for on Opportunities — when and where they are, who is organizing, and whether you're approved, waiting or checked in. Your parent can only view — they can't edit or delete anything.</p>
       </Section>
 
       <Section title="Signing in on another device">
@@ -246,7 +247,7 @@ function ParentHandbook() {
   return (
     <div>
       <HandbookIntro title="Parent Handbook">
-        A parent account is view-only. You can follow your linked children's logged hours and verification status — you can't add, edit, or delete anything.
+        A parent account is view-only. You can follow your linked children's logged hours, verification status and upcoming volunteer tasks — you can't add, edit, or delete anything.
       </HandbookIntro>
 
       <Section title="Getting Started">
@@ -264,6 +265,7 @@ function ParentHandbook() {
 
       <Section title="The Family Dashboard">
         <p>Each linked child gets a card showing their total hours and a table of every session: date, activity, verification status, and hours. Use the verification badges to see which hours a supervisor has confirmed.</p>
+        <p className="mt-2">Under the totals, <strong>Upcoming tasks</strong> lists the volunteer tasks your child signed up for on Opportunities — date, time, title, where and who is organizing — with a status: <em>Approved</em>, <em>Waiting for approval</em>, <em>Waitlist #2</em> (their place in line), or <em>Checked in</em> on the day. A few recent ones show underneath. Cancelled tasks and turned-down sign-ups don't appear.</p>
         <p className="mt-2">If the dashboard can't load, that's almost always a temporary connection issue — use "Try again" rather than assuming something is wrong with the link.</p>
       </Section>
 
