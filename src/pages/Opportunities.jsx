@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
@@ -11,6 +12,7 @@ import { isNativeApp } from '@/lib/platform.js'
 import { fmtDate } from '@/utils/date.js'
 import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
+import InviteFriends from '@/components/InviteFriends.jsx'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 
@@ -88,6 +90,14 @@ export default function Opportunities() {
       setToast(true)
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setFollowBusy(null) }
   }
+  // A friend's invite link: /opportunities?task=<id>&from=<inviterId>. The
+  // task is scrolled to and highlighted, and signing up from that card passes
+  // invitedBy so the organizer sees who they came with (the server checks it).
+  const [searchParams] = useSearchParams()
+  const linkedTask = searchParams.get('task')
+  const invitedFrom = searchParams.get('from')
+  const scrolledTo = useRef(false)
+  const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
   const reload = () => loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius)
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
@@ -97,7 +107,10 @@ export default function Opportunities() {
       const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(full ? { waitlist: true } : {}),
+        body: JSON.stringify({
+          ...(full ? { waitlist: true } : {}),
+          ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
+        }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Failed')
@@ -153,6 +166,14 @@ export default function Opportunities() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!linkedTask || !loaded || scrolledTo.current) return
+    const el = document.getElementById(`task-${linkedTask}`)
+    if (!el) return
+    scrolledTo.current = true
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [linkedTask, loaded, shownTasks.length])
 
   useEffect(() => {
     if (userLoc) loadNearbyTasks(userLoc.lat, userLoc.lng, nearbyRadius)
@@ -287,7 +308,7 @@ export default function Opportunities() {
           const full = filled >= total
           const approved = t.my_signup_status === 'approved'
           return (
-            <Card key={t.id} padded={false} className="p-4">
+            <Card key={t.id} id={`task-${t.id}`} padded={false} className={`p-4 ${t.id === linkedTask ? 'ring-2 ring-brand-400' : ''}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -298,6 +319,9 @@ export default function Opportunities() {
                       </span>
                     )}
                   </div>
+                  {t.id === linkedTask && invitedFrom && !t.my_signup_status && (
+                    <p className="text-xs text-brand-400 mt-1">{tr('A friend invited you to this one.')}</p>
+                  )}
                   {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
@@ -350,6 +374,7 @@ export default function Opportunities() {
                     <p className="text-xs text-red-400 mt-1">{tr('Signup rejected')}</p>
                   )}
                   {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
+                  {canInvite && (approved || t.my_signup_status === 'pending') && <InviteFriends task={t} className="mt-2" />}
                   {approved && String(t.date).slice(0, 10) === format(new Date(), 'yyyy-MM-dd') && (
                     <div className="mt-2"><ScanCheckinButton className="btn-secondary text-sm" /></div>
                   )}

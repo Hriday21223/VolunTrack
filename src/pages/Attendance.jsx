@@ -5,6 +5,8 @@ import Card from '@/components/Card.jsx'
 import { format } from 'date-fns'
 import { fmtDate } from '@/utils/date.js'
 import CancelSignup from '@/components/CancelSignup.jsx'
+import InviteFriends from '@/components/InviteFriends.jsx'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import Toast from '@/components/Toast.jsx'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
 import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
@@ -36,6 +38,8 @@ function SignupRow({ s, onChanged }) {
   const signup = cancelled ? CANCELLED_LABEL : (SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending)
   const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
   const isPast = dayOf(s.date) < todayDay()
+  const { user } = useAuth()
+  const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
 
   return (
     <Card padded={false} className="p-4">
@@ -48,6 +52,9 @@ function SignupRow({ s, onChanged }) {
             <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{s.time ? ` · ${s.time}` : ''}</span>
           </div>
           {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
+          {canInvite && s.task_status === 'open' && !isPast && ['pending', 'approved'].includes(s.signup_status) && (
+            <InviteFriends task={s} className="mt-2" />
+          )}
         </div>
         <div className="shrink-0 flex flex-col items-end gap-1.5">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${signup.className}`}>{signup.label}{!cancelled && s.signup_status === 'waitlisted' && s.waitlist_position ? ` #${s.waitlist_position}` : ''}</span>

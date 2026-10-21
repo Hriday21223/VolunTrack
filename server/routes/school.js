@@ -2,7 +2,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
-import { createHmac, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
@@ -1457,6 +1457,11 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       return res.status(400).json({ error: "This task isn't available." })
     }
 
+    // Came from a friend's invite link: kept only when that friend really
+    // invited this address to this task and is still going. Anything else is
+    // ignored, never an error — the link is shareable and can go stale.
+    const invitedBy = await verifiedInviter(client, req.params.id, req.auth.sub, req.body?.invitedBy)
+
     // Already signed up: return the existing row instead of reporting "full".
     const { rows: existing } = await client.query(
       'SELECT id FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
@@ -1483,8 +1488,8 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       }
       const wid = uid('psig')
       await client.query(
-        "INSERT INTO public_task_signups (id, task_id, user_id, status) VALUES ($1, $2, $3, 'waitlisted') ON CONFLICT DO NOTHING",
-        [wid, req.params.id, req.auth.sub],
+        "INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by) VALUES ($1, $2, $3, 'waitlisted', $4) ON CONFLICT DO NOTHING",
+        [wid, req.params.id, req.auth.sub, invitedBy],
       )
       const { rows: pos } = await client.query(`SELECT ${WAITLIST_POSITION_SQL('$1', '$2')} AS position`, [req.params.id, req.auth.sub])
       await client.query('COMMIT')
@@ -1493,8 +1498,8 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
 
     const sid = uid('psig')
     await client.query(
-      'INSERT INTO public_task_signups (id, task_id, user_id, status) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
-      [sid, req.params.id, req.auth.sub, 'pending'],
+      'INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING',
+      [sid, req.params.id, req.auth.sub, 'pending', invitedBy],
     )
     await client.query('COMMIT')
     return res.json({ ok: true, id: sid })
@@ -1506,6 +1511,196 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     client.release()
   }
 })
+
+// --- Inviting friends --------------------------------------------------------
+//
+// A student who is going to a task can email up to INVITES_PER_TASK friends
+// about it. Only a one-way hash of each address is stored (task_invites) —
+// enough to cap invites and to recognise the friend when they sign up from
+// the link, never enough to email them again. The response never says whether
+// an address has an account: skipped addresses (the @test.com fixtures,
+// under-13 accounts still waiting on a parent, people who blocked the
+// organizer) count as invited like any other.
+
+const INVITES_PER_TASK = 5
+
+// SHA-256 with a purpose prefix, so this hash can't be matched against an
+// email hash kept for another feature (transcripts hash the bare address).
+function inviteEmailHash(email) {
+  return createHash('sha256').update(`voluntrack-task-invite:${String(email).trim().toLowerCase()}`).digest('hex')
+}
+
+function frontendBase() {
+  const first = (process.env.FRONTEND_URL || '').split(',').map((s) => s.trim()).find(Boolean)
+  return (first || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
+}
+
+// The inviter id to store on a new signup, or null. The inviter must have
+// invited the caller's address to this task and still hold a live signup.
+async function verifiedInviter(client, taskId, userId, invitedBy) {
+  if (typeof invitedBy !== 'string' || !invitedBy || invitedBy.length > 100 || invitedBy === userId) return null
+  try {
+    const { rows: me } = await client.query('SELECT email FROM users WHERE id = $1', [userId])
+    if (!me[0]?.email) return null
+    const { rows } = await client.query(
+      `SELECT 1 FROM task_invites i
+         JOIN public_task_signups s ON s.task_id = i.task_id AND s.user_id = i.inviter_id AND s.status IN ('pending', 'approved')
+        WHERE i.task_id = $1 AND i.inviter_id = $2 AND i.email_hash = $3`,
+      [taskId, invitedBy, inviteEmailHash(me[0].email)],
+    )
+    return rows.length > 0 ? invitedBy : null
+  } catch (error) {
+    console.error('invite link check failed:', error)
+    return null
+  }
+}
+
+// Each invite request can fan out to five emails, so it gets its own cap on
+// top of the per-task one. Counted per account (the soft global authenticate
+// has already read the token), so a school network sharing one address isn't
+// limited as a single person; requireAuth still rejects the anonymous.
+const inviteLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => (req.auth?.sub ? `user:${req.auth.sub}` : `ip:${req.ip}`),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many invites sent. Please try again later.' },
+})
+
+router.post('/public-tasks/:id/invite', inviteLimiter, requireDb, requireAuth('student'), async (req, res) => {
+  const raw = req.body?.emails
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return res.status(400).json({ error: 'Enter at least one email address.' })
+  }
+  if (raw.length > 20) {
+    return res.status(400).json({ error: `You can invite up to ${INVITES_PER_TASK} friends.` })
+  }
+  const client = await getPool().connect()
+  let toSend = []
+  let context = null
+  try {
+    await client.query('BEGIN')
+    // Locking the inviter's own signup row serializes their invite requests
+    // for this task, so two at once can't both pass the per-task cap.
+    const { rows } = await client.query(
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.created_by,
+              t.status AS task_status, t.date < CURRENT_DATE - 1 AS past,
+              (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
+              u.email AS my_email, u.name AS my_name
+         FROM public_task_signups s
+         JOIN public_tasks t ON t.id = s.task_id
+         JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND s.user_id = $2 AND s.status IN ('pending', 'approved')
+        FOR UPDATE OF s`,
+      [req.params.id, req.auth.sub],
+    )
+    const task = rows[0]
+    if (!task) {
+      await client.query('ROLLBACK')
+      return res.status(403).json({ error: 'Sign up for this task before inviting friends.' })
+    }
+    if (task.task_status !== 'open' || task.past || task.host_suspended) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: "This task isn't taking sign-ups, so invites are off." })
+    }
+
+    const own = String(task.my_email || '').trim().toLowerCase()
+    const emails = [...new Set(
+      raw.filter((e) => typeof e === 'string')
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.length <= 254 && validator.isEmail(e)),
+    )].filter((e) => e !== own)
+    if (emails.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: "Enter a friend's email address (not your own)." })
+    }
+    if (emails.length > INVITES_PER_TASK) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: `You can invite up to ${INVITES_PER_TASK} friends at a time.` })
+    }
+
+    const { rows: prior } = await client.query(
+      'SELECT email_hash FROM task_invites WHERE task_id = $1 AND inviter_id = $2',
+      [req.params.id, req.auth.sub],
+    )
+    const already = new Set(prior.map((r) => r.email_hash))
+    // Someone already invited isn't emailed twice, and doesn't use up another.
+    const fresh = emails.filter((e) => !already.has(inviteEmailHash(e)))
+    const remainingBefore = Math.max(0, INVITES_PER_TASK - already.size)
+    if (fresh.length > remainingBefore) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({
+        error: remainingBefore === 0
+          ? `You've already invited ${INVITES_PER_TASK} friends to this task.`
+          : `You can invite ${remainingBefore} more ${remainingBefore === 1 ? 'friend' : 'friends'} to this task.`,
+        remaining: remainingBefore,
+      })
+    }
+    for (const e of fresh) {
+      await client.query(
+        'INSERT INTO task_invites (task_id, inviter_id, email_hash) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [req.params.id, req.auth.sub, inviteEmailHash(e)],
+      )
+    }
+    await client.query('COMMIT')
+    toSend = fresh
+    context = task
+    res.json({ invited: emails.length, remaining: remainingBefore - fresh.length })
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
+    console.error('task invite failed:', error)
+    return res.status(500).json({ error: 'Could not send the invites.' })
+  } finally {
+    client.release()
+  }
+  // After the response: one message per address, never a shared thread.
+  sendTaskInvites(req.params.id, req.auth.sub, context, toSend)
+})
+
+async function sendTaskInvites(taskId, inviterId, task, emails) {
+  if (!task || emails.length === 0) return
+  try {
+    // Accounts that must not hear from us here. Matched on the address, and
+    // never reported back — the inviter sees every address as invited.
+    const { rows: held } = await query(
+      `SELECT LOWER(u.email) AS email
+         FROM users u
+        WHERE LOWER(u.email) = ANY($1::text[])
+          AND (u.parental_consent_status = 'pending'
+               OR EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = u.id AND b.blocked_id = $2))`,
+      [emails, task.created_by],
+    )
+    const skip = new Set(held.map((r) => r.email))
+    const first = String(task.my_name || '').trim().split(/\s+/)[0] || 'A friend'
+    const subject = `${first} invited you to volunteer together: ${task.title}`
+    const link = `${frontendBase()}/opportunities?task=${encodeURIComponent(taskId)}&from=${encodeURIComponent(inviterId)}`
+    for (const email of emails) {
+      if (email.endsWith('@test.com')) {
+        console.log(`[invite] skipped @test.com fixture ${email}: ${subject}`)
+        continue
+      }
+      if (skip.has(email)) continue
+      await sendEmail({
+        to: email,
+        subject,
+        html: taskEmailHtml({
+          heading: `${first} invited you to volunteer together`,
+          lines: [
+            `${first} signed up for this volunteer task on VolunTrack and would like you to come along.`,
+            'Open the link to see the details and sign up. You need a VolunTrack account, which is free.',
+            "You got this email because a friend entered your address. We don't keep it or email you again unless you sign up.",
+          ],
+          task,
+          link,
+          linkLabel: 'See the task and sign up',
+        }),
+      })
+    }
+  } catch (error) {
+    console.error('task invite emails failed:', error)
+  }
+}
 
 // --- Waitlist ---------------------------------------------------------------
 //
@@ -1685,7 +1880,7 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
 // Every task email goes to one person at a time. A shared To: line on a
 // volunteer roster would publish a list of minors' addresses to each other,
 // which is the same reason referral invites are sent separately.
-function taskEmailHtml({ heading, lines, task }) {
+function taskEmailHtml({ heading, lines, task, link, linkLabel }) {
   const when = [task.date, task.time].filter(Boolean).join(' at ')
   const detail = [
     when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : '',
@@ -1697,6 +1892,7 @@ function taskEmailHtml({ heading, lines, task }) {
     ${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}
     <h3>${escapeHtml(task.title || 'Volunteer opportunity')}</h3>
     ${detail}
+    ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(linkLabel || 'Open in VolunTrack')}</a></p>` : ''}
     ${emailFooterHtml()}
   `
 }
@@ -2091,6 +2287,8 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
                 'attendance_status', s.attendance_status, 'attendance_marked_at', s.attendance_marked_at,
                 'checked_in_at', s.checked_in_at, 'checked_out_at', s.checked_out_at,
+                -- Who invited them, when they signed up from a friend's link.
+                'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
                 -- Checked in, never out, the day is over and no hours yet.
                 'missed_checkout', s.checked_in_at IS NOT NULL AND s.checked_out_at IS NULL AND t.date < CURRENT_DATE - 1
                   AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id)
