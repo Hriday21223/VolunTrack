@@ -7,6 +7,7 @@ import { isNativeApp } from '@/lib/platform.js'
 import Sidebar from './Sidebar.jsx'
 import ReviewPopup from './ReviewPopup.jsx'
 import ReviewConsentPrompt from './ReviewConsentPrompt.jsx'
+import NotificationBell from './NotificationBell.jsx'
 import { tr } from '@/lib/i18n.js'
 
 export default function AppLayout({ children, title, subtitle, action, actionWide = false }) {
@@ -27,6 +28,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
               {subtitle && <p className="mt-0.5 text-sm text-earth-400 truncate">{subtitle}</p>}
             </div>
             {action}
+            <NotificationBell className="self-center" />
           </div>
         </header>
         <main key={title} className="app-page-enter px-4 pt-2 pb-32 w-full">
@@ -91,6 +93,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
               {/* `actionWide` is for a tab strip too long to share the title row:
                   it takes a row of its own under the title and account. */}
               {action && <div className={`min-w-0 max-w-full overflow-x-auto py-1.5 -my-1.5 ${actionWide ? 'order-last w-full' : ''}`}>{action}</div>}
+              <NotificationBell />
               <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-earth-900/80">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 grid place-items-center text-white text-sm font-bold">
                   {user?.name?.[0]?.toUpperCase() || 'V'}

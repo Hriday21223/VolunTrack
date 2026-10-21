@@ -35,6 +35,7 @@ import referralRoutes from './server/routes/referral.js'
 import statsRoutes from './server/routes/stats.js'
 import registrationCodeRoutes from './server/routes/registrationCodes.js'
 import announcementRoutes from './server/routes/announcements.js'
+import notificationRoutes from './server/routes/notifications.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 import { loadEmailOverrides } from './server/emailSettings.js'
@@ -157,6 +158,7 @@ app.use('/api/referral', referralRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/registration-codes', registrationCodeRoutes)
 app.use('/api/announcements', announcementRoutes)
+app.use('/api/notifications', notificationRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the

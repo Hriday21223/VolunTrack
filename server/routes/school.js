@@ -20,6 +20,7 @@ import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 import { isSignatureImage } from '../signature.js'
+import { notify } from '../notifications.js'
 
 const router = express.Router()
 
@@ -489,6 +490,12 @@ router.post('/students/remind', limiter, requireDb, requireAuth('school', 'schoo
         [s.id, schoolId],
       )
       if (!rowCount) { skipped++; continue }
+      notify(s.id, {
+        kind: 'hours_reminder',
+        title: `You have ${s.remaining} hours to go`,
+        body: `${schoolName || 'Your school'} asks for ${s.target} volunteer hours${deadline ? ` by ${deadline}` : ''}. You have ${s.hours} so far.`,
+        link: '/opportunities',
+      })
       await sendEmail({
         to: s.email,
         subject: `${s.remaining} volunteer hours to go`,
@@ -1308,6 +1315,24 @@ async function notifyFollowers(organizerId, taskId) {
     )
     const task = taskRows[0]
     if (!task) return
+    // The bell gets every post, unthrottled: an in-app entry costs nobody an
+    // email. Same skips as the email, minus the @test.com one.
+    const { rows: followers } = await query(
+      `SELECT f.user_id FROM organizer_follows f JOIN users u ON u.id = f.user_id
+        WHERE f.organizer_id = $1
+          AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = f.user_id AND b.blocked_id = $1)`,
+      [organizerId],
+    )
+    const when = [task.date, task.time].filter(Boolean).join(' at ')
+    for (const f of followers) {
+      notify(f.user_id, {
+        kind: 'new_task',
+        title: task.title,
+        body: `New from ${task.creator_name || 'an organizer you follow'}${when ? ` · ${when}` : ''}`,
+        link: `/opportunities?task=${encodeURIComponent(taskId)}`,
+      })
+    }
     const { rows } = await query(
       `UPDATE organizer_follows f SET last_notified_at = now()
          FROM users u
@@ -1573,7 +1598,14 @@ async function notifyWaitlistSpot(taskId, userId) {
       [taskId, userId],
     )
     const row = rows[0]
-    if (!row?.email) return
+    if (!row) return
+    notify(userId, {
+      kind: 'waitlist_spot',
+      title: row.title,
+      body: "A spot opened up and it's yours. The organizer will confirm your sign-up.",
+      link: '/attendance',
+    })
+    if (!row.email) return
     await sendEmail({
       to: row.email,
       subject: `A spot opened up: ${row.title}`,
@@ -1712,8 +1744,17 @@ async function notifySignupDecision(taskId, userId, decision) {
       [taskId, userId],
     )
     const row = rows[0]
-    if (!row?.email) return
+    if (!row) return
     const approved = decision === 'approved'
+    notify(userId, {
+      kind: approved ? 'signup_approved' : 'signup_rejected',
+      title: row.title,
+      body: approved
+        ? [row.date, row.time].filter(Boolean).join(' at ') || 'The organizer approved your sign-up.'
+        : 'The organizer could not take your sign-up for this one.',
+      link: approved ? '/attendance' : '/opportunities',
+    })
+    if (!row.email) return
     await sendEmail({
       to: row.email,
       subject: approved ? `You're in: ${row.title}` : `Update on your signup: ${row.title}`,
@@ -2590,6 +2631,7 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
       'UPDATE logs SET verification_status = $1, verified_by = $2, organizer_signature = $4 WHERE id = $3',
       [status, req.auth.sub, req.params.logId, status === 'approved' ? signature : null],
     )
+    if (status !== previousStatus) notifyHoursDecision(req.params.studentId, req.params.logId, status)
 
     // Spend any still-pending supervisor link for this log. Without this the
     // emailed link stays 'pending', so a supervisor clicking it days later
@@ -2617,6 +2659,30 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
     return res.status(500).json({ error: 'Could not update log.' })
   }
 })
+
+// The student hears about an organizer's decision on their hours in the bell.
+// Fire-and-forget: never awaited, and notify() itself never throws.
+async function notifyHoursDecision(studentId, logId, status) {
+  try {
+    const { rows } = await query(
+      `SELECT l.hours, to_char(l.date, 'YYYY-MM-DD') AS date, COALESCE(t.title, l.activity) AS title
+         FROM logs l LEFT JOIN public_tasks t ON t.id = l.task_id
+        WHERE l.id = $1 AND l.user_id = $2`,
+      [logId, studentId],
+    )
+    const row = rows[0]
+    if (!row) return
+    const approved = status === 'approved'
+    notify(studentId, {
+      kind: approved ? 'hours_approved' : 'hours_rejected',
+      title: row.title || 'Volunteer hours',
+      body: `${Number(row.hours) || 0} hours${row.date ? ` on ${row.date}` : ''} ${approved ? 'were approved by the organizer.' : 'were not approved by the organizer.'}`,
+      link: '/reports',
+    })
+  } catch (error) {
+    console.error('hours decision notification failed:', error)
+  }
+}
 
 // Mark attendance for a signed-up student on one of my tasks.
 router.post('/public-tasks/:id/attendance/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
