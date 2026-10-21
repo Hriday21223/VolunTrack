@@ -13,7 +13,7 @@ import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn } from '../requirements.js'
+import { emailAllowedBySignIn, goalHoursFor } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -411,6 +411,101 @@ router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'
   } catch (error) {
     console.error('school students failed:', error)
     return res.status(500).json({ error: 'Could not fetch students.' })
+  }
+})
+
+// --- Students behind on hours ------------------------------------------------
+//
+// Each linked student's hours against the school's requirement (Requirements →
+// goals, per grade or one total), so the school can see who still has hours
+// to go and email them a reminder. Rejected entries don't count, matching the
+// student's own progress (countedLogs in src/lib/achievements.js).
+
+const REMINDER_GAP_DAYS = 7
+const MAX_REMIND_AT_ONCE = 200
+
+async function schoolProgress(schoolId) {
+  const resolved = await policyForSchool(schoolId)
+  const policy = resolved?.policy
+  const { rows } = await query(
+    `SELECT u.id, u.name, u.email, u.grade, u.hours_reminded_at, u.parental_consent_status,
+            COALESCE(SUM(l.hours) FILTER (WHERE l.verification_status IS DISTINCT FROM 'rejected'), 0)::float AS hours,
+            to_char(MAX(l.date), 'YYYY-MM-DD') AS last_log_date
+       FROM users u LEFT JOIN logs l ON l.user_id = u.id
+      WHERE u.school_id = $1 AND u.role = 'student'
+      GROUP BY u.id
+      ORDER BY u.name`,
+    [schoolId],
+  )
+  const students = rows.map((r) => {
+    const target = goalHoursFor(policy, r.grade)
+    const hours = Math.round(r.hours * 100) / 100
+    return {
+      id: r.id, name: r.name, email: r.email, grade: r.grade,
+      hours, target, remaining: target ? Math.max(0, Math.round((target - hours) * 100) / 100) : null,
+      lastLogDate: r.last_log_date, remindedAt: r.hours_reminded_at,
+      // An under-13 account still waiting for a parent can't sign in yet.
+      consentPending: r.parental_consent_status === 'pending',
+    }
+  })
+  return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, students }
+}
+
+router.get('/students/progress', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const progress = await schoolProgress(schoolId)
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: progress.students.length } })
+    return res.json({ deadline: progress.deadline, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
+  } catch (error) {
+    console.error('student progress failed:', error)
+    return res.status(500).json({ error: 'Could not load student progress.' })
+  }
+})
+
+// POST { studentIds }: email each one still short of their hours. Students
+// who met their goal, have no goal, or were reminded in the last week are skipped.
+router.post('/students/remind', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const ids = Array.isArray(req.body?.studentIds) ? [...new Set(req.body.studentIds.map(String))] : []
+  if (ids.length === 0) return res.status(400).json({ error: 'Choose at least one student.' })
+  if (ids.length > MAX_REMIND_AT_ONCE) return res.status(400).json({ error: `Remind at most ${MAX_REMIND_AT_ONCE} students at once.` })
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const { schoolName, deadline, students } = await schoolProgress(schoolId)
+    const site = String(process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
+    const cutoff = Date.now() - REMINDER_GAP_DAYS * 24 * 60 * 60 * 1000
+    let sent = 0
+    let skipped = 0
+    for (const s of students.filter((st) => ids.includes(st.id))) {
+      if (!s.target || s.remaining <= 0 || s.consentPending || (s.remindedAt && new Date(s.remindedAt).getTime() > cutoff)) { skipped++; continue }
+      // Claim the week first, so two clicks can't send two emails.
+      const { rowCount } = await query(
+        `UPDATE users SET hours_reminded_at = now()
+          WHERE id = $1 AND school_id = $2 AND (hours_reminded_at IS NULL OR hours_reminded_at < now() - interval '${REMINDER_GAP_DAYS} days')`,
+        [s.id, schoolId],
+      )
+      if (!rowCount) { skipped++; continue }
+      await sendEmail({
+        to: s.email,
+        subject: `${s.remaining} volunteer hours to go`,
+        html: `
+          <h2>${escapeHtml(`You have ${s.remaining} hours to go`)}</h2>
+          <p>${escapeHtml(`Hi ${s.name || 'there'}, ${schoolName || 'your school'} asks for ${s.target} volunteer hours${deadline ? ` by ${deadline}` : ''}. You have ${s.hours} so far.`)}</p>
+          <p>Find a task on <a href="${escapeHtml(site)}/opportunities">Opportunities</a>, or log hours you've already done on <a href="${escapeHtml(site)}/log">Log Hours</a>.</p>
+          ${emailFooterHtml()}
+        `,
+      })
+      sent++
+    }
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'hours_reminder', meta: { sent, skipped } })
+    return res.json({ sent, skipped })
+  } catch (error) {
+    console.error('hours reminder failed:', error)
+    return res.status(500).json({ error: 'Could not send reminders.' })
   }
 })
 

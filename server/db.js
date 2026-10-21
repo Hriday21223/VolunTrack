@@ -492,6 +492,10 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkin_secret TEXT`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checked_out_at TIMESTAMPTZ`) } catch {}
+  // When a school last emailed a student that they're behind on hours
+  // (POST /api/school/students/remind), so a student gets at most one a week.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS hours_reminded_at TIMESTAMPTZ`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
