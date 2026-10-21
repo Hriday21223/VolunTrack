@@ -11,7 +11,6 @@ import Toast from '@/components/Toast.jsx'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
 import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
 import RateTask from '@/components/RateTask.jsx'
-import { useAuth } from '@/hooks/useAuth.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
