@@ -20,6 +20,8 @@ import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 import { isSignatureImage } from '../signature.js'
+import { icsCalendar, icsEvent } from '../ics.js'
+import { notify } from '../notifications.js'
 
 const router = express.Router()
 
@@ -489,6 +491,12 @@ router.post('/students/remind', limiter, requireDb, requireAuth('school', 'schoo
         [s.id, schoolId],
       )
       if (!rowCount) { skipped++; continue }
+      notify(s.id, {
+        kind: 'hours_reminder',
+        title: `You have ${s.remaining} hours to go`,
+        body: `${schoolName || 'Your school'} asks for ${s.target} volunteer hours${deadline ? ` by ${deadline}` : ''}. You have ${s.hours} so far.`,
+        link: '/opportunities',
+      })
       await sendEmail({
         to: s.email,
         subject: `${s.remaining} volunteer hours to go`,
@@ -1214,8 +1222,17 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
                t.created_by AS organizer_id,
-               ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer
+               ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer,
+               -- The organizer's average across all their tasks, only once
+               -- three students have rated: one or two ratings say too little.
+               CASE WHEN orating.n >= 3 THEN orating.avg END AS organizer_rating_avg,
+               CASE WHEN orating.n >= 3 THEN orating.n END AS organizer_rating_count
         FROM public_tasks t
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int AS n, ROUND(AVG(r.stars)::numeric, 1)::float8 AS avg
+            FROM task_ratings r JOIN public_tasks rt ON rt.id = r.task_id
+           WHERE rt.created_by = t.created_by
+        ) orating ON true
         -- A task whose day has passed isn't an opportunity any more. One day
         -- of slack, since the server's "today" is UTC's, ahead of US dates.
         WHERE t.status = 'open' AND t.date >= CURRENT_DATE - 1
@@ -1308,6 +1325,24 @@ async function notifyFollowers(organizerId, taskId) {
     )
     const task = taskRows[0]
     if (!task) return
+    // The bell gets every post, unthrottled: an in-app entry costs nobody an
+    // email. Same skips as the email, minus the @test.com one.
+    const { rows: followers } = await query(
+      `SELECT f.user_id FROM organizer_follows f JOIN users u ON u.id = f.user_id
+        WHERE f.organizer_id = $1
+          AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = f.user_id AND b.blocked_id = $1)`,
+      [organizerId],
+    )
+    const when = [task.date, task.time].filter(Boolean).join(' at ')
+    for (const f of followers) {
+      notify(f.user_id, {
+        kind: 'new_task',
+        title: task.title,
+        body: `New from ${task.creator_name || 'an organizer you follow'}${when ? ` · ${when}` : ''}`,
+        link: `/opportunities?task=${encodeURIComponent(taskId)}`,
+      })
+    }
     const { rows } = await query(
       `UPDATE organizer_follows f SET last_notified_at = now()
          FROM users u
@@ -1348,24 +1383,8 @@ async function notifyFollowers(organizerId, taskId) {
 
 // Add to calendar: a task as an .ics file, which phones and calendar apps
 // open as "add this event". Public, like the task list: no sign-in, and only
-// for a task the list would show. A task has a start time but no end, so the
-// event runs two hours; without a time it is an all-day event. Times are
-// "floating" (no time zone), so the calendar reads them in the device's own.
-const icsText = (v) => String(v ?? '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/([,;])/g, '\\$1')
-// Lines over 75 bytes are folded: a line break and a space (RFC 5545 3.1).
-function icsFold(line) {
-  const out = []
-  let cur = ''
-  for (const ch of line) {
-    if (Buffer.byteLength(cur + ch) > (out.length ? 74 : 75)) { out.push(cur); cur = '' }
-    cur += ch
-  }
-  out.push(cur)
-  return out.join('\r\n ')
-}
-const icsLocal = (d) => d.toISOString().replace(/[-:]/g, '').slice(0, 15)
-const icsDay = (d) => d.toISOString().slice(0, 10).replace(/-/g, '')
-
+// for a task the list would show. The event rules (two hours, or all day
+// without a time; floating times) live in ../ics.js, shared with the feed.
 router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res) => {
   try {
     const { rows } = await query(
@@ -1378,38 +1397,133 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
     )
     const t = rows[0]
     if (!t) return res.status(404).json({ error: 'Task not found.' })
-    // Built in UTC only as a way to do date arithmetic; written out floating.
-    const [y, m, d] = t.date.split('-').map(Number)
-    const hm = /^(\d{1,2}):(\d{2})/.exec(t.time || '')
     const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
-    const lines = [
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//VolunTrack//Tasks//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:${t.id}@voluntrack`,
-      `DTSTAMP:${icsLocal(new Date())}Z`,
-    ]
-    if (hm) {
-      const start = new Date(Date.UTC(y, m - 1, d, Number(hm[1]), Number(hm[2])))
-      lines.push(`DTSTART:${icsLocal(start)}`, `DTEND:${icsLocal(new Date(start.getTime() + 2 * 3600e3))}`)
-    } else {
-      const day = new Date(Date.UTC(y, m - 1, d))
-      lines.push(`DTSTART;VALUE=DATE:${icsDay(day)}`, `DTEND;VALUE=DATE:${icsDay(new Date(day.getTime() + 86400e3))}`)
-    }
-    lines.push(
-      `SUMMARY:${icsText(t.title)}`,
-      `LOCATION:${icsText(t.location)}`,
-      `DESCRIPTION:${icsText([t.description, t.creator_name && `Posted by ${t.creator_name}`, hm && 'End time is an estimate. Check with the organizer.', site && `${site}/opportunities`].filter(Boolean).join('\n\n'))}`,
-    )
-    if (t.latitude != null && t.longitude != null) lines.push(`GEO:${Number(t.latitude)};${Number(t.longitude)}`)
-    if (site) lines.push(`URL:${site}/opportunities`)
-    lines.push('END:VEVENT', 'END:VCALENDAR')
     res.set('Content-Type', 'text/calendar; charset=utf-8')
     res.set('Content-Disposition', 'attachment; filename="volunteer-task.ics"')
     res.set('Cache-Control', 'no-store')
-    return res.send(lines.map(icsFold).join('\r\n') + '\r\n')
+    return res.send(icsCalendar([icsEvent(t, { link: site && `${site}/opportunities` })]))
   } catch (error) {
     console.error('task calendar file failed:', error)
     return res.status(500).json({ error: 'Could not make the calendar file.' })
+  }
+})
+
+// Calendar feed: one subscribable .ics link per student or Task Maker that
+// lists their sign-ups and the tasks they posted, so a calendar app keeps them
+// up to date. The link's secret (users.calendar_token) is the only credential
+// — calendar apps can't send a sign-in — so it is made on first request and a
+// reset replaces it, which kills the old link. The URL points at this backend,
+// since that is what the calendar app fetches.
+const FEED_ROLES = ['student', 'volunteer']
+const FEED_TOKEN_RE = /^[0-9a-f]{64}$/
+
+function calendarFeedUrl(req, token) {
+  const base = process.env.PUBLIC_BACKEND_URL
+    || (process.env.NODE_ENV === 'production' ? 'https://voluntrack-backend-frrh.onrender.com' : `${req.protocol}://${req.get('host')}`)
+  return `${String(base).replace(/\/$/, '')}/api/school/calendar/${token}.ics`
+}
+
+// Calendar apps poll every few hours; this only stops someone hammering the
+// feed or trying tokens.
+const calendarFeedLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests. Please try again later.',
+})
+
+router.get('/calendar/feed', limiter, requireDb, requireAuth(...FEED_ROLES), async (req, res) => {
+  try {
+    // COALESCE keeps an existing token, so two tabs asking at once agree.
+    const { rows } = await query(
+      'UPDATE users SET calendar_token = COALESCE(calendar_token, $2) WHERE id = $1 RETURNING calendar_token',
+      [req.auth.sub, generateToken()],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ url: calendarFeedUrl(req, rows[0].calendar_token) })
+  } catch (error) {
+    console.error('calendar feed link failed:', error)
+    return res.status(500).json({ error: 'Could not make your calendar link.' })
+  }
+})
+
+router.post('/calendar/feed/reset', limiter, requireDb, requireAuth(...FEED_ROLES), async (req, res) => {
+  try {
+    const { rows } = await query(
+      'UPDATE users SET calendar_token = $2 WHERE id = $1 RETURNING calendar_token',
+      [req.auth.sub, generateToken()],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ url: calendarFeedUrl(req, rows[0].calendar_token) })
+  } catch (error) {
+    console.error('calendar feed reset failed:', error)
+    return res.status(500).json({ error: 'Could not reset your calendar link.' })
+  }
+})
+
+// Public: no sign-in, the token is the credential. Sign-ups that still count
+// (pending, approved, waitlisted) and the user's own posted tasks, not
+// cancelled, from 30 days ago on. Each UID is the task id, so an edited task
+// updates in place in the subscriber's calendar.
+router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, res) => {
+  const notFound = () => res.status(404).type('text/plain').send('Calendar not found.')
+  try {
+    const token = String(req.params.token || '')
+    if (!FEED_TOKEN_RE.test(token)) return notFound()
+    const { rows: users } = await query(
+      `SELECT id, role FROM users WHERE calendar_token = $1 AND role = ANY($2::text[])`,
+      [token, FEED_ROLES],
+    )
+    const user = users[0]
+    if (!user) return notFound()
+    const cols = `t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
+                  t.creator_name, t.latitude, t.longitude`
+    const [signups, posted] = await Promise.all([
+      query(
+        `SELECT ${cols}, s.status AS signup_status
+           FROM public_task_signups s
+           JOIN public_tasks t ON t.id = s.task_id
+          WHERE s.user_id = $1 AND s.status IN ('pending','approved','waitlisted')
+            AND t.status <> 'cancelled' AND t.date >= CURRENT_DATE - 30
+            AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
+          ORDER BY t.date, t.id
+          LIMIT 500`,
+        [user.id],
+      ),
+      query(
+        `SELECT ${cols}
+           FROM public_tasks t
+          WHERE t.created_by = $1 AND t.status <> 'cancelled' AND t.date >= CURRENT_DATE - 30
+          ORDER BY t.date, t.id
+          LIMIT 500`,
+        [user.id],
+      ),
+    ])
+    const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
+    const now = new Date()
+    const seen = new Set()
+    const events = []
+    for (const t of signups.rows) {
+      seen.add(t.id)
+      const summaryPrefix = t.signup_status === 'waitlisted' ? 'Waitlist: ' : t.signup_status === 'pending' ? 'Pending: ' : ''
+      events.push(icsEvent(t, { link: site && `${site}/attendance`, summaryPrefix, now }))
+    }
+    for (const t of posted.rows) {
+      if (seen.has(t.id)) continue
+      events.push(icsEvent(t, { link: site && `${site}/my-tasks`, now }))
+    }
+    res.set('Content-Type', 'text/calendar; charset=utf-8')
+    res.set('Content-Disposition', 'inline; filename="voluntrack.ics"')
+    res.set('Cache-Control', 'no-store')
+    return res.send(icsCalendar(events, [
+      'X-WR-CALNAME:VolunTrack',
+      'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
+      'X-PUBLISHED-TTL:PT1H',
+    ]))
+  } catch (error) {
+    console.error('calendar feed failed:', error)
+    return res.status(500).type('text/plain').send('Could not make the calendar.')
   }
 })
 
@@ -1768,7 +1882,14 @@ async function notifyWaitlistSpot(taskId, userId) {
       [taskId, userId],
     )
     const row = rows[0]
-    if (!row?.email) return
+    if (!row) return
+    notify(userId, {
+      kind: 'waitlist_spot',
+      title: row.title,
+      body: "A spot opened up and it's yours. The organizer will confirm your sign-up.",
+      link: '/attendance',
+    })
+    if (!row.email) return
     await sendEmail({
       to: row.email,
       subject: `A spot opened up: ${row.title}`,
@@ -1908,8 +2029,17 @@ async function notifySignupDecision(taskId, userId, decision) {
       [taskId, userId],
     )
     const row = rows[0]
-    if (!row?.email) return
+    if (!row) return
     const approved = decision === 'approved'
+    notify(userId, {
+      kind: approved ? 'signup_approved' : 'signup_rejected',
+      title: row.title,
+      body: approved
+        ? [row.date, row.time].filter(Boolean).join(' at ') || 'The organizer approved your sign-up.'
+        : 'The organizer could not take your sign-up for this one.',
+      link: approved ? '/attendance' : '/opportunities',
+    })
+    if (!row.email) return
     await sendEmail({
       to: row.email,
       subject: approved ? `You're in: ${row.title}` : `Update on your signup: ${row.title}`,
@@ -2293,7 +2423,16 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'missed_checkout', s.checked_in_at IS NOT NULL AND s.checked_out_at IS NULL AND t.date < CURRENT_DATE - 1
                   AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id)
               ) ORDER BY s.signed_up_at), '[]'::json)
-               FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups
+               FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups,
+              -- Ratings (PUT /public-tasks/:id/rating): the average, the count
+              -- and the comments with their stars and date — never the
+              -- student's name or id, so a comment can't be traced to a row.
+              (SELECT ROUND(AVG(r.stars)::numeric, 1)::float8 FROM task_ratings r WHERE r.task_id = t.id) AS rating_avg,
+              (SELECT COUNT(*)::int FROM task_ratings r WHERE r.task_id = t.id) AS rating_count,
+              (SELECT COALESCE(json_agg(json_build_object(
+                'stars', r.stars, 'comment', r.comment, 'date', to_char(r.updated_at, 'YYYY-MM-DD')
+              ) ORDER BY r.updated_at DESC), '[]'::json)
+               FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments
        FROM public_tasks t WHERE t.created_by = $1
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.auth.sub],
@@ -2302,6 +2441,61 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   } catch (error) {
     console.error('my tasks failed:', error)
     return res.status(500).json({ error: 'Could not fetch your tasks.' })
+  }
+})
+
+// --- Rating a task -------------------------------------------------------------
+//
+// A student who volunteered at a task rates it 1–5 stars with an optional
+// comment, once the task's day is over. The comment reaches only the task's
+// organizer (GET /public-tasks/mine), without the student's name; Opportunities
+// shows the organizer's average once they have 3 or more ratings.
+//
+// Who may rate, over a signup `s` joined to its task `t`: an approved signup
+// that attended — marked present or checked in, and not since marked absent or
+// excused — on a task that wasn't cancelled and whose day is over. "Over" has
+// the check-in code's day of slack, since the server's date is UTC's, ahead of
+// US dates; a volunteer who has already checked out is done, so may rate then.
+// COALESCE: a NULL attendance would otherwise make the answer NULL, not false.
+const RATING_OPEN_SQL = `COALESCE(s.status = 'approved' AND t.status <> 'cancelled'
+  AND (s.attendance_status = 'present' OR (s.checked_in_at IS NOT NULL AND s.attendance_status IS NULL))
+  AND (t.date < CURRENT_DATE - 1 OR s.checked_out_at IS NOT NULL), false)`
+
+const RATING_COMMENT_MAX = 500
+
+// PUT { stars, comment? }: add or change the caller's rating of a task.
+router.put('/public-tasks/:id/rating', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  const { stars } = req.body || {}
+  if (typeof stars !== 'number' || !Number.isInteger(stars) || stars < 1 || stars > 5) {
+    return res.status(400).json({ error: 'Choose from 1 to 5 stars.' })
+  }
+  const rawComment = req.body?.comment
+  if (rawComment != null && typeof rawComment !== 'string') return res.status(400).json({ error: 'The comment must be text.' })
+  const comment = (rawComment || '').trim() || null
+  if (comment && comment.length > RATING_COMMENT_MAX) {
+    return res.status(400).json({ error: `Keep the comment to ${RATING_COMMENT_MAX} characters.` })
+  }
+  try {
+    const { rows } = await query(
+      `SELECT ${RATING_OPEN_SQL} AS can_rate
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+        WHERE s.task_id = $1 AND s.user_id = $2`,
+      [req.params.id, req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'You didn\'t sign up for this task.' })
+    if (!rows[0].can_rate) {
+      return res.status(403).json({ error: 'You can rate a task once its day is over, if you were there.' })
+    }
+    const { rows: saved } = await query(
+      `INSERT INTO task_ratings (task_id, user_id, stars, comment) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (task_id, user_id) DO UPDATE SET stars = EXCLUDED.stars, comment = EXCLUDED.comment, updated_at = now()
+       RETURNING stars, comment, updated_at`,
+      [req.params.id, req.auth.sub, stars, comment],
+    )
+    return res.json({ ok: true, rating: saved[0] })
+  } catch (error) {
+    console.error('rate task failed:', error)
+    return res.status(500).json({ error: 'Could not save your rating.' })
   }
 })
 
@@ -2316,7 +2510,10 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
       `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
-              ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position
+              ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position,
+              ${RATING_OPEN_SQL} AS can_rate,
+              (SELECT json_build_object('stars', r.stars, 'comment', r.comment, 'updated_at', r.updated_at)
+                 FROM task_ratings r WHERE r.task_id = t.id AND r.user_id = s.user_id) AS my_rating
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
        WHERE s.user_id = $1
@@ -2788,6 +2985,7 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
       'UPDATE logs SET verification_status = $1, verified_by = $2, organizer_signature = $4 WHERE id = $3',
       [status, req.auth.sub, req.params.logId, status === 'approved' ? signature : null],
     )
+    if (status !== previousStatus) notifyHoursDecision(req.params.studentId, req.params.logId, status)
 
     // Spend any still-pending supervisor link for this log. Without this the
     // emailed link stays 'pending', so a supervisor clicking it days later
@@ -2815,6 +3013,30 @@ router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requi
     return res.status(500).json({ error: 'Could not update log.' })
   }
 })
+
+// The student hears about an organizer's decision on their hours in the bell.
+// Fire-and-forget: never awaited, and notify() itself never throws.
+async function notifyHoursDecision(studentId, logId, status) {
+  try {
+    const { rows } = await query(
+      `SELECT l.hours, to_char(l.date, 'YYYY-MM-DD') AS date, COALESCE(t.title, l.activity) AS title
+         FROM logs l LEFT JOIN public_tasks t ON t.id = l.task_id
+        WHERE l.id = $1 AND l.user_id = $2`,
+      [logId, studentId],
+    )
+    const row = rows[0]
+    if (!row) return
+    const approved = status === 'approved'
+    notify(studentId, {
+      kind: approved ? 'hours_approved' : 'hours_rejected',
+      title: row.title || 'Volunteer hours',
+      body: `${Number(row.hours) || 0} hours${row.date ? ` on ${row.date}` : ''} ${approved ? 'were approved by the organizer.' : 'were not approved by the organizer.'}`,
+      link: '/reports',
+    })
+  } catch (error) {
+    console.error('hours decision notification failed:', error)
+  }
+}
 
 // Mark attendance for a signed-up student on one of my tasks.
 router.post('/public-tasks/:id/attendance/:userId', limiter, requireDb, requireAuth(), async (req, res) => {

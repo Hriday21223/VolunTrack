@@ -10,6 +10,8 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import Toast from '@/components/Toast.jsx'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
 import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
+import RateTask from '@/components/RateTask.jsx'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -33,7 +35,7 @@ const ATTENDANCE_META = {
   excused: { label: tr('Excused'), icon: MinusCircle, className: 'text-amber-400' },
 }
 
-function SignupRow({ s, onChanged }) {
+function SignupRow({ s, onChanged, canRate }) {
   const cancelled = s.task_status === 'cancelled'
   const signup = cancelled ? CANCELLED_LABEL : (SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending)
   const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
@@ -72,11 +74,18 @@ function SignupRow({ s, onChanged }) {
           )}
         </div>
       </div>
+      {/* The server decides who may rate (can_rate): approved, attended, day over. */}
+      {canRate && s.can_rate && (
+        <RateTask task={s} onSaved={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />
+      )}
     </Card>
   )
 }
 
 export default function Attendance() {
+  const { user } = useAuth()
+  // Rating a task is for students (Task Makers can sign up too, but don't rate).
+  const canRate = user?.role === 'student'
   const [signups, setSignups] = useState([])
   const [loading, setLoading] = useState(true)
   const [toastMsg, setToastMsg] = useState('')
@@ -119,13 +128,13 @@ export default function Attendance() {
             {upcoming.length > 0 && (
               <div className="space-y-3">
                 <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">{tr('Upcoming')}</p>
-                {upcoming.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} />)}
+                {upcoming.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} canRate={canRate} />)}
               </div>
             )}
             {past.length > 0 && (
               <div className="space-y-3">
                 <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">{tr('Past')}</p>
-                {past.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} />)}
+                {past.map((s) => <SignupRow key={s.id} s={s} onChanged={changed} canRate={canRate} />)}
               </div>
             )}
           </>

@@ -551,6 +551,11 @@ export default function MyTasks() {
                     <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>
                     <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} signed up</span>
+                    {t.rating_count > 0 && (
+                      <span className="flex items-center gap-1 text-amber-400" title="Average rating from volunteers who came">
+                        ★ {Number(t.rating_avg).toFixed(1)} <span className="text-earth-500">({t.rating_count} {t.rating_count === 1 ? 'rating' : 'ratings'})</span>
+                      </span>
+                    )}
                   </div>
                   {t.phone && (
                     <p className="text-xs text-earth-500 mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /> {t.phone}</p>
@@ -570,6 +575,27 @@ export default function MyTasks() {
 
               {t.status === 'cancelled' && t.cancelled_reason && (
                 <p className="mt-2 text-xs text-red-300">Cancelled: {t.cancelled_reason}</p>
+              )}
+
+              {/* Volunteers' comments from their ratings — no names, by design. */}
+              {t.rating_comments?.length > 0 && (
+                <details className="mt-2 text-xs group">
+                  <summary className="cursor-pointer text-earth-400 hover:text-earth-200 select-none">
+                    {t.rating_comments.length === 1 ? '1 comment' : `${t.rating_comments.length} comments`} from volunteers
+                  </summary>
+                  <ul className="mt-2 space-y-2">
+                    {t.rating_comments.map((c, i) => (
+                      <li key={i} className="p-2 rounded-lg bg-earth-100 dark:bg-[#15211b]">
+                        <p className="flex items-center gap-2 text-earth-500">
+                          <span className="text-amber-400">{'★'.repeat(c.stars)}<span className="text-earth-600">{'★'.repeat(5 - c.stars)}</span></span>
+                          <span>{fmtDate(c.date)}</span>
+                        </p>
+                        <p className="mt-1 text-earth-700 dark:text-earth-200 whitespace-pre-wrap break-words">{c.comment}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-earth-500">Comments are anonymous. If one breaks the rules, contact us from Help.</p>
+                </details>
               )}
 
               {isExpanded && (

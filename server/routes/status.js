@@ -23,6 +23,7 @@ import announcementsRouter from './announcements.js'
 import goalsRouter from './goals.js'
 import reportsRouter from './reports.js'
 import clientErrorsRouter from './clientErrors.js'
+import notificationsRouter from './notifications.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -266,6 +267,7 @@ const MOUNTED_ROUTERS = [
   ['goals', '/api/goals', goalsRouter],
   ['reports', '/api/reports', reportsRouter],
   ['client-errors', '/api/client-errors', clientErrorsRouter],
+  ['notifications', '/api/notifications', notificationsRouter],
   ['status', '/api/status', router],
 ]
 
