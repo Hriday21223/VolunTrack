@@ -25,6 +25,7 @@ const KIND_LABELS = {
   parent_ok_request: tr('Needs your OK'),
   parent_ok_given: tr('Your parent said yes'),
   parent_ok_declined: tr('Your parent said no'),
+  comeback_nudge: tr('We miss you'),
 }
 
 const getToken = () => {

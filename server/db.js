@@ -605,6 +605,11 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_decided_at TIMESTAMPTZ`) } catch {}
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_public_signups_parent_ok_token ON public_task_signups(parent_ok_token) WHERE parent_ok_token IS NOT NULL`) } catch {}
 
+  // "Come back" nudge (server/comeback.js): a student's opt-out, and when they
+  // were last nudged — at most one nudge per month-long quiet spell.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS comeback_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS comeback_nudged_at TIMESTAMPTZ`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
