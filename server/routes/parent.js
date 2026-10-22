@@ -10,7 +10,7 @@ import { checkCronKey } from '../cronAuth.js'
 import { policyForUser } from '../policy.js'
 import { goalHoursFor } from '../requirements.js'
 import { recordAudit, AUDIT } from '../audit.js'
-import { WAITLIST_POSITION_SQL } from './school.js'
+import { WAITLIST_POSITION_SQL, decideParentOk } from './school.js'
 
 const router = express.Router()
 
@@ -179,7 +179,8 @@ const RECENT_TASKS = 3
 //
 // Only what a parent needs to know where and when: no organizer phone or
 // email, no important_info, and nothing about the other volunteers. Cancelled
-// tasks and rejected sign-ups are left out — the child isn't going.
+// tasks and rejected sign-ups (by the organizer or by a parent) are left out —
+// the child isn't going. One still waiting for a parent's OK is listed.
 //
 // "Upcoming" starts yesterday in UTC so a task later today in the US is never
 // filed as past; the client re-splits on its own local date.
@@ -210,7 +211,7 @@ router.get('/children/:childId/tasks', limiter, requireDb, requireAuth('parent')
     const { rows: upcoming } = await query(
       `SELECT ${CHILD_TASK_COLUMNS}
          FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-        WHERE s.user_id = $1 AND t.status <> 'cancelled' AND s.status <> 'rejected'
+        WHERE s.user_id = $1 AND t.status <> 'cancelled' AND s.status NOT IN ('rejected', 'parent_declined')
           AND t.date >= CURRENT_DATE - 1
         ORDER BY t.date, t.time NULLS LAST, t.title
         LIMIT 50`,
@@ -219,7 +220,7 @@ router.get('/children/:childId/tasks', limiter, requireDb, requireAuth('parent')
     const { rows: recent } = await query(
       `SELECT ${CHILD_TASK_COLUMNS}
          FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-        WHERE s.user_id = $1 AND t.status <> 'cancelled' AND s.status <> 'rejected'
+        WHERE s.user_id = $1 AND t.status <> 'cancelled' AND s.status NOT IN ('rejected', 'parent_declined')
           AND t.date < CURRENT_DATE - 1 AND t.date >= $2::date
         ORDER BY t.date DESC, t.time DESC NULLS LAST
         LIMIT $3`,
@@ -252,6 +253,75 @@ router.get('/children/:childId/tasks', limiter, requireDb, requireAuth('parent')
     return res.status(500).json({ error: 'Could not fetch tasks.' })
   }
 })
+
+// --- A parent's OK for an under-13's task sign-up ---------------------------
+//
+// Sign-ups from a linked child still waiting for a parent ('parent_pending',
+// see requestParentOk in school.js). Any linked parent may decide; the first
+// decision wins. Upcoming ones only: a task whose day passed can't be joined.
+router.get('/task-approvals', limiter, requireDb, requireAuth('parent'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.id AS signup_id, s.user_id AS child_id, c.name AS child_name, s.signed_up_at,
+              t.id AS task_id, t.title, t.description, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name
+         FROM public_task_signups s
+         JOIN parent_child_links l ON l.child_id = s.user_id AND l.parent_id = $1
+         JOIN users c ON c.id = s.user_id
+         JOIN public_tasks t ON t.id = s.task_id
+        WHERE s.status = 'parent_pending' AND t.status = 'open' AND t.date >= CURRENT_DATE - 1
+        ORDER BY t.date, t.time NULLS LAST, s.signed_up_at
+        LIMIT 50`,
+      [req.auth.sub],
+    )
+    for (const childId of new Set(rows.map((r) => r.child_id))) {
+      recordAudit(req, {
+        action: AUDIT.CHILD_TASKS_READ,
+        subjectUserId: childId,
+        objectType: 'task_signups',
+        meta: { awaitingParent: rows.filter((r) => r.child_id === childId).length },
+      })
+    }
+    return res.json({
+      approvals: rows.map((r) => ({
+        signupId: r.signup_id,
+        childId: r.child_id,
+        childName: r.child_name,
+        taskId: r.task_id,
+        title: r.title,
+        description: r.description || '',
+        date: r.date,
+        time: r.time || null,
+        location: r.location,
+        organizerName: r.creator_name || null,
+        signedUpAt: r.signed_up_at,
+      })),
+    })
+  } catch (error) {
+    console.error('task approvals fetch failed:', error)
+    return res.status(500).json({ error: 'Could not load sign-ups waiting for you.' })
+  }
+})
+
+async function parentDecides(req, res, approve) {
+  try {
+    const { rows } = await query(
+      `SELECT 1 FROM public_task_signups s
+         JOIN parent_child_links l ON l.child_id = s.user_id AND l.parent_id = $2
+        WHERE s.id = $1`,
+      [req.params.signupId, req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(403).json({ error: 'That sign-up is not from a child linked to you.' })
+    const result = await decideParentOk(req.params.signupId, approve)
+    if (!result.ok) return res.status(result.code).json({ error: result.error })
+    return res.json({ ok: true, status: result.status })
+  } catch (error) {
+    console.error('parent task decision failed:', error)
+    return res.status(500).json({ error: 'Could not save your decision.' })
+  }
+}
+
+router.post('/task-approvals/:signupId/approve', limiter, requireDb, requireAuth('parent'), (req, res) => parentDecides(req, res, true))
+router.post('/task-approvals/:signupId/decline', limiter, requireDb, requireAuth('parent'), (req, res) => parentDecides(req, res, false))
 
 // --- Weekly digest preference (the signed-in half of the unsubscribe link) ---
 //
@@ -429,5 +499,83 @@ router.post('/digest/unsubscribe/:token', digestLimiter, requireDb, async (req, 
     return res.status(500).type('html').send(unsubPage('Something went wrong. Please try again later.'))
   }
 })
+
+// --- A parent's OK by emailed link (no parent account linked) --------------
+//
+// requestParentOk (school.js) mails the address the child gave for parental
+// consent a link here when no parent account is linked. The 64-hex token is
+// the credential and works once: the decision clears it. Two-step like the
+// unsubscribe above and parentConsent.js: the GET only shows the task and the
+// buttons, so a mail scanner or link prefetch can't approve; the POSTs decide.
+
+const TASK_OK_BUTTON = 'font-size:1rem;padding:0.6rem 1.1rem;margin:0 0.5rem 0.5rem 0;cursor:pointer'
+
+function taskOkPage(bodyHtml) {
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${UNSUB_STYLE}">${bodyHtml}</body></html>`
+}
+
+const TASK_OK_GONE = 'This link has already been used or has expired. If you meant to change your answer, ask your child to sign up again and a new link will be sent.'
+
+async function signupForToken(token) {
+  const { rows } = await query(
+    `SELECT s.id, c.name AS child_name, t.title, t.description, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name
+       FROM public_task_signups s
+       JOIN users c ON c.id = s.user_id
+       JOIN public_tasks t ON t.id = s.task_id
+      WHERE s.parent_ok_token = $1 AND s.status = 'parent_pending'`,
+    [token],
+  )
+  return rows[0] || null
+}
+
+router.get('/task-ok/:token', digestLimiter, requireDb, async (req, res) => {
+  const token = String(req.params.token || '')
+  if (!/^[a-f0-9]{64}$/.test(token)) return res.status(400).type('html').send(unsubPage('This link is not valid.'))
+  try {
+    const s = await signupForToken(token)
+    if (!s) return res.status(404).type('html').send(unsubPage(TASK_OK_GONE))
+    const when = [s.date, s.time].filter(Boolean).join(' at ')
+    const action = `/api/parent/task-ok/${escapeHtml(token)}`
+    return res.status(200).type('html').send(taskOkPage(
+      `<h1 style="font-size:1.3rem">Let ${escapeHtml(s.child_name || 'your child')} join this volunteer task?</h1>
+<p><strong>${escapeHtml(s.child_name || 'Your child')}</strong> signed up on VolunTrack and named you as their parent or guardian. Because they are under 13, the organizer won't see the sign-up until you approve it.</p>
+<h2 style="font-size:1.1rem">${escapeHtml(s.title)}</h2>
+${s.description ? `<p>${escapeHtml(s.description)}</p>` : ''}
+${when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : ''}
+${s.location ? `<p><strong>Where:</strong> ${escapeHtml(s.location)}</p>` : ''}
+${s.creator_name ? `<p><strong>Organizer:</strong> ${escapeHtml(s.creator_name)}</p>` : ''}
+<p>If you approve, the organizer sees your child's name and email and confirms the sign-up. If you decline, nothing is shared with the organizer.</p>
+<form method="post" action="${action}/approve" style="display:inline"><button type="submit" style="${TASK_OK_BUTTON}">Approve</button></form>
+<form method="post" action="${action}/decline" style="display:inline"><button type="submit" style="${TASK_OK_BUTTON}">Decline</button></form>`,
+    ))
+  } catch (error) {
+    console.error('parent task OK (GET) failed:', error)
+    return res.status(500).type('html').send(unsubPage('Something went wrong. Please try again later.'))
+  }
+})
+
+async function decideByToken(req, res, approve) {
+  const token = String(req.params.token || '')
+  if (!/^[a-f0-9]{64}$/.test(token)) return res.status(400).type('html').send(unsubPage('This link is not valid.'))
+  try {
+    const s = await signupForToken(token)
+    if (!s) return res.status(404).type('html').send(unsubPage(TASK_OK_GONE))
+    const result = await decideParentOk(s.id, approve)
+    if (!result.ok) return res.status(result.code).type('html').send(unsubPage(result.error))
+    const name = s.child_name || 'Your child'
+    const text = !approve
+      ? `Declined. ${name}'s sign-up for ${s.title} was not sent to the organizer.`
+      : result.status === 'waitlisted'
+        ? `Thank you. ${s.title} filled up while you were deciding, so ${name} is on its waitlist and moves up if a spot opens.`
+        : `Thank you. ${name}'s sign-up for ${s.title} has gone to the organizer, who will confirm it.`
+    return res.status(200).type('html').send(unsubPage(text))
+  } catch (error) {
+    console.error('parent task OK (POST) failed:', error)
+    return res.status(500).type('html').send(unsubPage('Something went wrong. Please try again later.'))
+  }
+}
+
+router.post('/task-ok/:token/approve', digestLimiter, requireDb, (req, res) => decideByToken(req, res, true))
+router.post('/task-ok/:token/decline', digestLimiter, requireDb, (req, res) => decideByToken(req, res, false))
 
 export default router

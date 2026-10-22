@@ -8,12 +8,12 @@ import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail, backendUrl } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor } from '../requirements.js'
+import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -464,6 +464,115 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })
+  }
+})
+
+// --- Graduation report -------------------------------------------------------
+//
+// GET /graduation-report?grade=12&hours=approved|counted
+// Which students in one grade met the school's hour requirement, for a
+// counselor to print or export. Grades are compared through gradeKey(), the
+// same way goalHoursFor() picks a per-grade target, so "12", "12th" and
+// "Senior" are one grade. Defaults to approved hours only: a graduation
+// sign-off should rest on verified hours. "counted" adds pending, and rejected
+// hours never count either way.
+
+const roundHours = (n) => Math.round(n * 100) / 100
+
+// Kindergarten, then 1–12 in order, then anything a school labels itself.
+function gradeSortValue(key) {
+  if (key === 'K') return 0
+  if (/^\d{1,2}$/.test(key)) return Number(key)
+  return 100
+}
+
+router.get('/graduation-report', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const hoursMode = req.query.hours === 'counted' ? 'counted' : 'approved'
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    const resolved = await policyForSchool(schoolId)
+    const policy = resolved?.policy
+    const goals = policy?.goals || {}
+    const requirementSet = goals.totalHours != null || Object.keys(goals.byGrade || {}).length > 0
+
+    const { rows } = await query(
+      `SELECT u.id, u.name, u.email, u.grade,
+              COALESCE(SUM(l.hours) FILTER (WHERE l.verification_status = 'approved'), 0)::float AS approved,
+              COALESCE(SUM(l.hours) FILTER (WHERE l.id IS NOT NULL
+                AND l.verification_status IS DISTINCT FROM 'approved'
+                AND l.verification_status IS DISTINCT FROM 'rejected'), 0)::float AS pending
+         FROM users u LEFT JOIN logs l ON l.user_id = u.id
+        WHERE u.school_id = $1 AND u.role = 'student'
+        GROUP BY u.id
+        ORDER BY u.name`,
+      [schoolId],
+    )
+
+    // Only grades that actually exist among this school's students.
+    const counts = new Map()
+    let ungraded = 0
+    for (const r of rows) {
+      const key = gradeKey(r.grade)
+      if (!key) { ungraded++; continue }
+      counts.set(key, (counts.get(key) || 0) + 1)
+    }
+    const grades = [...counts.entries()]
+      .map(([key, count]) => ({ key, label: gradeLabel(key), count, target: goalHoursFor(policy, key) }))
+      .sort((a, b) => gradeSortValue(a.key) - gradeSortValue(b.key) || a.key.localeCompare(b.key))
+    const numeric = grades.filter((g) => /^\d{1,2}$/.test(g.key))
+    const defaultGrade = (numeric.length ? numeric[numeric.length - 1] : grades[grades.length - 1])?.key || null
+
+    const grade = gradeKey(typeof req.query.grade === 'string' ? req.query.grade.slice(0, 40) : '') || defaultGrade
+    const target = grade ? goalHoursFor(policy, grade) : null
+
+    const students = rows
+      .filter((r) => grade && gradeKey(r.grade) === grade)
+      .map((r) => {
+        const approvedHours = roundHours(r.approved)
+        const pendingHours = roundHours(r.pending)
+        const countedHours = roundHours(r.approved + r.pending)
+        const hours = hoursMode === 'counted' ? countedHours : approvedHours
+        const met = target != null && hours >= target
+        return {
+          id: r.id, name: r.name, email: r.email, grade: r.grade,
+          approvedHours, pendingHours, countedHours, hours,
+          met,
+          shortfall: target != null ? roundHours(Math.max(0, target - hours)) : null,
+        }
+      })
+      // Missed first, furthest behind at the top; then everyone who met it.
+      .sort((a, b) => Number(a.met) - Number(b.met)
+        || (b.shortfall ?? 0) - (a.shortfall ?? 0)
+        || String(a.name || '').localeCompare(String(b.name || '')))
+
+    const met = students.filter((s) => s.met).length
+    recordAudit(req, {
+      action: AUDIT.STUDENT_LIST_READ,
+      schoolId,
+      objectType: 'graduation_report',
+      meta: { grade, hoursMode, count: students.length },
+    })
+    return res.json({
+      schoolName: resolved?.schoolName || '',
+      generatedAt: new Date().toISOString(),
+      hoursMode,
+      grade,
+      gradeLabel: grade ? gradeLabel(grade) : null,
+      grades,
+      ungraded,
+      requirementSet,
+      target,
+      deadline: goals.deadline || null,
+      note: goals.note || '',
+      summary: { students: students.length, met, missed: students.length - met },
+      students,
+    })
+  } catch (error) {
+    console.error('graduation report failed:', error)
+    return res.status(500).json({ error: 'Could not build the graduation report.' })
   }
 })
 
@@ -1463,7 +1572,7 @@ router.post('/calendar/feed/reset', limiter, requireDb, requireAuth(...FEED_ROLE
 })
 
 // Public: no sign-in, the token is the credential. Sign-ups that still count
-// (pending, approved, waitlisted) and the user's own posted tasks, not
+// (pending, approved, waitlisted, waiting for a parent's OK) and the user's own posted tasks, not
 // cancelled, from 30 days ago on. Each UID is the task id, so an edited task
 // updates in place in the subscriber's calendar.
 router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, res) => {
@@ -1484,7 +1593,7 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
         `SELECT ${cols}, s.status AS signup_status
            FROM public_task_signups s
            JOIN public_tasks t ON t.id = s.task_id
-          WHERE s.user_id = $1 AND s.status IN ('pending','approved','waitlisted')
+          WHERE s.user_id = $1 AND s.status IN ('pending','approved','waitlisted','parent_pending')
             AND t.status <> 'cancelled' AND t.date >= CURRENT_DATE - 30
             AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
           ORDER BY t.date, t.id
@@ -1506,7 +1615,7 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
     const events = []
     for (const t of signups.rows) {
       seen.add(t.id)
-      const summaryPrefix = t.signup_status === 'waitlisted' ? 'Waitlist: ' : t.signup_status === 'pending' ? 'Pending: ' : ''
+      const summaryPrefix = { waitlisted: 'Waitlist: ', pending: 'Pending: ', parent_pending: 'Needs parent OK: ' }[t.signup_status] || ''
       events.push(icsEvent(t, { link: site && `${site}/attendance`, summaryPrefix, now }))
     }
     for (const t of posted.rows) {
@@ -1577,13 +1686,47 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     const invitedBy = await verifiedInviter(client, req.params.id, req.auth.sub, req.body?.invitedBy)
 
     // Already signed up: return the existing row instead of reporting "full".
+    // A parent's earlier no is the exception: signing up again asks again.
     const { rows: existing } = await client.query(
-      'SELECT id FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
+      'SELECT id, status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
       [req.params.id, req.auth.sub],
     )
-    if (existing.length > 0) {
+    if (existing.length > 0 && existing[0].status !== 'parent_declined') {
       await client.query('COMMIT')
-      return res.json({ ok: true, id: existing[0].id })
+      return res.json({
+        ok: true,
+        id: existing[0].id,
+        ...(existing[0].status === 'parent_pending' ? { parentPending: true } : {}),
+      })
+    }
+    if (existing.length > 0) {
+      await client.query('DELETE FROM public_task_signups WHERE id = $1', [existing[0].id])
+    }
+
+    // Under 13 (users.under_13, set at self-registration — see ageRules.js;
+    // NULL when the age was never asked, which keeps today's flow): the
+    // sign-up waits for a parent's OK, holding no slot and hidden from the
+    // organizer. A full task still needs { waitlist: true }, as for anyone;
+    // whether it lands as pending or waitlisted is decided when the parent
+    // says yes (decideParentOk).
+    const { rows: me } = await client.query('SELECT under_13 FROM users WHERE id = $1', [req.auth.sub])
+    if (me[0]?.under_13 === true) {
+      const { rows: taken } = await client.query(
+        "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
+        [req.params.id],
+      )
+      if (Number(taken[0].cnt) >= rows[0].slots_total && req.body?.waitlist !== true) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: 'Task is full.' })
+      }
+      const pid = uid('psig')
+      await client.query(
+        "INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by) VALUES ($1, $2, $3, 'parent_pending', $4)",
+        [pid, req.params.id, req.auth.sub, invitedBy],
+      )
+      await client.query('COMMIT')
+      const asked = await requestParentOk(pid)
+      return res.json({ ok: true, id: pid, parentPending: true, parentAsked: asked })
     }
 
     // Rejected and waitlisted signups don't hold a slot: turning three
@@ -1835,6 +1978,232 @@ async function sendTaskInvites(taskId, inviterId, task, emails) {
   }
 }
 
+// --- A parent's OK for an under-13 -------------------------------------------
+//
+// An under-13 (users.under_13) signing up lands as 'parent_pending': it holds
+// no slot, the organizer doesn't see it, and it can't be approved by them.
+// Who decides:
+//   - the child's linked parent accounts (parent_child_links), on the Family
+//     dashboard — bell entry plus an email pointing there;
+//   - with none linked, the address the child gave for parental consent at
+//     sign-up, by an emailed link to a two-step backend page (GET shows the
+//     choice, POST decides, so a mail scanner can't say yes; see parent.js);
+//   - with neither, nobody can yet: the sign-up waits, and the student is
+//     told to link a parent (Settings → Family). A parent who links later
+//     sees it on their dashboard.
+// Yes → 'pending' (or 'waitlisted' if the task filled up meanwhile), then
+// the organizer's usual approval. No → 'parent_declined': the student sees it
+// and may ask again by signing up again.
+
+export const PARENT_HELD = ['parent_pending', 'parent_declined']
+
+const childFirstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'Your child'
+
+/**
+ * Tells whoever can decide that a sign-up is waiting. Database work is
+ * awaited; emails are sent after it returns.
+ * @returns {Promise<'linked'|'email'|'none'>} who was asked.
+ */
+export async function requestParentOk(signupId) {
+  try {
+    const { rows } = await query(
+      `SELECT s.id, s.user_id, t.id AS task_id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
+              c.name AS child_name, c.parent_consent_email
+         FROM public_task_signups s
+         JOIN public_tasks t ON t.id = s.task_id
+         JOIN users c ON c.id = s.user_id
+        WHERE s.id = $1 AND s.status = 'parent_pending'`,
+      [signupId],
+    )
+    const row = rows[0]
+    if (!row) return 'none'
+    const child = childFirstName(row.child_name)
+    const subject = `${child} wants to volunteer: ${row.title}`
+    const when = [row.date, row.time].filter(Boolean).join(' at ')
+
+    const { rows: parents } = await query(
+      `SELECT u.id, u.email FROM parent_child_links l JOIN users u ON u.id = l.parent_id
+        WHERE l.child_id = $1 AND u.role = 'parent'`,
+      [row.user_id],
+    )
+    if (parents.length > 0) {
+      for (const p of parents) {
+        notify(p.id, {
+          kind: 'parent_ok_request',
+          title: `${child} wants to join ${row.title}`,
+          body: `${when ? `${when} · ` : ''}Approve or decline on your Family dashboard.`,
+          link: '/parent',
+        })
+      }
+      sendParentOkEmails(parents.map((p) => p.email), subject, {
+        heading: `${child} needs your OK to volunteer`,
+        lines: [
+          `${row.child_name || child} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you approve it.`,
+          'Open your Family dashboard to approve or decline. Nothing is shared with the organizer if you decline.',
+        ],
+        task: row,
+        link: `${frontendBase()}/parent`,
+        linkLabel: 'Review on your Family dashboard',
+      })
+      return 'linked'
+    }
+
+    if (row.parent_consent_email) {
+      const token = generateToken()
+      const { rowCount } = await query(
+        "UPDATE public_task_signups SET parent_ok_token = $1 WHERE id = $2 AND status = 'parent_pending'",
+        [token, signupId],
+      )
+      if (rowCount === 0) return 'none'
+      sendParentOkEmails([row.parent_consent_email], subject, {
+        heading: `${child} needs your OK to volunteer`,
+        lines: [
+          `${row.child_name || child} signed up for this volunteer task on VolunTrack and gave this address as their parent or guardian. Because they are under 13, the organizer won't see the sign-up until you approve it.`,
+          'Open the link to approve or decline. Nothing changes until you press a button on that page, and the link works once.',
+          "If you don't know this child, decline or ignore this email.",
+        ],
+        task: row,
+        link: `${backendUrl()}/api/parent/task-ok/${token}`,
+        linkLabel: 'Review this sign-up',
+      })
+      return 'email'
+    }
+    return 'none'
+  } catch (error) {
+    console.error('parent OK request failed:', error)
+    return 'none'
+  }
+}
+
+// One message per address, never a shared thread; the @test.com fixtures are
+// skipped, as announcements and follower emails do.
+async function sendParentOkEmails(addresses, subject, content) {
+  const seen = new Set()
+  for (const raw of addresses) {
+    const email = String(raw || '').trim().toLowerCase()
+    if (!email || seen.has(email)) continue
+    seen.add(email)
+    if (email.endsWith('@test.com')) {
+      console.log(`[parent-ok] skipped @test.com fixture ${email}: ${subject}`)
+      continue
+    }
+    try {
+      await sendEmail({ to: email, subject, html: taskEmailHtml(content) })
+    } catch (error) {
+      console.error('parent OK email failed:', error)
+    }
+  }
+}
+
+/**
+ * A parent's decision on a 'parent_pending' sign-up. The caller has already
+ * checked the parent may decide (a link, or the emailed token).
+ * @returns {Promise<{ ok: true, status: string } | { ok: false, code: number, error: string }>}
+ */
+export async function decideParentOk(signupId, approve) {
+  const client = await getPool().connect()
+  let result
+  try {
+    await client.query('BEGIN')
+    // The task row lock first, as sign-up and promotion take it, so a yes
+    // can't race them for the last slot.
+    const { rows: found } = await client.query('SELECT task_id FROM public_task_signups WHERE id = $1', [signupId])
+    if (!found[0]) {
+      await client.query('ROLLBACK')
+      return { ok: false, code: 404, error: 'This sign-up no longer exists.' }
+    }
+    const { rows: taskRows } = await client.query(
+      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past,
+              (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended
+         FROM public_tasks t WHERE t.id = $1 FOR UPDATE`,
+      [found[0].task_id],
+    )
+    const { rows: signupRows } = await client.query(
+      `SELECT s.status, s.user_id,
+              EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $2) AS host_blocked
+         FROM public_task_signups s WHERE s.id = $1 FOR UPDATE`,
+      [signupId, taskRows[0]?.created_by || null],
+    )
+    const task = taskRows[0]
+    const signup = signupRows[0]
+    if (!task || !signup) {
+      await client.query('ROLLBACK')
+      return { ok: false, code: 404, error: 'This sign-up no longer exists.' }
+    }
+    if (signup.status !== 'parent_pending') {
+      await client.query('ROLLBACK')
+      return { ok: false, code: 409, error: 'This sign-up has already been decided.' }
+    }
+
+    if (!approve) {
+      await client.query(
+        "UPDATE public_task_signups SET status = 'parent_declined', parent_ok_token = NULL, parent_ok_decided_at = now() WHERE id = $1",
+        [signupId],
+      )
+      await client.query('COMMIT')
+      result = { ok: true, status: 'parent_declined', userId: signup.user_id, taskId: found[0].task_id }
+    } else {
+      if (task.status === 'cancelled') {
+        await client.query('ROLLBACK')
+        return { ok: false, code: 400, error: 'This task was cancelled.' }
+      }
+      if (task.status !== 'open' || task.past || task.host_suspended || signup.host_blocked) {
+        await client.query('ROLLBACK')
+        return { ok: false, code: 400, error: "This task isn't taking sign-ups any more." }
+      }
+      const { rows: taken } = await client.query(
+        "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
+        [found[0].task_id],
+      )
+      // Filled up while the parent was deciding: the waitlist, never over
+      // capacity. signed_up_at restarts at the OK, so the child joins the
+      // line behind people who were already waiting.
+      const status = Number(taken[0].cnt) < task.slots_total ? 'pending' : 'waitlisted'
+      await client.query(
+        `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_decided_at = now()
+          WHERE id = $1`,
+        [signupId, status],
+      )
+      await client.query('COMMIT')
+      result = { ok: true, status, userId: signup.user_id, taskId: found[0].task_id }
+    }
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
+    console.error('parent OK decision failed:', error)
+    return { ok: false, code: 500, error: 'Could not save the decision.' }
+  } finally {
+    client.release()
+  }
+  notifyParentDecision(result)
+  return { ok: true, status: result.status }
+}
+
+async function notifyParentDecision({ status, userId, taskId }) {
+  try {
+    const { rows } = await query('SELECT title FROM public_tasks WHERE id = $1', [taskId])
+    const title = rows[0]?.title || 'A volunteer task'
+    if (status === 'parent_declined') {
+      notify(userId, {
+        kind: 'parent_ok_declined',
+        title,
+        body: 'Your parent said no to this sign-up. Talk with them, and you can ask again by signing up again.',
+        link: '/attendance',
+      })
+    } else {
+      notify(userId, {
+        kind: 'parent_ok_given',
+        title,
+        body: status === 'waitlisted'
+          ? "Your parent said yes. The task filled up meanwhile, so you're on the waitlist."
+          : 'Your parent said yes. Now the organizer will confirm your sign-up.',
+        link: '/attendance',
+      })
+    }
+  } catch (error) {
+    console.error('parent decision notification failed:', error)
+  }
+}
+
 // --- Waitlist ---------------------------------------------------------------
 //
 // A full task takes sign-ups as 'waitlisted', first come first served. They
@@ -1945,7 +2314,9 @@ router.delete('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), asy
       return res.status(400).json({ error: 'This task has already happened, so the sign-up stays on your record.' })
     }
     await query('DELETE FROM public_task_signups WHERE task_id = $1 AND user_id = $2', [req.params.id, req.auth.sub])
-    if (signup.status !== 'waitlisted') await promoteFromWaitlist(req.params.id)
+    // Only pending and approved hold a slot; a sign-up still waiting for (or
+    // turned down by) a parent, or on the waitlist, frees nothing.
+    if (['pending', 'approved'].includes(signup.status)) await promoteFromWaitlist(req.params.id)
     return res.json({ ok: true })
   } catch (error) {
     console.error('cancel signup failed:', error)
@@ -1966,7 +2337,11 @@ router.post('/public-tasks/:id/approve/:userId', limiter, requireDb, requireAuth
       'SELECT status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
       [req.params.id, req.params.userId],
     )
-    if (signupRows.length === 0) return res.status(404).json({ error: 'Signup not found.' })
+    // A sign-up still waiting for a parent's OK (or turned down by one) isn't
+    // the organizer's to decide, and isn't shown to them.
+    if (signupRows.length === 0 || PARENT_HELD.includes(signupRows[0].status)) {
+      return res.status(404).json({ error: 'Signup not found.' })
+    }
     if (signupRows[0].status === 'approved') return res.json({ ok: true })
     // Approving from the waitlist would put the task over its slots.
     if (signupRows[0].status === 'waitlisted') {
@@ -1999,7 +2374,11 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
       'SELECT status FROM public_task_signups WHERE task_id = $1 AND user_id = $2',
       [req.params.id, req.params.userId],
     )
-    if (signupRows.length === 0) return res.status(404).json({ error: 'Signup not found.' })
+    // A sign-up still waiting for a parent's OK (or turned down by one) isn't
+    // the organizer's to decide, and isn't shown to them.
+    if (signupRows.length === 0 || PARENT_HELD.includes(signupRows[0].status)) {
+      return res.status(404).json({ error: 'Signup not found.' })
+    }
     if (signupRows[0].status === 'rejected') return res.json({ ok: true })
     await query(
       "UPDATE public_task_signups SET status = 'rejected' WHERE task_id = $1 AND user_id = $2",
@@ -2198,7 +2577,7 @@ router.post('/public-tasks/:id/cancel', limiter, requireDb, requireAuth(), async
 
     const { rows: people } = await query(
       `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
-        WHERE s.task_id = $1 AND s.status <> 'rejected'`,
+        WHERE s.task_id = $1 AND s.status NOT IN ('rejected', 'parent_declined')`,
       [req.params.id],
     )
     // Sequential and individual — see taskEmailHtml on why there is no shared
@@ -2442,7 +2821,10 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'missed_checkout', s.checked_in_at IS NOT NULL AND s.checked_out_at IS NULL AND t.date < CURRENT_DATE - 1
                   AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id)
               ) ORDER BY s.signed_up_at), '[]'::json)
-               FROM public_task_signups s JOIN users u ON u.id = s.user_id WHERE s.task_id = t.id) AS signups,
+               FROM public_task_signups s JOIN users u ON u.id = s.user_id
+              -- Not before a parent's OK (decideParentOk): an under-13's name
+              -- and email reach the organizer only once a parent agreed.
+              WHERE s.task_id = t.id AND s.status NOT IN ('parent_pending', 'parent_declined')) AS signups,
               -- Ratings (PUT /public-tasks/:id/rating): the average, the count
               -- and the comments with their stars and date — never the
               -- student's name or id, so a comment can't be traced to a row.

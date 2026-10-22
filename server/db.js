@@ -586,6 +586,24 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('portfolios table failed:', error.message) }
+  // A parent's OK before an under-13 joins a task (server/routes/school.js,
+  // requestParentOk/decideParentOk): the sign-up waits as 'parent_pending'
+  // (holds no slot, hidden from the organizer) until a linked parent decides
+  // on the Family dashboard or, with no linked parent, the address given for
+  // parental consent decides from an emailed link whose 64-hex token is the
+  // credential. 'parent_declined' is the parent's no. The token is cleared on
+  // the decision, so a link works once. Re-adding the check is skipped once it
+  // allows the value, like the waitlist one above.
+  try {
+    const { rows } = await query(`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'public_task_signups_status_check'`)
+    if (!rows[0]?.def?.includes('parent_pending')) {
+      await query(`ALTER TABLE public_task_signups DROP CONSTRAINT IF EXISTS public_task_signups_status_check`)
+      await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_status_check CHECK (status IN ('pending','approved','rejected','waitlisted','parent_pending','parent_declined'))`)
+    }
+  } catch (error) { console.error('parent OK status migration failed:', error.message) }
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_token TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_decided_at TIMESTAMPTZ`) } catch {}
+  try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_public_signups_parent_ok_token ON public_task_signups(parent_ok_token) WHERE parent_ok_token IS NOT NULL`) } catch {}
 
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}

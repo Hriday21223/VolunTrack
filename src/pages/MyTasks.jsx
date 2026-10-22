@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet, QrCode, Copy } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SignaturePad from '@/components/SignaturePad.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { useData } from '@/hooks/useData.jsx'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import { csvCell } from '@/lib/csv.js'
 import { fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
@@ -19,6 +20,7 @@ const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', ti
 
 export default function MyTasks() {
   const { refreshLogs } = useData()
+  const { user } = useAuth()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(null)
@@ -113,6 +115,20 @@ export default function MyTasks() {
       })),
       totals: { students: report.totals.volunteers, logs: report.totals.events, hours: report.totals.hours },
     })
+  }
+
+  // A paper sign-in sheet for events where volunteers don't have phones:
+  // approved volunteers by name only, plus blank rows for walk-ins. Built in
+  // the browser from the task already on screen — nothing new is fetched.
+  const [sheetBusyId, setSheetBusyId] = useState(null)
+  const signInSheet = async (t) => {
+    setSheetBusyId(t.id)
+    try {
+      const { generateSignInSheetPDF } = await import('@/lib/export.js')
+      await generateSignInSheetPDF(t, { organizerName: user?.name })
+    } catch {
+      setToastMsg('Could not create the sign-in sheet'); setToast(true)
+    } finally { setSheetBusyId(null) }
   }
 
   const startEdit = (t) => {
@@ -607,6 +623,9 @@ export default function MyTasks() {
                       <>
                         <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
                           <QrCode className="w-3.5 h-3.5 mr-1" /> Check-in QR
+                        </button>
+                        <button onClick={() => signInSheet(t)} className="btn-sm btn-ghost" disabled={actionBusy || sheetBusyId === t.id}>
+                          <Printer className="w-3.5 h-3.5 mr-1" /> {sheetBusyId === t.id ? 'Preparing…' : 'Sign-in sheet (PDF)'}
                         </button>
                         <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
                           <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
