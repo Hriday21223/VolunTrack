@@ -67,3 +67,14 @@ export function generateReferralCode(name) {
 export function generateNumericCode(digits = 6) {
   return String(randomInt(0, 10 ** digits)).padStart(digits, '0')
 }
+
+// Slug for a student's public volunteer portfolio (/p/<slug>). 12 base62
+// characters is about 71 bits — far past guessing behind a rate limiter —
+// while staying short enough to type off a printed college application, which
+// a 64-hex generateToken() link isn't. Rejection-sampled like the codes above.
+const SLUG_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+export function generatePortfolioSlug() {
+  let s = ''
+  for (let i = 0; i < 12; i++) s += SLUG_ALPHABET[randomInt(SLUG_ALPHABET.length)]
+  return s
+}

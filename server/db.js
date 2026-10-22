@@ -570,6 +570,22 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_token TEXT`) } catch {}
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_calendar_token ON users(calendar_token) WHERE calendar_token IS NOT NULL`) } catch {}
 
+  // Volunteer portfolio: an opt-in public page (/p/<slug>) a student can put
+  // on a college application. Off by default; the slug is the only key to it
+  // and "Get a new link" replaces it. `options` says which parts are shown.
+  // See server/routes/portfolio.js.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS portfolios (
+        user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        slug       TEXT NOT NULL UNIQUE,
+        enabled    BOOLEAN NOT NULL DEFAULT false,
+        options    JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch (error) { console.error('portfolios table failed:', error.message) }
   // A parent's OK before an under-13 joins a task (server/routes/school.js,
   // requestParentOk/decideParentOk): the sign-up waits as 'parent_pending'
   // (holds no slot, hidden from the organizer) until a linked parent decides

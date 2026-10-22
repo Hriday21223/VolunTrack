@@ -52,6 +52,7 @@ const Attendance = lazy(() => import('@/pages/Attendance.jsx'))
 const Status = lazy(() => import('@/pages/Status.jsx'))
 const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
 const VerifyTranscript = lazy(() => import('@/pages/VerifyTranscript.jsx'))
+const Portfolio = lazy(() => import('@/pages/Portfolio.jsx'))
 const ParentDashboard = lazy(() => import('@/pages/ParentDashboard.jsx'))
 
 function RouteFallback() {
@@ -131,6 +132,8 @@ function Shell() {
           <Route path="/status/:tab"    element={<Status />} />
           <Route path="/verify-hours"   element={<VerifyHours />} />
           <Route path="/verify-transcript" element={<VerifyTranscript />} />
+          {/* A student's opt-in public volunteer portfolio — open to anyone with the link. */}
+          <Route path="/p/:slug"        element={<Portfolio />} />
 
           <Route path="/"             element={<Home />} />
           <Route path="/welcome"      element={<Protected roles={ROUTE_ROLES['/welcome']}><Welcome /></Protected>} />
