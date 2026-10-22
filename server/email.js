@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { escapeHtml } from './html.js'
+import { et } from './emailStrings.js'
 
 // Two ways out, picked at send time by which env vars are set.
 //
@@ -186,9 +187,11 @@ function contactLink() {
   return `${process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app'}/contact`
 }
 
-export function emailFooterHtml() {
+// `lang` ('en' | 'es', see server/emailStrings.js) is for emails that are
+// rendered in the recipient's language; everything else gets English.
+export function emailFooterHtml(lang = 'en') {
   const link = contactLink()
-  return `<p>This is an automated message — please don't reply to this email. Contact us if you run into any problems: <a href="${link}">${link}</a></p>`
+  return `<p>${et(lang, "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}", { link: `<a href="${link}">${link}</a>` })}</p>`
 }
 
 export function emailFooterText() {

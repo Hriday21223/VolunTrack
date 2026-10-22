@@ -5,6 +5,7 @@ import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
+import { tr } from '@/lib/i18n.js'
 
 export default function Privacy() {
   useSeo({
@@ -39,6 +40,7 @@ export default function Privacy() {
               <li><strong>School, grade and student ID</strong> — only if you enter them, so your school and your reports show the right details.</li>
               <li><strong>Date of birth</strong> — asked when you create an account, only to apply our age rules: students under 13 need a parent or guardian&apos;s approval, Volunteer Task Maker and parent accounts are for adults 18 and up. We don&apos;t store it; we keep only whether a student is under 13. If a date entered is too young for the account type, your device remembers that for a day so the rules can&apos;t be skipped by changing it, and this never leaves your device.</li>
               <li><strong>Where you signed up</strong> — whether your account was created on the website, in the Android app or in the iPhone app. We use it only to count sign-ups, so we know which versions of VolunTrack people use.</li>
+              <li><strong>{tr('App language')}</strong> — {tr('the language you pick in the app (English or Spanish). If you’re signed in, we save it with your account so the emails we send you, such as the weekly summary for parents and the “We miss you” email, come in that language. It’s replaced when you pick another, and deleted with your account.')}</li>
               <li><strong>School sign-in</strong> — if your school has set up single sign-on, we receive your name, email address, and an account identifier from your school&apos;s sign-in provider (such as Google or Microsoft). We never see your school password.</li>
               <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app, plus any extra fields your school or organization requires on an entry.</li>
               <li><strong>Personal goals</strong> — the name, hour target, deadline and cause (if you pick one) of goals you set, so they show on all your devices. Deleting a goal or your account deletes it.</li>

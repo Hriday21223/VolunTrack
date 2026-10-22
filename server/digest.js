@@ -12,6 +12,7 @@ import { query } from './db.js'
 import { sendEmail, emailFooterHtml } from './email.js'
 import { escapeHtml } from './html.js'
 import { generateToken } from './ids.js'
+import { emailLang, et, emailDate } from './emailStrings.js'
 
 // Skip a parent whose linked students logged nothing in the window — no email,
 // and (deliberately) no parent_digest_sends row, so a later child-link +
@@ -50,10 +51,16 @@ function utcDay(d) {
 function isoDate(d) {
   return d.toISOString().slice(0, 10)
 }
-function label(d, withYear) {
-  return d.toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', timeZone: 'UTC', ...(withYear ? { year: 'numeric' } : {}),
-  })
+function label(d, withYear, lang = 'en') {
+  return emailDate(lang, d, withYear)
+}
+
+// The window's "Oct 13" / "Oct 19, 2026" labels in the recipient's language.
+function windowLabels(weekStart, lang) {
+  const start = utcDay(new Date(`${weekStart}T00:00:00Z`))
+  const sunday = utcDay(start)
+  sunday.setUTCDate(start.getUTCDate() + 6)
+  return { startLabel: label(start, false, lang), endLabel: label(sunday, true, lang) }
 }
 
 // The just-finished Mon–Sun week, as 'yyyy-MM-dd' strings. weekEnd is the
@@ -94,7 +101,7 @@ function windowFromStartDate(weekStartDate) {
 // JSON-serialised (which would shift the day by the server's UTC offset).
 export async function buildParentDigests({ weekStart, weekEnd, parentId = null, force = false }) {
   const { rows: parents } = await query(
-    `SELECT id, name, email FROM users
+    `SELECT id, name, email, language FROM users
      WHERE role = 'parent' AND weekly_digest_opt_out = false
        AND ($1::text IS NULL OR id = $1)
      ORDER BY email`,
@@ -119,7 +126,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
       )
       if (any.length === 0) {
         digests.push({
-          parent: { id: parent.id, name: parent.name, email: parent.email },
+          parent: { id: parent.id, name: parent.name, email: parent.email, language: parent.language },
           children: [],
           hasActivity: false,
         })
@@ -148,7 +155,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
           [child.id, weekStart, weekEnd, child.linked_at],
         ),
         query(
-          `SELECT to_char(date, 'Mon DD') AS date_label, activity, hours,
+          `SELECT to_char(date, 'Mon DD') AS date_label, to_char(date, 'YYYY-MM-DD') AS date_iso, activity, hours,
                   verification_status AS status
            FROM logs
            WHERE user_id = $1 AND date >= $2::date AND date < $3::date AND created_at >= $5
@@ -174,7 +181,8 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
         entryCount: Number(a.entry_count),
         entries: entryRows.slice(0, MAX_ENTRIES_PER_CHILD).map((e) => ({
           dateLabel: e.date_label,
-          activity: e.activity || '(no description)',
+          date: e.date_iso,
+          activity: e.activity || null,
           hours: Number(e.hours),
           status: e.status || 'none',
         })),
@@ -183,7 +191,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
     }))
 
     digests.push({
-      parent: { id: parent.id, name: parent.name, email: parent.email },
+      parent: { id: parent.id, name: parent.name, email: parent.email, language: parent.language },
       children: childSummaries,
       hasActivity: childSummaries.some((c) => c.entryCount > 0),
     })
@@ -218,38 +226,53 @@ export async function ensureDigestUnsubToken(parentId) {
   throw new Error('Could not assign a digest unsubscribe token')
 }
 
-export function renderDigestEmail({ parent, children, startLabel, endLabel, unsubToken }) {
-  const subject = `Weekly volunteer summary: ${startLabel} – ${endLabel}`
+// Rendered in the parent's language (users.language; NULL → English). Only
+// our own wording is translated — names and activity descriptions are left
+// exactly as the student wrote them. `weekStart` lets the date labels follow
+// the language; without it the caller's (English) labels are used as given.
+export function renderDigestEmail({ parent, children, startLabel, endLabel, weekStart, unsubToken }) {
+  const lang = emailLang(parent.language)
+  if (weekStart && lang !== 'en') ({ startLabel, endLabel } = windowLabels(weekStart, lang))
+  const t = (text, vars) => et(lang, text, vars)
+  const subject = t('Weekly volunteer summary: {start} – {end}', { start: startLabel, end: endLabel })
 
   let body
   if (children.length === 0) {
-    body = `<p>You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.</p>`
+    body = `<p>${t("You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.")}</p>`
   } else {
-    const intro = `<p>Here's what your student${children.length === 1 ? '' : 's'} logged from ${escapeHtml(startLabel)} to ${escapeHtml(endLabel)}:</p>`
+    const intro = `<p>${t(children.length === 1
+      ? "Here's what your student logged from {start} to {end}:"
+      : "Here's what your students logged from {start} to {end}:", { start: escapeHtml(startLabel), end: escapeHtml(endLabel) })}</p>`
     const blocks = children.map((c) => {
       const head = `<h3 style="margin:16px 0 4px">${escapeHtml(c.name)}</h3>`
-      if (c.entryCount === 0) return `${head}<p>No hours logged this week.</p>`
+      if (c.entryCount === 0) return `${head}<p>${t('No hours logged this week.')}</p>`
 
-      const summary = `<p>${fmtHours(c.weekHours)} h this week — ${fmtHours(c.verifiedHours)} h approved, ${fmtHours(c.pendingHours)} h pending verification.</p>`
-      const rows = c.entries.map((e) =>
-        `<tr><td>${escapeHtml(e.dateLabel)}</td><td>${escapeHtml(e.activity)}</td><td>${fmtHours(e.hours)}</td><td>${STATUS_LABEL[e.status] || 'Unverified'}</td></tr>`,
-      ).join('')
-      const table = `<table cellpadding="4" cellspacing="0"><tr><th align="left">Date</th><th align="left">Activity</th><th align="left">Hours</th><th align="left">Status</th></tr>${rows}</table>`
+      const summary = `<p>${t('{week} h this week — {verified} h approved, {pending} h pending verification.', {
+        week: fmtHours(c.weekHours), verified: fmtHours(c.verifiedHours), pending: fmtHours(c.pendingHours),
+      })}</p>`
+      const rows = c.entries.map((e) => {
+        const dateLabel = lang !== 'en' && e.date ? emailDate(lang, new Date(`${e.date}T00:00:00Z`)) : e.dateLabel
+        const activity = e.activity || t('(no description)')
+        return `<tr><td>${escapeHtml(dateLabel)}</td><td>${escapeHtml(activity)}</td><td>${fmtHours(e.hours)}</td><td>${t(STATUS_LABEL[e.status] || 'Unverified')}</td></tr>`
+      }).join('')
+      const table = `<table cellpadding="4" cellspacing="0"><tr><th align="left">${t('Date')}</th><th align="left">${t('Activity')}</th><th align="left">${t('Hours')}</th><th align="left">${t('Status')}</th></tr>${rows}</table>`
       const overflow = c.entryCount - MAX_ENTRIES_PER_CHILD
-      const more = overflow > 0 ? `<p>…and ${overflow} more ${overflow === 1 ? 'entry' : 'entries'}.</p>` : ''
-      return `${head}${summary}${table}${more}<p>All-time total: ${fmtHours(c.allTimeHours)} h.</p>`
+      const more = overflow > 0
+        ? `<p>${overflow === 1 ? t('…and 1 more entry.') : t('…and {n} more entries.', { n: overflow })}</p>`
+        : ''
+      return `${head}${summary}${table}${more}<p>${t('All-time total: {n} h.', { n: fmtHours(c.allTimeHours) })}</p>`
     }).join('')
-    body = `${intro}${blocks}<p><a href="${frontendUrl()}/parent">View full details on your VolunTrack dashboard</a></p>`
+    body = `${intro}${blocks}<p><a href="${frontendUrl()}/parent">${t('View full details on your VolunTrack dashboard')}</a></p>`
   }
 
   const html = [
-    `<p>Hi ${escapeHtml(parent.name)},</p>`,
+    `<p>${t('Hi {name},', { name: escapeHtml(parent.name) })}</p>`,
     body,
-    emailFooterHtml(),
-    `<p style="font-size:12px;color:#888"><a href="${backendUrl()}/api/parent/digest/unsubscribe/${unsubToken}">Unsubscribe from these weekly emails</a></p>`,
+    emailFooterHtml(lang),
+    `<p style="font-size:12px;color:#888"><a href="${backendUrl()}/api/parent/digest/unsubscribe/${unsubToken}">${t('Unsubscribe from these weekly emails')}</a></p>`,
   ].join('')
 
-  return { subject, html }
+  return { subject, html, lang }
 }
 
 // claim -> render -> send -> record for one parent.
@@ -260,7 +283,7 @@ export async function deliverDigest({ digest, weekStart, startLabel, endLabel, f
   }
 
   if (dryRun) {
-    const { subject, html } = renderDigestEmail({ ...digest, startLabel, endLabel, unsubToken: 'DRYRUN'.padEnd(64, '0') })
+    const { subject, html } = renderDigestEmail({ ...digest, startLabel, endLabel, weekStart, unsubToken: 'DRYRUN'.padEnd(64, '0') })
     // Strip CR/LF from the interpolated address so a stored value can't forge
     // extra log lines (same reason server/email.js sanitises before logging).
     const safeTo = String(digest.parent.email).replace(/[\r\n]/g, '')
@@ -295,7 +318,7 @@ export async function deliverDigest({ digest, weekStart, startLabel, endLabel, f
   }
 
   const unsubToken = await ensureDigestUnsubToken(digest.parent.id)
-  const { subject, html } = renderDigestEmail({ ...digest, startLabel, endLabel, unsubToken })
+  const { subject, html } = renderDigestEmail({ ...digest, startLabel, endLabel, weekStart, unsubToken })
   const result = await sendEmail({ to: digest.parent.email, subject, html })
 
   await query(

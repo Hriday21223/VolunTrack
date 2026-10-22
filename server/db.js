@@ -625,6 +625,12 @@ export async function initSchema() {
   } catch (error) { console.error('saved_tasks migration failed:', error.message) }
   try { await query(`CREATE INDEX IF NOT EXISTS idx_saved_tasks_task ON saved_tasks(task_id)`) } catch {}
 
+  // The language the account picked in the app ('en' | 'es'), sent by
+  // PUT /api/auth/me/language so emails (server/emailStrings.js) can follow
+  // it. NULL = never told us, which gets English.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD CONSTRAINT users_language_check CHECK (language IS NULL OR language IN ('en','es'))`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

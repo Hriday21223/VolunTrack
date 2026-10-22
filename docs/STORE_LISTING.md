@@ -120,6 +120,11 @@ as local notifications (`src/lib/nativeReminders.js`) and nothing about them
 leaves the device. The notification permission is asked for only on the
 Reminders page's *Allow* tap.
 
+The app language (`users.language`, `en` | `es`, sent when a signed-in user
+picks one so the weekly digest and "We miss you" email can be sent in it) is
+an app setting, not one of the store's data types, so it doesn't change any
+answer either. It is still listed on the Privacy page.
+
 "Shared" is **No** throughout because every recipient is either a
 service provider processing on our behalf (hosting, email, bot protection)
 or someone the user chose to send it to (their school, a supervisor they
