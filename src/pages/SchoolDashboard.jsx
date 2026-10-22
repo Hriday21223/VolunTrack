@@ -22,6 +22,7 @@ import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -975,11 +976,14 @@ export default function SchoolDashboard() {
                         <span className="text-xs text-red-400 font-medium">Full</span>
                       ) : (
                         <button onClick={async () => {
+                          // Minimum age (#426): confirmed by the student, as on Opportunities.
+                          if (t.min_age != null && !window.confirm(tr('This task is for volunteers {n} or older. Are you {n} or older?', { n: t.min_age }))) return
                           try {
                             const token = localStorage.getItem('voluntrack:auth_token')
                             const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
                               method: 'POST',
-                              headers: { Authorization: `Bearer ${token}` },
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify(t.min_age != null ? { ageConfirmed: true } : {}),
                             })
                             if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
                             setToastMsg('Signed up — awaiting organizer approval'); setToast(true); loadData()

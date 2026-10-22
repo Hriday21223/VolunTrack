@@ -12,12 +12,15 @@ import { fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import OrganizerStats from '@/components/OrganizerStats.jsx'
+import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.jsx'
+import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
-const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1 }
+const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1, ...EMPTY_TASK_DETAILS }
 
 export default function MyTasks() {
   const { refreshLogs } = useData()
@@ -151,6 +154,7 @@ export default function MyTasks() {
       latitude: t.latitude ?? null,
       longitude: t.longitude ?? null,
       category: t.category || '',
+      ...taskDetailsFromRow(t),
     })
   }
 
@@ -387,6 +391,7 @@ export default function MyTasks() {
       latitude: t.latitude ?? null,
       longitude: t.longitude ?? null,
       category: t.category || '',
+      ...taskDetailsFromRow(t),
     })
     setPostAgainFrom(t.title || 'an earlier task')
     setShowPostTask(true)
@@ -429,6 +434,10 @@ export default function MyTasks() {
             <form onSubmit={handlePostTask} className="space-y-3">
               <input className="input" maxLength={200} placeholder="Task title" value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
               <textarea className="input" rows={2} maxLength={5000} placeholder="Description — what volunteers will do" value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
+              <OnlineToggle checked={taskForm.isOnline} onChange={(isOnline) => setTaskForm((f) => ({ ...f, isOnline }))} />
+              {taskForm.isOnline ? (
+                <input className="input" maxLength={300} aria-label={tr('Where to join (optional)')} placeholder={tr('Where to join (optional), e.g. Zoom link sent after approval')} value={taskForm.location} onChange={(e) => setTaskForm({ ...taskForm, location: e.target.value })} />
+              ) : (
               <div>
                 <label className="label text-xs">Location — where it happens *</label>
                 <LocationPicker
@@ -439,6 +448,7 @@ export default function MyTasks() {
                   onChange={({ address, lat, lng }) => setTaskForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
                 />
               </div>
+              )}
               <textarea className="input" rows={2} maxLength={2000} placeholder="Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)" value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
               <input className="input" type="tel" maxLength={30} placeholder="Phone number — shown to approved volunteers" value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
               <div>
@@ -448,6 +458,7 @@ export default function MyTasks() {
                   {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                 </select>
               </div>
+              <TaskDetailFields idPrefix="new-task" value={taskForm} onChange={(patch) => setTaskForm((f) => ({ ...f, ...patch }))} />
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="label text-xs">Date *</label>
@@ -462,7 +473,7 @@ export default function MyTasks() {
                   <input type="number" className="input" min={1} placeholder="Slots" value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
                 </div>
               </div>
-              {!(taskForm.latitude && taskForm.longitude) && (
+              {!taskForm.isOnline && !(taskForm.latitude && taskForm.longitude) && (
                 <p className="text-xs text-earth-500">Pick a pin on the map above so this task can be sorted by distance.</p>
               )}
               <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -584,7 +595,7 @@ export default function MyTasks() {
                   <p className="font-medium">{t.title}</p>
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
-                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>
+                    {!(t.is_online && t.location === 'Online') && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>}
                     <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} signed up</span>
                     {t.rating_count > 0 && (
@@ -593,6 +604,7 @@ export default function MyTasks() {
                       </span>
                     )}
                   </div>
+                  <TaskDetailBadges task={t} className="mt-2" />
                   {t.phone && (
                     <p className="text-xs text-earth-500 mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /> {t.phone}</p>
                   )}
@@ -670,17 +682,23 @@ export default function MyTasks() {
                     <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">
                       <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Task title" />
                       <textarea className="input" rows={2} maxLength={5000} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
-                      <LocationPicker
-                        address={editForm.location}
-                        lat={editForm.latitude}
-                        lng={editForm.longitude}
-                        placeholder="Location"
-                        onChange={({ address, lat, lng }) => setEditForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
-                      />
+                      <OnlineToggle checked={editForm.isOnline} onChange={(isOnline) => setEditForm((f) => ({ ...f, isOnline, ...(isOnline || f.location !== 'Online' ? {} : { location: '' }) }))} />
+                      {editForm.isOnline ? (
+                        <input className="input" maxLength={300} aria-label={tr('Where to join (optional)')} placeholder={tr('Where to join (optional), e.g. Zoom link sent after approval')} value={editForm.location === 'Online' ? '' : editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />
+                      ) : (
+                        <LocationPicker
+                          address={editForm.location}
+                          lat={editForm.latitude}
+                          lng={editForm.longitude}
+                          placeholder="Location"
+                          onChange={({ address, lat, lng }) => setEditForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
+                        />
+                      )}
                       <select className="input" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} aria-label="Category">
                         <option value="">No category</option>
                         {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                       </select>
+                      <TaskDetailFields idPrefix={`edit-${t.id}`} value={editForm} onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))} />
                       <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder="Important info — approved volunteers only" />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <input type="date" className="input" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} aria-label="Date" />

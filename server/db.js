@@ -625,6 +625,14 @@ export async function initSchema() {
   } catch (error) { console.error('saved_tasks migration failed:', error.message) }
   try { await query(`CREATE INDEX IF NOT EXISTS idx_saved_tasks_task ON saved_tasks(task_id)`) } catch {}
 
+  // Task details (#426): an optional minimum age, online tasks (no address,
+  // no map, never dropped by the distance radius), and wheelchair access
+  // ('yes' | 'no' | 'unknown') with a short note. Validated in routes/school.js.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_age SMALLINT`) } catch {}
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS is_online BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
