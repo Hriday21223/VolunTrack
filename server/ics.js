@@ -22,8 +22,15 @@ export function icsFold(line) {
 export const icsLocal = (d) => d.toISOString().replace(/[-:]/g, '').slice(0, 15)
 export const icsDay = (d) => d.toISOString().slice(0, 10).replace(/-/g, '')
 
+// "Online", or "Online — <what the organizer wrote>" when they added a note
+// such as "Zoom link sent after approval".
+const onlineLocation = (loc) => {
+  const text = String(loc || '').trim()
+  return !text || text.toLowerCase() === 'online' ? 'Online' : `Online — ${text}`
+}
+
 // One VEVENT for a task row ({ id, title, description, location, date
-// 'YYYY-MM-DD', time, creator_name, latitude, longitude }). `link` goes at the
+// 'YYYY-MM-DD', time, creator_name, latitude, longitude, is_online }). `link` goes at the
 // end of the description and in URL; `summaryPrefix` (e.g. "Waitlist: ") is
 // put in front of the title.
 export function icsEvent(t, { link = '', summaryPrefix = '', now = new Date() } = {}) {
@@ -44,10 +51,11 @@ export function icsEvent(t, { link = '', summaryPrefix = '', now = new Date() } 
   }
   lines.push(
     `SUMMARY:${icsText(summaryPrefix + t.title)}`,
-    `LOCATION:${icsText(t.location)}`,
+    // An online task (#426) has no place: LOCATION says so and there's no GEO.
+    `LOCATION:${icsText(t.is_online ? onlineLocation(t.location) : t.location)}`,
     `DESCRIPTION:${icsText([t.description, t.creator_name && `Posted by ${t.creator_name}`, hm && 'End time is an estimate. Check with the organizer.', link].filter(Boolean).join('\n\n'))}`,
   )
-  if (t.latitude != null && t.longitude != null) lines.push(`GEO:${Number(t.latitude)};${Number(t.longitude)}`)
+  if (!t.is_online && t.latitude != null && t.longitude != null) lines.push(`GEO:${Number(t.latitude)};${Number(t.longitude)}`)
   if (link) lines.push(`URL:${link}`)
   lines.push('END:VEVENT')
   return lines

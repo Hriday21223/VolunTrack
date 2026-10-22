@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2 } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
@@ -14,10 +14,17 @@ import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
+import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import { taskMapsUrl } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { MAX_SEARCH_LENGTH, cleanSearch, taskMatchesSearch, taskShareUrl } from '@/lib/taskSearch.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// Shared links point at the website. In the apps the page's own origin is
+// capacitor://localhost (or https://localhost), so use the site's address.
+const SITE = (isNativeApp && import.meta.env.VITE_SITE_URL) || window.location.origin
 
 const fmtDist = (km) => {
   if (km === null || km === undefined) return null
@@ -124,15 +131,72 @@ export default function Opportunities() {
   // A friend's invite link: /opportunities?task=<id>&from=<inviterId>. The
   // task is scrolled to and highlighted, and signing up from that card passes
   // invitedBy so the organizer sees who they came with (the server checks it).
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const linkedTask = searchParams.get('task')
   const invitedFrom = searchParams.get('from')
+  // Search: what's typed shows at once; the list (and ?q= in the address, so
+  // it survives a reload) follows 250 ms after the last keystroke.
+  const [searchInput, setSearchInput] = useState(() => cleanSearch(searchParams.get('q')))
+  const search = cleanSearch(searchParams.get('q'))
+  // A link opened while already here (the bell, Back) can change ?q= itself;
+  // the box follows it rather than writing the old text back.
+  const wroteQ = useRef(search)
+  useEffect(() => {
+    if (search === wroteQ.current) return
+    wroteQ.current = search
+    setSearchInput(search)
+  }, [search])
+  useEffect(() => {
+    const next = cleanSearch(searchInput)
+    if (next === search) return
+    const timer = setTimeout(() => {
+      wroteQ.current = next
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev)
+        if (next) p.set('q', next)
+        else p.delete('q')
+        return p
+      }, { replace: true })
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [searchInput, search, setSearchParams])
+  const clearSearch = () => {
+    setSearchInput('')
+    wroteQ.current = ''
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.delete('q')
+      return p
+    }, { replace: true })
+  }
+  // Share: the phone's share sheet where there is one, else copy the link.
+  const shareTask = async (t) => {
+    const url = taskShareUrl(t.id, SITE)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t.title, text: tr('Volunteer with me: {title}', { title: t.title }), url })
+        return
+      } catch (e) {
+        if (e?.name === 'AbortError') return
+        // Share sheet unavailable here after all: fall through to copying.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setToastMsg(tr('Link copied'))
+    } catch {
+      setToastMsg(tr('Could not copy. Here is the link: {url}', { url }))
+    }
+    setToast(true)
+  }
   const scrolledTo = useRef(false)
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
   const reload = () => { loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius); if (canFollow) loadSaved() }
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
   const signUp = async (t, full) => {
+    // Minimum age (#426): no birth date is kept, so the student confirms it.
+    if (t.min_age != null && !window.confirm(tr("This task is for volunteers {n} or older. Are you {n} or older?", { n: t.min_age }))) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
@@ -140,6 +204,7 @@ export default function Opportunities() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           ...(full ? { waitlist: true } : {}),
+          ...(t.min_age != null ? { ageConfirmed: true } : {}),
           ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
         }),
       })
@@ -161,12 +226,18 @@ export default function Opportunities() {
   // Filters run on the list already loaded; distance is the server's radius.
   const [category, setCategory] = useState('')
   const [when, setWhen] = useState('')
+  const [onlineOnly, setOnlineOnly] = useState(false)
+  const [wheelchairOnly, setWheelchairOnly] = useState(false)
   const range = whenRange(when)
   const baseTasks = showSaved ? (savedTasks || []) : nearbyTasks
   const shownTasks = baseTasks.filter((t) =>
     (!category || t.category === category)
-    && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1])))
-  const filtering = Boolean(category || when)
+    && (!onlineOnly || t.is_online)
+    && (!wheelchairOnly || t.wheelchair_accessible === 'yes')
+    && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1]))
+    && taskMatchesSearch(t, search, t.category ? [tr(t.category)] : []))
+  const filtering = Boolean(category || when || onlineOnly || wheelchairOnly)
+  const clearFilters = () => { setCategory(''); setWhen(''); setOnlineOnly(false); setWheelchairOnly(false) }
 
   const loadNearbyTasks = useCallback(async (lat, lng, radius) => {
     try {
@@ -251,6 +322,30 @@ export default function Opportunities() {
           </div>
         </div>
 
+        <div className="relative">
+          <Search className="w-4 h-4 text-earth-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape' && searchInput) clearSearch() }}
+            maxLength={MAX_SEARCH_LENGTH}
+            placeholder={tr('Search tasks, places or organizers')}
+            aria-label={tr('Search tasks')}
+            className="input w-full pl-9 pr-9 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              aria-label={tr('Clear search')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-earth-500 hover:text-earth-200"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label={tr('Category')}>
             <option value="">{tr('All categories')}</option>
@@ -259,6 +354,9 @@ export default function Opportunities() {
           <select value={when} onChange={(e) => setWhen(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label={tr('When')}>
             {WHEN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          {[[onlineOnly, setOnlineOnly, tr('Online only')], [wheelchairOnly, setWheelchairOnly, tr('Wheelchair accessible')]].map(([on, set, label]) => (
+            <button key={label} type="button" onClick={() => set((v) => !v)} aria-pressed={on} className={`btn-sm ${on ? 'btn-primary' : 'btn-ghost'}`}>{label}</button>
+          ))}
           {canFollow && (savedTasks?.length > 0 || showSaved) && (
             <button
               type="button"
@@ -271,12 +369,12 @@ export default function Opportunities() {
             </button>
           )}
           {filtering && (
-            <>
-              <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-ghost btn-sm">
-                <X className="w-3.5 h-3.5 mr-1" />{' '}{tr('Clear')}
-              </button>
-              {loaded && <span className="text-xs text-earth-500">{shownTasks.length}{' '}{tr('of')}{' '}{baseTasks.length}{' '}{tr('tasks')}</span>}
-            </>
+            <button type="button" onClick={clearFilters} className="btn-ghost btn-sm">
+              <X className="w-3.5 h-3.5 mr-1" />{' '}{tr('Clear')}
+            </button>
+          )}
+          {(filtering || search) && loaded && (
+            <span className="text-xs text-earth-500" aria-live="polite">{shownTasks.length}{' '}{tr('of')}{' '}{baseTasks.length}{' '}{tr('tasks')}</span>
           )}
         </div>
 
@@ -362,11 +460,23 @@ export default function Opportunities() {
               <p className="text-xs text-earth-500 mt-1">{tr('Try increasing the radius or check back later.')}</p>
             </div>
           </Card>
+        ) : shownTasks.length === 0 && search ? (
+          <Card>
+            <div className="text-center py-8">
+              <Search className="w-10 h-10 text-earth-600 mx-auto mb-3" />
+              <p className="text-earth-400 break-words">{tr('No tasks match “{q}”', { q: search })}</p>
+              {filtering && <p className="text-xs text-earth-500 mt-1">{tr('The category and date filters apply too.')}</p>}
+              <div className="flex flex-wrap justify-center gap-2 mt-3">
+                <button type="button" onClick={clearSearch} className="btn-secondary">{tr('Clear search')}</button>
+                {filtering && <button type="button" onClick={clearFilters} className="btn-ghost">{tr('Clear filters')}</button>}
+              </div>
+            </div>
+          </Card>
         ) : shownTasks.length === 0 ? (
           <Card>
             <div className="text-center py-8">
               <p className="text-earth-400">{tr('No tasks match these filters.')}</p>
-              <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-secondary mt-3">{tr('Clear filters')}</button>
+              <button type="button" onClick={clearFilters} className="btn-secondary mt-3">{tr('Clear filters')}</button>
             </div>
           </Card>
         ) : shownTasks.map((t) => {
@@ -391,20 +501,23 @@ export default function Opportunities() {
                   )}
                   {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
+                  <TaskDetailBadges task={t} className="mt-2" />
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${t.latitude != null && t.longitude != null ? `${t.latitude},${t.longitude}` : encodeURIComponent(t.location)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1 hover:text-brand-400 hover:underline"
-                    >
-                      <MapPin className="w-3 h-3" /> {t.location}
-                    </a>
+                    {t.is_online ? (t.location && t.location !== 'Online' && <span>{t.location}</span>) : (
+                      <a
+                        href={taskMapsUrl(t)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 hover:text-brand-400 hover:underline"
+                      >
+                        <MapPin className="w-3 h-3" /> {t.location}
+                      </a>
+                    )}
                     <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total}{' '}{tr('slots')}</span>
                   </div>
-                  <p className="text-xs text-earth-600 mt-1 flex items-center gap-3">
+                  <p className="text-xs text-earth-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span>{tr('Posted by')}{' '}{t.creator_name}</span>
                     {t.organizer_rating_count > 0 && (
                       <span
@@ -425,6 +538,13 @@ export default function Opportunities() {
                         {t.i_follow_organizer ? <BellRing className="w-3 h-3" /> : <Bell className="w-3 h-3" />}{' '}{t.i_follow_organizer ? tr('Following') : tr('Follow')}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); shareTask(t) }}
+                      className="inline-flex items-center gap-1 text-earth-500 hover:text-brand-400"
+                    >
+                      <Share2 className="w-3 h-3" />{' '}{tr('Share')}
+                    </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setReporting(t) }}
@@ -473,6 +593,11 @@ export default function Opportunities() {
                     <span className="text-xs text-amber-400 font-medium">{tr("Waiting for a parent's OK")}</span>
                   ) : t.my_signup_status === 'parent_declined' ? (
                     <button onClick={() => signUp(t, full)} className="btn-secondary text-sm">{tr('Ask again')}</button>
+                  ) : t.my_too_young ? (
+                    <>
+                      <button disabled className="btn-secondary text-sm opacity-50 cursor-not-allowed">{tr('Sign up')}</button>
+                      <span className="text-xs text-earth-500 text-right max-w-[10rem]">{tr('This task is for volunteers {n} or older.', { n: t.min_age })}</span>
+                    </>
                   ) : (
                     <button onClick={() => signUp(t, full)} className={full ? 'btn-secondary text-sm' : 'btn-primary text-sm'}>
                       {full ? tr('Join waitlist') : tr('Sign up')}

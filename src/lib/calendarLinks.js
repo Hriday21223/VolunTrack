@@ -16,7 +16,7 @@ export function googleCalendarUrl(task) {
     dates = `${stamp(day).slice(0, 8)}/${stamp(new Date(day.getTime() + 86400e3)).slice(0, 8)}`
   }
   const details = [task.description, task.creator_name && `Posted by ${task.creator_name}`, `${window.location.origin}/opportunities`].filter(Boolean).join('\n\n')
-  const q = new URLSearchParams({ action: 'TEMPLATE', text: task.title || 'Volunteer task', dates, location: task.location || '', details })
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: task.title || 'Volunteer task', dates, location: task.is_online ? 'Online' : (task.location || ''), details })
   return `https://calendar.google.com/calendar/render?${q}`
 }
 
