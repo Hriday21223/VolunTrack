@@ -13,7 +13,7 @@ import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor } from '../requirements.js'
+import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -464,6 +464,115 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })
+  }
+})
+
+// --- Graduation report -------------------------------------------------------
+//
+// GET /graduation-report?grade=12&hours=approved|counted
+// Which students in one grade met the school's hour requirement, for a
+// counselor to print or export. Grades are compared through gradeKey(), the
+// same way goalHoursFor() picks a per-grade target, so "12", "12th" and
+// "Senior" are one grade. Defaults to approved hours only: a graduation
+// sign-off should rest on verified hours. "counted" adds pending, and rejected
+// hours never count either way.
+
+const roundHours = (n) => Math.round(n * 100) / 100
+
+// Kindergarten, then 1–12 in order, then anything a school labels itself.
+function gradeSortValue(key) {
+  if (key === 'K') return 0
+  if (/^\d{1,2}$/.test(key)) return Number(key)
+  return 100
+}
+
+router.get('/graduation-report', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const hoursMode = req.query.hours === 'counted' ? 'counted' : 'approved'
+  try {
+    const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = userRows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    const resolved = await policyForSchool(schoolId)
+    const policy = resolved?.policy
+    const goals = policy?.goals || {}
+    const requirementSet = goals.totalHours != null || Object.keys(goals.byGrade || {}).length > 0
+
+    const { rows } = await query(
+      `SELECT u.id, u.name, u.email, u.grade,
+              COALESCE(SUM(l.hours) FILTER (WHERE l.verification_status = 'approved'), 0)::float AS approved,
+              COALESCE(SUM(l.hours) FILTER (WHERE l.id IS NOT NULL
+                AND l.verification_status IS DISTINCT FROM 'approved'
+                AND l.verification_status IS DISTINCT FROM 'rejected'), 0)::float AS pending
+         FROM users u LEFT JOIN logs l ON l.user_id = u.id
+        WHERE u.school_id = $1 AND u.role = 'student'
+        GROUP BY u.id
+        ORDER BY u.name`,
+      [schoolId],
+    )
+
+    // Only grades that actually exist among this school's students.
+    const counts = new Map()
+    let ungraded = 0
+    for (const r of rows) {
+      const key = gradeKey(r.grade)
+      if (!key) { ungraded++; continue }
+      counts.set(key, (counts.get(key) || 0) + 1)
+    }
+    const grades = [...counts.entries()]
+      .map(([key, count]) => ({ key, label: gradeLabel(key), count, target: goalHoursFor(policy, key) }))
+      .sort((a, b) => gradeSortValue(a.key) - gradeSortValue(b.key) || a.key.localeCompare(b.key))
+    const numeric = grades.filter((g) => /^\d{1,2}$/.test(g.key))
+    const defaultGrade = (numeric.length ? numeric[numeric.length - 1] : grades[grades.length - 1])?.key || null
+
+    const grade = gradeKey(typeof req.query.grade === 'string' ? req.query.grade.slice(0, 40) : '') || defaultGrade
+    const target = grade ? goalHoursFor(policy, grade) : null
+
+    const students = rows
+      .filter((r) => grade && gradeKey(r.grade) === grade)
+      .map((r) => {
+        const approvedHours = roundHours(r.approved)
+        const pendingHours = roundHours(r.pending)
+        const countedHours = roundHours(r.approved + r.pending)
+        const hours = hoursMode === 'counted' ? countedHours : approvedHours
+        const met = target != null && hours >= target
+        return {
+          id: r.id, name: r.name, email: r.email, grade: r.grade,
+          approvedHours, pendingHours, countedHours, hours,
+          met,
+          shortfall: target != null ? roundHours(Math.max(0, target - hours)) : null,
+        }
+      })
+      // Missed first, furthest behind at the top; then everyone who met it.
+      .sort((a, b) => Number(a.met) - Number(b.met)
+        || (b.shortfall ?? 0) - (a.shortfall ?? 0)
+        || String(a.name || '').localeCompare(String(b.name || '')))
+
+    const met = students.filter((s) => s.met).length
+    recordAudit(req, {
+      action: AUDIT.STUDENT_LIST_READ,
+      schoolId,
+      objectType: 'graduation_report',
+      meta: { grade, hoursMode, count: students.length },
+    })
+    return res.json({
+      schoolName: resolved?.schoolName || '',
+      generatedAt: new Date().toISOString(),
+      hoursMode,
+      grade,
+      gradeLabel: grade ? gradeLabel(grade) : null,
+      grades,
+      ungraded,
+      requirementSet,
+      target,
+      deadline: goals.deadline || null,
+      note: goals.note || '',
+      summary: { students: students.length, met, missed: students.length - met },
+      students,
+    })
+  } catch (error) {
+    console.error('graduation report failed:', error)
+    return res.status(500).json({ error: 'Could not build the graduation report.' })
   }
 })
 

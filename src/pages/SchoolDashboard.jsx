@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -14,6 +14,7 @@ import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
+import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
@@ -725,6 +726,9 @@ export default function SchoolDashboard() {
               <button onClick={() => setSubTab('progress')} className={`btn-sm ${subTab === 'progress' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Clock className="w-3.5 h-3.5 mr-1" /> Hours progress
               </button>
+              <button onClick={() => setSubTab('graduation')} className={`btn-sm ${subTab === 'graduation' ? 'btn-primary' : 'btn-ghost'}`}>
+                <GraduationCap className="w-3.5 h-3.5 mr-1" /> Graduation report
+              </button>
               <button onClick={() => setSubTab('add')} className={`btn-sm ${subTab === 'add' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Upload className="w-3.5 h-3.5 mr-1" /> Invite student
               </button>
@@ -732,6 +736,10 @@ export default function SchoolDashboard() {
 
             {subTab === 'progress' && (
               <StudentProgressPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
+            )}
+
+            {subTab === 'graduation' && (
+              <GraduationReportPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
             )}
 
             {subTab === 'add' && (
