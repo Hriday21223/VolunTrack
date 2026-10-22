@@ -16,6 +16,7 @@ import PasskeySettings from '@/components/PasskeySettings.jsx'
 import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
 import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 import ComebackEmailCard from '@/components/ComebackEmailCard.jsx'
+import InterestsCard from '@/components/InterestsCard.jsx'
 import PortfolioCard from '@/components/PortfolioCard.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
@@ -776,6 +777,7 @@ export default function Settings() {
             <p className="text-xs text-earth-400 mt-1">{tr('Pick a cause to count only hours logged in that category, like 20 hours in Environmental.')}</p>
           </Card>
           {user?.role === 'student' && <PortfolioCard />}
+          {user?.role === 'student' && <InterestsCard />}
         </CollapsibleSection>
 
         <CollapsibleSection icon={Lock} label="Account & Security" defaultOpen={true}>

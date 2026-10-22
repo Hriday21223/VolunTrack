@@ -644,6 +644,10 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT`) } catch {}
   try { await query(`ALTER TABLE users ADD CONSTRAINT users_language_check CHECK (language IS NULL OR language IN ('en','es'))`) } catch {}
 
+  // A student's chosen causes (activity categories) for the "For you" row on
+  // Opportunities (server/routes/interests.js).
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[]`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

@@ -38,6 +38,7 @@ import announcementRoutes from './server/routes/announcements.js'
 import notificationRoutes from './server/routes/notifications.js'
 import portfolioRoutes from './server/routes/portfolio.js'
 import comebackRoutes from './server/routes/comeback.js'
+import interestsRoutes from './server/routes/interests.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
 import { loadEmailOverrides } from './server/emailSettings.js'
@@ -163,6 +164,7 @@ app.use('/api/announcements', announcementRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/portfolio', portfolioRoutes)
 app.use('/api/comeback', comebackRoutes)
+app.use('/api/interests', interestsRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In
 // production these are also emailed to the user; the buffer allows the
