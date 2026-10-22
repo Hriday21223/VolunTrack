@@ -835,4 +835,12 @@ export default {
   "Show all tasks": "Ver todas las tareas",
   "Removed from Saved.": "Quitada de Guardadas.",
   "Saved. Find it under Saved at the top — we'll remind you if it's coming up or filling up.": "Guardada. La encuentras en Guardadas arriba — te avisamos si se acerca la fecha o se está llenando.",
+  "{done} of {target}h": "{done} de {target} h",
+  "Only {category} hours": "Solo horas de {category}",
+  "Cause (optional)": "Causa (opcional)",
+  "All causes": "Todas las causas",
+  "Pick a cause to count only hours logged in that category, like 20 hours in Environmental.": "Elige una causa para contar solo las horas que registres en esa categoría, como 20 horas en Medio ambiente.",
+  "Other goals": "Otras metas",
+  "Can a goal count only one kind of volunteering?": "¿Una meta puede contar solo un tipo de voluntariado?",
+  "Yes. When you add a goal in Settings → Goals, pick a cause, like Environmental, and only hours you log in that category count toward it — for example 20 hours in Environmental. Leave it on All causes and every hour counts, as before. Your dashboard shows the progress of each goal.": "Sí. Al añadir una meta en Ajustes → Metas, elige una causa, como Medio ambiente, y solo cuentan las horas que registres en esa categoría — por ejemplo, 20 horas en Medio ambiente. Si la dejas en Todas las causas, cuentan todas tus horas, como antes. Tu panel muestra el progreso de cada meta.",
 }
