@@ -515,24 +515,24 @@ export default function Dashboard() {
       {/* Mobile-first summary cards */}
       <div className="grid gap-2 grid-cols-2 md:hidden">
         <Card className="p-3">
-          <div className="text-[10px] font-medium text-earth-500 uppercase tracking-wide">{tr('Total hours')}</div>
+          <div className="text-[0.625rem] font-medium text-earth-500 uppercase tracking-wide">{tr('Total hours')}</div>
           <div className="mt-1 text-xl font-bold text-white">{fmtHours(total)}</div>
-          <div className="text-[10px] text-earth-400">{logs.length}{' '}{tr('sessions')}</div>
+          <div className="text-[0.625rem] text-earth-400">{logs.length}{' '}{tr('sessions')}</div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] font-medium text-earth-500 uppercase tracking-wide">{tr('This month')}</div>
+          <div className="text-[0.625rem] font-medium text-earth-500 uppercase tracking-wide">{tr('This month')}</div>
           <div className="mt-1 text-xl font-bold text-white">{fmtHours(thisMonth)}</div>
-          <div className="text-[10px] text-earth-400">{tr('Monthly progress')}</div>
+          <div className="text-[0.625rem] text-earth-400">{tr('Monthly progress')}</div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] font-medium text-earth-500 uppercase tracking-wide">{tr('Goal')}</div>
+          <div className="text-[0.625rem] font-medium text-earth-500 uppercase tracking-wide">{tr('Goal')}</div>
           <div className="mt-1 text-xl font-bold text-white">{Math.round(percent * 100)}%</div>
-          <div className="text-[10px] text-earth-400">{primary?.title || tr('No goal set')}</div>
+          <div className="text-[0.625rem] text-earth-400">{primary?.title || tr('No goal set')}</div>
         </Card>
         <Card className="p-3">
-          <div className="text-[10px] font-medium text-earth-500 uppercase tracking-wide">{tr('Badges')}</div>
+          <div className="text-[0.625rem] font-medium text-earth-500 uppercase tracking-wide">{tr('Badges')}</div>
           <div className="mt-1 text-xl font-bold text-white">{earned.length}/12</div>
-          <div className="text-[10px] text-earth-400">{tr('Achievements')}</div>
+          <div className="text-[0.625rem] text-earth-400">{tr('Achievements')}</div>
         </Card>
       </div>
 
@@ -654,7 +654,7 @@ export default function Dashboard() {
                   <div className="min-w-0">
                     <p className="text-sm text-earth-100 truncate">
                       {item.title}
-                      {item.pending && <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-400">{tr('awaiting approval')}</span>}
+                      {item.pending && <span className="ml-2 text-[0.625rem] uppercase tracking-wide text-amber-400">{tr('awaiting approval')}</span>}
                     </p>
                     {item.detail && <p className="text-xs text-earth-400 truncate">{item.detail}</p>}
                   </div>
@@ -708,7 +708,7 @@ export default function Dashboard() {
                 <div className="text-xs text-earth-400">{tr('Goal progress')}</div>
                 <div className="text-lg font-bold text-white">{Math.round(percent * 100)}%</div>
               </div>
-              <div className="text-[10px] uppercase tracking-[0.25em] text-brand-400">{tr('Primary goal')}</div>
+              <div className="text-[0.625rem] uppercase tracking-[0.25em] text-brand-400">{tr('Primary goal')}</div>
             </div>
             <ProgressRing
               percent={percent}
@@ -858,7 +858,7 @@ function StatCard({ icon: Icon, label, value, accent = 'brand' }) {
           <Icon className="w-4 h-4" />
         </div>
         <div>
-          <div className="text-[10px] text-earth-500 dark:text-earth-400">{label}</div>
+          <div className="text-[0.625rem] text-earth-500 dark:text-earth-400">{label}</div>
           <div className="text-sm font-bold leading-tight">{value}</div>
         </div>
       </div>

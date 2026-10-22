@@ -25,7 +25,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
           <div className="flex items-end gap-3 px-5 pb-3 pt-4">
             <div className="min-w-0 flex-1">
               {title && <h1 className="font-display text-3xl font-bold tracking-tight truncate">{title}</h1>}
-              {subtitle && <p className="mt-0.5 text-sm text-earth-400 truncate">{subtitle}</p>}
+              {subtitle && <p className="mt-0.5 text-sm text-earth-400 line-clamp-2">{subtitle}</p>}
             </div>
             {action}
             <NotificationBell className="self-center" />
@@ -86,7 +86,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
                   the title down to a single letter instead of wrapping. */}
               <div className="min-w-0 flex-1 basis-40">
                 {title && <h1 className="text-xl md:text-2xl font-bold truncate">{title}</h1>}
-                {subtitle && <p className="text-sm text-earth-400 truncate">{subtitle}</p>}
+                {subtitle && <p className="text-sm text-earth-400 line-clamp-2">{subtitle}</p>}
               </div>
               {/* Scrolls sideways when it is wider than the screen, so every
                   tab stays reachable on a phone. */}

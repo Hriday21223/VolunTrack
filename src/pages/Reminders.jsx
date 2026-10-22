@@ -233,11 +233,11 @@ export default function Reminders() {
               <label className="label">{tr('Window (optional)')}</label>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-[11px] text-earth-500 dark:text-earth-400 mb-0.5">{tr('Starts')}</div>
+                  <div className="text-[0.6875rem] text-earth-500 dark:text-earth-400 mb-0.5">{tr('Starts')}</div>
                   <input type="date" className="input" value={form.startDate} onChange={(e) => onChange('startDate', e.target.value)} />
                 </div>
                 <div>
-                  <div className="text-[11px] text-earth-500 dark:text-earth-400 mb-0.5">{tr('Ends')}</div>
+                  <div className="text-[0.6875rem] text-earth-500 dark:text-earth-400 mb-0.5">{tr('Ends')}</div>
                   <input type="date" className="input" value={form.endDate} onChange={(e) => onChange('endDate', e.target.value)} />
                 </div>
               </div>

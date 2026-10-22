@@ -139,11 +139,11 @@ function WeeklySignups({ weeks }) {
     <div className="flex items-end gap-1.5 sm:gap-2">
       {weeks.map((w) => (
         <div key={w.weekStart} className="flex-1 min-w-0 text-center" title={`Week of ${label(w.weekStart)}: ${w.count} sign-up${w.count === 1 ? '' : 's'}`}>
-          <p className="text-[11px] font-semibold tabular-nums text-earth-700 dark:text-earth-200">{w.count}</p>
+          <p className="text-[0.6875rem] font-semibold tabular-nums text-earth-700 dark:text-earth-200">{w.count}</p>
           <div className="h-24 flex items-end">
             <div className="w-full rounded-t bg-brand-500" style={{ height: `${Math.max((w.count / max) * 100, w.count > 0 ? 6 : 1)}%` }} />
           </div>
-          <p className="mt-1 text-[10px] text-earth-500 dark:text-earth-400 truncate">{label(w.weekStart)}</p>
+          <p className="mt-1 text-[0.625rem] text-earth-500 dark:text-earth-400 truncate">{label(w.weekStart)}</p>
         </div>
       ))}
     </div>
@@ -197,7 +197,7 @@ function ApiHealthPill({ label, ok, detail }) {
       {ok ? <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" /> : <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
       <div className="min-w-0">
         <p className="text-xs font-semibold text-earth-800 dark:text-earth-100">{label}</p>
-        <p className="text-[11px] text-earth-500 dark:text-earth-400">{detail}</p>
+        <p className="text-[0.6875rem] text-earth-500 dark:text-earth-400">{detail}</p>
       </div>
     </div>
   )
@@ -1408,7 +1408,7 @@ export default function Admin() {
           <button data-tour="admin-incidents" onClick={() => { setTab('incidents'); loadIncidents() }} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
             <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Incidents
             {activeIncidentCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{activeIncidentCount > 9 ? '9+' : activeIncidentCount}</span>
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[0.5625rem] flex items-center justify-center font-bold">{activeIncidentCount > 9 ? '9+' : activeIncidentCount}</span>
             )}
           </button>
           <button onClick={() => setTab('reports')} className={`btn-sm ${tab === 'reports' ? 'btn-primary' : 'btn-ghost'}`}>
@@ -1891,9 +1891,9 @@ export default function Admin() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-sm text-earth-800 dark:text-earth-200">{inc.service}</p>
-                          <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30">{inc.status}</span>
+                          <span className="text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30">{inc.status}</span>
                           {inc.source === 'admin' && (
-                            <span className="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-earth-600 dark:text-earth-300 bg-earth-100 dark:bg-earth-800">manual</span>
+                            <span className="text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-earth-600 dark:text-earth-300 bg-earth-100 dark:bg-earth-800">manual</span>
                           )}
                         </div>
                         {inc.detail && <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{inc.detail}</p>}
@@ -2439,7 +2439,7 @@ export default function Admin() {
                   <Card key={label}>
                     <p className="text-xs font-semibold text-earth-500 dark:text-earth-400">{label}</p>
                     <p className="font-display text-3xl font-semibold text-earth-900 dark:text-earth-100 mt-1 tabular-nums">{value}</p>
-                    <p className="text-[11px] text-earth-500 dark:text-earth-400 mt-1">{detail}</p>
+                    <p className="text-[0.6875rem] text-earth-500 dark:text-earth-400 mt-1">{detail}</p>
                   </Card>
                 ))}
               </div>
@@ -2456,7 +2456,7 @@ export default function Admin() {
                       ['Unknown', userStats.byPlatform.unknown],
                     ]}
                   />
-                  <p className="text-[11px] text-earth-500 dark:text-earth-400 mt-3">
+                  <p className="text-[0.6875rem] text-earth-500 dark:text-earth-400 mt-3">
                     Unknown covers accounts created before this was recorded, students a school added, and school single sign-on accounts.
                   </p>
                 </Card>
@@ -2473,7 +2473,7 @@ export default function Admin() {
                       ['Organization admins', userStats.byRole.org],
                     ]}
                   />
-                  <p className="text-[11px] text-earth-500 dark:text-earth-400 mt-3">
+                  <p className="text-[0.6875rem] text-earth-500 dark:text-earth-400 mt-3">
                     {userStats.schools} school{userStats.schools === 1 ? '' : 's'} and {userStats.organizations} organization{userStats.organizations === 1 ? '' : 's'} registered.
                   </p>
                 </Card>
@@ -2485,7 +2485,7 @@ export default function Admin() {
               </Card>
 
               {userStats.excluded > 0 && (
-                <p className="text-[11px] text-earth-500 dark:text-earth-400">
+                <p className="text-[0.6875rem] text-earth-500 dark:text-earth-400">
                   These numbers leave out {userStats.excluded} admin and test account{userStats.excluded === 1 ? '' : 's'}.
                 </p>
               )}

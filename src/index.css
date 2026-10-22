@@ -162,3 +162,155 @@ html.native-app .app-page-enter {
 @media (prefers-reduced-motion: reduce) {
   html.native-app .app-page-enter { animation: none; }
 }
+
+/* ---------------------------------------------------------------------
+   Display preferences (src/hooks/useDisplayPrefs.js). Device-only, set as
+   attributes on <html> before the first render, so nothing flashes.
+   --------------------------------------------------------------------- */
+
+/* Text size: Tailwind sizes (text, spacing, widths) are rem, so scaling the
+   root scales the whole layout with the text. Breakpoints are px and stay put. */
+html[data-text-size='large']  { font-size: 112.5%; }
+html[data-text-size='xlarge'] { font-size: 125%; }
+
+/* High contrast. Rather than touching hundreds of components, the muted and
+   status colour utilities are remapped to a palette held in custom
+   properties. The palette depends on the surface underneath: most of the app
+   is drawn on dark surfaces in both themes (AppLayout, the auth pages), so
+   the dark palette is the default and light surfaces swap it below. Every
+   text colour here is at least 7:1 on its surface; status colours at least
+   4.5:1; borders at least 3:1. */
+html[data-contrast='high'] {
+  --hc-text: #fbf8f2;
+  --hc-muted: #ece3cf;
+  --hc-red: #fca5a5;
+  --hc-amber: #fcd34d;
+  --hc-green: #6ee7b7;
+  --hc-brand: #b6dbb7;
+  --hc-blue: #bae6fd;
+  --hc-border: #8fa294;
+  --hc-placeholder: #d6cdbb;
+  --hc-focus: #ffd54a;
+}
+
+/* Light surfaces: in the light theme the cards, inputs, frosted panels and
+   signed-out page backgrounds; in either theme, a solid light background with
+   no dark variant (e.g. a white QR-code box). Each surface also sets the
+   default text colour for what's on it. */
+:where(html:not(.dark)[data-contrast='high']) :is(
+  .page-shell, .card, .input, .btn-secondary,
+  [class~='bg-white/50'], [class~='bg-white/70'], [class~='bg-white/80'], [class~='bg-white/90'], [class~='bg-white/95']
+),
+:where(html[data-contrast='high']) :is(
+  [class~='bg-white'], [class~='bg-earth-50'], [class~='bg-earth-100'], [class~='bg-brand-50'],
+  [class~='bg-brand-100'], [class~='bg-amber-50'], [class~='bg-amber-100'], [class~='bg-red-50'],
+  [class~='bg-emerald-50'], [class~='bg-sky-50'], [class~='from-amber-50'], [class~='from-brand-50']
+):where(:not(.dark [class*='dark:bg-'], .dark [class*='dark:from-'])) {
+  --hc-text: #14100b;
+  --hc-muted: #3b2f22;
+  --hc-red: #991b1b;
+  --hc-amber: #92400e;
+  --hc-green: #065f46;
+  --hc-brand: #1c3720;
+  --hc-blue: #075985;
+  --hc-border: #6b5a45;
+  --hc-placeholder: #4b4036;
+  --hc-focus: #1d4ed8;
+  color: var(--hc-text);
+}
+/* …and back to the dark palette for a dark panel inside a light one. */
+:where(html:not(.dark)[data-contrast='high']) :where(.page-shell, .card) :is(
+  [class^='bg-[#0'], [class*=' bg-[#0'], [class^='bg-[#1'], [class*=' bg-[#1'],
+  [class^='bg-slate-8'], [class*=' bg-slate-8'], [class^='bg-slate-9'], [class*=' bg-slate-9'],
+  [class^='from-[#0'], [class*=' from-[#0'], [class^='from-slate-9'], [class*=' from-slate-9'],
+  [class^='from-brand-8'], [class*=' from-brand-8'], [class^='from-brand-9'], [class*=' from-brand-9'],
+  [class~='bg-black'], .app-shell-bg
+) {
+  --hc-text: #fbf8f2;
+  --hc-muted: #ece3cf;
+  --hc-red: #fca5a5;
+  --hc-amber: #fcd34d;
+  --hc-green: #6ee7b7;
+  --hc-brand: #b6dbb7;
+  --hc-blue: #bae6fd;
+  --hc-border: #8fa294;
+  --hc-placeholder: #d6cdbb;
+  --hc-focus: #ffd54a;
+  color: var(--hc-text);
+}
+
+html[data-contrast='high'] body,
+html[data-contrast='high'] :is([class*='text-earth-100'], [class*='text-earth-200']) {
+  color: var(--hc-text);
+}
+/* Muted text: secondary lines, hints, captions, icons, ghost buttons. */
+html[data-contrast='high'] :is(
+  [class*='text-earth-300'], [class*='text-earth-400'], [class*='text-earth-500'], [class*='text-earth-600'],
+  [class*='text-earth-700'], [class*='text-slate-300'], [class*='text-slate-400'], [class*='text-slate-500'],
+  [class*='text-slate-600'], [class*='text-gray-400'], [class*='text-gray-500'], [class*='text-white/'],
+  .hint, .btn-ghost
+) {
+  color: var(--hc-muted);
+}
+/* Status colours keep their hue but reach readable contrast. */
+html[data-contrast='high'] :is(
+  [class*='text-red-400'], [class*='text-red-500'], [class*='text-red-600'], [class*='text-rose-400'], [class*='text-rose-500']
+) { color: var(--hc-red); }
+html[data-contrast='high'] :is(
+  [class*='text-amber-400'], [class*='text-amber-500'], [class*='text-amber-600'], [class*='text-yellow-500'],
+  [class*='text-orange-400'], [class*='text-orange-500']
+) { color: var(--hc-amber); }
+html[data-contrast='high'] :is(
+  [class*='text-emerald-400'], [class*='text-emerald-500'], [class*='text-emerald-600'],
+  [class*='text-green-400'], [class*='text-green-500'], [class*='text-green-600']
+) { color: var(--hc-green); }
+html[data-contrast='high'] :is([class*='text-brand-400'], [class*='text-brand-500'], [class*='text-brand-600']) {
+  color: var(--hc-brand);
+}
+html[data-contrast='high'] :is(
+  [class*='text-sky-300'], [class*='text-sky-400'], [class*='text-sky-500'], [class*='text-sky-600'],
+  [class*='text-blue-400'], [class*='text-blue-500']
+) { color: var(--hc-blue); }
+
+/* Borders that are barely there become visible. */
+html[data-contrast='high'] :is(
+  .card, .input, .btn-secondary,
+  [class*='border-white/'], [class*='border-earth-'], [class*='border-slate-'], [class*='border-[#']
+) {
+  border-color: var(--hc-border);
+}
+
+/* !important: the utilities set placeholder colour on ::placeholder with
+   class specificity, which a pseudo-element selector here can't outrank. */
+html[data-contrast='high'] ::placeholder {
+  color: var(--hc-placeholder) !important;
+  opacity: 1;
+}
+
+/* White-on-red count badges and danger buttons: red-500/600 is under 4.5:1. */
+html[data-contrast='high'] :is([class~='bg-red-500'], [class~='bg-red-600']) {
+  background-color: #b91c1c;
+}
+
+/* Floating toasts sit over the page, so a see-through background lets the
+   content behind show through the text. */
+html.dark[data-contrast='high'] [class*='dark:from-amber-900'] {
+  background-image: none;
+  background-color: #2b1f0b;
+}
+
+/* A thick focus outline on whatever has keyboard focus, including controls
+   that turn the browser outline off in favour of a faint ring. */
+html[data-contrast='high'] :focus-visible {
+  outline: 3px solid var(--hc-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* Links in running text are underlined, not told apart by colour alone.
+   Navigation, buttons and whole-card links are left as they are. */
+html[data-contrast='high'] :is(p, span, label, small, li, td, dd, h3, h4) a:not(nav a, [class*='btn'], [role]),
+html[data-contrast='high'] a:is([class*='text-sky-'], [class*='text-brand-']):not(nav a, [class*='btn'], [role], [class*='rounded-full'], [class*='inline-flex']) {
+  text-decoration-line: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}

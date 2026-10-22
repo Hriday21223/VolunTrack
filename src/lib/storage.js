@@ -8,6 +8,8 @@ export const keys = {
   goals:        `${NS}goals`,
   achievements: `${NS}achievements`,   // earned badge ids
   theme:        `${NS}theme`,
+  textSize:     `${NS}text-size`,    // 'default' | 'large' | 'xlarge' — this device only
+  contrast:     `${NS}contrast`,     // 'normal' | 'high' — this device only
   reminders:    `${NS}reminders`,
   fired:        `${NS}fired-reminders`, // dedupe list of reminder ids that already fired this cycle
   reviews:      `${NS}reviews`,          // list of review submissions
