@@ -28,6 +28,7 @@ export const NOTIFICATION_KINDS = new Set([
   'parent_ok_request',
   'parent_ok_given',
   'parent_ok_declined',
+  'comeback_nudge',
   'saved_task_reminder',
 ])
 

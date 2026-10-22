@@ -605,6 +605,10 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_decided_at TIMESTAMPTZ`) } catch {}
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_public_signups_parent_ok_token ON public_task_signups(parent_ok_token) WHERE parent_ok_token IS NOT NULL`) } catch {}
 
+  // "Come back" nudge (server/comeback.js): a student's opt-out, and when they
+  // were last nudged — at most one nudge per month-long quiet spell.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS comeback_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS comeback_nudged_at TIMESTAMPTZ`) } catch {}
   // Save a task for later (PUT|DELETE /api/school/public-tasks/:id/save,
   // GET /public-tasks/saved). reminded_at stamps the one bell nudge the daily
   // run-reminders job gives a saved task the student hasn't signed up for.
