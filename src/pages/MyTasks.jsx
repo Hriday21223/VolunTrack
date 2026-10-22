@@ -294,6 +294,72 @@ export default function MyTasks() {
     } catch (e) { setToastMsg(e.message); setToast(true) }
   }
 
+  // Bulk approve/reject: the ticked pending logs ({ [logId]: studentId }) and
+  // the open confirm panel ({ status, signature }) — one signature covers
+  // every approval in the batch.
+  const [selectedLogs, setSelectedLogs] = useState({})
+  const [bulk, setBulk] = useState(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+
+  const pendingLogs = students.flatMap((s) => s.logs
+    .filter((l) => l.verification_status !== 'approved' && l.verification_status !== 'rejected')
+    .map((l) => ({ studentId: s.id, logId: l.id })))
+  // Only what is still pending counts, so a row decided elsewhere drops out.
+  const selectedPending = pendingLogs.filter((p) => selectedLogs[p.logId])
+  const allPendingSelected = pendingLogs.length > 0 && selectedPending.length === pendingLogs.length
+
+  const toggleLog = (studentId, logId) => setSelectedLogs((cur) => {
+    const next = { ...cur }
+    if (next[logId]) delete next[logId]; else next[logId] = studentId
+    return next
+  })
+  const toggleAllPending = () => setSelectedLogs(
+    allPendingSelected ? {} : Object.fromEntries(pendingLogs.map((p) => [p.logId, p.studentId])),
+  )
+
+  const handleBulkVerify = async () => {
+    if (!bulk || selectedPending.length === 0) return
+    const { status, signature } = bulk
+    setBulkBusy(true)
+    let ok = 0
+    let failed = 0
+    let firstError = ''
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      // The server takes at most 100 per request.
+      for (let i = 0; i < selectedPending.length; i += 100) {
+        const items = selectedPending.slice(i, i + 100)
+        const res = await fetch(`${apiUrl}/school/logs/verify-bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ items, status, ...(status === 'approved' ? { signature } : {}) }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          failed += items.length
+          firstError ||= d.error || tr('Could not update these hours.')
+          continue
+        }
+        for (const r of d.results || []) {
+          if (r.ok) ok += 1
+          else { failed += 1; firstError ||= r.error || '' }
+        }
+      }
+    } catch (e) {
+      firstError ||= e.message
+      failed = selectedPending.length - ok
+    }
+    const summary = status === 'approved'
+      ? (failed ? tr('Approved {ok}, {failed} failed', { ok, failed }) : tr('Approved {ok}', { ok }))
+      : (failed ? tr('Rejected {ok}, {failed} failed', { ok, failed }) : tr('Rejected {ok}', { ok }))
+    setToastMsg(failed && firstError ? `${summary} — ${firstError}` : summary)
+    setToast(true)
+    setBulk(null)
+    setSelectedLogs({})
+    setBulkBusy(false)
+    loadStudents()
+  }
+
   const handleMarkAttendance = async (taskId, userId, status) => {
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
@@ -908,6 +974,65 @@ export default function MyTasks() {
             <Card><p className="text-center text-earth-500 py-8">No approved students yet — approve a signup above to see them here.</p></Card>
           ) : (
             <div className="space-y-3">
+              {pendingLogs.length > 0 && (
+                <Card padded={false} className="p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-2 text-xs mr-auto cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-emerald-600"
+                        checked={allPendingSelected}
+                        onChange={toggleAllPending}
+                        disabled={bulkBusy}
+                      />
+                      {tr('Select all pending ({n})', { n: pendingLogs.length })}
+                    </label>
+                    <button
+                      disabled={selectedPending.length === 0 || bulkBusy}
+                      onClick={() => { setSigning(null); setBulk({ status: 'approved', signature: '' }) }}
+                      className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg px-2 py-1"
+                    >
+                      <CheckCircle className="w-3 h-3 mr-1" /> {tr('Approve selected ({n})', { n: selectedPending.length })}
+                    </button>
+                    <button
+                      disabled={selectedPending.length === 0 || bulkBusy}
+                      onClick={() => { setSigning(null); setBulk({ status: 'rejected' }) }}
+                      className="btn-sm text-xs bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg px-2 py-1"
+                    >
+                      <XCircle className="w-3 h-3 mr-1" /> {tr('Reject selected ({n})', { n: selectedPending.length })}
+                    </button>
+                  </div>
+                  {bulk && selectedPending.length > 0 && (
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                      {bulk.status === 'approved' ? (
+                        <>
+                          <p className="text-xs text-earth-400 mb-2">
+                            {tr('Sign once to approve {n} entries. Your signature confirms each student did this work.', { n: selectedPending.length })}
+                          </p>
+                          <SignaturePad
+                            value={bulk.signature}
+                            onChange={(sig) => setBulk((cur) => (cur?.status === 'approved' ? { ...cur, signature: sig } : cur))}
+                          />
+                        </>
+                      ) : (
+                        <p className="text-xs text-earth-400">
+                          {tr('Reject {n} entries? Each student will be told in their notifications.', { n: selectedPending.length })}
+                        </p>
+                      )}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          disabled={bulkBusy || (bulk.status === 'approved' && !bulk.signature)}
+                          onClick={handleBulkVerify}
+                          className={`btn-sm text-xs ${bulk.status === 'approved' ? 'btn-primary' : 'btn-danger'}`}
+                        >
+                          {bulkBusy ? tr('Saving…') : bulk.status === 'approved' ? tr('Confirm approval') : tr('Confirm rejection')}
+                        </button>
+                        <button onClick={() => setBulk(null)} disabled={bulkBusy} className="btn-sm btn-ghost text-xs">{tr('Cancel')}</button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
               {students.map((student) => (
                 <Card key={student.id} padded={false} className="p-4">
                   <p className="text-sm font-medium">{student.name}</p>
@@ -919,6 +1044,16 @@ export default function MyTasks() {
                       {student.logs.map((log) => (
                         <div key={log.id} className="rounded-xl bg-white/5 p-2.5">
                         <div className="flex items-center gap-3">
+                          {log.verification_status !== 'approved' && log.verification_status !== 'rejected' && (
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 accent-emerald-600 shrink-0"
+                              aria-label={tr('Select {activity} for {name}', { activity: log.activity || '', name: student.name || '' })}
+                              checked={!!selectedLogs[log.id]}
+                              onChange={() => toggleLog(student.id, log.id)}
+                              disabled={bulkBusy}
+                            />
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium truncate">{log.activity} · {log.hours}h</p>
                             <p className="text-xs text-earth-500">{fmtDate(log.date)}</p>
