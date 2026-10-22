@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { fmtDate, fmtHours, hoursBetween } from '@/utils/date.js'
+import { fmtDate, fmtDateTime, fmtHours, hoursBetween } from '@/utils/date.js'
 import { csvCell } from '@/lib/csv.js'
 import { countedLogs } from '@/lib/achievements.js'
 
@@ -359,6 +359,94 @@ export async function schoolHoursPDF({ title, range, students, totals, returnBlo
   if (returnBlob) return doc.output('blob')
   doc.save(filename)
   return null
+}
+
+function graduationTitle(report) {
+  const grade = report.gradeLabel || (report.grade ? `Grade ${report.grade}` : 'All grades')
+  return `${report.schoolName || 'School'} — ${grade} volunteer hours report`
+}
+
+function graduationRequirementLine(report) {
+  if (report.target == null) return 'No hour requirement is set for this grade.'
+  const counting = report.hoursMode === 'counted' ? 'approved + pending hours' : 'approved hours only'
+  return `Requirement: ${fmtHours(report.target)}${report.deadline ? ` by ${fmtDate(report.deadline)}` : ''}  ·  counting ${counting}`
+}
+
+/** One row per student in the grade, Missed first — the same order as the screen. */
+export function graduationReportCSV(report) {
+  const rows = [
+    ['School', 'Student', 'Email', 'Grade', 'Approved Hours', 'Pending Hours', 'Total Counted Hours', 'Required Hours', 'Status', 'Shortfall'],
+    ...report.students.map((s) => [
+      report.schoolName || '', s.name || '', s.email || '', s.grade || '',
+      s.approvedHours, s.pendingHours, s.countedHours,
+      report.target ?? '', report.target == null ? 'No requirement' : s.met ? 'Met' : 'Missed',
+      s.shortfall ?? '',
+    ]),
+  ]
+  return rows.map((r) => r.map(csvCell).join(',')).join('\n')
+}
+
+/**
+ * Graduation report PDF: who in one grade met or missed the school's hour
+ * requirement, for a counselor to print or file.
+ */
+export async function graduationReportPDF({ report, returnBlob }) {
+  const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
+  const logo = await getLogoDataUrl()
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', 40, 28, LOGO_W, LOGO_H) } catch { /* logo optional */ }
+  }
+  const x = logo ? 84 : 40
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  doc.setFont('helvetica', 'bold').setFontSize(15)
+  const titleLines = doc.splitTextToSize(graduationTitle(report), pageWidth - x - 40)
+  doc.text(titleLines, x, 46)
+  let y = 46 + titleLines.length * 18 + 4
+  doc.setFont('helvetica', 'normal').setFontSize(10)
+  doc.setTextColor(90)
+  doc.text(`Generated ${fmtDateTime(report.generatedAt || new Date().toISOString())}`, x, y)
+  y += 14
+  doc.text(graduationRequirementLine(report), x, y)
+  const { students, met, missed } = report.summary
+  if (report.target != null) {
+    y += 14
+    doc.text(`${met} of ${students} met the ${report.target}-hour requirement  ·  ${missed} missed`, x, y)
+  }
+  doc.setTextColor(0)
+
+  autoTable(doc, {
+    startY: Math.max(y + 16, 100),
+    head: [['Student', 'Email', 'Approved', 'Pending', 'Counted', 'Required', 'Status', 'Short by']],
+    body: report.students.map((s) => [
+      s.name || '',
+      s.email || '',
+      fmtHours(s.approvedHours),
+      fmtHours(s.pendingHours),
+      fmtHours(s.countedHours),
+      report.target != null ? fmtHours(report.target) : '—',
+      report.target == null ? '—' : s.met ? 'Met' : 'Missed',
+      s.shortfall ? fmtHours(s.shortfall) : '',
+    ]),
+    styles: { fontSize: 8.5, cellPadding: 4, overflow: 'linebreak' },
+    headStyles: { fillColor: [63, 131, 68] },
+    alternateRowStyles: { fillColor: [241, 248, 241] },
+    didParseCell: (data) => {
+      if (data.section !== 'body' || data.column.index !== 6) return
+      if (data.cell.raw === 'Met') data.cell.styles.textColor = [34, 120, 60]
+      if (data.cell.raw === 'Missed') data.cell.styles.textColor = [185, 40, 40]
+      data.cell.styles.fontStyle = 'bold'
+    },
+  })
+
+  if (returnBlob) return doc.output('blob')
+  doc.save(`voluntrack-graduation-report-grade-${graduationSlug(report)}.pdf`)
+  return null
+}
+
+/** Filename-safe grade, shared by the PDF and the CSV download. */
+export function graduationSlug(report) {
+  return String(report.grade || 'all').toLowerCase().replace(/[^a-z0-9]+/g, '-')
 }
 
 /* ---------- Printable sign-in sheet for one task ---------- */
