@@ -21,6 +21,8 @@ function toServer(goals) {
     id: g.id,
     title: g.title,
     targetHours: Number(g.targetHours) || 0,
+    // null = counts every hour. Always sent, so clearing a cause reaches the server.
+    category: g.category || null,
     deadline: g.deadline || null,
     primary: Boolean(g.primary),
     createdAt: g.createdAt || null,
