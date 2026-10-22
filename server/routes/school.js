@@ -1185,7 +1185,7 @@ function coordinate(value, max) {
 
 // A task's category: one of the app's activity categories (the same list as
 // src/lib/categories.js), or none. '' and null both mean none.
-const TASK_CATEGORIES = [
+export const TASK_CATEGORIES = [
   'Community Service', 'Environmental', 'Education & Tutoring', 'Health & Wellness', 'Animal Welfare',
   'Arts & Culture', 'Sports & Coaching', 'Religious & Faith', 'Political & Advocacy', 'Disaster Relief', 'Other',
 ]

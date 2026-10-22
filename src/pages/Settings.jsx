@@ -16,6 +16,7 @@ import PasskeySettings from '@/components/PasskeySettings.jsx'
 import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
 import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 import ComebackEmailCard from '@/components/ComebackEmailCard.jsx'
+import InterestsCard from '@/components/InterestsCard.jsx'
 import PortfolioCard from '@/components/PortfolioCard.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
@@ -755,6 +756,7 @@ export default function Settings() {
             <p className="text-xs text-earth-400 mt-2">Add a deadline and the dashboard works out the pace you need to keep.</p>
           </Card>
           {user?.role === 'student' && <PortfolioCard />}
+          {user?.role === 'student' && <InterestsCard />}
         </CollapsibleSection>
 
         <CollapsibleSection icon={Lock} label="Account & Security" defaultOpen={true}>

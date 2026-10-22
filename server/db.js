@@ -625,6 +625,10 @@ export async function initSchema() {
   } catch (error) { console.error('saved_tasks migration failed:', error.message) }
   try { await query(`CREATE INDEX IF NOT EXISTS idx_saved_tasks_task ON saved_tasks(task_id)`) } catch {}
 
+  // A student's chosen causes (activity categories) for the "For you" row on
+  // Opportunities (server/routes/interests.js).
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[]`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
