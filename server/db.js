@@ -624,6 +624,19 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('saved_tasks migration failed:', error.message) }
   try { await query(`CREATE INDEX IF NOT EXISTS idx_saved_tasks_task ON saved_tasks(task_id)`) } catch {}
+  // Thank-you notes (POST /api/school/public-tasks/:id/thanks): one per task,
+  // from its organizer to the volunteers who showed up. task_id is the key, so
+  // a second send can't happen even if two clicks race.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS task_thanks (
+        task_id   TEXT PRIMARY KEY REFERENCES public_tasks(id) ON DELETE CASCADE,
+        sender_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        message   TEXT NOT NULL CHECK (char_length(message) BETWEEN 1 AND 500),
+        sent_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch (error) { console.error('task_thanks migration failed:', error.message) }
 
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3, ClipboardList } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3, ClipboardList, Heart } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { format } from 'date-fns'
@@ -81,6 +81,17 @@ function SignupRow({ s, onChanged, canRate }) {
           )}
         </div>
       </div>
+      {/* The organizer's thank-you note — the server sends it only to those it went to. */}
+      {s.thanks?.message && (
+        <div className="mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+          <p className="text-xs font-medium text-rose-300 flex items-center gap-1">
+            <Heart className="w-3.5 h-3.5" aria-hidden="true" />{' '}
+            {tr('A thank-you from {name}', { name: s.creator_name || tr('the organizer') })}
+            {s.thanks.sent_at && <span className="text-earth-500 font-normal"> · {fmtDate(s.thanks.sent_at)}</span>}
+          </p>
+          <p className="mt-1 text-sm text-earth-700 dark:text-earth-200 whitespace-pre-wrap break-words">{s.thanks.message}</p>
+        </div>
+      )}
       {/* The server decides who may rate (can_rate): approved, attended, day over. */}
       {canRate && s.can_rate && (
         <RateTask task={s} onSaved={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />
