@@ -19,6 +19,10 @@ import ComebackEmailCard from '@/components/ComebackEmailCard.jsx'
 import PortfolioCard from '@/components/PortfolioCard.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
+import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
+import { countedLogs } from '@/lib/achievements.js'
+import { goalCategory, hoursForGoal } from '@/lib/goalProgress.js'
+import { tr } from '@/lib/i18n.js'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -53,9 +57,9 @@ function randomBelow(n) {
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
   const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp, verifyPasskey } = useAuth()
-  const { goals, saveGoal, removeGoal } = useData()
+  const { goals, saveGoal, removeGoal, logs } = useData()
   const nav = useNavigate()
-  const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, deadline: '', primary: false })
+  const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, deadline: '', category: '', primary: false })
   const [toast, setToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [pin, setPin] = useState('')
@@ -368,6 +372,9 @@ export default function Settings() {
   const [pwError, setPwError] = useState('')
   const [pwDone, setPwDone] = useState(false)
 
+  // Progress shown beside each goal; rejected hours never count.
+  const counted = countedLogs(logs)
+
   const addGoal = (e) => {
     e.preventDefault()
     if (!newGoal.title.trim()) return
@@ -377,8 +384,10 @@ export default function Settings() {
       targetHours: Number(newGoal.targetHours) || 0,
       // Optional: a goal with no date behaves exactly as it always did.
       deadline: newGoal.deadline || null,
+      // Optional too: with no cause, every hour counts, as before.
+      category: newGoal.category || null,
     })
-    setNewGoal({ title: '', targetHours: 50, deadline: '', primary: false })
+    setNewGoal({ title: '', targetHours: 50, deadline: '', category: '', primary: false })
     setToastMessage('Goal added')
     setToast(true)
   }
@@ -722,9 +731,12 @@ export default function Settings() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{g.title}</div>
                       <div className="text-xs text-earth-500 dark:text-earth-400">
-                        {g.targetHours}h target
+                        {tr('{done} of {target}h', { done: Math.round(hoursForGoal(g, counted) * 10) / 10, target: g.targetHours })}
                         {g.deadline && <> · by {format(parseISO(g.deadline), 'd MMM yyyy')}</>}
                       </div>
+                      {goalCategory(g) && (
+                        <span className={`chip mt-1 ${categoryColor(goalCategory(g))}`}>{tr('Only {category} hours', { category: tr(goalCategory(g)) })}</span>
+                      )}
                     </div>
                     <button onClick={() => removeGoal(g.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete">
                       <Trash2 className="w-4 h-4" />
@@ -750,9 +762,18 @@ export default function Settings() {
                 type="date" className="input w-[150px]" aria-label="Deadline (optional)" title="Deadline (optional)"
                 value={newGoal.deadline} onChange={(e) => setNewGoal((g) => ({ ...g, deadline: e.target.value }))}
               />
+              <select
+                id="goal-category"
+                className="input w-[190px]" aria-label={tr('Cause (optional)')} title={tr('Cause (optional)')}
+                value={newGoal.category} onChange={(e) => setNewGoal((g) => ({ ...g, category: e.target.value }))}
+              >
+                <option value="">{tr('All causes')}</option>
+                {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
+              </select>
               <button className="btn-primary shrink-0"><Plus className="w-4 h-4" /> Add</button>
             </form>
             <p className="text-xs text-earth-400 mt-2">Add a deadline and the dashboard works out the pace you need to keep.</p>
+            <p className="text-xs text-earth-400 mt-1">{tr('Pick a cause to count only hours logged in that category, like 20 hours in Environmental.')}</p>
           </Card>
           {user?.role === 'student' && <PortfolioCard />}
         </CollapsibleSection>

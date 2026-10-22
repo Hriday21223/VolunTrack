@@ -628,6 +628,8 @@ export async function initSchema() {
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // Optional cause for a goal (one of src/lib/categories.js); NULL counts every hour.
+  try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS category TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_name TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_address TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS org_phone TEXT`) } catch {}
