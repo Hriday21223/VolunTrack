@@ -2715,6 +2715,55 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
   }
 })
 
+// Who "showed up", over a signup `s`: an approved volunteer marked present, or
+// one who checked in by QR and wasn't since marked absent or excused — the same
+// reading RATING_OPEN_SQL uses for who may rate.
+const SHOWED_UP_SQL = `(s.status = 'approved' AND (s.attendance_status = 'present'
+  OR (s.checked_in_at IS NOT NULL AND s.attendance_status IS NULL)))`
+
+// One row per task the organizer posted in [from, to] (either end optional),
+// with its signup, attendance, hours and rating counts. Shared by the impact
+// report and the stats view so the two can't drift apart. Signups, logs and
+// ratings are each one-to-many off a task, so each is aggregated in its own
+// LATERAL subquery — joining them in one GROUP BY would multiply them against
+// each other (a task with 3 signups and 2 logs reported 30 hours, not 10).
+async function organizerTaskRows(userId, { from, to }) {
+  const params = [userId]
+  let range = ''
+  if (from) { params.push(from); range += ` AND t.date >= $${params.length}` }
+  if (to) { params.push(to); range += ` AND t.date <= $${params.length}` }
+  const { rows } = await query(
+    `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.location, t.status, t.slots_total, t.category,
+            sg.*, lg.*, rt.*
+       FROM public_tasks t
+       CROSS JOIN LATERAL (
+         SELECT COUNT(*) FILTER (WHERE s.status = 'approved')::int                                 AS approved,
+                COUNT(*) FILTER (WHERE s.status = 'pending')::int                                  AS pending,
+                COUNT(*) FILTER (WHERE s.status = 'waitlisted')::int                               AS waitlisted,
+                COUNT(*) FILTER (WHERE s.attendance_status = 'present')::int                       AS present,
+                COUNT(*) FILTER (WHERE s.attendance_status = 'absent')::int                        AS absent,
+                COUNT(*) FILTER (WHERE s.attendance_status = 'excused')::int                       AS excused,
+                COUNT(*) FILTER (WHERE ${SHOWED_UP_SQL})::int                                      AS showed_up,
+                COUNT(*) FILTER (WHERE s.status = 'approved' AND s.attendance_status = 'absent')::int  AS no_shows,
+                COUNT(*) FILTER (WHERE s.status = 'approved' AND s.attendance_status = 'excused')::int AS excused_approved
+           FROM public_task_signups s WHERE s.task_id = t.id
+       ) sg
+       CROSS JOIN LATERAL (
+         SELECT COALESCE(SUM(l.hours), 0)::float8                                                   AS hours,
+                COALESCE(SUM(l.hours) FILTER (WHERE l.verification_status = 'approved'), 0)::float8 AS hours_approved
+           FROM logs l WHERE l.task_id = t.id
+       ) lg
+       CROSS JOIN LATERAL (
+         SELECT COUNT(*)::int AS rating_count, COALESCE(SUM(r.stars), 0)::int AS rating_sum
+           FROM task_ratings r WHERE r.task_id = t.id
+       ) rt
+      WHERE t.created_by = $1${range}
+      ORDER BY t.date DESC, t.created_at DESC`,
+    params,
+  )
+  return { rows, params, range }
+}
+
 // GET /api/school/public-tasks/mine/report?from=&to=
 // What an organizer needs at grant time. Every figure here was already in
 // public_tasks and its signups; nothing could read it back out.
@@ -2725,35 +2774,7 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
   if (to && !validator.isDate(to)) return res.status(400).json({ error: 'Invalid to date.' })
 
   try {
-    const params = [req.auth.sub]
-    let range = ''
-    if (from) { params.push(from); range += ` AND t.date >= $${params.length}` }
-    if (to) { params.push(to); range += ` AND t.date <= $${params.length}` }
-
-    // Signups and logs are both one-to-many off a task, so joining them in
-    // one GROUP BY multiplies each against the other — a task with 3 signups
-    // and 2 logs reported 4 approved and 30 hours instead of 2 and 10. Each
-    // aggregate gets its own subquery, which is also why there is no GROUP BY
-    // here any more.
-    const { rows } = await query(
-      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.location, t.status, t.slots_total,
-              (SELECT COUNT(*) FROM public_task_signups s
-                WHERE s.task_id = t.id AND s.status = 'approved')            AS approved,
-              (SELECT COUNT(*) FROM public_task_signups s
-                WHERE s.task_id = t.id AND s.status = 'pending')             AS pending,
-              (SELECT COUNT(*) FROM public_task_signups s
-                WHERE s.task_id = t.id AND s.attendance_status = 'present')  AS present,
-              (SELECT COUNT(*) FROM public_task_signups s
-                WHERE s.task_id = t.id AND s.attendance_status = 'absent')   AS absent,
-              (SELECT COUNT(*) FROM public_task_signups s
-                WHERE s.task_id = t.id AND s.attendance_status = 'excused')  AS excused,
-              (SELECT COALESCE(SUM(l.hours), 0) FROM logs l
-                WHERE l.task_id = t.id)                                      AS hours
-         FROM public_tasks t
-        WHERE t.created_by = $1${range}
-        ORDER BY t.date DESC`,
-      params,
-    )
+    const { rows, params, range } = await organizerTaskRows(req.auth.sub, { from, to })
 
     const tasks = rows.map((r) => ({
       id: r.id,
@@ -2762,12 +2783,12 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
       location: r.location,
       status: r.status,
       slotsTotal: r.slots_total,
-      approved: Number(r.approved),
-      pending: Number(r.pending),
-      present: Number(r.present),
-      absent: Number(r.absent),
-      excused: Number(r.excused),
-      hours: Number(r.hours),
+      approved: r.approved,
+      pending: r.pending,
+      present: r.present,
+      absent: r.absent,
+      excused: r.excused,
+      hours: r.hours,
     }))
 
     // Distinct people, not signups: one volunteer at six events is one
@@ -2798,6 +2819,147 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
   } catch (error) {
     console.error('organizer report failed:', error)
     return res.status(500).json({ error: 'Could not build your report.' })
+  }
+})
+
+// GET /api/school/public-tasks/mine/stats?from=&to=&all=1
+// How the caller's own tasks went, for the Stats tab of My Tasks. Counts only —
+// no volunteer's name, email or id, which My Tasks already shows per task.
+//
+// Window: by task date, default the last 12 months up to today (the database's
+// CURRENT_DATE, the clock check-in and rating use). all=1 drops the lower bound.
+//
+// Show-up rate = showed up ÷ (showed up + no-shows), over approved signups on
+// tasks that weren't cancelled. "Showed up" is marked present, or checked in by
+// QR and not since marked otherwise; a no-show is marked absent. Excused
+// volunteers count on neither side (they told the organizer), and a volunteer
+// nobody marked or checked in isn't counted either — so the rate is null, not
+// 0%, until attendance has been taken.
+//
+// Cancelled tasks are left out of every figure and reported only as a count.
+// Hours are approved logs linked to the task; a repeat volunteer showed up at
+// 2+ of the organizer's tasks within the window.
+router.get('/public-tasks/mine/stats', limiter, requireDb, requireAuth(), async (req, res) => {
+  const all = req.query.all === '1' || req.query.all === 'true'
+  const rawFrom = String(req.query.from || '').trim()
+  const rawTo = String(req.query.to || '').trim()
+  if (rawFrom && !validator.isDate(rawFrom)) return res.status(400).json({ error: 'Invalid from date.' })
+  if (rawTo && !validator.isDate(rawTo)) return res.status(400).json({ error: 'Invalid to date.' })
+
+  try {
+    const { rows: [win] } = await query(
+      `SELECT CASE WHEN $3::bool THEN NULL
+                   ELSE to_char(COALESCE($1::date, (CURRENT_DATE - INTERVAL '12 months')::date), 'YYYY-MM-DD') END AS from_date,
+              to_char(COALESCE($2::date, CURRENT_DATE), 'YYYY-MM-DD') AS to_date`,
+      [rawFrom || null, rawTo || null, all],
+    )
+    const from = win.from_date
+    const to = win.to_date
+    if (from && from > to) return res.status(400).json({ error: 'The start date is after the end date.' })
+
+    const { rows, params, range } = await organizerTaskRows(req.auth.sub, { from, to })
+    const ran = rows.filter((r) => r.status !== 'cancelled')
+    const cancelled = rows.length - ran.length
+
+    const { rows: [people] } = await query(
+      `WITH came AS (
+         SELECT DISTINCT s.user_id, s.task_id
+           FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+          WHERE t.created_by = $1 AND t.status <> 'cancelled'${range} AND ${SHOWED_UP_SQL}
+       ), repeaters AS (
+         SELECT user_id FROM came GROUP BY user_id HAVING COUNT(*) >= 2
+       )
+       SELECT (SELECT COUNT(DISTINCT s.user_id)::int
+                 FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+                WHERE t.created_by = $1 AND t.status <> 'cancelled'${range} AND s.status = 'approved') AS volunteers,
+              (SELECT COUNT(DISTINCT user_id)::int FROM came) AS attended,
+              (SELECT COUNT(*)::int FROM repeaters) AS repeaters,
+              COALESCE((SELECT json_object_agg(task_id, n) FROM (
+                SELECT c.task_id, COUNT(*)::int AS n FROM came c JOIN repeaters USING (user_id) GROUP BY c.task_id
+              ) per), '{}'::json) AS repeaters_by_task`,
+      params,
+    )
+
+    const round = (n) => Math.round(n * 100) / 100
+    const rate = (showed, noShows) => (showed + noShows > 0 ? showed / (showed + noShows) : null)
+    const avg = (sum, count) => (count > 0 ? Math.round((sum / count) * 10) / 10 : null)
+
+    const tasks = ran.map((r) => ({
+      id: r.id,
+      title: r.title,
+      date: r.date,
+      status: r.status,
+      category: r.category || null,
+      signups: r.approved,
+      waitlisted: r.waitlisted,
+      showedUp: r.showed_up,
+      noShows: r.no_shows,
+      excused: r.excused_approved,
+      showUpRate: rate(r.showed_up, r.no_shows),
+      hours: round(r.hours_approved),
+      rating: { average: avg(r.rating_sum, r.rating_count), count: r.rating_count },
+      repeatVolunteers: Number(people.repeaters_by_task?.[r.id] || 0),
+    }))
+
+    // Hours by the month of the task, every month of the window present (an
+    // empty month is a fact worth seeing), oldest first.
+    // A range reaching back decades (from=1900-01-01) stops at 20 years.
+    const byMonth = new Map()
+    const lastMonth = to.slice(0, 7)
+    let [y, m] = (from || ran.map((r) => r.date).sort()[0] || to).slice(0, 7).split('-').map(Number)
+    if ((Number(lastMonth.slice(0, 4)) - y) * 12 > 240) [y, m] = [Number(lastMonth.slice(0, 4)) - 20, Number(lastMonth.slice(5))]
+    for (;;) {
+      const key = `${y}-${String(m).padStart(2, '0')}`
+      if (key > lastMonth) break
+      byMonth.set(key, { month: key, tasks: 0, signups: 0, hours: 0 })
+      if (++m > 12) { m = 1; y++ }
+    }
+    const byCategory = new Map()
+    for (const t of tasks) {
+      const month = byMonth.get(t.date.slice(0, 7))
+      if (month) { month.tasks++; month.signups += t.signups; month.hours = round(month.hours + t.hours) }
+      if (t.category) {
+        const c = byCategory.get(t.category) || { category: t.category, tasks: 0, signups: 0, hours: 0 }
+        c.tasks++; c.signups += t.signups; c.hours = round(c.hours + t.hours)
+        byCategory.set(t.category, c)
+      }
+    }
+    // Busiest = most hours given, then most sign-ups, then most tasks.
+    const busiest = (list) => list.filter((x) => x.tasks > 0)
+      .sort((a, b) => b.hours - a.hours || b.signups - a.signups || b.tasks - a.tasks)[0] || null
+
+    const sum = (key) => tasks.reduce((n, t) => n + t[key], 0)
+    const showedUp = sum('showedUp')
+    const noShows = sum('noShows')
+    const ratingCount = ran.reduce((n, r) => n + r.rating_count, 0)
+    const ratingSum = ran.reduce((n, r) => n + r.rating_sum, 0)
+
+    return res.json({
+      from,
+      to,
+      totals: {
+        tasksRun: tasks.length,
+        cancelled,
+        signups: sum('signups'),
+        waitlisted: sum('waitlisted'),
+        volunteers: people.volunteers,
+        attended: people.attended,
+        showedUp,
+        noShows,
+        excused: sum('excused'),
+        showUpRate: rate(showedUp, noShows),
+        hours: round(sum('hours')),
+        rating: { average: avg(ratingSum, ratingCount), count: ratingCount },
+        repeatVolunteers: people.repeaters,
+        busiestCategory: busiest([...byCategory.values()]),
+        busiestMonth: busiest([...byMonth.values()]),
+      },
+      months: [...byMonth.values()],
+      tasks,
+    })
+  } catch (error) {
+    console.error('organizer stats failed:', error)
+    return res.status(500).json({ error: 'Could not load your stats.' })
   }
 })
 
