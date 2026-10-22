@@ -4,6 +4,7 @@
 
 import { differenceInCalendarDays, parseISO, isAfter, startOfDay } from 'date-fns'
 import { tr } from '@/lib/i18n.js'
+import { hoursForGoal } from '@/lib/goalProgress.js'
 
 export const BADGES = [
   {
@@ -145,7 +146,8 @@ export function deriveAchievementState(allLogs, goals) {
   const bestMonthHours = monthMap.size ? Math.max(...monthMap.values()) : 0
 
   const primaryGoal = goals.find((g) => g.primary) || goals[0]
-  const goalReached = !!primaryGoal && totalHours >= Number(primaryGoal.targetHours || 0)
+  // A goal for one cause is reached on that cause's hours alone.
+  const goalReached = !!primaryGoal && hoursForGoal(primaryGoal, logs) >= Number(primaryGoal.targetHours || 0)
 
   return {
     totalHours,
