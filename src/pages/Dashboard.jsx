@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, PartyPopper, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle } from 'lucide-react'
+import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, PartyPopper, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle, Globe } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
@@ -24,6 +24,8 @@ import { goalCategory, logsForGoal, hoursForGoal } from '@/lib/goalProgress.js'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { format, startOfWeek, startOfMonth, addDays, parseISO } from 'date-fns'
 import { tr } from '@/lib/i18n.js'
+import { taskMapsUrl } from '@/lib/taskDetails.js'
+import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -340,16 +342,21 @@ export default function Dashboard() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{t.title}</p>
                     <p className="text-sm text-earth-400 mt-1">{t.description}</p>
+                    <TaskDetailBadges task={t} className="mt-2" />
                     <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${t.latitude != null && t.longitude != null ? `${t.latitude},${t.longitude}` : encodeURIComponent(t.location)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1 hover:text-brand-400 hover:underline"
-                      >
-                        <MapPin className="w-3 h-3" /> {t.location}
-                      </a>
+                      {t.is_online ? (
+                        <span className="flex items-center gap-1"><Globe className="w-3 h-3" /> {tr('Online')}</span>
+                      ) : (
+                        <a
+                          href={taskMapsUrl(t)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 hover:text-brand-400 hover:underline"
+                        >
+                          <MapPin className="w-3 h-3" /> {t.location}
+                        </a>
+                      )}
                       <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total}{' '}{tr('needed')}</span>
                       {t.distance != null && (
@@ -384,11 +391,14 @@ export default function Dashboard() {
                       <span className="text-xs text-red-400 font-medium">{tr('Full')}</span>
                     ) : (
                       <button onClick={async () => {
+                        // Minimum age (#426): confirmed by the student, as on Opportunities.
+                        if (t.min_age != null && !window.confirm(tr('This task is for volunteers {n} or older. Are you {n} or older?', { n: t.min_age }))) return
                         try {
                           const token = localStorage.getItem('voluntrack:auth_token')
                           const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
                             method: 'POST',
-                            headers: { Authorization: `Bearer ${token}` },
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify(t.min_age != null ? { ageConfirmed: true } : {}),
                           })
                           if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
                           setToastMsg(tr('Signed up — awaiting organizer approval')); setToast(true); loadPublicTasks()

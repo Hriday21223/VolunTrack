@@ -14,6 +14,8 @@ import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
+import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import { taskMapsUrl } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { MAX_SEARCH_LENGTH, cleanSearch, taskMatchesSearch, taskShareUrl } from '@/lib/taskSearch.js'
@@ -193,6 +195,8 @@ export default function Opportunities() {
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
   const signUp = async (t, full) => {
+    // Minimum age (#426): no birth date is kept, so the student confirms it.
+    if (t.min_age != null && !window.confirm(tr("This task is for volunteers {n} or older. Are you {n} or older?", { n: t.min_age }))) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
@@ -200,6 +204,7 @@ export default function Opportunities() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           ...(full ? { waitlist: true } : {}),
+          ...(t.min_age != null ? { ageConfirmed: true } : {}),
           ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
         }),
       })
@@ -221,13 +226,18 @@ export default function Opportunities() {
   // Filters run on the list already loaded; distance is the server's radius.
   const [category, setCategory] = useState('')
   const [when, setWhen] = useState('')
+  const [onlineOnly, setOnlineOnly] = useState(false)
+  const [wheelchairOnly, setWheelchairOnly] = useState(false)
   const range = whenRange(when)
   const baseTasks = showSaved ? (savedTasks || []) : nearbyTasks
   const shownTasks = baseTasks.filter((t) =>
     (!category || t.category === category)
+    && (!onlineOnly || t.is_online)
+    && (!wheelchairOnly || t.wheelchair_accessible === 'yes')
     && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1]))
     && taskMatchesSearch(t, search, t.category ? [tr(t.category)] : []))
-  const filtering = Boolean(category || when)
+  const filtering = Boolean(category || when || onlineOnly || wheelchairOnly)
+  const clearFilters = () => { setCategory(''); setWhen(''); setOnlineOnly(false); setWheelchairOnly(false) }
 
   const loadNearbyTasks = useCallback(async (lat, lng, radius) => {
     try {
@@ -344,6 +354,9 @@ export default function Opportunities() {
           <select value={when} onChange={(e) => setWhen(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label={tr('When')}>
             {WHEN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          {[[onlineOnly, setOnlineOnly, tr('Online only')], [wheelchairOnly, setWheelchairOnly, tr('Wheelchair accessible')]].map(([on, set, label]) => (
+            <button key={label} type="button" onClick={() => set((v) => !v)} aria-pressed={on} className={`btn-sm ${on ? 'btn-primary' : 'btn-ghost'}`}>{label}</button>
+          ))}
           {canFollow && (savedTasks?.length > 0 || showSaved) && (
             <button
               type="button"
@@ -356,7 +369,7 @@ export default function Opportunities() {
             </button>
           )}
           {filtering && (
-            <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-ghost btn-sm">
+            <button type="button" onClick={clearFilters} className="btn-ghost btn-sm">
               <X className="w-3.5 h-3.5 mr-1" />{' '}{tr('Clear')}
             </button>
           )}
@@ -455,7 +468,7 @@ export default function Opportunities() {
               {filtering && <p className="text-xs text-earth-500 mt-1">{tr('The category and date filters apply too.')}</p>}
               <div className="flex flex-wrap justify-center gap-2 mt-3">
                 <button type="button" onClick={clearSearch} className="btn-secondary">{tr('Clear search')}</button>
-                {filtering && <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-ghost">{tr('Clear filters')}</button>}
+                {filtering && <button type="button" onClick={clearFilters} className="btn-ghost">{tr('Clear filters')}</button>}
               </div>
             </div>
           </Card>
@@ -463,7 +476,7 @@ export default function Opportunities() {
           <Card>
             <div className="text-center py-8">
               <p className="text-earth-400">{tr('No tasks match these filters.')}</p>
-              <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-secondary mt-3">{tr('Clear filters')}</button>
+              <button type="button" onClick={clearFilters} className="btn-secondary mt-3">{tr('Clear filters')}</button>
             </div>
           </Card>
         ) : shownTasks.map((t) => {
@@ -488,16 +501,19 @@ export default function Opportunities() {
                   )}
                   {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
+                  <TaskDetailBadges task={t} className="mt-2" />
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${t.latitude != null && t.longitude != null ? `${t.latitude},${t.longitude}` : encodeURIComponent(t.location)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1 hover:text-brand-400 hover:underline"
-                    >
-                      <MapPin className="w-3 h-3" /> {t.location}
-                    </a>
+                    {t.is_online ? (t.location && t.location !== 'Online' && <span>{t.location}</span>) : (
+                      <a
+                        href={taskMapsUrl(t)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 hover:text-brand-400 hover:underline"
+                      >
+                        <MapPin className="w-3 h-3" /> {t.location}
+                      </a>
+                    )}
                     <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total}{' '}{tr('slots')}</span>
                   </div>
@@ -577,6 +593,11 @@ export default function Opportunities() {
                     <span className="text-xs text-amber-400 font-medium">{tr("Waiting for a parent's OK")}</span>
                   ) : t.my_signup_status === 'parent_declined' ? (
                     <button onClick={() => signUp(t, full)} className="btn-secondary text-sm">{tr('Ask again')}</button>
+                  ) : t.my_too_young ? (
+                    <>
+                      <button disabled className="btn-secondary text-sm opacity-50 cursor-not-allowed">{tr('Sign up')}</button>
+                      <span className="text-xs text-earth-500 text-right max-w-[10rem]">{tr('This task is for volunteers {n} or older.', { n: t.min_age })}</span>
+                    </>
                   ) : (
                     <button onClick={() => signUp(t, full)} className={full ? 'btn-secondary text-sm' : 'btn-primary text-sm'}>
                       {full ? tr('Join waitlist') : tr('Sign up')}

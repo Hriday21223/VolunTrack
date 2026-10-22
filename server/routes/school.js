@@ -1192,13 +1192,62 @@ export const TASK_CATEGORIES = [
 const taskCategory = (v) => (v == null || v === '' ? { ok: true, value: null }
   : TASK_CATEGORIES.includes(v) ? { ok: true, value: v } : { ok: false })
 
+// Task details (#426). Each reader takes the raw body value and answers
+// { ok, value } or { ok: false, error }; `undefined` means "not sent", which
+// create treats as the default and PATCH leaves alone.
+//
+// Minimum age: a whole number 5–21, or none. VolunTrack keeps no date of
+// birth (ageRules.js), so sign-up asks the student to confirm it — see
+// POST /public-tasks/:id/signup.
+const taskMinAge = (v) => {
+  if (v == null || v === '') return { ok: true, value: null }
+  const n = Number(v)
+  return (typeof v === 'number' || typeof v === 'string') && Number.isInteger(n) && n >= 5 && n <= 21
+    ? { ok: true, value: n } : { ok: false, error: 'Minimum age must be a whole number from 5 to 21.' }
+}
+const taskOnline = (v) => (v == null ? { ok: true, value: false }
+  : typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Online must be true or false.' })
+const WHEELCHAIR = ['yes', 'no', 'unknown']
+const taskWheelchair = (v) => (v == null || v === '' ? { ok: true, value: 'unknown' }
+  : WHEELCHAIR.includes(v) ? { ok: true, value: v } : { ok: false, error: 'Wheelchair accessible must be yes, no or unknown.' })
+const taskAccessNote = (v) => {
+  if (v == null) return { ok: true, value: null }
+  if (typeof v !== 'string') return { ok: false, error: 'Accessibility note must be text.' }
+  const text = v.trim()
+  return text.length > 200 ? { ok: false, error: 'Accessibility note must be at most 200 characters.' } : { ok: true, value: text || null }
+}
+// An online task with no address is stored as "Online", so every place that
+// prints a location (emails, Attendance, reports, the sign-in sheet) still
+// reads sensibly without knowing about online tasks.
+const ONLINE_LOCATION = 'Online'
+
+// A student who registered as under 13 (users.under_13) was younger than 13
+// on users.created_at, so today they are younger than 13 + the years since.
+// When that can't yet reach the task's minimum age, they are certainly too
+// young: refused at sign-up and flagged in the list. Everyone else confirms.
+const PROVABLY_TOO_YOUNG_SQL = (taskAlias, userIdParam) => `(${taskAlias}.min_age IS NOT NULL AND EXISTS (
+  SELECT 1 FROM users ay WHERE ay.id = ${userIdParam} AND ay.under_13 IS TRUE
+     AND ay.created_at > now() - make_interval(years => ${taskAlias}.min_age - 13)))`
+
 router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { title, description, location, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
+  const { title, description, date, time, slotsTotal, phone, latitude, longitude, importantInfo } = req.body
+  let { location } = req.body
   const category = taskCategory(req.body.category)
   if (!category.ok) return res.status(400).json({ error: 'Pick a category from the list.' })
   const lat = coordinate(latitude, 90)
   const lng = coordinate(longitude, 180)
   if (!lat.ok || !lng.ok) return res.status(400).json({ error: 'Invalid map position.' })
+  const details = [taskMinAge(req.body.minAge), taskOnline(req.body.isOnline), taskWheelchair(req.body.wheelchairAccessible), taskAccessNote(req.body.accessibilityNote)]
+  const badDetail = details.find((d) => !d.ok)
+  if (badDetail) return res.status(400).json({ error: badDetail.error })
+  const [minAge, isOnline, wheelchair, accessNote] = details.map((d) => d.value)
+  // Online: the address is optional and there is no map pin.
+  if (isOnline) {
+    if (location != null && typeof location !== 'string') return res.status(400).json({ error: 'Location must be text.' })
+    location = String(location || '').trim() || ONLINE_LOCATION
+    lat.value = null
+    lng.value = null
+  }
   if (!title || !description || !location || !date) return res.status(400).json({ error: 'Title, description, location, and date required.' })
   if (!phone) return res.status(400).json({ error: 'Phone number is required so volunteers can reach you.' })
   if (!isValidDateString(date)) return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
@@ -1260,9 +1309,11 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
       for (const day of dates) {
         const id = uid('ptask')
         await client.query(
-          `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-          [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value],
+          `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+          [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
+            minAge, isOnline, wheelchair, accessNote],
         )
         created.push({ id, date: day })
       }
@@ -1299,7 +1350,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
     const params = userId ? [userId] : []
 
     const distExpr = useDist
-      ? `CASE WHEN t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN
+      ? `CASE WHEN NOT t.is_online AND t.latitude IS NOT NULL AND t.longitude IS NOT NULL THEN
            6371 * 2 * ASIN(LEAST(1, SQRT(
              POWER(SIN(RADIANS(t.latitude - $${params.length + 1}) / 2), 2) +
              COS(RADIANS($${params.length + 1})) * COS(RADIANS(t.latitude)) *
@@ -1313,17 +1364,23 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
     // Radius filter runs against `sub.distance` (the column already computed
     // in the inner SELECT) — the `t` alias is out of scope at this outer
     // level. `sub.distance` is NULL for tasks with no coordinates, which are
-    // excluded from a radius-filtered result.
+    // excluded from a radius-filtered result — except online tasks, which
+    // have no place and are near everyone.
     const filterByRadius = useDist && maxDistance && !isNaN(maxDistance)
-    const filterClause = filterByRadius
-      ? `WHERE sub.distance IS NOT NULL AND sub.distance <= $${selectParams.length + 1}`
-      : ''
+    const where = []
+    if (filterByRadius) where.push(`(sub.is_online OR (sub.distance IS NOT NULL AND sub.distance <= $${selectParams.length + 1}))`)
+    // Optional detail filters (#426): ?online=1, ?wheelchair=1.
+    if (req.query.online === '1') where.push('sub.is_online')
+    if (req.query.wheelchair === '1') where.push(`sub.wheelchair_accessible = 'yes'`)
+    const filterClause = where.length ? `WHERE ${where.join(' AND ')}` : ''
     const filterParams = filterByRadius ? [maxDistance] : []
 
     const { rows } = await query(
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
+               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+               ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
@@ -1432,6 +1489,8 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+              ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
               my.status AS my_signup_status,
@@ -1637,7 +1696,7 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
-              t.creator_name, t.latitude, t.longitude
+              t.creator_name, t.latitude, t.longitude, t.is_online
          FROM public_tasks t
         WHERE t.id = $1 AND t.status <> 'cancelled'
           AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)`,
@@ -1726,7 +1785,7 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
     const user = users[0]
     if (!user) return notFound()
     const cols = `t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
-                  t.creator_name, t.latitude, t.longitude`
+                  t.creator_name, t.latitude, t.longitude, t.is_online`
     const [signups, posted] = await Promise.all([
       query(
         `SELECT ${cols}, s.status AS signup_status
@@ -1787,7 +1846,8 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   try {
     await client.query('BEGIN')
     const { rows } = await client.query(
-      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past,
+      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age,
+              ${PROVABLY_TOO_YOUNG_SQL('t', '$2')} AS too_young,
               (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
               EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = t.created_by) AS host_blocked
          FROM public_tasks t WHERE t.id = $1 FOR UPDATE OF t`,
@@ -1817,6 +1877,18 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     if (rows[0].host_suspended || rows[0].host_blocked) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: "This task isn't available." })
+    }
+    // Minimum age (#426). No date of birth is kept, so the student confirms
+    // their age; an account the app knows is too young is refused outright.
+    if (rows[0].min_age != null) {
+      if (rows[0].too_young) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: `This task is for volunteers ${rows[0].min_age} or older.`, tooYoung: true, minAge: rows[0].min_age })
+      }
+      if (req.body?.ageConfirmed !== true) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: `This task is for volunteers ${rows[0].min_age} or older. Confirm you are ${rows[0].min_age} or older to sign up.`, ageConfirmRequired: true, minAge: rows[0].min_age })
+      }
     }
 
     // Came from a friend's invite link: kept only when that friend really
@@ -2603,11 +2675,14 @@ async function notifySignupDecision(taskId, userId, decision) {
 // re-send the description. Slots cannot drop below the people already
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
-  const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category']
+  const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
+  // Task details (#426): same readers as create.
+  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote }
 
   try {
-    const { rows } = await query('SELECT created_by, status FROM public_tasks WHERE id = $1', [req.params.id])
+    const { rows } = await query('SELECT created_by, status, is_online, location FROM public_tasks WHERE id = $1', [req.params.id])
     if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
     if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can edit this task.' })
     if (rows[0].status === 'cancelled') return res.status(400).json({ error: 'A cancelled task cannot be edited.' })
@@ -2615,11 +2690,38 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       return res.status(400).json({ error: 'Enter the date as YYYY-MM-DD.' })
     }
 
+    if (req.body.isOnline !== undefined && typeof req.body.isOnline !== 'boolean') {
+      return res.status(400).json({ error: 'Online must be true or false.' })
+    }
+    const onlineAfter = req.body.isOnline !== undefined ? req.body.isOnline : rows[0].is_online
+    // Back to in person: it needs a real address again.
+    if (!onlineAfter && rows[0].is_online && req.body.location === undefined && rows[0].location === ONLINE_LOCATION) {
+      return res.status(400).json({ error: 'Add the address for an in-person task.' })
+    }
+
     const sets = []
     const values = []
     for (const field of editable) {
       if (req.body[field] === undefined) continue
-      const column = { importantInfo: 'important_info', slotsTotal: 'slots_total' }[field] || field
+      const column = {
+        importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
+        wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note',
+      }[field] || field
+
+      if (detailReaders[field]) {
+        const d = detailReaders[field](req.body[field])
+        if (!d.ok) return res.status(400).json({ error: d.error })
+        values.push(d.value)
+        sets.push(`${column} = $${values.length}`)
+        continue
+      }
+      // An online task has no map pin, and its address is optional.
+      if (onlineAfter && (field === 'latitude' || field === 'longitude')) continue
+      if (onlineAfter && field === 'location' && !String(req.body.location ?? '').trim()) {
+        values.push(ONLINE_LOCATION)
+        sets.push(`location = $${values.length}`)
+        continue
+      }
 
       if (field === 'slotsTotal') {
         const slots = Number(req.body.slotsTotal)
@@ -2657,6 +2759,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     }
 
     if (sets.length === 0) return res.status(400).json({ error: 'Nothing to change.' })
+    if (onlineAfter) sets.push('latitude = NULL', 'longitude = NULL')
     values.push(req.params.id)
     const { rows: updated } = await query(
       `UPDATE public_tasks SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length} RETURNING *`,
@@ -3120,6 +3223,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
