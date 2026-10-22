@@ -13,6 +13,7 @@ import { fmtDate } from '@/utils/date.js'
 import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
+import ForYouTasks from '@/components/ForYouTasks.jsx'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { MAX_SEARCH_LENGTH, cleanSearch, taskMatchesSearch, taskShareUrl } from '@/lib/taskSearch.js'
@@ -363,6 +364,8 @@ export default function Opportunities() {
             <span className="text-xs text-earth-500" aria-live="polite">{shownTasks.length}{' '}{tr('of')}{' '}{baseTasks.length}{' '}{tr('tasks')}</span>
           )}
         </div>
+
+        <ForYouTasks />
 
         {canFollow && following?.length > 0 && (
           <Card padded={false} className="p-3">

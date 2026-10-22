@@ -37,6 +37,7 @@ const Opportunities = lazy(() => import('@/pages/Opportunities.jsx'))
 const LogHours = lazy(() => import('@/pages/LogHours.jsx'))
 const CalendarView = lazy(() => import('@/pages/CalendarView.jsx'))
 const Achievements = lazy(() => import('@/pages/Achievements.jsx'))
+const YearInReview = lazy(() => import('@/pages/YearInReview.jsx'))
 const Reports = lazy(() => import('@/pages/Reports.jsx'))
 const Profile = lazy(() => import('@/pages/Profile.jsx'))
 const Settings = lazy(() => import('@/pages/Settings.jsx'))
@@ -142,6 +143,7 @@ function Shell() {
           <Route path="/log"          element={<Protected roles={ROUTE_ROLES['/log']}><LogHours /></Protected>} />
           <Route path="/calendar"     element={<Protected roles={ROUTE_ROLES['/calendar']}><CalendarView /></Protected>} />
           <Route path="/achievements" element={<Protected roles={ROUTE_ROLES['/achievements']}><Achievements /></Protected>} />
+          <Route path="/year-in-review" element={<Protected roles={ROUTE_ROLES['/year-in-review']}><YearInReview /></Protected>} />
           <Route path="/reminders"    element={<Protected roles={ROUTE_ROLES['/reminders']}><Reminders /></Protected>} />
           <Route path="/reports"      element={<Protected roles={ROUTE_ROLES['/reports']}><Reports /></Protected>} />
           <Route path="/profile"      element={<Protected roles={ROUTE_ROLES['/profile']}><Profile /></Protected>} />

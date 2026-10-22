@@ -17,6 +17,7 @@ import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, hasEmail } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
+import { EMAIL_LANGUAGES } from '../emailStrings.js'
 
 const router = express.Router()
 
@@ -135,6 +136,9 @@ export function publicUser(row) {
     // Non-null means this account must enrol in MFA by that date; the UI uses
     // it to nag during the grace window.
     mfaRequiredAt: row.mfa_required_at ?? null,
+    // App language last sent by PUT /me/language (null = never), so the app
+    // can tell when this device's choice still needs sending.
+    language: row.language ?? null,
     createdAt: row.created_at,
   }
 }
@@ -452,6 +456,24 @@ router.get('/me', requireDb, requireAuth(), async (req, res) => {
   } catch (error) {
     console.error('me failed:', error)
     return res.status(500).json({ error: 'Could not load account.' })
+  }
+})
+
+// The app language the caller picked ('en' | 'es'), so emails sent to them —
+// the parent weekly digest, the come-back nudge — use it (#416). The app
+// sends it fire-and-forget; nothing else reads it.
+router.put('/me/language', requireDb, requireAuth(), async (req, res) => {
+  const language = req.body?.language
+  if (!EMAIL_LANGUAGES.includes(language)) {
+    return res.status(400).json({ error: 'Language must be "en" or "es".' })
+  }
+  try {
+    const { rowCount } = await query('UPDATE users SET language = $1 WHERE id = $2', [language, req.auth.sub])
+    if (rowCount === 0) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ language })
+  } catch (error) {
+    console.error('language update failed:', error)
+    return res.status(500).json({ error: 'Could not save your language.' })
   }
 })
 
