@@ -1,6 +1,8 @@
 name: Volunteer task reminders
 
-# Mails every approved volunteer the day before a task they signed up for.
+# Mails every approved volunteer the day before a task they signed up for,
+# and rings the in-app bell once for a saved task a student hasn't signed up
+# for when it's two days away or 80% full (saved_tasks.reminded_at).
 # Same shape as parent-weekly-digest.yml: Render's free tier has no cron, so
 # the schedule lives here and the work happens on the backend, which already
 # holds DATABASE_URL and the email credentials. The only secret here is the

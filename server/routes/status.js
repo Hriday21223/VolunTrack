@@ -25,6 +25,7 @@ import reportsRouter from './reports.js'
 import clientErrorsRouter from './clientErrors.js'
 import notificationsRouter from './notifications.js'
 import portfolioRouter from './portfolio.js'
+import comebackRouter from './comeback.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -270,6 +271,7 @@ const MOUNTED_ROUTERS = [
   ['client-errors', '/api/client-errors', clientErrorsRouter],
   ['notifications', '/api/notifications', notificationsRouter],
   ['portfolio', '/api/portfolio', portfolioRouter],
+  ['comeback', '/api/comeback', comebackRouter],
   ['status', '/api/status', router],
 ]
 

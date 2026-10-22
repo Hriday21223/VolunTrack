@@ -1332,6 +1332,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
                t.created_by AS organizer_id,
                ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer,
+               ${userId ? 'EXISTS (SELECT 1 FROM saved_tasks st WHERE st.user_id = $1 AND st.task_id = t.id)' : 'false'} AS i_saved,
                -- The organizer's average across all their tasks, only once
                -- three students have rated: one or two ratings say too little.
                CASE WHEN orating.n >= 3 THEN orating.avg END AS organizer_rating_avg,
@@ -1415,6 +1416,144 @@ router.delete('/public-tasks/organizers/:organizerId/follow', limiter, requireDb
     return res.status(500).json({ error: 'Could not unfollow this organizer.' })
   }
 })
+
+// --- Saving a task for later -------------------------------------------------
+// A student bookmarks a task on Opportunities. The daily run-reminders job
+// rings their bell once if it's about to happen or fill up and they still
+// haven't signed up (remindSavedTasks below). Saving and signing up are
+// independent: a saved task stays saved after you sign up.
+
+// GET /api/school/public-tasks/saved — the caller's saved tasks that are still
+// an opportunity: open, not past (same one day of slack as the main list), and
+// not from an organizer who is suspended or whom the caller blocked. Same card
+// shape as GET /public-tasks, plus saved_at and signed_up.
+router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
+              t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
+              (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
+              (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
+              my.status AS my_signup_status,
+              ${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position,
+              CASE WHEN my.status = 'approved' THEN t.phone ELSE NULL END AS phone,
+              CASE WHEN my.status = 'approved' THEN t.important_info ELSE NULL END AS important_info,
+              t.created_by AS organizer_id,
+              EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by) AS i_follow_organizer,
+              true AS i_saved,
+              st.created_at AS saved_at,
+              (my.status IS NOT NULL) AS signed_up,
+              CASE WHEN orating.n >= 3 THEN orating.avg END AS organizer_rating_avg,
+              CASE WHEN orating.n >= 3 THEN orating.n END AS organizer_rating_count
+         FROM saved_tasks st
+         JOIN public_tasks t ON t.id = st.task_id
+         LEFT JOIN public_task_signups my ON my.task_id = t.id AND my.user_id = $1
+         LEFT JOIN LATERAL (
+           SELECT COUNT(*)::int AS n, ROUND(AVG(r.stars)::numeric, 1)::float8 AS avg
+             FROM task_ratings r JOIN public_tasks rt ON rt.id = r.task_id
+            WHERE rt.created_by = t.created_by
+         ) orating ON true
+        WHERE st.user_id = $1
+          AND t.status = 'open' AND t.date >= CURRENT_DATE - 1
+          AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $1 AND b.blocked_id = t.created_by)
+        ORDER BY t.date ASC, t.created_at DESC`,
+      [req.auth.sub],
+    )
+    return res.json({ tasks: rows })
+  } catch (error) {
+    console.error('saved tasks list failed:', error)
+    return res.status(500).json({ error: 'Could not load your saved tasks.' })
+  }
+})
+
+// PUT /api/school/public-tasks/:id/save — idempotent. Only a task the caller
+// could see on Opportunities can be saved (open, not past, organizer neither
+// suspended nor blocked by them), so this can't probe for hidden task IDs.
+router.put('/public-tasks/:id/save', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT 1 FROM public_tasks t
+        WHERE t.id = $1 AND t.status = 'open' AND t.date >= CURRENT_DATE - 1
+          AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = t.created_by)`,
+      [String(req.params.id), req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
+    await query(
+      'INSERT INTO saved_tasks (user_id, task_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [req.auth.sub, String(req.params.id)],
+    )
+    return res.json({ ok: true, saved: true })
+  } catch (error) {
+    console.error('save task failed:', error)
+    return res.status(500).json({ error: 'Could not save this task.' })
+  }
+})
+
+// DELETE /api/school/public-tasks/:id/save — idempotent; works on any task,
+// so a cancelled or hidden one can still be cleared.
+router.delete('/public-tasks/:id/save', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    await query('DELETE FROM saved_tasks WHERE user_id = $1 AND task_id = $2', [req.auth.sub, String(req.params.id)])
+    return res.json({ ok: true, saved: false })
+  } catch (error) {
+    console.error('unsave task failed:', error)
+    return res.status(500).json({ error: 'Could not unsave this task.' })
+  }
+})
+
+// Part of the daily run-reminders job. One bell notification per saved task —
+// no email: a bookmark is a light signal, and the student didn't ask to be
+// mailed about it. Fires when a saved task the student hasn't signed up for
+// (no signup row of any status, so waitlisted / parent-pending / declined all
+// count as having acted) is 0–2 days away or at least 80% full. The UPDATE
+// stamps reminded_at and returns the rows in one statement, so a duplicate
+// run can't ring twice. Same skips as everything else that reaches a student
+// on an organizer's behalf: suspended organizers, blocked organizers, and
+// under-13 accounts still waiting on a parent.
+async function remindSavedTasks({ dryRun = false } = {}) {
+  const due = `
+         st.reminded_at IS NULL
+     AND t.id = st.task_id AND u.id = st.user_id
+     AND t.status = 'open'
+     AND t.date >= CURRENT_DATE
+     AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+     AND NOT EXISTS (SELECT 1 FROM public_task_signups s WHERE s.task_id = t.id AND s.user_id = st.user_id)
+     AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
+     AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = st.user_id AND b.blocked_id = t.created_by)
+     AND (t.date <= CURRENT_DATE + 2
+          OR (t.slots_total > 0 AND (SELECT COUNT(*) FROM public_task_signups f
+                                      WHERE f.task_id = t.id AND f.status IN ('pending', 'approved')) >= 0.8 * t.slots_total))`
+  if (dryRun) {
+    const { rows } = await query(`SELECT COUNT(*)::int AS n FROM saved_tasks st, public_tasks t, users u WHERE ${due}`)
+    return { due: rows[0].n, notified: 0, dryRun: true }
+  }
+  const { rows } = await query(
+    `UPDATE saved_tasks st SET reminded_at = now()
+       FROM public_tasks t, users u
+      WHERE ${due}
+  RETURNING st.user_id, t.id AS task_id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total,
+            (t.date <= CURRENT_DATE + 2) AS soon,
+            (SELECT COUNT(*)::int FROM public_task_signups f WHERE f.task_id = t.id AND f.status IN ('pending', 'approved')) AS filled`,
+  )
+  for (const r of rows) {
+    const when = [r.date, r.time].filter(Boolean).join(' at ')
+    const spots = Math.max(0, Number(r.slots_total) - r.filled)
+    // Awaited (it never throws) so the cron's response means "done".
+    await notify(r.user_id, {
+      kind: 'saved_task_reminder',
+      title: r.title,
+      body: r.soon
+        ? `A task you saved is coming up${when ? ` · ${when}` : ''}. Sign up if you're going.`
+        : spots === 0
+          ? 'A task you saved is full now. You can still join the waitlist.'
+          : `A task you saved is filling up: ${spots} ${spots === 1 ? 'spot' : 'spots'} left.`,
+      link: `/opportunities?task=${encodeURIComponent(r.task_id)}`,
+    })
+  }
+  return { due: rows.length, notified: rows.length }
+}
 
 // Emails each follower about a new task. Fire-and-forget, like
 // notifySignupDecision: never awaited, so it can't fail or slow the post.
@@ -2657,7 +2796,9 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
 
 // POST /api/school/public-tasks/internal/run-reminders
 // Driven by .github/workflows/task-reminders.yml, because Render's free tier
-// has no cron. Mails every approved volunteer on a task happening tomorrow.
+// has no cron. Mails every approved volunteer on a task happening tomorrow,
+// then rings the bell for saved tasks that are close or filling up
+// (remindSavedTasks).
 // public_task_reminder_sends is the idempotency key, so a workflow that fires
 // twice — or replays after a failure — cannot mail a roster again.
 router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
@@ -2708,7 +2849,14 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
       results.push({ task: task.title, recipients: people.length, sent })
     }
 
-    return res.json({ ok: true, tasks: tasks.length, results, emailConfigured: hasEmail() })
+    // Saved-for-later nudges ride the same daily run. A failure here is
+    // logged, not fatal: the volunteer emails above have already gone out.
+    let savedReminders = null
+    try {
+      savedReminders = await remindSavedTasks({ dryRun })
+    } catch (error) { console.error('saved task reminders failed:', error) }
+
+    return res.json({ ok: true, tasks: tasks.length, results, savedReminders, emailConfigured: hasEmail() })
   } catch (error) {
     console.error('task reminders run failed:', error)
     return res.status(500).json({ error: 'Could not run task reminders.' })
