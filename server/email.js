@@ -175,7 +175,7 @@ export function refreshEmailHealth() {
 // Strip CR/LF so a caller-supplied value can't forge extra log lines when
 // interpolated into a log message. The replacement must be the empty string
 // for CodeQL to recognize this as a log-injection sanitizer.
-function forLog(value) {
+export function forLog(value) {
   return String(value).replace(/\n|\r/g, '')
 }
 
