@@ -11,6 +11,7 @@ import { csvCell } from '@/lib/csv.js'
 import { fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
+import OrganizerStats from '@/components/OrganizerStats.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -55,6 +56,8 @@ export default function MyTasks() {
   const [reportRange, setReportRange] = useState({ from: '', to: '' })
   const [reportBusy, setReportBusy] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  // 'tasks' (the list) or 'stats' (OrganizerStats + the impact report).
+  const [view, setView] = useState('tasks')
 
   const loadReport = useCallback(async (range) => {
     setReportBusy(true)
@@ -364,6 +367,7 @@ export default function MyTasks() {
   const togglePostForm = () => {
     // Closing a copied form drops the copy, so "Post a task" starts blank.
     if (showPostTask && postAgainFrom) { setPostAgainFrom(null); setTaskForm(EMPTY_TASK_FORM) }
+    setView('tasks')
     setShowPostTask((s) => !s)
   }
 
@@ -400,7 +404,23 @@ export default function MyTasks() {
       }
     >
       <div className="max-w-3xl mx-auto space-y-4">
-        {showPostTask && (
+        <div role="tablist" aria-label="My Tasks view" className="inline-flex gap-1 p-1 rounded-xl bg-earth-100 dark:bg-white/5">
+          {[['tasks', 'Tasks'], ['stats', 'Stats']].map(([id, label]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={view === id}
+              onClick={() => setView(id)}
+              className={`px-4 py-1.5 rounded-lg text-sm ${view === id ? 'bg-white dark:bg-[#1b2a22] font-medium shadow-sm' : 'text-earth-500 hover:text-earth-800 dark:hover:text-earth-200'}`}
+            >
+              {id === 'stats' && <BarChart3 className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />}{label}
+            </button>
+          ))}
+        </div>
+
+        {view === 'stats' && <OrganizerStats />}
+
+        {view === 'tasks' && showPostTask && (
           <Card>
             <h3 className="font-semibold mb-3">Post a volunteer opportunity</h3>
             {postAgainFrom && (
@@ -465,7 +485,7 @@ export default function MyTasks() {
 
         {/* What an organizer needs at grant time. Every figure was already in
             the tasks and their signups; nothing could read it back out. */}
-        <Card>
+        {view === 'stats' && <Card>
           <div className="flex items-center justify-between">
             <h3 className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-brand-600" /> Impact report</h3>
             <button
@@ -541,9 +561,9 @@ export default function MyTasks() {
               )}
             </div>
           )}
-        </Card>
+        </Card>}
 
-        {loading ? (
+        {view !== 'tasks' ? null : loading ? (
           <Card><p className="text-center text-earth-500 py-8">Loading…</p></Card>
         ) : tasks.length === 0 ? (
           <Card>
@@ -815,7 +835,7 @@ export default function MyTasks() {
           )
         })}
 
-        <div className="pt-2">
+        <div className={view === 'tasks' ? 'pt-2' : 'hidden'}>
           <p className="text-xs font-medium text-earth-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <GraduationCap className="w-3.5 h-3.5" /> My Students
           </p>
