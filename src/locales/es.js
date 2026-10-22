@@ -899,7 +899,6 @@ export default {
   "Most recent": "Más reciente",
   "Share your year": "Comparte tu año",
   "Shares your totals only — no names, places or notes.": "Solo comparte tus totales — sin nombres, lugares ni notas.",
-  "Share": "Compartir",
   "Download image": "Descargar imagen",
   "Your {year} in review is ready": "Tu resumen de {year} está listo",
   "See your hours, top cause and badges from the year — and share it.": "Mira tus horas, tu causa principal y tus insignias del año — y compártelo.",
