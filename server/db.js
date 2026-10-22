@@ -605,6 +605,22 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_decided_at TIMESTAMPTZ`) } catch {}
   try { await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_public_signups_parent_ok_token ON public_task_signups(parent_ok_token) WHERE parent_ok_token IS NOT NULL`) } catch {}
 
+  // Save a task for later (PUT|DELETE /api/school/public-tasks/:id/save,
+  // GET /public-tasks/saved). reminded_at stamps the one bell nudge the daily
+  // run-reminders job gives a saved task the student hasn't signed up for.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS saved_tasks (
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        task_id     TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        reminded_at TIMESTAMPTZ,
+        PRIMARY KEY (user_id, task_id)
+      )
+    `)
+  } catch (error) { console.error('saved_tasks migration failed:', error.message) }
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_saved_tasks_task ON saved_tasks(task_id)`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

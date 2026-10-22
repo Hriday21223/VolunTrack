@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
@@ -90,6 +90,36 @@ export default function Opportunities() {
       setToast(true)
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setFollowBusy(null) }
   }
+  // Saving a task for later (students only). The saved list is its own fetch,
+  // not a filter on the loaded one: a saved task may be outside the radius.
+  const [savedTasks, setSavedTasks] = useState(null)
+  const [showSaved, setShowSaved] = useState(false)
+  const [saveBusy, setSaveBusy] = useState(null)
+  const loadSaved = useCallback(async () => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token) return
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/saved`, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) setSavedTasks((await res.json()).tasks || [])
+    } catch { /* the toggle just stays hidden */ }
+  }, [])
+  useEffect(() => { if (canFollow) loadSaved() }, [canFollow, loadSaved])
+  const setSaved = async (taskId, save) => {
+    setSaveBusy(taskId)
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(taskId)}/save`, {
+        method: save ? 'PUT' : 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || tr('Something went wrong. Try again.'))
+      setNearbyTasks((list) => list.map((t) => (t.id === taskId ? { ...t, i_saved: save } : t)))
+      loadSaved()
+      setToastMsg(save ? tr("Saved. Find it under Saved at the top — we'll remind you if it's coming up or filling up.") : tr('Removed from Saved.'))
+      setToast(true)
+    } catch (e) { setToastMsg(e.message); setToast(true) } finally { setSaveBusy(null) }
+  }
   // A friend's invite link: /opportunities?task=<id>&from=<inviterId>. The
   // task is scrolled to and highlighted, and signing up from that card passes
   // invitedBy so the organizer sees who they came with (the server checks it).
@@ -98,7 +128,7 @@ export default function Opportunities() {
   const invitedFrom = searchParams.get('from')
   const scrolledTo = useRef(false)
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
-  const reload = () => loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius)
+  const reload = () => { loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius); if (canFollow) loadSaved() }
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
   const signUp = async (t, full) => {
@@ -131,7 +161,8 @@ export default function Opportunities() {
   const [category, setCategory] = useState('')
   const [when, setWhen] = useState('')
   const range = whenRange(when)
-  const shownTasks = nearbyTasks.filter((t) =>
+  const baseTasks = showSaved ? (savedTasks || []) : nearbyTasks
+  const shownTasks = baseTasks.filter((t) =>
     (!category || t.category === category)
     && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1])))
   const filtering = Boolean(category || when)
@@ -172,6 +203,13 @@ export default function Opportunities() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // A saved-task reminder links here; if that task is outside the radius,
+  // it's only on the Saved list, so open that instead.
+  useEffect(() => {
+    if (!linkedTask || !loaded || !savedTasks || scrolledTo.current) return
+    if (!nearbyTasks.some((t) => t.id === linkedTask) && savedTasks.some((t) => t.id === linkedTask)) setShowSaved(true)
+  }, [linkedTask, loaded, savedTasks, nearbyTasks])
 
   useEffect(() => {
     if (!linkedTask || !loaded || scrolledTo.current) return
@@ -220,12 +258,23 @@ export default function Opportunities() {
           <select value={when} onChange={(e) => setWhen(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label={tr('When')}>
             {WHEN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          {canFollow && (savedTasks?.length > 0 || showSaved) && (
+            <button
+              type="button"
+              onClick={() => setShowSaved((v) => !v)}
+              aria-pressed={showSaved}
+              className={`btn-sm inline-flex items-center gap-1 ${showSaved ? 'btn-primary' : 'btn-ghost'}`}
+            >
+              {showSaved ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+              {tr('Saved ({n})', { n: savedTasks?.length || 0 })}
+            </button>
+          )}
           {filtering && (
             <>
               <button type="button" onClick={() => { setCategory(''); setWhen('') }} className="btn-ghost btn-sm">
                 <X className="w-3.5 h-3.5 mr-1" />{' '}{tr('Clear')}
               </button>
-              {loaded && <span className="text-xs text-earth-500">{shownTasks.length}{' '}{tr('of')}{' '}{nearbyTasks.length}{' '}{tr('tasks')}</span>}
+              {loaded && <span className="text-xs text-earth-500">{shownTasks.length}{' '}{tr('of')}{' '}{baseTasks.length}{' '}{tr('tasks')}</span>}
             </>
           )}
         </div>
@@ -293,7 +342,16 @@ export default function Opportunities() {
               <button onClick={() => { setLoaded(false); loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius) }} className="btn-secondary mt-3">{tr('Try again')}</button>
             </div>
           </Card>
-        ) : nearbyTasks.length === 0 ? (
+        ) : showSaved && baseTasks.length === 0 ? (
+          <Card>
+            <div className="text-center py-8">
+              <Bookmark className="w-10 h-10 text-earth-600 mx-auto mb-3" />
+              <p className="text-earth-400">{tr('No saved tasks.')}</p>
+              <p className="text-xs text-earth-500 mt-1">{tr('Tap Save on a task to keep it here. Tasks drop off once they’re over or cancelled.')}</p>
+              <button type="button" onClick={() => setShowSaved(false)} className="btn-secondary mt-3">{tr('Show all tasks')}</button>
+            </div>
+          </Card>
+        ) : !showSaved && nearbyTasks.length === 0 ? (
           <Card>
             <div className="text-center py-8">
               <MapPin className="w-10 h-10 text-earth-600 mx-auto mb-3" />
@@ -422,6 +480,18 @@ export default function Opportunities() {
                   )}
                   {['pending', 'approved', 'waitlisted', 'parent_pending'].includes(t.my_signup_status) && (
                     <CancelSignup task={t} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} />
+                  )}
+                  {canFollow && t.organizer_id !== user?.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSaved(t.id, !t.i_saved) }}
+                      disabled={saveBusy === t.id}
+                      aria-pressed={Boolean(t.i_saved)}
+                      title={t.i_saved ? tr('Remove from Saved') : tr('Save for later')}
+                      className={`inline-flex items-center gap-1 text-xs ${t.i_saved ? 'text-brand-400' : 'text-earth-500 hover:text-brand-400'}`}
+                    >
+                      {t.i_saved ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}{' '}{t.i_saved ? tr('Saved') : tr('Save')}
+                    </button>
                   )}
                 </div>
               </div>
