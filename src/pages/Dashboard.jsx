@@ -20,6 +20,7 @@ import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import { isNativeApp } from '@/lib/platform.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
+import { goalCategory, logsForGoal, hoursForGoal } from '@/lib/goalProgress.js'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { format, startOfWeek, startOfMonth, addDays, parseISO } from 'date-fns'
 import { tr } from '@/lib/i18n.js'
@@ -108,19 +109,23 @@ export default function Dashboard() {
 
   const primary = goals.find((g) => g.primary) || goals[0]
   const target = primary ? Number(primary.targetHours) || 0 : 0
-  const percent = target > 0 ? Math.min(1, total / target) : 0
-  const remaining = Math.max(0, target - total)
+  // A goal for one cause counts only that category's hours (src/lib/goalProgress.js).
+  const primaryLogs = useMemo(() => logsForGoal(primary, counted), [primary, counted])
+  const primaryHours = useMemo(() => hoursForGoal(primary, counted), [primary, counted])
+  const percent = target > 0 ? Math.min(1, primaryHours / target) : 0
+  const remaining = Math.max(0, target - primaryHours)
+  const otherGoals = goals.filter((g) => g !== primary)
 
   // "42 of 100" only answers half the question; with a deadline we can also
   // say what it takes from here. Both the personal goal and the school's own
   // requirement go through the same maths (src/lib/pace.js).
   const goalPaceInfo = useMemo(() => goalPace({
     target,
-    total,
+    total: primaryHours,
     deadline: primary?.deadline,
     startedAt: primary?.createdAt,
-    logs: counted,
-  }), [target, total, primary?.deadline, primary?.createdAt, counted])
+    logs: primaryLogs,
+  }), [target, primaryHours, primary?.deadline, primary?.createdAt, primaryLogs])
 
   const requirementPace = useMemo(() => goalPace({
     target: requirements.goalHours,
@@ -732,6 +737,9 @@ export default function Dashboard() {
             {primary && (
               <div className="mt-2 text-xs text-earth-400">
                 {tr('Goal:')}{' '}{fmtHours(target)} · {primary.title}
+                {goalCategory(primary) && (
+                  <span className={`chip ml-1 ${categoryColor(goalCategory(primary))}`}>{tr('Only {category} hours', { category: tr(goalCategory(primary)) })}</span>
+                )}
               </div>
             )}
             {primary && goalPaceInfo.hasDeadline && (
@@ -758,6 +766,23 @@ export default function Dashboard() {
             )}
             {!primary && (
               <Link to="/settings" className="mt-2 block text-xs text-brand-400 hover:underline">{tr('Set a goal →')}</Link>
+            )}
+            {otherGoals.length > 0 && (
+              <div className="mt-3 pt-2 border-t border-white/5 space-y-2">
+                <div className="text-[0.625rem] uppercase tracking-[0.25em] text-earth-500">{tr('Other goals')}</div>
+                {otherGoals.map((g) => {
+                  const done = hoursForGoal(g, counted)
+                  const cat = goalCategory(g)
+                  return (
+                    <div key={g.id}>
+                      <div className="truncate text-xs text-earth-300 mb-1">
+                        {g.title}{cat && <span className="text-earth-500"> · {tr(cat)}</span>}
+                      </div>
+                      <ProgressBar value={done} target={Number(g.targetHours) || 0} />
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </Card>
 

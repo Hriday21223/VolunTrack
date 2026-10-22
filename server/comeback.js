@@ -21,6 +21,7 @@ import { sendEmail, emailFooterHtml, backendUrl } from './email.js'
 import { escapeHtml } from './html.js'
 import { notify } from './notifications.js'
 import { ensureDigestUnsubToken } from './digest.js'
+import { emailLang, et } from './emailStrings.js'
 
 export const INACTIVE_DAYS = 30
 export const MAX_TASKS = 3
@@ -45,7 +46,7 @@ const NUDGE_DUE_SQL = `(
 /** Students who are due a nudge right now. */
 export async function findInactiveStudents({ limit = MAX_PER_RUN, only = null } = {}) {
   const { rows } = await query(
-    `SELECT u.id, u.name, u.email
+    `SELECT u.id, u.name, u.email, u.language
        FROM users u
       WHERE u.role = 'student'
         AND u.email IS NOT NULL AND btrim(u.email) <> ''
@@ -119,25 +120,34 @@ export async function pickTasksFor(userId) {
   return { tasks: rows, near }
 }
 
-export function renderComebackEmail({ name, tasks, near, unsubToken }) {
+// In the student's language (users.language; NULL → English). Task titles,
+// places and organizer names are shown as their authors wrote them.
+export function renderComebackEmail({ name, tasks, near, unsubToken, language = null }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
   const n = tasks.length
-  const subject = `We miss you — here ${n === 1 ? 'is a volunteer task' : `are ${n} volunteer tasks`} ${near ? 'near you' : 'coming up'}`
-  const items = tasks.map((t) => {
-    const when = [t.date, t.time].filter(Boolean).join(' at ')
-    const link = `${frontendUrl()}/opportunities?task=${encodeURIComponent(t.id)}`
-    const by = t.creator_name ? ` · ${escapeHtml(t.creator_name)}` : ''
-    return `<li style="margin-bottom:8px"><a href="${link}"><strong>${escapeHtml(t.title)}</strong></a><br>${escapeHtml(when)} · ${escapeHtml(t.location || '')}${by}</li>`
+  const subject = n === 1
+    ? t(near ? 'We miss you — here is a volunteer task near you' : 'We miss you — here is a volunteer task coming up')
+    : t(near ? 'We miss you — here are {n} volunteer tasks near you' : 'We miss you — here are {n} volunteer tasks coming up', { n })
+  const items = tasks.map((task) => {
+    const when = task.date && task.time ? t('{date} at {time}', { date: task.date, time: task.time }) : (task.date || task.time || '')
+    const link = `${frontendUrl()}/opportunities?task=${encodeURIComponent(task.id)}`
+    const by = task.creator_name ? ` · ${escapeHtml(task.creator_name)}` : ''
+    return `<li style="margin-bottom:8px"><a href="${link}"><strong>${escapeHtml(task.title)}</strong></a><br>${escapeHtml(when)} · ${escapeHtml(task.location || '')}${by}</li>`
   }).join('')
+  const intro = `It's been a little while since you logged any volunteer hours on VolunTrack. No pressure — whenever you're ready, here ${n === 1 ? 'is a task' : 'are a few tasks'} you could join${near ? ', close to where you have volunteered before' : ''}:`
   const html = [
-    `<p>Hi ${escapeHtml(name || 'there')},</p>`,
-    `<p>It's been a little while since you logged any volunteer hours on VolunTrack. No pressure — whenever you're ready, here ${n === 1 ? 'is a task' : 'are a few tasks'} you could join${near ? ', close to where you have volunteered before' : ''}:</p>`,
+    `<p>${name ? t('Hi {name},', { name: escapeHtml(name) }) : t('Hi there,')}</p>`,
+    `<p>${t(intro)}</p>`,
     `<ul style="padding-left:18px">${items}</ul>`,
-    `<p><a href="${frontendUrl()}/opportunities">See all volunteer opportunities</a></p>`,
-    `<p>Already volunteering somewhere? <a href="${frontendUrl()}/log">Log your hours</a> so they count.</p>`,
-    emailFooterHtml(),
-    `<p style="font-size:12px;color:#888">We send this at most once after a month without volunteering. <a href="${backendUrl()}/api/comeback/unsubscribe/${unsubToken}">Stop these emails</a> or turn them off in Settings.</p>`,
+    `<p><a href="${frontendUrl()}/opportunities">${t('See all volunteer opportunities')}</a></p>`,
+    `<p>${t('Already volunteering somewhere? {link} so they count.', { link: `<a href="${frontendUrl()}/log">${t('Log your hours')}</a>` })}</p>`,
+    emailFooterHtml(lang),
+    `<p style="font-size:12px;color:#888">${t('We send this at most once after a month without volunteering. {link} or turn them off in Settings.', {
+      link: `<a href="${backendUrl()}/api/comeback/unsubscribe/${unsubToken}">${t('Stop these emails')}</a>`,
+    })}</p>`,
   ].join('')
-  return { subject, html }
+  return { subject, html, lang }
 }
 
 // Stamps comeback_nudged_at only if the student is still due — the same
@@ -154,14 +164,18 @@ async function claim(userId) {
 async function nudgeOne(student, picked) {
   if (!(await claim(student.id))) return { status: 'skipped' }
   const { tasks, near } = picked
+  const lang = emailLang(student.language)
+  const titles = tasks.map((t) => t.title).join(', ')
   notify(student.id, {
     kind: 'comeback_nudge',
-    title: 'We miss you!',
-    body: `${tasks.length === 1 ? 'A volunteer task' : `${tasks.length} volunteer tasks`} you could join: ${tasks.map((t) => t.title).join(', ')}`,
+    title: et(lang, 'We miss you!'),
+    body: tasks.length === 1
+      ? et(lang, 'A volunteer task you could join: {titles}', { titles })
+      : et(lang, '{n} volunteer tasks you could join: {titles}', { n: tasks.length, titles }),
     link: '/opportunities',
   })
   const unsubToken = await ensureDigestUnsubToken(student.id)
-  const { subject, html } = renderComebackEmail({ name: student.name, tasks, near, unsubToken })
+  const { subject, html } = renderComebackEmail({ name: student.name, tasks, near, unsubToken, language: student.language })
   const result = await sendEmail({ to: student.email, subject, html }).catch(() => ({ sent: false }))
   return { status: 'nudged', emailed: result.sent === true }
 }
