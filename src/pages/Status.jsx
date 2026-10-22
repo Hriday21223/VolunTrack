@@ -357,7 +357,7 @@ export default function Status() {
           <button onClick={() => setStatusTab('incidents')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all relative ${statusTab === 'incidents' ? 'bg-brand-500 text-white shadow-sm' : 'text-earth-500 dark:text-earth-400 hover:text-earth-700 dark:hover:text-earth-200'}`}>
             <AlertTriangle className="w-4 h-4" /> Incidents
             {active.length > 0 && (
-              <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">{active.length > 9 ? '9+' : active.length}</span>
+              <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[0.5625rem] flex items-center justify-center font-bold">{active.length > 9 ? '9+' : active.length}</span>
             )}
           </button>
           <button onClick={() => setStatusTab('system')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${statusTab === 'system' ? 'bg-brand-500 text-white shadow-sm' : 'text-earth-500 dark:text-earth-400 hover:text-earth-700 dark:hover:text-earth-200'}`}>
@@ -493,7 +493,7 @@ export default function Status() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-earth-800 dark:text-earth-200">{inc.service}</p>
-                          <span className={`text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${isResolved ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30' : 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30'}`}>{inc.status}</span>
+                          <span className={`text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded ${isResolved ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30' : 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30'}`}>{inc.status}</span>
                         </div>
                         {inc.detail && <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{inc.detail}</p>}
                         <p className="text-xs text-earth-400 dark:text-earth-500 mt-0.5">{new Date(inc.detectedAt).toLocaleString()}</p>

@@ -230,7 +230,7 @@ export default function MobileTabBar() {
     <button
       onClick={() => setMoreOpen(true)}
       className={cn(
-        'flex w-full flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium',
+        'flex w-full flex-col items-center justify-center gap-1 py-2 text-[0.6875rem] font-medium',
         moreActive ? 'text-brand-400' : 'text-earth-400',
       )}
     >
@@ -239,7 +239,7 @@ export default function MobileTabBar() {
         <span className="block h-0.5 w-5 rounded-full bg-current" />
         <span className="block h-0.5 w-5 rounded-full bg-current" />
       </div>
-      {tr('More')}
+      <span className="block max-w-full truncate px-0.5">{tr('More')}</span>
     </button>
   )
 
@@ -248,17 +248,18 @@ export default function MobileTabBar() {
     const tabLink = ({ to, label, icon: Icon }) => {
       const active = isActive(to)
       return (
-        <li key={to}>
+        <li key={to} className="min-w-0">
           <NavLink
             to={to}
             end={to === '/'}
             className={cn(
-              'flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium',
+              'flex flex-col items-center justify-center gap-1 py-2 text-[0.6875rem] font-medium',
               active ? 'text-brand-400' : 'text-earth-400',
             )}
           >
-            <Icon className="h-6 w-6" strokeWidth={active ? 2.4 : 1.8} />
-            {tr(label)}
+            <Icon className="h-6 w-6 shrink-0" strokeWidth={active ? 2.4 : 1.8} />
+            {/* Truncates rather than overlapping its neighbours at a larger text size. */}
+            <span className="block max-w-full truncate px-0.5">{tr(label)}</span>
           </NavLink>
         </li>
       )
@@ -272,7 +273,7 @@ export default function MobileTabBar() {
           className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b161c]/95 backdrop-blur-xl"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          <ul className="grid items-end px-2" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+          <ul className="grid items-end px-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
             {coreItems.slice(0, half).map(tabLink)}
             {showLogFab && (
               <li className="flex justify-center">
@@ -286,7 +287,7 @@ export default function MobileTabBar() {
               </li>
             )}
             {coreItems.slice(half).map(tabLink)}
-            <li>{moreButton}</li>
+            <li className="min-w-0">{moreButton}</li>
           </ul>
         </nav>
         {moreOpen && renderMoreSheet()}
@@ -298,16 +299,16 @@ export default function MobileTabBar() {
     <>
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="mx-4 mb-4 rounded-[1.5rem] bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-xl border border-earth-200/50 dark:border-white/10 shadow-2xl shadow-black/5 dark:shadow-black/20">
-          <ul className="grid px-1 pt-1" style={{ gridTemplateColumns: `repeat(${coreItems.length + 1}, 1fr)` }}>
+          <ul className="grid px-1 pt-1" style={{ gridTemplateColumns: `repeat(${coreItems.length + 1}, minmax(0, 1fr))` }}>
             {coreItems.map(({ to, label, icon: Icon }) => {
               const active = isActive(to)
               return (
-                <li key={to}>
+                <li key={to} className="min-w-0">
                   <NavLink
                     to={to}
                     end={to === '/'}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium relative transition-all duration-200',
+                      'flex flex-col items-center justify-center gap-0.5 py-2 text-[0.625rem] font-medium relative transition-all duration-200',
                       active
                         ? 'text-brand-600 dark:text-brand-400 scale-105'
                         : 'text-earth-500 dark:text-earth-400 hover:text-earth-800 dark:hover:text-earth-200',
@@ -316,17 +317,17 @@ export default function MobileTabBar() {
                     {active && (
                       <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full bg-brand-500 dark:bg-brand-400" />
                     )}
-                    <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
-                    {tr(label)}
+                    <Icon className="w-5 h-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
+                    <span className="block max-w-full truncate px-0.5">{tr(label)}</span>
                   </NavLink>
                 </li>
               )
             })}
-            <li>
+            <li className="min-w-0">
               <button
                 onClick={() => setMoreOpen(true)}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium relative transition-all duration-200 w-full',
+                  'flex flex-col items-center justify-center gap-0.5 py-2 text-[0.625rem] font-medium relative transition-all duration-200 w-full',
                   moreActive
                     ? 'text-brand-600 dark:text-brand-400 scale-105'
                     : 'text-earth-500 dark:text-earth-400 hover:text-earth-800 dark:hover:text-earth-200',
@@ -340,7 +341,7 @@ export default function MobileTabBar() {
                   <span className="block w-4 h-0.5 rounded-full bg-current" />
                   <span className="block w-4 h-0.5 rounded-full bg-current" />
                 </div>
-                {tr('More')}
+                <span className="block max-w-full truncate px-0.5">{tr('More')}</span>
               </button>
             </li>
           </ul>

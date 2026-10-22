@@ -499,11 +499,11 @@ export default function MyTasks() {
             <div className="mt-3">
               <div className="flex flex-wrap items-end gap-2 mb-3">
                 <div>
-                  <label htmlFor="report-from" className="block text-[11px] text-earth-400 mb-1">From</label>
+                  <label htmlFor="report-from" className="block text-[0.6875rem] text-earth-400 mb-1">From</label>
                   <input id="report-from" type="date" className="input w-[145px]" value={reportRange.from} onChange={(e) => setReportRange((r) => ({ ...r, from: e.target.value }))} />
                 </div>
                 <div>
-                  <label htmlFor="report-to" className="block text-[11px] text-earth-400 mb-1">To</label>
+                  <label htmlFor="report-to" className="block text-[0.6875rem] text-earth-400 mb-1">To</label>
                   <input id="report-to" type="date" className="input w-[145px]" value={reportRange.to} onChange={(e) => setReportRange((r) => ({ ...r, to: e.target.value }))} />
                 </div>
                 <button onClick={() => loadReport(reportRange)} className="btn-sm btn-ghost" disabled={reportBusy}>
@@ -936,7 +936,7 @@ export default function MyTasks() {
 function ReportStat({ label, value }) {
   return (
     <div className="rounded-xl bg-white/5 px-3 py-2">
-      <div className="text-[11px] text-earth-400">{label}</div>
+      <div className="text-[0.6875rem] text-earth-400">{label}</div>
       <div className="font-semibold mt-0.5">{value}</div>
     </div>
   )

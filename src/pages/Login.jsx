@@ -16,6 +16,7 @@ import { isPasskeyCancel } from '@/lib/passkey.js'
 import { hasLocalPinAccount } from '@/api/index.js'
 import { tr } from '@/lib/i18n.js'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
+import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
 
 // Where to go after signing in: the page that sent you here, query string
 // included — a scanned check-in link (/checkin/<task>?c=…) carries its code
@@ -596,6 +597,9 @@ export default function Login() {
 
               <div className="mt-6 flex justify-center">
                 <LanguagePicker compact />
+              </div>
+              <div className="mt-3 flex justify-center">
+                <AccessibilitySettings compact />
               </div>
 
               <div className="mt-4 text-center text-sm text-slate-400">

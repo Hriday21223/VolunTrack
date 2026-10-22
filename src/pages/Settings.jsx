@@ -18,6 +18,7 @@ import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 import ComebackEmailCard from '@/components/ComebackEmailCard.jsx'
 import PortfolioCard from '@/components/PortfolioCard.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
+import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -693,6 +694,10 @@ export default function Settings() {
       <div className="space-y-3">
         <Card>
           <LanguagePicker />
+        </Card>
+
+        <Card>
+          <AccessibilitySettings />
         </Card>
 
         <CollapsibleSection icon={Star} label="Goals & Data" defaultOpen={true}>

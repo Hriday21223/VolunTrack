@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
+import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
 
 // The signed-out start screen inside the native apps. On the website "/" is
 // the marketing page (About.jsx); someone who has installed the app has
@@ -39,6 +40,7 @@ export default function AppWelcome() {
             {tr('Create an account')}
           </Link>
           <div className="pt-2 flex justify-center"><LanguagePicker compact /></div>
+          <div className="flex justify-center"><AccessibilitySettings compact /></div>
           <p className="pt-3 text-center text-xs text-earth-500">
             {tr('By continuing you agree to the')}{' '}
             <Link to="/terms" className="underline">{tr('Terms')}</Link>{' '}{tr('and')}{' '}

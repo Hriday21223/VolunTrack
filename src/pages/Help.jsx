@@ -6,6 +6,7 @@ import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
+import { tr } from '@/lib/i18n.js'
 
 const TABS = [
   { id: 'quickstart', label: 'Quick Start', icon: Zap },
@@ -61,6 +62,7 @@ const FAQ_ITEMS = [
   { q: 'How do I generate a PDF report?', a: 'Go to the Reports page, narrow it by category or dates if you like, and click \'Download PDF.\' The same page has \'Export CSV\' for spreadsheets and \'Print certificate\' for a certificate of service. If you\'re linked to a school, you can also submit a report directly and track its approve/reject status.' },
   { q: 'Can I share my volunteer hours on a college application?', a: 'Yes, with a volunteer portfolio. It\'s off until you turn it on: go to Settings → Goals & Data → Volunteer portfolio and switch on Share my portfolio. You get a short link to a public page (Copy link, or Open my page to see it) showing your name, your total approved hours, and, if you leave them ticked, your hours by category, your badges and a list of your activities with their date and hours. Only hours an organizer or supervisor approved count, and the page says so. It never shows where you volunteered, who supervised you, your notes, proof or signatures. Your name shows as your first name and last initial unless you pick Full name, and your school only if you tick it. Search engines are asked not to list the page, so only people you give the link to find it. Get a new link replaces it and the old one stops working; switching sharing off makes the page disappear at once. Students under 13 can\'t turn it on.' },
   { q: 'Can I undo a deleted log entry?', a: 'No — once a log entry is deleted, it cannot be recovered. Make sure you really want to delete it before confirming.' },
+  { q: tr('Can I make the text bigger or easier to see?'), a: tr('Yes. In Settings → Accessibility, pick a Text size (Default, Large or Extra large) and turn on High contrast for brighter text, stronger borders and focus outlines, and underlined links. Both change straight away and are saved on this device only, so set them on each phone or computer you use. You can also change them before signing in, from the bottom of the sign-in screen.') },
   { q: 'How do I change my password?', a: 'Go to Settings → Change password. Enter your current password and a new one (at least 8 characters). Click \'Update password.\'' },
   { q: 'What categories can I use when logging hours?', a: 'Community Service, Environmental, Education & Tutoring, Health & Wellness, Animal Welfare, Arts & Culture, Sports & Coaching, Religious & Faith, Political & Advocacy, Disaster Relief, and Other. Pick the one that best fits your activity.' },
   { q: 'How do volunteer badges work?', a: 'You earn badges automatically as you log hours — 12 in all. They include your first hour; 10, 50 and 100 hours; reaching your goal; logging on 3 and on 7 different days; trying 3 and 5 categories; 5 hours in one month; a weekend session; and logging in two different months. Check the Achievements page to see your progress.' },

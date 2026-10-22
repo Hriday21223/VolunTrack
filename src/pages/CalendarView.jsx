@@ -86,12 +86,12 @@ export default function CalendarView() {
                 </div>
                 <div className="mt-1 space-y-0.5">
                   {dayLogs.slice(0, 2).map((l) => (
-                    <div key={l.id} className="text-[10px] truncate rounded px-1 py-0.5 bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200">
+                    <div key={l.id} className="text-[0.625rem] truncate rounded px-1 py-0.5 bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200">
                       {fmtHours(l.hours)} · {l.activity}
                     </div>
                   ))}
                   {dayLogs.length > 2 && (
-                    <div className="text-[10px] text-earth-500">+{dayLogs.length - 2}{' '}{tr('more')}</div>
+                    <div className="text-[0.625rem] text-earth-500">+{dayLogs.length - 2}{' '}{tr('more')}</div>
                   )}
                 </div>
               </button>

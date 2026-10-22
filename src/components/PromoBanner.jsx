@@ -42,7 +42,7 @@ export default function PromoBanner({ audience, className = '', fallback = null 
       <p className="font-display font-semibold text-sm flex items-center gap-2">
         <Tag className="w-4 h-4 text-brand-600 shrink-0" />
         <span>{offer.headline}</span>
-        <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-semibold text-white whitespace-nowrap">
+        <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[0.6875rem] font-semibold text-white whitespace-nowrap">
           {offer.percentOff}% off
         </span>
       </p>

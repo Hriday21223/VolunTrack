@@ -318,15 +318,15 @@ function ChildCard({ child }) {
         <>
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <div>
-              <label htmlFor={`from-${child.id}`} className="block text-[11px] text-earth-400 mb-1">From</label>
+              <label htmlFor={`from-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">From</label>
               <input id={`from-${child.id}`} type="date" className="input w-[145px]" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div>
-              <label htmlFor={`to-${child.id}`} className="block text-[11px] text-earth-400 mb-1">To</label>
+              <label htmlFor={`to-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">To</label>
               <input id={`to-${child.id}`} type="date" className="input w-[145px]" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
             <div>
-              <label htmlFor={`cat-${child.id}`} className="block text-[11px] text-earth-400 mb-1">Category</label>
+              <label htmlFor={`cat-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">Category</label>
               <select id={`cat-${child.id}`} className="input w-[170px]" value={category} onChange={(e) => setCategory(e.target.value)}>
                 <option value="">All categories</option>
                 {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
@@ -451,7 +451,7 @@ function ChildTasks({ tasks }) {
       )}
       {recent.length > 0 && (
         <>
-          <p className="text-[11px] text-earth-400 mt-3 mb-1">Recently</p>
+          <p className="text-[0.6875rem] text-earth-400 mt-3 mb-1">Recently</p>
           <ul className="divide-y divide-earth-100 dark:divide-[#1f2e25] opacity-80">
             {recent.map((t) => <TaskRow key={t.signupId} task={t} />)}
           </ul>
@@ -479,7 +479,7 @@ function TaskRow({ task }) {
           </span>
         </p>
       </div>
-      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${tone}`}>{taskStatusLabel(task)}</span>
+      <span className={`text-[0.6875rem] font-medium px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${tone}`}>{taskStatusLabel(task)}</span>
     </li>
   )
 }
@@ -487,7 +487,7 @@ function TaskRow({ task }) {
 function Stat({ label, value, tone }) {
   return (
     <div className="rounded-xl bg-earth-50 dark:bg-[#0f1a14] px-3 py-2">
-      <div className="text-[11px] text-earth-500 dark:text-earth-400">{label}</div>
+      <div className="text-[0.6875rem] text-earth-500 dark:text-earth-400">{label}</div>
       <div className={`font-semibold mt-0.5 ${tone === 'amber' ? 'text-amber-600 dark:text-amber-400' : ''}`}>{value}</div>
     </div>
   )
