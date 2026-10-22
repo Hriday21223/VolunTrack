@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle, Globe } from 'lucide-react'
+import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, PartyPopper, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle, Globe } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
@@ -11,6 +11,7 @@ import ProgressBar from '@/components/ProgressBar.jsx'
 import { useMyRequirements } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { nextBadgeProgress, countedLogs } from '@/lib/achievements.js'
+import { yearsWithLogs, defaultReviewYear, isReviewSeason } from '@/lib/yearInReview.js'
 import { listReminders } from '@/api/index.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -19,6 +20,7 @@ import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import { isNativeApp } from '@/lib/platform.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
+import { goalCategory, logsForGoal, hoursForGoal } from '@/lib/goalProgress.js'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { format, startOfWeek, startOfMonth, addDays, parseISO } from 'date-fns'
 import { tr } from '@/lib/i18n.js'
@@ -109,19 +111,23 @@ export default function Dashboard() {
 
   const primary = goals.find((g) => g.primary) || goals[0]
   const target = primary ? Number(primary.targetHours) || 0 : 0
-  const percent = target > 0 ? Math.min(1, total / target) : 0
-  const remaining = Math.max(0, target - total)
+  // A goal for one cause counts only that category's hours (src/lib/goalProgress.js).
+  const primaryLogs = useMemo(() => logsForGoal(primary, counted), [primary, counted])
+  const primaryHours = useMemo(() => hoursForGoal(primary, counted), [primary, counted])
+  const percent = target > 0 ? Math.min(1, primaryHours / target) : 0
+  const remaining = Math.max(0, target - primaryHours)
+  const otherGoals = goals.filter((g) => g !== primary)
 
   // "42 of 100" only answers half the question; with a deadline we can also
   // say what it takes from here. Both the personal goal and the school's own
   // requirement go through the same maths (src/lib/pace.js).
   const goalPaceInfo = useMemo(() => goalPace({
     target,
-    total,
+    total: primaryHours,
     deadline: primary?.deadline,
     startedAt: primary?.createdAt,
-    logs: counted,
-  }), [target, total, primary?.deadline, primary?.createdAt, counted])
+    logs: primaryLogs,
+  }), [target, primaryHours, primary?.deadline, primary?.createdAt, primaryLogs])
 
   const requirementPace = useMemo(() => goalPace({
     target: requirements.goalHours,
@@ -284,6 +290,14 @@ export default function Dashboard() {
   const nextBadge = useMemo(() => nextBadgeProgress(logs, goals, earned), [logs, goals, earned])
 
   const recent = useMemo(() => logs.slice(0, 5), [logs])
+
+  // Year in review: offered once there's a year with hours in it, and pushed
+  // to the top of the page in December and January, when it's timely.
+  const reviewYear = useMemo(() => {
+    const years = yearsWithLogs(logs)
+    return years.length ? defaultReviewYear(years) : null
+  }, [logs])
+  const reviewSeason = isReviewSeason()
 
   return (
     <AppLayout
@@ -522,6 +536,10 @@ export default function Dashboard() {
         </>
       )}
 
+      {dashTab === 'home' && reviewYear && reviewSeason && (
+        <YearInReviewLink year={reviewYear} prominent />
+      )}
+
       {/* Mobile-first summary cards */}
       <div className="grid gap-2 grid-cols-2 md:hidden">
         <Card className="p-3">
@@ -729,6 +747,9 @@ export default function Dashboard() {
             {primary && (
               <div className="mt-2 text-xs text-earth-400">
                 {tr('Goal:')}{' '}{fmtHours(target)} · {primary.title}
+                {goalCategory(primary) && (
+                  <span className={`chip ml-1 ${categoryColor(goalCategory(primary))}`}>{tr('Only {category} hours', { category: tr(goalCategory(primary)) })}</span>
+                )}
               </div>
             )}
             {primary && goalPaceInfo.hasDeadline && (
@@ -755,6 +776,23 @@ export default function Dashboard() {
             )}
             {!primary && (
               <Link to="/settings" className="mt-2 block text-xs text-brand-400 hover:underline">{tr('Set a goal →')}</Link>
+            )}
+            {otherGoals.length > 0 && (
+              <div className="mt-3 pt-2 border-t border-white/5 space-y-2">
+                <div className="text-[0.625rem] uppercase tracking-[0.25em] text-earth-500">{tr('Other goals')}</div>
+                {otherGoals.map((g) => {
+                  const done = hoursForGoal(g, counted)
+                  const cat = goalCategory(g)
+                  return (
+                    <div key={g.id}>
+                      <div className="truncate text-xs text-earth-300 mb-1">
+                        {g.title}{cat && <span className="text-earth-500"> · {tr(cat)}</span>}
+                      </div>
+                      <ProgressBar value={done} target={Number(g.targetHours) || 0} />
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </Card>
 
@@ -810,6 +848,8 @@ export default function Dashboard() {
             </ul>
           )}
         </Card>
+
+        {reviewYear && !reviewSeason && <YearInReviewLink year={reviewYear} />}
 
         <Card className="lg:col-span-3" data-tour="recent-activity">
           <div className="flex items-center justify-between mb-2">
@@ -872,6 +912,38 @@ function StatCard({ icon: Icon, label, value, accent = 'brand' }) {
           <div className="text-sm font-bold leading-tight">{value}</div>
         </div>
       </div>
+    </Card>
+  )
+}
+
+function YearInReviewLink({ year, prominent = false }) {
+  const { user } = useAuth()
+  if (!canOpen(user?.role, '/year-in-review')) return null
+  if (prominent) {
+    return (
+      <Link
+        to="/year-in-review"
+        className="mb-5 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-800 via-slate-950 to-slate-900 p-4 text-white shadow-soft hover:opacity-95"
+      >
+        <PartyPopper className="w-8 h-8 shrink-0 text-brand-300" aria-hidden="true" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-display font-semibold">{tr('Your {year} in review is ready', { year })}</span>
+          <span className="block text-sm text-slate-300">{tr('See your hours, top cause and badges from the year — and share it.')}</span>
+        </span>
+        <ChevronRight className="w-5 h-5 shrink-0" aria-hidden="true" />
+      </Link>
+    )
+  }
+  return (
+    <Card className="p-4">
+      <Link to="/year-in-review" className="flex items-center gap-3">
+        <PartyPopper className="w-6 h-6 shrink-0 text-brand-500" aria-hidden="true" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-display font-semibold text-sm">{tr('Year in review')}</span>
+          <span className="block text-xs text-earth-400">{year === new Date().getFullYear() ? tr('Your {year} so far, at a glance', { year }) : tr('Look back at your {year}', { year })}</span>
+        </span>
+        <ChevronRight className="w-4 h-4 shrink-0 text-earth-400" aria-hidden="true" />
+      </Link>
     </Card>
   )
 }
