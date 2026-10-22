@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle } from 'lucide-react'
+import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, PartyPopper, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
@@ -11,6 +11,7 @@ import ProgressBar from '@/components/ProgressBar.jsx'
 import { useMyRequirements } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { nextBadgeProgress, countedLogs } from '@/lib/achievements.js'
+import { yearsWithLogs, defaultReviewYear, isReviewSeason } from '@/lib/yearInReview.js'
 import { listReminders } from '@/api/index.js'
 import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -288,6 +289,14 @@ export default function Dashboard() {
 
   const recent = useMemo(() => logs.slice(0, 5), [logs])
 
+  // Year in review: offered once there's a year with hours in it, and pushed
+  // to the top of the page in December and January, when it's timely.
+  const reviewYear = useMemo(() => {
+    const years = yearsWithLogs(logs)
+    return years.length ? defaultReviewYear(years) : null
+  }, [logs])
+  const reviewSeason = isReviewSeason()
+
   return (
     <AppLayout
       title={user?.name ? tr('Hi, {name} 👋', { name: user.name.split(' ')[0] }) : tr('Hi there 👋')}
@@ -515,6 +524,10 @@ export default function Dashboard() {
             </Card>
           )}
         </>
+      )}
+
+      {dashTab === 'home' && reviewYear && reviewSeason && (
+        <YearInReviewLink year={reviewYear} prominent />
       )}
 
       {/* Mobile-first summary cards */}
@@ -826,6 +839,8 @@ export default function Dashboard() {
           )}
         </Card>
 
+        {reviewYear && !reviewSeason && <YearInReviewLink year={reviewYear} />}
+
         <Card className="lg:col-span-3" data-tour="recent-activity">
           <div className="flex items-center justify-between mb-2">
             <div className="font-display font-semibold text-sm">{tr('Recent activity')}</div>
@@ -887,6 +902,38 @@ function StatCard({ icon: Icon, label, value, accent = 'brand' }) {
           <div className="text-sm font-bold leading-tight">{value}</div>
         </div>
       </div>
+    </Card>
+  )
+}
+
+function YearInReviewLink({ year, prominent = false }) {
+  const { user } = useAuth()
+  if (!canOpen(user?.role, '/year-in-review')) return null
+  if (prominent) {
+    return (
+      <Link
+        to="/year-in-review"
+        className="mb-5 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-brand-800 via-slate-950 to-slate-900 p-4 text-white shadow-soft hover:opacity-95"
+      >
+        <PartyPopper className="w-8 h-8 shrink-0 text-brand-300" aria-hidden="true" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-display font-semibold">{tr('Your {year} in review is ready', { year })}</span>
+          <span className="block text-sm text-slate-300">{tr('See your hours, top cause and badges from the year — and share it.')}</span>
+        </span>
+        <ChevronRight className="w-5 h-5 shrink-0" aria-hidden="true" />
+      </Link>
+    )
+  }
+  return (
+    <Card className="p-4">
+      <Link to="/year-in-review" className="flex items-center gap-3">
+        <PartyPopper className="w-6 h-6 shrink-0 text-brand-500" aria-hidden="true" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-display font-semibold text-sm">{tr('Year in review')}</span>
+          <span className="block text-xs text-earth-400">{year === new Date().getFullYear() ? tr('Your {year} so far, at a glance', { year }) : tr('Look back at your {year}', { year })}</span>
+        </span>
+        <ChevronRight className="w-4 h-4 shrink-0 text-earth-400" aria-hidden="true" />
+      </Link>
     </Card>
   )
 }

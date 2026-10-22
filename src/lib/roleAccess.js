@@ -13,6 +13,7 @@ export const ROUTE_ROLES = {
   '/log': STUDENT,
   '/calendar': STUDENT,
   '/achievements': STUDENT,
+  '/year-in-review': STUDENT,
   '/reports': STUDENT,
   '/reminders': STUDENT,
   '/checkin': STUDENT,
