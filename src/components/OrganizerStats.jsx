@@ -177,7 +177,7 @@ export default function OrganizerStats() {
           </div>
 
           <Card>
-            <div className="flex items-baseline justify-between gap-2 mb-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 mb-2">
               <h3 className="font-semibold">Hours given by month</h3>
               <span className="text-xs text-earth-500">
                 {stats.from ? `${fmtDate(stats.from)} – ${fmtDate(stats.to)}` : `Up to ${fmtDate(stats.to)}`}
