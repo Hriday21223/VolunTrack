@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { keys, read, write, remove } from '@/lib/storage.js'
 import {
   findUserByEmail, verifyPassword, createUser, updateUser as persistUser,
@@ -11,6 +11,7 @@ import { syncPullLogs } from '@/lib/logSync.js'
 import { syncKeptSession } from '@/lib/appSession.js'
 import { signInWithPasskey } from '@/lib/passkey.js'
 import { syncNativeReminders } from '@/lib/nativeReminders.js'
+import { syncLanguageWithServer } from '@/lib/i18n.js'
 
 const AuthContext = createContext(null)
 
@@ -22,6 +23,17 @@ export function AuthProvider({ children }) {
   // Apps only: keep the Keychain/Keystore copy behind "Keep me signed in" in
   // step with who is signed in — saved, refreshed, or removed on sign-out.
   useEffect(() => { syncKeptSession(user) }, [user])
+
+  // Once per signed-in account per page load, tell the server this device's
+  // language if it differs (#416) — so emails can be sent in it. Only a user
+  // object that came from the server carries `language`; a local-only account
+  // has neither it nor a token, and is skipped.
+  const languageSyncedFor = useRef(null)
+  useEffect(() => {
+    if (!user || !('language' in user) || languageSyncedFor.current === user.id) return
+    languageSyncedFor.current = user.id
+    syncLanguageWithServer(user.language)
+  }, [user])
 
   // Keep the session in sync across tabs.
   useEffect(() => {
