@@ -14,7 +14,7 @@ import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { turnstileUnlessMonitor } from '../monitor.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
-import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, hasEmail } from '../email.js'
+import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, hasEmail, forLog } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
 import { EMAIL_LANGUAGES } from '../emailStrings.js'
@@ -245,7 +245,7 @@ router.post('/register/send-code', authLimiter, requireDb, verifyTurnstile(), as
       return res.status(429).json({ error: 'We just sent a code. Wait a minute before asking for another.' })
     }
     if (devLog) {
-      console.log(`[dev] No email provider configured — sign-up code for ${email}: ${code}`)
+      console.log(`[dev] No email provider configured — sign-up code for ${forLog(email)}: ${code}`)
     } else {
       const sent = await sendSignupCodeEmail({ to: email, code, minutes: SIGNUP_CODE_TTL_MINUTES })
       if (!sent.sent) {
