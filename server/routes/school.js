@@ -3631,98 +3631,183 @@ router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) =
   }
 })
 
+// Validates a decision request body shared by the single and bulk verify
+// routes. Returns an error message, or null when the decision is acceptable.
+function verifyDecisionError(status, signature) {
+  if (!['approved', 'rejected'].includes(status)) return 'status must be approved or rejected.'
+  // An approval is a sign-off, so it carries the organizer's signature — the
+  // same rule as the supervisor's emailed link. A rejection needs none.
+  if (status === 'approved' && !isSignatureImage(signature)) return 'Sign to approve these hours.'
+  return null
+}
+
+// Records an organizer's decision on one student's log. Shared by the single
+// and bulk verify routes so both apply exactly the same authorization and side
+// effects. An expected refusal is returned, not thrown, as
+// { ok: false, httpStatus, error, ...extra }; an unexpected database error
+// still throws and the caller decides how to report it.
+async function verifyStudentLog({ organizerId, studentId, logId, status, signature }) {
+  const { rows: relRows } = await query(
+    `SELECT 1 FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+     WHERE t.created_by = $1 AND s.user_id = $2 AND s.status = 'approved'`,
+    [organizerId, studentId],
+  )
+  if (relRows.length === 0) return { ok: false, httpStatus: 403, error: 'This student is not approved on any of your tasks.' }
+
+  const { rows: logRows } = await query('SELECT task_id FROM logs WHERE id = $1 AND user_id = $2', [logId, studentId])
+  if (logRows.length === 0) return { ok: false, httpStatus: 404, error: 'Log not found.' }
+  const { rows: ownsTask } = await query(
+    'SELECT 1 FROM public_tasks WHERE id = $1 AND created_by = $2',
+    [logRows[0].task_id, organizerId],
+  )
+  if (ownsTask.length === 0) return { ok: false, httpStatus: 403, error: 'This log is not for one of your tasks.' }
+
+  // What (if anything) had already been recorded, so the caller can tell
+  // this was a change rather than a first decision.
+  const { rows: beforeRows } = await query(
+    'SELECT verification_status, verification_token FROM logs WHERE id = $1',
+    [logId],
+  )
+  const previousStatus = beforeRows[0]?.verification_status ?? 'none'
+
+  // A supervisor who rejected these hours is the person who was there to
+  // witness the work (or didn't see it happen), so that decision is final:
+  // an organizer cannot flip it to approved. Checked before the write, so a
+  // refused request changes nothing.
+  //
+  // Still allowed, deliberately: agreeing with the rejection (status
+  // 'rejected'), and acting on a log whose supervisor link is absent,
+  // 'pending' or 'superseded'.
+  const { rows: rejectedBySupervisor } = await query(
+    `SELECT supervisor_name, responded_at
+       FROM supervisor_verifications
+      WHERE status = 'rejected'
+        AND (log_id = $1 OR ($2::text IS NOT NULL AND token = $2))
+      LIMIT 1`,
+    [logId, beforeRows[0]?.verification_token ?? null],
+  )
+  if (rejectedBySupervisor[0] && status === 'approved') {
+    const who = rejectedBySupervisor[0].supervisor_name || 'The supervisor'
+    const when = rejectedBySupervisor[0].responded_at
+      ? new Date(rejectedBySupervisor[0].responded_at).toISOString().slice(0, 10)
+      : null
+    return {
+      ok: false,
+      httpStatus: 409,
+      error: `${who} rejected these hours${when ? ` on ${when}` : ''}. A supervisor's rejection is final, so these hours cannot be approved here.`,
+      supervisorStatus: 'rejected',
+    }
+  }
+
+  await query(
+    'UPDATE logs SET verification_status = $1, verified_by = $2, organizer_signature = $4 WHERE id = $3',
+    [status, organizerId, logId, status === 'approved' ? signature : null],
+  )
+  if (status !== previousStatus) notifyHoursDecision(studentId, logId, status)
+
+  // Spend any still-pending supervisor link for this log. Without this the
+  // emailed link stays 'pending', so a supervisor clicking it days later
+  // passes the token route's idempotency check and overwrites the decision
+  // just made here — with nobody on either side told it happened.
+  //
+  // Only 'pending' rows are touched: a supervisor who already answered keeps
+  // their recorded outcome and signature.
+  const { rows: superseded } = await query(
+    `UPDATE supervisor_verifications
+        SET status = 'superseded', responded_at = now()
+      WHERE status = 'pending'
+        AND (log_id = $1 OR ($2::text IS NOT NULL AND token = $2))
+      RETURNING id`,
+    [logId, beforeRows[0]?.verification_token ?? null],
+  )
+
+  return { ok: true, previousStatus, supersededSupervisorLinks: superseded.length }
+}
+
 // Approve or reject a specific log entry for a student approved on one of my tasks.
 router.post('/students/:studentId/logs/:logId/verify', limiter, requireDb, requireAuth(), async (req, res) => {
   const { status, signature } = req.body
-  if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be approved or rejected.' })
-  // An approval is a sign-off, so it carries the organizer's signature — the
-  // same rule as the supervisor's emailed link. A rejection needs none.
-  if (status === 'approved' && !isSignatureImage(signature)) {
-    return res.status(400).json({ error: 'Sign to approve these hours.' })
-  }
+  const invalid = verifyDecisionError(status, signature)
+  if (invalid) return res.status(400).json({ error: invalid })
 
   try {
-    const { rows: relRows } = await query(
-      `SELECT 1 FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-       WHERE t.created_by = $1 AND s.user_id = $2 AND s.status = 'approved'`,
-      [req.auth.sub, req.params.studentId],
-    )
-    if (relRows.length === 0) return res.status(403).json({ error: 'This student is not approved on any of your tasks.' })
-
-    const { rows: logRows } = await query('SELECT task_id FROM logs WHERE id = $1 AND user_id = $2', [req.params.logId, req.params.studentId])
-    if (logRows.length === 0) return res.status(404).json({ error: 'Log not found.' })
-    const { rows: ownsTask } = await query(
-      'SELECT 1 FROM public_tasks WHERE id = $1 AND created_by = $2',
-      [logRows[0].task_id, req.auth.sub],
-    )
-    if (ownsTask.length === 0) return res.status(403).json({ error: 'This log is not for one of your tasks.' })
-
-    // What (if anything) had already been recorded, so the caller can tell
-    // this was a change rather than a first decision.
-    const { rows: beforeRows } = await query(
-      'SELECT verification_status, verification_token FROM logs WHERE id = $1',
-      [req.params.logId],
-    )
-    const previousStatus = beforeRows[0]?.verification_status ?? 'none'
-
-    // A supervisor who rejected these hours is the person who was there to
-    // witness the work (or didn't see it happen), so that decision is final:
-    // an organizer cannot flip it to approved. Checked before the write, so a
-    // refused request changes nothing.
-    //
-    // Still allowed, deliberately: agreeing with the rejection (status
-    // 'rejected'), and acting on a log whose supervisor link is absent,
-    // 'pending' or 'superseded'.
-    const { rows: rejectedBySupervisor } = await query(
-      `SELECT supervisor_name, responded_at
-         FROM supervisor_verifications
-        WHERE status = 'rejected'
-          AND (log_id = $1 OR ($2::text IS NOT NULL AND token = $2))
-        LIMIT 1`,
-      [req.params.logId, beforeRows[0]?.verification_token ?? null],
-    )
-    if (rejectedBySupervisor[0] && status === 'approved') {
-      const who = rejectedBySupervisor[0].supervisor_name || 'The supervisor'
-      const when = rejectedBySupervisor[0].responded_at
-        ? new Date(rejectedBySupervisor[0].responded_at).toISOString().slice(0, 10)
-        : null
-      return res.status(409).json({
-        error: `${who} rejected these hours${when ? ` on ${when}` : ''}. A supervisor's rejection is final, so these hours cannot be approved here.`,
-        supervisorStatus: 'rejected',
-      })
-    }
-
-    await query(
-      'UPDATE logs SET verification_status = $1, verified_by = $2, organizer_signature = $4 WHERE id = $3',
-      [status, req.auth.sub, req.params.logId, status === 'approved' ? signature : null],
-    )
-    if (status !== previousStatus) notifyHoursDecision(req.params.studentId, req.params.logId, status)
-
-    // Spend any still-pending supervisor link for this log. Without this the
-    // emailed link stays 'pending', so a supervisor clicking it days later
-    // passes the token route's idempotency check and overwrites the decision
-    // just made here — with nobody on either side told it happened.
-    //
-    // Only 'pending' rows are touched: a supervisor who already answered keeps
-    // their recorded outcome and signature.
-    const { rows: superseded } = await query(
-      `UPDATE supervisor_verifications
-          SET status = 'superseded', responded_at = now()
-        WHERE status = 'pending'
-          AND (log_id = $1 OR ($2::text IS NOT NULL AND token = $2))
-        RETURNING id`,
-      [req.params.logId, beforeRows[0]?.verification_token ?? null],
-    )
-
-    return res.json({
-      ok: true,
-      previousStatus,
-      supersededSupervisorLinks: superseded.length,
+    const { httpStatus, ...result } = await verifyStudentLog({
+      organizerId: req.auth.sub,
+      studentId: req.params.studentId,
+      logId: req.params.logId,
+      status,
+      signature,
     })
+    if (!result.ok) {
+      const { error, supervisorStatus } = result
+      return res.status(httpStatus).json(supervisorStatus ? { error, supervisorStatus } : { error })
+    }
+    return res.json(result)
   } catch (error) {
     console.error('verify student log failed:', error)
     return res.status(500).json({ error: 'Could not update log.' })
   }
+})
+
+// Bulk approve/reject is one click that writes up to BULK_VERIFY_MAX decisions
+// and bell notifications, so it gets its own tighter budget on top of the
+// general limiter.
+const BULK_VERIFY_MAX = 100
+const bulkVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many bulk updates. Please try again later.' },
+})
+
+// Approve or reject several of my students' logs at once (My Tasks → My
+// Students). Each item goes through verifyStudentLog() — the same checks and
+// side effects as the single route — and is processed independently, so one
+// refused item never fails the rest. Body:
+// { items: [{ studentId, logId }], status | decision, signature? } — one
+// signature covers every approval in the batch.
+router.post('/logs/verify-bulk', limiter, bulkVerifyLimiter, requireDb, requireAuth(), async (req, res) => {
+  const { items, signature } = req.body || {}
+  const status = req.body?.status ?? req.body?.decision
+  const invalid = verifyDecisionError(status, signature)
+  if (invalid) return res.status(400).json({ error: invalid })
+  if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'items must be a non-empty list.' })
+  // Checked on the raw list too, so a huge body can't make us walk it.
+  if (items.length > BULK_VERIFY_MAX * 2) {
+    return res.status(400).json({ error: `At most ${BULK_VERIFY_MAX} entries can be updated at once.` })
+  }
+
+  // Dedupe on the log id: a log belongs to exactly one student, so a repeated
+  // logId is the same decision twice.
+  const seen = new Set()
+  const unique = []
+  for (const item of items) {
+    const studentId = typeof item?.studentId === 'string' ? item.studentId.trim() : ''
+    const logId = typeof item?.logId === 'string' ? item.logId.trim() : ''
+    if (!studentId || !logId || studentId.length > 100 || logId.length > 100) {
+      return res.status(400).json({ error: 'Each item needs a studentId and a logId.' })
+    }
+    if (seen.has(logId)) continue
+    seen.add(logId)
+    unique.push({ studentId, logId })
+  }
+  if (unique.length > BULK_VERIFY_MAX) {
+    return res.status(400).json({ error: `At most ${BULK_VERIFY_MAX} entries can be updated at once.` })
+  }
+
+  const results = []
+  for (const { studentId, logId } of unique) {
+    try {
+      const result = await verifyStudentLog({ organizerId: req.auth.sub, studentId, logId, status, signature })
+      results.push(result.ok ? { logId, ok: true } : { logId, ok: false, error: result.error })
+    } catch (error) {
+      console.error('bulk verify student log failed:', error)
+      results.push({ logId, ok: false, error: 'Could not update log.' })
+    }
+  }
+  const succeeded = results.filter((r) => r.ok).length
+  return res.json({ status, succeeded, failed: results.length - succeeded, results })
 })
 
 // The student hears about an organizer's decision on their hours in the bell.
