@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -15,6 +15,13 @@ import OrganizerStats from '@/components/OrganizerStats.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+// The device's own date, as YYYY-MM-DD: a task is "past" once its day is.
+const localToday = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const THANKS_MAX = 500
+const defaultThanks = (title) => tr('Thank you so much for volunteering at {title}! Your time and effort made a real difference, and we hope to see you again soon.', { title })
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1 }
@@ -51,6 +58,9 @@ export default function MyTasks() {
   const [cancelReason, setCancelReason] = useState('')
   const [messagingId, setMessagingId] = useState(null)
   const [messageDraft, setMessageDraft] = useState('')
+  // The thank-you note panel (POST /public-tasks/:id/thanks): one per task.
+  const [thankingId, setThankingId] = useState(null)
+  const [thanksDraft, setThanksDraft] = useState('')
   const [actionBusy, setActionBusy] = useState(false)
   const [report, setReport] = useState(null)
   const [reportRange, setReportRange] = useState({ from: '', to: '' })
@@ -218,6 +228,24 @@ export default function MyTasks() {
       setMessageDraft('')
       setToastMsg(`Sent to ${data.sent} volunteer${data.sent === 1 ? '' : 's'}`)
       setToast(true)
+    } catch (e) {
+      setToastMsg(e.message); setToast(true)
+    } finally { setActionBusy(false) }
+  }
+
+  const sendThanks = async (taskId) => {
+    setActionBusy(true)
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/thanks`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ message: thanksDraft.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || tr('Could not send your thank-you'))
+      setThankingId(null)
+      setThanksDraft('')
+      setToastMsg(data.recipients === 1 ? tr('Thank-you sent to 1 volunteer') : tr('Thank-you sent to {n} volunteers', { n: data.recipients }))
+      setToast(true)
+      loadTasks()
     } catch (e) {
       setToastMsg(e.message); setToast(true)
     } finally { setActionBusy(false) }
@@ -730,7 +758,42 @@ export default function MyTasks() {
                     <button onClick={() => postAgain(t)} className="btn-sm btn-ghost" disabled={actionBusy}>
                       <Copy className="w-3.5 h-3.5 mr-1" /> Post again
                     </button>
+                    {t.status !== 'cancelled' && t.date < localToday() && !t.thanks_sent_at && (
+                      <button
+                        onClick={() => {
+                          if (thankingId === t.id) { setThankingId(null); return }
+                          setThankingId(t.id); setThanksDraft(defaultThanks(t.title)); setEditingId(null); setMessagingId(null); setCancellingId(null)
+                        }}
+                        className="btn-sm btn-ghost text-rose-300"
+                        disabled={actionBusy}
+                      >
+                        <Heart className="w-3.5 h-3.5 mr-1" /> {tr('Send thank-you')}
+                      </button>
+                    )}
                   </div>
+
+                  {t.thanks_sent_at && (
+                    <p className="mb-4 text-xs text-rose-300 flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {tr('Thank-you sent on {date}', { date: fmtDate(t.thanks_sent_at) })}
+                    </p>
+                  )}
+
+                  {thankingId === t.id && !t.thanks_sent_at && (
+                    <div className="mb-4 p-3 rounded-xl border border-rose-500/30">
+                      <label htmlFor={`thanks-${t.id}`} className="label text-xs">{tr('Thank the volunteers who came')}</label>
+                      <textarea id={`thanks-${t.id}`} className="input" rows={3} maxLength={THANKS_MAX} value={thanksDraft} onChange={(e) => setThanksDraft(e.target.value)} />
+                      <p className="text-xs text-earth-500 mt-1">
+                        {tr('Goes to everyone marked present or checked in, as a notification and an email. You can send one per task.')}
+                        {' '}<span className="tabular-nums">{thanksDraft.length}/{THANKS_MAX}</span>
+                      </p>
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => sendThanks(t.id)} className="btn-primary btn-sm" disabled={actionBusy || !thanksDraft.trim()}>
+                          {actionBusy ? tr('Sending…') : tr('Send thank-you')}
+                        </button>
+                        <button onClick={() => setThankingId(null)} className="btn-sm btn-ghost" disabled={actionBusy}>{tr('Cancel')}</button>
+                      </div>
+                    </div>
+                  )}
 
                   {editingId === t.id && editForm && (
                     <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">

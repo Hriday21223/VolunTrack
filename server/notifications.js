@@ -30,6 +30,7 @@ export const NOTIFICATION_KINDS = new Set([
   'parent_ok_declined',
   'comeback_nudge',
   'saved_task_reminder',
+  'task_thanks',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }

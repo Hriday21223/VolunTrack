@@ -3143,7 +3143,9 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
               (SELECT COALESCE(json_agg(json_build_object(
                 'stars', r.stars, 'comment', r.comment, 'date', to_char(r.updated_at, 'YYYY-MM-DD')
               ) ORDER BY r.updated_at DESC), '[]'::json)
-               FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments
+               FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments,
+              -- The one thank-you note (POST /public-tasks/:id/thanks), if sent.
+              (SELECT to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM task_thanks th WHERE th.task_id = t.id) AS thanks_sent_at
        FROM public_tasks t WHERE t.created_by = $1
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.auth.sub],
@@ -3210,6 +3212,103 @@ router.put('/public-tasks/:id/rating', limiter, requireDb, requireAuth('student'
   }
 })
 
+// --- Thank-you notes ------------------------------------------------------------
+//
+// Once a task's day is over its organizer can send one short note of thanks to
+// the volunteers who showed up (SHOWED_UP_SQL — the reading ratings use, so
+// absent or excused volunteers get nothing). One per task: task_thanks.task_id
+// is the key. Each recipient gets a bell entry and their own email; the note
+// also shows on that task in their Attendance. Not to anyone who blocked the
+// organizer, and not from a suspended organizer (server/routes/reports.js).
+
+const THANKS_MAX = 500
+
+router.post('/public-tasks/:id/thanks', taskMailLimiter, requireDb, requireAuth(), async (req, res) => {
+  const raw = req.body?.message
+  if (raw != null && typeof raw !== 'string') return res.status(400).json({ error: 'The note must be text.' })
+  const message = String(raw || '').trim()
+  if (!message) return res.status(400).json({ error: 'Write a short note first.' })
+  if (message.length > THANKS_MAX) return res.status(400).json({ error: `Keep the note to ${THANKS_MAX} characters.` })
+
+  try {
+    const { rows } = await query(
+      `SELECT t.id, t.created_by, t.status, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
+              t.date < CURRENT_DATE AS is_past, o.posting_suspended_at
+         FROM public_tasks t LEFT JOIN users o ON o.id = t.created_by
+        WHERE t.id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (task.created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can thank its volunteers.' })
+    if (task.posting_suspended_at) return res.status(403).json({ error: 'Your account can\'t contact volunteers right now.' })
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This event was cancelled.' })
+    if (!task.is_past) return res.status(400).json({ error: 'You can send a thank-you once the task\'s day is over.' })
+
+    const { rows: people } = await query(
+      `SELECT u.id, u.email, u.name, u.parental_consent_status
+         FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND ${SHOWED_UP_SQL}
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $2)`,
+      [task.id, req.auth.sub],
+    )
+    if (people.length === 0) return res.status(400).json({ error: 'No volunteers were marked present or checked in on this task.' })
+
+    // The insert is the claim: two clicks racing can't both send.
+    const { rows: saved } = await query(
+      `INSERT INTO task_thanks (task_id, sender_id, message) VALUES ($1, $2, $3)
+       ON CONFLICT (task_id) DO NOTHING
+       RETURNING to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS sent_at`,
+      [task.id, req.auth.sub, message],
+    )
+    if (saved.length === 0) return res.status(409).json({ error: 'You already sent a thank-you for this task.' })
+
+    res.json({ ok: true, sentAt: saved[0].sent_at, recipients: people.length })
+    deliverThanks(task, people, message)
+  } catch (error) {
+    console.error('task thanks failed:', error)
+    if (!res.headersSent) return res.status(500).json({ error: 'Could not send your thank-you.' })
+  }
+})
+
+// Fire-and-forget, after the response: one bell entry and one email per
+// person. The bell skips an under-13 still waiting on a parent, as the email
+// does; the email also skips the @test.com fixtures.
+async function deliverThanks(task, people, message) {
+  const from = task.creator_name || 'The organizer'
+  const site = String(process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '')
+  const seen = new Set()
+  for (const p of people) {
+    if (p.parental_consent_status === 'pending') continue
+    notify(p.id, {
+      kind: 'task_thanks',
+      title: task.title,
+      body: `${from}: ${message}`,
+      link: '/attendance',
+    })
+    const email = String(p.email || '').trim().toLowerCase()
+    if (!email || seen.has(email)) continue
+    seen.add(email)
+    if (email.endsWith('@test.com')) {
+      console.log(`[thanks] skipped @test.com fixture ${email}: ${task.title}`)
+      continue
+    }
+    try {
+      await sendEmail({
+        to: email,
+        subject: `Thank you for volunteering: ${task.title}`,
+        html: taskEmailHtml({
+          heading: `A thank-you from ${from}`,
+          lines: [`Hi ${p.name || 'there'},`, message],
+          task,
+          link: site ? `${site}/attendance` : undefined,
+          linkLabel: 'See it in VolunTrack',
+        }),
+      })
+    } catch (error) { console.error('thank-you email failed:', error) }
+  }
+}
+
 // List tasks the current user signed up for (as a participant), with their
 // signup + attendance status. Unlike GET /public-tasks, this isn't limited to
 // status = 'open' — closed/past tasks still show so attendance stays visible.
@@ -3224,7 +3323,13 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
               ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position,
               ${RATING_OPEN_SQL} AS can_rate,
               (SELECT json_build_object('stars', r.stars, 'comment', r.comment, 'updated_at', r.updated_at)
-                 FROM task_ratings r WHERE r.task_id = t.id AND r.user_id = s.user_id) AS my_rating
+                 FROM task_ratings r WHERE r.task_id = t.id AND r.user_id = s.user_id) AS my_rating,
+              -- The organizer's thank-you, only to those it was sent to: who
+              -- showed up and hasn't blocked the organizer.
+              (SELECT json_build_object('message', th.message, 'sent_at', to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+                 FROM task_thanks th
+                WHERE th.task_id = t.id AND ${SHOWED_UP_SQL}
+                  AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = t.created_by)) AS thanks
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
        WHERE s.user_id = $1
