@@ -171,8 +171,10 @@ The app's users include minors. Sign-up asks everyone for a date of birth
 guardian they name approves it from an emailed link (declined or unanswered
 for 14 days: deleted). Accounts a school creates, or that arrive through school
 sign-in, rely on the school's consent. The parent's email address is collected
-for that request only — count it under *Email address* in the Data safety /
-App Privacy answers. That decides the store settings:
+for that request, and — while no parent account is linked — to ask the parent
+to approve each volunteer task the child signs up for (organizers see an
+under-13's sign-up only after that) — count it under *Email address* in the
+Data safety / App Privacy answers. That decides the store settings:
 
 - **Play → Target audience:** 13–15, 16–17, 18+. Leave the under-13 bands
   unticked. Ticking one puts the app under the **Families policy**

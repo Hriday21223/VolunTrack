@@ -25,6 +25,9 @@ export const NOTIFICATION_KINDS = new Set([
   'hours_rejected',
   'hours_reminder',
   'friend_joined',
+  'parent_ok_request',
+  'parent_ok_given',
+  'parent_ok_declined',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }
