@@ -87,5 +87,11 @@
     "esbuild@0.28.1": true,
     "fsevents@2.3.3": true,
     "workerd@1.20260820.1": true
+  },
+  "overrides": {
+    "tar": "^7.5.22",
+    "sharp": "^0.35.5",
+    "uuid": "^11.1.1",
+    "postcss-selector-parser": "^7.1.6"
   }
 }
