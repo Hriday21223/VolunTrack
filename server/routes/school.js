@@ -2992,6 +2992,9 @@ router.post('/public-tasks/:id/cancel', limiter, requireDb, requireAuth(), async
               ...(reason ? [`Reason given: ${reason}`] : []),
             ],
             task: rows[0],
+            // The cancelled task isn't listed any more, so point at the rest.
+            link: `${frontendBase()}/opportunities`,
+            linkLabel: 'Find another task',
           }),
         })
       } catch (error) { console.error('cancellation email failed:', error) }
