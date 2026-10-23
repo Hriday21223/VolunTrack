@@ -15,10 +15,13 @@ import OrganizerStats from '@/components/OrganizerStats.jsx'
 import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.jsx'
 import LateBadge from '@/components/LateBadge.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
-import TaskCohosts from '@/components/TaskCohosts.jsx'
 import TaskQuestions from '@/components/TaskQuestions.jsx'
+import TaskCohosts from '@/components/TaskCohosts.jsx'
 import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
+import { guestSummary } from '@/lib/guests.js'
 import { tr } from '@/lib/i18n.js'
+import TaskPhotoPicker from '@/components/TaskPhotoPicker.jsx'
+import { uploadTaskPhoto, fetchTaskPhoto } from '@/lib/taskPhoto.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // The device's own date, as YYYY-MM-DD: a task is "past" once its day is.
@@ -47,6 +50,8 @@ export default function MyTasks() {
   const [taskForm, setTaskForm] = useState(EMPTY_TASK_FORM)
   // The title of the task the form was copied from by "Post again", if any.
   const [postAgainFrom, setPostAgainFrom] = useState(null)
+  // Cover photo for the new task, uploaded once it's posted (TaskPhotoPicker).
+  const [taskPhoto, setTaskPhoto] = useState(null)
   // "Repeat weekly" ticked: taskForm.repeatWeeks more copies, 7 days apart.
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [taskBusy, setTaskBusy] = useState(false)
@@ -100,12 +105,12 @@ export default function MyTasks() {
   const reportCSV = () => {
     if (!report) return
     const rows = [
-      ['Date', 'Event', 'Location', 'Status', 'Approved', 'Present', 'Absent', 'Excused', 'Hours'],
+      ['Date', 'Event', 'Location', 'Status', 'Approved', 'Guests', 'Present', 'Absent', 'Excused', 'Hours'],
       ...report.tasks.map((t) => [
         String(t.date || '').slice(0, 10),
         t.title || '',
         t.location || '',
-        t.status, t.approved, t.present, t.absent, t.excused, t.hours,
+        t.status, t.approved, t.guests || 0, t.present, t.absent, t.excused, t.hours,
       ]),
     ]
     const blob = new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })
@@ -459,15 +464,24 @@ export default function MyTasks() {
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error || 'Failed')
-      setTaskForm(EMPTY_TASK_FORM); setPostAgainFrom(null); setRepeatWeekly(false)
+      // Each week of a series gets its own copy of the photo.
+      let photoError = ''
+      if (taskPhoto) {
+        try {
+          const blob = taskPhoto.blob || await fetchTaskPhoto(taskPhoto.photoId)
+          for (const created of d.tasks || [{ id: d.id }]) await uploadTaskPhoto(created.id, blob)
+        } catch (err) { photoError = err.message }
+      }
+      setTaskForm(EMPTY_TASK_FORM); setPostAgainFrom(null); setRepeatWeekly(false); setTaskPhoto(null)
       setShowPostTask(false); loadTasks()
-      setToastMsg(d.createdCount > 1 ? `Posted ${d.createdCount} tasks, one a week` : 'Task posted!'); setToast(true)
+      const posted = d.createdCount > 1 ? `Posted ${d.createdCount} tasks, one a week` : 'Task posted!'
+      setToastMsg(photoError ? `${posted} ${tr('The photo was not saved: {error}', { error: photoError })}` : posted); setToast(true)
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
   }
 
   const togglePostForm = () => {
     // Closing a copied form drops the copy, so "Post a task" starts blank.
-    if (showPostTask && postAgainFrom) { setPostAgainFrom(null); setTaskForm(EMPTY_TASK_FORM) }
+    if (showPostTask && postAgainFrom) { setPostAgainFrom(null); setTaskForm(EMPTY_TASK_FORM); setTaskPhoto(null) }
     setView('tasks')
     setShowPostTask((s) => !s)
   }
@@ -491,6 +505,8 @@ export default function MyTasks() {
       ...taskDetailsFromRow(t),
     })
     setPostAgainFrom(t.title || 'an earlier task')
+    // Copied as a new upload when posted, never shared between the two tasks.
+    setTaskPhoto(t.cover_photo_id ? { photoId: t.cover_photo_id } : null)
     setShowPostTask(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -531,6 +547,7 @@ export default function MyTasks() {
             <form onSubmit={handlePostTask} className="space-y-3">
               <input className="input" maxLength={200} placeholder="Task title" value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
               <textarea className="input" rows={2} maxLength={5000} placeholder="Description — what volunteers will do" value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
+              <TaskPhotoPicker value={taskPhoto} onChange={setTaskPhoto} />
               <OnlineToggle checked={taskForm.isOnline} onChange={(isOnline) => setTaskForm((f) => ({ ...f, isOnline }))} />
               {taskForm.isOnline ? (
                 <input className="input" maxLength={300} aria-label={tr('Where to join (optional)')} placeholder={tr('Where to join (optional), e.g. Zoom link sent after approval')} value={taskForm.location} onChange={(e) => setTaskForm({ ...taskForm, location: e.target.value })} />
@@ -657,7 +674,7 @@ export default function MyTasks() {
                           <tr key={t.id} className="border-t border-white/10">
                             <td className="py-2 whitespace-nowrap">{String(t.date || '').slice(0, 10)}</td>
                             <td className="py-2">{t.title}{t.status === 'cancelled' && <span className="text-xs text-red-400"> · cancelled</span>}</td>
-                            <td className="py-2 text-right">{t.approved}</td>
+                            <td className="py-2 text-right">{t.approved}{t.guests > 0 && <span className="text-xs text-earth-500"> +{t.guests}</span>}</td>
                             <td className="py-2 text-right">{t.present}</td>
                             <td className="py-2 text-right">{t.hours}</td>
                           </tr>
@@ -834,6 +851,7 @@ export default function MyTasks() {
                     <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">
                       <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Task title" />
                       <textarea className="input" rows={2} maxLength={5000} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+                      <TaskPhotoPicker taskId={t.id} photoId={t.cover_photo_id} onSaved={(id) => setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, cover_photo_id: id } : x)))} />
                       <OnlineToggle checked={editForm.isOnline} onChange={(isOnline) => setEditForm((f) => ({ ...f, isOnline, ...(isOnline || f.location !== 'Online' ? {} : { location: '' }) }))} />
                       {editForm.isOnline ? (
                         <input className="input" maxLength={300} aria-label={tr('Where to join (optional)')} placeholder={tr('Where to join (optional), e.g. Zoom link sent after approval')} value={editForm.location === 'Online' ? '' : editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />
@@ -904,6 +922,7 @@ export default function MyTasks() {
                               <p className="text-xs text-earth-400 truncate">{s.email}</p>
                               {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
                               <LateBadge signup={s} />
+                              {s.guest_count > 0 && <p className="text-xs text-brand-400 truncate">{guestSummary(s.guest_count, s.guest_names)}</p>}
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}

@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable'
 import { fmtDate, fmtDateTime, fmtHours, hoursBetween } from '@/utils/date.js'
 import { csvCell } from '@/lib/csv.js'
 import { countedLogs } from '@/lib/achievements.js'
+import { guestSheetRows } from '@/lib/guests.js'
 
 // The VolunTrack logo is fetched once and cached as a data URL so every PDF
 // (service log, invoice) can stamp it in the header — keep this on every
@@ -557,15 +558,18 @@ const SHEET_MARGIN_TOP_CONT = 60 // continuation pages carry a one-line header
  * fine scaled onto A4.
  *
  * `task` is a row from GET /api/school/public-tasks/mine (title, date, time,
- * location, signups[{ name, status }]).
+ * location, signups[{ name, status, guest_count, guest_names }]).
  */
 export async function generateSignInSheetPDF(task, { organizerName, returnBlob } = {}) {
   const logo = await getLogoDataUrl()
   const signups = Array.isArray(task?.signups) ? task.signups : []
+  // Each volunteer is followed by their guests (#439): a named guest, or a
+  // line with who brought them for the name to be written in on the day.
   const names = signups
     .filter((s) => s.status === 'approved')
-    .map((s) => String(s.name || '').trim() || 'Volunteer')
-    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    .map((s) => ({ ...s, name: String(s.name || '').trim() || 'Volunteer' }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    .flatMap((s) => [s.name, ...guestSheetRows(s)])
   const waitlisted = signups.filter((s) => s.status === 'waitlisted').length
 
   // Draw once with the minimum blank rows to see where the table ends, then

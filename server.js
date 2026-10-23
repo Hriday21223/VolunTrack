@@ -39,6 +39,7 @@ import notificationRoutes from './server/routes/notifications.js'
 import portfolioRoutes from './server/routes/portfolio.js'
 import comebackRoutes from './server/routes/comeback.js'
 import interestsRoutes from './server/routes/interests.js'
+import taskPhotoRoutes from './server/routes/taskPhotos.js'
 import organizerProfileRoutes from './server/routes/organizerProfile.js'
 import weatherRoutes from './server/routes/weather.js'
 import { escapeHtml } from './server/html.js'
@@ -169,6 +170,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/portfolio', portfolioRoutes)
 app.use('/api/comeback', comebackRoutes)
 app.use('/api/interests', interestsRoutes)
+app.use('/api/task-photos', taskPhotoRoutes)
 app.use('/api/weather', weatherRoutes)
 
 // In-memory ring buffer of the most recently generated recovery codes. In

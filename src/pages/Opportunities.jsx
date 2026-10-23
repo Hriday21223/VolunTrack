@@ -13,8 +13,10 @@ import { fmtDate } from '@/utils/date.js'
 import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
+import GuestSignup from '@/components/GuestSignup.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import TaskCoverPhoto from '@/components/TaskCoverPhoto.jsx'
 import TaskQuestions from '@/components/TaskQuestions.jsx'
 import WeatherChip from '@/components/WeatherChip.jsx'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
@@ -197,7 +199,8 @@ export default function Opportunities() {
   const reload = () => { loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius); if (canFollow) loadSaved() }
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
-  const signUp = async (t, full) => {
+  // `extra` carries a group's guests (GuestSignup, #439).
+  const signUp = async (t, full, extra = {}) => {
     // Minimum age (#426): no birth date is kept, so the student confirms it.
     if (t.min_age != null && !window.confirm(tr("This task is for volunteers {n} or older. Are you {n} or older?", { n: t.min_age }))) return
     try {
@@ -209,6 +212,7 @@ export default function Opportunities() {
           ...(full ? { waitlist: true } : {}),
           ...(t.min_age != null ? { ageConfirmed: true } : {}),
           ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
+          ...extra,
         }),
       })
       const d = await res.json().catch(() => ({}))
@@ -489,6 +493,7 @@ export default function Opportunities() {
           const approved = t.my_signup_status === 'approved'
           return (
             <Card key={t.id} id={`task-${t.id}`} padded={false} className={`p-4 ${t.id === linkedTask ? 'ring-2 ring-brand-400' : ''}`}>
+              <TaskCoverPhoto photoId={t.cover_photo_id} title={t.title} className="-mx-4 -mt-4 mb-3 rounded-t-2xl" />
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -578,6 +583,7 @@ export default function Opportunities() {
                   {t.my_signup_status === 'parent_declined' && (
                     <p className="text-xs text-red-400 mt-1">{tr('Your parent said no to this one. Talk with them, then you can ask again.')}</p>
                   )}
+                  <GuestSignup task={t} user={user} onSignUp={signUp} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} />
                   {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
                   {canInvite && (approved || t.my_signup_status === 'pending') && <InviteFriends task={t} className="mt-2" />}
                   {approved && String(t.date).slice(0, 10) === format(new Date(), 'yyyy-MM-dd') && (

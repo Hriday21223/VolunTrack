@@ -2,6 +2,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
+import { SPOTS_USED_SQL } from '../spots.js'
 import { TASK_CATEGORIES } from './school.js'
 
 // A student's interests: the causes they care about, picked from the same
@@ -75,8 +76,7 @@ router.get('/for-you', limiter, requireDb, requireAuth('student'), async (req, r
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
               t.category, t.creator_name, t.slots_total,
-              (SELECT COUNT(*)::int FROM public_task_signups s
-                WHERE s.task_id = t.id AND s.status IN ('pending', 'approved')) AS slots_filled
+              ${SPOTS_USED_SQL('t.id')} AS slots_filled
          FROM public_tasks t
         WHERE t.status = 'open'
           AND t.date >= CURRENT_DATE - 1
@@ -85,8 +85,7 @@ router.get('/for-you', limiter, requireDb, requireAuth('student'), async (req, r
           AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $1 AND b.blocked_id = t.created_by)
           AND NOT EXISTS (SELECT 1 FROM public_task_signups s WHERE s.task_id = t.id AND s.user_id = $1)
-          AND (SELECT COUNT(*) FROM public_task_signups s
-                WHERE s.task_id = t.id AND s.status IN ('pending', 'approved')) < t.slots_total
+          AND ${SPOTS_USED_SQL('t.id')} < t.slots_total
         ORDER BY t.date ASC, t.created_at DESC
         LIMIT $3`,
       [req.auth.sub, interests, FOR_YOU_LIMIT],

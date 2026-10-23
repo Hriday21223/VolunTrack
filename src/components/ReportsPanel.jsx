@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Flag, Trash2, Ban, Check, RotateCcw } from 'lucide-react'
+import { Flag, Trash2, Ban, Check, RotateCcw, ImageOff } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { fmtDate, fromNow } from '@/utils/date.js'
+import { taskPhotoUrl } from '@/lib/taskPhoto.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -84,6 +85,9 @@ export default function ReportsPanel() {
         </div>
         <span className="text-xs text-earth-500 shrink-0">{fromNow(r.created_at)}</span>
       </div>
+      {r.task_cover_photo_id && (
+        <img src={taskPhotoUrl(r.task_cover_photo_id)} alt={r.task_title || 'Task photo'} loading="lazy" className="w-40 aspect-video object-cover rounded-lg bg-earth-100 dark:bg-white/5" />
+      )}
       <p className="text-sm"><span className="font-medium">{REASONS[r.reason] || r.reason}</span>{r.details ? ` — ${r.details}` : ''}</p>
       <p className="text-xs text-earth-500">
         Posted by {r.poster_name || 'a deleted account'}{r.poster_email ? ` (${r.poster_email})` : ''}
@@ -94,7 +98,7 @@ export default function ReportsPanel() {
       {r.status === 'pending' ? (
         confirming?.id === r.id ? (
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-sm">{confirming.action === 'remove_task' ? 'Remove this task for everyone?' : 'Stop this organizer posting, and hide all their tasks?'}</span>
+            <span className="text-sm">{confirming.action === 'remove_task' ? 'Remove this task for everyone?' : confirming.action === 'remove_photo' ? 'Remove the photo and keep the task?' : 'Stop this organizer posting, and hide all their tasks?'}</span>
             <button onClick={() => act(r.id, confirming.action)} disabled={busy === r.id} className="btn-sm btn-danger">{busy === r.id ? 'Working…' : 'Yes, do it'}</button>
             <button onClick={() => setConfirming(null)} disabled={busy === r.id} className="btn-sm btn-ghost">Cancel</button>
           </div>
@@ -103,6 +107,9 @@ export default function ReportsPanel() {
             <button onClick={() => act(r.id, 'dismiss')} disabled={busy === r.id} className="btn-sm btn-ghost"><Check className="w-3.5 h-3.5 mr-1" /> Dismiss</button>
             {r.task_status !== 'cancelled' && (
               <button onClick={() => setConfirming({ id: r.id, action: 'remove_task' })} className="btn-sm btn-ghost text-red-400"><Trash2 className="w-3.5 h-3.5 mr-1" /> Remove task</button>
+            )}
+            {r.task_cover_photo_id && (
+              <button onClick={() => setConfirming({ id: r.id, action: 'remove_photo' })} className="btn-sm btn-ghost text-red-400"><ImageOff className="w-3.5 h-3.5 mr-1" /> Remove photo</button>
             )}
             {!r.posting_suspended_at && r.poster_id && (
               <button onClick={() => setConfirming({ id: r.id, action: 'suspend' })} className="btn-sm btn-ghost text-red-400"><Ban className="w-3.5 h-3.5 mr-1" /> Suspend organizer</button>

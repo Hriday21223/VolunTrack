@@ -18,7 +18,9 @@ export function taskDetailsFromRow(t) {
     // Day-of details (#438): Edit and Post again carry them over.
     meetingPoint: t?.meeting_point || '',
     dayOfContact: t?.day_of_contact || '',
+    // Group sign-ups (#439): Edit and Post again keep it.
+    allowGuests: Boolean(t?.allow_guests),
   }
 }
 
-export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '', isOutdoor: false, meetingPoint: '', dayOfContact: '' }
+export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '', isOutdoor: false, meetingPoint: '', dayOfContact: '', allowGuests: false }

@@ -4,9 +4,10 @@ import DayOfFields from '@/components/DayOfFields.jsx'
 const AGE_CHOICES = [10, 12, 13, 14, 16, 18, 21]
 
 // The optional task details (#426) on My Tasks' post and edit forms: online,
-// minimum age, wheelchair access and a short note, plus outdoor (#435).
-// `value` holds minAge ('' for none), isOnline, wheelchairAccessible,
-// accessibilityNote and isOutdoor;
+// minimum age, wheelchair access and a short note, plus outdoor (#435) and
+// whether volunteers may bring guests (#439). `value` holds minAge ('' for
+// none), isOnline, wheelchairAccessible, accessibilityNote, isOutdoor and
+// allowGuests;
 // `onChange` gets the fields that changed.
 export default function TaskDetailFields({ value, onChange, idPrefix = 'task' }) {
   const ages = value.minAge && !AGE_CHOICES.includes(Number(value.minAge)) ? [...AGE_CHOICES, Number(value.minAge)].sort((a, b) => a - b) : AGE_CHOICES
@@ -44,6 +45,14 @@ export default function TaskDetailFields({ value, onChange, idPrefix = 'task' })
         onChange={(e) => onChange({ accessibilityNote: e.target.value })}
       />
       <DayOfFields value={value} onChange={onChange} />
+      {/* Group sign-ups (#439). */}
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={Boolean(value.allowGuests)} onChange={(e) => onChange({ allowGuests: e.target.checked })} />
+        <span>
+          {tr('Volunteers can bring up to 3 guests')}
+          <span className="block text-xs text-earth-500">{tr("Each guest takes a spot. Guests' hours aren't recorded in VolunTrack.")}</span>
+        </span>
+      </label>
     </div>
   )
 }
