@@ -16,6 +16,8 @@ import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.js
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
 import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
+import TaskPhotoPicker from '@/components/TaskPhotoPicker.jsx'
+import { uploadTaskPhoto, fetchTaskPhoto } from '@/lib/taskPhoto.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // The device's own date, as YYYY-MM-DD: a task is "past" once its day is.
@@ -44,6 +46,8 @@ export default function MyTasks() {
   const [taskForm, setTaskForm] = useState(EMPTY_TASK_FORM)
   // The title of the task the form was copied from by "Post again", if any.
   const [postAgainFrom, setPostAgainFrom] = useState(null)
+  // Cover photo for the new task, uploaded once it's posted (TaskPhotoPicker).
+  const [taskPhoto, setTaskPhoto] = useState(null)
   // "Repeat weekly" ticked: taskForm.repeatWeeks more copies, 7 days apart.
   const [repeatWeekly, setRepeatWeekly] = useState(false)
   const [taskBusy, setTaskBusy] = useState(false)
@@ -456,15 +460,24 @@ export default function MyTasks() {
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error || 'Failed')
-      setTaskForm(EMPTY_TASK_FORM); setPostAgainFrom(null); setRepeatWeekly(false)
+      // Each week of a series gets its own copy of the photo.
+      let photoError = ''
+      if (taskPhoto) {
+        try {
+          const blob = taskPhoto.blob || await fetchTaskPhoto(taskPhoto.photoId)
+          for (const created of d.tasks || [{ id: d.id }]) await uploadTaskPhoto(created.id, blob)
+        } catch (err) { photoError = err.message }
+      }
+      setTaskForm(EMPTY_TASK_FORM); setPostAgainFrom(null); setRepeatWeekly(false); setTaskPhoto(null)
       setShowPostTask(false); loadTasks()
-      setToastMsg(d.createdCount > 1 ? `Posted ${d.createdCount} tasks, one a week` : 'Task posted!'); setToast(true)
+      const posted = d.createdCount > 1 ? `Posted ${d.createdCount} tasks, one a week` : 'Task posted!'
+      setToastMsg(photoError ? `${posted} ${tr('The photo was not saved: {error}', { error: photoError })}` : posted); setToast(true)
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
   }
 
   const togglePostForm = () => {
     // Closing a copied form drops the copy, so "Post a task" starts blank.
-    if (showPostTask && postAgainFrom) { setPostAgainFrom(null); setTaskForm(EMPTY_TASK_FORM) }
+    if (showPostTask && postAgainFrom) { setPostAgainFrom(null); setTaskForm(EMPTY_TASK_FORM); setTaskPhoto(null) }
     setView('tasks')
     setShowPostTask((s) => !s)
   }
@@ -488,6 +501,8 @@ export default function MyTasks() {
       ...taskDetailsFromRow(t),
     })
     setPostAgainFrom(t.title || 'an earlier task')
+    // Copied as a new upload when posted, never shared between the two tasks.
+    setTaskPhoto(t.cover_photo_id ? { photoId: t.cover_photo_id } : null)
     setShowPostTask(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -528,6 +543,7 @@ export default function MyTasks() {
             <form onSubmit={handlePostTask} className="space-y-3">
               <input className="input" maxLength={200} placeholder="Task title" value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
               <textarea className="input" rows={2} maxLength={5000} placeholder="Description — what volunteers will do" value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
+              <TaskPhotoPicker value={taskPhoto} onChange={setTaskPhoto} />
               <OnlineToggle checked={taskForm.isOnline} onChange={(isOnline) => setTaskForm((f) => ({ ...f, isOnline }))} />
               {taskForm.isOnline ? (
                 <input className="input" maxLength={300} aria-label={tr('Where to join (optional)')} placeholder={tr('Where to join (optional), e.g. Zoom link sent after approval')} value={taskForm.location} onChange={(e) => setTaskForm({ ...taskForm, location: e.target.value })} />
@@ -811,6 +827,7 @@ export default function MyTasks() {
                     <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">
                       <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Task title" />
                       <textarea className="input" rows={2} maxLength={5000} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
+                      <TaskPhotoPicker taskId={t.id} photoId={t.cover_photo_id} onSaved={(id) => setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, cover_photo_id: id } : x)))} />
                       <OnlineToggle checked={editForm.isOnline} onChange={(isOnline) => setEditForm((f) => ({ ...f, isOnline, ...(isOnline || f.location !== 'Online' ? {} : { location: '' }) }))} />
                       {editForm.isOnline ? (
                         <input className="input" maxLength={300} aria-label={tr('Where to join (optional)')} placeholder={tr('Where to join (optional), e.g. Zoom link sent after approval')} value={editForm.location === 'Online' ? '' : editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} />

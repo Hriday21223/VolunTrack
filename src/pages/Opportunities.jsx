@@ -15,6 +15,7 @@ import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import TaskCoverPhoto from '@/components/TaskCoverPhoto.jsx'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -486,6 +487,7 @@ export default function Opportunities() {
           const approved = t.my_signup_status === 'approved'
           return (
             <Card key={t.id} id={`task-${t.id}`} padded={false} className={`p-4 ${t.id === linkedTask ? 'ring-2 ring-brand-400' : ''}`}>
+              <TaskCoverPhoto photoId={t.cover_photo_id} title={t.title} className="-mx-4 -mt-4 mb-3 rounded-t-2xl" />
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">

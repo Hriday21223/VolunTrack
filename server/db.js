@@ -656,6 +656,25 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
 
+  // Task cover photos (server/routes/taskPhotos.js): one per task, bytes kept
+  // in Postgres like the branding logo — tenant buckets are private, per-school
+  // and for proof documents, and organizers often have no school. The id is
+  // random and changes on every replace, so it doubles as the cache key in
+  // GET /api/task-photos/file/:id. Deleting a task (or its organizer) deletes
+  // the photo with it.
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS public_task_photos (
+      id          TEXT PRIMARY KEY,
+      task_id     TEXT NOT NULL UNIQUE REFERENCES public_tasks(id) ON DELETE CASCADE,
+      mime        TEXT NOT NULL CHECK (mime IN ('image/jpeg','image/png','image/webp')),
+      bytes       INTEGER NOT NULL,
+      data        BYTEA NOT NULL,
+      uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`)
+  } catch (error) { console.error('public_task_photos migration failed:', error.message) }
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS cover_photo_id TEXT`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

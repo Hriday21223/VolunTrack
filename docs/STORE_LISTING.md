@@ -97,7 +97,7 @@ cost of the app running letterboxed on iPads.
 | Personal info → Other info (date of birth, at sign-up — tick *processed ephemerally*: used for the age rules, never stored) | Yes | No | Required for an account | App functionality |
 | Location → Approximate location | Yes | No | Optional | App functionality |
 | Location → Precise location | Yes | No | Optional | App functionality |
-| Photos and videos → Photos | Yes | No | Optional | App functionality |
+| Photos and videos → Photos (proof of service; an organizer's task cover photo) | Yes | No | Optional | App functionality |
 | Files and docs | Yes | No | Optional | App functionality |
 | App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
@@ -145,7 +145,7 @@ purpose *App Functionality* — matching `PrivacyInfo.xcprivacy`:
 - Identifiers → User ID
 - Location → Precise Location (only when the user taps *Use current location*
   or turns on nearby tasks)
-- User Content → Photos or Videos, Other User Content (entries, app
+- User Content → Photos or Videos (proof photos, task cover photos), Other User Content (entries, app
   reviews, and reports about volunteer tasks), Customer Support
   (contact-form messages)
 

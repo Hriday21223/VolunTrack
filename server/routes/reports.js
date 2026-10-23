@@ -5,6 +5,7 @@ import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
 import { sendEmail, emailFooterHtml } from '../email.js'
 import { escapeHtml } from '../html.js'
+import { removeTaskPhoto } from './taskPhotos.js'
 
 // Report and block (App Store guideline 1.2). Volunteer tasks are posted by
 // Volunteer Task Makers and seen by students, many of them minors, so:
@@ -146,7 +147,7 @@ router.get('/admin', limiter, requireDb, requireAuth('admin'), async (_req, res)
     const { rows } = await query(
       `SELECT r.id, r.reason, r.details, r.status, r.created_at, r.resolved_at,
               t.id AS task_id, t.title AS task_title, t.location AS task_location,
-              to_char(t.date, 'YYYY-MM-DD') AS task_date, t.status AS task_status,
+              to_char(t.date, 'YYYY-MM-DD') AS task_date, t.status AS task_status, t.cover_photo_id AS task_cover_photo_id,
               p.id AS poster_id, p.name AS poster_name, p.email AS poster_email, p.posting_suspended_at,
               rep.name AS reporter_name, rep.role AS reporter_role,
               (SELECT count(*)::int FROM content_reports x WHERE x.task_id = r.task_id) AS reports_on_task
@@ -164,17 +165,23 @@ router.get('/admin', limiter, requireDb, requireAuth('admin'), async (_req, res)
   }
 })
 
-// { action: 'dismiss' | 'remove_task' | 'suspend' }
+// { action: 'dismiss' | 'remove_task' | 'remove_photo' | 'suspend' }
 router.post('/admin/:id/resolve', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const action = req.body?.action
-  if (!['dismiss', 'remove_task', 'suspend'].includes(action)) return res.status(400).json({ error: 'Unknown action.' })
+  if (!['dismiss', 'remove_task', 'remove_photo', 'suspend'].includes(action)) return res.status(400).json({ error: 'Unknown action.' })
   try {
     const { rows } = await query('SELECT task_id, reported_user_id FROM content_reports WHERE id = $1', [req.params.id])
     const report = rows[0]
     if (!report) return res.status(404).json({ error: 'Report not found.' })
     if (action === 'dismiss') {
       await query("UPDATE content_reports SET status = 'dismissed', resolved_by = $2, resolved_at = now() WHERE id = $1", [req.params.id, req.auth.sub])
+    } else if (action === 'remove_photo') {
+      // Just the cover photo (routes/taskPhotos.js); the task stays up.
+      await removeTaskPhoto(report.task_id)
+      await query("UPDATE content_reports SET status = 'dismissed', resolved_by = $2, resolved_at = now() WHERE id = $1", [req.params.id, req.auth.sub])
     } else if (action === 'remove_task') {
+      // A removed task's photo goes with it.
+      await removeTaskPhoto(report.task_id)
       await query(
         `UPDATE public_tasks SET status = 'cancelled', cancelled_reason = 'Removed by VolunTrack after a report.', cancelled_at = now(), updated_at = now()
           WHERE id = $1 AND status <> 'cancelled'`,
