@@ -11,6 +11,7 @@ import Toast from '@/components/Toast.jsx'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
 import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
 import RateTask from '@/components/RateTask.jsx'
+import WeatherChip from '@/components/WeatherChip.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -54,6 +55,7 @@ function SignupRow({ s, onChanged, canRate }) {
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.location}</span>
             <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{s.time ? ` · ${s.time}` : ''}</span>
           </div>
+          {!['rejected', 'parent_declined'].includes(s.signup_status) && <WeatherChip task={s} className="mt-2" />}
           {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
           {!cancelled && !isPast && s.signup_status === 'parent_pending' && (
             <p className="text-xs text-amber-400 mt-2">{tr('The organizer sees your sign-up once a parent approves it. No parent linked yet? Ask them to make a VolunTrack parent account and enter the link code from Settings → Family.')}</p>

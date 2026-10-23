@@ -14,7 +14,8 @@ export function taskDetailsFromRow(t) {
     isOnline: Boolean(t?.is_online),
     wheelchairAccessible: t?.wheelchair_accessible || 'unknown',
     accessibilityNote: t?.accessibility_note || '',
+    isOutdoor: Boolean(t?.is_outdoor),
   }
 }
 
-export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '' }
+export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '', isOutdoor: false }

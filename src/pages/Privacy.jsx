@@ -110,6 +110,7 @@ export default function Privacy() {
           <Section title="Third-Party Sharing">
             <p>We do not sell or trade your personal data. We share it only with the schools, organizations, or linked parent accounts you explicitly connect to (for example, via a school code or family link code), and only for the purpose of hour tracking and verification. A linked parent also sees the volunteer tasks a student has signed up for — the task, its date, time and place, the organizer&apos;s name, and whether the student is approved, waiting, on the waitlist or checked in — but not the organizer&apos;s other contact details or anyone else who signed up.</p>
             <p className="mt-2">If you move to another school, your whole record, including past entries, moves to the new school only once it accepts the transfer; from then on your former school no longer sees it. Files already held in your former school&apos;s own storage stay there.</p>
+            <p className="mt-2">For outdoor tasks happening in the next week, our server asks Open-Meteo (open-meteo.com), a free weather service, for the forecast at the task&apos;s location. It receives only the task&apos;s map coordinates, rounded to about a kilometre, and the date — never your name, account, or location, and your browser does not contact it.</p>
           </Section>
 
           <Section title="Service Providers">

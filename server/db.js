@@ -672,6 +672,8 @@ export async function initSchema() {
     await query('CREATE INDEX IF NOT EXISTS idx_task_questions_task ON task_questions(task_id, created_at)')
     await query('CREATE INDEX IF NOT EXISTS idx_task_questions_asker ON task_questions(asker_id)')
   } catch (error) { console.error('task_questions migration failed:', error.message) }
+  // Outdoor tasks get a forecast chip (server/routes/weather.js, #435).
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS is_outdoor BOOLEAN NOT NULL DEFAULT false`) } catch {}
 
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
