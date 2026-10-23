@@ -10,6 +10,7 @@ import {
   deleteCustomHostname, isHostnameActive, hostnameStatusDetail,
 } from '../cloudflare.js'
 import { invalidateTenantOrigins } from '../tenantOrigins.js'
+import { hasImageMagic } from '../imageCheck.js'
 
 const router = express.Router()
 
@@ -412,24 +413,7 @@ router.delete('/domains/:id', tenantAdminLimiter, requireDb, requireAuth('school
 // page load, and the SPA caches that response.
 const MAX_LOGO_DATA_URL = 200_000
 
-// SVG is deliberately absent: it is inert inside <img>, but a data:image/svg+xml
-// opened directly is a document that can run script.
-//
-// An explicit switch rather than a lookup table keyed by the matched type, so
-// no method is ever chosen by a request-derived name (CodeQL
-// js/unvalidated-dynamic-method-call), and anything unexpected is refused.
-function hasImageMagic(type, b) {
-  switch (type) {
-    case 'png':
-      return b.length > 8 && b[0] === 0x89 && b.toString('ascii', 1, 4) === 'PNG'
-    case 'jpeg':
-      return b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff
-    case 'webp':
-      return b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP'
-    default:
-      return false
-  }
-}
+// Magic-byte check shared with task cover photos: server/imageCheck.js.
 
 function normalizeLogoDataUrl(raw) {
   // Length first, so the pattern below only ever runs over bounded input.
