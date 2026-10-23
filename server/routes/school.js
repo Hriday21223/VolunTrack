@@ -1411,7 +1411,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
-               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor,
+               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -1527,7 +1527,7 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -3377,7 +3377,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,

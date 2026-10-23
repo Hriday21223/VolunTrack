@@ -30,7 +30,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 22, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 23, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -46,6 +46,7 @@ export default function Privacy() {
               <li><strong>Personal goals</strong> — the name, hour target, deadline and cause (if you pick one) of goals you set, so they show on all your devices. Deleting a goal or your account deletes it.</li>
               <li><strong>Verification details</strong> — when you ask someone to verify an entry, the supervisor&apos;s name and email, the organization&apos;s name, address and phone, and the signature the supervisor draws when they approve from the emailed link. A supervisor who signs in person, on your device, leaves that drawing on your device only. When a task organizer signs off your hours from their VolunTrack account, their signature is stored with the entry so you and your school can see it.</li>
               <li><strong>Your signature</strong> — only if your school asks you to sign your entries. The drawing stays on your device; we only record that the entry was signed, and, if your school uses its own online form, that you said you sent it.</li>
+              <li><strong>Task cover photos</strong> — if you add a photo to a volunteer task you post, we store it on our servers with the task. Your device shrinks it and removes hidden details such as the camera and the place it was taken before upload, and our server removes them again. It is shown with the task to anyone who can see the task on Opportunities, including signed-in students. Remove or replace it any time from My Tasks; it is deleted when you do, when the task or your account is deleted, or if we remove it after a report. Please don&apos;t upload photos where volunteers can be identified without their permission.</li>
               <li><strong>Task organizer contact</strong> — when you create a volunteer task, the email you give is shown to the volunteers you approve, so they can ask you to sign off their hours.</li>
               <li><strong>Proof of service</strong> — photos or documents you attach to an entry. See <em>Proof files</em> below for where these are held.</li>
               <li><strong>Access records</strong> — when a school or organization staff member opens a student&apos;s record, we record who did it and when, along with the IP address and browser, so that access to a minor&apos;s record can be accounted for.</li>
