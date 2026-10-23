@@ -28,6 +28,8 @@ const KIND_LABELS = {
   comeback_nudge: tr('We miss you'),
   saved_task_reminder: tr('Saved task'),
   task_thanks: tr('A thank-you'),
+  task_question: tr('New question'),
+  task_answer: tr('Your question was answered'),
 }
 
 const getToken = () => {

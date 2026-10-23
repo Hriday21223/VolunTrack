@@ -15,6 +15,7 @@ import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import TaskQuestions from '@/components/TaskQuestions.jsx'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -579,6 +580,7 @@ export default function Opportunities() {
                   {approved && String(t.date).slice(0, 10) === format(new Date(), 'yyyy-MM-dd') && (
                     <div className="mt-2"><ScanCheckinButton className="btn-secondary text-sm" /></div>
                   )}
+                  <TaskQuestions task={t} className="mt-2" />
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
                   {t.my_signup_status === 'approved' ? (

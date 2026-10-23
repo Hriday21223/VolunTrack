@@ -656,6 +656,23 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
 
+  // Ask the organizer (#436, routes/school.js): public Q&A on a task. Only
+  // answered, unhidden rows are shown beyond the asker and the organizer.
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS task_questions (
+      id          TEXT PRIMARY KEY,
+      task_id     TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+      asker_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      question    TEXT NOT NULL,
+      answer      TEXT,
+      answered_at TIMESTAMPTZ,
+      hidden      BOOLEAN NOT NULL DEFAULT false,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`)
+    await query('CREATE INDEX IF NOT EXISTS idx_task_questions_task ON task_questions(task_id, created_at)')
+    await query('CREATE INDEX IF NOT EXISTS idx_task_questions_asker ON task_questions(asker_id)')
+  } catch (error) { console.error('task_questions migration failed:', error.message) }
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

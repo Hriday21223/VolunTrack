@@ -22,6 +22,7 @@ import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJEC
 import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
+import { displayName } from './portfolio.js'
 
 const router = express.Router()
 
@@ -1388,6 +1389,9 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
                t.created_by AS organizer_id,
+               -- Ask the organizer: what this viewer would see under "Questions".
+               (SELECT COUNT(*)::int FROM task_questions q WHERE q.task_id = t.id AND NOT q.hidden
+                  AND (q.answer IS NOT NULL ${userId ? 'OR q.asker_id = $1' : ''})) AS question_count,
                ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer,
                ${userId ? 'EXISTS (SELECT 1 FROM saved_tasks st WHERE st.user_id = $1 AND st.task_id = t.id)' : 'false'} AS i_saved,
                -- The organizer's average across all their tasks, only once
@@ -3249,7 +3253,10 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
               ) ORDER BY r.updated_at DESC), '[]'::json)
                FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments,
               -- The one thank-you note (POST /public-tasks/:id/thanks), if sent.
-              (SELECT to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM task_thanks th WHERE th.task_id = t.id) AS thanks_sent_at
+              (SELECT to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM task_thanks th WHERE th.task_id = t.id) AS thanks_sent_at,
+              -- Ask the organizer: every question, and those still unanswered.
+              (SELECT COUNT(*)::int FROM task_questions q WHERE q.task_id = t.id) AS question_count,
+              (SELECT COUNT(*)::int FROM task_questions q WHERE q.task_id = t.id AND q.answer IS NULL AND NOT q.hidden) AS open_question_count
        FROM public_tasks t WHERE t.created_by = $1
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.auth.sub],
@@ -3258,6 +3265,192 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   } catch (error) {
     console.error('my tasks failed:', error)
     return res.status(500).json({ error: 'Could not fetch your tasks.' })
+  }
+})
+
+// --- Ask the organizer (#436) -----------------------------------------------
+//
+// Public Q&A on a task. A signed-in student asks; only the task's creator
+// answers, edits the answer, hides or deletes. An answered, unhidden question
+// is shown to everyone who can see the task; an unanswered one only to its
+// asker and the organizer; a hidden one only to the organizer. The asker is
+// never named to other students — only the organizer sees "First L.".
+// Blocks and suspensions apply as everywhere else on a task (reports.js);
+// a cancelled task is read-only.
+
+const QUESTION_MAX = 300
+const ANSWER_MAX = 1000
+const OPEN_QUESTIONS_PER_TASK = 3
+
+// Per IP, and a school's students often share one, so it's a spam cap, not a
+// per-student quota (that's OPEN_QUESTIONS_PER_TASK).
+const askLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many questions. Please try again later.' },
+})
+
+// The task as this viewer may see it, or null when it doesn't exist for them:
+// an organizer the admin suspended or one the viewer blocked hides the task
+// from everyone but the organizer.
+async function questionTaskFor(taskId, viewerId) {
+  const { rows } = await query(
+    `SELECT t.id, t.title, t.status, t.created_by,
+            (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
+            ${viewerId ? `EXISTS (SELECT 1 FROM user_blocks b
+                    WHERE (b.blocker_id = $2 AND b.blocked_id = t.created_by)
+                       OR (b.blocker_id = t.created_by AND b.blocked_id = $2))` : 'false'} AS blocked
+       FROM public_tasks t WHERE t.id = $1`,
+    viewerId ? [taskId, viewerId] : [taskId],
+  )
+  const task = rows[0]
+  if (!task) return null
+  const isOrganizer = Boolean(viewerId) && task.created_by === viewerId
+  if (!isOrganizer && (task.host_suspended || task.blocked)) return null
+  return { ...task, isOrganizer }
+}
+
+function questionJson(row, { isOrganizer, viewerId }) {
+  return {
+    id: row.id,
+    question: row.question,
+    answer: row.answer,
+    answeredAt: row.answered_at,
+    createdAt: row.created_at,
+    mine: Boolean(viewerId) && row.asker_id === viewerId,
+    ...(isOrganizer ? { hidden: row.hidden, askerName: displayName(row.asker_name) } : {}),
+  }
+}
+
+// GET: the questions this viewer may see. Works signed out (answered only).
+router.get('/public-tasks/:id/questions', limiter, requireDb, authenticate, async (req, res) => {
+  try {
+    const viewerId = req.auth?.sub || null
+    const task = await questionTaskFor(req.params.id, viewerId)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    const { rows } = task.isOrganizer
+      ? await query(
+        `SELECT q.*, u.name AS asker_name FROM task_questions q JOIN users u ON u.id = q.asker_id
+          WHERE q.task_id = $1 ORDER BY (q.answer IS NULL) DESC, q.created_at DESC`,
+        [task.id],
+      )
+      : await query(
+        `SELECT q.id, q.asker_id, q.question, q.answer, q.answered_at, q.created_at FROM task_questions q
+          WHERE q.task_id = $1 AND NOT q.hidden
+            AND (q.answer IS NOT NULL ${viewerId ? 'OR q.asker_id = $2' : ''})
+          ORDER BY q.created_at DESC`,
+        viewerId ? [task.id, viewerId] : [task.id],
+      )
+    return res.json({
+      questions: rows.map((r) => questionJson(r, { isOrganizer: task.isOrganizer, viewerId })),
+      isOrganizer: task.isOrganizer,
+      canAsk: !task.isOrganizer && req.auth?.role === 'student' && task.status === 'open',
+      readOnly: task.status === 'cancelled',
+    })
+  } catch (error) {
+    console.error('list task questions failed:', error)
+    return res.status(500).json({ error: 'Could not load questions.' })
+  }
+})
+
+// POST { question }: a student asks the organizer.
+router.post('/public-tasks/:id/questions', askLimiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const text = typeof req.body?.question === 'string' ? req.body.question.trim() : ''
+    if (!text) return res.status(400).json({ error: 'Write a question first.' })
+    if (text.length > QUESTION_MAX) return res.status(400).json({ error: `Keep your question under ${QUESTION_MAX} characters.` })
+    const task = await questionTaskFor(req.params.id, req.auth.sub)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (task.isOrganizer) return res.status(400).json({ error: 'This is your task — you answer questions here.' })
+    if (task.status !== 'open') return res.status(400).json({ error: 'This task isn\'t taking questions.' })
+    // Hidden ones count too, so hiding a question doesn't hand back a slot.
+    const { rows: open } = await query(
+      'SELECT COUNT(*)::int AS n FROM task_questions WHERE task_id = $1 AND asker_id = $2 AND answer IS NULL',
+      [task.id, req.auth.sub],
+    )
+    if (open[0].n >= OPEN_QUESTIONS_PER_TASK) {
+      return res.status(429).json({ error: `You have ${OPEN_QUESTIONS_PER_TASK} questions waiting for an answer on this task. Wait for a reply first.` })
+    }
+    const { rows } = await query(
+      `INSERT INTO task_questions (id, task_id, asker_id, question) VALUES ($1, $2, $3, $4)
+       RETURNING id, asker_id, question, answer, answered_at, created_at`,
+      [uid('tq'), task.id, req.auth.sub, text],
+    )
+    notify(task.created_by, {
+      kind: 'task_question',
+      title: `New question on "${task.title}"`,
+      body: text,
+      link: '/my-tasks',
+    })
+    return res.status(201).json({ question: questionJson(rows[0], { isOrganizer: false, viewerId: req.auth.sub }) })
+  } catch (error) {
+    console.error('ask task question failed:', error)
+    return res.status(500).json({ error: 'Could not send your question.' })
+  }
+})
+
+// PUT { answer, hidden? }: the organizer answers or edits the answer, and/or
+// hides or unhides the question. An empty answer leaves it unanswered.
+router.put('/public-tasks/:id/questions/:qid/answer', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await questionTaskFor(req.params.id, req.auth.sub)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (!task.isOrganizer) return res.status(403).json({ error: 'Only the task\'s organizer can answer.' })
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (task.host_suspended) return res.status(403).json({ error: 'Your account can\'t post right now.' })
+    const hasAnswer = req.body?.answer !== undefined
+    const answer = typeof req.body?.answer === 'string' ? req.body.answer.trim() : ''
+    if (hasAnswer && typeof req.body.answer !== 'string') return res.status(400).json({ error: 'Invalid answer.' })
+    if (answer.length > ANSWER_MAX) return res.status(400).json({ error: `Keep your answer under ${ANSWER_MAX} characters.` })
+    const hidden = typeof req.body?.hidden === 'boolean' ? req.body.hidden : null
+    if (!hasAnswer && hidden === null) return res.status(400).json({ error: 'Nothing to change.' })
+    const { rows: before } = await query(
+      'SELECT answer FROM task_questions WHERE id = $1 AND task_id = $2',
+      [req.params.qid, task.id],
+    )
+    if (before.length === 0) return res.status(404).json({ error: 'Question not found.' })
+    const { rows } = await query(
+      `UPDATE task_questions q SET
+              answer = CASE WHEN $3::boolean THEN NULLIF($4, '') ELSE q.answer END,
+              answered_at = CASE WHEN $3::boolean THEN (CASE WHEN $4 = '' THEN NULL ELSE now() END) ELSE q.answered_at END,
+              hidden = COALESCE($5::boolean, q.hidden)
+        WHERE q.id = $1 AND q.task_id = $2
+        RETURNING q.*, (SELECT name FROM users WHERE id = q.asker_id) AS asker_name`,
+      [req.params.qid, task.id, hasAnswer, answer, hidden],
+    )
+    const row = rows[0]
+    // First answer only: an edit doesn't ring the bell again.
+    if (hasAnswer && answer && !before[0].answer && !row.hidden) {
+      notify(row.asker_id, {
+        kind: 'task_answer',
+        title: `Your question on "${task.title}" was answered`,
+        body: answer,
+        link: `/opportunities?task=${encodeURIComponent(task.id)}`,
+      })
+    }
+    return res.json({ question: questionJson(row, { isOrganizer: true, viewerId: req.auth.sub }) })
+  } catch (error) {
+    console.error('answer task question failed:', error)
+    return res.status(500).json({ error: 'Could not save the answer.' })
+  }
+})
+
+// DELETE: the organizer removes any question on their task; an asker may
+// withdraw their own.
+router.delete('/public-tasks/:id/questions/:qid', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await questionTaskFor(req.params.id, req.auth.sub)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    const { rowCount } = task.isOrganizer
+      ? await query('DELETE FROM task_questions WHERE id = $1 AND task_id = $2', [req.params.qid, task.id])
+      : await query('DELETE FROM task_questions WHERE id = $1 AND task_id = $2 AND asker_id = $3', [req.params.qid, task.id, req.auth.sub])
+    if (rowCount === 0) return res.status(404).json({ error: 'Question not found.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('delete task question failed:', error)
+    return res.status(500).json({ error: 'Could not delete the question.' })
   }
 })
 
