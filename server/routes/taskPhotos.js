@@ -64,14 +64,18 @@ router.put('/:taskId', uploadLimiter, requireDb, requireAuth(), readImageBody, a
   if (!ID_RE.test(taskId)) return res.status(404).json({ error: 'Task not found.' })
   const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
   const type = TYPES[mime]
-  if (!type || !Buffer.isBuffer(req.body)) {
+  // express.raw gives a Buffer; refuse anything else (an array or string here
+  // would mean the body was parsed some other way).
+  const raw = req.body
+  if (!type || Array.isArray(raw) || typeof raw === 'string' || !Buffer.isBuffer(raw)) {
     return res.status(415).json({ error: 'Photo must be a JPEG, PNG, or WebP image.' })
   }
+  const bytes = Buffer.from(raw)
   // The declared type must agree with the bytes.
-  if (!hasImageMagic(type, req.body)) {
+  if (!hasImageMagic(type, bytes)) {
     return res.status(400).json({ error: 'That file is not a valid JPEG, PNG, or WebP image.' })
   }
-  const clean = stripImageMetadata(type, req.body)
+  const clean = stripImageMetadata(type, bytes)
   if (!clean || !hasImageMagic(type, clean)) {
     return res.status(400).json({ error: 'That file is not a valid JPEG, PNG, or WebP image.' })
   }
