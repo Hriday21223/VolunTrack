@@ -28,6 +28,7 @@ const KIND_LABELS = {
   comeback_nudge: tr('We miss you'),
   saved_task_reminder: tr('Saved task'),
   task_thanks: tr('A thank-you'),
+  cohost_added: tr('You are a co-host'),
   volunteer_late: tr('Volunteer running late'),
   volunteer_cancelled_day_of: tr("Volunteer can't make it"),
   task_question: tr('New question'),
