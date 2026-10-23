@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { TASK_CATEGORIES } from './school.js'
+import { SPOTS_USED_SQL } from '../spots.js'
 
 // Organizer profiles: anyone who posts volunteer tasks can describe
 // themselves in Settings (About, an optional https website, causes), and
@@ -126,8 +127,7 @@ router.get('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       query(
         `SELECT t.id, t.title, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.category,
                 t.slots_total, t.is_online,
-                (SELECT COUNT(*)::int FROM public_task_signups s
-                  WHERE s.task_id = t.id AND s.status IN ('pending', 'approved')) AS slots_filled
+                ${SPOTS_USED_SQL('t.id')} AS slots_filled
            FROM public_tasks t
           WHERE t.created_by = $1 AND t.status = 'open' AND t.date >= CURRENT_DATE - 1
           ORDER BY t.date ASC, t.created_at DESC

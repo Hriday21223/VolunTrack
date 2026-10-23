@@ -15,9 +15,10 @@ import OrganizerStats from '@/components/OrganizerStats.jsx'
 import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.jsx'
 import LateBadge from '@/components/LateBadge.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
-import TaskCohosts from '@/components/TaskCohosts.jsx'
 import TaskQuestions from '@/components/TaskQuestions.jsx'
+import TaskCohosts from '@/components/TaskCohosts.jsx'
 import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
+import { guestSummary } from '@/lib/guests.js'
 import { tr } from '@/lib/i18n.js'
 import TaskPhotoPicker from '@/components/TaskPhotoPicker.jsx'
 import { uploadTaskPhoto, fetchTaskPhoto } from '@/lib/taskPhoto.js'
@@ -104,12 +105,12 @@ export default function MyTasks() {
   const reportCSV = () => {
     if (!report) return
     const rows = [
-      ['Date', 'Event', 'Location', 'Status', 'Approved', 'Present', 'Absent', 'Excused', 'Hours'],
+      ['Date', 'Event', 'Location', 'Status', 'Approved', 'Guests', 'Present', 'Absent', 'Excused', 'Hours'],
       ...report.tasks.map((t) => [
         String(t.date || '').slice(0, 10),
         t.title || '',
         t.location || '',
-        t.status, t.approved, t.present, t.absent, t.excused, t.hours,
+        t.status, t.approved, t.guests || 0, t.present, t.absent, t.excused, t.hours,
       ]),
     ]
     const blob = new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })
@@ -673,7 +674,7 @@ export default function MyTasks() {
                           <tr key={t.id} className="border-t border-white/10">
                             <td className="py-2 whitespace-nowrap">{String(t.date || '').slice(0, 10)}</td>
                             <td className="py-2">{t.title}{t.status === 'cancelled' && <span className="text-xs text-red-400"> · cancelled</span>}</td>
-                            <td className="py-2 text-right">{t.approved}</td>
+                            <td className="py-2 text-right">{t.approved}{t.guests > 0 && <span className="text-xs text-earth-500"> +{t.guests}</span>}</td>
                             <td className="py-2 text-right">{t.present}</td>
                             <td className="py-2 text-right">{t.hours}</td>
                           </tr>
@@ -921,6 +922,7 @@ export default function MyTasks() {
                               <p className="text-xs text-earth-400 truncate">{s.email}</p>
                               {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
                               <LateBadge signup={s} />
+                              {s.guest_count > 0 && <p className="text-xs text-brand-400 truncate">{guestSummary(s.guest_count, s.guest_names)}</p>}
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}
