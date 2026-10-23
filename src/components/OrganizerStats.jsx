@@ -160,7 +160,7 @@ export default function OrganizerStats() {
         <div className={`space-y-4 ${loading ? 'opacity-60' : ''}`}>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <StatTile icon={CalendarCheck} label="Tasks run" value={totals.tasksRun} />
-            <StatTile icon={Users} label="Volunteers" value={totals.volunteers} hint={`${totals.signups} sign-up${totals.signups === 1 ? '' : 's'} · ${totals.waitlisted} waitlisted`} />
+            <StatTile icon={Users} label="Volunteers" value={totals.volunteers} hint={`${totals.signups} sign-up${totals.signups === 1 ? '' : 's'}${totals.guests > 0 ? ` · +${totals.guests} guest${totals.guests === 1 ? '' : 's'}` : ''} · ${totals.waitlisted} waitlisted`} />
             <StatTile
               icon={UserCheck}
               label="Show-up rate"
@@ -225,7 +225,7 @@ export default function OrganizerStats() {
                         {t.title}
                         {t.waitlisted > 0 && <span className="text-xs text-earth-500"> · {t.waitlisted} waitlisted</span>}
                       </td>
-                      <td className="py-2 px-1 text-right">{t.signups}</td>
+                      <td className="py-2 px-1 text-right">{t.signups}{t.guests > 0 && <span className="text-xs text-earth-500" title="Guests of approved volunteers"> +{t.guests}</span>}</td>
                       <td className="py-2 px-1 text-right" title={t.excused ? `${t.excused} excused, not counted` : undefined}>{pct(t.showUpRate)}</td>
                       <td className="py-2 px-1 text-right">{t.noShows}</td>
                       <td className="py-2 px-1 text-right">{hrs(t.hours)}</td>

@@ -14,7 +14,9 @@ export function taskDetailsFromRow(t) {
     isOnline: Boolean(t?.is_online),
     wheelchairAccessible: t?.wheelchair_accessible || 'unknown',
     accessibilityNote: t?.accessibility_note || '',
+    // Group sign-ups (#439): Edit and Post again keep it.
+    allowGuests: Boolean(t?.allow_guests),
   }
 }
 
-export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '' }
+export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '', allowGuests: false }

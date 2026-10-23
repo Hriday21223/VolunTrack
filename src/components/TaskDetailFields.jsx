@@ -3,7 +3,8 @@ import { tr } from '@/lib/i18n.js'
 const AGE_CHOICES = [10, 12, 13, 14, 16, 18, 21]
 
 // The optional task details (#426) on My Tasks' post and edit forms: online,
-// minimum age, wheelchair access and a short note. `value` holds minAge
+// minimum age, wheelchair access and a short note, plus whether volunteers
+// may bring guests (#439). `value` holds minAge
 // ('' for none), isOnline, wheelchairAccessible and accessibilityNote;
 // `onChange` gets the fields that changed.
 export default function TaskDetailFields({ value, onChange, idPrefix = 'task' }) {
@@ -35,6 +36,14 @@ export default function TaskDetailFields({ value, onChange, idPrefix = 'task' })
         value={value.accessibilityNote}
         onChange={(e) => onChange({ accessibilityNote: e.target.value })}
       />
+      {/* Group sign-ups (#439). */}
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={Boolean(value.allowGuests)} onChange={(e) => onChange({ allowGuests: e.target.checked })} />
+        <span>
+          {tr('Volunteers can bring up to 3 guests')}
+          <span className="block text-xs text-earth-500">{tr("Each guest takes a spot. Guests' hours aren't recorded in VolunTrack.")}</span>
+        </span>
+      </label>
     </div>
   )
 }

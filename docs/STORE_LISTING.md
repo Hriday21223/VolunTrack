@@ -99,7 +99,7 @@ cost of the app running letterboxed on iPads.
 | Location → Precise location | Yes | No | Optional | App functionality |
 | Photos and videos → Photos | Yes | No | Optional | App functionality |
 | Files and docs | Yes | No | Optional | App functionality |
-| App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages) | Yes | No | Required | App functionality |
+| App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages, optional first names of guests brought to a task) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
 | App info and performance → Crash logs (error message, technical details, page and app version, with no account, name or email attached) | Yes | No | Required | App functionality |
 
