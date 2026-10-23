@@ -1032,7 +1032,6 @@ export default {
   "{n} unanswered": "{n} sin responder",
   "No questions yet.": "Todavía no hay preguntas.",
   "No answered questions yet. Ask the organizer below.": "Todavía no hay preguntas respondidas. Pregúntale al organizador aquí abajo.",
-  "Organizer": "Organizador",
   "Waiting for an answer. Only you and the organizer can see this.": "Esperando respuesta. Solo tú y el organizador pueden ver esto.",
   "Delete my question": "Borrar mi pregunta",
   "Ask the organizer a question": "Hazle una pregunta al organizador",
