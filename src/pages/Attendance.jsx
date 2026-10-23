@@ -11,6 +11,7 @@ import Toast from '@/components/Toast.jsx'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
 import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
 import RateTask from '@/components/RateTask.jsx'
+import DayOfPanel from '@/components/DayOfPanel.jsx'
 import WeatherChip from '@/components/WeatherChip.jsx'
 import { tr } from '@/lib/i18n.js'
 
@@ -83,6 +84,8 @@ function SignupRow({ s, onChanged, canRate }) {
           )}
         </div>
       </div>
+      {/* Meeting point, day-of contact, and on the day "Running late" / "Can't make it" (#438). */}
+      {!isPast && <DayOfPanel task={s} onDone={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />}
       {/* The organizer's thank-you note — the server sends it only to those it went to. */}
       {s.thanks?.message && (
         <div className="mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">

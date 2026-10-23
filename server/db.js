@@ -656,6 +656,14 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
 
+  // Day-of details (#438): where to meet and who to call on the day. Only the
+  // organizer and approved volunteers ever read them (routes/school.js).
+  // late_eta_minutes / late_at: an approved volunteer's "Running late" on the
+  // task's day — one per signup, the ETA can be changed.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS meeting_point TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS day_of_contact TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS late_eta_minutes SMALLINT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS late_at TIMESTAMPTZ`) } catch {}
   // Ask the organizer (#436, routes/school.js): public Q&A on a task. Only
   // answered, unhidden rows are shown beyond the asker and the organizer.
   try {
