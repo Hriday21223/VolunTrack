@@ -1723,10 +1723,12 @@ async function notifyFollowers(organizerId, taskId) {
         html: taskEmailHtml({
           heading: 'A new volunteer task',
           lines: [
-            `Hi ${r.name || 'there'}, ${task.creator_name || 'an organizer you follow'} just posted a new task. Sign up from Opportunities in VolunTrack.`,
+            `Hi ${r.name || 'there'}, ${task.creator_name || 'an organizer you follow'} just posted a new task.`,
             'You get these because you follow this organizer. Unfollow from Opportunities to stop them.',
           ],
           task,
+          link: taskPageLink(taskId),
+          linkLabel: 'View task and sign up',
         }),
       })
     }
@@ -2093,6 +2095,12 @@ function inviteEmailHash(email) {
 function frontendBase() {
   const first = (process.env.FRONTEND_URL || '').split(',').map((s) => s.trim()).find(Boolean)
   return (first || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
+}
+
+// The task's own spot on Opportunities, which scrolls to and highlights it.
+// Signed-out readers go through sign-in and land back here.
+function taskPageLink(taskId) {
+  return `${frontendBase()}/opportunities?task=${encodeURIComponent(taskId)}`
 }
 
 // The inviter id to store on a new signup, or null. The inviter must have
@@ -2579,6 +2587,8 @@ async function notifyWaitlistSpot(taskId, userId) {
           "Can't make it any more? Cancel from Attendance in VolunTrack so the next person gets the spot.",
         ],
         task: row,
+        link: taskPageLink(taskId),
+        linkLabel: 'View task',
       }),
     })
   } catch (error) {
@@ -2900,6 +2910,8 @@ async function notifySignupDecision(taskId, userId, decision) {
           ]
           : [`Hi ${row.name || 'there'}, the organizer could not take your signup for this one. Other opportunities are listed in VolunTrack.`],
         task: row,
+        link: taskPageLink(taskId),
+        linkLabel: 'View task',
       }),
     })
   } catch (error) {
@@ -3089,6 +3101,9 @@ router.post('/public-tasks/:id/cancel', limiter, requireDb, requireAuth(), async
               ...(reason ? [`Reason given: ${reason}`] : []),
             ],
             task: rows[0],
+            // The cancelled task isn't listed any more, so point at the rest.
+            link: `${frontendBase()}/opportunities`,
+            linkLabel: 'Find another task',
           }),
         })
       } catch (error) { console.error('cancellation email failed:', error) }
@@ -3144,6 +3159,8 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
             heading: `A message from ${from}`,
             lines: [message],
             task: rows[0],
+            link: taskPageLink(req.params.id),
+            linkLabel: 'View task',
           }),
         })
         sent += 1
@@ -3201,6 +3218,8 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
                 ...(task.day_of_contact ? [`On the day, contact: ${task.day_of_contact}`] : []),
               ],
               task,
+              link: taskPageLink(task.id),
+              linkLabel: 'View task',
             }),
           })
           sent += 1
