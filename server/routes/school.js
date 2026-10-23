@@ -2889,6 +2889,36 @@ function taskCalendarLink(taskId) {
   return `${backendUrl()}/api/school/public-tasks/${encodeURIComponent(taskId)}/calendar.ics`
 }
 
+// Same two choices as the app's AddToCalendar: Google, and the .ics file.
+function calendarLinksHtml(task, taskId) {
+  const google = googleCalendarLink(task, taskId)
+  return `<p><strong>Add to calendar:</strong> ${google ? `<a href="${escapeHtml(google)}">Google Calendar</a> · ` : ''}<a href="${escapeHtml(taskCalendarLink(taskId))}">Apple / Outlook</a></p>`
+}
+
+// Google Calendar's "new event" page, the same event as the .ics file (two
+// hours, or all day without a time). Mirrors src/lib/calendarLinks.js.
+function googleCalendarLink(task, taskId) {
+  const iso = task.date instanceof Date
+    ? `${task.date.getFullYear()}-${String(task.date.getMonth() + 1).padStart(2, '0')}-${String(task.date.getDate()).padStart(2, '0')}`
+    : String(task.date || '').slice(0, 10)
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return null
+  const pad = (n) => String(n).padStart(2, '0')
+  const stamp = (dt) => `${dt.getUTCFullYear()}${pad(dt.getUTCMonth() + 1)}${pad(dt.getUTCDate())}T${pad(dt.getUTCHours())}${pad(dt.getUTCMinutes())}00`
+  const hm = /^(\d{1,2}):(\d{2})/.exec(task.time || '')
+  let dates
+  if (hm) {
+    const start = new Date(Date.UTC(y, m - 1, d, Number(hm[1]), Number(hm[2])))
+    dates = `${stamp(start)}/${stamp(new Date(start.getTime() + 2 * 3600e3))}`
+  } else {
+    const day = new Date(Date.UTC(y, m - 1, d))
+    dates = `${stamp(day).slice(0, 8)}/${stamp(new Date(day.getTime() + 86400e3)).slice(0, 8)}`
+  }
+  const details = [task.creator_name && `Posted by ${task.creator_name}`, taskPageLink(taskId)].filter(Boolean).join('\n\n')
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: task.title || 'Volunteer task', dates, location: task.location || '', details })
+  return `https://calendar.google.com/calendar/render?${q}`
+}
+
 function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId }) {
   const when = friendlyWhen(task.date, task.time)
   const detail = [
@@ -2902,7 +2932,7 @@ function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId }
     <h3>${escapeHtml(task.title || 'Volunteer opportunity')}</h3>
     ${detail}
     ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(linkLabel || 'Open in VolunTrack')}</a></p>` : ''}
-    ${calendarTaskId ? `<p><a href="${escapeHtml(taskCalendarLink(calendarTaskId))}">Add to calendar</a></p>` : ''}
+    ${calendarTaskId ? calendarLinksHtml(task, calendarTaskId) : ''}
     ${emailFooterHtml()}
   `
 }
