@@ -2859,8 +2859,38 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
 // Every task email goes to one person at a time. A shared To: line on a
 // volunteer roster would publish a list of minors' addresses to each other,
 // which is the same reason referral invites are sent separately.
-function taskEmailHtml({ heading, lines, task, link, linkLabel }) {
-  const when = [task.date, task.time].filter(Boolean).join(' at ')
+// "2026-10-30" + "10:00" → "Fri, Oct 30 · 10:00 AM". The year shows only when
+// it isn't this one. A time that isn't HH:MM (free text) is shown as typed;
+// ../ics.js reads times the same way.
+function friendlyWhen(date, time) {
+  // A raw DATE column comes back from pg as a Date at local midnight.
+  if (date instanceof Date && !Number.isNaN(date.getTime())) {
+    const pad = (n) => String(n).padStart(2, '0')
+    date = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '')
+  let day = date || ''
+  if (m) {
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+    day = d.toLocaleDateString('en-US', {
+      timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric',
+      ...(+m[1] !== new Date().getFullYear() ? { year: 'numeric' } : {}),
+    })
+  }
+  const hm = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim())
+  const clock = hm && +hm[1] < 24
+    ? `${((+hm[1] + 11) % 12) + 1}:${hm[2]} ${+hm[1] < 12 ? 'AM' : 'PM'}`
+    : (time || '')
+  return [day, clock].filter(Boolean).join(' · ')
+}
+
+// The task's .ics file: phones and calendar apps open it as "add this event".
+function taskCalendarLink(taskId) {
+  return `${backendUrl()}/api/school/public-tasks/${encodeURIComponent(taskId)}/calendar.ics`
+}
+
+function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId }) {
+  const when = friendlyWhen(task.date, task.time)
   const detail = [
     when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : '',
     task.location ? `<p><strong>Where:</strong> ${escapeHtml(task.location)}</p>` : '',
@@ -2872,6 +2902,7 @@ function taskEmailHtml({ heading, lines, task, link, linkLabel }) {
     <h3>${escapeHtml(task.title || 'Volunteer opportunity')}</h3>
     ${detail}
     ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(linkLabel || 'Open in VolunTrack')}</a></p>` : ''}
+    ${calendarTaskId ? `<p><a href="${escapeHtml(taskCalendarLink(calendarTaskId))}">Add to calendar</a></p>` : ''}
     ${emailFooterHtml()}
   `
 }
@@ -2912,6 +2943,7 @@ async function notifySignupDecision(taskId, userId, decision) {
         task: row,
         link: taskPageLink(taskId),
         linkLabel: 'View task',
+        calendarTaskId: approved ? taskId : undefined,
       }),
     })
   } catch (error) {
@@ -3220,6 +3252,7 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
               task,
               link: taskPageLink(task.id),
               linkLabel: 'View task',
+              calendarTaskId: task.id,
             }),
           })
           sent += 1
