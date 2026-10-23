@@ -22,6 +22,7 @@ import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJEC
 import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
+import { displayName } from './portfolio.js'
 
 const router = express.Router()
 
@@ -1207,6 +1208,9 @@ const taskMinAge = (v) => {
 }
 const taskOnline = (v) => (v == null ? { ok: true, value: false }
   : typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Online must be true or false.' })
+// Outdoor (#435): shows a forecast chip on the task card.
+const taskOutdoor = (v) => (v == null ? { ok: true, value: false }
+  : typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Outdoor must be true or false.' })
 const WHEELCHAIR = ['yes', 'no', 'unknown']
 const taskWheelchair = (v) => (v == null || v === '' ? { ok: true, value: 'unknown' }
   : WHEELCHAIR.includes(v) ? { ok: true, value: v } : { ok: false, error: 'Wheelchair accessible must be yes, no or unknown.' })
@@ -1263,11 +1267,11 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const lat = coordinate(latitude, 90)
   const lng = coordinate(longitude, 180)
   if (!lat.ok || !lng.ok) return res.status(400).json({ error: 'Invalid map position.' })
-  const details = [taskMinAge(req.body.minAge), taskOnline(req.body.isOnline), taskWheelchair(req.body.wheelchairAccessible), taskAccessNote(req.body.accessibilityNote),
+  const details = [taskMinAge(req.body.minAge), taskOnline(req.body.isOnline), taskWheelchair(req.body.wheelchairAccessible), taskAccessNote(req.body.accessibilityNote), taskOutdoor(req.body.isOutdoor),
     taskMeetingPoint(req.body.meetingPoint), taskDayOfContact(req.body.dayOfContact)]
   const badDetail = details.find((d) => !d.ok)
   if (badDetail) return res.status(400).json({ error: badDetail.error })
-  const [minAge, isOnline, wheelchair, accessNote, meetingPoint, dayOfContact] = details.map((d) => d.value)
+  const [minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact] = details.map((d) => d.value)
   // Online: the address is optional and there is no map pin.
   if (isOnline) {
     if (location != null && typeof location !== 'string') return res.status(400).json({ error: 'Location must be text.' })
@@ -1337,10 +1341,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, meeting_point, day_of_contact)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, meetingPoint, dayOfContact],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact],
         )
         created.push({ id, date: day })
       }
@@ -1406,7 +1410,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
-               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -1418,6 +1422,9 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `CASE WHEN t.created_by = $1 OR (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.meeting_point END AS meeting_point` : 'NULL AS meeting_point'},
                ${userId ? `CASE WHEN t.created_by = $1 OR (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.day_of_contact END AS day_of_contact` : 'NULL AS day_of_contact'},
                t.created_by AS organizer_id,
+               -- Ask the organizer: what this viewer would see under "Questions".
+               (SELECT COUNT(*)::int FROM task_questions q WHERE q.task_id = t.id AND NOT q.hidden
+                  AND (q.answer IS NOT NULL ${userId ? 'OR q.asker_id = $1' : ''})) AS question_count,
                ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer,
                ${userId ? 'EXISTS (SELECT 1 FROM saved_tasks st WHERE st.user_id = $1 AND st.task_id = t.id)' : 'false'} AS i_saved,
                -- The organizer's average across all their tasks, only once
@@ -1519,7 +1526,7 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -2806,10 +2813,10 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'meetingPoint', 'dayOfContact']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
-  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote,
+  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote, isOutdoor: taskOutdoor,
     meetingPoint: taskMeetingPoint, dayOfContact: taskDayOfContact }
 
   try {
@@ -2836,7 +2843,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       if (req.body[field] === undefined) continue
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
-        wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note',
+        wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', isOutdoor: 'is_outdoor',
         meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact',
       }[field] || field
 
@@ -3359,7 +3366,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.meeting_point, t.day_of_contact,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
@@ -3388,7 +3395,10 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
               ) ORDER BY r.updated_at DESC), '[]'::json)
                FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments,
               -- The one thank-you note (POST /public-tasks/:id/thanks), if sent.
-              (SELECT to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM task_thanks th WHERE th.task_id = t.id) AS thanks_sent_at
+              (SELECT to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM task_thanks th WHERE th.task_id = t.id) AS thanks_sent_at,
+              -- Ask the organizer: every question, and those still unanswered.
+              (SELECT COUNT(*)::int FROM task_questions q WHERE q.task_id = t.id) AS question_count,
+              (SELECT COUNT(*)::int FROM task_questions q WHERE q.task_id = t.id AND q.answer IS NULL AND NOT q.hidden) AS open_question_count
        FROM public_tasks t WHERE t.created_by = $1
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.auth.sub],
@@ -3397,6 +3407,192 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   } catch (error) {
     console.error('my tasks failed:', error)
     return res.status(500).json({ error: 'Could not fetch your tasks.' })
+  }
+})
+
+// --- Ask the organizer (#436) -----------------------------------------------
+//
+// Public Q&A on a task. A signed-in student asks; only the task's creator
+// answers, edits the answer, hides or deletes. An answered, unhidden question
+// is shown to everyone who can see the task; an unanswered one only to its
+// asker and the organizer; a hidden one only to the organizer. The asker is
+// never named to other students — only the organizer sees "First L.".
+// Blocks and suspensions apply as everywhere else on a task (reports.js);
+// a cancelled task is read-only.
+
+const QUESTION_MAX = 300
+const ANSWER_MAX = 1000
+const OPEN_QUESTIONS_PER_TASK = 3
+
+// Per IP, and a school's students often share one, so it's a spam cap, not a
+// per-student quota (that's OPEN_QUESTIONS_PER_TASK).
+const askLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many questions. Please try again later.' },
+})
+
+// The task as this viewer may see it, or null when it doesn't exist for them:
+// an organizer the admin suspended or one the viewer blocked hides the task
+// from everyone but the organizer.
+async function questionTaskFor(taskId, viewerId) {
+  const { rows } = await query(
+    `SELECT t.id, t.title, t.status, t.created_by,
+            (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
+            ${viewerId ? `EXISTS (SELECT 1 FROM user_blocks b
+                    WHERE (b.blocker_id = $2 AND b.blocked_id = t.created_by)
+                       OR (b.blocker_id = t.created_by AND b.blocked_id = $2))` : 'false'} AS blocked
+       FROM public_tasks t WHERE t.id = $1`,
+    viewerId ? [taskId, viewerId] : [taskId],
+  )
+  const task = rows[0]
+  if (!task) return null
+  const isOrganizer = Boolean(viewerId) && task.created_by === viewerId
+  if (!isOrganizer && (task.host_suspended || task.blocked)) return null
+  return { ...task, isOrganizer }
+}
+
+function questionJson(row, { isOrganizer, viewerId }) {
+  return {
+    id: row.id,
+    question: row.question,
+    answer: row.answer,
+    answeredAt: row.answered_at,
+    createdAt: row.created_at,
+    mine: Boolean(viewerId) && row.asker_id === viewerId,
+    ...(isOrganizer ? { hidden: row.hidden, askerName: displayName(row.asker_name) } : {}),
+  }
+}
+
+// GET: the questions this viewer may see. Works signed out (answered only).
+router.get('/public-tasks/:id/questions', limiter, requireDb, authenticate, async (req, res) => {
+  try {
+    const viewerId = req.auth?.sub || null
+    const task = await questionTaskFor(req.params.id, viewerId)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    const { rows } = task.isOrganizer
+      ? await query(
+        `SELECT q.*, u.name AS asker_name FROM task_questions q JOIN users u ON u.id = q.asker_id
+          WHERE q.task_id = $1 ORDER BY (q.answer IS NULL) DESC, q.created_at DESC`,
+        [task.id],
+      )
+      : await query(
+        `SELECT q.id, q.asker_id, q.question, q.answer, q.answered_at, q.created_at FROM task_questions q
+          WHERE q.task_id = $1 AND NOT q.hidden
+            AND (q.answer IS NOT NULL ${viewerId ? 'OR q.asker_id = $2' : ''})
+          ORDER BY q.created_at DESC`,
+        viewerId ? [task.id, viewerId] : [task.id],
+      )
+    return res.json({
+      questions: rows.map((r) => questionJson(r, { isOrganizer: task.isOrganizer, viewerId })),
+      isOrganizer: task.isOrganizer,
+      canAsk: !task.isOrganizer && req.auth?.role === 'student' && task.status === 'open',
+      readOnly: task.status === 'cancelled',
+    })
+  } catch (error) {
+    console.error('list task questions failed:', error)
+    return res.status(500).json({ error: 'Could not load questions.' })
+  }
+})
+
+// POST { question }: a student asks the organizer.
+router.post('/public-tasks/:id/questions', askLimiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const text = typeof req.body?.question === 'string' ? req.body.question.trim() : ''
+    if (!text) return res.status(400).json({ error: 'Write a question first.' })
+    if (text.length > QUESTION_MAX) return res.status(400).json({ error: `Keep your question under ${QUESTION_MAX} characters.` })
+    const task = await questionTaskFor(req.params.id, req.auth.sub)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (task.isOrganizer) return res.status(400).json({ error: 'This is your task — you answer questions here.' })
+    if (task.status !== 'open') return res.status(400).json({ error: 'This task isn\'t taking questions.' })
+    // Hidden ones count too, so hiding a question doesn't hand back a slot.
+    const { rows: open } = await query(
+      'SELECT COUNT(*)::int AS n FROM task_questions WHERE task_id = $1 AND asker_id = $2 AND answer IS NULL',
+      [task.id, req.auth.sub],
+    )
+    if (open[0].n >= OPEN_QUESTIONS_PER_TASK) {
+      return res.status(429).json({ error: `You have ${OPEN_QUESTIONS_PER_TASK} questions waiting for an answer on this task. Wait for a reply first.` })
+    }
+    const { rows } = await query(
+      `INSERT INTO task_questions (id, task_id, asker_id, question) VALUES ($1, $2, $3, $4)
+       RETURNING id, asker_id, question, answer, answered_at, created_at`,
+      [uid('tq'), task.id, req.auth.sub, text],
+    )
+    notify(task.created_by, {
+      kind: 'task_question',
+      title: `New question on "${task.title}"`,
+      body: text,
+      link: '/my-tasks',
+    })
+    return res.status(201).json({ question: questionJson(rows[0], { isOrganizer: false, viewerId: req.auth.sub }) })
+  } catch (error) {
+    console.error('ask task question failed:', error)
+    return res.status(500).json({ error: 'Could not send your question.' })
+  }
+})
+
+// PUT { answer, hidden? }: the organizer answers or edits the answer, and/or
+// hides or unhides the question. An empty answer leaves it unanswered.
+router.put('/public-tasks/:id/questions/:qid/answer', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await questionTaskFor(req.params.id, req.auth.sub)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (!task.isOrganizer) return res.status(403).json({ error: 'Only the task\'s organizer can answer.' })
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (task.host_suspended) return res.status(403).json({ error: 'Your account can\'t post right now.' })
+    const hasAnswer = req.body?.answer !== undefined
+    const answer = typeof req.body?.answer === 'string' ? req.body.answer.trim() : ''
+    if (hasAnswer && typeof req.body.answer !== 'string') return res.status(400).json({ error: 'Invalid answer.' })
+    if (answer.length > ANSWER_MAX) return res.status(400).json({ error: `Keep your answer under ${ANSWER_MAX} characters.` })
+    const hidden = typeof req.body?.hidden === 'boolean' ? req.body.hidden : null
+    if (!hasAnswer && hidden === null) return res.status(400).json({ error: 'Nothing to change.' })
+    const { rows: before } = await query(
+      'SELECT answer FROM task_questions WHERE id = $1 AND task_id = $2',
+      [req.params.qid, task.id],
+    )
+    if (before.length === 0) return res.status(404).json({ error: 'Question not found.' })
+    const { rows } = await query(
+      `UPDATE task_questions q SET
+              answer = CASE WHEN $3::boolean THEN NULLIF($4, '') ELSE q.answer END,
+              answered_at = CASE WHEN $3::boolean THEN (CASE WHEN $4 = '' THEN NULL ELSE now() END) ELSE q.answered_at END,
+              hidden = COALESCE($5::boolean, q.hidden)
+        WHERE q.id = $1 AND q.task_id = $2
+        RETURNING q.*, (SELECT name FROM users WHERE id = q.asker_id) AS asker_name`,
+      [req.params.qid, task.id, hasAnswer, answer, hidden],
+    )
+    const row = rows[0]
+    // First answer only: an edit doesn't ring the bell again.
+    if (hasAnswer && answer && !before[0].answer && !row.hidden) {
+      notify(row.asker_id, {
+        kind: 'task_answer',
+        title: `Your question on "${task.title}" was answered`,
+        body: answer,
+        link: `/opportunities?task=${encodeURIComponent(task.id)}`,
+      })
+    }
+    return res.json({ question: questionJson(row, { isOrganizer: true, viewerId: req.auth.sub }) })
+  } catch (error) {
+    console.error('answer task question failed:', error)
+    return res.status(500).json({ error: 'Could not save the answer.' })
+  }
+})
+
+// DELETE: the organizer removes any question on their task; an asker may
+// withdraw their own.
+router.delete('/public-tasks/:id/questions/:qid', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await questionTaskFor(req.params.id, req.auth.sub)
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    const { rowCount } = task.isOrganizer
+      ? await query('DELETE FROM task_questions WHERE id = $1 AND task_id = $2', [req.params.qid, task.id])
+      : await query('DELETE FROM task_questions WHERE id = $1 AND task_id = $2 AND asker_id = $3', [req.params.qid, task.id, req.auth.sub])
+    if (rowCount === 0) return res.status(404).json({ error: 'Question not found.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('delete task question failed:', error)
+    return res.status(500).json({ error: 'Could not delete the question.' })
   }
 })
 
@@ -3560,7 +3756,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
     const { rows } = await query(
       // The organizer's email only reaches volunteers they approved — it is who
       // those students ask to sign off their hours on the task.
-      `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
+      `SELECT t.id, t.title, t.location, t.latitude, t.longitude, t.is_online, t.is_outdoor, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               -- Day-of details (#438), approved volunteers only.
               CASE WHEN s.status = 'approved' THEN t.meeting_point END AS meeting_point,

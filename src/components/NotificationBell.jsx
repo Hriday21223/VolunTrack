@@ -30,6 +30,8 @@ const KIND_LABELS = {
   task_thanks: tr('A thank-you'),
   volunteer_late: tr('Volunteer running late'),
   volunteer_cancelled_day_of: tr("Volunteer can't make it"),
+  task_question: tr('New question'),
+  task_answer: tr('Your question was answered'),
 }
 
 const getToken = () => {

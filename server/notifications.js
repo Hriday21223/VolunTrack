@@ -33,6 +33,8 @@ export const NOTIFICATION_KINDS = new Set([
   'task_thanks',
   'volunteer_late',
   'volunteer_cancelled_day_of',
+  'task_question',
+  'task_answer',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }

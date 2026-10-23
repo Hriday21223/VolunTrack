@@ -146,7 +146,8 @@ purpose *App Functionality* — matching `PrivacyInfo.xcprivacy`:
 - Location → Precise Location (only when the user taps *Use current location*
   or turns on nearby tasks)
 - User Content → Photos or Videos, Other User Content (entries, app
-  reviews, and reports about volunteer tasks), Customer Support
+  reviews, questions to task organizers, and reports about volunteer
+  tasks), Customer Support
   (contact-form messages)
 
 *Not linked to the user*, *not used for tracking*, purpose *App Functionality*:

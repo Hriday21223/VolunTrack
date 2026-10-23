@@ -15,6 +15,7 @@ import OrganizerStats from '@/components/OrganizerStats.jsx'
 import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.jsx'
 import LateBadge from '@/components/LateBadge.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import TaskQuestions from '@/components/TaskQuestions.jsx'
 import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 
@@ -740,6 +741,8 @@ export default function MyTasks() {
                   <p className="mt-2 text-earth-500">Comments are anonymous. If one breaks the rules, contact us from Help.</p>
                 </details>
               )}
+
+              <TaskQuestions task={t} organizer className="mt-2" />
 
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-white/10">
