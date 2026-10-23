@@ -1,4 +1,5 @@
 import { tr } from '@/lib/i18n.js'
+import DayOfFields from '@/components/DayOfFields.jsx'
 
 const AGE_CHOICES = [10, 12, 13, 14, 16, 18, 21]
 
@@ -35,6 +36,7 @@ export default function TaskDetailFields({ value, onChange, idPrefix = 'task' })
         value={value.accessibilityNote}
         onChange={(e) => onChange({ accessibilityNote: e.target.value })}
       />
+      <DayOfFields value={value} onChange={onChange} />
     </div>
   )
 }

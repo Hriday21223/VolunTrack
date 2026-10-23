@@ -1216,6 +1216,32 @@ const taskAccessNote = (v) => {
   const text = v.trim()
   return text.length > 200 ? { ok: false, error: 'Accessibility note must be at most 200 characters.' } : { ok: true, value: text || null }
 }
+// Day-of details (#438): where to meet and who to call on the day. Both are
+// optional and only ever reach the organizer and approved volunteers — never
+// the public list for anyone else. The contact is one line ("Sam, 555-0100"),
+// so the light check is just that it holds a phone-length run of digits.
+const MEETING_POINT_MAX = 200
+const DAY_OF_CONTACT_MAX = 100
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/
+const taskMeetingPoint = (v) => {
+  if (v == null) return { ok: true, value: null }
+  if (typeof v !== 'string') return { ok: false, error: 'Meeting point must be text.' }
+  const text = v.trim()
+  if (text.length > MEETING_POINT_MAX) return { ok: false, error: `Meeting point must be at most ${MEETING_POINT_MAX} characters.` }
+  if (CONTROL_CHARS.test(text)) return { ok: false, error: 'Meeting point must be one line of text.' }
+  return { ok: true, value: text || null }
+}
+const taskDayOfContact = (v) => {
+  if (v == null) return { ok: true, value: null }
+  if (typeof v !== 'string') return { ok: false, error: 'Day-of contact must be text.' }
+  const text = v.trim()
+  if (!text) return { ok: true, value: null }
+  if (text.length > DAY_OF_CONTACT_MAX) return { ok: false, error: `Day-of contact must be at most ${DAY_OF_CONTACT_MAX} characters.` }
+  if (CONTROL_CHARS.test(text)) return { ok: false, error: 'Day-of contact must be one line of text.' }
+  if ((text.match(/\d/g) || []).length < 7) return { ok: false, error: 'Add a phone number to the day-of contact, like "Sam, 555-010-0100".' }
+  return { ok: true, value: text }
+}
+
 // An online task with no address is stored as "Online", so every place that
 // prints a location (emails, Attendance, reports, the sign-in sheet) still
 // reads sensibly without knowing about online tasks.
@@ -1237,10 +1263,11 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const lat = coordinate(latitude, 90)
   const lng = coordinate(longitude, 180)
   if (!lat.ok || !lng.ok) return res.status(400).json({ error: 'Invalid map position.' })
-  const details = [taskMinAge(req.body.minAge), taskOnline(req.body.isOnline), taskWheelchair(req.body.wheelchairAccessible), taskAccessNote(req.body.accessibilityNote)]
+  const details = [taskMinAge(req.body.minAge), taskOnline(req.body.isOnline), taskWheelchair(req.body.wheelchairAccessible), taskAccessNote(req.body.accessibilityNote),
+    taskMeetingPoint(req.body.meetingPoint), taskDayOfContact(req.body.dayOfContact)]
   const badDetail = details.find((d) => !d.ok)
   if (badDetail) return res.status(400).json({ error: badDetail.error })
-  const [minAge, isOnline, wheelchair, accessNote] = details.map((d) => d.value)
+  const [minAge, isOnline, wheelchair, accessNote, meetingPoint, dayOfContact] = details.map((d) => d.value)
   // Online: the address is optional and there is no map pin.
   if (isOnline) {
     if (location != null && typeof location !== 'string') return res.status(400).json({ error: 'Location must be text.' })
@@ -1310,10 +1337,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, meeting_point, day_of_contact)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote],
+            minAge, isOnline, wheelchair, accessNote, meetingPoint, dayOfContact],
         )
         created.push({ id, date: day })
       }
@@ -1387,6 +1414,9 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
+               -- Day-of details (#438): approved volunteers and the organizer only.
+               ${userId ? `CASE WHEN t.created_by = $1 OR (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.meeting_point END AS meeting_point` : 'NULL AS meeting_point'},
+               ${userId ? `CASE WHEN t.created_by = $1 OR (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.day_of_contact END AS day_of_contact` : 'NULL AS day_of_contact'},
                t.created_by AS organizer_id,
                ${userId ? 'EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = $1 AND f.organizer_id = t.created_by)' : 'false'} AS i_follow_organizer,
                ${userId ? 'EXISTS (SELECT 1 FROM saved_tasks st WHERE st.user_id = $1 AND st.task_id = t.id)' : 'false'} AS i_saved,
@@ -1722,6 +1752,7 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
 // reset replaces it, which kills the old link. The URL points at this backend,
 // since that is what the calendar app fetches.
 const FEED_ROLES = ['student', 'volunteer']
+const dayOfLines = (t) => [t.meeting_point && `Meeting point: ${t.meeting_point}`, t.day_of_contact && `Day-of contact: ${t.day_of_contact}`].filter(Boolean)
 const FEED_TOKEN_RE = /^[0-9a-f]{64}$/
 
 function calendarFeedUrl(req, token) {
@@ -1785,7 +1816,7 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
     const user = users[0]
     if (!user) return notFound()
     const cols = `t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
-                  t.creator_name, t.latitude, t.longitude, t.is_online`
+                  t.creator_name, t.latitude, t.longitude, t.is_online, t.meeting_point, t.day_of_contact`
     const [signups, posted] = await Promise.all([
       query(
         `SELECT ${cols}, s.status AS signup_status
@@ -1814,11 +1845,13 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
     for (const t of signups.rows) {
       seen.add(t.id)
       const summaryPrefix = { waitlisted: 'Waitlist: ', pending: 'Pending: ', parent_pending: 'Needs parent OK: ' }[t.signup_status] || ''
-      events.push(icsEvent(t, { link: site && `${site}/attendance`, summaryPrefix, now }))
+      // Day-of details (#438) only in an approved volunteer's own feed.
+      const dayOf = t.signup_status === 'approved' ? dayOfLines(t) : []
+      events.push(icsEvent(t, { link: site && `${site}/attendance`, summaryPrefix, now, details: dayOf }))
     }
     for (const t of posted.rows) {
       if (seen.has(t.id)) continue
-      events.push(icsEvent(t, { link: site && `${site}/my-tasks`, now }))
+      events.push(icsEvent(t, { link: site && `${site}/my-tasks`, now, details: dayOfLines(t) }))
     }
     res.set('Content-Type', 'text/calendar; charset=utf-8')
     res.set('Content-Disposition', 'inline; filename="voluntrack.ics"')
@@ -2506,31 +2539,128 @@ async function notifyWaitlistSpot(taskId, userId) {
   }
 }
 
-// DELETE /api/school/public-tasks/:id/signup — a volunteer cancels their own
-// sign-up or leaves the waitlist. Not once the day has passed or attendance
-// is marked (that's a record now), and not a rejected one: deleting it would
-// let them sign up again.
+// A volunteer cancels their own sign-up or leaves the waitlist. Not once the
+// day has passed or attendance is marked (that's a record now), and not a
+// rejected one: deleting it would let them sign up again. A freed slot goes
+// to the waitlist. Shared by DELETE /signup and "Can't make it" (#438), so the
+// two can't drift. Answers { ok, status } or { ok: false, code, error }.
+async function cancelOwnSignup(taskId, userId) {
+  const { rows } = await query(
+    `SELECT s.status, s.attendance_status, t.date < CURRENT_DATE - 1 AS past
+       FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+      WHERE s.task_id = $1 AND s.user_id = $2`,
+    [taskId, userId],
+  )
+  if (rows.length === 0) return { ok: false, code: 404, error: "You aren't signed up for this task." }
+  const signup = rows[0]
+  if (signup.status === 'rejected') return { ok: false, code: 400, error: 'The organizer already declined this sign-up.' }
+  if (signup.past || signup.attendance_status) {
+    return { ok: false, code: 400, error: 'This task has already happened, so the sign-up stays on your record.' }
+  }
+  await query('DELETE FROM public_task_signups WHERE task_id = $1 AND user_id = $2', [taskId, userId])
+  // Only pending and approved hold a slot; a sign-up still waiting for (or
+  // turned down by) a parent, or on the waitlist, frees nothing.
+  if (['pending', 'approved'].includes(signup.status)) await promoteFromWaitlist(taskId)
+  return { ok: true, status: signup.status }
+}
+
+// DELETE /api/school/public-tasks/:id/signup — see cancelOwnSignup.
 router.delete('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT s.status, s.attendance_status, t.date < CURRENT_DATE - 1 AS past
-         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-        WHERE s.task_id = $1 AND s.user_id = $2`,
-      [req.params.id, req.auth.sub],
-    )
-    if (rows.length === 0) return res.status(404).json({ error: "You aren't signed up for this task." })
-    const signup = rows[0]
-    if (signup.status === 'rejected') return res.status(400).json({ error: 'The organizer already declined this sign-up.' })
-    if (signup.past || signup.attendance_status) {
-      return res.status(400).json({ error: 'This task has already happened, so the sign-up stays on your record.' })
-    }
-    await query('DELETE FROM public_task_signups WHERE task_id = $1 AND user_id = $2', [req.params.id, req.auth.sub])
-    // Only pending and approved hold a slot; a sign-up still waiting for (or
-    // turned down by) a parent, or on the waitlist, frees nothing.
-    if (['pending', 'approved'].includes(signup.status)) await promoteFromWaitlist(req.params.id)
+    const result = await cancelOwnSignup(req.params.id, req.auth.sub)
+    if (!result.ok) return res.status(result.code).json({ error: result.error })
     return res.json({ ok: true })
   } catch (error) {
     console.error('cancel signup failed:', error)
+    return res.status(500).json({ error: 'Could not cancel the sign-up.' })
+  }
+})
+
+// --- Day of the task (#438) ----------------------------------------------------
+//
+// On the task's day an approved volunteer can tell the organizer they're
+// running late (with an optional ETA) or that they can't make it. "The day" has
+// the check-in code's day of slack either side, since the server's date is
+// UTC's; the app shows the buttons only on the volunteer's own local date.
+
+const LATE_ETAS = [10, 20, 30]
+const dayOfLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many updates. Please wait a few minutes.' },
+})
+
+// The caller's approved sign-up on a task happening today, or an error.
+async function dayOfSignup(taskId, userId) {
+  const { rows } = await query(
+    `SELECT s.id, s.status, s.late_at, s.late_eta_minutes, s.checked_in_at,
+            (s.late_at IS NOT NULL AND s.late_at::date >= CURRENT_DATE - 1) AS late_today,
+            t.title, t.created_by, t.status AS task_status,
+            t.date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today, u.name
+       FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id JOIN users u ON u.id = s.user_id
+      WHERE s.task_id = $1 AND s.user_id = $2`,
+    [taskId, userId],
+  )
+  const row = rows[0]
+  if (!row) return { error: "You aren't signed up for this task.", code: 404 }
+  if (row.status !== 'approved') return { error: 'Only approved volunteers can send day-of updates.', code: 403 }
+  if (row.task_status === 'cancelled') return { error: 'This task was cancelled.', code: 400 }
+  if (!row.today) return { error: 'You can only send this on the day of the task.', code: 400 }
+  return { row }
+}
+
+// POST { etaMinutes?: 10 | 20 | 30 | null } — "Running late". One per sign-up
+// on the day: sending again changes the ETA. The organizer's bell rings the
+// first time and whenever the ETA changes.
+router.post('/public-tasks/:id/running-late', dayOfLimiter, requireDb, requireAuth(), async (req, res) => {
+  const raw = req.body?.etaMinutes
+  const eta = raw == null || raw === '' ? null : Number(raw)
+  if (eta !== null && !LATE_ETAS.includes(eta)) return res.status(400).json({ error: 'Pick 10, 20 or 30+ minutes, or no time.' })
+  try {
+    const { row, error, code } = await dayOfSignup(req.params.id, req.auth.sub)
+    if (error) return res.status(code).json({ error })
+    if (row.checked_in_at) return res.status(400).json({ error: "You've already checked in." })
+    const changed = !row.late_today || row.late_eta_minutes !== eta
+    const { rows: saved } = await query(
+      `UPDATE public_task_signups
+          SET late_eta_minutes = $2, late_at = CASE WHEN $3::boolean THEN late_at ELSE now() END
+        WHERE id = $1 RETURNING late_eta_minutes, late_at`,
+      [row.id, eta, row.late_today],
+    )
+    if (changed) {
+      notify(row.created_by, {
+        kind: 'volunteer_late',
+        title: row.title,
+        body: `${row.name || 'A volunteer'} is running late${eta ? ` (~${eta === 30 ? '30+' : eta} min)` : ''}.`,
+        link: '/my-tasks',
+      })
+    }
+    return res.json({ ok: true, lateEtaMinutes: saved[0].late_eta_minutes, lateAt: saved[0].late_at })
+  } catch (error) {
+    console.error('running late failed:', error)
+    return res.status(500).json({ error: 'Could not tell the organizer.' })
+  }
+})
+
+// POST — "Can't make it": the ordinary cancel (cancelOwnSignup, so the
+// waitlist moves up), plus a bell entry for the organizer.
+router.post('/public-tasks/:id/cant-make-it', dayOfLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { row, error, code } = await dayOfSignup(req.params.id, req.auth.sub)
+    if (error) return res.status(code).json({ error })
+    const result = await cancelOwnSignup(req.params.id, req.auth.sub)
+    if (!result.ok) return res.status(result.code).json({ error: result.error })
+    notify(row.created_by, {
+      kind: 'volunteer_cancelled_day_of',
+      title: row.title,
+      body: `${row.name || 'A volunteer'} can't make it today. Their spot went to the waitlist, if anyone was waiting.`,
+      link: '/my-tasks',
+    })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('cant make it failed:', error)
     return res.status(500).json({ error: 'Could not cancel the sign-up.' })
   }
 })
@@ -2676,10 +2806,11 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'meetingPoint', 'dayOfContact']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
-  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote }
+  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote,
+    meetingPoint: taskMeetingPoint, dayOfContact: taskDayOfContact }
 
   try {
     const { rows } = await query('SELECT created_by, status, is_online, location FROM public_tasks WHERE id = $1', [req.params.id])
@@ -2706,6 +2837,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
         wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note',
+        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -2908,7 +3040,8 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
   const dryRun = req.body?.dryRun === true
   try {
     const { rows: tasks } = await query(
-      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info
+      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info,
+              t.meeting_point, t.day_of_contact
          FROM public_tasks t
         WHERE t.status = 'open'
           AND t.date = (current_date + interval '1 day')::date
@@ -2936,6 +3069,9 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
               lines: [
                 `Hi ${person.name || 'there'}, this is a reminder about tomorrow.`,
                 ...(task.important_info ? [task.important_info] : []),
+                // Only approved volunteers get this email, so the day-of details may go in.
+                ...(task.meeting_point ? [`Meeting point: ${task.meeting_point}`] : []),
+                ...(task.day_of_contact ? [`On the day, contact: ${task.day_of_contact}`] : []),
               ],
               task,
             }),
@@ -3223,12 +3359,15 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.meeting_point, t.day_of_contact,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
                 'attendance_status', s.attendance_status, 'attendance_marked_at', s.attendance_marked_at,
                 'checked_in_at', s.checked_in_at, 'checked_out_at', s.checked_out_at,
+                -- "Running late" (#438), only on the day it was reported.
+                'late_eta_minutes', CASE WHEN s.late_at IS NOT NULL AND t.date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 THEN s.late_eta_minutes END,
+                'late_at', CASE WHEN t.date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 THEN s.late_at END,
                 -- Who invited them, when they signed up from a friend's link.
                 'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
                 -- Checked in, never out, the day is over and no hours yet.
@@ -3423,6 +3562,10 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
       // those students ask to sign off their hours on the task.
       `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
+              -- Day-of details (#438), approved volunteers only.
+              CASE WHEN s.status = 'approved' THEN t.meeting_point END AS meeting_point,
+              CASE WHEN s.status = 'approved' THEN t.day_of_contact END AS day_of_contact,
+              s.late_eta_minutes, s.late_at, s.checked_in_at,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
               ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position,
               ${RATING_OPEN_SQL} AS can_rate,
