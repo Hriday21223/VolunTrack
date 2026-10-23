@@ -18,7 +18,7 @@
 // blocked.
 import { SPOTS_USED_SQL } from './spots.js'
 import { query } from './db.js'
-import { sendEmail, emailFooterHtml, backendUrl } from './email.js'
+import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
 import { escapeHtml } from './html.js'
 import { notify } from './notifications.js'
 import { ensureDigestUnsubToken } from './digest.js'
@@ -144,7 +144,7 @@ export function renderComebackEmail({ name, tasks, near, unsubToken, language = 
     `<p>${t('Already volunteering somewhere? {link} so they count.', { link: `<a href="${frontendUrl()}/log">${t('Log your hours')}</a>` })}</p>`,
     emailFooterHtml(lang),
     `<p style="font-size:12px;color:#888">${t('We send this at most once after a month without volunteering. {link} or turn them off in Settings.', {
-      link: `<a href="${backendUrl()}/api/comeback/unsubscribe/${unsubToken}">${t('Stop these emails')}</a>`,
+      link: `<a href="${emailApiBase()}/api/comeback/unsubscribe/${unsubToken}">${t('Stop these emails')}</a>`,
     })}</p>`,
   ].join('')
   return { subject, html, lang }

@@ -341,6 +341,14 @@ ${emailFooterHtml()}`,
   })
 }
 
+// Base for /api links in emails. The website (vercel.json) passes these paths
+// on to the backend, so emails show only the website's address. FRONTEND_URL
+// may list several origins for CORS; the first is the public one.
+export function emailApiBase() {
+  const first = (process.env.FRONTEND_URL || '').split(',').map((s) => s.trim()).find(Boolean)
+  return (first || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
+}
+
 export function backendUrl() {
   return (process.env.PUBLIC_BACKEND_URL || 'https://voluntrack-backend-frrh.onrender.com').replace(/\/$/, '')
 }
@@ -349,7 +357,7 @@ export function backendUrl() {
 // the backend, which renders its own confirm page (see
 // server/routes/parentConsent.js) — nothing is approved by opening it.
 export async function sendParentConsentEmail({ to, childName, childEmail, token }) {
-  const link = `${backendUrl()}/api/auth/parent-consent/${token}`
+  const link = `${emailApiBase()}/api/auth/parent-consent/${token}`
   const privacy = `${process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app'}/privacy`
   return sendEmail({
     to,

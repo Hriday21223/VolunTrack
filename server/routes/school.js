@@ -8,7 +8,7 @@ import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail, backendUrl } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail, emailApiBase } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { recordAudit, AUDIT } from '../audit.js'
@@ -2362,7 +2362,7 @@ export async function requestParentOk(signupId) {
           "If you don't know this child, decline or ignore this email.",
         ],
         task: row,
-        link: `${backendUrl()}/api/parent/task-ok/${token}`,
+        link: `${emailApiBase()}/api/parent/task-ok/${token}`,
         linkLabel: 'Review this sign-up',
       })
       return 'email'
@@ -2893,7 +2893,7 @@ function friendlyWhen(date, time) {
 
 // The task's .ics file: phones and calendar apps open it as "add this event".
 function taskCalendarLink(taskId) {
-  return `${backendUrl()}/api/school/public-tasks/${encodeURIComponent(taskId)}/calendar.ics`
+  return `${emailApiBase()}/api/school/public-tasks/${encodeURIComponent(taskId)}/calendar.ics`
 }
 
 // Same two choices as the app's AddToCalendar: Google, and the .ics file.
