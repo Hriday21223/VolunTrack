@@ -41,6 +41,8 @@ export default function Privacy() {
               <li><strong>Date of birth</strong> — asked when you create an account, only to apply our age rules: students under 13 need a parent or guardian&apos;s approval, Volunteer Task Maker and parent accounts are for adults 18 and up. We don&apos;t store it; we keep only whether a student is under 13. If a date entered is too young for the account type, your device remembers that for a day so the rules can&apos;t be skipped by changing it, and this never leaves your device.</li>
               <li><strong>Where you signed up</strong> — whether your account was created on the website, in the Android app or in the iPhone app. We use it only to count sign-ups, so we know which versions of VolunTrack people use.</li>
               <li><strong>{tr('App language')}</strong> — {tr('the language you pick in the app (English or Spanish). If you’re signed in, we save it with your account so the emails we send you, such as the weekly summary for parents and the “We miss you” email, come in that language. It’s replaced when you pick another, and deleted with your account.')}</li>
+              <li><strong>Text size and contrast</strong> — if you make text bigger or turn on high contrast, the choice is saved on that device only and never sent to us.</li>
+              <li><strong>Year in review</strong> — your yearly summary is worked out on your device from the hours you&apos;ve logged; nothing extra is stored. It leaves your device only if you share or download it yourself, and sharing sends totals only, not names, places or notes.</li>
               <li><strong>School sign-in</strong> — if your school has set up single sign-on, we receive your name, email address, and an account identifier from your school&apos;s sign-in provider (such as Google or Microsoft). We never see your school password.</li>
               <li><strong>Volunteer hours, activity descriptions, and locations</strong> — the core data you log in the app, plus any extra fields your school or organization requires on an entry.</li>
               <li><strong>Personal goals</strong> — the name, hour target, deadline and cause (if you pick one) of goals you set, so they show on all your devices. Deleting a goal or your account deletes it.</li>
@@ -81,7 +83,8 @@ export default function Privacy() {
           </Section>
 
           <Section title="How We Use Your Data">
-            <p>Your data is used exclusively to provide the VolunTrack service: tracking volunteer hours, generating reports, and managing school/organization participation.</p>
+            <p>Your data is used exclusively to provide the VolunTrack service: tracking volunteer hours, generating reports, running volunteer tasks, and managing school/organization participation.</p>
+            <p className="mt-2">That includes the emails and in-app notifications the service needs — sign-in codes, sign-up decisions, reminders about tasks you joined, and messages and thank-you notes from your task&apos;s organizer — and optional ones you can turn off, such as the parent weekly summary and &quot;We miss you&quot; emails. We never send marketing for anyone else and never sell your data.</p>
           </Section>
 
           <Section title="Data Storage">
