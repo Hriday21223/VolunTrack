@@ -13,8 +13,10 @@ import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import OrganizerStats from '@/components/OrganizerStats.jsx'
 import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.jsx'
+import LateBadge from '@/components/LateBadge.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
 import TaskCohosts from '@/components/TaskCohosts.jsx'
+import TaskQuestions from '@/components/TaskQuestions.jsx'
 import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 
@@ -744,6 +746,8 @@ export default function MyTasks() {
                 </details>
               )}
 
+              <TaskQuestions task={t} organizer className="mt-2" />
+
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-white/10">
                   {/* A posted task used to be unchangeable — these four are
@@ -899,6 +903,7 @@ export default function MyTasks() {
                               <p className="text-sm font-medium truncate">{s.name}</p>
                               <p className="text-xs text-earth-400 truncate">{s.email}</p>
                               {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
+                              <LateBadge signup={s} />
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}
