@@ -39,6 +39,7 @@ import notificationRoutes from './server/routes/notifications.js'
 import portfolioRoutes from './server/routes/portfolio.js'
 import comebackRoutes from './server/routes/comeback.js'
 import interestsRoutes from './server/routes/interests.js'
+import organizerProfileRoutes from './server/routes/organizerProfile.js'
 import weatherRoutes from './server/routes/weather.js'
 import { escapeHtml } from './server/html.js'
 import { emailFooterHtml, emailFooterText } from './server/email.js'
@@ -140,6 +141,8 @@ app.use('/api/auth/sso', authSsoRoutes)
 app.use('/api/auth/passkey', passkeyRoutes)
 app.use('/api/auth/parent-consent', parentConsentRoutes)
 app.use('/api/auth', authRoutes)
+// Organizer profiles; ahead of /api/school, which has no /organizers routes.
+app.use('/api/school/organizers', organizerProfileRoutes)
 app.use('/api/school', schoolRoutes)
 app.use('/api/organization', organizationRoutes)
 app.use('/api/logs', logsRoutes)

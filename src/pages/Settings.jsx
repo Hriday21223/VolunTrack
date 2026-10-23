@@ -17,6 +17,7 @@ import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
 import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 import ComebackEmailCard from '@/components/ComebackEmailCard.jsx'
 import InterestsCard from '@/components/InterestsCard.jsx'
+import OrganizerProfileCard from '@/components/OrganizerProfileCard.jsx'
 import PortfolioCard from '@/components/PortfolioCard.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
@@ -778,6 +779,7 @@ export default function Settings() {
           </Card>
           {user?.role === 'student' && <PortfolioCard />}
           {user?.role === 'student' && <InterestsCard />}
+          {['student', 'volunteer', 'school', 'school_staff', 'org'].includes(user?.role) && <OrganizerProfileCard />}
         </CollapsibleSection>
 
         <CollapsibleSection icon={Lock} label="Account & Security" defaultOpen={true}>

@@ -656,6 +656,13 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
 
+  // Organizer profiles (server/routes/organizerProfile.js, /organizers/:id):
+  // a short "About", an optional https website and causes (activity
+  // categories), shown to signed-in students on the organizer's page.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organizer_about TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organizer_website TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organizer_causes TEXT[]`) } catch {}
+  try { await query(`ALTER TABLE users ADD CONSTRAINT users_organizer_about_len CHECK (organizer_about IS NULL OR char_length(organizer_about) <= 500)`) } catch {}
   // Day-of details (#438): where to meet and who to call on the day. Only the
   // organizer and approved volunteers ever read them (routes/school.js).
   // late_eta_minutes / late_at: an approved volunteer's "Running late" on the
