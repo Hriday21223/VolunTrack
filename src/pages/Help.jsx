@@ -240,9 +240,37 @@ function StudentHandbook() {
         <p>Generate a PDF report of all your logged hours from the Reports page. You can preview, download, or print it. If you're linked to a school, you can submit the report directly for review, and see its approve/reject status there.</p>
       </Section>
 
-      <Section title="Volunteer Opportunities">
-        <p>Click the <strong>Volunteer</strong> button on your dashboard to browse open volunteer tasks sorted by distance. Tasks near you appear first. You can sign up, and once the organizer approves you, their phone number is revealed so you can coordinate. When you log the hours, link them to the task and the organizer signs them off.</p>
+      <Section title="Finding Volunteer Tasks">
+        <p>Open <Link to="/opportunities" className="text-brand-400 hover:underline">Opportunities</Link> to browse open tasks, nearest first if you allow location. Ways to narrow it down:</p>
+        <ul className="list-disc pl-5 space-y-1 mt-2">
+          <li><strong>Search</strong> by any word in the title, description, place, organizer or category.</li>
+          <li><strong>Filters</strong> for radius, category, date, <em>Online only</em> and <em>Wheelchair accessible</em>.</li>
+          <li><strong>For you</strong> — pick the causes you care about and matching tasks show in a row at the top.</li>
+          <li><strong>Saved</strong> — tap Save on a task to decide later; we remind you in the bell if it's coming up or filling up.</li>
+          <li><strong>Follow</strong> an organizer to get an email when they post a new task, and tap their name to see their profile, rating and upcoming tasks.</li>
+          <li><strong>Share</strong> a task with a friend, or use <strong>Invite friends</strong> once you've signed up.</li>
+        </ul>
+        <p className="mt-2">Task cards can also show a cover photo, a minimum age (such as 16+), whether it's online, wheelchair access, and — for outdoor tasks this week — the weather forecast.</p>
+      </Section>
+
+      <Section title="Signing Up">
+        <p>Tap <strong>Sign up</strong>. The organizer approves you, and then you see their phone number and, if they added them, the meeting point and day-of contact. If the task is full you can join the waitlist and move up automatically when a spot opens. A few things to know:</p>
+        <ul className="list-disc pl-5 space-y-1 mt-2">
+          <li>If a task has a minimum age, you confirm you're old enough when you sign up.</li>
+          <li>If the organizer allows guests, you can bring up to 3. Each takes a spot, and guests' hours aren't recorded in VolunTrack.</li>
+          <li>Not sure about something? Ask under <strong>Questions</strong> on the task. Your name isn't shown to other students.</li>
+          <li>If you're under 13, a parent or guardian OKs each task before the organizer sees your sign-up.</li>
+        </ul>
         <p className="mt-2">You can also post your own tasks from the <Link to="/my-tasks" className="text-brand-400 hover:underline">My Tasks</Link> page.</p>
+      </Section>
+
+      <Section title="On the Day and After">
+        <p>On the day, scan the organizer's QR code to check in, and scan again when you leave to check out — your hours are logged and signed off for you. If something comes up, open <Link to="/attendance" className="text-brand-400 hover:underline">Attendance</Link> and tap <strong>Running late</strong> or <strong>Can't make it</strong>; the organizer is told straight away and your spot goes to the next person waiting.</p>
+        <p className="mt-2">Afterwards you can rate the task (only the organizer sees your comment, never with your name), and any thank-you note the organizer sends shows on that task in Attendance.</p>
+      </Section>
+
+      <Section title="Notifications">
+        <p>The bell at the top of the app lists updates for you — sign-ups approved, waitlist spots, new tasks from organizers you follow, decisions on your hours, saved-task reminders, answers to your questions and thank-you notes. Tap one to open it. They're kept for 90 days.</p>
       </Section>
 
       <Section title="School Announcements">
@@ -265,6 +293,14 @@ function StudentHandbook() {
       <Section title="Two-Factor Authentication (2FA)">
         <p>For extra security, enable 2FA in <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>. Scan the QR code with an authenticator app (like Google Authenticator or Authy) and confirm with the 6-digit code it shows; after that, you'll enter a code each time you sign in. You can also add a passkey in Settings → Passkeys, instead of an authenticator app or as well as one, and confirm with Face ID, Touch ID, your fingerprint or your device PIN.</p>
         <p className="mt-2">Setup gives you 10 backup codes — save these somewhere safe. Each backup code can be used once if you lose access to your authenticator or passkey.</p>
+      </Section>
+
+      <Section title="Goals, Year in Review and Your Portfolio">
+        <p>Set goals in Settings → Goals. A goal can count all your hours or just one cause, such as 20 hours in Environmental. Your <strong>Year in review</strong>, linked from the dashboard, sums up a year of volunteering — total hours, top cause, busiest month and badges — and you can share it. Students 13 and older can also turn on a <strong>volunteer portfolio</strong>: a public page of approved hours to share with a link, for example on a college application.</p>
+      </Section>
+
+      <Section title="Calendar Feed, Language and Display">
+        <p>In Settings you can turn on a calendar feed so your tasks show up in Apple or Google Calendar, switch the app to Spanish (emails follow your choice), and make text bigger or turn on high contrast. Text size and contrast are saved on that device only.</p>
       </Section>
 
       <Section title="Profile & Settings">
@@ -301,6 +337,10 @@ function ParentHandbook() {
         <p className="mt-2">Under the totals, <strong>Upcoming tasks</strong> lists the volunteer tasks your child signed up for on Opportunities — date, time, title, where and who is organizing — with a status: <em>Approved</em>, <em>Waiting for approval</em>, <em>Waitlist #2</em> (their place in line), or <em>Checked in</em> on the day. A few recent ones show underneath. Cancelled tasks and turned-down sign-ups don't appear.</p>
         <p className="mt-2"><strong>Waiting for your OK</strong> appears at the top when a child under 13 signs up for a task: the organizer doesn't see the sign-up until you tap <em>Approve</em>. <em>Decline</em> keeps it from the organizer, and your child can ask again later. You also get a notification and an email for each one. Until you answer, their card shows the task as <em>Waiting for your OK</em>.</p>
         <p className="mt-2">If the dashboard can't load, that's almost always a temporary connection issue — use "Try again" rather than assuming something is wrong with the link.</p>
+      </Section>
+
+      <Section title="Weekly Summary and Notifications">
+        <p>Each week we email you a short summary of your children's volunteering. It comes in the language you use in the app (English or Spanish), and you can stop it from the link at the bottom of the email. The bell at the top of the app lists updates for you, such as a task waiting for your OK.</p>
       </Section>
 
       <Section title="What you can't do">
@@ -340,6 +380,16 @@ function VolunteerHandbook() {
           <Step icon={Phone} label="Phone number" description="Required. Only shared with volunteers you approve." />
           <Step icon={Calendar} label="Date, time & slots" description="When it happens and how many volunteers you need." />
         </div>
+        <p className="mt-3">Optional details help volunteers decide and show up prepared:</p>
+        <ul className="list-disc pl-5 space-y-1 mt-2">
+          <li><strong>Category</strong>, so students can filter and find it under <em>For you</em>.</li>
+          <li><strong>Minimum age</strong> (such as 16+), <strong>Online</strong> (no address needed) and <strong>Outdoor</strong> (shows the weather forecast).</li>
+          <li><strong>Wheelchair access</strong> and a short accessibility note.</li>
+          <li><strong>Meeting point</strong> and a <strong>day-of contact</strong> — shown only to volunteers you approve.</li>
+          <li><strong>Allow guests</strong>, so a volunteer can bring up to 3; each guest takes a spot.</li>
+          <li>A <strong>cover photo</strong> (JPEG, PNG or WebP). Please don't use photos where volunteers can be identified without their permission.</li>
+        </ul>
+        <p className="mt-2">Running the same task every week? Tick <strong>Repeat weekly</strong> on the post form, or use <strong>Post again</strong> on an existing task to copy it to a new date.</p>
       </Section>
 
       <Section title="Managing Signups">
@@ -359,6 +409,24 @@ function VolunteerHandbook() {
         </div>
         <p className="mt-3">{tr('Lots to sign off? Tick the entries (or Select all pending), then Approve selected — you sign once for all of them — or Reject selected. You confirm before anything changes, and a summary tells you how many went through.')}</p>
         <p className="mt-3">If the volunteer changes the date, hours, or activity afterward, your approval is cleared and they'll need it signed again.</p>
+      </Section>
+
+      <Section title="Running Your Task">
+        <ul className="list-disc pl-5 space-y-1">
+          <li><strong>Co-hosts</strong> — add up to 3 other Task Maker accounts to help approve sign-ups, take attendance and sign off hours. Only you can edit or cancel the task.</li>
+          <li><strong>Questions</strong> — answer students' questions on the task; answers are shown to everyone who can see it.</li>
+          <li><strong>Message volunteers</strong> to send everyone you've approved a note.</li>
+          <li><strong>Waitlist</strong> — when spots free up, the next person moves up automatically.</li>
+          <li><strong>On the day</strong>, show the check-in QR code; volunteers who are running late show a badge with their rough arrival time, and you're notified if someone can't make it. Print a sign-in sheet if you prefer paper.</li>
+        </ul>
+      </Section>
+
+      <Section title="After the Task">
+        <p>Mark attendance and sign off hours (see above). Once the day is over you can send one <strong>thank-you note</strong> to everyone who came. Volunteers can rate the task; you see the stars and comments, never their names. The <strong>Stats</strong> tab on My Tasks shows sign-ups, attendance and hours over time, with an impact report for any date range.</p>
+      </Section>
+
+      <Section title="Your Organizer Profile">
+        <p>In Settings, add a short About, your website and the causes you work on. Students see them on your organizer page, with your upcoming tasks and, once three or more people have rated, your average rating. Your email is never shown there.</p>
       </Section>
 
       <Section title="Contact Details Privacy">

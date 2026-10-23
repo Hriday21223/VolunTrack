@@ -24,7 +24,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 19, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: October 23, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -64,12 +64,29 @@ export default function Terms() {
             <p className="mt-2">Volunteer tasks are seen by students, many of them minors. A task must be a real volunteer opportunity, described honestly, and safe and appropriate for young people. Anyone can report a task or block its organizer; we review reports within 24 hours and may remove a task or stop an organizer from posting.</p>
           </Section>
 
+          <Section title="Posting Volunteer Tasks">
+            <p>If you post a task, you are its organizer and are responsible for it: the task must happen as described, and the details you give must be accurate and kept up to date — including the date, place or whether it&apos;s online, any minimum age, wheelchair access and accessibility notes, whether guests may come, the meeting point and the day-of contact. Volunteers and their parents rely on these to decide whether to take part. VolunTrack does not organize, supervise or inspect tasks; keeping volunteers safe on the day is the organizer&apos;s job.</p>
+            <p className="mt-2">You may add up to three co-hosts. Add only people you trust to help run the task: they can see its volunteers&apos; names, contact details and attendance and can sign off hours, and you remain responsible for the task. A day-of contact must be someone who has agreed to be listed. A cover photo must be one you have the right to use, and must not show volunteers — especially children — in a way that identifies them without their permission. Answers to questions, messages and thank-you notes you send must be appropriate for young people.</p>
+          </Section>
+
+          <Section title="Taking Part in Volunteer Tasks">
+            <p>When you sign up for a task, give truthful answers: if it has a minimum age, confirm only if you meet it. If you bring guests, you are responsible for them — they must meet the task&apos;s age requirement and follow the organizer&apos;s instructions, and their hours are not recorded in VolunTrack. If you can&apos;t make it, cancel or tell the organizer through the app so your spot can go to someone else. Ratings and questions must be honest and respectful, and invite only people you know. Taking part in a task is your own decision (or, for a minor, your parent or guardian&apos;s), made with the information the organizer provides.</p>
+          </Section>
+
+          <Section title="Content You Post">
+            <p>You keep ownership of what you add to VolunTrack — for example entries, task descriptions and photos, questions and answers, ratings, profiles and thank-you notes. You give us permission to store it and show it to the people the app shows it to, only to run the service. We may remove content that breaks these terms, such as after a report.</p>
+          </Section>
+
+          <Section title="Emails and Notifications">
+            <p>We send emails and in-app notifications needed to use VolunTrack, such as sign-in codes, sign-up decisions, reminders about tasks you joined, and messages from your task&apos;s organizer. Optional ones — such as reminders you set, the parent weekly summary and &ldquo;We miss you&rdquo; emails — can be turned off in Settings or from the link in the email.</p>
+          </Section>
+
           <Section title="Account Termination">
             <p>You may delete your account at any time from Settings, which erases it from your device and from our servers — see <Link to="/privacy" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">Privacy</Link> for the few things that are kept afterwards. School and organization accounts are closed by contacting us instead, so that student records are transferred or removed properly. We may suspend or terminate accounts that violate these terms, including for submitting fraudulent hour logs.</p>
           </Section>
 
           <Section title="Limitation of Liability">
-            <p>VolunTrack is provided "as is" and without warranty. To the extent permitted by law, we're not liable for any damages arising from your use of the app, including reliance on hour totals or verification status for school or program requirements.</p>
+            <p>VolunTrack is provided "as is" and without warranty. To the extent permitted by law, we're not liable for any damages arising from your use of the app, including reliance on hour totals or verification status for school or program requirements. Information shown with a task — such as its details, an organizer&apos;s rating or the weather forecast — is provided for convenience and may be wrong or out of date; check with the organizer and the conditions on the day. We are not responsible for what happens at a volunteer task, which is run by its organizer.</p>
           </Section>
 
           <Section title="Changes to These Terms">
