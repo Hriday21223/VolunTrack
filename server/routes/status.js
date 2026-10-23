@@ -27,6 +27,7 @@ import notificationsRouter from './notifications.js'
 import portfolioRouter from './portfolio.js'
 import comebackRouter from './comeback.js'
 import interestsRouter from './interests.js'
+import weatherRouter from './weather.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -274,6 +275,7 @@ const MOUNTED_ROUTERS = [
   ['portfolio', '/api/portfolio', portfolioRouter],
   ['comeback', '/api/comeback', comebackRouter],
   ['interests', '/api/interests', interestsRouter],
+  ['weather', '/api/weather', weatherRouter],
   ['status', '/api/status', router],
 ]
 
