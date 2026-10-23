@@ -22,6 +22,7 @@ import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJEC
 import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
+import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
 
 const router = express.Router()
 
@@ -1801,7 +1802,7 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
       query(
         `SELECT ${cols}
            FROM public_tasks t
-          WHERE t.created_by = $1 AND t.status <> 'cancelled' AND t.date >= CURRENT_DATE - 30
+          WHERE ${MANAGED_BY_SQL('t', '$1')} AND t.status <> 'cancelled' AND t.date >= CURRENT_DATE - 30
           ORDER BY t.date, t.id
           LIMIT 500`,
         [user.id],
@@ -1860,6 +1861,11 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     if (rows[0].created_by === req.auth.sub) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: 'You are hosting this task, so you cannot sign up for it.' })
+    }
+    const { rows: cohosting } = await client.query('SELECT 1 FROM task_cohosts WHERE task_id = $1 AND user_id = $2', [req.params.id, req.auth.sub])
+    if (cohosting.length > 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'You are co-hosting this task, so you cannot sign up for it.' })
     }
     if (rows[0].status === 'cancelled') {
       await client.query('ROLLBACK')
@@ -2535,12 +2541,11 @@ router.delete('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), asy
   }
 })
 
-// Approve a signup (organizer only) — reveals phone number to volunteer
+// Approve a signup (the creator or a co-host) — reveals phone number to volunteer
 router.post('/public-tasks/:id/approve/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows: taskRows } = await query('SELECT created_by FROM public_tasks WHERE id = $1', [req.params.id])
-    if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can approve signups.' })
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can approve signups.")) return
 
     // Only a real signup gets a decision, and only a change sends the email:
     // otherwise any task creator could email any user ID, as often as they liked.
@@ -2572,12 +2577,11 @@ router.post('/public-tasks/:id/approve/:userId', limiter, requireDb, requireAuth
   }
 })
 
-// Reject a signup (organizer only)
+// Reject a signup (the creator or a co-host)
 router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows: taskRows } = await query('SELECT created_by FROM public_tasks WHERE id = $1', [req.params.id])
-    if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can reject signups.' })
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can reject signups.")) return
 
     // Only a real signup gets a decision, and only a change sends the email:
     // otherwise any task creator could email any user ID, as often as they liked.
@@ -2863,15 +2867,22 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
       [req.params.id],
     )
     if (rows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (rows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can message volunteers.' })
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can message volunteers.")) return
+    // A co-host's message is signed with their own name.
+    let from = rows[0].creator_name || 'the organizer'
+    if (access.isCohost) {
+      const { rows: me } = await query('SELECT name FROM users WHERE id = $1', [req.auth.sub])
+      from = `${me[0]?.name || 'a co-host'} (co-host)`
+    }
 
     const { rows: people } = await query(
-      // Not to anyone who blocked this organizer (server/routes/reports.js).
+      // Not to anyone who blocked the task's creator or the sender
+      // (server/routes/reports.js).
       `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved'
-          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $2)`,
-      // Only the task's creator gets this far, so they're the organizer.
-      [req.params.id, req.auth.sub],
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id IN ($2, $3))`,
+      [req.params.id, access.createdBy, req.auth.sub],
     )
     if (people.length === 0) return res.status(400).json({ error: 'No approved volunteers to message yet.' })
 
@@ -2882,7 +2893,7 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
           to: person.email,
           subject: `Message from the organizer: ${rows[0].title}`,
           html: taskEmailHtml({
-            heading: `A message from ${rows[0].creator_name || 'the organizer'}`,
+            heading: `A message from ${from}`,
             lines: [message],
             task: rows[0],
           }),
@@ -3008,7 +3019,7 @@ async function organizerTaskRows(userId, { from, to }) {
          SELECT COUNT(*)::int AS rating_count, COALESCE(SUM(r.stars), 0)::int AS rating_sum
            FROM task_ratings r WHERE r.task_id = t.id
        ) rt
-      WHERE t.created_by = $1${range}
+      WHERE ${MANAGED_BY_SQL('t', '$1')}${range}
       ORDER BY t.date DESC, t.created_at DESC`,
     params,
   )
@@ -3047,7 +3058,7 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
     const { rows: distinct } = await query(
       `SELECT COUNT(DISTINCT s.user_id) AS people
          FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-        WHERE t.created_by = $1 AND s.status = 'approved'${range}`,
+        WHERE ${MANAGED_BY_SQL('t', '$1')} AND s.status = 'approved'${range}`,
       params,
     )
 
@@ -3116,13 +3127,13 @@ router.get('/public-tasks/mine/stats', limiter, requireDb, requireAuth(), async 
       `WITH came AS (
          SELECT DISTINCT s.user_id, s.task_id
            FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-          WHERE t.created_by = $1 AND t.status <> 'cancelled'${range} AND ${SHOWED_UP_SQL}
+          WHERE ${MANAGED_BY_SQL('t', '$1')} AND t.status <> 'cancelled'${range} AND ${SHOWED_UP_SQL}
        ), repeaters AS (
          SELECT user_id FROM came GROUP BY user_id HAVING COUNT(*) >= 2
        )
        SELECT (SELECT COUNT(DISTINCT s.user_id)::int
                  FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-                WHERE t.created_by = $1 AND t.status <> 'cancelled'${range} AND s.status = 'approved') AS volunteers,
+                WHERE ${MANAGED_BY_SQL('t', '$1')} AND t.status <> 'cancelled'${range} AND s.status = 'approved') AS volunteers,
               (SELECT COUNT(DISTINCT user_id)::int FROM came) AS attended,
               (SELECT COUNT(*)::int FROM repeaters) AS repeaters,
               COALESCE((SELECT json_object_agg(task_id, n) FROM (
@@ -3216,7 +3227,7 @@ router.get('/public-tasks/mine/stats', limiter, requireDb, requireAuth(), async 
 
 // --- Organizer endpoints (my tasks + log hours for volunteers) ---
 
-// List tasks I created, with signups (includes phone + signup status).
+// List tasks I created or co-host, with signups (includes phone + signup status).
 // important_info is the organizer's own text: Edit and Post again prefill it,
 // and without it here saving an edit blanked it.
 router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, res) => {
@@ -3249,8 +3260,11 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
               ) ORDER BY r.updated_at DESC), '[]'::json)
                FROM task_ratings r WHERE r.task_id = t.id AND r.comment IS NOT NULL) AS rating_comments,
               -- The one thank-you note (POST /public-tasks/:id/thanks), if sent.
-              (SELECT to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM task_thanks th WHERE th.task_id = t.id) AS thanks_sent_at
-       FROM public_tasks t WHERE t.created_by = $1
+              (SELECT to_char(th.sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM task_thanks th WHERE th.task_id = t.id) AS thanks_sent_at,
+              -- Co-hosts (#440): the caller may be one rather than the creator.
+              t.created_by <> $1 AS is_cohost, t.creator_name,
+              (SELECT COUNT(*)::int FROM task_cohosts c WHERE c.task_id = t.id) AS cohost_count
+       FROM public_tasks t WHERE ${MANAGED_BY_SQL('t', '$1')}
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.auth.sub],
     )
@@ -3447,7 +3461,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
   }
 })
 
-// Log hours for a volunteer on a task (task creator only, no approval needed)
+// Log hours for a volunteer on a task (the creator or a co-host, no approval needed)
 // Hours an organizer logs are approved on the spot, so they must be for a day
 // that has happened, and a second click mustn't double them. "Today" is UTC's,
 // which is never behind a US date, so a same-day entry is never refused.
@@ -3538,7 +3552,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
     const { rows } = await query('SELECT id, created_by, status, checkin_secret FROM public_tasks WHERE id = $1', [req.params.id])
     const task = rows[0]
     if (!task) return res.status(404).json({ error: 'Task not found.' })
-    if (task.created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can show the check-in code.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can show the check-in code.")) return
     if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
     let secret = task.checkin_secret
     if (!secret) {
@@ -3628,7 +3642,7 @@ router.post('/public-tasks/:id/checkin/close', limiter, requireDb, requireAuth()
     )
     const task = rows[0]
     if (!task) return res.status(404).json({ error: 'Task not found.' })
-    if (task.created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can check volunteers out.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can check volunteers out.")) return
     if (!task.today) return res.status(400).json({ error: 'Check-out only works on the day of the task. Use Log hours in My Tasks instead.' })
     const { rows: out } = await query(
       `UPDATE public_task_signups SET checked_out_at = now()
@@ -3663,7 +3677,7 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
   try {
     const { rows: taskRows } = await query('SELECT * FROM public_tasks WHERE id = $1', [req.params.id])
     if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can log hours.' })
+    if (refuseTaskAccess(res, await canManageTask(req.params.id, req.auth.sub), "Only the task's organizer or a co-host can log hours.")) return
 
     // Only approved signups may have hours logged — mirrors the WHERE clause of
     // the log-hours-batch sibling below. Without the status check a task creator
@@ -3724,7 +3738,7 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
   try {
     const { rows: taskRows } = await query('SELECT * FROM public_tasks WHERE id = $1', [req.params.id])
     if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can log hours.' })
+    if (refuseTaskAccess(res, await canManageTask(req.params.id, req.auth.sub), "Only the task's organizer or a co-host can log hours.")) return
 
     const { rows: approvedRows } = await query(
       'SELECT user_id FROM public_task_signups WHERE task_id = $1 AND status = \'approved\' AND attendance_status IS DISTINCT FROM \'absent\'',
@@ -3776,9 +3790,8 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
 // Get logs for a volunteer on a specific task (so the organizer can see what was already logged)
 router.get('/public-tasks/:id/logs', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows: taskRows } = await query('SELECT created_by FROM public_tasks WHERE id = $1', [req.params.id])
-    if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can view logs.' })
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can view logs.")) return
 
     const { rows } = await query(
       `SELECT id, user_id, hours, date, notes, created_at
@@ -3793,7 +3806,7 @@ router.get('/public-tasks/:id/logs', limiter, requireDb, requireAuth(), async (r
   }
 })
 
-// List every student approved on a task I created, with their recent logs —
+// List every student approved on a task I created or co-host, with their recent logs —
 // lets a volunteer review and approve/reject hours a student logged themselves,
 // not just log hours on the student's behalf (see log-hours/log-hours-batch above).
 router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) => {
@@ -3803,7 +3816,7 @@ router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) =
        FROM public_task_signups s
        JOIN public_tasks t ON t.id = s.task_id
        JOIN users u ON u.id = s.user_id
-       WHERE t.created_by = $1 AND s.status = 'approved'
+       WHERE ${MANAGED_BY_SQL('t', '$1')} AND s.status = 'approved'
        ORDER BY u.name`,
       [req.auth.sub],
     )
@@ -3821,7 +3834,7 @@ router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) =
       `SELECT l.id, l.user_id, l.date, l.activity, l.category, l.hours, l.notes, l.verification_status, l.created_at
        FROM logs l
        JOIN public_tasks t ON t.id = l.task_id
-       WHERE l.user_id = ANY($1::text[]) AND t.created_by = $2
+       WHERE l.user_id = ANY($1::text[]) AND ${MANAGED_BY_SQL('t', '$2')}
        ORDER BY l.created_at DESC`,
       [studentIds, req.auth.sub],
     )
@@ -3858,7 +3871,7 @@ function verifyDecisionError(status, signature) {
 async function verifyStudentLog({ organizerId, studentId, logId, status, signature }) {
   const { rows: relRows } = await query(
     `SELECT 1 FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
-     WHERE t.created_by = $1 AND s.user_id = $2 AND s.status = 'approved'`,
+     WHERE ${MANAGED_BY_SQL('t', '$1')} AND s.user_id = $2 AND s.status = 'approved'`,
     [organizerId, studentId],
   )
   if (relRows.length === 0) return { ok: false, httpStatus: 403, error: 'This student is not approved on any of your tasks.' }
@@ -3866,7 +3879,7 @@ async function verifyStudentLog({ organizerId, studentId, logId, status, signatu
   const { rows: logRows } = await query('SELECT task_id FROM logs WHERE id = $1 AND user_id = $2', [logId, studentId])
   if (logRows.length === 0) return { ok: false, httpStatus: 404, error: 'Log not found.' }
   const { rows: ownsTask } = await query(
-    'SELECT 1 FROM public_tasks WHERE id = $1 AND created_by = $2',
+    `SELECT 1 FROM public_tasks t WHERE t.id = $1 AND ${MANAGED_BY_SQL('t', '$2')}`,
     [logRows[0].task_id, organizerId],
   )
   if (ownsTask.length === 0) return { ok: false, httpStatus: 403, error: 'This log is not for one of your tasks.' }
@@ -4043,15 +4056,14 @@ async function notifyHoursDecision(studentId, logId, status) {
   }
 }
 
-// Mark attendance for a signed-up student on one of my tasks.
+// Mark attendance for a signed-up student on a task I created or co-host.
 router.post('/public-tasks/:id/attendance/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
   const { status } = req.body
   if (!['present', 'absent', 'excused'].includes(status)) return res.status(400).json({ error: 'status must be present, absent, or excused.' })
 
   try {
-    const { rows: taskRows } = await query('SELECT created_by FROM public_tasks WHERE id = $1', [req.params.id])
-    if (taskRows.length === 0) return res.status(404).json({ error: 'Task not found.' })
-    if (taskRows[0].created_by !== req.auth.sub) return res.status(403).json({ error: 'Only the task creator can mark attendance.' })
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can mark attendance.")) return
 
     const { rows: signupRows } = await query(
       "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
@@ -4067,6 +4079,133 @@ router.post('/public-tasks/:id/attendance/:userId', limiter, requireDb, requireA
   } catch (error) {
     console.error('mark attendance failed:', error)
     return res.status(500).json({ error: 'Could not mark attendance.' })
+  }
+})
+
+// --- Co-hosts (#440) -----------------------------------------------------------
+//
+// The creator adds up to COHOST_MAX Task Makers by email; each can then do the
+// day-to-day organizer work (canManageTask() in ../taskCohosts.js). The add
+// refuses with one generic message for anyone who can't be a co-host, so the
+// form never tells the creator whether an address has an account.
+
+const cohostLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => (req.auth?.sub ? `user:${req.auth.sub}` : `ip:${req.ip}`),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many co-host changes. Please try again later.' },
+})
+
+async function cohostList(taskId) {
+  const { rows } = await query(
+    `SELECT u.id, u.name, u.email, c.created_at
+       FROM task_cohosts c JOIN users u ON u.id = c.user_id
+      WHERE c.task_id = $1 ORDER BY c.created_at, u.id`,
+    [taskId],
+  )
+  return rows.map((r) => ({ id: r.id, name: r.name, email: r.email, addedAt: r.created_at }))
+}
+
+// GET: the task's co-hosts, for its creator and its co-hosts.
+router.get('/public-tasks/:id/cohosts', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can see its co-hosts.")) return
+    return res.json({ cohosts: await cohostList(req.params.id), max: COHOST_MAX, isCreator: access.isCreator })
+  } catch (error) {
+    console.error('list cohosts failed:', error)
+    return res.status(500).json({ error: 'Could not load the co-hosts.' })
+  }
+})
+
+// POST { email }: the creator adds a co-host.
+router.post('/public-tasks/:id/cohosts', cohostLimiter, requireDb, requireAuth(), async (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
+  if (!email || email.length > 254 || !validator.isEmail(email)) return res.status(400).json({ error: 'Enter an email address.' })
+  const client = await getPool().connect()
+  let added = null
+  let task = null
+  try {
+    await client.query('BEGIN')
+    // The task row lock serializes adds, so two at once can't pass the cap.
+    const { rows: taskRows } = await client.query(
+      'SELECT id, created_by, status, title, creator_name FROM public_tasks WHERE id = $1 FOR UPDATE',
+      [req.params.id],
+    )
+    task = taskRows[0]
+    if (!task) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Task not found.' }) }
+    if (task.created_by !== req.auth.sub) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Only the task creator can add co-hosts.' }) }
+    if (task.status === 'cancelled') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'This task was cancelled.' }) }
+    const { rows: count } = await client.query('SELECT COUNT(*)::int AS n FROM task_cohosts WHERE task_id = $1', [task.id])
+    if (count[0].n >= COHOST_MAX) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: `A task can have up to ${COHOST_MAX} co-hosts.` })
+    }
+    // Not found, the wrong kind of account, suspended or the creator
+    // themselves: all one answer (COHOST_GENERIC_REFUSAL).
+    const { rows: people } = await client.query(
+      `SELECT id, name FROM users
+        WHERE LOWER(email) = $1 AND role = ANY($2::text[]) AND posting_suspended_at IS NULL AND id <> $3
+        LIMIT 1`,
+      [email, COHOST_ROLES, req.auth.sub],
+    )
+    const person = people[0]
+    if (!person) { await client.query('ROLLBACK'); return res.status(400).json({ error: COHOST_GENERIC_REFUSAL }) }
+    // Someone signed up to volunteer can't also approve their own sign-up.
+    // The creator already sees this person in the sign-up list.
+    const { rows: signedUp } = await client.query(
+      "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status NOT IN ('rejected', 'parent_declined')",
+      [task.id, person.id],
+    )
+    if (signedUp.length > 0) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: "That person is signed up to volunteer on this task, so they can't co-host it." })
+    }
+    const { rows: inserted } = await client.query(
+      'INSERT INTO task_cohosts (task_id, user_id, added_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING user_id',
+      [task.id, person.id, req.auth.sub],
+    )
+    await client.query('COMMIT')
+    if (inserted.length > 0) added = person
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
+    console.error('add cohost failed:', error)
+    return res.status(500).json({ error: 'Could not add the co-host.' })
+  } finally {
+    client.release()
+  }
+  if (added) {
+    notify(added.id, {
+      kind: 'cohost_added',
+      title: task.title,
+      body: `${task.creator_name || 'The organizer'} added you as a co-host. Help run it from My Tasks.`,
+      link: '/my-tasks',
+    })
+  }
+  try {
+    return res.status(added ? 201 : 200).json({ ok: true, cohosts: await cohostList(task.id), max: COHOST_MAX })
+  } catch {
+    return res.json({ ok: true })
+  }
+})
+
+// DELETE: the creator removes a co-host, or a co-host leaves.
+router.delete('/public-tasks/:id/cohosts/:userId', cohostLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const leaving = req.params.userId === req.auth.sub
+    const { rows } = await query('SELECT created_by FROM public_tasks WHERE id = $1', [req.params.id])
+    if (!rows[0]) return res.status(404).json({ error: 'Task not found.' })
+    if (!leaving && rows[0].created_by !== req.auth.sub) {
+      return res.status(403).json({ error: 'Only the task creator can remove co-hosts.' })
+    }
+    const { rowCount } = await query('DELETE FROM task_cohosts WHERE task_id = $1 AND user_id = $2', [req.params.id, req.params.userId])
+    if (rowCount === 0) return res.status(404).json({ error: leaving ? "You aren't a co-host of this task." : "That person isn't a co-host of this task." })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('remove cohost failed:', error)
+    return res.status(500).json({ error: 'Could not remove the co-host.' })
   }
 })
 

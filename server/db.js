@@ -656,6 +656,22 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
 
+  // Co-hosts (#440): up to 3 other Task Makers who help run one task —
+  // approve sign-ups, take attendance, verify hours — without being able to
+  // edit, cancel or hand it on. canManageTask() in routes/school.js decides.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS task_cohosts (
+        task_id    TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        added_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (task_id, user_id)
+      )
+    `)
+  } catch (error) { console.error('task_cohosts migration failed:', error.message) }
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_task_cohosts_user ON task_cohosts(user_id)`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}
