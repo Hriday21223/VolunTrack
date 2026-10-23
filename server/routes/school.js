@@ -1737,6 +1737,12 @@ async function notifyFollowers(organizerId, taskId) {
   }
 }
 
+// Shown when a calendar link points at a task that was cancelled or removed.
+function taskGonePage() {
+  const style = 'font-family:system-ui,-apple-system,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5'
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${style}"><h1 style="font-size:1.4rem">This task is no longer available</h1><p>The organizer may have cancelled or removed it, so there is nothing to add to your calendar.</p><p><a href="${escapeHtml(frontendBase())}/opportunities">Find another task on VolunTrack</a></p></body></html>`
+}
+
 // Add to calendar: a task as an .ics file, which phones and calendar apps
 // open as "add this event". Public, like the task list: no sign-in, and only
 // for a task the list would show. The event rules (two hours, or all day
@@ -1752,7 +1758,8 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
       [req.params.id],
     )
     const t = rows[0]
-    if (!t) return res.status(404).json({ error: 'Task not found.' })
+    // People reach this from an email link, so a gone task gets a page, not JSON.
+    if (!t) return res.status(404).type('html').send(taskGonePage())
     const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
     res.set('Content-Type', 'text/calendar; charset=utf-8')
     res.set('Content-Disposition', 'attachment; filename="volunteer-task.ics"')
@@ -2859,8 +2866,68 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
 // Every task email goes to one person at a time. A shared To: line on a
 // volunteer roster would publish a list of minors' addresses to each other,
 // which is the same reason referral invites are sent separately.
-function taskEmailHtml({ heading, lines, task, link, linkLabel }) {
-  const when = [task.date, task.time].filter(Boolean).join(' at ')
+// "2026-10-30" + "10:00" → "Fri, Oct 30 · 10:00 AM". The year shows only when
+// it isn't this one. A time that isn't HH:MM (free text) is shown as typed;
+// ../ics.js reads times the same way.
+function friendlyWhen(date, time) {
+  // A raw DATE column comes back from pg as a Date at local midnight.
+  if (date instanceof Date && !Number.isNaN(date.getTime())) {
+    const pad = (n) => String(n).padStart(2, '0')
+    date = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '')
+  let day = date || ''
+  if (m) {
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+    day = d.toLocaleDateString('en-US', {
+      timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric',
+      ...(+m[1] !== new Date().getFullYear() ? { year: 'numeric' } : {}),
+    })
+  }
+  const hm = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim())
+  const clock = hm && +hm[1] < 24
+    ? `${((+hm[1] + 11) % 12) + 1}:${hm[2]} ${+hm[1] < 12 ? 'AM' : 'PM'}`
+    : (time || '')
+  return [day, clock].filter(Boolean).join(' · ')
+}
+
+// The task's .ics file: phones and calendar apps open it as "add this event".
+function taskCalendarLink(taskId) {
+  return `${backendUrl()}/api/school/public-tasks/${encodeURIComponent(taskId)}/calendar.ics`
+}
+
+// Same two choices as the app's AddToCalendar: Google, and the .ics file.
+function calendarLinksHtml(task, taskId) {
+  const google = googleCalendarLink(task, taskId)
+  return `<p><strong>Add to calendar:</strong> ${google ? `<a href="${escapeHtml(google)}">Google Calendar</a> · ` : ''}<a href="${escapeHtml(taskCalendarLink(taskId))}">Apple / Outlook</a></p>`
+}
+
+// Google Calendar's "new event" page, the same event as the .ics file (two
+// hours, or all day without a time). Mirrors src/lib/calendarLinks.js.
+function googleCalendarLink(task, taskId) {
+  const iso = task.date instanceof Date
+    ? `${task.date.getFullYear()}-${String(task.date.getMonth() + 1).padStart(2, '0')}-${String(task.date.getDate()).padStart(2, '0')}`
+    : String(task.date || '').slice(0, 10)
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return null
+  const pad = (n) => String(n).padStart(2, '0')
+  const stamp = (dt) => `${dt.getUTCFullYear()}${pad(dt.getUTCMonth() + 1)}${pad(dt.getUTCDate())}T${pad(dt.getUTCHours())}${pad(dt.getUTCMinutes())}00`
+  const hm = /^(\d{1,2}):(\d{2})/.exec(task.time || '')
+  let dates
+  if (hm) {
+    const start = new Date(Date.UTC(y, m - 1, d, Number(hm[1]), Number(hm[2])))
+    dates = `${stamp(start)}/${stamp(new Date(start.getTime() + 2 * 3600e3))}`
+  } else {
+    const day = new Date(Date.UTC(y, m - 1, d))
+    dates = `${stamp(day).slice(0, 8)}/${stamp(new Date(day.getTime() + 86400e3)).slice(0, 8)}`
+  }
+  const details = [task.creator_name && `Posted by ${task.creator_name}`, taskPageLink(taskId)].filter(Boolean).join('\n\n')
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: task.title || 'Volunteer task', dates, location: task.location || '', details })
+  return `https://calendar.google.com/calendar/render?${q}`
+}
+
+function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId }) {
+  const when = friendlyWhen(task.date, task.time)
   const detail = [
     when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : '',
     task.location ? `<p><strong>Where:</strong> ${escapeHtml(task.location)}</p>` : '',
@@ -2872,6 +2939,7 @@ function taskEmailHtml({ heading, lines, task, link, linkLabel }) {
     <h3>${escapeHtml(task.title || 'Volunteer opportunity')}</h3>
     ${detail}
     ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(linkLabel || 'Open in VolunTrack')}</a></p>` : ''}
+    ${calendarTaskId ? calendarLinksHtml(task, calendarTaskId) : ''}
     ${emailFooterHtml()}
   `
 }
@@ -2912,6 +2980,7 @@ async function notifySignupDecision(taskId, userId, decision) {
         task: row,
         link: taskPageLink(taskId),
         linkLabel: 'View task',
+        calendarTaskId: approved ? taskId : undefined,
       }),
     })
   } catch (error) {
@@ -3220,6 +3289,7 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
               task,
               link: taskPageLink(task.id),
               linkLabel: 'View task',
+              calendarTaskId: task.id,
             }),
           })
           sent += 1
