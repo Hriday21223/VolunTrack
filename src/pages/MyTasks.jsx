@@ -13,7 +13,10 @@ import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import OrganizerStats from '@/components/OrganizerStats.jsx'
 import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.jsx'
+import LateBadge from '@/components/LateBadge.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import TaskCohosts from '@/components/TaskCohosts.jsx'
+import TaskQuestions from '@/components/TaskQuestions.jsx'
 import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 import TaskPhotoPicker from '@/components/TaskPhotoPicker.jsx'
@@ -145,7 +148,7 @@ export default function MyTasks() {
     setSheetBusyId(t.id)
     try {
       const { generateSignInSheetPDF } = await import('@/lib/export.js')
-      await generateSignInSheetPDF(t, { organizerName: user?.name })
+      await generateSignInSheetPDF(t, { organizerName: t.is_cohost ? t.creator_name : user?.name })
     } catch {
       setToastMsg('Could not create the sign-in sheet'); setToast(true)
     } finally { setSheetBusyId(null) }
@@ -702,7 +705,10 @@ export default function MyTasks() {
                 onClick={() => setExpanded(isExpanded ? null : t.id)}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{t.title}</p>
+                  <p className="font-medium">
+                    {t.title}
+                    {t.is_cohost && <span className="ml-2 align-middle text-xs px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300">{tr('Co-hosting')}</span>}
+                  </p>
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     {!(t.is_online && t.location === 'Online') && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>}
@@ -756,6 +762,8 @@ export default function MyTasks() {
                 </details>
               )}
 
+              <TaskQuestions task={t} organizer className="mt-2" />
+
               {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-white/10">
                   {/* A posted task used to be unchangeable — these four are
@@ -769,24 +777,32 @@ export default function MyTasks() {
                         <button onClick={() => signInSheet(t)} className="btn-sm btn-ghost" disabled={actionBusy || sheetBusyId === t.id}>
                           <Printer className="w-3.5 h-3.5 mr-1" /> {sheetBusyId === t.id ? 'Preparing…' : 'Sign-in sheet (PDF)'}
                         </button>
-                        <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
-                          <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
-                        </button>
-                        <button onClick={() => setTaskStatus(t.id, t.status === 'open' ? 'closed' : 'open')} className="btn-sm btn-ghost" disabled={actionBusy}>
-                          {t.status === 'open' ? <><Lock className="w-3.5 h-3.5 mr-1" /> Close signups</> : <><Unlock className="w-3.5 h-3.5 mr-1" /> Reopen signups</>}
-                        </button>
+                        {!t.is_cohost && (
+                          <>
+                            <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
+                              <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
+                            </button>
+                            <button onClick={() => setTaskStatus(t.id, t.status === 'open' ? 'closed' : 'open')} className="btn-sm btn-ghost" disabled={actionBusy}>
+                              {t.status === 'open' ? <><Lock className="w-3.5 h-3.5 mr-1" /> Close signups</> : <><Unlock className="w-3.5 h-3.5 mr-1" /> Reopen signups</>}
+                            </button>
+                          </>
+                        )}
                         <button onClick={() => { setMessagingId(messagingId === t.id ? null : t.id); setEditingId(null); setCancellingId(null) }} className="btn-sm btn-ghost" disabled={actionBusy}>
                           <Mail className="w-3.5 h-3.5 mr-1" /> Message volunteers
                         </button>
-                        <button onClick={() => { setCancellingId(cancellingId === t.id ? null : t.id); setEditingId(null); setMessagingId(null) }} className="btn-sm btn-ghost text-red-400" disabled={actionBusy}>
-                          <Ban className="w-3.5 h-3.5 mr-1" /> Cancel event
-                        </button>
+                        {!t.is_cohost && (
+                          <button onClick={() => { setCancellingId(cancellingId === t.id ? null : t.id); setEditingId(null); setMessagingId(null) }} className="btn-sm btn-ghost text-red-400" disabled={actionBusy}>
+                            <Ban className="w-3.5 h-3.5 mr-1" /> Cancel event
+                          </button>
+                        )}
                       </>
                     )}
-                    <button onClick={() => postAgain(t)} className="btn-sm btn-ghost" disabled={actionBusy}>
-                      <Copy className="w-3.5 h-3.5 mr-1" /> Post again
-                    </button>
-                    {t.status !== 'cancelled' && t.date < localToday() && !t.thanks_sent_at && (
+                    {!t.is_cohost && (
+                      <button onClick={() => postAgain(t)} className="btn-sm btn-ghost" disabled={actionBusy}>
+                        <Copy className="w-3.5 h-3.5 mr-1" /> Post again
+                      </button>
+                    )}
+                    {!t.is_cohost && t.status !== 'cancelled' && t.date < localToday() && !t.thanks_sent_at && (
                       <button
                         onClick={() => {
                           if (thankingId === t.id) { setThankingId(null); return }
@@ -799,6 +815,13 @@ export default function MyTasks() {
                       </button>
                     )}
                   </div>
+
+                  <TaskCohosts
+                    task={t}
+                    userId={user?.id}
+                    onLeft={() => { setExpanded(null); loadTasks(); loadStudents() }}
+                    onMessage={(msg) => { setToastMsg(msg); setToast(true) }}
+                  />
 
                   {t.thanks_sent_at && (
                     <p className="mb-4 text-xs text-rose-300 flex items-center gap-1">
@@ -897,6 +920,7 @@ export default function MyTasks() {
                               <p className="text-sm font-medium truncate">{s.name}</p>
                               <p className="text-xs text-earth-400 truncate">{s.email}</p>
                               {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
+                              <LateBadge signup={s} />
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}

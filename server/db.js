@@ -674,6 +674,54 @@ export async function initSchema() {
     )`)
   } catch (error) { console.error('public_task_photos migration failed:', error.message) }
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS cover_photo_id TEXT`) } catch {}
+  // Co-hosts (#440): up to 3 other Task Makers who help run one task —
+  // approve sign-ups, take attendance, verify hours — without being able to
+  // edit, cancel or hand it on. canManageTask() in routes/school.js decides.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS task_cohosts (
+        task_id    TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        added_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (task_id, user_id)
+      )
+    `)
+  } catch (error) { console.error('task_cohosts migration failed:', error.message) }
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_task_cohosts_user ON task_cohosts(user_id)`) } catch {}
+  // Organizer profiles (server/routes/organizerProfile.js, /organizers/:id):
+  // a short "About", an optional https website and causes (activity
+  // categories), shown to signed-in students on the organizer's page.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organizer_about TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organizer_website TEXT`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organizer_causes TEXT[]`) } catch {}
+  try { await query(`ALTER TABLE users ADD CONSTRAINT users_organizer_about_len CHECK (organizer_about IS NULL OR char_length(organizer_about) <= 500)`) } catch {}
+  // Day-of details (#438): where to meet and who to call on the day. Only the
+  // organizer and approved volunteers ever read them (routes/school.js).
+  // late_eta_minutes / late_at: an approved volunteer's "Running late" on the
+  // task's day — one per signup, the ETA can be changed.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS meeting_point TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS day_of_contact TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS late_eta_minutes SMALLINT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS late_at TIMESTAMPTZ`) } catch {}
+  // Ask the organizer (#436, routes/school.js): public Q&A on a task. Only
+  // answered, unhidden rows are shown beyond the asker and the organizer.
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS task_questions (
+      id          TEXT PRIMARY KEY,
+      task_id     TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+      asker_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      question    TEXT NOT NULL,
+      answer      TEXT,
+      answered_at TIMESTAMPTZ,
+      hidden      BOOLEAN NOT NULL DEFAULT false,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`)
+    await query('CREATE INDEX IF NOT EXISTS idx_task_questions_task ON task_questions(task_id, created_at)')
+    await query('CREATE INDEX IF NOT EXISTS idx_task_questions_asker ON task_questions(asker_id)')
+  } catch (error) { console.error('task_questions migration failed:', error.message) }
+  // Outdoor tasks get a forecast chip (server/routes/weather.js, #435).
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS is_outdoor BOOLEAN NOT NULL DEFAULT false`) } catch {}
 
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}

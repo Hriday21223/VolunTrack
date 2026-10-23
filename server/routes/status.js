@@ -28,6 +28,8 @@ import portfolioRouter from './portfolio.js'
 import comebackRouter from './comeback.js'
 import interestsRouter from './interests.js'
 import taskPhotosRouter from './taskPhotos.js'
+import organizerProfileRouter from './organizerProfile.js'
+import weatherRouter from './weather.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -276,6 +278,8 @@ const MOUNTED_ROUTERS = [
   ['comeback', '/api/comeback', comebackRouter],
   ['interests', '/api/interests', interestsRouter],
   ['task-photos', '/api/task-photos', taskPhotosRouter],
+  ['organizer-profiles', '/api/school/organizers', organizerProfileRouter],
+  ['weather', '/api/weather', weatherRouter],
   ['status', '/api/status', router],
 ]
 

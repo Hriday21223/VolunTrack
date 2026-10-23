@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2 } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
@@ -16,10 +16,13 @@ import InviteFriends from '@/components/InviteFriends.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
 import TaskCoverPhoto from '@/components/TaskCoverPhoto.jsx'
+import TaskQuestions from '@/components/TaskQuestions.jsx'
+import WeatherChip from '@/components/WeatherChip.jsx'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { MAX_SEARCH_LENGTH, cleanSearch, taskMatchesSearch, taskShareUrl } from '@/lib/taskSearch.js'
+import { organizerPath } from '@/lib/organizerProfile.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -504,6 +507,7 @@ export default function Opportunities() {
                   {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <TaskDetailBadges task={t} className="mt-2" />
+                  <WeatherChip task={t} className="mt-2" />
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     {t.is_online ? (t.location && t.location !== 'Online' && <span>{t.location}</span>) : (
                       <a
@@ -520,7 +524,7 @@ export default function Opportunities() {
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total}{' '}{tr('slots')}</span>
                   </div>
                   <p className="text-xs text-earth-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span>{tr('Posted by')}{' '}{t.creator_name}</span>
+                    <span>{tr('Posted by')}{' '}{t.organizer_id ? <Link to={organizerPath(t.organizer_id)} onClick={(e) => e.stopPropagation()} className="hover:text-brand-400 hover:underline">{t.creator_name}</Link> : t.creator_name}</span>
                     {t.organizer_rating_count > 0 && (
                       <span
                         className="inline-flex items-center gap-0.5 text-amber-400"
@@ -581,6 +585,7 @@ export default function Opportunities() {
                   {approved && String(t.date).slice(0, 10) === format(new Date(), 'yyyy-MM-dd') && (
                     <div className="mt-2"><ScanCheckinButton className="btn-secondary text-sm" /></div>
                   )}
+                  <TaskQuestions task={t} className="mt-2" />
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
                   {t.my_signup_status === 'approved' ? (

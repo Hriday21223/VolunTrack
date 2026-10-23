@@ -10,6 +10,8 @@ export const ROUTE_ROLES = {
   '/': PERSONAL,
   '/welcome': PERSONAL,
   '/opportunities': STUDENT,
+  // /organizers/:id — an organizer's profile, reached from Opportunities.
+  '/organizers': STUDENT,
   '/log': STUDENT,
   '/calendar': STUDENT,
   '/achievements': STUDENT,
