@@ -9,7 +9,7 @@
 // ignores any idempotency hint. Goals are client-only (no server routes), so
 // this digest is hours/activity only, no goal progress.
 import { query } from './db.js'
-import { sendEmail, emailFooterHtml } from './email.js'
+import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
 import { escapeHtml } from './html.js'
 import { generateToken } from './ids.js'
 import { emailLang, et, emailDate } from './emailStrings.js'
@@ -30,13 +30,6 @@ const STATUS_LABEL = { none: 'Unverified', pending: 'Pending', approved: 'Approv
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
-}
-
-// The unsubscribe route renders its own confirmation page, so the link in the
-// email must be an absolute backend URL, not FRONTEND_URL. Hardcoded prod
-// fallback matches the convention in server/email.js (contactLink()).
-function backendUrl() {
-  return process.env.PUBLIC_BACKEND_URL || 'https://voluntrack-backend-frrh.onrender.com'
 }
 
 // pg returns NUMERIC / SUM(...) as strings — always Number() before arithmetic
@@ -269,7 +262,7 @@ export function renderDigestEmail({ parent, children, startLabel, endLabel, week
     `<p>${t('Hi {name},', { name: escapeHtml(parent.name) })}</p>`,
     body,
     emailFooterHtml(lang),
-    `<p style="font-size:12px;color:#888"><a href="${backendUrl()}/api/parent/digest/unsubscribe/${unsubToken}">${t('Unsubscribe from these weekly emails')}</a></p>`,
+    `<p style="font-size:12px;color:#888"><a href="${emailApiBase()}/api/parent/digest/unsubscribe/${unsubToken}">${t('Unsubscribe from these weekly emails')}</a></p>`,
   ].join('')
 
   return { subject, html, lang }
