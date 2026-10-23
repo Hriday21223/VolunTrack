@@ -656,6 +656,14 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
 
+  // Group sign-ups (#439, server/spots.js): the organizer allows guests per
+  // task, and a sign-up then brings 0–3 guests (optional first names), taking
+  // 1 + guest_count spots. Guests have no accounts and no hours.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS allow_guests BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_count SMALLINT NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_names TEXT[]`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_guest_count_check CHECK (guest_count BETWEEN 0 AND 3)`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

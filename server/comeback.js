@@ -16,6 +16,7 @@
 // waiting on its parent's consent (it can't sign in), and — as with every
 // organizer-facing list — tasks from a suspended organizer or one the student
 // blocked.
+import { SPOTS_USED_SQL } from './spots.js'
 import { query } from './db.js'
 import { sendEmail, emailFooterHtml, backendUrl } from './email.js'
 import { escapeHtml } from './html.js'
@@ -111,8 +112,7 @@ export async function pickTasksFor(userId) {
         AND o.posting_suspended_at IS NULL
         AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $1 AND b.blocked_id = t.created_by)
         AND NOT EXISTS (SELECT 1 FROM public_task_signups s WHERE s.task_id = t.id AND s.user_id = $1)
-        AND (SELECT COUNT(*) FROM public_task_signups s
-              WHERE s.task_id = t.id AND s.status IN ('pending', 'approved')) < t.slots_total
+        AND ${SPOTS_USED_SQL('t.id')} < t.slots_total
       ORDER BY ${near ? 'distance_km ASC NULLS LAST, ' : ''}t.date ASC, t.created_at ASC
       LIMIT ${MAX_TASKS}`,
     near ? [userId, lat, lng] : [userId],

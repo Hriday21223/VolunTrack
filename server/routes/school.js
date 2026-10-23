@@ -22,6 +22,7 @@ import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJEC
 import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
+import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
 
 const router = express.Router()
 
@@ -1241,6 +1242,11 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const badDetail = details.find((d) => !d.ok)
   if (badDetail) return res.status(400).json({ error: badDetail.error })
   const [minAge, isOnline, wheelchair, accessNote] = details.map((d) => d.value)
+  // Group sign-ups (#439): off unless the organizer ticks it.
+  if (req.body.allowGuests != null && typeof req.body.allowGuests !== 'boolean') {
+    return res.status(400).json({ error: 'Allow guests must be true or false.' })
+  }
+  const allowGuests = req.body.allowGuests === true
   // Online: the address is optional and there is no map pin.
   if (isOnline) {
     if (location != null && typeof location !== 'string') return res.status(400).json({ error: 'Location must be text.' })
@@ -1310,10 +1316,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, allow_guests)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote],
+            minAge, isOnline, wheelchair, accessNote, allowGuests],
         )
         created.push({ id, date: day })
       }
@@ -1381,10 +1387,13 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
                t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
-               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
+               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
                ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
+               t.allow_guests,
+               ${userId ? `(SELECT guest_count FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_guest_count` : 'NULL AS my_guest_count'},
+               ${userId ? `(SELECT guest_names FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_guest_names` : 'NULL AS my_guest_names'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.important_info ELSE NULL END AS important_info` : 'NULL AS important_info'},
                t.created_by AS organizer_id,
@@ -1491,10 +1500,11 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
-              (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
+              ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
               my.status AS my_signup_status,
               ${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position,
+              t.allow_guests, my.guest_count AS my_guest_count, my.guest_names AS my_guest_names,
               CASE WHEN my.status = 'approved' THEN t.phone ELSE NULL END AS phone,
               CASE WHEN my.status = 'approved' THEN t.important_info ELSE NULL END AS important_info,
               t.created_by AS organizer_id,
@@ -1582,8 +1592,7 @@ async function remindSavedTasks({ dryRun = false } = {}) {
      AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
      AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = st.user_id AND b.blocked_id = t.created_by)
      AND (t.date <= CURRENT_DATE + 2
-          OR (t.slots_total > 0 AND (SELECT COUNT(*) FROM public_task_signups f
-                                      WHERE f.task_id = t.id AND f.status IN ('pending', 'approved')) >= 0.8 * t.slots_total))`
+          OR (t.slots_total > 0 AND ${SPOTS_USED_SQL('t.id')} >= 0.8 * t.slots_total))`
   if (dryRun) {
     const { rows } = await query(`SELECT COUNT(*)::int AS n FROM saved_tasks st, public_tasks t, users u WHERE ${due}`)
     return { due: rows[0].n, notified: 0, dryRun: true }
@@ -1594,7 +1603,7 @@ async function remindSavedTasks({ dryRun = false } = {}) {
       WHERE ${due}
   RETURNING st.user_id, t.id AS task_id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total,
             (t.date <= CURRENT_DATE + 2) AS soon,
-            (SELECT COUNT(*)::int FROM public_task_signups f WHERE f.task_id = t.id AND f.status IN ('pending', 'approved')) AS filled`,
+            ${SPOTS_USED_SQL('t.id')} AS filled`,
   )
   for (const r of rows) {
     const when = [r.date, r.time].filter(Boolean).join(' at ')
@@ -1842,11 +1851,19 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   // the parent public_tasks row (SELECT ... FOR UPDATE) so signups for the same
   // task serialize: the second request blocks until the first commits, then its
   // fresh COUNT(*) reflects the row the first one added.
+  //
+  // Group sign-ups (#439): { guestCount, guestNames } brings up to 3 guests on
+  // a task that allows them, and the group takes 1 + guestCount spots. A group
+  // that doesn't fit in the spots left joins the waitlist together (with
+  // { waitlist: true }) or is refused with how many spots are left — never
+  // split, since the guests come with the student.
+  const guests = readGuests(req.body)
+  if (!guests.ok) return res.status(400).json({ error: guests.error })
   const client = await getPool().connect()
   try {
     await client.query('BEGIN')
     const { rows } = await client.query(
-      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age,
+      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age, t.allow_guests,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$2')} AS too_young,
               (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
               EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = t.created_by) AS host_blocked
@@ -1891,6 +1908,11 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       }
     }
 
+    if (guests.count > 0 && !rows[0].allow_guests) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: "This task doesn't take guests. Sign up on your own, or ask the organizer." })
+    }
+
     // Came from a friend's invite link: kept only when that friend really
     // invited this address to this task and is still going. Anything else is
     // ignored, never an error — the link is shareable and can go stale.
@@ -1922,11 +1944,13 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     // says yes (decideParentOk).
     const { rows: me } = await client.query('SELECT under_13 FROM users WHERE id = $1', [req.auth.sub])
     if (me[0]?.under_13 === true) {
-      const { rows: taken } = await client.query(
-        "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
-        [req.params.id],
-      )
-      if (Number(taken[0].cnt) >= rows[0].slots_total && req.body?.waitlist !== true) {
+      // Kept simple and safe: an under-13 can't bring guests.
+      if (guests.count > 0) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: "Students under 13 can't bring guests. Sign up on your own." })
+      }
+      const taken = await spotsUsed(client, req.params.id)
+      if (taken >= rows[0].slots_total && req.body?.waitlist !== true) {
         await client.query('ROLLBACK')
         return res.status(400).json({ error: 'Task is full.' })
       }
@@ -1943,21 +1967,23 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     // Rejected and waitlisted signups don't hold a slot: turning three
     // applicants away on a four-slot task used to leave room for one, and
     // then report "full".
-    const { rows: signups } = await client.query(
-      "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
-      [req.params.id],
-    )
-    if (Number(signups[0].cnt) >= rows[0].slots_total) {
+    const taken = await spotsUsed(client, req.params.id)
+    const groupSize = 1 + guests.count
+    if (taken + groupSize > rows[0].slots_total) {
       // Full: join the waitlist only when asked to, so an older client that
       // didn't know a task was full still gets "full" rather than a surprise.
       if (req.body?.waitlist !== true) {
         await client.query('ROLLBACK')
-        return res.status(400).json({ error: 'Task is full.' })
+        const left = Math.max(0, rows[0].slots_total - taken)
+        return res.status(400).json(left === 0
+          ? { error: 'Task is full.' }
+          : { error: groupTooBigMessage(left, groupSize), spotsLeft: left, groupTooBig: true })
       }
       const wid = uid('psig')
       await client.query(
-        "INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by) VALUES ($1, $2, $3, 'waitlisted', $4) ON CONFLICT DO NOTHING",
-        [wid, req.params.id, req.auth.sub, invitedBy],
+        `INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by, guest_count, guest_names)
+         VALUES ($1, $2, $3, 'waitlisted', $4, $5, $6) ON CONFLICT DO NOTHING`,
+        [wid, req.params.id, req.auth.sub, invitedBy, guests.count, guests.names.length ? guests.names : null],
       )
       const { rows: pos } = await client.query(`SELECT ${WAITLIST_POSITION_SQL('$1', '$2')} AS position`, [req.params.id, req.auth.sub])
       await client.query('COMMIT')
@@ -1967,8 +1993,9 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
 
     const sid = uid('psig')
     await client.query(
-      'INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING',
-      [sid, req.params.id, req.auth.sub, 'pending', invitedBy],
+      `INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by, guest_count, guest_names)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
+      [sid, req.params.id, req.auth.sub, 'pending', invitedBy, guests.count, guests.names.length ? guests.names : null],
     )
     await client.query('COMMIT')
     if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
@@ -2330,7 +2357,7 @@ export async function decideParentOk(signupId, approve) {
       [found[0].task_id],
     )
     const { rows: signupRows } = await client.query(
-      `SELECT s.status, s.user_id,
+      `SELECT s.status, s.user_id, s.guest_count,
               EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $2) AS host_blocked
          FROM public_task_signups s WHERE s.id = $1 FOR UPDATE`,
       [signupId, taskRows[0]?.created_by || null],
@@ -2362,14 +2389,11 @@ export async function decideParentOk(signupId, approve) {
         await client.query('ROLLBACK')
         return { ok: false, code: 400, error: "This task isn't taking sign-ups any more." }
       }
-      const { rows: taken } = await client.query(
-        "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
-        [found[0].task_id],
-      )
+      const taken = await spotsUsed(client, found[0].task_id)
       // Filled up while the parent was deciding: the waitlist, never over
       // capacity. signed_up_at restarts at the OK, so the child joins the
       // line behind people who were already waiting.
-      const status = Number(taken[0].cnt) < task.slots_total ? 'pending' : 'waitlisted'
+      const status = taken + 1 + (Number(signup.guest_count) || 0) <= task.slots_total ? 'pending' : 'waitlisted'
       await client.query(
         `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_decided_at = now()
           WHERE id = $1`,
@@ -2422,6 +2446,11 @@ async function notifyParentDecision({ status, userId, taskId }) {
 // rejects someone, adds spots or reopens the task) the earliest waiting moves
 // to 'pending' (the slot is theirs; the organizer still approves as usual)
 // and is emailed.
+//
+// Group sign-ups (#439): a waiting student with guests moves up only when the
+// whole group fits. A group that doesn't fit keeps its place in line, and a
+// smaller sign-up behind it may take the spots that are left — otherwise one
+// group of four would hold a single free spot empty until the event.
 
 // A waitlisted user's place in line (1 = next), as an SQL expression.
 export const WAITLIST_POSITION_SQL = (taskExpr, userExpr) => `(
@@ -2445,25 +2474,30 @@ async function promoteFromWaitlist(taskId) {
     )
     const task = rows[0]
     if (task && task.status === 'open' && !task.past) {
-      const { rows: taken } = await client.query(
-        "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved')",
-        [taskId],
-      )
-      const free = task.slots_total - Number(taken[0].cnt)
+      let free = task.slots_total - await spotsUsed(client, taskId)
       if (free > 0) {
-        const { rows: moved } = await client.query(
-          `UPDATE public_task_signups SET status = 'pending'
-            WHERE id IN (SELECT id FROM public_task_signups WHERE task_id = $1 AND status = 'waitlisted'
-                          ORDER BY signed_up_at, id LIMIT $2)
-            RETURNING user_id`,
-          [taskId, free],
+        const { rows: waiting } = await client.query(
+          `SELECT id, user_id, ${SIGNUP_SPOTS_SQL('w')} AS size FROM public_task_signups w
+            WHERE w.task_id = $1 AND w.status = 'waitlisted' ORDER BY w.signed_up_at, w.id`,
+          [taskId],
         )
-        promoted = moved.map((r) => r.user_id)
+        const ids = []
+        for (const w of waiting) {
+          if (free <= 0) break
+          if (w.size > free) continue
+          ids.push(w.id)
+          promoted.push(w.user_id)
+          free -= w.size
+        }
+        if (ids.length) {
+          await client.query("UPDATE public_task_signups SET status = 'pending' WHERE id = ANY($1::text[])", [ids])
+        }
       }
     }
     await client.query('COMMIT')
   } catch (error) {
     try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
+    promoted = []
     console.error('waitlist promotion failed:', error)
   } finally {
     client.release()
@@ -2533,6 +2567,70 @@ router.delete('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), asy
     console.error('cancel signup failed:', error)
     return res.status(500).json({ error: 'Could not cancel the sign-up.' })
   }
+})
+
+// PATCH /api/school/public-tasks/:id/signup/guests { guestCount, guestNames }
+// Group sign-ups (#439): the student changes how many guests they bring, or
+// removes them (guestCount 0). More guests on a sign-up that holds spots must
+// fit in the spots left; on the waitlist the group just waits as its new size.
+// Fewer guests free spots, so the waitlist moves up. Not once the day has
+// passed or attendance is marked, as for cancelling.
+router.patch('/public-tasks/:id/signup/guests', limiter, requireDb, requireAuth(), async (req, res) => {
+  const guests = readGuests({ guestCount: req.body?.guestCount ?? 0, guestNames: req.body?.guestNames })
+  if (!guests.ok) return res.status(400).json({ error: guests.error })
+  const client = await getPool().connect()
+  let freed = false
+  try {
+    await client.query('BEGIN')
+    // The task row lock, as sign-up and promotion take it.
+    const { rows: taskRows } = await client.query(
+      'SELECT status, slots_total, allow_guests, date < CURRENT_DATE - 1 AS past FROM public_tasks WHERE id = $1 FOR UPDATE',
+      [req.params.id],
+    )
+    const { rows: signupRows } = await client.query(
+      `SELECT s.status, s.guest_count, s.attendance_status, u.under_13
+         FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND s.user_id = $2 FOR UPDATE OF s`,
+      [req.params.id, req.auth.sub],
+    )
+    const task = taskRows[0]
+    const signup = signupRows[0]
+    const refuse = async (code, error, extra = {}) => {
+      await client.query('ROLLBACK')
+      return res.status(code).json({ error, ...extra })
+    }
+    if (!task || !signup) return await refuse(404, "You aren't signed up for this task.")
+    if (!['pending', 'approved', 'waitlisted'].includes(signup.status)) return await refuse(400, "This sign-up can't take guests.")
+    if (task.status === 'cancelled') return await refuse(400, 'This task was cancelled.')
+    if (task.past || signup.attendance_status) return await refuse(400, 'This task has already happened.')
+    const before = Number(signup.guest_count) || 0
+    if (guests.count > before) {
+      if (!task.allow_guests) return await refuse(400, "This task doesn't take guests.")
+      if (signup.under_13 === true) return await refuse(400, "Students under 13 can't bring guests.")
+      if (signup.status !== 'waitlisted') {
+        const others = await spotsUsed(client, req.params.id) - (1 + before)
+        const left = task.slots_total - others
+        if (1 + guests.count > left) {
+          return await refuse(400, groupTooBigMessage(Math.max(0, left), 1 + guests.count), { spotsLeft: Math.max(0, left), groupTooBig: true })
+        }
+      }
+    }
+    await client.query(
+      'UPDATE public_task_signups SET guest_count = $3, guest_names = $4 WHERE task_id = $1 AND user_id = $2',
+      [req.params.id, req.auth.sub, guests.count, guests.names.length ? guests.names : null],
+    )
+    await client.query('COMMIT')
+    // A smaller group frees spots — or, on the waitlist, may now fit.
+    freed = guests.count < before
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
+    console.error('change guests failed:', error)
+    return res.status(500).json({ error: 'Could not change your guests.' })
+  } finally {
+    client.release()
+  }
+  if (freed) await promoteFromWaitlist(req.params.id)
+  return res.json({ ok: true, guestCount: guests.count, guestNames: guests.names })
 })
 
 // Approve a signup (organizer only) — reveals phone number to volunteer
@@ -2676,10 +2774,14 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'allowGuests']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
-  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote }
+  const detailReaders = {
+    minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote,
+    // Turning guests off later keeps the guests already signed up.
+    allowGuests: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Allow guests must be true or false.' }),
+  }
 
   try {
     const { rows } = await query('SELECT created_by, status, is_online, location FROM public_tasks WHERE id = $1', [req.params.id])
@@ -2705,7 +2807,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       if (req.body[field] === undefined) continue
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
-        wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note',
+        wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', allowGuests: 'allow_guests',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -2728,12 +2830,19 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
         if (!Number.isInteger(slots) || slots < 1 || slots > 1000) {
           return res.status(400).json({ error: 'Volunteers needed must be between 1 and 1000.' })
         }
+        // Spots, not people: an approved volunteer's guests hold spots too.
         const { rows: approved } = await query(
-          "SELECT COUNT(*) AS cnt FROM public_task_signups WHERE task_id = $1 AND status = 'approved'",
+          `SELECT COUNT(*)::int AS people, COALESCE(SUM(${SIGNUP_SPOTS_SQL('s')}), 0)::int AS spots
+             FROM public_task_signups s WHERE s.task_id = $1 AND s.status = 'approved'`,
           [req.params.id],
         )
-        if (slots < Number(approved[0].cnt)) {
-          return res.status(400).json({ error: `You have already approved ${approved[0].cnt} volunteers — reject someone first to go below that.` })
+        const { people, spots } = approved[0]
+        if (slots < spots) {
+          return res.status(400).json({
+            error: spots === people
+              ? `You have already approved ${people} volunteers — reject someone first to go below that.`
+              : `Your approved ${people === 1 ? 'volunteer and their guests' : 'volunteers and their guests'} already take ${spots} spots — reject someone first to go below that.`,
+          })
         }
         values.push(slots)
       } else if (field === 'category') {
@@ -2991,6 +3100,10 @@ async function organizerTaskRows(userId, { from, to }) {
          SELECT COUNT(*) FILTER (WHERE s.status = 'approved')::int                                 AS approved,
                 COUNT(*) FILTER (WHERE s.status = 'pending')::int                                  AS pending,
                 COUNT(*) FILTER (WHERE s.status = 'waitlisted')::int                               AS waitlisted,
+                -- Group sign-ups (#439): guests of approved volunteers. They
+                -- hold spots but have no accounts, so attendance and hours
+                -- below count students only.
+                COALESCE(SUM(s.guest_count) FILTER (WHERE s.status = 'approved'), 0)::int          AS approved_guests,
                 COUNT(*) FILTER (WHERE s.attendance_status = 'present')::int                       AS present,
                 COUNT(*) FILTER (WHERE s.attendance_status = 'absent')::int                        AS absent,
                 COUNT(*) FILTER (WHERE s.attendance_status = 'excused')::int                       AS excused,
@@ -3035,6 +3148,7 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
       status: r.status,
       slotsTotal: r.slots_total,
       approved: r.approved,
+      guests: r.approved_guests,
       pending: r.pending,
       present: r.present,
       absent: r.absent,
@@ -3061,6 +3175,7 @@ router.get('/public-tasks/mine/report', limiter, requireDb, requireAuth(), async
         events: tasks.length,
         cancelled: tasks.filter((t) => t.status === 'cancelled').length,
         volunteers: Number(distinct[0]?.people || 0),
+        guests: tasks.reduce((n, t) => n + t.guests, 0),
         hours: tasks.reduce((n, t) => n + t.hours, 0),
         // Null rather than 0% when nobody has been marked — an organizer who
         // never took attendance did not achieve a 0% turnout.
@@ -3142,6 +3257,7 @@ router.get('/public-tasks/mine/stats', limiter, requireDb, requireAuth(), async 
       status: r.status,
       category: r.category || null,
       signups: r.approved,
+      guests: r.approved_guests,
       waitlisted: r.waitlisted,
       showedUp: r.showed_up,
       noShows: r.no_shows,
@@ -3192,6 +3308,7 @@ router.get('/public-tasks/mine/stats', limiter, requireDb, requireAuth(), async 
         tasksRun: tasks.length,
         cancelled,
         signups: sum('signups'),
+        guests: sum('guests'),
         waitlisted: sum('waitlisted'),
         volunteers: people.volunteers,
         attended: people.attended,
@@ -3223,12 +3340,14 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
-              (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.allow_guests,
+              ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
                 'attendance_status', s.attendance_status, 'attendance_marked_at', s.attendance_marked_at,
                 'checked_in_at', s.checked_in_at, 'checked_out_at', s.checked_out_at,
+                -- Group sign-ups (#439): guests coming with them.
+                'guest_count', s.guest_count, 'guest_names', COALESCE(s.guest_names, '{}'),
                 -- Who invited them, when they signed up from a friend's link.
                 'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
                 -- Checked in, never out, the day is over and no hours yet.
