@@ -1207,6 +1207,9 @@ const taskMinAge = (v) => {
 }
 const taskOnline = (v) => (v == null ? { ok: true, value: false }
   : typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Online must be true or false.' })
+// Outdoor (#435): shows a forecast chip on the task card.
+const taskOutdoor = (v) => (v == null ? { ok: true, value: false }
+  : typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Outdoor must be true or false.' })
 const WHEELCHAIR = ['yes', 'no', 'unknown']
 const taskWheelchair = (v) => (v == null || v === '' ? { ok: true, value: 'unknown' }
   : WHEELCHAIR.includes(v) ? { ok: true, value: v } : { ok: false, error: 'Wheelchair accessible must be yes, no or unknown.' })
@@ -1237,10 +1240,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   const lat = coordinate(latitude, 90)
   const lng = coordinate(longitude, 180)
   if (!lat.ok || !lng.ok) return res.status(400).json({ error: 'Invalid map position.' })
-  const details = [taskMinAge(req.body.minAge), taskOnline(req.body.isOnline), taskWheelchair(req.body.wheelchairAccessible), taskAccessNote(req.body.accessibilityNote)]
+  const details = [taskMinAge(req.body.minAge), taskOnline(req.body.isOnline), taskWheelchair(req.body.wheelchairAccessible), taskAccessNote(req.body.accessibilityNote), taskOutdoor(req.body.isOutdoor)]
   const badDetail = details.find((d) => !d.ok)
   if (badDetail) return res.status(400).json({ error: badDetail.error })
-  const [minAge, isOnline, wheelchair, accessNote] = details.map((d) => d.value)
+  const [minAge, isOnline, wheelchair, accessNote, isOutdoor] = details.map((d) => d.value)
   // Online: the address is optional and there is no map pin.
   if (isOnline) {
     if (location != null && typeof location !== 'string') return res.status(400).json({ error: 'Location must be text.' })
@@ -1310,10 +1313,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor],
         )
         created.push({ id, date: day })
       }
@@ -1379,7 +1382,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
-               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -1489,7 +1492,7 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -2676,10 +2679,10 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
-  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote }
+  const detailReaders = { minAge: taskMinAge, isOnline: taskOnline, wheelchairAccessible: taskWheelchair, accessibilityNote: taskAccessNote, isOutdoor: taskOutdoor }
 
   try {
     const { rows } = await query('SELECT created_by, status, is_online, location FROM public_tasks WHERE id = $1', [req.params.id])
@@ -2705,7 +2708,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       if (req.body[field] === undefined) continue
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
-        wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note',
+        wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', isOutdoor: 'is_outdoor',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -3223,7 +3226,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note,
+              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status IN ('pending', 'approved')) AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
@@ -3421,7 +3424,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
     const { rows } = await query(
       // The organizer's email only reaches volunteers they approved — it is who
       // those students ask to sign off their hours on the task.
-      `SELECT t.id, t.title, t.location, t.latitude, t.longitude, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
+      `SELECT t.id, t.title, t.location, t.latitude, t.longitude, t.is_online, t.is_outdoor, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
               ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position,

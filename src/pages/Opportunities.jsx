@@ -15,6 +15,7 @@ import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import WeatherChip from '@/components/WeatherChip.jsx'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -502,6 +503,7 @@ export default function Opportunities() {
                   {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <TaskDetailBadges task={t} className="mt-2" />
+                  <WeatherChip task={t} className="mt-2" />
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     {t.is_online ? (t.location && t.location !== 'Online' && <span>{t.location}</span>) : (
                       <a

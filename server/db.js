@@ -656,6 +656,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS wheelchair_accessible TEXT NOT NULL DEFAULT 'unknown'`) } catch {}
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS accessibility_note TEXT`) } catch {}
 
+  // Outdoor tasks get a forecast chip (server/routes/weather.js, #435).
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS is_outdoor BOOLEAN NOT NULL DEFAULT false`) } catch {}
+
   // Personal goals sync across a student's devices (src/lib/goalSync.js).
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS deadline DATE`) } catch {}
   try { await query(`ALTER TABLE goals ADD COLUMN IF NOT EXISTS is_primary BOOLEAN NOT NULL DEFAULT false`) } catch {}

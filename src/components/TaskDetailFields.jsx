@@ -3,13 +3,20 @@ import { tr } from '@/lib/i18n.js'
 const AGE_CHOICES = [10, 12, 13, 14, 16, 18, 21]
 
 // The optional task details (#426) on My Tasks' post and edit forms: online,
-// minimum age, wheelchair access and a short note. `value` holds minAge
-// ('' for none), isOnline, wheelchairAccessible and accessibilityNote;
+// minimum age, wheelchair access and a short note, plus outdoor (#435).
+// `value` holds minAge ('' for none), isOnline, wheelchairAccessible,
+// accessibilityNote and isOutdoor;
 // `onChange` gets the fields that changed.
 export default function TaskDetailFields({ value, onChange, idPrefix = 'task' }) {
   const ages = value.minAge && !AGE_CHOICES.includes(Number(value.minAge)) ? [...AGE_CHOICES, Number(value.minAge)].sort((a, b) => a - b) : AGE_CHOICES
   return (
     <div className="space-y-2">
+      {!value.isOnline && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={Boolean(value.isOutdoor)} onChange={(e) => onChange({ isOutdoor: e.target.checked })} />
+          {tr('Outdoor task — volunteers see the weather forecast')}
+        </label>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="label text-xs" htmlFor={`${idPrefix}-min-age`}>{tr('Minimum age')}</label>
