@@ -32,8 +32,9 @@ const onlineLocation = (loc) => {
 // One VEVENT for a task row ({ id, title, description, location, date
 // 'YYYY-MM-DD', time, creator_name, latitude, longitude, is_online }). `link` goes at the
 // end of the description and in URL; `summaryPrefix` (e.g. "Waitlist: ") is
-// put in front of the title.
-export function icsEvent(t, { link = '', summaryPrefix = '', now = new Date() } = {}) {
+// put in front of the title; `details` lines (the day-of meeting point and
+// contact, only for someone allowed to see them) go after the description.
+export function icsEvent(t, { link = '', summaryPrefix = '', now = new Date(), details = [] } = {}) {
   // Built in UTC only as a way to do date arithmetic; written out floating.
   const [y, m, d] = t.date.split('-').map(Number)
   const hm = /^(\d{1,2}):(\d{2})/.exec(t.time || '')
@@ -53,7 +54,7 @@ export function icsEvent(t, { link = '', summaryPrefix = '', now = new Date() } 
     `SUMMARY:${icsText(summaryPrefix + t.title)}`,
     // An online task (#426) has no place: LOCATION says so and there's no GEO.
     `LOCATION:${icsText(t.is_online ? onlineLocation(t.location) : t.location)}`,
-    `DESCRIPTION:${icsText([t.description, t.creator_name && `Posted by ${t.creator_name}`, hm && 'End time is an estimate. Check with the organizer.', link].filter(Boolean).join('\n\n'))}`,
+    `DESCRIPTION:${icsText([t.description, ...details, t.creator_name && `Posted by ${t.creator_name}`, hm && 'End time is an estimate. Check with the organizer.', link].filter(Boolean).join('\n\n'))}`,
   )
   if (!t.is_online && t.latitude != null && t.longitude != null) lines.push(`GEO:${Number(t.latitude)};${Number(t.longitude)}`)
   if (link) lines.push(`URL:${link}`)
