@@ -1737,6 +1737,12 @@ async function notifyFollowers(organizerId, taskId) {
   }
 }
 
+// Shown when a calendar link points at a task that was cancelled or removed.
+function taskGonePage() {
+  const style = 'font-family:system-ui,-apple-system,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5'
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${style}"><h1 style="font-size:1.4rem">This task is no longer available</h1><p>The organizer may have cancelled or removed it, so there is nothing to add to your calendar.</p><p><a href="${escapeHtml(frontendBase())}/opportunities">Find another task on VolunTrack</a></p></body></html>`
+}
+
 // Add to calendar: a task as an .ics file, which phones and calendar apps
 // open as "add this event". Public, like the task list: no sign-in, and only
 // for a task the list would show. The event rules (two hours, or all day
@@ -1752,7 +1758,8 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
       [req.params.id],
     )
     const t = rows[0]
-    if (!t) return res.status(404).json({ error: 'Task not found.' })
+    // People reach this from an email link, so a gone task gets a page, not JSON.
+    if (!t) return res.status(404).type('html').send(taskGonePage())
     const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
     res.set('Content-Type', 'text/calendar; charset=utf-8')
     res.set('Content-Disposition', 'attachment; filename="volunteer-task.ics"')
