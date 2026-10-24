@@ -6,6 +6,7 @@ const LINKS = [
   { to: '/contact', label: 'Contact' },
   { to: '/status', label: 'Status' },
   { to: '/help', label: 'Help' },
+  { to: '/guides', label: 'Guides' },
   { to: '/terms', label: 'Terms' },
   { to: '/privacy', label: 'Privacy' },
 ]

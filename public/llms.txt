@@ -9,6 +9,10 @@
 - [Sign up](https://volunteer-track-two.vercel.app/register): create a free student, parent, or volunteer account
 - [School sign up](https://volunteer-track-two.vercel.app/school/register): set up a school account with the one-time registration code VolunTrack provides (contact us for a quote), then manage students and review reports
 - [Organization sign up](https://volunteer-track-two.vercel.app/organization/register): manage multiple schools under one organization
+- [Guides](https://volunteer-track-two.vercel.app/guides): practical articles on logging service hours
+- [How to Track National Honor Society (NHS) Service Hours](https://volunteer-track-two.vercel.app/guides/nhs-service-hours): A step-by-step way to log NHS service hours so they count: what to record, getting them approved, and staying on pace for your chapter’s deadline.
+- [Community Service Hours for High School: How to Log Them So They Count](https://volunteer-track-two.vercel.app/guides/community-service-hours): How high school students can find, log and verify community service hours for graduation, clubs or scholarships, without a last-minute scramble.
+- [Volunteer Hours for College Applications: What to Track and How to Show It](https://volunteer-track-two.vercel.app/guides/volunteer-hours-for-college): What to record about your volunteering so it reads well on college applications and in recommendation letters, and how to keep it organized from freshman year.
 - [Contact](https://volunteer-track-two.vercel.app/contact): support and feedback
 - [System status](https://volunteer-track-two.vercel.app/status): live service status
 
