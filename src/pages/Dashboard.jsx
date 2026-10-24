@@ -146,7 +146,12 @@ export default function Dashboard() {
       const value = logs
         .filter((l) => l.date === key)
         .reduce((s, l) => s + (Number(l.hours) || 0), 0)
-      return { label: format(day, 'EEE')[0], value }
+      return {
+        label: format(day, 'EEE')[0],
+        value,
+        title: `${format(day, 'EEEE')}: ${fmtHours(value)}`,
+        highlight: key === format(new Date(), 'yyyy-MM-dd'),
+      }
     })
   }, [logs])
 
@@ -825,7 +830,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <BarChart data={weekly} color="#38bdf8" />
+          <BarChart data={weekly} />
         </Card>
 
         <Card className="p-4">
