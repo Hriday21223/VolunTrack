@@ -1226,4 +1226,17 @@ export default {
   "Log hours this week to keep it going": "Registra horas esta semana para mantenerla",
   "Best: {n} weeks": "Mejor: {n} semanas",
   "Your best yet": "Tu mejor racha",
+  // Opportunities map (#496)
+  "You are here": "Estás aquí",
+  "{n} tasks here": "{n} tareas aquí",
+  "View details": "Ver detalles",
+  "None of these tasks has a place on the map.": "Ninguna de estas tareas tiene un lugar en el mapa.",
+  "1 online task isn’t on the map.": "1 tarea en línea no aparece en el mapa.",
+  "{n} online tasks aren’t on the map.": "{n} tareas en línea no aparecen en el mapa.",
+  "1 task has no map location.": "1 tarea no tiene ubicación en el mapa.",
+  "{n} tasks have no map location.": "{n} tareas no tienen ubicación en el mapa.",
+  "See them in the list": "Verlas en la lista",
+  "List": "Lista",
+  "Map": "Mapa",
+  "Loading map…": "Cargando el mapa…",
 }
