@@ -13,6 +13,7 @@ import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { friendlyWhen } from '../when.js'
 import { ensureDigestUnsubToken } from '../digest.js'
+import { emailLang, et } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
 import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel } from '../requirements.js'
@@ -1754,15 +1755,16 @@ async function notifyFollowers(organizerId, taskId) {
           AND (f.last_notified_at IS NULL OR f.last_notified_at < now() - interval '1 hour')
           AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = f.user_id AND b.blocked_id = $1)
-        RETURNING u.id, u.email, u.name`,
+        RETURNING u.id, u.email, u.name, u.language`,
       [organizerId],
     )
-    const subject = `New task from ${task.creator_name || 'an organizer'}: ${task.title}`
     const seen = new Set()
     for (const r of rows) {
       const email = String(r.email).trim().toLowerCase()
       if (!email || seen.has(email)) continue
       seen.add(email)
+      const lang = emailLang(r.language)
+      const subject = et(lang, 'New task from {name}: {title}', { name: task.creator_name || et(lang, 'an organizer'), title: task.title })
       if (email.endsWith('@test.com')) {
         console.log(`[follow] skipped @test.com fixture ${email}: ${subject}`)
         continue
@@ -1775,15 +1777,17 @@ async function notifyFollowers(organizerId, taskId) {
         subject,
         unsubscribeUrl,
         html: taskEmailHtml({
-          heading: 'A new volunteer task',
+          lang,
+          heading: et(lang, 'A new volunteer task'),
           lines: [
-            `Hi ${r.name || 'there'}, ${task.creator_name || 'an organizer you follow'} just posted a new task.`,
-            'You get these because you follow this organizer.',
+            emailHi(lang, r.name),
+            et(lang, '{name} just posted a new task.', { name: task.creator_name || et(lang, 'An organizer you follow') }),
+            et(lang, 'You get these because you follow this organizer.'),
           ],
           task,
           link: taskPageLink(taskId),
-          linkLabel: 'View task and sign up',
-          unsubscribe: { href: unsubscribeUrl, label: `Stop emails from ${task.creator_name || 'this organizer'}` },
+          linkLabel: et(lang, 'View task and sign up'),
+          unsubscribe: { href: unsubscribeUrl, label: et(lang, 'Stop emails from {name}', { name: task.creator_name || et(lang, 'this organizer') }) },
         }),
       })
     }
@@ -2302,10 +2306,19 @@ async function sendTaskInvites(taskId, inviterId, task, emails) {
       [emails, task.created_by],
     )
     const skip = new Set(held.map((r) => r.email))
-    const first = String(task.my_name || '').trim().split(/\s+/)[0] || 'A friend'
-    const subject = `${first} invited you to volunteer together: ${task.title}`
+    // The invitee's language if they have an account, else the inviter's:
+    // friends who invite each other usually share one.
+    const { rows: langRows } = await query(
+      `SELECT LOWER(email) AS email, language, id FROM users WHERE LOWER(email) = ANY($1::text[]) OR id = $2`,
+      [emails, inviterId],
+    )
+    const inviterLang = langRows.find((r) => r.id === inviterId)?.language
+    const langOf = new Map(langRows.filter((r) => r.language).map((r) => [r.email, r.language]))
     const link = `${frontendBase()}/opportunities?task=${encodeURIComponent(taskId)}&from=${encodeURIComponent(inviterId)}`
     for (const email of emails) {
+      const lang = emailLang(langOf.get(email) || inviterLang)
+      const first = String(task.my_name || '').trim().split(/\s+/)[0] || et(lang, 'A friend')
+      const subject = et(lang, '{first} invited you to volunteer together: {title}', { first, title: task.title })
       if (email.endsWith('@test.com')) {
         console.log(`[invite] skipped @test.com fixture ${email}: ${subject}`)
         continue
@@ -2315,15 +2328,16 @@ async function sendTaskInvites(taskId, inviterId, task, emails) {
         to: email,
         subject,
         html: taskEmailHtml({
-          heading: `${first} invited you to volunteer together`,
+          lang,
+          heading: et(lang, '{first} invited you to volunteer together', { first }),
           lines: [
-            `${first} signed up for this volunteer task on VolunTrack and would like you to come along.`,
-            'Open the link to see the details and sign up. You need a VolunTrack account, which is free.',
-            "You got this email because a friend entered your address. We don't keep it or email you again unless you sign up.",
+            et(lang, '{first} signed up for this volunteer task on VolunTrack and would like you to come along.', { first }),
+            et(lang, 'Open the link to see the details and sign up. You need a VolunTrack account, which is free.'),
+            et(lang, "You got this email because a friend entered your address. We don't keep it or email you again unless you sign up."),
           ],
           task,
           link,
-          linkLabel: 'See the task and sign up',
+          linkLabel: et(lang, 'See the task and sign up'),
         }),
       })
     }
@@ -2362,7 +2376,7 @@ export async function requestParentOk(signupId) {
   try {
     const { rows } = await query(
       `SELECT s.id, s.user_id, t.id AS task_id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
-              c.name AS child_name, c.parent_consent_email
+              c.name AS child_name, c.parent_consent_email, c.language AS child_language
          FROM public_task_signups s
          JOIN public_tasks t ON t.id = s.task_id
          JOIN users c ON c.id = s.user_id
@@ -2372,11 +2386,11 @@ export async function requestParentOk(signupId) {
     const row = rows[0]
     if (!row) return 'none'
     const child = childFirstName(row.child_name)
-    const subject = `${child} wants to volunteer: ${row.title}`
+    const subjectFor = (lang) => et(lang, '{child} wants to volunteer: {title}', { child, title: row.title })
     const when = friendlyWhen(row.date, row.time)
 
     const { rows: parents } = await query(
-      `SELECT u.id, u.email FROM parent_child_links l JOIN users u ON u.id = l.parent_id
+      `SELECT u.id, u.email, u.language FROM parent_child_links l JOIN users u ON u.id = l.parent_id
         WHERE l.child_id = $1 AND u.role = 'parent'`,
       [row.user_id],
     )
@@ -2389,16 +2403,17 @@ export async function requestParentOk(signupId) {
           link: '/parent',
         })
       }
-      sendParentOkEmails(parents.map((p) => p.email), subject, {
-        heading: `${child} needs your OK to volunteer`,
+      sendParentOkEmails(parents.map((p) => ({ email: p.email, lang: p.language })), subjectFor, (lang) => ({
+        lang,
+        heading: et(lang, '{child} needs your OK to volunteer', { child }),
         lines: [
-          `${row.child_name || child} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you approve it.`,
-          'Open your Family dashboard to approve or decline. Nothing is shared with the organizer if you decline.',
+          et(lang, "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you approve it.", { name: row.child_name || child }),
+          et(lang, 'Open your Family dashboard to approve or decline. Nothing is shared with the organizer if you decline.'),
         ],
         task: row,
         link: `${frontendBase()}/parent`,
-        linkLabel: 'Review on your Family dashboard',
-      })
+        linkLabel: et(lang, 'Review on your Family dashboard'),
+      }))
       return 'linked'
     }
 
@@ -2409,17 +2424,19 @@ export async function requestParentOk(signupId) {
         [token, signupId],
       )
       if (rowCount === 0) return 'none'
-      sendParentOkEmails([row.parent_consent_email], subject, {
-        heading: `${child} needs your OK to volunteer`,
+      // No parent account, so no saved language: the child's is the best guess.
+      sendParentOkEmails([{ email: row.parent_consent_email, lang: row.child_language }], subjectFor, (lang) => ({
+        lang,
+        heading: et(lang, '{child} needs your OK to volunteer', { child }),
         lines: [
-          `${row.child_name || child} signed up for this volunteer task on VolunTrack and gave this address as their parent or guardian. Because they are under 13, the organizer won't see the sign-up until you approve it.`,
-          'Open the link to approve or decline. Nothing changes until you press a button on that page, and the link works once.',
-          "If you don't know this child, decline or ignore this email.",
+          et(lang, "{name} signed up for this volunteer task on VolunTrack and gave this address as their parent or guardian. Because they are under 13, the organizer won't see the sign-up until you approve it.", { name: row.child_name || child }),
+          et(lang, 'Open the link to approve or decline. Nothing changes until you press a button on that page, and the link works once.'),
+          et(lang, "If you don't know this child, decline or ignore this email."),
         ],
         task: row,
         link: `${emailApiBase()}/api/parent/task-ok/${token}`,
-        linkLabel: 'Review this sign-up',
-      })
+        linkLabel: et(lang, 'Review this sign-up'),
+      }))
       return 'email'
     }
     return 'none'
@@ -2431,18 +2448,21 @@ export async function requestParentOk(signupId) {
 
 // One message per address, never a shared thread; the @test.com fixtures are
 // skipped, as announcements and follower emails do.
-async function sendParentOkEmails(addresses, subject, content) {
+// `recipients` are { email, lang }; subject and content are built per language.
+async function sendParentOkEmails(recipients, subjectFor, contentFor) {
   const seen = new Set()
-  for (const raw of addresses) {
-    const email = String(raw || '').trim().toLowerCase()
+  for (const r of recipients) {
+    const email = String(r.email || '').trim().toLowerCase()
     if (!email || seen.has(email)) continue
     seen.add(email)
+    const lang = emailLang(r.lang)
+    const subject = subjectFor(lang)
     if (email.endsWith('@test.com')) {
       console.log(`[parent-ok] skipped @test.com fixture ${email}: ${subject}`)
       continue
     }
     try {
-      await sendEmail({ to: email, subject, html: taskEmailHtml(content) })
+      await sendEmail({ to: email, subject, html: taskEmailHtml(contentFor(lang)) })
     } catch (error) {
       console.error('parent OK email failed:', error)
     }
@@ -2625,7 +2645,7 @@ async function promoteFromWaitlist(taskId) {
 async function notifyWaitlistSpot(taskId, userId) {
   try {
     const { rows } = await query(
-      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, u.email, u.name
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, u.email, u.name, u.language
          FROM public_tasks t, users u
         WHERE t.id = $1 AND u.id = $2`,
       [taskId, userId],
@@ -2639,18 +2659,21 @@ async function notifyWaitlistSpot(taskId, userId) {
       link: '/attendance',
     })
     if (!row.email) return
+    const lang = emailLang(row.language)
     await sendEmail({
       to: row.email,
-      subject: `A spot opened up: ${row.title}`,
+      subject: et(lang, 'A spot opened up: {title}', { title: row.title }),
       html: taskEmailHtml({
-        heading: "You're off the waitlist",
+        lang,
+        heading: et(lang, "You're off the waitlist"),
         lines: [
-          `Hi ${row.name || 'there'}, a spot opened up and it's yours. The organizer will confirm your sign-up, and you'll get another email when they do.`,
-          "Can't make it any more? Cancel from Attendance in VolunTrack so the next person gets the spot.",
+          emailHi(lang, row.name),
+          et(lang, "A spot opened up and it's yours. The organizer will confirm your sign-up, and you'll get another email when they do."),
+          et(lang, "Can't make it any more? Cancel from Attendance in VolunTrack so the next person gets the spot."),
         ],
         task: row,
         link: taskPageLink(taskId),
-        linkLabel: 'View task',
+        linkLabel: et(lang, 'View task'),
       }),
     })
   } catch (error) {
@@ -2927,14 +2950,14 @@ function taskCalendarLink(taskId) {
 }
 
 // Same two choices as the app's AddToCalendar: Google, and the .ics file.
-function calendarLinksHtml(task, taskId) {
-  const google = googleCalendarLink(task, taskId)
-  return `<p><strong>Add to calendar:</strong> ${google ? `<a href="${escapeHtml(google)}">Google Calendar</a> · ` : ''}<a href="${escapeHtml(taskCalendarLink(taskId))}">Apple / Outlook</a></p>`
+function calendarLinksHtml(task, taskId, lang = 'en') {
+  const google = googleCalendarLink(task, taskId, lang)
+  return `<p><strong>${et(lang, 'Add to calendar:')}</strong> ${google ? `<a href="${escapeHtml(google)}">Google Calendar</a> · ` : ''}<a href="${escapeHtml(taskCalendarLink(taskId))}">Apple / Outlook</a></p>`
 }
 
 // Google Calendar's "new event" page, the same event as the .ics file (two
 // hours, or all day without a time). Mirrors src/lib/calendarLinks.js.
-function googleCalendarLink(task, taskId) {
+function googleCalendarLink(task, taskId, lang = 'en') {
   const iso = task.date instanceof Date
     ? `${task.date.getFullYear()}-${String(task.date.getMonth() + 1).padStart(2, '0')}-${String(task.date.getDate()).padStart(2, '0')}`
     : String(task.date || '').slice(0, 10)
@@ -2951,28 +2974,35 @@ function googleCalendarLink(task, taskId) {
     const day = new Date(Date.UTC(y, m - 1, d))
     dates = `${stamp(day).slice(0, 8)}/${stamp(new Date(day.getTime() + 86400e3)).slice(0, 8)}`
   }
-  const details = [task.creator_name && `Posted by ${task.creator_name}`, taskPageLink(taskId)].filter(Boolean).join('\n\n')
+  const details = [task.creator_name && et(lang, 'Posted by {name}', { name: task.creator_name }), taskPageLink(taskId)].filter(Boolean).join('\n\n')
   const q = new URLSearchParams({ action: 'TEMPLATE', text: task.title || 'Volunteer task', dates, location: task.location || '', details })
   return `https://calendar.google.com/calendar/render?${q}`
 }
 
-function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId, unsubscribe }) {
-  const when = friendlyWhen(task.date, task.time)
+// `lang` ('en' | 'es') translates the template's own words; callers pass
+// heading, lines and labels already translated (see ../emailStrings.js).
+function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId, unsubscribe, lang = 'en' }) {
+  const when = friendlyWhen(task.date, task.time, lang)
   const detail = [
-    when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : '',
-    task.location ? `<p><strong>Where:</strong> ${escapeHtml(task.location)}</p>` : '',
-    task.creator_name ? `<p><strong>Organizer:</strong> ${escapeHtml(task.creator_name)}</p>` : '',
+    when ? `<p><strong>${et(lang, 'When:')}</strong> ${escapeHtml(when)}</p>` : '',
+    task.location ? `<p><strong>${et(lang, 'Where:')}</strong> ${escapeHtml(task.location)}</p>` : '',
+    task.creator_name ? `<p><strong>${et(lang, 'Organizer:')}</strong> ${escapeHtml(task.creator_name)}</p>` : '',
   ].join('')
   return `
     <h2>${escapeHtml(heading)}</h2>
     ${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}
-    <h3>${escapeHtml(task.title || 'Volunteer opportunity')}</h3>
+    <h3>${escapeHtml(task.title || et(lang, 'Volunteer opportunity'))}</h3>
     ${detail}
-    ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(linkLabel || 'Open in VolunTrack')}</a></p>` : ''}
-    ${calendarTaskId ? calendarLinksHtml(task, calendarTaskId) : ''}
+    ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(linkLabel || et(lang, 'Open in VolunTrack'))}</a></p>` : ''}
+    ${calendarTaskId ? calendarLinksHtml(task, calendarTaskId, lang) : ''}
     ${unsubscribe ? `<p style="font-size:12px;color:#888"><a href="${escapeHtml(unsubscribe.href)}">${escapeHtml(unsubscribe.label)}</a></p>` : ''}
-    ${emailFooterHtml()}
+    ${emailFooterHtml(lang)}
   `
+}
+
+// "Hi Sam," / "Hola, Sam:", or "Hi there," without a name.
+function emailHi(lang, name) {
+  return name ? et(lang, 'Hi {name},', { name }) : et(lang, 'Hi there,')
 }
 
 // Fire-and-forget, like recordAudit: a mail server having a bad day must not
@@ -2980,7 +3010,7 @@ function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId, 
 async function notifySignupDecision(taskId, userId, decision) {
   try {
     const { rows } = await query(
-      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info, u.email, u.name
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info, u.email, u.name, u.language
          FROM public_tasks t, users u
         WHERE t.id = $1 AND u.id = $2`,
       [taskId, userId],
@@ -2997,20 +3027,23 @@ async function notifySignupDecision(taskId, userId, decision) {
       link: approved ? '/attendance' : '/opportunities',
     })
     if (!row.email) return
+    const lang = emailLang(row.language)
     await sendEmail({
       to: row.email,
-      subject: approved ? `You're in: ${row.title}` : `Update on your signup: ${row.title}`,
+      subject: et(lang, approved ? "You're in: {title}" : 'Update on your signup: {title}', { title: row.title }),
       html: taskEmailHtml({
-        heading: approved ? "You're approved" : 'Your signup was not accepted',
+        lang,
+        heading: et(lang, approved ? "You're approved" : 'Your signup was not accepted'),
         lines: approved
           ? [
-            `Hi ${row.name || 'there'}, the organizer approved your signup.`,
+            emailHi(lang, row.name),
+            et(lang, 'The organizer approved your signup.'),
             ...(row.important_info ? [row.important_info] : []),
           ]
-          : [`Hi ${row.name || 'there'}, the organizer could not take your signup for this one. Other opportunities are listed in VolunTrack.`],
+          : [emailHi(lang, row.name), et(lang, 'The organizer could not take your signup for this one. Other opportunities are listed in VolunTrack.')],
         task: row,
         link: taskPageLink(taskId),
-        linkLabel: 'View task',
+        linkLabel: et(lang, 'View task'),
         calendarTaskId: approved ? taskId : undefined,
       }),
     })
@@ -3182,7 +3215,7 @@ router.post('/public-tasks/:id/cancel', limiter, requireDb, requireAuth(), async
     )
 
     const { rows: people } = await query(
-      `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status NOT IN ('rejected', 'parent_declined')`,
       [req.params.id],
     )
@@ -3191,19 +3224,22 @@ router.post('/public-tasks/:id/cancel', limiter, requireDb, requireAuth(), async
     // the event is off either way.
     for (const person of people) {
       try {
+        const lang = emailLang(person.language)
         await sendEmail({
           to: person.email,
-          subject: `Cancelled: ${rows[0].title}`,
+          subject: et(lang, 'Cancelled: {title}', { title: rows[0].title }),
           html: taskEmailHtml({
-            heading: 'This event has been cancelled',
+            lang,
+            heading: et(lang, 'This event has been cancelled'),
             lines: [
-              `Hi ${person.name || 'there'}, the organizer has cancelled this event.`,
-              ...(reason ? [`Reason given: ${reason}`] : []),
+              emailHi(lang, person.name),
+              et(lang, 'The organizer has cancelled this event.'),
+              ...(reason ? [et(lang, 'Reason given: {reason}', { reason })] : []),
             ],
             task: rows[0],
             // The cancelled task isn't listed any more, so point at the rest.
             link: `${frontendBase()}/opportunities`,
-            linkLabel: 'Find another task',
+            linkLabel: et(lang, 'Find another task'),
           }),
         })
       } catch (error) { console.error('cancellation email failed:', error) }
@@ -3233,16 +3269,19 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
     const access = await canManageTask(req.params.id, req.auth.sub)
     if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can message volunteers.")) return
     // A co-host's message is signed with their own name.
-    let from = rows[0].creator_name || 'the organizer'
+    let cohostName = null
     if (access.isCohost) {
       const { rows: me } = await query('SELECT name FROM users WHERE id = $1', [req.auth.sub])
-      from = `${me[0]?.name || 'a co-host'} (co-host)`
+      cohostName = me[0]?.name || ''
     }
+    const fromFor = (lang) => (cohostName !== null
+      ? et(lang, '{name} (co-host)', { name: cohostName || et(lang, 'a co-host') })
+      : rows[0].creator_name || et(lang, 'the organizer'))
 
     const { rows: people } = await query(
       // Not to anyone who blocked the task's creator or the sender
       // (server/routes/reports.js).
-      `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved'
           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id IN ($2, $3))`,
       [req.params.id, access.createdBy, req.auth.sub],
@@ -3252,15 +3291,17 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
     let sent = 0
     for (const person of people) {
       try {
+        const lang = emailLang(person.language)
         await sendEmail({
           to: person.email,
-          subject: `Message from the organizer: ${rows[0].title}`,
+          subject: et(lang, 'Message from the organizer: {title}', { title: rows[0].title }),
           html: taskEmailHtml({
-            heading: `A message from ${from}`,
+            lang,
+            heading: et(lang, 'A message from {from}', { from: fromFor(lang) }),
             lines: [message],
             task: rows[0],
             link: taskPageLink(req.params.id),
-            linkLabel: 'View task',
+            linkLabel: et(lang, 'View task'),
           }),
         })
         sent += 1
@@ -3295,7 +3336,7 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
     const results = []
     for (const task of tasks) {
       const { rows: people } = await query(
-        `SELECT u.email, u.name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
           WHERE s.task_id = $1 AND s.status = 'approved'`,
         [task.id],
       )
@@ -3305,21 +3346,24 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
       let sent = 0
       for (const person of people) {
         try {
+          const lang = emailLang(person.language)
           await sendEmail({
             to: person.email,
-            subject: `Tomorrow: ${task.title}`,
+            subject: et(lang, 'Tomorrow: {title}', { title: task.title }),
             html: taskEmailHtml({
-              heading: 'Your volunteer event is tomorrow',
+              lang,
+              heading: et(lang, 'Your volunteer event is tomorrow'),
               lines: [
-                `Hi ${person.name || 'there'}, this is a reminder about tomorrow.`,
+                emailHi(lang, person.name),
+                et(lang, 'This is a reminder about tomorrow.'),
                 ...(task.important_info ? [task.important_info] : []),
                 // Only approved volunteers get this email, so the day-of details may go in.
-                ...(task.meeting_point ? [`Meeting point: ${task.meeting_point}`] : []),
-                ...(task.day_of_contact ? [`On the day, contact: ${task.day_of_contact}`] : []),
+                ...(task.meeting_point ? [et(lang, 'Meeting point: {place}', { place: task.meeting_point })] : []),
+                ...(task.day_of_contact ? [et(lang, 'On the day, contact: {contact}', { contact: task.day_of_contact })] : []),
               ],
               task,
               link: taskPageLink(task.id),
-              linkLabel: 'View task',
+              linkLabel: et(lang, 'View task'),
               calendarTaskId: task.id,
             }),
           })
@@ -3940,7 +3984,7 @@ router.post('/public-tasks/:id/thanks', taskMailLimiter, requireDb, requireAuth(
     if (!task.is_past) return res.status(400).json({ error: 'You can send a thank-you once the task\'s day is over.' })
 
     const { rows: people } = await query(
-      `SELECT u.id, u.email, u.name, u.parental_consent_status
+      `SELECT u.id, u.email, u.name, u.language, u.parental_consent_status
          FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND ${SHOWED_UP_SQL}
           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $2)`,
@@ -3988,15 +4032,17 @@ async function deliverThanks(task, people, message) {
       continue
     }
     try {
+      const lang = emailLang(p.language)
       await sendEmail({
         to: email,
-        subject: `Thank you for volunteering: ${task.title}`,
+        subject: et(lang, 'Thank you for volunteering: {title}', { title: task.title }),
         html: taskEmailHtml({
-          heading: `A thank-you from ${from}`,
-          lines: [`Hi ${p.name || 'there'},`, message],
+          lang,
+          heading: et(lang, 'A thank-you from {from}', { from: task.creator_name || et(lang, 'The organizer') }),
+          lines: [emailHi(lang, p.name), message],
           task,
           link: site ? `${site}/attendance` : undefined,
-          linkLabel: 'See it in VolunTrack',
+          linkLabel: et(lang, 'See it in VolunTrack'),
         }),
       })
     } catch (error) { console.error('thank-you email failed:', error) }
