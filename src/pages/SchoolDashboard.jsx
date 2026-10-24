@@ -16,6 +16,7 @@ import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
+import SchoolStarterKit from '@/components/SchoolStarterKit.jsx'
 import LeaderboardSettingsCard from '@/components/LeaderboardSettingsCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
@@ -663,7 +664,7 @@ export default function SchoolDashboard() {
               <Card className="mb-4">
                 <h3 className="font-semibold mb-1 flex items-center gap-2"><Hash className="w-4 h-4 text-brand-600" /> School code</h3>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-                  Students enter this in Settings → Join school to link themselves to you.
+                  Students enter this in Settings → Join school to link themselves to you, or use the join link in the starter kit below.
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 overflow-x-auto rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{schoolInfo.pin}</code>
@@ -677,6 +678,14 @@ export default function SchoolDashboard() {
                   </p>
                 )}
               </Card>
+            )}
+
+            {schoolInfo?.pin && (
+              <SchoolStarterKit
+                pin={schoolInfo.pin}
+                schoolName={schoolInfo.name}
+                onOpenSetup={user?.role === 'school' ? (t) => { setTab('setup'); setSetupTab(t) } : null}
+              />
             )}
 
             <LeaderboardSettingsCard canEdit={user?.role === 'school'} />

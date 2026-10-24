@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check, Users, Cake } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -79,7 +79,10 @@ export default function Register() {
   const { sendSignupCode, register } = useAuth()
   const nav = useNavigate()
   const [role, setRole] = useState('student')
-  const [form, setForm] = useState({ name: '', email: '', password: '', school: '', grade: '', studentIdNumber: '', schoolCode: '', dateOfBirth: '', parentEmail: '' })
+  // A school's join link (/join/:code, #491) sends new students here with
+  // ?school=<code>, so the code is already filled in and Welcome links it.
+  const [params] = useSearchParams()
+  const [form, setForm] = useState(() => ({ name: '', email: '', password: '', school: '', grade: '', studentIdNumber: '', schoolCode: String(params.get('school') || '').trim().slice(0, 40), dateOfBirth: '', parentEmail: '' }))
   // Set once an under-13 sign-up is waiting on its parent's emailed approval.
   const [awaitingParent, setAwaitingParent] = useState('')
   // The checked form, kept while the person enters the emailed code (#310).

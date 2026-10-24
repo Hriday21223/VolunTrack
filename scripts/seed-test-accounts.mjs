@@ -35,8 +35,11 @@ const ACCOUNTS = [
 await initSchema()
 
 await query(
-  `INSERT INTO schools (id, name, pin, contact_email, payment_status) VALUES ($1, 'Demo High School', 'TEST01', 'school@test.com', 'paid')
-   ON CONFLICT (id) DO NOTHING`,
+  // A real school code is lowercase letters then 3–5 digits (PATCH
+  // /school/code), and join looks codes up lowercased, so the old 'TEST01'
+  // could never be joined. Older local databases are moved over to the new one.
+  `INSERT INTO schools (id, name, pin, contact_email, payment_status) VALUES ($1, 'Demo High School', 'demo-1234', 'school@test.com', 'paid')
+   ON CONFLICT (id) DO UPDATE SET pin = EXCLUDED.pin WHERE schools.pin = 'TEST01'`,
   [SCHOOL_ID],
 )
 await query(

@@ -31,7 +31,7 @@ function SignUpCta() {
       <p className="mt-2 text-sm text-earth-500 dark:text-earth-400">Free for students. Log hours in a minute, see your goal, and export a report when it’s due.</p>
       <div className="mt-4 flex flex-wrap justify-center gap-3">
         <Link to="/register" className="btn-primary">Create a free account <ArrowRight className="w-4 h-4" /></Link>
-        <Link to="/school/register" className="btn-ghost">For schools</Link>
+        <Link to="/for-schools" className="btn-ghost">For schools</Link>
       </div>
     </Card>
   )

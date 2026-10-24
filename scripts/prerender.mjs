@@ -46,6 +46,8 @@ const ROUTES = [
   // Search-facing guides (src/lib/guides.js): they only rank if crawlers get
   // the article as HTML.
   '/guides',
+  // The adviser-facing page (#491).
+  '/for-schools',
   ...GUIDES.map((g) => `/guides/${g.slug}`),
 ]
 

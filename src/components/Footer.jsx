@@ -7,6 +7,7 @@ const LINKS = [
   { to: '/status', label: 'Status' },
   { to: '/help', label: 'Help' },
   { to: '/guides', label: 'Guides' },
+  { to: '/for-schools', label: 'For schools' },
   { to: '/terms', label: 'Terms' },
   { to: '/privacy', label: 'Privacy' },
 ]
