@@ -970,6 +970,20 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN NOT NULL DEFAULT true`) } catch {}
 
+  // Monthly progress email (#483, server/monthlyProgress.js): the student's
+  // opt-out, and one row per student per month sent so a re-run mails no one twice.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_progress_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS monthly_progress_sends (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        month   TEXT NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, month)
+      )
+    `)
+  } catch (error) { console.error('monthly progress table migration failed:', error) }
+
   // "New school year" grade moves (#481): one row per run with every change
   // ({ userId, from, to }), so the run can be undone and a second run in the
   // same year is caught.

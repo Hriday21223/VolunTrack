@@ -26,6 +26,7 @@ import clientErrorsRouter from './clientErrors.js'
 import notificationsRouter from './notifications.js'
 import portfolioRouter from './portfolio.js'
 import comebackRouter from './comeback.js'
+import progressRouter from './progress.js'
 import interestsRouter from './interests.js'
 import taskPhotosRouter from './taskPhotos.js'
 import organizerProfileRouter from './organizerProfile.js'
@@ -276,6 +277,7 @@ const MOUNTED_ROUTERS = [
   ['notifications', '/api/notifications', notificationsRouter],
   ['portfolio', '/api/portfolio', portfolioRouter],
   ['comeback', '/api/comeback', comebackRouter],
+  ['progress', '/api/progress', progressRouter],
   ['interests', '/api/interests', interestsRouter],
   ['task-photos', '/api/task-photos', taskPhotosRouter],
   ['organizer-profiles', '/api/school/organizers', organizerProfileRouter],

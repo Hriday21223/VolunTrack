@@ -1171,4 +1171,7 @@ export default {
   "You're on the leaderboard. Classmates see your first name, last initial and approved hours.": "Estás en la clasificación. Tus compañeros ven tu nombre, la inicial de tu apellido y tus horas aprobadas.",
   "Join to appear here. Only students at your school see it: your first name, last initial and approved hours.": "Únete para aparecer aquí. Solo la ven los estudiantes de tu escuela: tu nombre, la inicial de tu apellido y tus horas aprobadas.",
   "Join the leaderboard": "Unirme a la clasificación",
+  "Monthly progress email": "Correo mensual de progreso",
+  "On. After a month you logged hours, we'll email you on the 1st with what you logged and how close you are to your goal.": "Activado. Después de un mes en que registres horas, te escribiremos el día 1 con lo que registraste y cuánto te falta para tu meta.",
+  "Off. We won't email you a monthly summary of your hours.": "Desactivado. No te enviaremos un resumen mensual de tus horas.",
 }
