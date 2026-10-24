@@ -16,6 +16,7 @@ import PasskeySettings from '@/components/PasskeySettings.jsx'
 import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
 import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 import ComebackEmailCard from '@/components/ComebackEmailCard.jsx'
+import MonthlyProgressEmailCard from '@/components/MonthlyProgressEmailCard.jsx'
 import InterestsCard from '@/components/InterestsCard.jsx'
 import OrganizerProfileCard from '@/components/OrganizerProfileCard.jsx'
 import PortfolioCard from '@/components/PortfolioCard.jsx'
@@ -1653,6 +1654,7 @@ export default function Settings() {
           {(user?.role === 'student' || user?.role === 'volunteer') && <CalendarFeedCard />}
 
           {user?.role === 'student' && <ComebackEmailCard />}
+          {user?.role === 'student' && <MonthlyProgressEmailCard />}
 
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Privacy</h3>

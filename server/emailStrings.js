@@ -190,6 +190,18 @@ const ES = {
     'Si fuiste, registra tus horas para que cuenten. El organizador todavía puede confirmarlas. Si no fuiste, puedes ignorar este correo.',
   'Log my hours': 'Registrar mis horas',
   'No hours are logged for this yet. If you went, log them so they count.': 'Todavía no hay horas registradas para esto. Si fuiste, regístralas para que cuenten.',
+  // Monthly progress email (server/monthlyProgress.js)
+  'Your {month} volunteer hours: 1 hour': 'Tus horas de voluntariado de {month}: 1 hora',
+  'Your {month} volunteer hours: {hours} hours': 'Tus horas de voluntariado de {month}: {hours} horas',
+  'You logged {hours} hours of volunteering in {month}, in 1 session. Nice work!': 'Registraste {hours} horas de voluntariado en {month}, en 1 sesión. ¡Buen trabajo!',
+  'You logged {hours} hours of volunteering in {month}, across {n} sessions. Nice work!': 'Registraste {hours} horas de voluntariado en {month}, en {n} sesiones. ¡Buen trabajo!',
+  "You've reached your {goal}-hour goal, with {total} hours in all.": 'Alcanzaste tu meta de {goal} horas, con {total} horas en total.',
+  "That's {total} of your {goal}-hour goal: {left} hours to go by {date}.": 'Llevas {total} de tu meta de {goal} horas: te faltan {left} horas antes del {date}.',
+  "That's {total} of your {goal}-hour goal: {left} hours to go.": 'Llevas {total} de tu meta de {goal} horas: te faltan {left} horas.',
+  'That brings you to {total} hours in all.': 'Con eso llevas {total} horas en total.',
+  'See your progress': 'Ver tu progreso',
+  'Share my hours': 'Compartir mis horas',
+  'You get this once a month after logging hours. {link} or turn it off in Settings.': 'Recibes esto una vez al mes cuando registras horas. {link} o desactívalo en Ajustes.',
 }
 
 const DICTIONARIES = { es: ES }

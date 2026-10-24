@@ -1160,4 +1160,7 @@ export default {
   "Saved the picture. Share it from your photos or downloads.": "Guardamos la imagen. Compártela desde tus fotos o descargas.",
   "Download": "Descargar",
   "Press and hold the picture to save it to your photos.": "Mantén pulsada la imagen para guardarla en tus fotos.",
+  "Monthly progress email": "Correo mensual de progreso",
+  "On. After a month you logged hours, we'll email you on the 1st with what you logged and how close you are to your goal.": "Activado. Después de un mes en que registres horas, te escribiremos el día 1 con lo que registraste y cuánto te falta para tu meta.",
+  "Off. We won't email you a monthly summary of your hours.": "Desactivado. No te enviaremos un resumen mensual de tus horas.",
 }
