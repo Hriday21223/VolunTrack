@@ -33,7 +33,7 @@ export default function Login() {
     path: '/login',
   })
 
-  const { login, verifyTotp, verifyPasskey, verifyBackupCode, loginWithPin, user, ssoDiscover, ssoStart, setupTotp, verifyTotpSetup } = useAuth()
+  const { login, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, loginWithPin, user, ssoDiscover, ssoStart, setupTotp, verifyTotpSetup } = useAuth()
   const isAdmin = user?.role === 'admin'
   const nav = useNavigate()
   const loc = useLocation()
@@ -63,6 +63,10 @@ export default function Login() {
   // Which second steps the account has ('totp', 'passkey'), and whether the
   // passkey one is showing — it leads when the account has one.
   const [methods, setMethods] = useState(['totp'])
+  // Two-step by emailed code (#470): the code screen, and whether one went out.
+  const [emailMode, setEmailMode] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailCode, setEmailCode] = useState('')
   const [passkeyMode, setPasskeyMode] = useState(false)
 
   // Apps only: "Keep me signed in", offered when the phone has a lock
@@ -202,7 +206,13 @@ export default function Login() {
           setTempToken(result.tempToken)
           setMethods(result.methods)
           setPasskeyMode(result.methods.includes('passkey'))
+          // Email is the first screen only when it's the account's one method.
+          const emailOnly = result.methods.length === 1 && result.methods[0] === 'email'
+          setEmailMode(emailOnly)
+          setEmailSent(false)
+          setEmailCode('')
           setTotpPending(true)
+          if (emailOnly) requestEmailCode(result.tempToken)
           setBusy(false)
           return
         }
@@ -250,6 +260,39 @@ export default function Login() {
     setBusy(true)
     try {
       await verifyTotp(tempToken, totpCode)
+      setToast(true)
+      setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const requestEmailCode = async (token = tempToken) => {
+    setErr('')
+    try {
+      await sendEmailCode(token)
+      setEmailSent(true)
+    } catch (e) {
+      setErr(e.message)
+    }
+  }
+
+  const useEmailInstead = () => {
+    setPasskeyMode(false)
+    setBackupMode(false)
+    setEmailMode(true)
+    setEmailCode('')
+    if (!emailSent) requestEmailCode()
+  }
+
+  const onEmailCodeSubmit = async (e) => {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      await verifyEmailCode(tempToken, emailCode)
       setToast(true)
       setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
     } catch (e) {
@@ -399,7 +442,50 @@ export default function Login() {
                   </button>
                 </form>
               ) : totpPending ? (
-                passkeyMode ? (
+                emailMode ? (
+                  <form onSubmit={onEmailCodeSubmit} className="space-y-5">
+                    <div className="text-center mb-2">
+                      <Mail className="w-10 h-10 text-sky-400 mx-auto mb-2" />
+                      <p className="text-sm text-slate-300">
+                        {emailSent ? tr('We emailed you a 6-digit code. Enter it to finish signing in.') : tr('Sending a code to your email…')}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="label text-slate-300" htmlFor="email-code">{tr('Email code')}</label>
+                      <input
+                        id="email-code"
+                        type="text"
+                        required
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-[0.5em] font-mono"
+                        placeholder="000000"
+                        value={emailCode}
+                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        autoFocus
+                      />
+                    </div>
+                    {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100 animate-shake">{err}</div>}
+                    <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy || emailCode.length !== 6}>
+                      {busy ? tr('Verifying…') : <>{tr('Verify')}{' '}<ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                    <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => requestEmailCode()}>
+                      {tr('Send a new code')}
+                    </button>
+                    {methods.includes('totp') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setEmailMode(false); setErr('') }}>
+                        {tr('Use authenticator code instead')}
+                      </button>
+                    )}
+                    {methods.includes('passkey') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setEmailMode(false); setPasskeyMode(true); setErr('') }}>
+                        {tr('Use your passkey instead')}
+                      </button>
+                    )}
+                  </form>
+                ) : passkeyMode ? (
                   <div className="space-y-5">
                     <div className="text-center mb-2">
                       <KeyRound className="w-10 h-10 text-sky-400 mx-auto mb-2" />
@@ -412,6 +498,11 @@ export default function Login() {
                     {methods.includes('totp') && (
                       <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(false); setErr('') }}>
                         {tr('Use authenticator code instead')}
+                      </button>
+                    )}
+                    {methods.includes('email') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={useEmailInstead}>
+                        {tr('Email me a code instead')}
                       </button>
                     )}
                     <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(false); setBackupMode(true); setErr('') }}>
@@ -484,6 +575,11 @@ export default function Login() {
                     {methods.includes('passkey') && (
                       <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={() => { setPasskeyMode(true); setErr('') }}>
                         {tr('Use a passkey instead')}
+                      </button>
+                    )}
+                    {methods.includes('email') && (
+                      <button type="button" className="w-full text-center text-sm text-sky-200 hover:text-white" onClick={useEmailInstead}>
+                        {tr('Email me a code instead')}
                       </button>
                     )}
                   </form>

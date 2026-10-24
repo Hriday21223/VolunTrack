@@ -447,6 +447,47 @@ export default function Settings() {
     }
   }
 
+  // Two-step sign-in by email (#470). otpStep: 'idle' | 'code' | 'disable'.
+  const [otpStep, setOtpStep] = useState('idle')
+  const [otpInput, setOtpInput] = useState('')
+  const [otpBusy, setOtpBusy] = useState(false)
+  const [otpError, setOtpError] = useState('')
+  const [otpMsg, setOtpMsg] = useState('')
+  const emailOtpCall = async (path, body) => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    const res = await fetch(`${apiUrl}/auth/email-otp/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body || {}),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || tr('Something went wrong.'))
+    return data
+  }
+  const runOtp = async (fn) => {
+    setOtpError('')
+    setOtpBusy(true)
+    try { await fn() } catch (err) { setOtpError(err.message) } finally { setOtpBusy(false) }
+  }
+  const onStartEmailOtp = () => runOtp(async () => {
+    setOtpMsg('')
+    await emailOtpCall('enable/start')
+    setOtpInput('')
+    setOtpStep('code')
+  })
+  const onConfirmEmailOtp = (e) => { e.preventDefault(); runOtp(async () => {
+    await emailOtpCall('enable/confirm', { code: otpInput.trim() })
+    await refreshUser()
+    setOtpStep('idle'); setOtpInput('')
+    setOtpMsg(tr("Two-step sign-in by email is on. Next time you sign in, we'll email you a code."))
+  }) }
+  const onDisableEmailOtp = (e) => { e.preventDefault(); runOtp(async () => {
+    await emailOtpCall('disable', { password: otpInput })
+    await refreshUser()
+    setOtpStep('idle'); setOtpInput('')
+    setOtpMsg(tr('Two-step sign-in by email is off.'))
+  }) }
+
   const onChangePassword = async (e) => {
     e.preventDefault()
     setPwError('')
@@ -1045,6 +1086,49 @@ export default function Settings() {
               </div>
             )}
           </Card>
+
+          {/* Two-step sign-in by emailed code (#470): students, volunteers and
+              parents only. School, staff, org and admin accounts must use the
+              authenticator or a passkey above, so they never see this. */}
+          {hasServerAccount && !isSsoAccount && !['admin', 'school', 'school_staff', 'org'].includes(user?.role) && (
+            <Card>
+              <h3 className="font-display font-semibold mb-1 flex items-center gap-2"><Mail className="w-4 h-4 text-brand-600" /> {tr('Two-step sign-in by email')}</h3>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+                {tr("After your password, we'll email you a 6-digit code to finish signing in. It stops someone who learns your password. An authenticator app or passkey is stronger.")}
+              </p>
+              {otpMsg && <div className="mb-3 text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300 px-3 py-2 rounded-lg flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> {otpMsg}</div>}
+              {otpError && <div className="mb-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{otpError}</div>}
+              {user?.emailOtpEnabled ? (
+                otpStep === 'disable' ? (
+                  <form onSubmit={onDisableEmailOtp} className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex-1">
+                      <label className="label" htmlFor="otp-off-password">{tr('Your password')}</label>
+                      <input id="otp-off-password" type="password" autoComplete="current-password" className="input" required value={otpInput} onChange={(e) => setOtpInput(e.target.value)} />
+                    </div>
+                    <button className="btn-danger" type="submit" disabled={otpBusy || !otpInput}>{tr('Turn off')}</button>
+                    <button type="button" className="btn-ghost" onClick={() => { setOtpStep('idle'); setOtpInput(''); setOtpError('') }}>{tr('Cancel')}</button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{tr('On')}</span>
+                    <button type="button" className="btn-ghost" onClick={() => { setOtpMsg(''); setOtpError(''); setOtpInput(''); setOtpStep('disable') }}>{tr('Turn off')}</button>
+                  </div>
+                )
+              ) : otpStep === 'code' ? (
+                <form onSubmit={onConfirmEmailOtp} className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                  <div className="flex-1">
+                    <label className="label" htmlFor="otp-on-code">{tr('We emailed you a code. Enter it to turn this on.')}</label>
+                    <input id="otp-on-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} className="input tracking-widest" required
+                      value={otpInput} onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))} />
+                  </div>
+                  <button className="btn-primary" type="submit" disabled={otpBusy || otpInput.length !== 6}>{tr('Turn on')}</button>
+                  <button type="button" className="btn-ghost" onClick={() => { setOtpStep('idle'); setOtpInput(''); setOtpError('') }}>{tr('Cancel')}</button>
+                </form>
+              ) : (
+                <button type="button" className="btn-secondary" disabled={otpBusy} onClick={onStartEmailOtp}>{otpBusy ? tr('Sending\u2026') : tr('Turn on')}</button>
+              )}
+            </Card>
+          )}
 
           {/* Server accounts only; a school-SSO account's second factor is its school's. */}
           {localStorage.getItem('voluntrack:auth_token') && !isSsoAccount && <PasskeySettings />}

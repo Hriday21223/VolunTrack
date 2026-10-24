@@ -15,7 +15,7 @@ import { verifyTurnstile } from '../turnstile.js'
 import { turnstileUnlessMonitor } from '../monitor.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
 import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, sendAccountDeletedEmail,
-         sendEmailChangeCodeEmail, sendEmailChangedNotice, hasEmail, forLog } from '../email.js'
+         sendEmailChangeCodeEmail, sendEmailChangedNotice, sendEmailOtpEmail, hasEmail, forLog } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
 import { EMAIL_LANGUAGES } from '../emailStrings.js'
@@ -132,6 +132,7 @@ export function publicUser(row) {
     syncPin: syncPinLive(row) ? row.sync_pin : null,
     syncPinExpiresAt: syncPinLive(row) ? row.sync_pin_expires_at : null,
     totpEnabled: row.totp_enabled,
+    emailOtpEnabled: Boolean(row.email_otp_enabled),
     // 'sso' accounts have no password, so the UI asks them to confirm
     // sensitive actions (account deletion) a different way.
     authProvider: row.auth_provider ?? 'password',
@@ -359,9 +360,167 @@ async function secondFactorChallenge(row) {
   const methods = []
   if (row.totp_enabled) methods.push('totp')
   if (await hasPasskeys(row.id)) methods.push('passkey')
+  // Only where an emailed code is allowed at all (emailOtpAllowed): for
+  // school, staff, org and admin accounts it must never stand in for the
+  // authenticator or passkey their role requires.
+  if (row.email_otp_enabled && emailOtpAllowed(row)) methods.push('email')
   if (methods.length === 0) return null
   return { requiresTotp: true, methods, tempToken: signTempToken(publicUser(row)) }
 }
+
+// --- Two-step sign-in by emailed code (#470) --------------------------------
+// The easy second step for students, volunteers and parents. It's weaker than
+// an authenticator or passkey (whoever reads the inbox can also reset the
+// password), but it still stops a stolen or guessed password on its own.
+// Same limits as the other emailed codes: 10 minutes, 5 tries, one a minute.
+function emailOtpAllowed(row) {
+  return !mfaRequiredForRole(row.role) && row.auth_provider !== 'sso' && Boolean(row.password_hash)
+}
+
+// Stores a fresh code for `purpose` and emails it. → null when sent, else
+// { status, error }. The upsert's WHERE is the one-a-minute resend limit.
+async function issueEmailOtp(row, purpose) {
+  const code = generateNumericCode(6)
+  const { rowCount } = await query(
+    `INSERT INTO email_otp_codes (user_id, purpose, code_hash, expires_at, attempts, sent_at)
+     VALUES ($1, $2, $3, now() + interval '${SIGNUP_CODE_TTL_MINUTES} minutes', 0, now())
+     ON CONFLICT (user_id) DO UPDATE
+       SET purpose = EXCLUDED.purpose, code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at,
+           attempts = 0, sent_at = now()
+       WHERE email_otp_codes.sent_at < now() - interval '${SIGNUP_CODE_RESEND_SECONDS} seconds'`,
+    [row.id, purpose, await bcrypt.hash(code, 10)],
+  )
+  if (rowCount === 0) return { status: 429, error: 'We just sent a code. Wait a minute before asking for another.' }
+  if (!hasEmail() && process.env.NODE_ENV !== 'production') {
+    console.log(`[dev] No email provider configured — ${purpose} code for ${forLog(row.email)}: ${code}`)
+    return null
+  }
+  const sent = await sendEmailOtpEmail({ to: row.email, code, minutes: SIGNUP_CODE_TTL_MINUTES, language: row.language, purpose })
+  if (!sent.sent) {
+    await query('DELETE FROM email_otp_codes WHERE user_id = $1', [row.id])
+    return { status: 502, error: 'We could not send the email. Try again in a moment.' }
+  }
+  return null
+}
+
+// Checks and spends a code. → null when it matched, else { status, error }.
+async function useEmailOtp(userId, purpose, code) {
+  if (typeof code !== 'string' || !/^\d{6}$/.test(code.trim())) return { status: 400, error: 'Enter the 6-digit code we emailed you.' }
+  const { rows } = await query('SELECT * FROM email_otp_codes WHERE user_id = $1 AND purpose = $2', [userId, purpose])
+  const row = rows[0]
+  if (!row) return { status: 400, error: 'No code is waiting. Ask for a new one.' }
+  if (new Date(row.expires_at) < new Date()) {
+    await query('DELETE FROM email_otp_codes WHERE user_id = $1', [userId])
+    return { status: 410, error: 'That code expired. Ask for a new one.' }
+  }
+  if (row.attempts >= SIGNUP_CODE_MAX_ATTEMPTS) return { status: 429, error: 'Too many wrong codes. Ask for a new one.' }
+  if (!(await bcrypt.compare(code.trim(), row.code_hash))) {
+    await query('UPDATE email_otp_codes SET attempts = attempts + 1 WHERE user_id = $1', [userId])
+    const left = SIGNUP_CODE_MAX_ATTEMPTS - row.attempts - 1
+    return { status: 401, error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask for a new one.' }
+  }
+  const spent = await query('DELETE FROM email_otp_codes WHERE user_id = $1 AND code_hash = $2', [userId, row.code_hash])
+  if (spent.rowCount === 0) return { status: 400, error: 'No code is waiting. Ask for a new one.' }
+  return null
+}
+
+// POST /api/auth/email-otp/send { tempToken } — at sign-in, after the password.
+router.post('/email-otp/send', authLimiter, requireDb, async (req, res) => {
+  const payload = typeof req.body.tempToken === 'string' ? verifyTempToken(req.body.tempToken) : null
+  if (!payload) return res.status(401).json({ error: 'Session expired. Please log in again.' })
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
+    const row = rows[0]
+    if (!row || !row.email_otp_enabled || !emailOtpAllowed(row)) {
+      return res.status(400).json({ error: 'Email codes are not turned on for this account.' })
+    }
+    const problem = await issueEmailOtp(row, 'login')
+    if (problem) return res.status(problem.status).json({ error: problem.error })
+    return res.json({ ok: true, expiresInMinutes: SIGNUP_CODE_TTL_MINUTES })
+  } catch (error) {
+    console.error('email otp send failed:', error)
+    return res.status(500).json({ error: 'Could not send the code.' })
+  }
+})
+
+// POST /api/auth/email-otp/challenge { tempToken, code } — finishes sign-in.
+router.post('/email-otp/challenge', authLimiter, requireDb, async (req, res) => {
+  const payload = typeof req.body.tempToken === 'string' ? verifyTempToken(req.body.tempToken) : null
+  if (!payload) return res.status(401).json({ error: 'Session expired. Please log in again.' })
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
+    const row = rows[0]
+    if (!row || !row.email_otp_enabled || !emailOtpAllowed(row)) {
+      return res.status(400).json({ error: 'Email codes are not turned on for this account.' })
+    }
+    const problem = await useEmailOtp(row.id, 'login', req.body.code)
+    if (problem) return res.status(problem.status).json({ error: problem.error })
+    const user = publicUser(row)
+    return res.json({ token: signToken(user), user })
+  } catch (error) {
+    console.error('email otp challenge failed:', error)
+    return res.status(500).json({ error: 'Could not verify code.' })
+  }
+})
+
+// POST /api/auth/email-otp/enable/start — Settings: email a code to prove the
+// inbox works before the option is switched on.
+router.post('/email-otp/enable/start', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    const row = rows[0]
+    if (!row) return res.status(404).json({ error: 'Account not found.' })
+    if (!emailOtpAllowed(row)) {
+      return res.status(400).json({ error: 'This account needs an authenticator app or passkey for two-step sign-in.' })
+    }
+    const problem = await issueEmailOtp(row, 'enable')
+    if (problem) return res.status(problem.status).json({ error: problem.error })
+    return res.json({ ok: true, expiresInMinutes: SIGNUP_CODE_TTL_MINUTES })
+  } catch (error) {
+    console.error('email otp enable start failed:', error)
+    return res.status(500).json({ error: 'Could not send the code.' })
+  }
+})
+
+// POST /api/auth/email-otp/enable/confirm { code }
+router.post('/email-otp/enable/confirm', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    const row = rows[0]
+    if (!row) return res.status(404).json({ error: 'Account not found.' })
+    if (!emailOtpAllowed(row)) {
+      return res.status(400).json({ error: 'This account needs an authenticator app or passkey for two-step sign-in.' })
+    }
+    const problem = await useEmailOtp(row.id, 'enable', req.body.code)
+    if (problem) return res.status(problem.status).json({ error: problem.error })
+    const updated = (await query('UPDATE users SET email_otp_enabled = true WHERE id = $1 RETURNING *', [row.id])).rows[0]
+    return res.json({ ok: true, user: publicUser(updated) })
+  } catch (error) {
+    console.error('email otp enable failed:', error)
+    return res.status(500).json({ error: 'Could not turn it on.' })
+  }
+})
+
+// POST /api/auth/email-otp/disable { password } — turning protection off
+// takes the password, as turning off the authenticator does.
+router.post('/email-otp/disable', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  const password = typeof req.body?.password === 'string' ? req.body.password : ''
+  if (!password) return res.status(400).json({ error: 'Your password is required to turn this off.' })
+  try {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1', [req.auth.sub])
+    const row = rows[0]
+    if (!row) return res.status(404).json({ error: 'Account not found.' })
+    if (!row.password_hash || !(await verifyPassword(password, row.password_hash))) {
+      return res.status(403).json({ error: 'Incorrect password.' })
+    }
+    const updated = (await query('UPDATE users SET email_otp_enabled = false WHERE id = $1 RETURNING *', [row.id])).rows[0]
+    await query('DELETE FROM email_otp_codes WHERE user_id = $1', [row.id])
+    return res.json({ ok: true, user: publicUser(updated) })
+  } catch (error) {
+    console.error('email otp disable failed:', error)
+    return res.status(500).json({ error: 'Could not turn it off.' })
+  }
+})
 
 router.post('/login', authLimiter, requireDb, turnstileUnlessMonitor(), async (req, res) => {
   const email = validateEmail(req.body.email || '')

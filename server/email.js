@@ -357,6 +357,24 @@ ${emailFooterHtml()}`,
   })
 }
 
+// Two-step sign-in by email (#470). `purpose` 'enable' is the one-off check
+// that turns the option on; 'login' is every sign-in after that.
+export async function sendEmailOtpEmail({ to, code, minutes, language, purpose = 'login' }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const intro = purpose === 'enable'
+    ? t('Enter this code in VolunTrack to turn on two-step sign-in by email:')
+    : t('Enter this code to finish signing in to VolunTrack:')
+  return sendEmail({
+    to,
+    subject: t('{code} is your VolunTrack code', { code }),
+    html: `<p>${intro}</p>
+<p style="font-size:28px;font-weight:600;letter-spacing:0.2em;">${code}</p>
+<p>${t("It works once and expires in {minutes} minutes. If you didn't just try to sign in, someone may know your password: change it in Settings.", { minutes })}</p>
+${emailFooterHtml(lang)}`,
+  })
+}
+
 // Confirms a new address before an account moves to it (#464).
 export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) {
   const lang = emailLang(language)
