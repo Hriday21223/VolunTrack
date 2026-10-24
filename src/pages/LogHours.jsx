@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList, FileSignature, ExternalLink, Copy, Send, X, Repeat } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -112,6 +112,47 @@ export default function LogHours({ editId, onCloseEdit }) {
   const signatures = policy.signatures
   const hasStudentSignature = Boolean(form.studentSignature || form.studentSigned)
   const linkedTask = myTasks.find((t) => t.id === form.taskId) || null
+
+  // Links a task you were approved for: its organizer signs off hours on it,
+  // and it says what, when and where, so fill those in without overwriting
+  // anything already typed.
+  const linkTask = (taskId) => {
+    const task = myTasks.find((t) => t.id === taskId)
+    const lat = task?.latitude != null ? Number(task.latitude) : null
+    const lng = task?.longitude != null ? Number(task.longitude) : null
+    setForm((f) => ({
+      ...f,
+      taskId,
+      supervisorName: f.supervisorName || task?.creator_name || '',
+      supervisorEmail: f.supervisorEmail || task?.creator_email || '',
+      ...(!f.location?.trim() && task?.location
+        ? { location: task.location, latitude: Number.isFinite(lat) ? lat : null, longitude: Number.isFinite(lng) ? lng : null }
+        : {}),
+    }))
+  }
+
+  // /log?task=<id>, from the "Did you volunteer at …?" email (#474): pick that
+  // task once the list loads, and fill in its title and date too.
+  const [searchParams] = useSearchParams()
+  const taskFromLink = searchParams.get('task')
+  const appliedTaskLink = useRef(false)
+  useEffect(() => {
+    if (!taskFromLink || appliedTaskLink.current || editId) return
+    const task = myTasks.find((t) => t.id === taskFromLink)
+    if (!task) return
+    appliedTaskLink.current = true
+    linkTask(task.id)
+    setForm((f) => ({
+      ...f,
+      activity: f.activity?.trim() ? f.activity : (task.title || ''),
+      ...(task.date ? { date: String(task.date).slice(0, 10) } : {}),
+      // The task's start time, when it's a plain HH:MM; the end is theirs to add.
+      ...(!f.startTime && /^\d{1,2}:\d{2}$/.test(String(task.time || '').trim())
+        ? { startTime: String(task.time).trim().padStart(5, '0') }
+        : {}),
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskFromLink, myTasks, editId])
   // Until the student says otherwise: a supervisor is assumed to be right
   // there, a task's organizer not (they sign it off on My Tasks).
   const signerHere = form.signerHere ?? !linkedTask
@@ -437,24 +478,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                 <select
                   className="input"
                   value={form.taskId}
-                  onChange={(e) => {
-                    const taskId = e.target.value
-                    const task = myTasks.find((t) => t.id === taskId)
-                    // The task's organizer is who signs off hours on it, and
-                    // the task says where it happened, so fill both in —
-                    // without overwriting anything the student typed.
-                    const lat = task?.latitude != null ? Number(task.latitude) : null
-                    const lng = task?.longitude != null ? Number(task.longitude) : null
-                    setForm((f) => ({
-                      ...f,
-                      taskId,
-                      supervisorName: f.supervisorName || task?.creator_name || '',
-                      supervisorEmail: f.supervisorEmail || task?.creator_email || '',
-                      ...(!f.location?.trim() && task?.location
-                        ? { location: task.location, latitude: Number.isFinite(lat) ? lat : null, longitude: Number.isFinite(lng) ? lng : null }
-                        : {}),
-                    }))
-                  }}
+                  onChange={(e) => linkTask(e.target.value)}
                 >
                   <option value="">{tr('Not linked to a task')}</option>
                   {myTasks.map((t) => (

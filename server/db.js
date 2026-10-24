@@ -965,6 +965,19 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('public task reminder table migration failed:', error) }
 
+  // After-event nudges (#474): one row per task, stamped when the organizer
+  // was asked to mark attendance and when its volunteers were told they can
+  // log the hours themselves, so a repeated cron run mails nobody twice.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS public_task_attendance_nudges (
+        task_id            TEXT PRIMARY KEY REFERENCES public_tasks(id) ON DELETE CASCADE,
+        organizer_sent_at  TIMESTAMPTZ,
+        volunteers_sent_at TIMESTAMPTZ
+      )
+    `)
+  } catch (error) { console.error('attendance nudge table migration failed:', error) }
+
   // Attendance for public-task signups — a volunteer marks present/absent/excused
   // for students approved on a task they posted. See POST /school/public-tasks/:taskId/attendance/:userId.
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS attendance_status TEXT CHECK (attendance_status IN ('present','absent','excused'))`) } catch {}

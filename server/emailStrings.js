@@ -176,6 +176,20 @@ const ES = {
   'Enter this code to finish signing in to VolunTrack:': 'Escribe este código para terminar de iniciar sesión en VolunTrack:',
   "It works once and expires in {minutes} minutes. If you didn't just try to sign in, someone may know your password: change it in Settings.":
     'Funciona una sola vez y caduca en {minutes} minutos. Si no acabas de intentar iniciar sesión, alguien podría conocer tu contraseña: cámbiala en Ajustes.',
+  // After-event nudges (server/routes/school.js run-attendance-nudges)
+  'Who came to {title}?': '¿Quién vino a {title}?',
+  '1 volunteer who signed up has no hours logged for this event yet.': '1 voluntario inscrito todavía no tiene horas registradas para este evento.',
+  '{n} volunteers who signed up have no hours logged for this event yet.': '{n} voluntarios inscritos todavía no tienen horas registradas para este evento.',
+  'Mark who came and log their hours on My Tasks, so their time counts toward their goals.': 'Marca quién vino y registra sus horas en Mis tareas, para que su tiempo cuente para sus metas.',
+  'Mark attendance': 'Marcar asistencia',
+  '1 volunteer has no hours logged yet. Mark who came.': '1 voluntario todavía no tiene horas registradas. Marca quién vino.',
+  '{n} volunteers have no hours logged yet. Mark who came.': '{n} voluntarios todavía no tienen horas registradas. Marca quién vino.',
+  'Did you volunteer at {title}?': '¿Hiciste voluntariado en {title}?',
+  'No hours are logged for this event on your account yet.': 'Todavía no hay horas registradas para este evento en tu cuenta.',
+  "If you were there, log your hours so they count. The organizer can still confirm them. If you didn't go, you can ignore this.":
+    'Si fuiste, registra tus horas para que cuenten. El organizador todavía puede confirmarlas. Si no fuiste, puedes ignorar este correo.',
+  'Log my hours': 'Registrar mis horas',
+  'No hours are logged for this yet. If you went, log them so they count.': 'Todavía no hay horas registradas para esto. Si fuiste, regístralas para que cuenten.',
 }
 
 const DICTIONARIES = { es: ES }
