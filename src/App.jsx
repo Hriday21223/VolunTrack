@@ -29,6 +29,8 @@ const SyncLogin = lazy(() => import('@/pages/SyncLogin.jsx'))
 const SsoReturn = lazy(() => import('@/pages/SsoReturn.jsx'))
 const Contact = lazy(() => import('@/pages/Contact.jsx'))
 const Terms = lazy(() => import('@/pages/Terms.jsx'))
+const GuidesIndex = lazy(() => import('@/pages/Guides.jsx').then((m) => ({ default: m.GuidesIndex })))
+const GuidePage = lazy(() => import('@/pages/Guides.jsx').then((m) => ({ default: m.GuidePage })))
 const Privacy = lazy(() => import('@/pages/Privacy.jsx'))
 const NotFound = lazy(() => import('@/pages/NotFound.jsx'))
 const CheckIn = lazy(() => import('@/pages/CheckIn.jsx'))
@@ -126,6 +128,8 @@ function Shell() {
           <Route path="/about"           element={<About />} />
           <Route path="/contact"         element={<Contact />} />
           <Route path="/terms"           element={<Terms />} />
+          <Route path="/guides"          element={<GuidesIndex />} />
+          <Route path="/guides/:slug"    element={<GuidePage />} />
           <Route path="/privacy"         element={<Privacy />} />
           <Route path="/status"         element={<Status />} />
           {/* Each tab is its own URL, so one can be linked, bookmarked and

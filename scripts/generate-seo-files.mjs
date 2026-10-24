@@ -10,6 +10,7 @@
 // localhost here would dirty tracked files with URLs that must never ship.
 import { writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
+import { GUIDES } from '../src/lib/guides.js'
 import { dirname, resolve } from 'path'
 import { loadEnv } from 'vite'
 import { resolveSiteUrl } from './site-url.mjs'
@@ -70,6 +71,9 @@ const SITEMAP_ENTRIES = [
   // Schools and districts reviewing an app look for these.
   { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
   { path: '/terms', changefreq: 'monthly', priority: '0.4' },
+  // Guides (src/lib/guides.js) are what students and parents search for.
+  { path: '/guides', changefreq: 'monthly', priority: '0.6' },
+  ...GUIDES.map((g) => ({ path: `/guides/${g.slug}`, changefreq: 'monthly', priority: '0.7' })),
 ]
 
 // AI / LLM crawlers we explicitly welcome so the marketing pages can be read,
@@ -113,6 +117,8 @@ const llmsTxt = `# VolunTrack
 - [Sign up](${SITE_URL}/register): create a free student, parent, or volunteer account
 - [School sign up](${SITE_URL}/school/register): set up a school account with the one-time registration code VolunTrack provides (contact us for a quote), then manage students and review reports
 - [Organization sign up](${SITE_URL}/organization/register): manage multiple schools under one organization
+- [Guides](${SITE_URL}/guides): practical articles on logging service hours
+${GUIDES.map((g) => `- [${g.title}](${SITE_URL}/guides/${g.slug}): ${g.description}`).join('\n')}
 - [Contact](${SITE_URL}/contact): support and feedback
 - [System status](${SITE_URL}/status): live service status
 

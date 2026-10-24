@@ -20,6 +20,7 @@ import { readFile, writeFile, mkdir, realpath, stat } from 'fs/promises'
 import { fileURLToPath } from 'url'
 import { dirname, extname, isAbsolute, join, normalize, resolve, sep } from 'path'
 import puppeteer from 'puppeteer'
+import { GUIDES } from '../src/lib/guides.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST_DIR = resolve(__dirname, '../dist')
@@ -42,6 +43,10 @@ const ROUTES = [
   '/status/system',
   '/terms',
   '/privacy',
+  // Search-facing guides (src/lib/guides.js): they only rank if crawlers get
+  // the article as HTML.
+  '/guides',
+  ...GUIDES.map((g) => `/guides/${g.slug}`),
 ]
 
 const MIME_TYPES = {
