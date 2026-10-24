@@ -1572,6 +1572,135 @@ router.delete('/public-tasks/organizers/:organizerId/follow', limiter, requireDb
   }
 })
 
+// --- After-event nudges (#474) ----------------------------------------------
+// Hours from a task land in the volunteer's log only when the organizer logs
+// them (My Tasks) or the volunteer checks out by QR. Nothing reminded anyone
+// otherwise, so volunteers quietly lost credit. Daily, from
+// .github/workflows/attendance-nudges.yml:
+//   - 1–3 days after an event, the organizer is asked once to mark who came;
+//   - 3–7 days after, each volunteer still without hours for it is told once
+//     they can log the hours themselves (the organizer can still confirm).
+// The windows are ranges so a missed cron day still catches up;
+// public_task_attendance_nudges keeps each send to once per task.
+
+// An approved volunteer with no hours logged for the task and not marked
+// absent or excused: someone the event may still owe credit to.
+const AWAITING_HOURS_SQL = `s.status = 'approved'
+  AND COALESCE(s.attendance_status, '') NOT IN ('absent', 'excused')
+  AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.user_id = s.user_id AND l.task_id = s.task_id)`
+
+router.post('/public-tasks/internal/run-attendance-nudges', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const dryRun = req.body?.dryRun === true
+  const results = { organizers: [], volunteers: [], dryRun, emailConfigured: hasEmail() }
+  try {
+    // 1. Organizers, the day after (up to 3 days, to survive a missed run).
+    const { rows: forOrganizers } = await query(
+      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
+              u.id AS organizer_id, u.email AS organizer_email, u.name AS organizer_name, u.language AS organizer_language,
+              (SELECT COUNT(*)::int FROM public_task_signups s WHERE s.task_id = t.id AND ${AWAITING_HOURS_SQL}) AS awaiting
+         FROM public_tasks t JOIN users u ON u.id = t.created_by
+        WHERE t.status <> 'cancelled'
+          AND t.date BETWEEN current_date - 3 AND current_date - 1
+          AND NOT EXISTS (SELECT 1 FROM public_task_attendance_nudges n WHERE n.task_id = t.id AND n.organizer_sent_at IS NOT NULL)`,
+    )
+    for (const t of forOrganizers) {
+      if (t.awaiting === 0) continue
+      results.organizers.push({ task: t.title, awaiting: t.awaiting })
+      if (dryRun) continue
+      // Claimed before sending: two overlapping runs can't both mail it.
+      const claim = await query(
+        `INSERT INTO public_task_attendance_nudges (task_id, organizer_sent_at) VALUES ($1, now())
+         ON CONFLICT (task_id) DO UPDATE SET organizer_sent_at = now()
+           WHERE public_task_attendance_nudges.organizer_sent_at IS NULL`,
+        [t.id],
+      )
+      if (claim.rowCount === 0) continue
+      const lang = emailLang(t.organizer_language)
+      notify(t.organizer_id, {
+        kind: 'attendance_nudge',
+        title: t.title,
+        body: et(lang, t.awaiting === 1 ? '1 volunteer has no hours logged yet. Mark who came.' : '{n} volunteers have no hours logged yet. Mark who came.', { n: t.awaiting }),
+        link: '/my-tasks',
+      })
+      if (!t.organizer_email || t.organizer_email.endsWith('@test.com')) continue
+      await sendEmail({
+        to: t.organizer_email,
+        subject: et(lang, 'Who came to {title}?', { title: t.title }),
+        html: taskEmailHtml({
+          lang,
+          heading: et(lang, 'Who came to {title}?', { title: t.title }),
+          lines: [
+            emailHi(lang, t.organizer_name),
+            et(lang, t.awaiting === 1
+              ? '1 volunteer who signed up has no hours logged for this event yet.'
+              : '{n} volunteers who signed up have no hours logged for this event yet.', { n: t.awaiting }),
+            et(lang, 'Mark who came and log their hours on My Tasks, so their time counts toward their goals.'),
+          ],
+          task: t,
+          link: `${frontendBase()}/my-tasks`,
+          linkLabel: et(lang, 'Mark attendance'),
+        }),
+      }).catch((error) => console.error('attendance nudge email failed:', error))
+    }
+
+    // 2. Volunteers, 3 days after (up to 7), if still nothing was logged.
+    const { rows: forVolunteers } = await query(
+      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name
+         FROM public_tasks t
+        WHERE t.status <> 'cancelled'
+          AND t.date BETWEEN current_date - 7 AND current_date - 3
+          AND NOT EXISTS (SELECT 1 FROM public_task_attendance_nudges n WHERE n.task_id = t.id AND n.volunteers_sent_at IS NOT NULL)`,
+    )
+    for (const t of forVolunteers) {
+      const { rows: people } = await query(
+        `SELECT u.id, u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
+          WHERE s.task_id = $1 AND ${AWAITING_HOURS_SQL}
+            AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')`,
+        [t.id],
+      )
+      if (people.length > 0) results.volunteers.push({ task: t.title, recipients: people.length })
+      if (dryRun) continue
+      const claim = await query(
+        `INSERT INTO public_task_attendance_nudges (task_id, volunteers_sent_at) VALUES ($1, now())
+         ON CONFLICT (task_id) DO UPDATE SET volunteers_sent_at = now()
+           WHERE public_task_attendance_nudges.volunteers_sent_at IS NULL`,
+        [t.id],
+      )
+      if (claim.rowCount === 0) continue
+      for (const p of people) {
+        const lang = emailLang(p.language)
+        notify(p.id, {
+          kind: 'log_hours_nudge',
+          title: t.title,
+          body: et(lang, 'No hours are logged for this yet. If you went, log them so they count.'),
+          link: `/log?task=${encodeURIComponent(t.id)}`,
+        })
+        if (!p.email || p.email.endsWith('@test.com')) continue
+        await sendEmail({
+          to: p.email,
+          subject: et(lang, 'Did you volunteer at {title}?', { title: t.title }),
+          html: taskEmailHtml({
+            lang,
+            heading: et(lang, 'Did you volunteer at {title}?', { title: t.title }),
+            lines: [
+              emailHi(lang, p.name),
+              et(lang, 'No hours are logged for this event on your account yet.'),
+              et(lang, "If you were there, log your hours so they count. The organizer can still confirm them. If you didn't go, you can ignore this."),
+            ],
+            task: t,
+            link: `${frontendBase()}/log?task=${encodeURIComponent(t.id)}`,
+            linkLabel: et(lang, 'Log my hours'),
+          }),
+        }).catch((error) => console.error('log hours nudge email failed:', error))
+      }
+    }
+    return res.json({ ok: true, ...results })
+  } catch (error) {
+    console.error('attendance nudges failed:', error)
+    return res.status(500).json({ error: 'Attendance nudges failed.' })
+  }
+})
+
 // --- Saving a task for later -------------------------------------------------
 // A student bookmarks a task on Opportunities. The daily run-reminders job
 // rings their bell once if it's about to happen or fill up and they still

@@ -1142,4 +1142,5 @@ export default {
   "We emailed you a code. Enter it to turn this on.": "Te enviamos un código por correo. Escríbelo para activarlo.",
   "Two-step sign-in by email is on. Next time you sign in, we'll email you a code.": "El inicio de sesión en dos pasos por correo está activado. La próxima vez que inicies sesión, te enviaremos un código.",
   "Two-step sign-in by email is off.": "El inicio de sesión en dos pasos por correo está desactivado.",
+  "Mark attendance": "Marcar asistencia",
 }

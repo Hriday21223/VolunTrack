@@ -33,6 +33,8 @@ const KIND_LABELS = {
   volunteer_cancelled_day_of: tr("Volunteer can't make it"),
   task_question: tr('New question'),
   task_answer: tr('Your question was answered'),
+  attendance_nudge: tr('Mark attendance'),
+  log_hours_nudge: tr('Log your hours'),
 }
 
 const getToken = () => {

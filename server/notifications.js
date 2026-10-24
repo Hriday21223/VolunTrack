@@ -36,6 +36,8 @@ export const NOTIFICATION_KINDS = new Set([
   'volunteer_cancelled_day_of',
   'task_question',
   'task_answer',
+  'attendance_nudge',
+  'log_hours_nudge',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }
