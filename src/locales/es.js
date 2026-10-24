@@ -1219,6 +1219,13 @@ export default {
   "A friend joined VolunTrack with your invite link.": "Un amigo se unió a VolunTrack con tu enlace de invitación.",
   "Team Builder": "Formador de equipos",
   "Five friends joined VolunTrack with your invite link.": "Cinco amigos se unieron a VolunTrack con tu enlace de invitación.",
+  // Weekly streak (#497)
+  "1 week in a row": "1 semana seguida",
+  "Best streak: {n} weeks": "Mejor racha: {n} semanas",
+  "Log this week to start a streak": "Registra horas esta semana para empezar una racha",
+  "Log hours this week to keep it going": "Registra horas esta semana para mantenerla",
+  "Best: {n} weeks": "Mejor: {n} semanas",
+  "Your best yet": "Tu mejor racha",
   // Opportunities map (#496)
   "You are here": "Estás aquí",
   "{n} tasks here": "{n} tareas aquí",
