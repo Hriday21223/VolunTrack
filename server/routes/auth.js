@@ -519,6 +519,10 @@ router.patch('/profile', requireDb, requireAuth(), async (req, res) => {
 router.post('/email-change/start', authLimiter, requireDb, requireAuth(), async (req, res) => {
   const newEmail = validateEmail(req.body.newEmail || '')
   if (!newEmail) return res.status(400).json({ error: 'Enter a valid email address.' })
+  // Same shape as DELETE /account: read the password once, refuse it missing,
+  // then verify it — so no request value can skip the check.
+  const password = typeof req.body?.password === 'string' ? req.body.password : ''
+  if (!password) return res.status(400).json({ error: 'Your password is required to change your email.' })
   const devLog = !hasEmail() && process.env.NODE_ENV !== 'production'
   if (!hasEmail() && !devLog) {
     return res.status(503).json({ error: 'We cannot send the verification email right now. Please try again later.' })
@@ -530,7 +534,7 @@ router.post('/email-change/start', authLimiter, requireDb, requireAuth(), async 
     if (row.auth_provider === 'sso' || !row.password_hash) {
       return res.status(400).json({ error: "Your email comes from your school's sign-in, so it can't be changed here. Ask your school." })
     }
-    if (!req.body.password || !(await verifyPassword(String(req.body.password), row.password_hash))) {
+    if (!(await verifyPassword(password, row.password_hash))) {
       return res.status(403).json({ error: 'Incorrect password.' })
     }
     if (newEmail === String(row.email).toLowerCase()) {
