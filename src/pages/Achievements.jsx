@@ -1,14 +1,15 @@
 import {
-  Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp,
+  Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp, UserPlus, Users,
 } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
-import { BADGES, deriveAchievementState } from '@/lib/achievements.js'
+import { visibleBadges, deriveAchievementState } from '@/lib/achievements.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { cn } from '@/utils/cn.js'
 import { tr } from '@/lib/i18n.js'
 
-const ICONS = { Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp }
+const ICONS = { Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp, UserPlus, Users }
 
 const COLOR_CLASS = {
   brand:   { ring: 'ring-brand-500/30',   text: 'text-brand-700',   bg: 'bg-brand-100',   dark: 'dark:bg-brand-900/30 dark:text-brand-300' },
@@ -24,16 +25,19 @@ const COLOR_CLASS = {
 }
 
 export default function Achievements() {
-  const { logs, goals, earned } = useData()
-  const state = deriveAchievementState(logs, goals)
+  const { logs, goals, earned, friendsInvited } = useData()
+  const { user } = useAuth()
+  const badges = visibleBadges(user)
+  const state = deriveAchievementState(logs, goals, { friendsInvited })
+  const earnedCount = badges.filter((b) => earned.includes(b.id)).length
 
   return (
     <AppLayout
       title={tr('Achievements')}
-      subtitle={tr('{earned} of {total} earned', { earned: earned.length, total: BADGES.length })}
+      subtitle={tr('{earned} of {total} earned', { earned: earnedCount, total: badges.length })}
     >
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {BADGES.map((b) => {
+        {badges.map((b) => {
           const isEarned = earned.includes(b.id)
           const Icon = ICONS[b.icon] || Trophy
           const palette = COLOR_CLASS[b.color] || COLOR_CLASS.brand

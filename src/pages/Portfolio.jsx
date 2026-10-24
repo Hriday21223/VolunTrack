@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
-  Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp,
+  Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp, UserPlus, Users,
   BadgeCheck, Printer, Loader2,
 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
@@ -16,7 +16,7 @@ import { fmtDate } from '@/utils/date.js'
 // key. Kept out of search engines with a robots noindex tag (and the API
 // sends X-Robots-Tag), and laid out to print cleanly.
 
-const ICONS = { Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp }
+const ICONS = { Sprout, Flame, Award, Medal, Trophy, Crown, Compass, Sparkles, CalendarCheck, Sun, TrendingUp, UserPlus, Users }
 
 function hours(n) {
   const v = Math.round((Number(n) || 0) * 100) / 100

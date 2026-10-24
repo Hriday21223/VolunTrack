@@ -10,7 +10,8 @@ import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
 import { useMyRequirements } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
-import { nextBadgeProgress, countedLogs } from '@/lib/achievements.js'
+import { BADGES, nextBadgeProgress, countedLogs, visibleBadges } from '@/lib/achievements.js'
+import InviteFriendsCard from '@/components/InviteFriendsCard.jsx'
 import { yearsWithLogs, defaultReviewYear, isReviewSeason } from '@/lib/yearInReview.js'
 import { listReminders } from '@/api/index.js'
 import BarChart from '@/components/BarChart.jsx'
@@ -71,6 +72,8 @@ function RoleLink(props) {
 export default function Dashboard() {
   const { user } = useAuth()
   const { logs, goals, earned } = useData()
+  // Out of the badges this account can earn (no invite badges under 13, #493).
+  const badgeTotal = visibleBadges(user).length
   const [searchParams] = useSearchParams()
   const [schoolInfo, setSchoolInfo] = useState(null)
   // Who the school card's admin details are for. The server also withholds
@@ -560,7 +563,7 @@ export default function Dashboard() {
         </Card>
         <Card className="p-3">
           <div className="text-[0.625rem] font-medium text-earth-500 uppercase tracking-wide">{tr('Badges')}</div>
-          <div className="mt-1 text-xl font-bold text-white">{earned.length}/12</div>
+          <div className="mt-1 text-xl font-bold text-white">{Math.min(earned.length, badgeTotal)}/{badgeTotal}</div>
           <div className="text-[0.625rem] text-earth-400">{tr('Achievements')}</div>
         </Card>
       </div>
@@ -805,7 +808,7 @@ export default function Dashboard() {
 
           <Card className="p-4">
             <div className="text-xs text-earth-400">{tr('Badges earned')}</div>
-            <div className="mt-2 text-2xl font-bold text-earth-100">{earned.length}/12</div>
+            <div className="mt-2 text-2xl font-bold text-earth-100">{Math.min(earned.length, badgeTotal)}/{badgeTotal}</div>
             {nextBadge ? (
               <div className="mt-2 text-xs text-earth-400">
                 {nextBadge.unit === 'h' ? fmtHours(nextBadge.remaining) : `${nextBadge.remaining}${nextBadge.unit}`}{' '}{tr('to')}{' '}<span className="text-earth-200">{nextBadge.title}</span>
@@ -842,8 +845,8 @@ export default function Dashboard() {
           ) : (
             <ul className="space-y-1">
               {earned.slice(-3).reverse().map((id) => (
-                <li key={id} className="text-sm font-medium capitalize text-earth-100">
-                  🏅 {id.replaceAll('-', ' ')}
+                <li key={id} className="text-sm font-medium text-earth-100">
+                  🏅 {BADGES.find((b) => b.id === id)?.title || id.replaceAll('-', ' ')}
                 </li>
               ))}
             </ul>
@@ -853,6 +856,8 @@ export default function Dashboard() {
         {reviewYear && !reviewSeason && <YearInReviewLink year={reviewYear} />}
 
         {user?.role === 'student' && <LeaderboardCard className="lg:col-span-3" />}
+
+        <InviteFriendsCard className="lg:col-span-3" />
 
         <Card className="lg:col-span-3" data-tour="recent-activity">
           <div className="flex items-center justify-between mb-2">

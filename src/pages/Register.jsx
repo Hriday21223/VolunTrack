@@ -9,6 +9,7 @@ import { turnstileEnabled } from '@/lib/turnstile.js'
 import { SCHOOL_GRADES, gradeOptionLabel } from '@policy'
 import { checkSignupAge } from '@ageRules'
 import { markWelcomePending, clearWelcomePending } from '@/lib/welcome.js'
+import { cleanInviteCode, readInvite, rememberInvite, clearInvite } from '@/lib/invite.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { tr } from '@/lib/i18n.js'
 
@@ -82,6 +83,13 @@ export default function Register() {
   // A school's join link (/join/:code, #491) sends new students here with
   // ?school=<code>, so the code is already filled in and Welcome links it.
   const [params] = useSearchParams()
+  // A friend's invite (#493): from the link itself, or kept on this device
+  // since they opened /invite/<code>.
+  const [inviteCode] = useState(() => {
+    const fromUrl = cleanInviteCode(params.get('invite'))
+    if (fromUrl) rememberInvite(fromUrl)
+    return fromUrl || readInvite()
+  })
   const [form, setForm] = useState(() => ({ name: '', email: '', password: '', school: '', grade: '', studentIdNumber: '', schoolCode: String(params.get('school') || '').trim().slice(0, 40), dateOfBirth: '', parentEmail: '' }))
   // Set once an under-13 sign-up is waiting on its parent's emailed approval.
   const [awaitingParent, setAwaitingParent] = useState('')
@@ -152,7 +160,7 @@ export default function Register() {
     if (under13 && !form.parentEmail.trim()) { setErr(tr("Enter your parent or guardian's email address.")); return }
     if (!agreed) { setErr(tr('Please agree to the Terms of Service and Privacy Policy.')); return }
     if (turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
-    const signup = { ...form, role, under13, parentEmail: under13 ? form.parentEmail.trim() : '' }
+    const signup = { ...form, role, under13, parentEmail: under13 ? form.parentEmail.trim() : '', inviteCode: inviteCode || undefined }
     setBusy(true)
     try {
       const sent = await sendSignupCode({ ...signup, turnstileToken: captchaToken })
@@ -180,6 +188,7 @@ export default function Register() {
     if (wantsWelcome) markWelcomePending({ schoolCode: signup.role === 'student' ? signup.schoolCode : '' })
     try {
       const user = await register({ ...signup, emailCode: code })
+      if (user) clearInvite()
       if (user?.pendingParentalConsent) {
         clearWelcomePending()
         setAwaitingParent(signup.parentEmail)

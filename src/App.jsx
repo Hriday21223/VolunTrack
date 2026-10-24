@@ -31,6 +31,7 @@ const Contact = lazy(() => import('@/pages/Contact.jsx'))
 const ForSchools = lazy(() => import('@/pages/ForSchools.jsx'))
 const JoinSchool = lazy(() => import('@/pages/JoinSchool.jsx'))
 const SchoolFlyer = lazy(() => import('@/pages/SchoolFlyer.jsx'))
+const InviteLanding = lazy(() => import('@/pages/InviteLanding.jsx'))
 const Terms = lazy(() => import('@/pages/Terms.jsx'))
 const GuidesIndex = lazy(() => import('@/pages/Guides.jsx').then((m) => ({ default: m.GuidesIndex })))
 const GuidePage = lazy(() => import('@/pages/Guides.jsx').then((m) => ({ default: m.GuidePage })))
@@ -132,6 +133,7 @@ function Shell() {
           <Route path="/contact"         element={<Contact />} />
           <Route path="/for-schools"     element={<ForSchools />} />
           <Route path="/join/:code"      element={<JoinSchool />} />
+          <Route path="/invite/:code"    element={<InviteLanding />} />
           <Route path="/terms"           element={<Terms />} />
           <Route path="/guides"          element={<GuidesIndex />} />
           <Route path="/guides/:slug"    element={<GuidePage />} />

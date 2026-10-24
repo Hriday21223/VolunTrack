@@ -970,6 +970,13 @@ export async function initSchema() {
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN NOT NULL DEFAULT true`) } catch {}
 
+  // Invite a friend (#493, server/routes/invites.js): a student's or
+  // volunteer's personal invite code, made the first time they open the card,
+  // and who invited an account. Deleting the inviter just forgets the link.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_code TEXT UNIQUE`) } catch {}
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by TEXT REFERENCES users(id) ON DELETE SET NULL`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS users_invited_by_idx ON users (invited_by) WHERE invited_by IS NOT NULL`) } catch {}
+
   // Monthly progress email (#483, server/monthlyProgress.js): the student's
   // opt-out, and one row per student per month sent so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_progress_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}

@@ -78,3 +78,13 @@ export function generatePortfolioSlug() {
   for (let i = 0; i < 12; i++) s += SLUG_ALPHABET[randomInt(SLUG_ALPHABET.length)]
   return s
 }
+
+// A student's personal invite code (/invite/<code>, #493). Lowercase so it
+// survives being typed off a phone screen; 10 characters from the unambiguous
+// alphabet is about 49 bits, far past guessing behind the rate limiter.
+const INVITE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
+export function generateInviteCode() {
+  let s = ''
+  for (let i = 0; i < 10; i++) s += INVITE_ALPHABET[randomInt(INVITE_ALPHABET.length)]
+  return s
+}
