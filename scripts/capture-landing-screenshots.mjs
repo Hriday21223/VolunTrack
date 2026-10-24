@@ -1,7 +1,10 @@
 // Regenerates the dashboard screenshots in the landing-page gallery
 // (public/screenshots/). Needs `npm run dev` running.
 //
-//   node scripts/capture-landing-screenshots.mjs [baseUrl] [--api http://localhost:10001]
+//   node scripts/capture-landing-screenshots.mjs [baseUrl] [--api http://localhost:10001] [--only name,name]
+//
+// --only retakes just the named shots (file names without the extension),
+// e.g. --only student-opportunities, so one new screen doesn't redo them all.
 //
 // The student shots use a client-only demo account seeded straight into
 // localStorage — no backend call at all. With --api, it also photographs the
@@ -17,7 +20,10 @@ import path from 'node:path'
 const args = process.argv.slice(2)
 const apiFlag = args.indexOf('--api')
 const api = apiFlag >= 0 ? String(args[apiFlag + 1] || '').replace(/\/$/, '') : null
-const base = args.find((a, i) => !a.startsWith('--') && i !== apiFlag + 1) || 'http://localhost:5173'
+const onlyFlag = args.indexOf('--only')
+const only = onlyFlag >= 0 ? new Set(String(args[onlyFlag + 1] || '').split(',').filter(Boolean)) : null
+const wanted = (name) => !only || only.has(name)
+const base = args.find((a, i) => !a.startsWith('--') && i !== apiFlag + 1 && i !== onlyFlag + 1) || 'http://localhost:5173'
 if (api && !['localhost', '127.0.0.1'].includes(new URL(api).hostname)) {
   console.error('--api must point at a local test backend, never production.')
   process.exit(1)
@@ -84,6 +90,10 @@ const clickButton = (label) => (page) => page.evaluate((l) => {
   [...document.querySelectorAll('button')].find((b) => b.textContent.trim().endsWith(l))?.click()
 }, label)
 const ROLE_SHOTS = [
+  // In the Student tab of the gallery, but server-backed: tasks come from the API.
+  // `geo` is a few blocks from DEMO_LOCATION in seed-landing-demo.mjs, so the
+  // tasks read as nearby (and none as "0m away").
+  { name: 'student-opportunities', session: 'student', path: '/opportunities', geo: { latitude: 30.2745, longitude: -97.7369 } },
   { name: 'parent', session: 'parent', path: '/parent' },
   { name: 'volunteer', session: 'volunteer', path: '/my-tasks' },
   { name: 'volunteer-post', session: 'volunteer', path: '/my-tasks', prepare: clickButton('Post a task') },
@@ -128,7 +138,7 @@ async function forwardApi(page) {
 const settle = () => new Promise((r) => setTimeout(r, 2500))
 const browser = await puppeteer.launch({ headless: true })
 try {
-  for (const screen of STUDENT_SCREENS) for (const { suffix, width, height, scale } of STUDENT_SIZES) {
+  for (const screen of STUDENT_SCREENS.filter((s) => wanted(s.name))) for (const { suffix, width, height, scale } of STUDENT_SIZES) {
     const file = `${screen.name}${suffix}.webp`
     const page = await browser.newPage()
     await page.setViewport({ width, height, deviceScaleFactor: scale })
@@ -153,13 +163,20 @@ try {
   }
 
   const sessions = api && fs.existsSync(SESSIONS_FILE) ? JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8')) : null
-  if (api && !sessions?.[ROLE_SHOTS[0].session]) throw new Error(`No demo sessions in ${SESSIONS_FILE} — run scripts/seed-landing-demo.mjs first.`)
-  for (const role of api ? ROLE_SHOTS : []) {
+  const roleShots = api ? ROLE_SHOTS.filter((r) => wanted(r.name)) : []
+  for (const role of roleShots) {
+    if (!sessions?.[role.session]) throw new Error(`No ${role.session} demo session in ${SESSIONS_FILE} — run scripts/seed-landing-demo.mjs first.`)
+  }
+  for (const role of roleShots) {
     const session = sessions[role.session]
     for (const size of SIZES) {
       const page = await browser.newPage()
       await page.setViewport({ width: size.width, height: size.height, deviceScaleFactor: size.scale })
       await forwardApi(page)
+      if (role.geo) {
+        await browser.defaultBrowserContext().overridePermissions(base, ['geolocation'])
+        await page.setGeolocation({ ...role.geo, accuracy: 50 })
+      }
       await page.goto(`${base}/about`, { waitUntil: 'networkidle0' })
       await page.evaluate((token, user) => {
         localStorage.clear()
@@ -170,6 +187,12 @@ try {
       }, session.token, session.user)
       await page.goto(`${base}${role.path}`, { waitUntil: 'networkidle0' })
       await settle()
+      // A student's first load earns badges from their logs and pops a toast
+      // for each; a reload finds them already earned (as the student shots do).
+      if (role.session === 'student') {
+        await page.reload({ waitUntil: 'networkidle0' })
+        await settle()
+      }
       if (role.prepare) {
         await role.prepare(page)
         await settle()

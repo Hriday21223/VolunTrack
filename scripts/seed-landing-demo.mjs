@@ -1,6 +1,6 @@
 // Fills a THROWAWAY local database with made-up sample data, so
 // capture-landing-screenshots.mjs can photograph the parent and volunteer
-// dashboards for the landing page (#292). The sample school and district are
+// dashboards, and the student's Opportunities list, for the landing page (#292). The sample school and district are
 // still created — the parent's child, the school requirement and the task
 // sign-ups all hang off them — but their own dashboards are not photographed.
 //
@@ -20,6 +20,7 @@ import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import pg from 'pg'
+import bcrypt from 'bcryptjs'
 import { signToken } from '../server/auth.js'
 
 const API = (process.argv[2] || 'http://localhost:10001').replace(/\/$/, '')
@@ -47,6 +48,20 @@ async function call(method, path, body, token) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(`${method} ${path} -> ${res.status} ${data.error || ''}`)
   return data
+}
+// Self sign-up now needs a date of birth and the 6-digit code emailed to the
+// address (#310). This database is local and throwaway, so the code is put
+// in signup_codes directly instead of being read out of an inbox.
+const SIGNUP_CODE = '424242'
+const signupCodeHash = await bcrypt.hash(SIGNUP_CODE, 10)
+const BIRTH = { student: '2009-06-15', volunteer: '1988-03-02', parent: '1982-09-20' }
+async function register(body) {
+  await db.query(
+    `INSERT INTO signup_codes (email, code_hash, expires_at) VALUES ($1, $2, now() + interval '10 minutes')
+     ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0`,
+    [body.email, signupCodeHash],
+  )
+  return call('POST', '/api/auth/register', { dateOfBirth: BIRTH[body.role], emailCode: SIGNUP_CODE, ...body })
 }
 const code = async (kind) => (await call('POST', '/api/registration-codes/admin', { kind }, admin)).code
 const day = (offset) => {
@@ -94,7 +109,7 @@ const ENTRIES = [
 const students = []
 for (const [i, [name, grade]] of STUDENTS.entries()) {
   const email = `${name.toLowerCase().replace(/[^a-z]+/g, '.')}@example.com`
-  const s = await call('POST', '/api/auth/register', { name, email, password: PASSWORD, role: 'student', ageBand: '13plus', grade })
+  const s = await register({ name, email, password: PASSWORD, role: 'student', ageBand: '13plus', grade })
   await call('POST', '/api/school/join', { pin: 'lincoln-2026' }, s.token)
   const count = 3 + (i % 4)
   for (let n = 0; n < count; n++) {
@@ -111,7 +126,7 @@ const OTHERS = [['rivms-2026', ['Grace Turner', 'Daniel Nguyen', 'Emma Wilson', 
 for (const [pin, names] of OTHERS) {
   for (const name of names) {
     const email = `${name.toLowerCase().replace(/[^a-z]+/g, '.')}@example.com`
-    const s = await call('POST', '/api/auth/register', { name, email, password: PASSWORD, role: 'student', ageBand: '13plus', grade: '8' })
+    const s = await register({ name, email, password: PASSWORD, role: 'student', ageBand: '13plus', grade: '8' })
     await call('POST', '/api/school/join', { pin }, s.token)
   }
 }
@@ -124,24 +139,59 @@ await db.query(`
   [students.map((s) => s.user.id), day(-6)])
 
 // --- a parent following Maya
-const parent = await call('POST', '/api/auth/register', { name: 'Priya Patel', email: 'priya.patel@example.com', password: PASSWORD, role: 'parent' })
+const parent = await register({ name: 'Priya Patel', email: 'priya.patel@example.com', password: PASSWORD, role: 'parent' })
 await db.query('INSERT INTO parent_child_links (parent_id, child_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [parent.user.id, students[0].user.id])
 
 // --- a volunteer task maker with three upcoming tasks and some sign-ups
-const vol = await call('POST', '/api/auth/register', { name: 'Green Streets Collective', email: 'greenstreets@example.com', password: PASSWORD, role: 'volunteer' })
+const vol = await register({ name: 'Green Streets Collective', email: 'greenstreets@example.com', password: PASSWORD, role: 'volunteer' })
 const TASKS = [
-  ['Saturday park cleanup', 'Pick up litter and clear trails along the river walk. Gloves and bags provided.', 'Riverside Park, Main Gate', 4, '09:00', 12],
-  ['Food drive sorting', 'Sort and pack donated food for weekend family boxes.', 'Central Food Bank', 9, '15:30', 8],
-  ['Tree planting day', 'Plant 60 saplings with the city forestry team.', 'City Arboretum', 16, '10:00', 15],
+  ['Saturday park cleanup', 'Pick up litter and clear trails along the river walk. Gloves and bags provided.', 'Riverside Park, Main Gate', 4, '09:00', 12, 'Environmental'],
+  ['Food drive sorting', 'Sort and pack donated food for weekend family boxes.', 'Central Food Bank', 9, '15:30', 8, 'Community Service'],
+  ['Tree planting day', 'Plant 60 saplings with the city forestry team.', 'City Arboretum', 16, '10:00', 15, 'Environmental'],
 ]
-for (const [t, [title, description, location, inDays, time, slotsTotal]] of TASKS.entries()) {
+for (const [t, [title, description, location, inDays, time, slotsTotal, category]] of TASKS.entries()) {
   const task = await call('POST', '/api/school/public-tasks', {
-    title, description, location, date: day(inDays), time, slotsTotal, phone: '555-0142', importantInfo: 'Wear closed-toe shoes.',
+    title, description, location, date: day(inDays), time, slotsTotal, category, phone: '555-0142', importantInfo: 'Wear closed-toe shoes.',
   }, vol.token)
   const signers = students.slice(t * 2, t * 2 + 3 + t)
   for (const s of signers) await call('POST', `/api/school/public-tasks/${task.id}/signup`, {}, s.token)
   for (const s of signers.slice(0, 2)) await call('POST', `/api/school/public-tasks/${task.id}/approve/${s.user.id}`, {}, vol.token)
 }
+
+// --- more organizers, so the student's Opportunities list has some variety
+const MORE = [
+  ['Happy Tails Shelter', 'happytails@example.com', [
+    ['Dog walking morning', 'Walk and socialize shelter dogs waiting for adoption.', 'Happy Tails Shelter', 3, '08:30', 6, 'Animal Welfare', {}],
+    ['Adoption day helpers', 'Greet families and help run the adoption event.', 'Riverside Park Pavilion', 11, '11:00', 10, 'Animal Welfare', {}],
+  ]],
+  ['Lincoln Library Friends', 'libraryfriends@example.com', [
+    ['Reading hour for kids', 'Read picture books aloud to children ages 4–8.', 'Lincoln Public Library', 6, '16:00', 4, 'Education & Tutoring', { wheelchairAccessible: 'yes' }],
+    ['Online homework help', 'Tutor middle schoolers in math over video call.', 'Online', 2, '18:00', 5, 'Education & Tutoring', { isOnline: true }],
+  ]],
+]
+for (const [name, email, tasks] of MORE) {
+  const org = await register({ name, email, password: PASSWORD, role: 'volunteer' })
+  for (const [title, description, location, inDays, time, slotsTotal, category, extra] of tasks) {
+    const task = await call('POST', '/api/school/public-tasks', {
+      title, description, location, date: day(inDays), time, slotsTotal, category, phone: '555-0177', ...extra,
+    }, org.token)
+    // A few sign-ups so spots-left counts look lived in.
+    for (const s of students.slice(4, 6)) await call('POST', `/api/school/public-tasks/${task.id}/signup`, {}, s.token)
+  }
+}
+
+// Put the in-person tasks around one made-up neighborhood (central Austin),
+// so Opportunities can show them as "near you" with distances. The capture
+// script places the browser at DEMO_LOCATION too.
+const DEMO_LOCATION = { latitude: 30.2672, longitude: -97.7431 }
+await db.query(`
+  UPDATE public_tasks t
+     SET latitude = $1 + (((n.rn % 5) - 2) * 0.012), longitude = $2 + (((n.rn % 3) - 1) * 0.015)
+    FROM (SELECT id, row_number() OVER (ORDER BY date, id) AS rn FROM public_tasks) n
+   WHERE n.id = t.id AND NOT COALESCE(t.is_online, false)`, [DEMO_LOCATION.latitude, DEMO_LOCATION.longitude])
+// Maya's causes, so Opportunities opens with its "For you" picks rather than
+// the one-time "What causes do you care about?" prompt.
+await call('PUT', '/api/interests', { interests: ['Environmental', 'Animal Welfare'] }, students[0].token)
 
 await db.end()
 
@@ -155,6 +205,7 @@ fs.mkdirSync(path.dirname(sessionsFile), { recursive: true })
 fs.writeFileSync(sessionsFile, JSON.stringify({
   api: API,
   parent: { token: parent.token, user: parent.user },
+  student: { token: students[0].token, user: students[0].user },
   volunteer: { token: vol.token, user: vol.user },
 }), { mode: 0o600 })
 console.log(`Wrote demo sessions to ${sessionsFile}`)
