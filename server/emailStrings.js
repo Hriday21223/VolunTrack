@@ -127,6 +127,8 @@ const ES = {
   'Cancelled: {title}': 'Cancelada: {title}',
   'This event has been cancelled': 'Este evento fue cancelado',
   'The organizer has cancelled this event.': 'El organizador canceló este evento.',
+  'The organizer closed their VolunTrack account, so this event will not happen.':
+    'El organizador cerró su cuenta de VolunTrack, así que este evento no se realizará.',
   'Reason given: {reason}': 'Motivo: {reason}',
   'Find another task': 'Buscar otra tarea',
   'Message from the organizer: {title}': 'Mensaje del organizador: {title}',
