@@ -25,8 +25,12 @@ the absolute URL in `.env.app`, which changes only when the backend moves.)
 
 ## Listing copy
 
+**Play listing title** (30 max) — the name shown in the store; the app's
+icon label stays *VolunTrack*:
+> VolunTrack: Volunteer Hours
+
 **Play short description** (80 max):
-> Log volunteer hours, track your goals, and share your record with your school.
+> Log volunteer & community service hours, hit your goal, and share a report.
 
 **Apple subtitle** (30 max):
 > Log and verify service hours
@@ -39,27 +43,60 @@ the absolute URL in `.env.app`, which changes only when the backend moves.)
 
 **Full description** (both stores; Play 4000 max):
 
-> VolunTrack keeps every volunteer hour in one place — logged when it
-> happens, verified by the people you helped, and ready when your school,
-> club or scholarship asks for it.
+> VolunTrack is the free, simple way for students to track volunteer and
+> community service hours — for NHS, Key Club, graduation requirements,
+> scholarships and college applications.
 >
-> FOR STUDENTS AND VOLUNTEERS
-> • Log hours in a few taps: what you did, where, and for how long
-> • Attach a photo or document as proof of service
+> LOG HOURS IN A MINUTE
+> • Add the date, hours, activity and organization, with a photo or document as proof
 > • Send an entry to a supervisor to verify — they approve and sign from a link, no account needed
-> • Set goals and watch your progress, earn badges along the way
+> • "Log again" fills in a regular activity in one tap
+> • Works offline and syncs when you're back online
+>
+> SEE YOUR GOAL
+> • Set an hour goal and see how much you need each week to finish on time
+> • A weekly chart and a 🔥 streak for every week in a row you volunteer
+> • Badges as you go: first hour, 10, 50 and 100 hours, streaks, and more
+>
+> FIND OPPORTUNITIES NEAR YOU
+> • Browse volunteer tasks posted by schools and organizations as a list or on a map
+> • Filter by cause, date, online, or wheelchair accessible
+> • Sign up in one tap, add it to your calendar, and check in with a QR code when you arrive
+>
+> REPORTS WHEN THEY'RE DUE
+> • Download a PDF or spreadsheet of your hours
 > • Export a signed transcript of your verified hours that anyone can check
+> • A shareable picture of your hours, and a Year in review
 >
-> FOR PARENTS
-> • Link to your student's account and follow their progress
-> • Opt in to a weekly summary by email
->
-> FOR SCHOOLS AND ORGANIZATIONS
-> • See your students' hours in one dashboard and approve or reject entries
-> • Set the rules for how your students log hours: required fields, custom questions, goals
+> FOR SCHOOLS AND CLUBS
+> • Approve or reject students' hours in one dashboard, and download reports
+> • Set the rules: required fields, custom questions, the hour requirement
+> • A starter kit with a join link, QR code flyer and ready-to-send messages
 > • Sign students in with your own Google Workspace or Microsoft account
-> • Keep proof-of-service files in your own storage — VolunTrack keeps only a pointer
 > • Every time staff open a student's record, it's written to an access log
+>
+> FOR FAMILIES
+> • Parents can follow their student's hours and get a weekly summary by email
+> • Students under 13 need a parent's approval to sign up
+>
+> BRING YOUR FRIENDS
+> • Share your invite link and earn badges when friends join
+>
+> PRIVATE BY DESIGN
+> • Free for students, volunteers and parents
+> • We never sell your data
+> • In English and Spanish
+
+**Release notes / What's new** (Play 500 max) — 0.7.0:
+
+> New in 0.7.0:
+> • Map view of volunteer opportunities near you
+> • 🔥 Weekly streak on your dashboard
+> • Invite friends with your own link and earn badges
+> • Share a picture of your hours
+> • A cleaner weekly chart
+> • Monthly progress email and an opt-in school leaderboard
+> • Schools: starter kit with a QR flyer, and a new school year grade move
 
 ## Graphics
 
