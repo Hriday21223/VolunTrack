@@ -266,9 +266,15 @@ export function announcementHtml({ recipientName, title, message, dashboardPath 
 
 // Fire-and-log: a failed send should never break the admin/school flow that
 // triggered it — admin_notifications already gives an in-app fallback.
-export async function sendEmail({ to, subject, html }) {
+// `unsubscribeUrl` adds the List-Unsubscribe headers Gmail and Yahoo show as a
+// one-click "Unsubscribe" by the sender name. The URL must stop the emails on
+// a bare POST (RFC 8058) and only show a confirm page on GET.
+export async function sendEmail({ to, subject, html, unsubscribeUrl }) {
   const from = fromAddress()
   const key = brevoKey()
+  const headers = unsubscribeUrl
+    ? { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
+    : undefined
 
   if (key && from) {
     try {
@@ -281,6 +287,7 @@ export async function sendEmail({ to, subject, html }) {
           to: [{ email: to }],
           subject,
           htmlContent: html,
+          ...(headers ? { headers } : {}),
         }),
         signal: AbortSignal.timeout(15_000),
       })
@@ -305,7 +312,7 @@ export async function sendEmail({ to, subject, html }) {
     return { sent: false }
   }
   try {
-    const info = await t.sendMail({ from, to, replyTo: replyToAddress(), subject, html })
+    const info = await t.sendMail({ from, to, replyTo: replyToAddress(), subject, html, ...(headers ? { headers } : {}) })
     return { sent: true, id: info.messageId }
   } catch (error) {
     console.error('SMTP send failed:', error.message)
