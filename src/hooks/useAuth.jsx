@@ -160,6 +160,35 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
+  // Two-step sign-in by emailed code (#470): ask for a code, then check it.
+  const sendEmailCode = useCallback(async (tempToken) => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const response = await fetch(`${apiUrl}/auth/email-otp/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tempToken }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.error || 'Could not send the code')
+    return data
+  }, [])
+
+  const verifyEmailCode = useCallback(async (tempToken, code) => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const response = await fetch(`${apiUrl}/auth/email-otp/challenge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tempToken, code }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data.error || 'Invalid code')
+    localStorage.setItem('voluntrack:auth_token', data.token)
+    await syncPullLogs(data.user.id)
+    write(SESSION_KEY, data.user)
+    setUser(data.user)
+    return data.user
+  }, [])
+
   const verifyPasskey = useCallback(async (tempToken) => {
     const data = await signInWithPasskey(tempToken)
     localStorage.setItem('voluntrack:auth_token', data.token)
@@ -597,7 +626,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, login, verifyTotp, verifyPasskey, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
+    <AuthContext.Provider value={{ user, login, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
       {children}
     </AuthContext.Provider>
   )

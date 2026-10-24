@@ -171,6 +171,11 @@ const ES = {
   'The email address for your VolunTrack account was changed to {email}. From now on, sign in and get emails there.':
     'El correo de tu cuenta de VolunTrack se cambió a {email}. A partir de ahora, inicia sesión y recibe los correos ahí.',
   "If you didn't do this, contact us right away: {link}": 'Si no fuiste tú, escríbenos de inmediato: {link}',
+  // Two-step sign-in by email (server/email.js sendEmailOtpEmail)
+  'Enter this code in VolunTrack to turn on two-step sign-in by email:': 'Escribe este código en VolunTrack para activar el inicio de sesión en dos pasos por correo:',
+  'Enter this code to finish signing in to VolunTrack:': 'Escribe este código para terminar de iniciar sesión en VolunTrack:',
+  "It works once and expires in {minutes} minutes. If you didn't just try to sign in, someone may know your password: change it in Settings.":
+    'Funciona una sola vez y caduca en {minutes} minutos. Si no acabas de intentar iniciar sesión, alguien podría conocer tu contraseña: cámbiala en Ajustes.',
 }
 
 const DICTIONARIES = { es: ES }

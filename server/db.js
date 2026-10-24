@@ -396,6 +396,23 @@ export async function initSchema() {
   // 2FA columns
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT`) } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // Two-step sign-in by emailed code (#470): the easy option for students,
+  // volunteers and parents. Never a second factor for MFA_REQUIRED_ROLES.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_otp_enabled BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // One live emailed code per account. purpose 'login' answers a sign-in;
+  // 'enable' proves the inbox works before the option is turned on.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS email_otp_codes (
+        user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        purpose    TEXT NOT NULL CHECK (purpose IN ('login', 'enable')),
+        code_hash  TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        attempts   INTEGER NOT NULL DEFAULT 0,
+        sent_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS backup_codes TEXT`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS student_email TEXT`) } catch {}
   // `token` approves or rejects and must never leave the supervisor's email.
