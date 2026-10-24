@@ -314,3 +314,24 @@ html[data-contrast='high'] a:is([class*='text-sky-'], [class*='text-brand-']):no
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
+
+/* Opportunities map pins (src/components/OpportunitiesMap.jsx, #496): a
+   drawn teardrop in the brand green, with a count when tasks share a spot. */
+.vt-pin { background: none; border: 0; }
+.vt-pin-body {
+  width: 30px; height: 30px; margin: 0 auto;
+  border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  border: 2px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+  display: grid; place-items: center;
+}
+.vt-pin-body::after {
+  content: ''; width: 9px; height: 9px; border-radius: 50%; background: #fff;
+}
+.vt-pin-count {
+  transform: rotate(45deg); color: #fff; font: 700 12px/1 Inter, system-ui, sans-serif;
+  position: absolute;
+}
+.vt-pin-body:has(.vt-pin-count)::after { display: none; }
+.leaflet-popup-content .vt-map-popup p { margin: 0; }
+.vt-map-popup { max-height: 15rem; overflow-y: auto; padding-right: 0.25rem; }

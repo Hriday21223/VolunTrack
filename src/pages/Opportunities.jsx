@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2 } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2, List, Map as MapIcon, Loader2 } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
@@ -26,6 +26,13 @@ import { MAX_SEARCH_LENGTH, cleanSearch, taskMatchesSearch, taskShareUrl } from 
 import { organizerPath } from '@/lib/organizerProfile.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
+
+// The map (#496) pulls in Leaflet, so it loads only when someone opens it.
+const OpportunitiesMap = lazy(() => import('@/components/OpportunitiesMap.jsx'))
+const VIEW_KEY = 'voluntrack:opportunities-view'
+function readView() {
+  try { return localStorage.getItem(VIEW_KEY) === 'map' ? 'map' : 'list' } catch { return 'list' }
+}
 
 // Shared links point at the website. In the apps the page's own origin is
 // capacitor://localhost (or https://localhost), so use the site's address.
@@ -138,6 +145,19 @@ export default function Opportunities() {
   // invitedBy so the organizer sees who they came with (the server checks it).
   const [searchParams, setSearchParams] = useSearchParams()
   const linkedTask = searchParams.get('task')
+  // List or map, remembered on this device. A link to one task opens the list,
+  // where that task is highlighted.
+  const [view, setViewState] = useState(() => (linkedTask ? 'list' : readView()))
+  const setView = (v) => {
+    setViewState(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* storage blocked */ }
+  }
+  // From a map pin: back to the list, scrolled to that task and highlighted.
+  const openTaskFromMap = (id) => {
+    setView('list')
+    scrolledTo.current = false
+    setSearchParams((p) => { const n = new URLSearchParams(p); n.set('task', id); n.delete('from'); return n }, { replace: true })
+  }
   const invitedFrom = searchParams.get('from')
   // Search: what's typed shows at once; the list (and ?q= in the address, so
   // it survives a reload) follows 250 ms after the last keystroke.
@@ -296,7 +316,7 @@ export default function Opportunities() {
     if (!el) return
     scrolledTo.current = true
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [linkedTask, loaded, shownTasks.length])
+  }, [linkedTask, loaded, shownTasks.length, view])
 
   useEffect(() => {
     if (userLoc) loadNearbyTasks(userLoc.lat, userLoc.lng, nearbyRadius)
@@ -354,6 +374,19 @@ export default function Opportunities() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-xl border border-earth-200 dark:border-white/10 p-0.5" role="group" aria-label={tr('View')}>
+            {[['list', List, tr('List')], ['map', MapIcon, tr('Map')]].map(([v, Icon, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                aria-pressed={view === v}
+                className={`btn-sm inline-flex items-center gap-1 ${view === v ? 'btn-primary' : 'btn-ghost'}`}
+              >
+                <Icon className="w-3.5 h-3.5" />{' '}{label}
+              </button>
+            ))}
+          </div>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="input py-1 px-2 text-sm w-auto" aria-label={tr('Category')}>
             <option value="">{tr('All categories')}</option>
             {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
@@ -486,6 +519,15 @@ export default function Opportunities() {
               <button type="button" onClick={clearFilters} className="btn-secondary mt-3">{tr('Clear filters')}</button>
             </div>
           </Card>
+        ) : view === 'map' ? (
+          <Suspense fallback={<Card><p className="text-center py-8 text-earth-400 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{' '}{tr('Loading map…')}</p></Card>}>
+            <OpportunitiesMap
+              tasks={shownTasks}
+              userLoc={userLoc}
+              onOpenTask={openTaskFromMap}
+              onShowOnline={(onlyOnline) => { setView('list'); if (onlyOnline) setOnlineOnly(true) }}
+            />
+          </Suspense>
         ) : shownTasks.map((t) => {
           const filled = Number(t.slots_filled)
           const total = Number(t.slots_total)

@@ -1219,4 +1219,17 @@ export default {
   "A friend joined VolunTrack with your invite link.": "Un amigo se unió a VolunTrack con tu enlace de invitación.",
   "Team Builder": "Formador de equipos",
   "Five friends joined VolunTrack with your invite link.": "Cinco amigos se unieron a VolunTrack con tu enlace de invitación.",
+  // Opportunities map (#496)
+  "You are here": "Estás aquí",
+  "{n} tasks here": "{n} tareas aquí",
+  "View details": "Ver detalles",
+  "None of these tasks has a place on the map.": "Ninguna de estas tareas tiene un lugar en el mapa.",
+  "1 online task isn’t on the map.": "1 tarea en línea no aparece en el mapa.",
+  "{n} online tasks aren’t on the map.": "{n} tareas en línea no aparecen en el mapa.",
+  "1 task has no map location.": "1 tarea no tiene ubicación en el mapa.",
+  "{n} tasks have no map location.": "{n} tareas no tienen ubicación en el mapa.",
+  "See them in the list": "Verlas en la lista",
+  "List": "Lista",
+  "Map": "Mapa",
+  "Loading map…": "Cargando el mapa…",
 }
