@@ -11,6 +11,8 @@ import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail, emailApiBase } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
+import { friendlyWhen } from '../when.js'
+import { ensureDigestUnsubToken } from '../digest.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
 import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel } from '../requirements.js'
@@ -1510,6 +1512,54 @@ router.post('/public-tasks/organizers/:organizerId/follow', limiter, requireDb, 
   }
 })
 
+// Unfollow from a "new task" email without signing in. The token is the
+// account's digest_unsub_token (see ensureDigestUnsubToken). GET only asks:
+// mail scanners open links, and an unfollow must take a click. POST unfollows,
+// which is also what Gmail's one-click "Unsubscribe" sends (RFC 8058).
+function followUnsubPage(bodyHtml) {
+  const style = 'font-family:system-ui,-apple-system,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5'
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${style}">${bodyHtml}</body></html>`
+}
+
+async function followUnsubLookup(token, organizerId) {
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(token)) return null
+  const { rows } = await query(
+    `SELECT u.id AS user_id, o.name AS organizer_name,
+            EXISTS (SELECT 1 FROM organizer_follows f WHERE f.user_id = u.id AND f.organizer_id = o.id) AS following
+       FROM users u, users o
+      WHERE u.digest_unsub_token = $1 AND o.id = $2`,
+    [token, organizerId],
+  )
+  return rows[0] || null
+}
+
+router.get('/follows/unsubscribe/:token/:organizerId', limiter, requireDb, async (req, res) => {
+  try {
+    const row = await followUnsubLookup(req.params.token, String(req.params.organizerId))
+    res.type('html')
+    if (!row) return res.status(400).send(followUnsubPage('<p>This link is not valid.</p>'))
+    const who = escapeHtml(row.organizer_name || 'this organizer')
+    if (!row.following) return res.send(followUnsubPage(`<p>You're not following ${who}, so you won't get emails about their new tasks.</p>`))
+    return res.send(followUnsubPage(`<p>Stop emails about new tasks from ${who}? This unfollows them on VolunTrack.</p><form method="post"><button type="submit" style="font-size:1rem;padding:0.5rem 1rem">Stop these emails</button></form><p style="font-size:0.875rem;color:#666">You can follow them again from Opportunities.</p>`))
+  } catch (error) {
+    console.error('follow unsubscribe page failed:', error)
+    return res.status(500).type('html').send(followUnsubPage('<p>Something went wrong. Please try again.</p>'))
+  }
+})
+
+router.post('/follows/unsubscribe/:token/:organizerId', limiter, requireDb, async (req, res) => {
+  try {
+    const row = await followUnsubLookup(req.params.token, String(req.params.organizerId))
+    res.type('html')
+    if (!row) return res.status(400).send(followUnsubPage('<p>This link is not valid.</p>'))
+    await query('DELETE FROM organizer_follows WHERE user_id = $1 AND organizer_id = $2', [row.user_id, String(req.params.organizerId)])
+    return res.send(followUnsubPage(`<p>Done. You won't get emails about new tasks from ${escapeHtml(row.organizer_name || 'this organizer')}.</p><p style="font-size:0.875rem;color:#666">You can follow them again from Opportunities.</p>`))
+  } catch (error) {
+    console.error('follow unsubscribe failed:', error)
+    return res.status(500).type('html').send(followUnsubPage('<p>Something went wrong. Please try again.</p>'))
+  }
+})
+
 // DELETE /api/school/public-tasks/organizers/:organizerId/follow
 router.delete('/public-tasks/organizers/:organizerId/follow', limiter, requireDb, requireAuth('student'), async (req, res) => {
   try {
@@ -1644,7 +1694,7 @@ async function remindSavedTasks({ dryRun = false } = {}) {
             ${SPOTS_USED_SQL('t.id')} AS filled`,
   )
   for (const r of rows) {
-    const when = [r.date, r.time].filter(Boolean).join(' at ')
+    const when = friendlyWhen(r.date, r.time)
     const spots = Math.max(0, Number(r.slots_total) - r.filled)
     // Awaited (it never throws) so the cron's response means "done".
     await notify(r.user_id, {
@@ -1688,7 +1738,7 @@ async function notifyFollowers(organizerId, taskId) {
           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = f.user_id AND b.blocked_id = $1)`,
       [organizerId],
     )
-    const when = [task.date, task.time].filter(Boolean).join(' at ')
+    const when = friendlyWhen(task.date, task.time)
     for (const f of followers) {
       notify(f.user_id, {
         kind: 'new_task',
@@ -1704,7 +1754,7 @@ async function notifyFollowers(organizerId, taskId) {
           AND (f.last_notified_at IS NULL OR f.last_notified_at < now() - interval '1 hour')
           AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = f.user_id AND b.blocked_id = $1)
-        RETURNING u.email, u.name`,
+        RETURNING u.id, u.email, u.name`,
       [organizerId],
     )
     const subject = `New task from ${task.creator_name || 'an organizer'}: ${task.title}`
@@ -1717,18 +1767,23 @@ async function notifyFollowers(organizerId, taskId) {
         console.log(`[follow] skipped @test.com fixture ${email}: ${subject}`)
         continue
       }
+      // One token per account (shared with the digest and comeback emails);
+      // the organizer goes in the path, so this link stops only this organizer.
+      const unsubscribeUrl = `${emailApiBase()}/api/school/follows/unsubscribe/${await ensureDigestUnsubToken(r.id)}/${encodeURIComponent(organizerId)}`
       await sendEmail({
         to: email,
         subject,
+        unsubscribeUrl,
         html: taskEmailHtml({
           heading: 'A new volunteer task',
           lines: [
             `Hi ${r.name || 'there'}, ${task.creator_name || 'an organizer you follow'} just posted a new task.`,
-            'You get these because you follow this organizer. Unfollow from Opportunities to stop them.',
+            'You get these because you follow this organizer.',
           ],
           task,
           link: taskPageLink(taskId),
           linkLabel: 'View task and sign up',
+          unsubscribe: { href: unsubscribeUrl, label: `Stop emails from ${task.creator_name || 'this organizer'}` },
         }),
       })
     }
@@ -2318,7 +2373,7 @@ export async function requestParentOk(signupId) {
     if (!row) return 'none'
     const child = childFirstName(row.child_name)
     const subject = `${child} wants to volunteer: ${row.title}`
-    const when = [row.date, row.time].filter(Boolean).join(' at ')
+    const when = friendlyWhen(row.date, row.time)
 
     const { rows: parents } = await query(
       `SELECT u.id, u.email FROM parent_child_links l JOIN users u ON u.id = l.parent_id
@@ -2866,31 +2921,6 @@ router.post('/public-tasks/:id/reject/:userId', limiter, requireDb, requireAuth(
 // Every task email goes to one person at a time. A shared To: line on a
 // volunteer roster would publish a list of minors' addresses to each other,
 // which is the same reason referral invites are sent separately.
-// "2026-10-30" + "10:00" → "Fri, Oct 30 · 10:00 AM". The year shows only when
-// it isn't this one. A time that isn't HH:MM (free text) is shown as typed;
-// ../ics.js reads times the same way.
-function friendlyWhen(date, time) {
-  // A raw DATE column comes back from pg as a Date at local midnight.
-  if (date instanceof Date && !Number.isNaN(date.getTime())) {
-    const pad = (n) => String(n).padStart(2, '0')
-    date = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-  }
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '')
-  let day = date || ''
-  if (m) {
-    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
-    day = d.toLocaleDateString('en-US', {
-      timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric',
-      ...(+m[1] !== new Date().getFullYear() ? { year: 'numeric' } : {}),
-    })
-  }
-  const hm = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim())
-  const clock = hm && +hm[1] < 24
-    ? `${((+hm[1] + 11) % 12) + 1}:${hm[2]} ${+hm[1] < 12 ? 'AM' : 'PM'}`
-    : (time || '')
-  return [day, clock].filter(Boolean).join(' · ')
-}
-
 // The task's .ics file: phones and calendar apps open it as "add this event".
 function taskCalendarLink(taskId) {
   return `${emailApiBase()}/api/school/public-tasks/${encodeURIComponent(taskId)}/calendar.ics`
@@ -2926,7 +2956,7 @@ function googleCalendarLink(task, taskId) {
   return `https://calendar.google.com/calendar/render?${q}`
 }
 
-function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId }) {
+function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId, unsubscribe }) {
   const when = friendlyWhen(task.date, task.time)
   const detail = [
     when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : '',
@@ -2940,6 +2970,7 @@ function taskEmailHtml({ heading, lines, task, link, linkLabel, calendarTaskId }
     ${detail}
     ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(linkLabel || 'Open in VolunTrack')}</a></p>` : ''}
     ${calendarTaskId ? calendarLinksHtml(task, calendarTaskId) : ''}
+    ${unsubscribe ? `<p style="font-size:12px;color:#888"><a href="${escapeHtml(unsubscribe.href)}">${escapeHtml(unsubscribe.label)}</a></p>` : ''}
     ${emailFooterHtml()}
   `
 }
@@ -2961,7 +2992,7 @@ async function notifySignupDecision(taskId, userId, decision) {
       kind: approved ? 'signup_approved' : 'signup_rejected',
       title: row.title,
       body: approved
-        ? [row.date, row.time].filter(Boolean).join(' at ') || 'The organizer approved your sign-up.'
+        ? friendlyWhen(row.date, row.time) || 'The organizer approved your sign-up.'
         : 'The organizer could not take your sign-up for this one.',
       link: approved ? '/attendance' : '/opportunities',
     })

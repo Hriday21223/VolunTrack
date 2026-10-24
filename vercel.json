@@ -8,6 +8,7 @@
     { "source": "/api/comeback/unsubscribe/:token", "destination": "https://voluntrack-backend-frrh.onrender.com/api/comeback/unsubscribe/:token" },
     { "source": "/api/parent/digest/unsubscribe/:token", "destination": "https://voluntrack-backend-frrh.onrender.com/api/parent/digest/unsubscribe/:token" },
     { "source": "/api/parent/task-ok/:path*", "destination": "https://voluntrack-backend-frrh.onrender.com/api/parent/task-ok/:path*" },
+    { "source": "/api/school/follows/unsubscribe/:path*", "destination": "https://voluntrack-backend-frrh.onrender.com/api/school/follows/unsubscribe/:path*" },
     { "source": "/api/auth/parent-consent/:path*", "destination": "https://voluntrack-backend-frrh.onrender.com/api/auth/parent-consent/:path*" },
     {
       "source": "/(.*)",

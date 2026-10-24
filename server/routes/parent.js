@@ -5,6 +5,7 @@ import { requireAuth } from '../auth.js'
 import { generateChildLinkCode } from '../ids.js'
 import { hasEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
+import { friendlyWhen } from '../when.js'
 import { runWeeklyDigest, previousWeekWindow, weekWindowFromStart } from '../digest.js'
 import { checkCronKey } from '../cronAuth.js'
 import { policyForUser } from '../policy.js'
@@ -534,7 +535,7 @@ router.get('/task-ok/:token', digestLimiter, requireDb, async (req, res) => {
   try {
     const s = await signupForToken(token)
     if (!s) return res.status(404).type('html').send(unsubPage(TASK_OK_GONE))
-    const when = [s.date, s.time].filter(Boolean).join(' at ')
+    const when = friendlyWhen(s.date, s.time)
     const action = `/api/parent/task-ok/${escapeHtml(token)}`
     return res.status(200).type('html').send(taskOkPage(
       `<h1 style="font-size:1.3rem">Let ${escapeHtml(s.child_name || 'your child')} join this volunteer task?</h1>
