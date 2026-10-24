@@ -60,8 +60,8 @@ function HoursChart({ months }) {
   const data = chartData(months)
   return (
     <div>
-      <BarChart data={data.map((d) => ({ ...d, label: '' }))} />
-      <div className="grid -mt-3 text-[10px] text-earth-500 text-center" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}>
+      <BarChart data={data.map((d) => ({ ...d, label: '', title: `${d.label}: ${Math.round(d.value * 100) / 100} hours` }))} showValues={false} />
+      <div className="grid mt-1.5 gap-1.5 sm:gap-3 text-[10px] text-earth-500 text-center" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}>
         {data.map((d, i) => (
           <span key={i} className="truncate" title={`${d.label}: ${Math.round(d.value * 100) / 100} hours`}>{d.label}</span>
         ))}
