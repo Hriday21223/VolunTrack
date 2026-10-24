@@ -473,6 +473,146 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
   }
 })
 
+// --- School leaderboard (#485) ----------------------------------------------
+//
+// Friendly competition inside one school: top volunteers by APPROVED hours
+// (so logging made-up hours can't climb it) this month or this school year.
+// Privacy, because most students are minors:
+//   - only students at the same school ever see it;
+//   - a student appears only after opting in (users.leaderboard_opt_in);
+//   - only a first name and last initial leave the server, never ids, emails
+//     or full names;
+//   - under-13s and accounts waiting on parental consent never appear or see it;
+//   - a school can switch it off (schools.leaderboard_enabled).
+
+const LEADERBOARD_SIZE = 10
+
+// "Maya Patel" → "Maya P."; one-word names stay as they are.
+function leaderboardName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return 'Student'
+  const first = parts[0].slice(0, 30)
+  return parts.length > 1 ? `${first} ${parts[parts.length - 1][0].toUpperCase()}.` : first
+}
+
+// Aug 1 starts a US school year; before August, it's last year's.
+function leaderboardStart(period) {
+  const now = new Date()
+  if (period === 'month') return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  const y = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1
+  return `${y}-08-01`
+}
+
+const LEADERBOARD_ELIGIBLE_SQL = `u.role = 'student' AND u.under_13 IS NOT TRUE
+  AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')`
+
+async function leaderboardViewer(userId) {
+  const { rows } = await query(
+    `SELECT u.id, u.school_id, u.leaderboard_opt_in, u.under_13, u.parental_consent_status,
+            s.name AS school_name, s.leaderboard_enabled
+       FROM users u LEFT JOIN schools s ON s.id = u.school_id
+      WHERE u.id = $1`,
+    [userId],
+  )
+  return rows[0] || null
+}
+
+// GET /api/school/leaderboard?period=month|year
+router.get('/leaderboard', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  const period = req.query.period === 'year' ? 'year' : 'month'
+  try {
+    const me = await leaderboardViewer(req.auth.sub)
+    if (!me) return res.status(404).json({ error: 'Account not found.' })
+    if (!me.school_id) return res.json({ available: false, reason: 'no_school' })
+    if (me.leaderboard_enabled === false) return res.json({ available: false, reason: 'disabled' })
+    if (me.under_13 === true || me.parental_consent_status === 'pending') return res.json({ available: false, reason: 'age' })
+
+    const { rows } = await query(
+      `WITH totals AS (
+         SELECT u.id, u.name, SUM(l.hours) AS hours
+           FROM users u
+           JOIN logs l ON l.user_id = u.id AND l.verification_status = 'approved'
+                      AND l.date >= $2 AND l.date <= current_date
+          WHERE u.school_id = $1 AND u.leaderboard_opt_in AND ${LEADERBOARD_ELIGIBLE_SQL}
+          GROUP BY u.id
+         HAVING SUM(l.hours) > 0
+       ), ranked AS (
+         SELECT id, name, hours, RANK() OVER (ORDER BY hours DESC) AS rank,
+                ROW_NUMBER() OVER (ORDER BY hours DESC, id) AS position
+           FROM totals
+       )
+       SELECT id, name, hours, rank::int, position::int, (SELECT COUNT(*)::int FROM totals) AS participants
+         FROM ranked
+        WHERE position <= $3 OR id = $4
+        ORDER BY position`,
+      [me.school_id, leaderboardStart(period), LEADERBOARD_SIZE, me.id],
+    )
+    const round = (n) => Math.round(Number(n) * 10) / 10
+    const top = rows.filter((r) => r.position <= LEADERBOARD_SIZE)
+      .map((r) => ({ rank: r.rank, name: leaderboardName(r.name), hours: round(r.hours), isMe: r.id === me.id }))
+    const mine = rows.find((r) => r.id === me.id)
+    return res.json({
+      available: true,
+      period,
+      schoolName: me.school_name || null,
+      optedIn: Boolean(me.leaderboard_opt_in),
+      participants: rows[0]?.participants || 0,
+      top,
+      me: mine ? { rank: mine.rank, hours: round(mine.hours) } : null,
+    })
+  } catch (error) {
+    console.error('leaderboard failed:', error)
+    return res.status(500).json({ error: 'Could not load the leaderboard.' })
+  }
+})
+
+// PUT /api/school/leaderboard/opt-in { optIn }
+router.put('/leaderboard/opt-in', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  if (typeof req.body?.optIn !== 'boolean') return res.status(400).json({ error: 'optIn must be true or false.' })
+  try {
+    const me = await leaderboardViewer(req.auth.sub)
+    if (!me) return res.status(404).json({ error: 'Account not found.' })
+    if (req.body.optIn && (me.under_13 === true || me.parental_consent_status === 'pending')) {
+      return res.status(403).json({ error: 'The leaderboard is for students 13 and older.' })
+    }
+    await query('UPDATE users SET leaderboard_opt_in = $1 WHERE id = $2', [req.body.optIn, me.id])
+    return res.json({ optedIn: req.body.optIn })
+  } catch (error) {
+    console.error('leaderboard opt-in failed:', error)
+    return res.status(500).json({ error: 'Could not save that.' })
+  }
+})
+
+// GET / PATCH /api/school/leaderboard/settings { enabled } — the school's switch.
+router.get('/leaderboard/settings', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.leaderboard_enabled,
+              (SELECT COUNT(*)::int FROM users u WHERE u.school_id = s.id AND u.leaderboard_opt_in AND ${LEADERBOARD_ELIGIBLE_SQL}) AS joined
+         FROM users me JOIN schools s ON s.id = me.school_id WHERE me.id = $1`,
+      [req.auth.sub],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'School not found.' })
+    return res.json({ enabled: rows[0].leaderboard_enabled, joined: rows[0].joined })
+  } catch (error) {
+    console.error('leaderboard settings read failed:', error)
+    return res.status(500).json({ error: 'Could not load the setting.' })
+  }
+})
+
+router.patch('/leaderboard/settings', limiter, requireDb, requireAuth('school'), async (req, res) => {
+  if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false.' })
+  try {
+    const schoolId = await callerSchoolId(req.auth.sub)
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    await query('UPDATE schools SET leaderboard_enabled = $1 WHERE id = $2', [req.body.enabled, schoolId])
+    return res.json({ enabled: req.body.enabled })
+  } catch (error) {
+    console.error('leaderboard settings update failed:', error)
+    return res.status(500).json({ error: 'Could not save the setting.' })
+  }
+})
+
 // --- New school year: move everyone up a grade (#481) -----------------------
 //
 // Grades are typed once and go stale every August. A school admin moves the

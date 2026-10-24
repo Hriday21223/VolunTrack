@@ -965,6 +965,11 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('public task reminder table migration failed:', error) }
 
+  // School leaderboard (#485): a student's opt-in (off until they join), and
+  // the school's switch (on unless the school turns it off).
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN NOT NULL DEFAULT true`) } catch {}
+
   // "New school year" grade moves (#481): one row per run with every change
   // ({ userId, from, to }), so the run can be undone and a second run in the
   // same year is caught.
