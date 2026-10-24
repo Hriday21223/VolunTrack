@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, Download, Printer, FileDown, Filter, Send, School, ShieldCheck, Upload } from 'lucide-react'
+import { FileText, Download, Printer, FileDown, Filter, Send, School, ShieldCheck, Upload, Share2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
+import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { categoryColor } from '@/lib/categories.js'
@@ -27,6 +28,7 @@ export default function Reports() {
   const [category, setCategory] = useState('all')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [sharing, setSharing] = useState(false)
 
   const filtered = useMemo(() => {
     return logs.filter((l) => {
@@ -65,6 +67,22 @@ export default function Reports() {
   }, [filtered])
 
   const state = deriveAchievementState(logs, goals)
+
+  // The shareable picture is all-time, whatever the filters say (#478).
+  // Memoized: the preview redraws whenever these change.
+  const shareStats = useMemo(() => {
+    const counted = countedLogs(logs)
+    const byCause = new Map()
+    for (const l of counted) byCause.set(l.category || 'Other', (byCause.get(l.category || 'Other') || 0) + (Number(l.hours) || 0))
+    return {
+      totalHours: counted.reduce((s, l) => s + (Number(l.hours) || 0), 0),
+      approvedHours: counted
+        .filter((l) => (l.verificationStatus || l.verification_status) === 'approved')
+        .reduce((s, l) => s + (Number(l.hours) || 0), 0),
+      sessions: counted.length,
+      causes: [...byCause.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => tr(c)),
+    }
+  }, [logs])
   const categories = ['all', ...new Set(logs.map((l) => l.category).filter(Boolean))]
 
   const onCSV = () => {
@@ -114,6 +132,9 @@ export default function Reports() {
               <button className="btn-secondary w-full" onClick={onCSV}>
                 <Download className="w-4 h-4" />{' '}{tr('Export CSV')}
               </button>
+              <button className="btn-secondary w-full" onClick={() => setSharing(true)} disabled={shareStats.sessions === 0}>
+                <Share2 className="w-4 h-4" />{' '}{tr('Share my hours')}
+              </button>
               <button className="btn-ghost w-full" onClick={() => printCertificate({ user, totalHours: state.totalHours, goalReached: state.goalReached })}>
                 <Printer className="w-4 h-4" />{' '}{tr('Print certificate')}
               </button>
@@ -126,6 +147,16 @@ export default function Reports() {
           </div>
         </Card>
         <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
+        {sharing && (
+          <ShareHoursModal
+            name={user?.name || ''}
+            totalHours={shareStats.totalHours}
+            approvedHours={shareStats.approvedHours}
+            sessions={shareStats.sessions}
+            causes={shareStats.causes}
+            onClose={() => setSharing(false)}
+          />
+        )}
         </div>
 
         <div className="lg:col-span-2 space-y-5">
