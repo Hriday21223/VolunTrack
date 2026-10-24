@@ -965,6 +965,11 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('public task reminder table migration failed:', error) }
 
+  // School leaderboard (#485): a student's opt-in (off until they join), and
+  // the school's switch (on unless the school turns it off).
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS leaderboard_opt_in BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS leaderboard_enabled BOOLEAN NOT NULL DEFAULT true`) } catch {}
+
   // Monthly progress email (#483, server/monthlyProgress.js): the student's
   // opt-out, and one row per student per month sent so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_progress_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}

@@ -16,6 +16,7 @@ import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
+import LeaderboardSettingsCard from '@/components/LeaderboardSettingsCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
@@ -677,6 +678,8 @@ export default function SchoolDashboard() {
                 )}
               </Card>
             )}
+
+            <LeaderboardSettingsCard canEdit={user?.role === 'school'} />
 
             {/* Students at another school asking to move here. Accepting is
                 what actually moves them; their hours and approvals come with

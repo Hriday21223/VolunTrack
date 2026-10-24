@@ -17,6 +17,7 @@ import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
+import LeaderboardCard from '@/components/LeaderboardCard.jsx'
 import { isNativeApp } from '@/lib/platform.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
@@ -850,6 +851,8 @@ export default function Dashboard() {
         </Card>
 
         {reviewYear && !reviewSeason && <YearInReviewLink year={reviewYear} />}
+
+        {user?.role === 'student' && <LeaderboardCard className="lg:col-span-3" />}
 
         <Card className="lg:col-span-3" data-tour="recent-activity">
           <div className="flex items-center justify-between mb-2">
