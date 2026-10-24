@@ -130,11 +130,14 @@ jobs:
 
       - name: Deploy
         id: deploy
+        # --archive=tgz uploads the build as one file. Without it every output
+        # file is its own upload, and a day of PR previews passed Vercel's free
+        # limit (5,000 a day), which then blocked production deploys too.
         run: |
           if [ "$TARGET" = production ]; then
-            url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+            url=$(vercel deploy --prebuilt --archive=tgz --prod --token="$VERCEL_TOKEN")
           else
-            url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+            url=$(vercel deploy --prebuilt --archive=tgz --token="$VERCEL_TOKEN")
           fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to $url"
