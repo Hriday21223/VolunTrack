@@ -29,7 +29,7 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
-        <!-- CapacitorPasskey auto-configuration -->
+            <!-- CapacitorPasskey auto-configuration -->
         <meta-data
             android:name="asset_statements"
             android:resource="@string/capacitor_passkey_asset_statements" />
