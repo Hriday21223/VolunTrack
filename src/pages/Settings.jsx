@@ -368,6 +368,9 @@ export default function Settings() {
   const [deleteSecret, setDeleteSecret] = useState('')
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  // Upcoming events this account posted. Deleting cancels them and emails
+  // everyone signed up, so the confirm step says so (#461).
+  const [deleteImpact, setDeleteImpact] = useState(null)
   const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' })
   const [showPw, setShowPw] = useState(false)
   const [pwBusy, setPwBusy] = useState(false)
@@ -430,6 +433,17 @@ export default function Settings() {
   // type their email address instead.
   const isSsoAccount = user?.authProvider === 'sso'
   const hasServerAccount = Boolean(localStorage.getItem('voluntrack:auth_token'))
+
+  useEffect(() => {
+    if (!confirmDelete || !hasServerAccount) return
+    let cancelled = false
+    const token = localStorage.getItem('voluntrack:auth_token')
+    fetch(`${apiUrl}/auth/account/deletion-impact`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled) setDeleteImpact(data) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [confirmDelete, hasServerAccount])
 
   const handleDeleteAccount = async () => {
     if (!user) return
@@ -1525,7 +1539,26 @@ export default function Settings() {
                 <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-4 text-red-100">
                   <p className="font-semibold">Confirm account deletion</p>
                   <p className="text-sm text-red-100/80">This is permanent. Your volunteer logs, goals, achievements, and reminder data will be erased.</p>
+                  {hasServerAccount && user?.role !== 'parent' && (
+                    <p className="text-sm text-red-100/80 mt-2">{tr("We'll email you a copy of your logged hours as a spreadsheet, so you keep a record.")}</p>
+                  )}
                 </div>
+                {deleteImpact?.upcomingEvents > 0 && (
+                  <div role="alert" className="rounded-3xl border border-amber-500/40 bg-amber-500/10 p-4 text-amber-100">
+                    <p className="font-semibold">
+                      {deleteImpact.upcomingEvents === 1
+                        ? tr('You have 1 upcoming event you posted.')
+                        : tr('You have {n} upcoming events you posted.', { n: deleteImpact.upcomingEvents })}
+                    </p>
+                    <p className="text-sm text-amber-100/80">
+                      {deleteImpact.peopleSignedUp === 0
+                        ? tr('Deleting your account will cancel them. Nobody has signed up yet.')
+                        : deleteImpact.peopleSignedUp === 1
+                          ? tr('Deleting your account will cancel them, and the 1 person signed up will get an email saying the event is cancelled.')
+                          : tr('Deleting your account will cancel them, and the {n} people signed up will get an email saying the event is cancelled.', { n: deleteImpact.peopleSignedUp })}
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-3">
                   <div className="text-sm text-earth-200">Type <span className="font-semibold text-black">delete</span> to confirm.</div>
                   <input

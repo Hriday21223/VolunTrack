@@ -3193,6 +3193,72 @@ router.post('/public-tasks/:id/status', limiter, requireDb, requireAuth(), async
   }
 })
 
+// Everyone a cancellation should reach: signed up, not turned away.
+async function cancellationRecipients(taskId) {
+  const { rows } = await query(
+    `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      WHERE s.task_id = $1 AND s.status NOT IN ('rejected', 'parent_declined')`,
+    [taskId],
+  )
+  return rows
+}
+
+// Sequential and individual — see taskEmailHtml on why there is no shared
+// recipient line. Failures are logged, never surfaced as a failed cancel:
+// the event is off either way. `accountClosed` swaps the "organizer
+// cancelled" line for one saying the organizer's account is gone.
+async function sendCancellationEmails(task, people, { reason = '', accountClosed = false } = {}) {
+  for (const person of people) {
+    if (!person.email) continue
+    try {
+      const lang = emailLang(person.language)
+      await sendEmail({
+        to: person.email,
+        subject: et(lang, 'Cancelled: {title}', { title: task.title }),
+        html: taskEmailHtml({
+          lang,
+          heading: et(lang, 'This event has been cancelled'),
+          lines: [
+            emailHi(lang, person.name),
+            accountClosed
+              ? et(lang, 'The organizer closed their VolunTrack account, so this event will not happen.')
+              : et(lang, 'The organizer has cancelled this event.'),
+            ...(reason ? [et(lang, 'Reason given: {reason}', { reason })] : []),
+          ],
+          task,
+          // The cancelled task isn't listed any more, so point at the rest.
+          link: `${frontendBase()}/opportunities`,
+          linkLabel: et(lang, 'Find another task'),
+        }),
+      })
+    } catch (error) { console.error('cancellation email failed:', error) }
+  }
+}
+
+// An organizer's events that haven't happened yet, with who signed up. Used
+// before their account is deleted (routes/auth.js), because deleting it
+// cascades the tasks and signups away: this is the last chance to tell people.
+export async function upcomingEventsFor(userId) {
+  const { rows: tasks } = await query(
+    `SELECT id, title, to_char(date, 'YYYY-MM-DD') AS date, time, location, creator_name
+       FROM public_tasks
+      WHERE created_by = $1 AND status <> 'cancelled' AND date >= CURRENT_DATE
+      ORDER BY date`,
+    [userId],
+  )
+  const out = []
+  for (const task of tasks) out.push({ task, people: await cancellationRecipients(task.id) })
+  return out
+}
+
+// Fire-and-forget after the account is gone: the rows no longer exist, so
+// the list gathered by upcomingEventsFor is all that is left.
+export function notifyEventsCancelledByDeletion(events) {
+  ;(async () => {
+    for (const { task, people } of events) await sendCancellationEmails(task, people, { accountClosed: true })
+  })().catch((error) => console.error('account-deletion cancellation emails failed:', error))
+}
+
 // POST /api/school/public-tasks/:id/cancel { reason }
 // Cancelling is the honest end state for an event that will not happen:
 // signups and attendance stay, because the record of who turned up to the
@@ -3214,36 +3280,8 @@ router.post('/public-tasks/:id/cancel', limiter, requireDb, requireAuth(), async
       [reason || null, req.params.id],
     )
 
-    const { rows: people } = await query(
-      `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
-        WHERE s.task_id = $1 AND s.status NOT IN ('rejected', 'parent_declined')`,
-      [req.params.id],
-    )
-    // Sequential and individual — see taskEmailHtml on why there is no shared
-    // recipient line. Failures are logged, never surfaced as a failed cancel:
-    // the event is off either way.
-    for (const person of people) {
-      try {
-        const lang = emailLang(person.language)
-        await sendEmail({
-          to: person.email,
-          subject: et(lang, 'Cancelled: {title}', { title: rows[0].title }),
-          html: taskEmailHtml({
-            lang,
-            heading: et(lang, 'This event has been cancelled'),
-            lines: [
-              emailHi(lang, person.name),
-              et(lang, 'The organizer has cancelled this event.'),
-              ...(reason ? [et(lang, 'Reason given: {reason}', { reason })] : []),
-            ],
-            task: rows[0],
-            // The cancelled task isn't listed any more, so point at the rest.
-            link: `${frontendBase()}/opportunities`,
-            linkLabel: et(lang, 'Find another task'),
-          }),
-        })
-      } catch (error) { console.error('cancellation email failed:', error) }
-    }
+    const people = await cancellationRecipients(req.params.id)
+    await sendCancellationEmails(rows[0], people, { reason })
 
     return res.json({ ok: true, notified: people.length })
   } catch (error) {

@@ -127,6 +127,8 @@ const ES = {
   'Cancelled: {title}': 'Cancelada: {title}',
   'This event has been cancelled': 'Este evento fue cancelado',
   'The organizer has cancelled this event.': 'El organizador canceló este evento.',
+  'The organizer closed their VolunTrack account, so this event will not happen.':
+    'El organizador cerró su cuenta de VolunTrack, así que este evento no se realizará.',
   'Reason given: {reason}': 'Motivo: {reason}',
   'Find another task': 'Buscar otra tarea',
   'Message from the organizer: {title}': 'Mensaje del organizador: {title}',
@@ -143,6 +145,23 @@ const ES = {
   'A thank-you from {from}': 'Un agradecimiento de {from}',
   'The organizer': 'El organizador',
   'See it in VolunTrack': 'Verlo en VolunTrack',
+  // Account deleted goodbye (server/email.js sendAccountDeletedEmail)
+  'Your VolunTrack account has been deleted': 'Tu cuenta de VolunTrack fue eliminada',
+  'Your VolunTrack account and its data have been deleted, as you asked.': 'Tu cuenta de VolunTrack y sus datos se eliminaron, como pediste.',
+  "We've attached a copy of your volunteer hours (1 entry, {hours} hours in total) as a spreadsheet file, so you still have a record.":
+    'Adjuntamos una copia de tus horas de voluntariado (1 registro, {hours} horas en total) en una hoja de cálculo, para que conserves un registro.',
+  "We've attached a copy of your volunteer hours ({n} entries, {hours} hours in total) as a spreadsheet file, so you still have a record.":
+    'Adjuntamos una copia de tus horas de voluntariado ({n} registros, {hours} horas en total) en una hoja de cálculo, para que conserves un registro.',
+  "Keep it somewhere safe. We can't recover your account or these hours.": 'Guárdala en un lugar seguro. No podemos recuperar tu cuenta ni estas horas.',
+  'You had no volunteer hours logged, so there is nothing to attach.': 'No tenías horas de voluntariado registradas, así que no hay nada que adjuntar.',
+  'We cancelled the 1 upcoming event you posted and let the people signed up know.': 'Cancelamos el evento próximo que publicaste y avisamos a las personas inscritas.',
+  'We cancelled the {n} upcoming events you posted and let the people signed up know.': 'Cancelamos los {n} eventos próximos que publicaste y avisamos a las personas inscritas.',
+  "Thank you for volunteering. You're welcome back any time.": 'Gracias por hacer voluntariado. Puedes volver cuando quieras.',
+  Category: 'Categoría',
+  Location: 'Ubicación',
+  Organization: 'Organización',
+  Supervisor: 'Supervisor',
+  Notes: 'Notas',
 }
 
 const DICTIONARIES = { es: ES }
