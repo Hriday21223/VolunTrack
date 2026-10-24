@@ -14,7 +14,8 @@ import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { turnstileUnlessMonitor } from '../monitor.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
-import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, sendAccountDeletedEmail, hasEmail, forLog } from '../email.js'
+import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, sendAccountDeletedEmail,
+         sendEmailChangeCodeEmail, sendEmailChangedNotice, hasEmail, forLog } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
 import { EMAIL_LANGUAGES } from '../emailStrings.js'
@@ -508,6 +509,113 @@ router.patch('/profile', requireDb, requireAuth(), async (req, res) => {
 })
 
 // Change password (requires current password for verification)
+// --- Changing the account's email (#464) ------------------------------------
+// Two steps, like sign-up: the password re-check plus a code sent to the new
+// address prove it's the owner asking and that the new inbox is theirs. Same
+// limits as the sign-up code (10 minutes, 5 tries, one resend a minute).
+// SSO accounts get their address from the school's sign-in, so not here.
+
+// POST /api/auth/email-change/start { newEmail, password }
+router.post('/email-change/start', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  const newEmail = validateEmail(req.body.newEmail || '')
+  if (!newEmail) return res.status(400).json({ error: 'Enter a valid email address.' })
+  // Same shape as DELETE /account: read the password once, refuse it missing,
+  // then verify it — so no request value can skip the check.
+  const password = typeof req.body?.password === 'string' ? req.body.password : ''
+  if (!password) return res.status(400).json({ error: 'Your password is required to change your email.' })
+  const devLog = !hasEmail() && process.env.NODE_ENV !== 'production'
+  if (!hasEmail() && !devLog) {
+    return res.status(503).json({ error: 'We cannot send the verification email right now. Please try again later.' })
+  }
+  try {
+    const { rows } = await query('SELECT id, email, language, password_hash, auth_provider FROM users WHERE id = $1', [req.auth.sub])
+    const row = rows[0]
+    if (!row) return res.status(404).json({ error: 'Account not found.' })
+    if (row.auth_provider === 'sso' || !row.password_hash) {
+      return res.status(400).json({ error: "Your email comes from your school's sign-in, so it can't be changed here. Ask your school." })
+    }
+    if (!(await verifyPassword(password, row.password_hash))) {
+      return res.status(403).json({ error: 'Incorrect password.' })
+    }
+    if (newEmail === String(row.email).toLowerCase()) {
+      return res.status(400).json({ error: "That's already your email address." })
+    }
+    const taken = await query('SELECT 1 FROM users WHERE email = $1', [newEmail])
+    if (taken.rowCount > 0) return res.status(409).json({ error: 'An account with that email already exists.' })
+
+    const code = generateNumericCode(6)
+    const codeHash = await bcrypt.hash(code, 10)
+    const { rowCount } = await query(
+      `INSERT INTO email_change_codes (user_id, new_email, code_hash, expires_at, attempts, sent_at)
+       VALUES ($1, $2, $3, now() + interval '${SIGNUP_CODE_TTL_MINUTES} minutes', 0, now())
+       ON CONFLICT (user_id) DO UPDATE
+         SET new_email = EXCLUDED.new_email, code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at,
+             attempts = 0, sent_at = now()
+         WHERE email_change_codes.sent_at < now() - interval '${SIGNUP_CODE_RESEND_SECONDS} seconds'`,
+      [row.id, newEmail, codeHash],
+    )
+    if (rowCount === 0) return res.status(429).json({ error: 'We just sent a code. Wait a minute before asking for another.' })
+    if (devLog) {
+      console.log(`[dev] No email provider configured — email-change code for ${forLog(newEmail)}: ${code}`)
+    } else {
+      const sent = await sendEmailChangeCodeEmail({ to: newEmail, code, minutes: SIGNUP_CODE_TTL_MINUTES, language: row.language })
+      if (!sent.sent) {
+        await query('DELETE FROM email_change_codes WHERE user_id = $1', [row.id])
+        return res.status(502).json({ error: 'We could not send the verification email. Check the address and try again.' })
+      }
+    }
+    return res.json({ ok: true, newEmail, expiresInMinutes: SIGNUP_CODE_TTL_MINUTES })
+  } catch (error) {
+    console.error('email change start failed:', error)
+    return res.status(500).json({ error: 'Could not send the verification code.' })
+  }
+})
+
+// POST /api/auth/email-change/confirm { code }
+router.post('/email-change/confirm', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  const code = typeof req.body.code === 'string' ? req.body.code.trim() : ''
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Enter the 6-digit code we emailed you.' })
+  try {
+    const { rows } = await query('SELECT * FROM email_change_codes WHERE user_id = $1', [req.auth.sub])
+    const pending = rows[0]
+    if (!pending) return res.status(400).json({ error: 'No email change is waiting. Start again.' })
+    if (new Date(pending.expires_at) < new Date()) {
+      await query('DELETE FROM email_change_codes WHERE user_id = $1', [req.auth.sub])
+      return res.status(410).json({ error: 'That code expired. Ask for a new one.' })
+    }
+    if (pending.attempts >= SIGNUP_CODE_MAX_ATTEMPTS) return res.status(429).json({ error: 'Too many wrong codes. Ask for a new one.' })
+    if (!(await bcrypt.compare(code, pending.code_hash))) {
+      await query('UPDATE email_change_codes SET attempts = attempts + 1 WHERE user_id = $1', [req.auth.sub])
+      const left = SIGNUP_CODE_MAX_ATTEMPTS - pending.attempts - 1
+      return res.status(401).json({ error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask for a new one.' })
+    }
+    // Spend it first: two racing requests with one good code, only one wins.
+    const spent = await query('DELETE FROM email_change_codes WHERE user_id = $1 AND code_hash = $2', [req.auth.sub, pending.code_hash])
+    if (spent.rowCount === 0) return res.status(400).json({ error: 'No email change is waiting. Start again.' })
+
+    const { rows: before } = await query('SELECT email, name, language FROM users WHERE id = $1', [req.auth.sub])
+    if (!before[0]) return res.status(404).json({ error: 'Account not found.' })
+    let updated
+    try {
+      updated = (await query('UPDATE users SET email = $1 WHERE id = $2 RETURNING *', [pending.new_email, req.auth.sub])).rows[0]
+    } catch (error) {
+      // Someone signed up with it after the code went out.
+      if (error.code === '23505') return res.status(409).json({ error: 'An account with that email already exists.' })
+      throw error
+    }
+    await recordAuditNow(req, { action: AUDIT.EMAIL_CHANGED, subjectUserId: req.auth.sub, objectType: 'account', objectId: req.auth.sub })
+    // As with a password change: end other sessions, keep this device signed in.
+    await endSessions(req.auth.sub)
+    sendEmailChangedNotice({ to: before[0].email, name: before[0].name, newEmail: pending.new_email, language: before[0].language })
+      .catch((error) => console.error('email changed notice failed:', error))
+    const user = publicUser(updated)
+    return res.json({ ok: true, user, token: signToken(user) })
+  } catch (error) {
+    console.error('email change confirm failed:', error)
+    return res.status(500).json({ error: 'Could not change your email.' })
+  }
+})
+
 router.put('/password', requireDb, requireAuth(), async (req, res) => {
   const currentPassword = req.body.currentPassword
   const newPassword = validatePassword(req.body.newPassword || '')

@@ -495,6 +495,21 @@ export async function initSchema() {
   // When a school last emailed a student that they're behind on hours
   // (POST /api/school/students/remind), so a student gets at most one a week.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS hours_reminded_at TIMESTAMPTZ`) } catch {}
+  // A pending email change (server/routes/auth.js, /email-change/*): one per
+  // account, holding a hashed code sent to the new address. Separate from
+  // signup_codes so a sign-up and a change for the same address can't collide.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS email_change_codes (
+        user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        new_email  TEXT NOT NULL,
+        code_hash  TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        attempts   INTEGER NOT NULL DEFAULT 0,
+        sent_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
   // A student following an organizer (server/routes/school.js, notifyFollowers):
   // they're emailed when that organizer posts a new task. last_notified_at
   // throttles it to one email per follower per organizer per hour, so a burst

@@ -35,6 +35,9 @@ export const AUDIT = {
   // Erasing an account is the one write worth recording here: afterwards
   // there is no row left to ask about it.
   ACCOUNT_DELETED: 'account.deleted',
+  // The sign-in address moved: whoever controls the new one now controls the
+  // account, so who and when is kept (the addresses themselves are not).
+  EMAIL_CHANGED: 'account.email_changed',
   // A document moved out of our database into the school's own bucket. The
   // bytes passed through our server once, which is worth a record.
   PDF_MIGRATED: 'pdf.migrated',

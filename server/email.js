@@ -357,6 +357,34 @@ ${emailFooterHtml()}`,
   })
 }
 
+// Confirms a new address before an account moves to it (#464).
+export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  return sendEmail({
+    to,
+    subject: t('{code} is your VolunTrack code', { code }),
+    html: `<p>${t('Enter this code in VolunTrack to use this address for your account:')}</p>
+<p style="font-size:28px;font-weight:600;letter-spacing:0.2em;">${code}</p>
+<p>${t("It works once and expires in {minutes} minutes. If you didn't ask for this, ignore this email. Nothing changes without the code.", { minutes })}</p>
+${emailFooterHtml(lang)}`,
+  })
+}
+
+// Goes to the old address after a change, so a takeover doesn't go unnoticed.
+export async function sendEmailChangedNotice({ to, name, newEmail, language }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  return sendEmail({
+    to,
+    subject: t('Your VolunTrack email address was changed'),
+    html: `<p>${name ? t('Hi {name},', { name: escapeHtml(name) }) : t('Hi there,')}</p>
+<p>${t('The email address for your VolunTrack account was changed to {email}. From now on, sign in and get emails there.', { email: `<strong>${escapeHtml(newEmail)}</strong>` })}</p>
+<p>${t("If you didn't do this, contact us right away: {link}", { link: `<a href="${contactLink()}">${contactLink()}</a>` })}</p>
+${emailFooterHtml(lang)}`,
+  })
+}
+
 // Base for /api links in emails. The website (vercel.json) passes these paths
 // on to the backend, so emails show only the website's address. FRONTEND_URL
 // may list several origins for CORS; the first is the public one.
