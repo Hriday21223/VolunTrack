@@ -10,6 +10,7 @@ import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
 import { useMyRequirements } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
+import { weekStreak } from '@/lib/streak.js'
 import { BADGES, nextBadgeProgress, countedLogs, visibleBadges } from '@/lib/achievements.js'
 import InviteFriendsCard from '@/components/InviteFriendsCard.jsx'
 import { yearsWithLogs, defaultReviewYear, isReviewSeason } from '@/lib/yearInReview.js'
@@ -141,6 +142,8 @@ export default function Dashboard() {
   }), [requirements.goalHours, requirements.policy?.goals?.deadline, total, counted])
 
   // Weekly chart: last 7 days ending today
+  const streak = useMemo(() => weekStreak(logs), [logs])
+
   const weekly = useMemo(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 })
     return Array.from({ length: 7 }, (_, i) => {
@@ -832,6 +835,7 @@ export default function Dashboard() {
                 <TrendingUp className="w-3.5 h-3.5 text-brand-500" /> {fmtHours(weekly.reduce((s, d) => s + d.value, 0))}{' '}{tr('logged')}
               </div>
             </div>
+            <StreakChip streak={streak} />
           </div>
           <BarChart data={weekly} />
         </Card>
@@ -905,6 +909,35 @@ export default function Dashboard() {
       )}
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
     </AppLayout>
+  )
+}
+
+// Weeks in a row with hours logged (#497). While this week is empty, a streak
+// that ran through last week is shown as at risk rather than lost.
+function StreakChip({ streak }) {
+  const { current, best, atRisk } = streak
+  if (current === 0) {
+    return (
+      <div className="text-right text-xs text-earth-400">
+        {best > 1 ? tr('Best streak: {n} weeks', { n: best }) : tr('Log this week to start a streak')}
+      </div>
+    )
+  }
+  const label = current === 1 ? tr('1 week in a row') : tr('{n} weeks in a row', { n: current })
+  return (
+    <div className="text-right">
+      <div
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${atRisk ? 'bg-amber-500/15 text-amber-300' : 'bg-orange-500/15 text-orange-300'}`}
+        title={best > current ? tr('Best streak: {n} weeks', { n: best }) : undefined}
+      >
+        <span aria-hidden="true">🔥</span> {label}
+      </div>
+      <div className="mt-1 text-[0.6875rem] text-earth-400">
+        {atRisk
+          ? tr('Log hours this week to keep it going')
+          : best > current ? tr('Best: {n} weeks', { n: best }) : tr('Your best yet')}
+      </div>
+    </div>
   )
 }
 
