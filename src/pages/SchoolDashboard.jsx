@@ -15,6 +15,7 @@ import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
+import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
@@ -740,7 +741,13 @@ export default function SchoolDashboard() {
             )}
 
             {subTab === 'graduation' && (
-              <GraduationReportPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
+              <>
+                <GraduationReportPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
+                {/* After the report, so seniors are printed before they become Graduated (#481). */}
+                {user?.role === 'school' && (
+                  <GradeRolloverCard onChanged={loadData} onOpenGraduationReport={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
+                )}
+              </>
             )}
 
             {subTab === 'add' && (

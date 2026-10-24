@@ -49,6 +49,10 @@ export const AUDIT = {
   // whose entries count, so the current value of the column is not enough of
   // an answer on its own.
   REQUIREMENTS_CHANGED: 'requirements.changed',
+  // A school moved its whole roster up a grade (or undid it): one write that
+  // changes every student's record, so who did it and when is kept (#481).
+  GRADES_ADVANCED: 'roster.grades_advanced',
+  GRADES_ADVANCE_UNDONE: 'roster.grades_advance_undone',
   // An admin replaced or cleared an email provider key. Which keys, never the
   // values: whoever holds a key can send mail as VolunTrack.
   EMAIL_PROVIDER_CHANGED: 'email.provider_changed',

@@ -965,6 +965,22 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('public task reminder table migration failed:', error) }
 
+  // "New school year" grade moves (#481): one row per run with every change
+  // ({ userId, from, to }), so the run can be undone and a second run in the
+  // same year is caught.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_grade_rollovers (
+        id         TEXT PRIMARY KEY,
+        school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        run_by     TEXT REFERENCES users(id) ON DELETE SET NULL,
+        run_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        changes    JSONB NOT NULL,
+        undone_at  TIMESTAMPTZ
+      )
+    `)
+  } catch (error) { console.error('grade rollover table migration failed:', error) }
+
   // After-event nudges (#474): one row per task, stamped when the organizer
   // was asked to mark attendance and when its volunteers were told they can
   // log the hours themselves, so a repeated cron run mails nobody twice.

@@ -473,6 +473,198 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
   }
 })
 
+// --- New school year: move everyone up a grade (#481) -----------------------
+//
+// Grades are typed once and go stale every August. A school admin moves the
+// whole roster up one grade: K → 1 … 11 → 12, and 12 → "Graduated". Anything
+// else (College, Graduated, a school's own label like "Year 12", no grade) is
+// left as it is and counted as skipped. The run is kept with every change so
+// it can be undone for UNDO_DAYS, and a second run within REPEAT_GUARD_DAYS
+// needs `force`, so a double click can't move a class two grades.
+
+const GRADUATED = 'Graduated'
+const GRADE_UNDO_DAYS = 14
+const GRADE_REPEAT_GUARD_DAYS = 180
+
+// The grade a student moves to, or null when theirs isn't a K–12 grade.
+// "Year 12"-style labels are left alone: gradeKey() reads them as 12, but a
+// school counting in years (where Year 12 isn't the last) doesn't line up
+// with US grades, and moving them on a guess could graduate a whole class.
+function nextGrade(grade) {
+  if (/\b(year|yr)\b/i.test(String(grade ?? ''))) return null
+  const key = gradeKey(grade)
+  if (key === 'K') return '1'
+  if (key && /^\d{1,2}$/.test(key)) {
+    const n = Number(key)
+    if (n >= 1 && n <= 11) return String(n + 1)
+    if (n === 12) return GRADUATED
+  }
+  return null
+}
+
+async function gradeRolloverPlan(schoolId) {
+  const { rows } = await query(
+    "SELECT id, grade FROM users WHERE school_id = $1 AND role = 'student' ORDER BY id",
+    [schoolId],
+  )
+  const changes = []
+  let skipped = 0
+  for (const r of rows) {
+    const to = nextGrade(r.grade)
+    if (to) changes.push({ userId: r.id, from: r.grade, to })
+    else skipped++
+  }
+  // Grouped for the preview: "11th Grade → 12th Grade: 48".
+  const groups = new Map()
+  for (const c of changes) {
+    const fromKey = gradeKey(c.from)
+    const k = `${fromKey}|${c.to}`
+    const g = groups.get(k) || { from: gradeLabel(fromKey) || c.from, to: c.to === GRADUATED ? GRADUATED : gradeLabel(c.to), count: 0, sort: gradeSortValue(fromKey) }
+    g.count++
+    groups.set(k, g)
+  }
+  const moves = [...groups.values()].sort((a, b) => a.sort - b.sort).map(({ sort, ...g }) => g)
+  return { changes, moves, skipped, students: rows.length }
+}
+
+async function callerSchoolId(userId) {
+  const { rows } = await query('SELECT school_id FROM users WHERE id = $1', [userId])
+  return rows[0]?.school_id || null
+}
+
+async function lastGradeRollover(schoolId) {
+  const { rows } = await query(
+    `SELECT id, run_at, undone_at, jsonb_array_length(changes) AS moved,
+            (undone_at IS NULL AND run_at > now() - interval '${GRADE_UNDO_DAYS} days') AS can_undo
+       FROM school_grade_rollovers WHERE school_id = $1 ORDER BY run_at DESC LIMIT 1`,
+    [schoolId],
+  )
+  return rows[0] || null
+}
+
+// GET /api/school/grade-rollover — the preview, plus the last run.
+router.get('/grade-rollover', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+  try {
+    const schoolId = await callerSchoolId(req.auth.sub)
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const plan = await gradeRolloverPlan(schoolId)
+    const last = await lastGradeRollover(schoolId)
+    return res.json({
+      students: plan.students,
+      moving: plan.changes.length,
+      skipped: plan.skipped,
+      moves: plan.moves,
+      lastRun: last && { id: last.id, runAt: last.run_at, undoneAt: last.undone_at, moved: last.moved, canUndo: last.can_undo },
+      undoDays: GRADE_UNDO_DAYS,
+    })
+  } catch (error) {
+    console.error('grade rollover preview failed:', error)
+    return res.status(500).json({ error: 'Could not load the preview.' })
+  }
+})
+
+// POST /api/school/grade-rollover { force? } — moves everyone up a grade.
+router.post('/grade-rollover', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+  const force = req.body?.force === true
+  const client = await getPool().connect()
+  try {
+    const { rows: me } = await client.query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    await client.query('BEGIN')
+    // One run at a time per school: the school row is the lock.
+    await client.query('SELECT id FROM schools WHERE id = $1 FOR UPDATE', [schoolId])
+    const { rows: recent } = await client.query(
+      `SELECT run_at FROM school_grade_rollovers
+        WHERE school_id = $1 AND undone_at IS NULL AND run_at > now() - interval '${GRADE_REPEAT_GUARD_DAYS} days'
+        ORDER BY run_at DESC LIMIT 1`,
+      [schoolId],
+    )
+    if (recent[0] && !force) {
+      await client.query('ROLLBACK')
+      return res.status(409).json({ error: 'Grades were already moved up this school year.', lastRunAt: recent[0].run_at })
+    }
+    const { rows } = await client.query(
+      "SELECT id, grade FROM users WHERE school_id = $1 AND role = 'student' ORDER BY id FOR UPDATE",
+      [schoolId],
+    )
+    const changes = []
+    for (const r of rows) {
+      const to = nextGrade(r.grade)
+      if (!to) continue
+      await client.query('UPDATE users SET grade = $1 WHERE id = $2', [to, r.id])
+      changes.push({ userId: r.id, from: r.grade, to })
+    }
+    const id = uid('grr')
+    await client.query(
+      'INSERT INTO school_grade_rollovers (id, school_id, run_by, changes) VALUES ($1, $2, $3, $4)',
+      [id, schoolId, req.auth.sub, JSON.stringify(changes)],
+    )
+    await client.query('COMMIT')
+    recordAudit(req, {
+      action: AUDIT.GRADES_ADVANCED,
+      schoolId,
+      objectType: 'school_grade_rollover',
+      objectId: id,
+      meta: { moved: changes.length, skipped: rows.length - changes.length, forced: force },
+    })
+    return res.json({ ok: true, id, moved: changes.length, skipped: rows.length - changes.length })
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('grade rollover failed:', error)
+    return res.status(500).json({ error: 'Could not move grades up.' })
+  } finally {
+    client.release()
+  }
+})
+
+// POST /api/school/grade-rollover/:id/undo — puts grades back, but only for
+// students whose grade is still what the run set: anyone who has changed
+// their grade since keeps their own choice.
+router.post('/grade-rollover/:id/undo', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+  const client = await getPool().connect()
+  try {
+    const { rows: me } = await client.query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    await client.query('BEGIN')
+    const { rows } = await client.query(
+      `SELECT id, changes, undone_at, run_at > now() - interval '${GRADE_UNDO_DAYS} days' AS recent
+         FROM school_grade_rollovers WHERE id = $1 AND school_id = $2 FOR UPDATE`,
+      [req.params.id, schoolId],
+    )
+    const run = rows[0]
+    if (!run) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'That grade move was not found.' }) }
+    if (run.undone_at) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'That grade move was already undone.' }) }
+    if (!run.recent) { await client.query('ROLLBACK'); return res.status(410).json({ error: `A grade move can only be undone within ${GRADE_UNDO_DAYS} days.` }) }
+    let restored = 0
+    for (const c of run.changes) {
+      const r = await client.query(
+        "UPDATE users SET grade = $1 WHERE id = $2 AND school_id = $3 AND role = 'student' AND grade IS NOT DISTINCT FROM $4",
+        [c.from, c.userId, schoolId, c.to],
+      )
+      restored += r.rowCount
+    }
+    await client.query('UPDATE school_grade_rollovers SET undone_at = now() WHERE id = $1', [run.id])
+    await client.query('COMMIT')
+    recordAudit(req, {
+      action: AUDIT.GRADES_ADVANCE_UNDONE,
+      schoolId,
+      objectType: 'school_grade_rollover',
+      objectId: run.id,
+      meta: { restored, keptOwnChange: run.changes.length - restored },
+    })
+    return res.json({ ok: true, restored, kept: run.changes.length - restored })
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('grade rollover undo failed:', error)
+    return res.status(500).json({ error: 'Could not undo the grade move.' })
+  } finally {
+    client.release()
+  }
+})
+
 // --- Graduation report -------------------------------------------------------
 //
 // GET /graduation-report?grade=12&hours=approved|counted
