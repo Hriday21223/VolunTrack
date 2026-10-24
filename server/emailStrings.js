@@ -162,6 +162,15 @@ const ES = {
   Organization: 'Organización',
   Supervisor: 'Supervisor',
   Notes: 'Notas',
+  // Email change (server/email.js sendEmailChangeCodeEmail / sendEmailChangedNotice)
+  '{code} is your VolunTrack code': '{code} es tu código de VolunTrack',
+  'Enter this code in VolunTrack to use this address for your account:': 'Escribe este código en VolunTrack para usar esta dirección en tu cuenta:',
+  "It works once and expires in {minutes} minutes. If you didn't ask for this, ignore this email. Nothing changes without the code.":
+    'Funciona una sola vez y caduca en {minutes} minutos. Si no lo pediste, ignora este correo. No cambia nada sin el código.',
+  'Your VolunTrack email address was changed': 'Se cambió el correo de tu cuenta de VolunTrack',
+  'The email address for your VolunTrack account was changed to {email}. From now on, sign in and get emails there.':
+    'El correo de tu cuenta de VolunTrack se cambió a {email}. A partir de ahora, inicia sesión y recibe los correos ahí.',
+  "If you didn't do this, contact us right away: {link}": 'Si no fuiste tú, escríbenos de inmediato: {link}',
 }
 
 const DICTIONARIES = { es: ES }

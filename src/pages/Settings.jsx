@@ -58,7 +58,7 @@ function randomBelow(n) {
 
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
-  const { user, logout, deleteAccount, updateProfile, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp, verifyPasskey } = useAuth()
+  const { user, logout, deleteAccount, updateProfile, refreshUser, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp, verifyPasskey } = useAuth()
   const { goals, saveGoal, removeGoal, logs } = useData()
   const nav = useNavigate()
   const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, deadline: '', category: '', primary: false })
@@ -372,6 +372,12 @@ export default function Settings() {
   // everyone signed up, so the confirm step says so (#461).
   const [deleteImpact, setDeleteImpact] = useState(null)
   const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' })
+  // Changing the sign-in email (#464): new address + password, then the code
+  // emailed to the new address. step: 'idle' | 'enter' | 'code'.
+  const [emailChange, setEmailChange] = useState({ step: 'idle', newEmail: '', password: '', code: '' })
+  const [emailBusy, setEmailBusy] = useState(false)
+  const [emailError, setEmailError] = useState('')
+  const [emailDone, setEmailDone] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [pwBusy, setPwBusy] = useState(false)
   const [pwError, setPwError] = useState('')
@@ -395,6 +401,50 @@ export default function Settings() {
     setNewGoal({ title: '', targetHours: 50, deadline: '', category: '', primary: false })
     setToastMessage('Goal added')
     setToast(true)
+  }
+
+  const emailChangeCall = async (path, body) => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    const res = await fetch(`${apiUrl}/auth/email-change/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || tr('Could not change your email.'))
+    return data
+  }
+
+  const onStartEmailChange = async (e) => {
+    e.preventDefault()
+    setEmailError('')
+    setEmailBusy(true)
+    try {
+      await emailChangeCall('start', { newEmail: emailChange.newEmail, password: emailChange.password })
+      setEmailChange((f) => ({ ...f, step: 'code', password: '', code: '' }))
+    } catch (err) {
+      setEmailError(err.message)
+    } finally {
+      setEmailBusy(false)
+    }
+  }
+
+  const onConfirmEmailChange = async (e) => {
+    e.preventDefault()
+    setEmailError('')
+    setEmailBusy(true)
+    try {
+      const data = await emailChangeCall('confirm', { code: emailChange.code.trim() })
+      // Like a password change, this ends older sessions; keep this one.
+      if (data.token) localStorage.setItem('voluntrack:auth_token', data.token)
+      await refreshUser()
+      setEmailDone(data.user?.email || emailChange.newEmail)
+      setEmailChange({ step: 'idle', newEmail: '', password: '', code: '' })
+    } catch (err) {
+      setEmailError(err.message)
+    } finally {
+      setEmailBusy(false)
+    }
   }
 
   const onChangePassword = async (e) => {
@@ -811,6 +861,64 @@ export default function Settings() {
               </span>
             </div>
           </Card>
+          {hasServerAccount && (
+            <Card>
+              <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Mail className="w-4 h-4 text-brand-600" /> {tr('Email address')}</h3>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+                {tr('You sign in and get emails at')} <span className="font-semibold">{user?.email}</span>
+              </p>
+              {emailDone && (
+                <div className="mb-3 text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300 px-3 py-2 rounded-lg flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> {tr('Email changed to {email}. We let your old address know.', { email: emailDone })}
+                </div>
+              )}
+              {isSsoAccount ? (
+                <p className="text-sm text-earth-500 dark:text-earth-400">{tr("Your email comes from your school's sign-in, so it can't be changed here. Ask your school.")}</p>
+              ) : emailChange.step === 'idle' ? (
+                <button type="button" className="btn-secondary" onClick={() => { setEmailDone(''); setEmailError(''); setEmailChange((f) => ({ ...f, step: 'enter' })) }}>
+                  {tr('Change email')}
+                </button>
+              ) : emailChange.step === 'enter' ? (
+                <form onSubmit={onStartEmailChange} className="grid sm:grid-cols-2 gap-4">
+                  <p className="sm:col-span-2 text-sm text-earth-500 dark:text-earth-400">
+                    {tr('Using a school email? Switch to a personal one before you graduate, so you can still sign in and get your hours.')}
+                  </p>
+                  <div>
+                    <label className="label" htmlFor="new-email">{tr('New email address')}</label>
+                    <input id="new-email" type="email" autoComplete="email" className="input" required
+                      value={emailChange.newEmail} onChange={(e) => setEmailChange((f) => ({ ...f, newEmail: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="email-change-password">{tr('Your password')}</label>
+                    <input id="email-change-password" type="password" autoComplete="current-password" className="input" required
+                      value={emailChange.password} onChange={(e) => setEmailChange((f) => ({ ...f, password: e.target.value }))} />
+                  </div>
+                  {emailError && <div className="sm:col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{emailError}</div>}
+                  <div className="sm:col-span-2 flex gap-2">
+                    <button className="btn-primary" type="submit" disabled={emailBusy}>{emailBusy ? tr('Sending\u2026') : tr('Send code')}</button>
+                    <button type="button" className="btn-ghost" onClick={() => { setEmailError(''); setEmailChange({ step: 'idle', newEmail: '', password: '', code: '' }) }}>{tr('Cancel')}</button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={onConfirmEmailChange} className="grid sm:grid-cols-2 gap-4">
+                  <p className="sm:col-span-2 text-sm text-earth-500 dark:text-earth-400">
+                    {tr('We emailed a 6-digit code to {email}. Enter it to finish. It expires in 10 minutes.', { email: emailChange.newEmail })}
+                  </p>
+                  <div>
+                    <label className="label" htmlFor="email-change-code">{tr('Code')}</label>
+                    <input id="email-change-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} className="input tracking-widest" required
+                      value={emailChange.code} onChange={(e) => setEmailChange((f) => ({ ...f, code: e.target.value.replace(/\D/g, '') }))} />
+                  </div>
+                  {emailError && <div className="sm:col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{emailError}</div>}
+                  <div className="sm:col-span-2 flex gap-2">
+                    <button className="btn-primary" type="submit" disabled={emailBusy || emailChange.code.length !== 6}>{emailBusy ? tr('Checking\u2026') : tr('Change email')}</button>
+                    <button type="button" className="btn-ghost" onClick={() => { setEmailError(''); setEmailChange((f) => ({ ...f, step: 'enter', code: '' })) }}>{tr('Back')}</button>
+                  </div>
+                </form>
+              )}
+            </Card>
+          )}
+
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Lock className="w-4 h-4 text-brand-600" /> Change password</h3>
             <form onSubmit={onChangePassword} className="grid sm:grid-cols-3 gap-4">
