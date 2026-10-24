@@ -14,7 +14,7 @@ import { signInPolicyForEmail } from '../policy.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { turnstileUnlessMonitor } from '../monitor.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
-import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, hasEmail, forLog } from '../email.js'
+import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, sendAccountDeletedEmail, hasEmail, forLog } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
 import { EMAIL_LANGUAGES } from '../emailStrings.js'
@@ -1010,7 +1010,7 @@ router.delete('/account', authLimiter, requireDb, requireAuth(), async (req, res
 
   try {
     const { rows } = await query(
-      'SELECT id, role, email, password_hash, school_id, organization_id FROM users WHERE id = $1',
+      'SELECT id, role, email, name, language, password_hash, school_id, organization_id FROM users WHERE id = $1',
       [req.auth.sub],
     )
     const row = rows[0]
@@ -1064,8 +1064,20 @@ router.delete('/account', authLimiter, requireDb, requireAuth(), async (req, res
     // all. Gather who is signed up for upcoming ones first, then tell them
     // once the account is really gone (#461).
     const events = await upcomingEventsFor(row.id)
+    // Their logged hours go with the account, so copy them out first and
+    // email them with the goodbye (#463). Parents log no hours.
+    const logs = row.role === 'parent' ? null : (await query(
+      `SELECT to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, location, org_name,
+              supervisor_name, verification_status, notes
+         FROM logs WHERE user_id = $1 ORDER BY date, created_at`,
+      [row.id],
+    )).rows
     await query('DELETE FROM users WHERE id = $1', [row.id])
     if (events.length > 0) notifyEventsCancelledByDeletion(events)
+    // Fire-and-forget: the account is already gone, so a mail hiccup must not
+    // turn a finished deletion into an error.
+    sendAccountDeletedEmail({ to: row.email, name: row.name, language: row.language, logs, cancelledEvents: events.length })
+      .catch((error) => console.error('account deleted email failed:', error))
     return res.json({ ok: true, cancelledEvents: events.length })
   } catch (error) {
     console.error('account deletion failed:', error)

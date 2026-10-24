@@ -1539,6 +1539,9 @@ export default function Settings() {
                 <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-4 text-red-100">
                   <p className="font-semibold">Confirm account deletion</p>
                   <p className="text-sm text-red-100/80">This is permanent. Your volunteer logs, goals, achievements, and reminder data will be erased.</p>
+                  {hasServerAccount && user?.role !== 'parent' && (
+                    <p className="text-sm text-red-100/80 mt-2">{tr("We'll email you a copy of your logged hours as a spreadsheet, so you keep a record.")}</p>
+                  )}
                 </div>
                 {deleteImpact?.upcomingEvents > 0 && (
                   <div role="alert" className="rounded-3xl border border-amber-500/40 bg-amber-500/10 p-4 text-amber-100">

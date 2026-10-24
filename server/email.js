@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 import { escapeHtml } from './html.js'
-import { et } from './emailStrings.js'
+import { et, emailLang } from './emailStrings.js'
+import { csvCell } from '../src/lib/csv.js'
 
 // Two ways out, picked at send time by which env vars are set.
 //
@@ -269,7 +270,8 @@ export function announcementHtml({ recipientName, title, message, dashboardPath 
 // `unsubscribeUrl` adds the List-Unsubscribe headers Gmail and Yahoo show as a
 // one-click "Unsubscribe" by the sender name. The URL must stop the emails on
 // a bare POST (RFC 8058) and only show a confirm page on GET.
-export async function sendEmail({ to, subject, html, unsubscribeUrl }) {
+// `attachments` are { name, content } with content as a string or Buffer.
+export async function sendEmail({ to, subject, html, unsubscribeUrl, attachments }) {
   const from = fromAddress()
   const key = brevoKey()
   const headers = unsubscribeUrl
@@ -288,6 +290,9 @@ export async function sendEmail({ to, subject, html, unsubscribeUrl }) {
           subject,
           htmlContent: html,
           ...(headers ? { headers } : {}),
+          ...(attachments?.length
+            ? { attachment: attachments.map((a) => ({ name: a.name, content: Buffer.from(a.content).toString('base64') })) }
+            : {}),
         }),
         signal: AbortSignal.timeout(15_000),
       })
@@ -312,7 +317,11 @@ export async function sendEmail({ to, subject, html, unsubscribeUrl }) {
     return { sent: false }
   }
   try {
-    const info = await t.sendMail({ from, to, replyTo: replyToAddress(), subject, html, ...(headers ? { headers } : {}) })
+    const info = await t.sendMail({
+      from, to, replyTo: replyToAddress(), subject, html,
+      ...(headers ? { headers } : {}),
+      ...(attachments?.length ? { attachments: attachments.map((a) => ({ filename: a.name, content: a.content })) } : {}),
+    })
     return { sent: true, id: info.messageId }
   } catch (error) {
     console.error('SMTP send failed:', error.message)
@@ -379,3 +388,54 @@ ${emailFooterHtml()}`,
   })
 }
 
+
+// Sent after an account is deleted (DELETE /api/auth/account). The logs are
+// gone from our database by then, so a student or volunteer gets them as a
+// CSV attachment: the only copy we can still give them (#463).
+export async function sendAccountDeletedEmail({ to, name, language, logs = null, cancelledEvents = 0 }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const paras = [name ? t('Hi {name},', { name: escapeHtml(name) }) : t('Hi there,'),
+    t('Your VolunTrack account and its data have been deleted, as you asked.')]
+  let attachments
+  if (logs) {
+    if (logs.length > 0) {
+      const total = Math.round(logs.reduce((n, l) => n + Number(l.hours || 0), 0) * 100) / 100
+      paras.push(t(logs.length === 1
+        ? "We've attached a copy of your volunteer hours (1 entry, {hours} hours in total) as a spreadsheet file, so you still have a record."
+        : "We've attached a copy of your volunteer hours ({n} entries, {hours} hours in total) as a spreadsheet file, so you still have a record.",
+      { n: logs.length, hours: total }))
+      paras.push(t("Keep it somewhere safe. We can't recover your account or these hours."))
+      attachments = [{ name: 'voluntrack-hours.csv', content: logsCsv(logs, lang) }]
+    } else {
+      paras.push(t('You had no volunteer hours logged, so there is nothing to attach.'))
+    }
+  }
+  if (cancelledEvents > 0) {
+    paras.push(t(cancelledEvents === 1
+      ? 'We cancelled the 1 upcoming event you posted and let the people signed up know.'
+      : 'We cancelled the {n} upcoming events you posted and let the people signed up know.', { n: cancelledEvents }))
+  }
+  paras.push(t("Thank you for volunteering. You're welcome back any time."))
+  return sendEmail({
+    to,
+    subject: t('Your VolunTrack account has been deleted'),
+    html: paras.map((p) => `<p>${p}</p>`).join('') + emailFooterHtml(lang),
+    attachments,
+  })
+}
+
+// Same cell escaping as the app's own export (src/lib/csv.js), so a log typed
+// as a formula can't run in a spreadsheet. Only what the server stores: the
+// device-only fields (start/end time, org address/phone) were never sent.
+function logsCsv(logs, lang) {
+  const t = (text) => et(lang, text)
+  const status = { approved: t('Approved'), pending: t('Pending'), rejected: t('Rejected') }
+  const rows = [
+    [t('Date'), t('Activity'), t('Category'), t('Hours'), t('Location'), t('Organization'), t('Supervisor'), t('Status'), t('Notes')],
+    ...logs.map((l) => [l.date, l.activity, l.category, l.hours, l.location, l.org_name, l.supervisor_name,
+      status[l.verification_status] || t('Unverified'), String(l.notes || '').replace(/\r?\n/g, ' ')]),
+  ]
+  // A byte-order mark so Excel opens accented (Spanish) text correctly.
+  return '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n')
+}

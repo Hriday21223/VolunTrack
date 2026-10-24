@@ -1118,4 +1118,5 @@ export default {
   "Deleting your account will cancel them. Nobody has signed up yet.": "Si eliminas tu cuenta, se cancelarán. Todavía no se ha inscrito nadie.",
   "Deleting your account will cancel them, and the 1 person signed up will get an email saying the event is cancelled.": "Si eliminas tu cuenta, se cancelarán, y la persona inscrita recibirá un correo avisando de que el evento se canceló.",
   "Deleting your account will cancel them, and the {n} people signed up will get an email saying the event is cancelled.": "Si eliminas tu cuenta, se cancelarán, y las {n} personas inscritas recibirán un correo avisando de que el evento se canceló.",
+  "We'll email you a copy of your logged hours as a spreadsheet, so you keep a record.": "Te enviaremos por correo una copia de tus horas registradas en una hoja de cálculo, para que conserves un registro.",
 }
