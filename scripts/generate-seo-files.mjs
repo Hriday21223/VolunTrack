@@ -38,6 +38,8 @@ const DISALLOWED_PATHS = [
   '/reset-pin',
   '/sync-login',
   '/verify-hours',
+  // One page per school's join link (#491): nothing for a search result.
+  '/join/',
   // Authenticated app pages, behind a login/admin guard.
   '/parent',
   '/log',
@@ -62,6 +64,7 @@ const DISALLOWED_PATHS = [
 const SITEMAP_ENTRIES = [
   { path: '/', changefreq: 'weekly', priority: '1.0' },
   { path: '/register', changefreq: 'monthly', priority: '0.8' },
+  { path: '/for-schools', changefreq: 'monthly', priority: '0.8' },
   { path: '/school/register', changefreq: 'monthly', priority: '0.7' },
   { path: '/organization/register', changefreq: 'monthly', priority: '0.7' },
   { path: '/contact', changefreq: 'monthly', priority: '0.6' },
@@ -117,6 +120,7 @@ const llmsTxt = `# VolunTrack
 - [Sign up](${SITE_URL}/register): create a free student, parent, or volunteer account
 - [School sign up](${SITE_URL}/school/register): set up a school account with the one-time registration code VolunTrack provides (contact us for a quote), then manage students and review reports
 - [Organization sign up](${SITE_URL}/organization/register): manage multiple schools under one organization
+- [For schools](${SITE_URL}/for-schools): for NHS, Key Club and service-club advisers — approving hours, requirements, QR check-in, reports, and the starter kit (join link, QR flyer, ready-to-send messages)
 - [Guides](${SITE_URL}/guides): practical articles on logging service hours
 ${GUIDES.map((g) => `- [${g.title}](${SITE_URL}/guides/${g.slug}): ${g.description}`).join('\n')}
 - [Contact](${SITE_URL}/contact): support and feedback

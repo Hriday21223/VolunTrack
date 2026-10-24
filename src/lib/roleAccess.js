@@ -27,6 +27,8 @@ export const ROUTE_ROLES = {
   // A linked student uploads verification PDFs here (Settings → School);
   // they only see that upload card.
   '/school/dashboard': ['school', 'school_staff', 'student'],
+  // The starter kit's printable flyer (#491).
+  '/school/flyer': ['school', 'school_staff'],
   '/organization/dashboard': ['org'],
   '/parent': ['parent'],
 }

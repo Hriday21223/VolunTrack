@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, XCircle, Loader2, Instagram } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
@@ -17,7 +17,11 @@ export default function Contact() {
   })
 
   useEffect(() => { window.scrollTo(0, 0) }, [])
-  const [form, setForm] = useState({ name: '', email: '', subject: 'General question', accountCode: '', couponCode: '', message: '' })
+  // /for-schools links here with ?topic=school (#491), so an adviser lands on
+  // the partnership form rather than having to find it in the list.
+  const [params] = useSearchParams()
+  const initialSubject = params.get('topic') === 'school' ? 'School or organization partnership' : 'General question'
+  const [form, setForm] = useState({ name: '', email: '', subject: initialSubject, accountCode: '', couponCode: '', message: '' })
   // The offer currently running, so a typed coupon can be confirmed against it.
   const [promo, setPromo] = useState(null)
   const [busy, setBusy] = useState(false)

@@ -5,6 +5,7 @@ Disallow: /reset-password
 Disallow: /reset-pin
 Disallow: /sync-login
 Disallow: /verify-hours
+Disallow: /join/
 Disallow: /parent
 Disallow: /log
 Disallow: /calendar
@@ -40,6 +41,7 @@ Disallow: /reset-password
 Disallow: /reset-pin
 Disallow: /sync-login
 Disallow: /verify-hours
+Disallow: /join/
 Disallow: /parent
 Disallow: /log
 Disallow: /calendar

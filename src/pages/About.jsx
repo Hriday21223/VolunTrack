@@ -234,6 +234,7 @@ export default function About() {
 
           <div className="hidden md:flex items-center gap-3">
             <Link to="/" className="btn-ghost">Home</Link>
+            <Link to="/for-schools" className="btn-ghost">For schools</Link>
             <Link to="/contact" className="btn-ghost">Contact</Link>
             <Link to="/status" className="btn-ghost">Status</Link>
             <Link to="/login" className="btn-ghost">Sign in</Link>
@@ -252,6 +253,7 @@ export default function About() {
           {navOpen && (
             <div className="md:hidden absolute top-full right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#0a1a14] shadow-xl z-50 flex flex-col p-2 gap-1">
               <Link to="/" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Home</Link>
+              <Link to="/for-schools" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>For schools</Link>
               <Link to="/contact" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Contact</Link>
               <Link to="/status" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Status</Link>
               <Link to="/login" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Sign in</Link>

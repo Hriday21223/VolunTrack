@@ -28,6 +28,9 @@ const ResetPin = lazy(() => import('@/pages/ResetPin.jsx'))
 const SyncLogin = lazy(() => import('@/pages/SyncLogin.jsx'))
 const SsoReturn = lazy(() => import('@/pages/SsoReturn.jsx'))
 const Contact = lazy(() => import('@/pages/Contact.jsx'))
+const ForSchools = lazy(() => import('@/pages/ForSchools.jsx'))
+const JoinSchool = lazy(() => import('@/pages/JoinSchool.jsx'))
+const SchoolFlyer = lazy(() => import('@/pages/SchoolFlyer.jsx'))
 const Terms = lazy(() => import('@/pages/Terms.jsx'))
 const GuidesIndex = lazy(() => import('@/pages/Guides.jsx').then((m) => ({ default: m.GuidesIndex })))
 const GuidePage = lazy(() => import('@/pages/Guides.jsx').then((m) => ({ default: m.GuidePage })))
@@ -127,6 +130,8 @@ function Shell() {
           <Route path="/organization/register" element={<OrganizationRegister />} />
           <Route path="/about"           element={<About />} />
           <Route path="/contact"         element={<Contact />} />
+          <Route path="/for-schools"     element={<ForSchools />} />
+          <Route path="/join/:code"      element={<JoinSchool />} />
           <Route path="/terms"           element={<Terms />} />
           <Route path="/guides"          element={<GuidesIndex />} />
           <Route path="/guides/:slug"    element={<GuidePage />} />
@@ -159,6 +164,7 @@ function Shell() {
           <Route path="/attendance"  element={<Protected roles={ROUTE_ROLES['/attendance']}><Attendance /></Protected>} />
           <Route path="/admin/:tab?"  element={<AdminProtected><Admin /></AdminProtected>} />
           <Route path="/school/dashboard" element={<Protected roles={ROUTE_ROLES['/school/dashboard']}><SchoolDashboard /></Protected>} />
+          <Route path="/school/flyer"  element={<Protected roles={ROUTE_ROLES['/school/flyer']}><SchoolFlyer /></Protected>} />
           <Route path="/organization/dashboard" element={<Protected roles={ROUTE_ROLES['/organization/dashboard']}><OrganizationDashboard /></Protected>} />
 
           {/* The home page is the dashboard; older sign-in links used /dashboard. */}
