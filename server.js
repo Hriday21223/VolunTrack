@@ -39,6 +39,7 @@ import notificationRoutes from './server/routes/notifications.js'
 import portfolioRoutes from './server/routes/portfolio.js'
 import comebackRoutes from './server/routes/comeback.js'
 import progressRoutes from './server/routes/progress.js'
+import inviteRoutes from './server/routes/invites.js'
 import interestsRoutes from './server/routes/interests.js'
 import taskPhotoRoutes from './server/routes/taskPhotos.js'
 import organizerProfileRoutes from './server/routes/organizerProfile.js'
@@ -171,6 +172,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/portfolio', portfolioRoutes)
 app.use('/api/comeback', comebackRoutes)
 app.use('/api/progress', progressRoutes)
+app.use('/api/invites', inviteRoutes)
 app.use('/api/interests', interestsRoutes)
 app.use('/api/task-photos', taskPhotoRoutes)
 app.use('/api/weather', weatherRoutes)

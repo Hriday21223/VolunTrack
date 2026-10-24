@@ -1,5 +1,7 @@
-// 12 auto-earning badges. A badge becomes "earned" the first time its
-// `isEarned(state)` returns true. New badges can be added freely; existing
+// Auto-earning badges. A badge becomes "earned" the first time its
+// `isEarned(state)` returns true. `inviteOnly` badges come from friends who
+// joined through the student's invite link (#493); under-13 accounts can't
+// invite, so those badges are hidden for them (visibleBadges). New badges can be added freely; existing
 // IDs must not change once shipped.
 
 import { differenceInCalendarDays, parseISO, isAfter, startOfDay } from 'date-fns'
@@ -113,7 +115,32 @@ export const BADGES = [
     isEarned: ({ distinctMonths }) => distinctMonths >= 2,
     target: { metric: 'distinctMonths', value: 2, unit: ' months' },
   },
+  {
+    id: 'invite-1',
+    title: tr('Bring a Friend'),
+    description: tr('A friend joined VolunTrack with your invite link.'),
+    icon: 'UserPlus',
+    color: 'sky',
+    inviteOnly: true,
+    isEarned: ({ friendsInvited }) => friendsInvited >= 1,
+    target: { metric: 'friendsInvited', value: 1, unit: ' friend' },
+  },
+  {
+    id: 'invite-5',
+    title: tr('Team Builder'),
+    description: tr('Five friends joined VolunTrack with your invite link.'),
+    icon: 'Users',
+    color: 'emerald',
+    inviteOnly: true,
+    isEarned: ({ friendsInvited }) => friendsInvited >= 5,
+    target: { metric: 'friendsInvited', value: 5, unit: ' friends' },
+  },
 ]
+
+/** The badges this account can earn: no invite badges for under-13s. */
+export function visibleBadges(user) {
+  return user?.under13 ? BADGES.filter((b) => !b.inviteOnly) : BADGES
+}
 
 /** Build the derived state we evaluate against. */
 // Hours a supervisor or school rejected don't count: not toward a badge, a
@@ -124,7 +151,8 @@ export function countedLogs(logs) {
   return (logs || []).filter((l) => (l.verificationStatus || l.verification_status) !== 'rejected')
 }
 
-export function deriveAchievementState(allLogs, goals) {
+// `extra.friendsInvited` comes from the server (GET /api/invites/mine).
+export function deriveAchievementState(allLogs, goals, extra = {}) {
   const logs = countedLogs(allLogs)
   const dates = logs.map((l) => l.date).filter(Boolean)
   const totalHours = logs.reduce((s, l) => s + (Number(l.hours) || 0), 0)
@@ -157,12 +185,13 @@ export function deriveAchievementState(allLogs, goals) {
     hasWeekend,
     bestMonthHours,
     goalReached,
+    friendsInvited: Number(extra.friendsInvited) || 0,
   }
 }
 
 /** Returns a list of badge IDs newly earned in this evaluation. */
-export function evaluateAchievements(logs, goals, alreadyEarned = []) {
-  const state = deriveAchievementState(logs, goals)
+export function evaluateAchievements(logs, goals, alreadyEarned = [], extra = {}) {
+  const state = deriveAchievementState(logs, goals, extra)
   const newly = []
   for (const b of BADGES) {
     if (alreadyEarned.includes(b.id)) continue
@@ -182,7 +211,8 @@ export function evaluateAchievements(logs, goals, alreadyEarned = []) {
 export function nextBadgeProgress(logs, goals, earned = []) {
   const state = deriveAchievementState(logs, goals)
   const candidates = BADGES
-    .filter((b) => b.target && !earned.includes(b.id) && !b.isEarned(state))
+    // Hours badges only: "1 friend away" isn't something more volunteering fixes.
+    .filter((b) => b.target && !b.inviteOnly && !earned.includes(b.id) && !b.isEarned(state))
     .map((b) => {
       const current = Number(state[b.target.metric]) || 0
       return {

@@ -40,6 +40,8 @@ const DISALLOWED_PATHS = [
   '/verify-hours',
   // One page per school's join link (#491): nothing for a search result.
   '/join/',
+  // A student's personal invite link (#493).
+  '/invite/',
   // Authenticated app pages, behind a login/admin guard.
   '/parent',
   '/log',

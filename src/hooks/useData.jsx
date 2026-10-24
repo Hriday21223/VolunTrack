@@ -37,6 +37,11 @@ export function DataProvider({ children }) {
   const [goals, setGoals] = useState(() => listGoals())
   const [earned, setEarned] = useState(() => getEarned())
   const [pendingBadges, setPendingBadges] = useState([])
+  // Invite a friend (#493): { code, joined } from the server, or null for an
+  // account that can't invite (no account, under 13, not a student/volunteer).
+  const [invite, setInvite] = useState(null)
+  const friendsInvited = invite?.joined || 0
+  const inviteSeenRef = useRef(null)
   const [showReview, setShowReview] = useState(false)
   const [reviewSubmitted, setReviewSubmitted] = useState(() => getReviews().length > 0)
 
@@ -63,9 +68,40 @@ export function DataProvider({ children }) {
     setReviewSubmitted(getReviews().length > 0)
   }, [user?.id])
 
+  const canInvite = (user?.role === 'student' || user?.role === 'volunteer') && !user?.under13
+  const loadInvite = useCallback(async () => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!canInvite || !token) { setInvite(null); return }
+    try {
+      const res = await fetch(`${apiUrl}/invites/mine`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) return
+      const data = await res.json()
+      // The first count after sign-in may already earn invite badges earned
+      // on another device: mark those quietly, like the logs effect above.
+      if (inviteSeenRef.current !== user?.id) {
+        inviteSeenRef.current = user?.id
+        const { newly } = evaluateAchievements(listLogs(), listGoals(), getEarned(), { friendsInvited: data.joined })
+        if (newly.length) {
+          newly.forEach(markEarned)
+          setEarned(getEarned())
+        }
+      }
+      setInvite({ code: data.code, joined: Number(data.joined) || 0 })
+    } catch { /* offline: try again next time */ }
+  }, [canInvite, user?.id])
+
+  // Friends join while the student is elsewhere, so look again when the tab
+  // comes back into view.
+  useEffect(() => {
+    loadInvite()
+    const onVisible = () => { if (document.visibilityState === 'visible') loadInvite() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadInvite])
+
   // Re-evaluate achievements whenever logs/goals change.
   useEffect(() => {
-    const { newly } = evaluateAchievements(logs, goals, earned)
+    const { newly } = evaluateAchievements(logs, goals, earned, { friendsInvited })
     if (newly.length) {
       newly.forEach(markEarned)
       // markEarned() dedupes what it writes, but this state update did not —
@@ -75,7 +111,7 @@ export function DataProvider({ children }) {
       setEarned((prev) => [...new Set([...prev, ...newly])])
       setPendingBadges(newly)
     }
-  }, [logs, goals, earned])
+  }, [logs, goals, earned, friendsInvited])
 
   // A log's server id only arrives after syncCreateLog resolves. An edit made
   // in that window has nothing to PATCH against, so it used to be applied
@@ -253,7 +289,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider
       value={{
-        logs, goals, earned, pendingBadges, dismissBadges,
+        logs, goals, earned, pendingBadges, dismissBadges, invite, friendsInvited, loadInvite,
         addLog, editLog, removeLog, refreshLogs,
         saveGoal, removeGoal,
         showReview, reviewSubmitted, submitReview, dismissReview, totalHours,

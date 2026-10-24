@@ -1,4 +1,5 @@
 import express from 'express'
+import { inviterForCode, INVITE_ROLES } from './invites.js'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import bcrypt from 'bcryptjs'
@@ -312,6 +313,17 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
       [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req)],
     )
     const user = publicUser(rows[0])
+    // Signed up through a friend's invite link (#493): remember who, so the
+    // friend's count goes up. A bad or stale code is ignored — it must never
+    // stop the sign-up.
+    if (req.body.inviteCode && INVITE_ROLES.includes(role)) {
+      try {
+        const inviter = await inviterForCode(req.body.inviteCode)
+        if (inviter && inviter.id !== id) await query('UPDATE users SET invited_by = $1 WHERE id = $2', [inviter.id, id])
+      } catch (error) {
+        console.error('invite link not recorded:', error.message)
+      }
+    }
     if (under13) {
       const token = generateToken()
       await query(
