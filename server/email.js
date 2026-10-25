@@ -329,18 +329,61 @@ export async function sendEmail({ to, subject, html, unsubscribeUrl, attachments
   }
 }
 
-// Shared by every signup path (student/volunteer/parent, school, organization)
+// Welcome email (#534), one per role, each with a single first step. Shared by
+// every signup path (student/volunteer/parent, school or club, organization)
 // so the greeting stays consistent no matter how someone joins.
-export async function sendWelcomeEmail({ to, name }) {
-  return sendEmail({
-    to,
+export function welcomeEmailContent({ name, role, schoolPin = null, plan = null }) {
+  const site = (process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app').split(',')[0].trim().replace(/\/$/, '')
+  const button = (href, label) => `<p><a href="${href}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">${escapeHtml(label)}</a></p>`
+  const hi = `<p>Hi ${escapeHtml(name || 'there')},</p>`
+  const sign = '<p>— The VolunTrack Team</p>'
+
+  if (role === 'school') {
+    const club = plan === 'club'
+    return {
+      subject: club ? 'Your free VolunTrack club is ready' : 'Your VolunTrack school account is ready',
+      html: `${hi}
+<p>${club ? 'Your free club is set up' : 'Your school account is set up'}. The next step is getting students on board, and it takes about five minutes.</p>
+<p>Your dashboard has a <strong>starter kit</strong>: a join link${schoolPin ? ` (students can also type the code <strong>${escapeHtml(schoolPin)}</strong>)` : ''}, a QR code, a printable flyer in English and Spanish, and messages ready to paste into email or Google Classroom.</p>
+${button(`${site}/school/dashboard`, 'Open your starter kit')}
+<p>Then set your hour requirement under School setup → Requirements, so students can see how close they are.${club ? ' A free club can have up to 50 students. For more, use <strong>Upgrade to a school plan</strong> on your dashboard or <a href="${site}/contact?topic=school">contact us</a>.' : ''}</p>
+${sign}`,
+    }
+  }
+  if (role === 'org') {
+    return {
+      subject: 'Your VolunTrack organization is ready',
+      html: `${hi}
+<p>Your organization account is set up. Start by adding your first school: you send the invite, and the school finishes setting itself up.</p>
+${button(`${site}/organization/dashboard`, 'Add your first school')}
+<p>Once you have two or more schools, your dashboard compares them side by side.</p>
+${sign}`,
+    }
+  }
+  if (role === 'parent') {
+    return {
+      subject: 'Welcome to VolunTrack',
+      html: `${hi}
+<p>Welcome! To follow your student's volunteer hours, ask them for a <strong>family link code</strong>: they make one in VolunTrack under Settings → Family. Then enter it in your Settings.</p>
+${button(`${site}/settings`, 'Enter a link code')}
+<p>You'll see the hours they log from then on, and you can get a short weekly summary by email.</p>
+${sign}`,
+    }
+  }
+  // student, volunteer
+  return {
     subject: 'Welcome to VolunTrack!',
-    html: `<p>Hi ${escapeHtml(name)},</p>
-<p>Thank you for choosing VolunTrack! We're glad to have you on board.</p>
-<p>VolunTrack makes it easy to log volunteer hours, track progress toward your goals, and earn achievements along the way. Schools and organizations can verify hours, and parents can follow their student's progress — all in one place.</p>
-<p>— The VolunTrack Team</p>
-${emailFooterHtml()}`,
-  })
+    html: `${hi}
+<p>Welcome! The best time to log volunteer hours is right after you do them. It takes about a minute: the date, what you did, and how long.</p>
+${button(`${site}/log`, 'Log your first hours')}
+<p>${role === 'student' ? 'If your school or club uses VolunTrack, ask your adviser for the school code and enter it in Settings, so they can approve your hours. ' : ''}Have old hours on paper? On Log Hours, tap <strong>Scan a paper log</strong> to add them from a photo.</p>
+${sign}`,
+  }
+}
+
+export async function sendWelcomeEmail({ to, name, role = 'student', schoolPin = null, plan = null }) {
+  const { subject, html } = welcomeEmailContent({ name, role, schoolPin, plan })
+  return sendEmail({ to, subject, html: `${html}\n${emailFooterHtml()}` })
 }
 
 // The 6-digit code that proves a sign-up owns its email (#310). Awaited, not

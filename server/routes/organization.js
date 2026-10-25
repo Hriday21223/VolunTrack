@@ -90,7 +90,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     }
 
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, organizationId: rows[0].organization_id }
-    await sendWelcomeEmail({ to: user.email, name: user.name })
+    await sendWelcomeEmail({ to: user.email, name: user.name, role: 'org' })
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     await releaseCode(claimedCodeId).catch((e) => console.error('registration code release failed:', e.message))
