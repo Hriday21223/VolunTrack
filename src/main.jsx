@@ -7,6 +7,16 @@ import { applyStoredTheme } from './hooks/useTheme.js'
 import { applyStoredDisplay } from './hooks/useDisplayPrefs.js'
 import { applyNativeAppChrome, startNativeApp } from './lib/platform.js'
 import { installApiFetchGuard } from './lib/apiFetch.js'
+
+// Offline support for the website (the native apps don't use a service
+// worker; vite.config.js turns it off for `--mode app`). Registration can be
+// refused for reasons that aren't ours — extensions, private browsing, storage
+// blocked — and the site works without it, so a refusal is ignored.
+if (import.meta.env.PROD && import.meta.env.MODE !== 'app' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
+  })
+}
 import { installErrorReporting } from './lib/errorReporting.js'
 
 installErrorReporting()
