@@ -262,6 +262,7 @@ export default {
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
   "Free club": "Club gratuito",
+  "The photo reader didn’t load. Check your connection and try again.": "El lector de fotos no se cargó. Revisa tu conexión e inténtalo de nuevo.",
   "Reading… {n}%": "Leyendo… {n}%",
   "Read on your phone: printed sheets work best; check handwritten ones closely.": "Leído en tu teléfono: las hojas impresas funcionan mejor; revisa con cuidado las escritas a mano.",
   "What did you learn?": "¿Qué aprendiste?",
