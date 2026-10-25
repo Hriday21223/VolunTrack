@@ -6,6 +6,7 @@
   "rewrites": [
     { "source": "/api/school/public-tasks/:id/calendar.ics", "destination": "https://voluntrack-backend-frrh.onrender.com/api/school/public-tasks/:id/calendar.ics" },
     { "source": "/api/progress/unsubscribe/:token", "destination": "https://voluntrack-backend-frrh.onrender.com/api/progress/unsubscribe/:token" },
+    { "source": "/api/adviser-digest/unsubscribe/:token", "destination": "https://voluntrack-backend-frrh.onrender.com/api/adviser-digest/unsubscribe/:token" },
     { "source": "/api/comeback/unsubscribe/:token", "destination": "https://voluntrack-backend-frrh.onrender.com/api/comeback/unsubscribe/:token" },
     { "source": "/api/parent/digest/unsubscribe/:token", "destination": "https://voluntrack-backend-frrh.onrender.com/api/parent/digest/unsubscribe/:token" },
     { "source": "/api/parent/task-ok/:path*", "destination": "https://voluntrack-backend-frrh.onrender.com/api/parent/task-ok/:path*" },
