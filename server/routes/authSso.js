@@ -9,7 +9,7 @@ import { recordAudit, AUDIT } from '../audit.js'
 import { isPublicHost } from '../publicHost.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { publicUser, USER_WITH_SCHOOL_SELECT } from './auth.js'
-import { clubSeatProblem } from '../plans.js'
+import { joinWithSeat } from '../plans.js'
 
 const router = express.Router()
 
@@ -371,14 +371,11 @@ async function handleLoginCallback(res, connection, claims, email, subject, stat
     if (!connection.jit_enabled) {
       return failRedirect(res, 'No VolunTrack account exists for this email, and automatic account creation is off.')
     }
-    // A free club's student limit applies here too (#506).
-    if (connection.default_role === 'student' && connection.school_id) {
-      const seatProblem = await clubSeatProblem(connection.school_id)
-      if (seatProblem) return failRedirect(res, seatProblem)
-    }
     const id = uid('usr')
     const name = String(claims.name || email.split('@')[0]).slice(0, 100)
-    await query(
+    // A free club's student limit applies here too (#506): the insert runs
+    // only if a seat is free, under the same lock as every other join.
+    const insert = (run) => run(
       `INSERT INTO users (id, role, name, email, password_hash, school_id, organization_id,
                           sso_connection_id, sso_subject, auth_provider)
        VALUES ($1,$2,$3,$4,NULL,$5,$6,$7,$8,'sso')`,
@@ -393,6 +390,12 @@ async function handleLoginCallback(res, connection, claims, email, subject, stat
         subject,
       ],
     )
+    if (connection.default_role === 'student' && connection.school_id) {
+      const joined = await joinWithSeat(connection.school_id, (client) => insert((t, p) => client.query(t, p)))
+      if (joined.error) return failRedirect(res, joined.error)
+    } else {
+      await insert(query)
+    }
     const created = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [id])
     user = created.rows[0]
   }
