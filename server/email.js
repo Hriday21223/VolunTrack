@@ -346,7 +346,7 @@ export function welcomeEmailContent({ name, role, schoolPin = null, plan = null 
 <p>${club ? 'Your free club is set up' : 'Your school account is set up'}. The next step is getting students on board, and it takes about five minutes.</p>
 <p>Your dashboard has a <strong>starter kit</strong>: a join link${schoolPin ? ` (students can also type the code <strong>${escapeHtml(schoolPin)}</strong>)` : ''}, a QR code, a printable flyer in English and Spanish, and messages ready to paste into email or Google Classroom.</p>
 ${button(`${site}/school/dashboard`, 'Open your starter kit')}
-<p>Then set your hour requirement under School setup → Requirements, so students can see how close they are.${club ? ' A free club can have up to 50 students; reply to us if you need more.' : ''}</p>
+<p>Then set your hour requirement under School setup → Requirements, so students can see how close they are.${club ? ' A free club can have up to 50 students. For more, use <strong>Upgrade to a school plan</strong> on your dashboard or <a href="${site}/contact?topic=school">contact us</a>.' : ''}</p>
 ${sign}`,
     }
   }
