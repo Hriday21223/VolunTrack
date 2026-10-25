@@ -339,7 +339,7 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
       // No session and no welcome email: nothing is usable until the parent approves.
       return res.status(201).json({ pendingParentalConsent: true })
     }
-    await sendWelcomeEmail({ to: user.email, name: user.name })
+    await sendWelcomeEmail({ to: user.email, name: user.name, role: user.role })
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     console.error('register failed:', error)
