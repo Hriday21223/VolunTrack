@@ -10,6 +10,7 @@ import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
+import { schoolProgress } from './school.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 
 const router = express.Router()
@@ -418,6 +419,51 @@ router.get('/schools', limiter, requireDb, requireAuth('org'), async (req, res) 
   } catch (error) {
     console.error('organization schools list failed:', error)
     return res.status(500).json({ error: 'Could not fetch schools.' })
+  }
+})
+
+// GET /api/organization/schools/compare (#529): the same few numbers for every
+// school the organization owns, side by side — students, how many logged
+// anything in the last 30 days, hours this school year (from Aug 1, rejected
+// entries left out) and how many have met their hour requirement. Counts only,
+// never a student's name.
+router.get('/schools/compare', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const { rows: userRows } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])
+    const orgId = userRows[0]?.organization_id
+    if (!orgId) return res.status(400).json({ error: 'No organization linked to your account.' })
+    const now = new Date()
+    const yearStart = `${now.getUTCMonth() >= 7 ? now.getUTCFullYear() : now.getUTCFullYear() - 1}-08-01`
+    const { rows } = await query(
+      `SELECT s.id, s.name,
+              COUNT(DISTINCT u.id)::int AS students,
+              COUNT(DISTINCT u.id) FILTER (WHERE l.created_at >= now() - interval '30 days')::int AS active,
+              COALESCE(SUM(l.hours) FILTER (WHERE l.date >= $2), 0)::float AS year_hours
+         FROM schools s
+         LEFT JOIN users u ON u.school_id = s.id AND u.role = 'student'
+         LEFT JOIN logs l ON l.user_id = u.id AND COALESCE(l.verification_status, 'none') <> 'rejected'
+        WHERE s.organization_id = $1
+        GROUP BY s.id
+        ORDER BY s.name`,
+      [orgId, yearStart],
+    )
+    const schools = await Promise.all(rows.map(async (r) => {
+      const progress = await schoolProgress(r.id).catch(() => null)
+      const withGoal = progress ? progress.students.filter((s) => s.target) : []
+      return {
+        id: r.id,
+        name: r.name,
+        students: r.students,
+        active: r.active,
+        yearHours: Math.round(r.year_hours * 10) / 10,
+        withGoal: withGoal.length,
+        met: withGoal.filter((s) => s.remaining <= 0).length,
+      }
+    }))
+    return res.json({ yearStart, schools })
+  } catch (error) {
+    console.error('organization compare failed:', error)
+    return res.status(500).json({ error: 'Could not compare schools.' })
   }
 })
 
