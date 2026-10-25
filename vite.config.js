@@ -1,8 +1,8 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { resolve } from 'path'
-import { readFileSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { readFileSync, copyFileSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { resolveSiteUrl } from './scripts/site-url.mjs'
 
@@ -11,6 +11,38 @@ import { resolveSiteUrl } from './scripts/site-url.mjs'
 // the number shown on /status/system can never drift from the published
 // release the way a hardcoded string would.
 const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8'))
+
+// The on-device reader for "Scan a paper log" (#521): Tesseract's worker, its
+// WebAssembly core (LSTM builds only, one per CPU feature level) and the
+// English model, served from our own origin so the photo never leaves the
+// device and the CSP needs no third-party script host. Copied into the build
+// and served from node_modules in dev; loaded only when someone scans.
+const TESSERACT_FILES = {
+  'worker.min.js': 'node_modules/tesseract.js/dist/worker.min.js',
+  'core/tesseract-core-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js',
+  'core/tesseract-core-simd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js',
+  'core/tesseract-core-relaxedsimd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js',
+  'lang/eng.traineddata.gz': 'node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+}
+const tesseractAssets = {
+  name: 'voluntrack-tesseract-assets',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const name = req.url?.startsWith('/tesseract/') ? req.url.slice('/tesseract/'.length).split('?')[0] : null
+      const from = name && TESSERACT_FILES[name]
+      if (!from) return next()
+      res.setHeader('Content-Type', name.endsWith('.js') ? 'text/javascript' : 'application/octet-stream')
+      res.end(readFileSync(resolve(from)))
+    })
+  },
+  closeBundle() {
+    for (const [name, from] of Object.entries(TESSERACT_FILES)) {
+      const to = resolve('dist/tesseract', name)
+      mkdirSync(dirname(to), { recursive: true })
+      copyFileSync(resolve(from), to)
+    }
+  },
+}
 
 export default defineConfig(({ mode }) => {
   // Resolve VITE_SITE_URL ourselves (via Vite's own .env-loading logic) and
@@ -47,6 +79,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       preconnectApi,
+      tesseractAssets,
 
       VitePWA({
         // The native apps (npm run build:app) ship the bundle inside the app
@@ -94,6 +127,9 @@ export default defineConfig(({ mode }) => {
 
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          // The on-device paper-log reader (~15 MB) loads only when someone
+          // scans, so it isn't precached for every visitor.
+          globIgnores: ['tesseract/**'],
           // Web Push handlers. generateSW can't host custom SW code, but it
           // can importScripts one — see public/push-sw.js.
           importScripts: ['/push-sw.js'],
