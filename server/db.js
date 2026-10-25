@@ -1005,6 +1005,20 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('monthly progress table migration failed:', error) }
 
+  // Invite a whole class (#532): one row per address a school has emailed a
+  // join link, so the same student isn't emailed again within a week.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_email_invites (
+        school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        email      TEXT NOT NULL,
+        invited_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+        sent_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (school_id, email)
+      )
+    `)
+  } catch (error) { console.error('school email invites table migration failed:', error) }
+
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS adviser_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}

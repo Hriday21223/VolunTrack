@@ -25,6 +25,7 @@ import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
+import InviteClassCard from '@/components/InviteClassCard.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -790,6 +791,8 @@ export default function SchoolDashboard() {
                 )}
               </>
             )}
+
+            {subTab === 'add' && <InviteClassCard onDone={loadData} />}
 
             {subTab === 'add' && (
               <Card>
