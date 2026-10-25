@@ -39,6 +39,29 @@ const SCHOOL_TOUR_STEPS = [
 // school_staff — so its tour step only applies there too.
 const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: 'School setup', description: 'Add co-admins, let students sign in with your school\'s Google or Microsoft account, and serve VolunTrack on your own domain.' }
 
+// How full a free club is, and how to upgrade (#506).
+function ClubPlanCard({ count, limit }) {
+  if (count == null || !limit) return null
+  const full = count >= limit
+  const near = !full && count >= limit * 0.8
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="font-semibold">Free club plan</h3>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">
+            {count} of {limit} students. {full ? 'Your club is full, so new students can’t join.' : near ? 'You’re close to the limit.' : 'Every school feature is included.'}
+          </p>
+        </div>
+        <Link to="/contact?topic=school" className={full || near ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>Upgrade to a school plan</Link>
+      </div>
+      <div className="mt-3 h-1.5 rounded-full bg-earth-100 dark:bg-earth-800 overflow-hidden">
+        <div className={`h-full rounded-full ${full ? 'bg-amber-500' : 'bg-brand-500'}`} style={{ width: `${Math.min(100, (count / limit) * 100)}%` }} />
+      </div>
+    </Card>
+  )
+}
+
 export default function SchoolDashboard() {
   const { user, refreshUser } = useAuth()
   const nav = useNavigate()
@@ -366,7 +389,9 @@ export default function SchoolDashboard() {
   // That fetch can fail (network error, rate limit) and must never fail the
   // gate open; schoolInfo is only used below for supplementary display.
   const billingTab = tab === 'setup' && setupTab === 'billing' && user?.role === 'school'
-  const paymentStatus = user?.schoolPaymentStatus
+  // A free club (#506) is never locked, whatever its payment status.
+  const isClub = user?.schoolPlan === 'club'
+  const paymentStatus = isClub ? 'paid' : user?.schoolPaymentStatus
   if (isSchoolAdmin && paymentStatus && paymentStatus !== 'paid') {
     return (
       <AppLayout title="Payment Required" subtitle="Your school's account is locked until payment is verified">
@@ -428,7 +453,9 @@ export default function SchoolDashboard() {
       subtitle={
         <span className="flex items-center gap-2">
           {isSchoolAdmin ? 'Review student uploads' : 'Upload verification documents'}
-          {schoolInfo?.paymentStatus && (
+          {schoolInfo?.plan === 'club' ? (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-700 dark:text-brand-300">Free club</span>
+          ) : schoolInfo?.paymentStatus && (
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               schoolInfo.paymentStatus === 'paid'
                 ? 'bg-emerald-500/20 text-emerald-600'
@@ -679,6 +706,8 @@ export default function SchoolDashboard() {
                 )}
               </Card>
             )}
+
+            {schoolInfo?.plan === 'club' && <ClubPlanCard count={schoolInfo.studentCount} limit={schoolInfo.studentLimit} />}
 
             {schoolInfo?.pin && (
               <SchoolStarterKit

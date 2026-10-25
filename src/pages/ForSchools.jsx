@@ -11,6 +11,7 @@ import { useSeo } from '@/hooks/useSeo.js'
 
 const SITE_URL = (import.meta.env.VITE_SITE_URL || 'http://localhost:5173').replace(/\/$/, '')
 const CONTACT = '/contact?topic=school'
+const START_CLUB = '/school/register'
 
 // /for-schools (#491): the page an NHS, Key Club or service-club adviser lands
 // on. What they get, how setup goes, and the questions they ask before saying
@@ -28,19 +29,19 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { title: 'Ask us for a registration code', text: 'Send us a message. We reply with a quote and a one-time code to create your school account.' },
-  { title: 'Create your school account', text: 'Pick a password and a school code for your students. Set your hour requirement if you have one.' },
+  { title: 'Start a free club', text: 'Create your account in a couple of minutes: pick a password and a code for your students. No credit card and no code from us. For the whole school, ask us for a quote and a registration code instead.' },
+  { title: 'Set your requirement', text: 'Enter the hours your club or school requires, if you have a number, so students can see how close they are.' },
   { title: 'Share your join link', text: 'Your dashboard has a starter kit: a join link, a QR code, a printable flyer and messages ready to paste into email or Google Classroom.' },
   { title: 'Approve hours as they come in', text: 'Students who use your link land on your roster. Their hours wait for you on the Students tab.' },
 ]
 
 const FAQS = [
-  { q: 'What does it cost?', a: 'VolunTrack is free for students, volunteers and parents. School accounts are paid. Send us a message and we will reply with a quote for your school or club. If another school referred you, you both get a discount.' },
+  { q: 'What does it cost?', a: 'VolunTrack is free for students, volunteers and parents. One club or class with up to 50 students is free too, with every feature. A whole school, or a club with more students, is paid: send us a message and we will reply with a quote. If another school referred you, you both get a discount.' },
   { q: 'Do students need to download an app?', a: 'No. VolunTrack works in any web browser on a phone or computer, so students can sign up the moment they scan your flyer.' },
-  { q: 'Can one club use it, not the whole school?', a: 'Yes. Many schools start with one adviser — NHS, Key Club, a service club or a class. The club gets its own account, school code and roster.' },
+  { q: 'Can one club use it, not the whole school?', a: 'Yes, and it is free for up to 50 students. Many schools start with one adviser — NHS, Key Club, a service club or a class. The club gets its own account, code and roster, and can move to a school plan later without losing anything.' },
   { q: 'How do students join?', a: 'They open your join link or scan the QR code on your flyer, then create an account or sign in. The code is filled in for them. Students can also type the school code in Settings.' },
   { q: 'What happens to student data?', a: 'Students’ hours belong to them and to your school. We never sell or trade personal data, and we share it only with the school or parent a student connects to. Read the privacy policy for the details schools and districts ask about.' },
-  { q: 'How long does setup take?', a: 'About five minutes once you have your registration code: create the account, set your requirement, and send the join link.' },
+  { q: 'How long does setup take?', a: 'About five minutes: create the account, set your requirement, and send the join link.' },
 ]
 
 export default function ForSchools() {
@@ -61,7 +62,7 @@ export default function ForSchools() {
     <div className="min-h-screen page-shell">
       <PublicHeader>
         <Link to="/login" className="btn-ghost">Sign in</Link>
-        <Link to={CONTACT} className="btn-primary hidden sm:inline-flex">Get started</Link>
+        <Link to={START_CLUB} className="btn-primary hidden sm:inline-flex">Start free</Link>
       </PublicHeader>
 
       <main className="max-w-5xl mx-auto px-4 md:px-8 pb-20">
@@ -72,10 +73,10 @@ export default function ForSchools() {
             Students log their service hours on their phones. You approve them in one place, and the reports are ready when they are due. Set up for NHS, Key Club or your whole school in about five minutes.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-            <Link to={CONTACT} className="btn-primary">Request a registration code <ArrowRight className="w-4 h-4" /></Link>
-            <Link to="/school/register" className="btn-secondary">I have a code</Link>
+            <Link to={START_CLUB} className="btn-primary">Start a free club <ArrowRight className="w-4 h-4" /></Link>
+            <Link to={CONTACT} className="btn-secondary">Get a quote for your school</Link>
           </div>
-          <p className="mt-3 text-sm text-earth-500 dark:text-earth-400">Free for students and families.</p>
+          <p className="mt-3 text-sm text-earth-500 dark:text-earth-400">Free for one club with up to 50 students. Always free for students and families.</p>
         </section>
 
         <section className="mt-16" aria-labelledby="features">
@@ -145,9 +146,11 @@ export default function ForSchools() {
 
         <Card className="mt-16 text-center">
           <h2 className="text-xl font-bold">Bring VolunTrack to your school</h2>
-          <p className="mt-2 text-sm text-earth-500 dark:text-earth-400">Tell us about your school or club, and we will send a quote and your registration code.</p>
+          <p className="mt-2 text-sm text-earth-500 dark:text-earth-400">Start free with one club today. For the whole school, tell us about it and we will send a quote and a registration code.</p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <Link to={CONTACT} className="btn-primary">Request a registration code <ArrowRight className="w-4 h-4" /></Link>
+            <Link to={START_CLUB} className="btn-primary">Start a free club <ArrowRight className="w-4 h-4" /></Link>
+            <Link to={CONTACT} className="btn-secondary">Get a quote</Link>
+            <Link to="/school/register?plan=school" className="btn-ghost">I have a code</Link>
           </div>
         </Card>
       </main>

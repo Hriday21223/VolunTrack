@@ -124,6 +124,8 @@ export function publicUser(row) {
     email: row.email,
     schoolId: row.school_id,
     schoolPaymentStatus: row.school_payment_status ?? null,
+    // 'club' (free, never payment-locked) or 'school' (#506).
+    schoolPlan: row.school_plan ?? null,
     grade: row.grade,
     studentIdNumber: row.student_id_number,
     // Self-declared at sign-up (parent-approved). The app keeps public-facing
@@ -148,7 +150,7 @@ export function publicUser(row) {
 }
 
 export const USER_WITH_SCHOOL_SELECT = `
-  SELECT u.*, s.payment_status AS school_payment_status
+  SELECT u.*, s.payment_status AS school_payment_status, s.plan AS school_plan
   FROM users u LEFT JOIN schools s ON s.id = u.school_id
 `
 

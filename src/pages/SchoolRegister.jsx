@@ -15,7 +15,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 export default function SchoolRegister() {
   useSeo({
     title: 'Register Your School',
-    description: 'Set up your school on VolunTrack with the one-time registration code we sent you, then review, verify, and manage your students’ volunteer hours.',
+    description: 'Start a free VolunTrack club for up to 50 students, or set up your whole school with the registration code we sent you, then review and approve your students’ volunteer hours.',
     path: '/school/register',
   })
 
@@ -23,6 +23,9 @@ export default function SchoolRegister() {
   const { refreshUser } = useAuth()
   const [searchParams] = useSearchParams()
   const inviteToken = searchParams.get('token')
+  // Free club (#506) unless they came with an invite or asked for the school plan.
+  const [plan, setPlan] = useState(() => (inviteToken || searchParams.get('plan') === 'school' ? 'school' : 'club'))
+  const isClub = !inviteToken && plan === 'club'
   const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', referralCode: '', registrationCode: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -55,7 +58,7 @@ export default function SchoolRegister() {
     setErr('')
     if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
     if (!form.pin || !/^[a-zA-Z]+-?\d{3,5}$/.test(form.pin)) { setErr('School code must be letters followed by digits (e.g. cisd-12345).'); return }
-    if (!inviteToken && !isCompleteRegistrationCode(form.registrationCode)) { setErr('Enter the 16-character registration code we gave you.'); return }
+    if (!inviteToken && !isClub && !isCompleteRegistrationCode(form.registrationCode)) { setErr('Enter the 16-character registration code we gave you.'); return }
     if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
     if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
     setBusy(true)
@@ -63,7 +66,7 @@ export default function SchoolRegister() {
       const res = await fetch(`${apiUrl}/school/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), inviteToken: inviteToken || undefined, registrationCode: inviteToken ? undefined : form.registrationCode, turnstileToken: captchaToken }),
+        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), plan: isClub ? 'club' : 'school', inviteToken: inviteToken || undefined, registrationCode: inviteToken || isClub ? undefined : form.registrationCode, turnstileToken: captchaToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')
@@ -89,27 +92,52 @@ export default function SchoolRegister() {
         </Link>
 
         <Card padded={false} className="p-7">
-          <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your school' : 'Register your school'}</h1>
-          <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
-            {inviteToken ? 'You were invited to VolunTrack — just set your password and school code.' : 'Create a school account to review student hours, using the registration code we sent you.'}
+          <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your school' : isClub ? 'Start a free club' : 'Register your school'}</h1>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mb-5">
+            {inviteToken
+              ? 'You were invited to VolunTrack — just set your password and school code.'
+              : isClub
+                ? 'Free for one club or class, up to 50 students, with every school feature. No code needed.'
+                : 'Create a school account to review student hours, using the registration code we sent you.'}
           </p>
+
+          {!inviteToken && (
+            <div role="radiogroup" aria-label="Plan" className="grid grid-cols-2 gap-2 mb-6">
+              {[
+                { id: 'club', title: 'Free club', text: 'Up to 50 students' },
+                { id: 'school', title: 'Whole school', text: 'I have a code from VolunTrack' },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={plan === p.id}
+                  onClick={() => { setPlan(p.id); setErr('') }}
+                  className={`text-left rounded-xl border px-3 py-2.5 transition ${plan === p.id ? 'border-brand-500 bg-brand-500/10 ring-1 ring-brand-500' : 'border-earth-200 dark:border-earth-700 hover:border-earth-300 dark:hover:border-earth-600'}`}
+                >
+                  <span className="block text-sm font-semibold">{p.title}</span>
+                  <span className="block text-xs text-earth-500 dark:text-earth-400">{p.text}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {!inviteLoaded ? (
             <p className="text-sm text-earth-500 py-4">Loading invite…</p>
           ) : (
           <form onSubmit={onSubmit} className="space-y-4">
-            {!inviteToken && (
+            {!inviteToken && !isClub && (
               <RegistrationCodeField value={form.registrationCode} onChange={(v) => setForm((f) => ({ ...f, registrationCode: v }))} />
             )}
             <div>
-              <label className="label">School name</label>
+              <label className="label">{isClub ? 'Club or school name' : 'School name'}</label>
               <div className="relative">
                 <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                <input type="text" className="input pl-9 disabled:opacity-60" placeholder="Lincoln High School" value={form.name} onChange={onChange('name')} disabled={!!inviteToken} required />
+                <input type="text" className="input pl-9 disabled:opacity-60" placeholder={isClub ? 'Lincoln High NHS' : 'Lincoln High School'} value={form.name} onChange={onChange('name')} disabled={!!inviteToken} required />
               </div>
             </div>
             <div>
-              <label className="label">Admin email</label>
+              <label className="label">{isClub ? 'Your email' : 'Admin email'}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                 <input type="email" className="input pl-9 disabled:opacity-60" placeholder="admin@school.edu" value={form.email} onChange={onChange('email')} autoComplete="email" disabled={!!inviteToken} required />
@@ -123,13 +151,14 @@ export default function SchoolRegister() {
               </div>
             </div>
             <div>
-              <label className="label">School code</label>
+              <label className="label">{isClub ? 'Club code' : 'School code'}</label>
               <div className="relative">
                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                 <input type="text" className="input pl-9" placeholder="cisd-12345" value={form.pin} onChange={onChange('pin')} required />
               </div>
               <p className="text-xs text-earth-400 mt-1">Students will use this code to link their accounts.</p>
             </div>
+            {!isClub && (
             <div>
               <label className="label">Referral code <span className="text-earth-400 font-normal">(optional)</span></label>
               <div className="relative">
@@ -144,6 +173,7 @@ export default function SchoolRegister() {
               </div>
               <p className="text-xs text-earth-400 mt-1">Were you invited by another school? Enter their code and you both get a discount.</p>
             </div>
+            )}
 
             <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300">
               <input
@@ -165,7 +195,7 @@ export default function SchoolRegister() {
             <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="school-register" />
 
             <button type="submit" className="btn-primary w-full" disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
-              {busy ? 'Registering…' : <>Register school <ArrowRight className="w-4 h-4" /></>}
+              {busy ? 'Registering…' : <>{isClub ? 'Start free club' : 'Register school'} <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
           )}
@@ -177,7 +207,7 @@ export default function SchoolRegister() {
         </Card>
       </div>
 
-      <Toast open={toast} onClose={() => setToast(false)}>School registered!</Toast>
+      <Toast open={toast} onClose={() => setToast(false)}>{isClub ? 'Club created!' : 'School registered!'}</Toast>
     </div>
   )
 }
