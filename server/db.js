@@ -1031,6 +1031,24 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('deadline reminder table migration failed:', error) }
+  // Group challenge (#531): a shared hour goal for one school, at most one
+  // running at a time (ended_at NULL).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_challenges (
+        id         TEXT PRIMARY KEY,
+        school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        title      TEXT NOT NULL,
+        goal_hours NUMERIC NOT NULL CHECK (goal_hours > 0),
+        starts_on  DATE NOT NULL,
+        ends_on    DATE NOT NULL,
+        created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ended_at   TIMESTAMPTZ
+      )
+    `)
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS school_challenges_one_running ON school_challenges (school_id) WHERE ended_at IS NULL`)
+  } catch (error) { console.error('school challenges table migration failed:', error) }
 
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
