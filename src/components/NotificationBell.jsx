@@ -27,6 +27,7 @@ const KIND_LABELS = {
   parent_ok_given: tr('Your parent said yes'),
   parent_ok_declined: tr('Your parent said no'),
   comeback_nudge: tr('We miss you'),
+  deadline_reminder: tr('Hours due soon'),
   saved_task_reminder: tr('Saved task'),
   task_thanks: tr('A thank-you'),
   cohost_added: tr('You are a co-host'),

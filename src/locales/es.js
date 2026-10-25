@@ -262,6 +262,8 @@ export default {
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
   "Free club": "Club gratuito",
+  "Hours due soon": "Horas por entregar pronto",
+  "On. After a month you logged hours, we'll email you on the 1st with what you logged and how close you are to your goal, and remind you when your school's hours are due soon.": "Activado. Después de un mes en que registraste horas, te escribiremos el día 1 con lo que registraste y cuánto te falta para tu meta, y te avisaremos cuando la fecha de entrega de tu escuela esté cerca.",
   "The photo reader didn’t load. Check your connection and try again.": "El lector de fotos no se cargó. Revisa tu conexión e inténtalo de nuevo.",
   "Reading… {n}%": "Leyendo… {n}%",
   "Read on your phone: printed sheets work best; check handwritten ones closely.": "Leído en tu teléfono: las hojas impresas funcionan mejor; revisa con cuidado las escritas a mano.",
