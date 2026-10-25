@@ -4,4 +4,13 @@
     <string name="title_activity_main">VolunTrack</string>
     <string name="package_name">com.voluntrack.voluntrack</string>
     <string name="custom_url_scheme">com.voluntrack.voluntrack</string>
+    <!-- Home-screen widget (#519) -->
+    <string name="widget_description">Your volunteer hours and goal, with a button to log more</string>
+    <string name="widget_hours_of_goal">%1$s of %2$s hrs</string>
+    <string name="widget_hours">%1$s hrs</string>
+    <string name="widget_to_go">%1$s hrs to go</string>
+    <string name="widget_goal_reached">Goal reached 🎉</string>
+    <string name="widget_set_goal">Set a goal in the app</string>
+    <string name="widget_open_app">Open VolunTrack</string>
+    <string name="widget_log_hours">+ Log hours</string>
 </resources>
