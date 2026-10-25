@@ -17,6 +17,7 @@ export const LOG_TEXT_LIMITS = [
   ['Activity', 'activity', 200],
   ['Category', 'category', 100],
   ['Notes', 'notes', 2000],
+  ['Reflection', 'reflection', 2000],
   ['Location', 'location', 300],
   ['Organization name', 'orgName', 200],
   ['Supervisor name', 'supervisorName', 200],
