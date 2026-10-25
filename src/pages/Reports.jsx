@@ -8,6 +8,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
+import CollegeActivitiesCard from '@/components/CollegeActivitiesCard.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { categoryColor } from '@/lib/categories.js'
@@ -146,6 +147,7 @@ export default function Reports() {
             </div>
           </div>
         </Card>
+        <CollegeActivitiesCard logs={logs} />
         <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
         {sharing && (
           <ShareHoursModal
