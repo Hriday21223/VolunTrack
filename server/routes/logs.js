@@ -8,6 +8,7 @@ import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
 import { validateLogAgainstPolicy, sanitizeCustomFieldValues } from '../requirements.js'
 import { policyForUser, hoursLoggedOn } from '../policy.js'
+import { paperScanAvailable, scanPaperLog } from '../paperScan.js'
 
 const router = express.Router()
 
@@ -56,6 +57,34 @@ async function checkPolicy(req, entry, { excludeLogId = null } = {}) {
   const errors = validateLogAgainstPolicy(policy, { ...entry, sameDayHours })
   return { ok: errors.length === 0, errors, policy }
 }
+
+// --- Scan a paper log (#516) -------------------------------------------------
+// A photo of an old paper hours sheet becomes draft entries the student reviews
+// on Log Hours before saving any of them. Each scan is a paid API call, so it
+// is limited per account, and the photo is never stored.
+const scanLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.auth?.sub || 'anon',
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "You've scanned a lot of photos this hour. Try again later." },
+})
+
+router.get('/scan/available', limiter, (_req, res) => res.json({ available: paperScanAvailable() }))
+
+router.post('/scan', requireAuth('student', 'volunteer'), scanLimiter, async (req, res) => {
+  if (!paperScanAvailable()) return res.status(503).json({ error: 'Photo scanning is not set up on this server.' })
+  try {
+    const result = await scanPaperLog(req.body?.image)
+    return res.json(result)
+  } catch (error) {
+    // Only our own messages reach the student; an API error's text never does.
+    if (error.expose) return res.status(error.status).json({ error: error.message })
+    console.error('paper scan failed:', error.status || '', error.message)
+    return res.status(502).json({ error: "Couldn't read that photo right now. Please try again." })
+  }
+})
 
 // Write-through sync target for a student's own Log Hours form. Always
 // writes to the caller's own account — there is no way to pass a target
