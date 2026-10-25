@@ -12,6 +12,7 @@ import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
+import CompareSchoolsCard from '@/components/CompareSchoolsCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -249,6 +250,7 @@ export default function OrganizationDashboard() {
           </Card>
         ) : (
           <div className="space-y-3">
+            {schools.length > 1 && <CompareSchoolsCard />}
             <div className="flex justify-end mb-4">
               <button data-tour="org-add-school" onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary">
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Add school
