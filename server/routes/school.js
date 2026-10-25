@@ -539,6 +539,99 @@ async function leaderboardViewer(userId) {
 }
 
 // GET /api/school/leaderboard?period=month|year
+// --- Group challenge (#531) ---------------------------------------------------
+// One shared hour goal for a whole school ("500 hours together by Dec 1").
+// Everyone at the school sees one progress bar: hours from the school's
+// students dated inside the challenge (rejected entries left out). Only counts
+// leave the server — never who logged what — plus the viewer's own share.
+
+async function challengeProgress(challenge, viewerId = null) {
+  const { rows } = await query(
+    `SELECT COALESCE(SUM(l.hours), 0)::float AS hours,
+            COUNT(DISTINCT l.user_id)::int AS participants,
+            COALESCE(SUM(l.hours) FILTER (WHERE l.user_id = $4), 0)::float AS mine
+       FROM logs l JOIN users u ON u.id = l.user_id
+      WHERE u.school_id = $1 AND u.role = 'student'
+        AND COALESCE(l.verification_status, 'none') <> 'rejected'
+        AND l.date BETWEEN $2 AND $3`,
+    [challenge.school_id, challenge.starts_on, challenge.ends_on, viewerId],
+  )
+  const r = rows[0]
+  return {
+    id: challenge.id,
+    title: challenge.title,
+    goalHours: Number(challenge.goal_hours),
+    startsOn: challenge.starts_on,
+    endsOn: challenge.ends_on,
+    hours: Math.round(r.hours * 10) / 10,
+    participants: r.participants,
+    myHours: viewerId ? Math.round(r.mine * 10) / 10 : null,
+  }
+}
+
+const CHALLENGE_COLS = `id, school_id, title, goal_hours, to_char(starts_on, 'YYYY-MM-DD') AS starts_on, to_char(ends_on, 'YYYY-MM-DD') AS ends_on`
+
+// The running challenge for the caller's school, or null.
+router.get('/challenge', limiter, requireDb, requireAuth('student', 'school', 'school_staff'), async (req, res) => {
+  try {
+    const { rows: me } = await query(
+      `SELECT u.school_id, s.plan, s.payment_status FROM users u LEFT JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
+      [req.auth.sub],
+    )
+    if (!me[0]?.school_id || !schoolIsActive(me[0])) return res.json({ challenge: null })
+    const { rows } = await query(`SELECT ${CHALLENGE_COLS} FROM school_challenges WHERE school_id = $1 AND ended_at IS NULL`, [me[0].school_id])
+    if (!rows[0]) return res.json({ challenge: null })
+    return res.json({ challenge: await challengeProgress(rows[0], req.auth.role === 'student' ? req.auth.sub : null) })
+  } catch (error) {
+    console.error('challenge read failed:', error)
+    return res.status(500).json({ error: 'Could not load the challenge.' })
+  }
+})
+
+router.post('/challenge', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const title = String(req.body?.title || '').trim()
+  const goalHours = Number(req.body?.goalHours)
+  const today = new Date().toISOString().slice(0, 10)
+  const startsOn = req.body?.startsOn ? String(req.body.startsOn) : today
+  const endsOn = String(req.body?.endsOn || '')
+  if (!title || title.length > 120) return res.status(400).json({ error: 'Give the challenge a name (up to 120 characters).' })
+  if (!Number.isFinite(goalHours) || goalHours <= 0 || goalHours > 1000000) return res.status(400).json({ error: 'Enter the goal in hours.' })
+  if (!isValidDateString(startsOn) || !isValidDateString(endsOn)) return res.status(400).json({ error: 'Enter the dates as YYYY-MM-DD.' })
+  if (endsOn < startsOn || endsOn < today) return res.status(400).json({ error: 'The end date must be after the start date and not in the past.' })
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const { rows } = await query(
+      `INSERT INTO school_challenges (id, school_id, title, goal_hours, starts_on, ends_on, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (school_id) WHERE ended_at IS NULL DO NOTHING
+       RETURNING ${CHALLENGE_COLS}`,
+      [uid('chl'), schoolId, title, goalHours, startsOn, endsOn, req.auth.sub],
+    )
+    if (!rows[0]) return res.status(409).json({ error: 'A challenge is already running. End it first.' })
+    return res.status(201).json({ challenge: await challengeProgress(rows[0]) })
+  } catch (error) {
+    console.error('challenge create failed:', error)
+    return res.status(500).json({ error: 'Could not start the challenge.' })
+  }
+})
+
+router.delete('/challenge/:id', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  try {
+    const { rowCount } = await query(
+      `UPDATE school_challenges SET ended_at = now()
+        WHERE id = $1 AND ended_at IS NULL AND school_id = (SELECT school_id FROM users WHERE id = $2)`,
+      [req.params.id, req.auth.sub],
+    )
+    if (!rowCount) return res.status(404).json({ error: 'That challenge is not running.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('challenge end failed:', error)
+    return res.status(500).json({ error: 'Could not end the challenge.' })
+  }
+})
+
 router.get('/leaderboard', limiter, requireDb, requireAuth('student'), async (req, res) => {
   const period = req.query.period === 'year' ? 'year' : 'month'
   try {

@@ -18,6 +18,7 @@ import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
 import SchoolStarterKit from '@/components/SchoolStarterKit.jsx'
 import LeaderboardSettingsCard from '@/components/LeaderboardSettingsCard.jsx'
+import ChallengeCard from '@/components/ChallengeCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
@@ -716,6 +717,8 @@ export default function SchoolDashboard() {
                 onOpenSetup={user?.role === 'school' ? (t) => { setTab('setup'); setSetupTab(t) } : null}
               />
             )}
+
+            <ChallengeCard manage />
 
             <LeaderboardSettingsCard canEdit={user?.role === 'school'} />
 
