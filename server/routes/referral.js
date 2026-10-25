@@ -277,7 +277,8 @@ router.post('/admin/send-invites', blastLimiter, requireDb, requireAuth('admin')
     const willSend = recipients.filter((r) => !r.skipped)
     if (dryRun) return res.json({ dryRun: true, recipients, wouldSend: willSend.length })
 
-    const registerUrl = `${process.env.FRONTEND_URL || ''}/school/register`
+    // ?plan=school: the bare page opens on the free club, which has no referral field.
+    const registerUrl = `${process.env.FRONTEND_URL || ''}/school/register?plan=school`
     let sent = 0
     const failed = []
     for (const recipient of willSend) {
