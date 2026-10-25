@@ -14,6 +14,7 @@ import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds } from '@/lib/requirements.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify.js'
+import ScanPaperLog from '@/components/ScanPaperLog.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { addDays, format, parseISO } from 'date-fns'
 import { hapticSuccess } from '@/lib/platform.js'
@@ -409,6 +410,7 @@ export default function LogHours({ editId, onCloseEdit }) {
     >
       <form onSubmit={onSubmit} className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
+          {!editId && <ScanPaperLog onAdd={(entry) => { addLog({ ...blank(), ...entry }); setToast(true) }} />}
           {emailDraft && (
             <SigningEmailCard
               draft={emailDraft}
