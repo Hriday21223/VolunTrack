@@ -10,6 +10,7 @@ import { hasEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { runMonthlyProgress } from '../monthlyProgress.js'
+import { runDeadlineReminders } from '../deadlineReminders.js'
 
 const router = express.Router()
 
@@ -58,6 +59,18 @@ router.post('/internal/run', cronLimiter(), requireCronKey, requireDb, async (re
   } catch (error) {
     console.error('monthly progress run failed:', error)
     return res.status(500).json({ error: 'Could not run the monthly progress emails.' })
+  }
+})
+
+// POST /api/progress/internal/run-deadline { dryRun? } — deadline reminders (#533).
+router.post('/internal/run-deadline', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const dryRun = req.body?.dryRun === true
+  try {
+    const out = await runDeadlineReminders({ dryRun })
+    return res.json({ ok: true, dryRun, ...out, emailConfigured: hasEmail() })
+  } catch (error) {
+    console.error('deadline reminder run failed:', error)
+    return res.status(500).json({ error: 'Could not run the deadline reminders.' })
   }
 })
 

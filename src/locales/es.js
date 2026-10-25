@@ -262,6 +262,8 @@ export default {
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
   "Free club": "Club gratuito",
+  "Hours due soon": "Horas por entregar pronto",
+  "On. After a month you logged hours, we'll email you on the 1st with what you logged and how close you are to your goal, and remind you when your school's hours are due soon.": "Activado. Después de un mes en que registraste horas, te escribiremos el día 1 con lo que registraste y cuánto te falta para tu meta, y te avisaremos cuando la fecha de entrega de tu escuela esté cerca.",
   "Group challenge": "Reto en grupo",
   "{h} of {g} hours together": "{h} de {g} horas entre todos",
   "Goal reached! 🎉": "¡Meta alcanzada! 🎉",

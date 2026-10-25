@@ -64,7 +64,7 @@ export default function MonthlyProgressEmailCard() {
           </h3>
           <p className="text-sm text-earth-500 dark:text-earth-400">
             {enabled
-              ? tr("On. After a month you logged hours, we'll email you on the 1st with what you logged and how close you are to your goal.")
+              ? tr("On. After a month you logged hours, we'll email you on the 1st with what you logged and how close you are to your goal, and remind you when your school's hours are due soon.")
               : tr("Off. We won't email you a monthly summary of your hours.")}
           </p>
         </div>
