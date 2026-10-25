@@ -66,6 +66,7 @@ const blank = () => ({
   latitude: null,
   longitude: null,
   notes: '',
+  reflection: '',
   orgName: '',
   orgAddress: '',
   orgPhone: '',
@@ -533,6 +534,11 @@ export default function LogHours({ editId, onCloseEdit }) {
               <div>
                 <label className="label">{tr('Notes')}</label>
                 <textarea className="input min-h-[100px] resize-y" placeholder={tr('Anything worth remembering…')} value={form.notes} onChange={onChange('notes')} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">{tr('What did you learn?')} <span className="text-earth-400 font-normal">{tr('(optional, only you see this)')}</span></label>
+                <textarea className="input min-h-[90px] resize-y" maxLength={2000} placeholder={tr('A moment that stuck with you, a skill you used, why it mattered…')} value={form.reflection} onChange={onChange('reflection')} />
+                <p className="text-xs text-earth-400 mt-1">{tr('Handy later for NHS reflections, scholarships and college essays.')}</p>
               </div>
             </div>
           </Card>

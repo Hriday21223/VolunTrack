@@ -169,7 +169,7 @@ export async function generateInvoicePDF({ invoiceNumber, poNumber, entityName, 
 /** Build a CSV string from the user's logs. */
 export function exportLogsCSV(logs) {
   const rows = [
-    ['Date', 'Activity', 'Category', 'Hours', 'Start', 'End', 'Location', 'Organization', 'Org Address', 'Org Phone', 'Supervisor', 'Signed', 'Verified', 'Notes'],
+    ['Date', 'Activity', 'Category', 'Hours', 'Start', 'End', 'Location', 'Organization', 'Org Address', 'Org Phone', 'Supervisor', 'Signed', 'Verified', 'Notes', 'Reflection'],
     ...logs.map((l) => [
       l.date || '',
       l.activity || '',
@@ -185,6 +185,7 @@ export function exportLogsCSV(logs) {
       l.supervisorSignature ? 'yes' : 'no',
       l.verified ? 'yes' : 'no',
       (l.notes || '').replaceAll(/\n/g, ' '),
+      (l.reflection || '').replaceAll(/\n/g, ' '),
     ]),
   ]
   return rows.map((r) => r.map(csvCell).join(',')).join('\n')
