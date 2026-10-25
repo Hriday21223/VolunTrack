@@ -1005,6 +1005,20 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('monthly progress table migration failed:', error) }
 
+  // Deadline reminders (#533, server/deadlineReminders.js): each stage
+  // (30, 14, 3 days before) once per student per deadline.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS deadline_reminder_sends (
+        user_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        deadline DATE NOT NULL,
+        stage    INT  NOT NULL,
+        sent_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, deadline, stage)
+      )
+    `)
+  } catch (error) { console.error('deadline reminder table migration failed:', error) }
+
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS adviser_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
