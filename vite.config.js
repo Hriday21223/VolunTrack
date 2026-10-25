@@ -54,6 +54,10 @@ export default defineConfig(({ mode }) => {
         // add a second cache that can serve a stale build after an update.
         disable: mode === 'app',
         registerType: 'autoUpdate',
+        // Registered in src/main.jsx instead, so a refused registration (a
+        // browser extension, private mode, blocked storage) is caught rather
+        // than reported as an app error. The generated registerSW.js had no catch.
+        injectRegister: false,
         devOptions: {
           enabled: false,
         },
