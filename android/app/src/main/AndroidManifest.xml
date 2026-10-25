@@ -22,6 +22,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Home-screen widget: hours and goal, and a Log hours button (#519). -->
+        <receiver
+            android:name=".HoursWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_hours_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

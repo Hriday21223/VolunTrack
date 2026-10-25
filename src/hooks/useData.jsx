@@ -7,6 +7,8 @@ import { evaluateAchievements, countedLogs } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 import { createLogOnServer, syncUpdateLog, syncDeleteLog, syncPullLogs, flushLogOutbox } from '@/lib/logSync.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { updateWidget } from '@/lib/widget.js'
+import { hoursForGoal } from '@/lib/goalProgress.js'
 import { pushGoals, syncGoals } from '@/lib/goalSync.js'
 
 const DataContext = createContext(null)
@@ -285,6 +287,21 @@ export function DataProvider({ children }) {
       body: JSON.stringify({ rating, comment, name: name || null }),
     }).catch(() => {})
   }, [])
+
+  // The Android home-screen widget shows the same numbers as the dashboard:
+  // counted hours toward the primary goal (all hours when there's no goal).
+  useEffect(() => {
+    if (!user || (user.role !== 'student' && user.role !== 'volunteer')) {
+      updateWidget({ hours: 0, goal: 0, signedIn: false })
+      return
+    }
+    const counted = countedLogs(logs)
+    const goal = goals.find((g) => g.primary) || goals[0]
+    updateWidget({
+      hours: goal ? hoursForGoal(goal, counted) : counted.reduce((s, l) => s + (Number(l.hours) || 0), 0),
+      goal: goal ? Number(goal.targetHours) || 0 : 0,
+    })
+  }, [user, logs, goals])
 
   return (
     <DataContext.Provider

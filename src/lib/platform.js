@@ -49,6 +49,18 @@ export async function startNativeApp() {
     // APP_BACK_EVENT); then Back walks the page history, and only on the home
     // page does it leave the app.
     const { App } = await import('@capacitor/app')
+    // The home-screen widget opens voluntrack://app/<path> (#519): go to that
+    // page, on a cold start (getLaunchUrl) or while running (appUrlOpen).
+    const openAppUrl = (url) => {
+      const match = /^voluntrack:\/\/app(\/[\w/-]*)?$/.exec(String(url || ''))
+      if (!match) return
+      const path = match[1] || '/'
+      if (window.location.pathname === path) return
+      window.history.pushState({}, '', path)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    }
+    await App.addListener('appUrlOpen', ({ url }) => openAppUrl(url))
+    App.getLaunchUrl().then((launch) => openAppUrl(launch?.url)).catch(() => {})
     await App.addListener('backButton', ({ canGoBack }) => {
       const claimed = !window.dispatchEvent(new Event(APP_BACK_EVENT, { cancelable: true }))
       if (claimed) return

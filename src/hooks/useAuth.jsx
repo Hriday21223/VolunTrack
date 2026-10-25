@@ -11,6 +11,7 @@ import { syncPullLogs } from '@/lib/logSync.js'
 import { syncKeptSession } from '@/lib/appSession.js'
 import { signInWithPasskey } from '@/lib/passkey.js'
 import { syncNativeReminders } from '@/lib/nativeReminders.js'
+import { clearWidget } from '@/lib/widget.js'
 import { syncLanguageWithServer } from '@/lib/i18n.js'
 
 const AuthContext = createContext(null)
@@ -470,6 +471,8 @@ export function AuthProvider({ children }) {
     // In the apps, cancel the reminders already booked with the phone now —
     // the runner would only notice the cleared list on its next tick.
     syncNativeReminders([])
+    // And the home-screen widget stops showing this account's hours.
+    clearWidget()
     setUser(null)
   }, [])
 
