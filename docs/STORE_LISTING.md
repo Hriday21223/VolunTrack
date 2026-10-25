@@ -87,16 +87,15 @@ icon label stays *VolunTrack*:
 > • We never sell your data
 > • In English and Spanish
 
-**Release notes / What's new** (Play 500 max) — 0.7.0:
+**Release notes / What's new** (Play 500 max) — 0.8.0:
 
-> New in 0.7.0:
-> • Map view of volunteer opportunities near you
-> • 🔥 Weekly streak on your dashboard
-> • Invite friends with your own link and earn badges
-> • Share a picture of your hours
-> • A cleaner weekly chart
-> • Monthly progress email and an opt-in school leaderboard
-> • Schools: starter kit with a QR flyer, and a new school year grade move
+> New in 0.8.0:
+> • Home-screen widget: your hours and goal, and a Log hours button
+> • Scan a paper log: photograph an old hours sheet to add the entries
+> • "What did you learn?" reflections, private to you
+> • College applications: your hours as Common App entries, ready to copy
+> • Parents can cheer an entry with "Proud of you"
+> • Advisers: start a free club for up to 50 students
 
 ## Graphics
 
