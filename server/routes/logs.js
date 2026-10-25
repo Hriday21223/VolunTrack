@@ -339,14 +339,17 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
                CASE WHEN $2::timestamptz IS NULL THEN reflection END AS reflection,
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
                student_signed, form_submitted, supervisor_signed_in_person,
-               (organizer_signature IS NOT NULL) AS organizer_signed
+               (organizer_signature IS NOT NULL) AS organizer_signed,
+               -- Whether the caller (a linked parent) already cheered this one (#514).
+               EXISTS (SELECT 1 FROM log_cheers c WHERE c.log_id = logs.id AND c.parent_id = $3) AS cheered_by_me
        FROM logs WHERE user_id = $1 AND ($2::timestamptz IS NULL OR created_at >= $2)
        ORDER BY logs.date DESC, created_at DESC`,
-      [userId, scope.since],
+      [userId, scope.since, req.auth.sub],
     )
     return res.json({
-      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, ...log }) => ({
+      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, cheered_by_me, ...log }) => ({
         ...log,
+        cheeredByMe: cheered_by_me,
         // Only whether one exists: the image is fetched separately, for the
         // entries a device doesn't have yet (GET /:userId/organizer-signatures).
         organizerSigned: organizer_signed,

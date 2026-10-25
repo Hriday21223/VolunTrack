@@ -183,6 +183,15 @@ CREATE TABLE IF NOT EXISTS parent_child_links (
 
 CREATE INDEX IF NOT EXISTS idx_parent_child_links_child ON parent_child_links(child_id);
 
+-- A parent's "Proud of you" on one of their child's entries (#514): one per
+-- parent per entry, so a cheer can't be repeated to spam the child.
+CREATE TABLE IF NOT EXISTS log_cheers (
+  log_id     TEXT NOT NULL REFERENCES logs(id) ON DELETE CASCADE,
+  parent_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (log_id, parent_id)
+);
+
 CREATE TABLE IF NOT EXISTS school_invites (
   id            TEXT PRIMARY KEY,
   name          TEXT NOT NULL,

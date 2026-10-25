@@ -272,6 +272,7 @@ export default {
   "log hours": "registres horas",
   ", fill in “What did you learn?”.": ", completa “¿Qué aprendiste?”.",
   "Copy all": "Copiar todo",
+  "Proud of you": "Orgulloso de ti",
   "College applications": "Solicitudes universitarias",
   "Your hours as Common App activity entries, ready to copy.": "Tus horas como actividades para la Common App, listas para copiar.",
   "One entry per organization, most hours first. Hours per week and weeks per year are averaged over the weeks you volunteered, so check them before you submit, and pick your grade levels on the form.": "Una actividad por organización, primero la de más horas. Las horas por semana y las semanas por año son un promedio de las semanas en que hiciste voluntariado, así que revísalas antes de enviar y elige tus grados en el formulario.",
