@@ -380,6 +380,8 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7)`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'unpaid'`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_notes TEXT`) } catch {}
+  // "What did you learn?" (#510). Private to the student: never sent to a parent or school.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS reflection TEXT`) } catch {}
   // 'club' = free, up to 50 students, never payment-locked; 'school' = paid (#506).
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'school'`) } catch {}
   try { await query(`ALTER TABLE schools ADD CONSTRAINT schools_plan_check CHECK (plan IN ('club','school'))`) } catch {}
