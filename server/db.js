@@ -1005,6 +1005,20 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('monthly progress table migration failed:', error) }
 
+  // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
+  // opt-out, and one row per adviser per week so a re-run mails no one twice.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS adviser_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS adviser_digest_sends (
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        week_start DATE NOT NULL,
+        sent_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, week_start)
+      )
+    `)
+  } catch (error) { console.error('adviser digest table migration failed:', error) }
+
   // "New school year" grade moves (#481): one row per run with every change
   // ({ userId, from, to }), so the run can be undone and a second run in the
   // same year is caught.

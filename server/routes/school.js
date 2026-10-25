@@ -453,7 +453,7 @@ router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'
 const REMINDER_GAP_DAYS = 7
 const MAX_REMIND_AT_ONCE = 200
 
-async function schoolProgress(schoolId) {
+export async function schoolProgress(schoolId) {
   const resolved = await policyForSchool(schoolId)
   const policy = resolved?.policy
   const { rows } = await query(
