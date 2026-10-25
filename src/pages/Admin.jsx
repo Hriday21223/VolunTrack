@@ -17,6 +17,7 @@ import { parseISO, format } from 'date-fns'
 import { csvCell } from '@/lib/csv.js'
 import ReportsPanel from '@/components/ReportsPanel.jsx'
 import AppErrorsCard from '@/components/AppErrorsCard.jsx'
+import { generateDraft } from '@/lib/inboxDraft.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
@@ -28,7 +29,7 @@ const ADMIN_TOUR_STEPS = [
 ]
 
 // Deterministic-but-varied invoice description, seeded by entity name so the
-// same school doesn't always get the exact same wording (mirrors generateDraft above).
+// same school doesn't always get the exact same wording (like the inbox drafts in src/lib/inboxDraft.js).
 function generateInvoiceDescription({ entityName, billingPeriod }) {
   const now = new Date()
   const year = now.getFullYear()
@@ -67,50 +68,6 @@ function generatePromoDetails(offer) {
 // Where a drafted reply points a new customer: the configured public site,
 // so a reply drafted on a local or preview build never links to localhost.
 const SIGNUP_ORIGIN = import.meta.env.VITE_SITE_URL || window.location.origin
-
-function generateDraft(contact) {
-  const subject = contact.subject || 'General question'
-  const name = contact.name || 'there'
-  // Deterministic-but-varied pick, seeded by the thread id/timestamp so the
-  // same contact doesn't always get the exact same opener.
-  const seed = String(contact.thread_id ?? contact.sentAt ?? '')
-    .split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
-
-  const intros = [
-    `Hi ${name}, thanks for writing in!`,
-    `Hey ${name}, good to hear from you.`,
-    `Hi ${name} — appreciate you reaching out.`,
-  ]
-  const intro = intros[seed % intros.length]
-
-  const closings = [
-    '\n\nBest,\nVolunTrack',
-    '\n\nTalk soon,\nVolunTrack',
-    '\n\nThanks again,\nVolunTrack',
-  ]
-  const closing = closings[seed % closings.length]
-
-  const bodies = {
-    'General question': (
-      `VolunTrack is a privacy-first app for logging volunteer hours, free for students, volunteers and parents — students track activities, set goals, earn badges, get their hours signed off, and export ready-to-print PDF reports. A free account keeps their hours synced across devices, and the app keeps working offline after the first load.\n\nIf there's a school or organization behind your question, we also offer school accounts — a dashboard for reviewing student hours and submitted reports, your own logging requirements, and a school code students use to join.\n\nHappy to answer anything specific — just reply here, or poke around the code: https://github.com/Hriday21223/VolunTrack`
-    ),
-    'Bug report': (
-      `Sorry you ran into this, and thanks for flagging it. To track it down quickly, could you send over:\n- Browser and device (e.g. Chrome on Mac, Safari on iPhone)\n- What you were doing right before it happened\n- Any error message or a screenshot, if you have one\n\nYou're welcome to reply directly here, or open an issue on GitHub if you'd rather: https://github.com/Hriday21223/VolunTrack/issues\n\nI'll dig in as soon as I hear back.`
-    ),
-    'Feature request': (
-      `Really appreciate the suggestion — this is exactly the kind of feedback that shapes what gets built next.\n\nFor context, VolunTrack today covers hour logging, goals, badges, reminders, printable reports and certificates, and full school accounts (dashboards, PDF verification, payment tracking, admin invites). Your idea sounds like it'd fit well alongside that.\n\nMind opening it as an issue on GitHub so it doesn't get lost? https://github.com/Hriday21223/VolunTrack/issues — or just reply here and I'll take it from there.`
-    ),
-    'School or organization partnership': (
-      `Great timing — school accounts are live on VolunTrack today, not just on a roadmap. Once your school is set up, you get:\n- A dashboard to review and verify student volunteer hours (with PDF proof uploads)\n- A school code students use to link their accounts\n- Co-admin accounts if you've got more than one staff member managing it\n\nRunning several schools? A district or organization account manages them all from one place.\n\nPricing is based on size, so once I know a bit more (number of schools and students, semester vs. year-round use) I'll send over a quote. Along with it you'll get a one-time registration code — enter it at ${SIGNUP_ORIGIN}/school/register (or /organization/register for a district) and set up the account yourself. If you'd rather not type a code, I can email an invite link instead. Let me know if you'd like me to use a different contact email than this one.\n\nHappy to answer any questions in the meantime.`
-    ),
-  }
-
-  const body = bodies[subject] || (
-    `VolunTrack is a free, privacy-first volunteer hour tracker for students, clubs, and now schools too — logging, goals, badges, printable reports, and school dashboards all in one place. Take a look: https://github.com/Hriday21223/VolunTrack\n\nLet me know if you have any other questions!`
-  )
-
-  return intro + '\n\n' + body + closing
-}
 
 // One labelled count per row with a bar showing its share of the total.
 function SignupBreakdown({ rows, total }) {
@@ -1289,7 +1246,7 @@ export default function Admin() {
         delete next[threadId]
       } else {
         const thread = threads.find((t) => t.thread_id === threadId)
-        next[threadId] = generateDraft(thread)
+        next[threadId] = generateDraft(thread, SIGNUP_ORIGIN)
       }
       return next
     })
