@@ -3,6 +3,7 @@ import { Camera, Loader2, X } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { tr } from '@/lib/i18n.js'
+import { readOnDevice } from '@/lib/paperLogOcr.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const MAX_SIDE = 1600
@@ -23,10 +24,13 @@ async function photoToDataUrl(file) {
   return canvas.toDataURL('image/jpeg', 0.45)
 }
 
-// Log Hours → "Scan a paper log" (#516). A photo of an old paper hours sheet
-// becomes a list the student checks and edits; only ticked rows are saved.
+// Log Hours → "Scan a paper log" (#516, #521). A photo of an old paper hours
+// sheet becomes a list the student checks and edits; only ticked rows are
+// saved. Read on the device, or by the server's AI reader when one is set up
+// (better with handwriting).
 export default function ScanPaperLog({ onAdd }) {
-  const [available, setAvailable] = useState(false)
+  const [serverScan, setServerScan] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [rows, setRows] = useState(null)
@@ -38,11 +42,9 @@ export default function ScanPaperLog({ onAdd }) {
     if (!token) return
     fetch(`${apiUrl}/logs/scan/available`)
       .then((r) => (r.ok ? r.json() : { available: false }))
-      .then((d) => setAvailable(Boolean(d.available)))
+      .then((d) => setServerScan(Boolean(d.available)))
       .catch(() => {})
   }, [token])
-
-  if (!token || !available) return null
 
   const onFile = async (e) => {
     const file = e.target.files?.[0]
@@ -50,7 +52,13 @@ export default function ScanPaperLog({ onAdd }) {
     if (!file) return
     setError('')
     setBusy(true)
+    setProgress(0)
     try {
+      if (!serverScan || !token) {
+        setRows((await readOnDevice(file, setProgress)).map((r, i) => ({ ...r, key: i, keep: Boolean(r.date && r.activity && r.hours > 0) })))
+        setNote('')
+        return
+      }
       const image = await photoToDataUrl(file)
       const res = await fetch(`${apiUrl}/logs/scan`, {
         method: 'POST',
@@ -94,7 +102,7 @@ export default function ScanPaperLog({ onAdd }) {
           <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">{tr('Take a photo and we’ll fill in the entries. You check every one before it’s saved.')}</p>
         </div>
         <button type="button" className="btn-secondary btn-sm" onClick={() => input.current?.click()} disabled={busy}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}{' '}{busy ? tr('Reading…') : tr('Scan a paper log')}
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}{' '}{busy ? (progress > 0 ? tr('Reading… {n}%', { n: Math.round(progress * 100) }) : tr('Reading…')) : tr('Scan a paper log')}
         </button>
         <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
       </div>
@@ -126,7 +134,7 @@ export default function ScanPaperLog({ onAdd }) {
               {tr('Add {n} entries', { n: ready.length })}
             </button>
           )}
-          <p className="text-xs text-earth-400">{tr('Entries need a date, an activity and hours. The photo isn’t kept.')}</p>
+          <p className="text-xs text-earth-400">{tr('Entries need a date, an activity and hours. The photo isn’t kept.')}{!serverScan && ` ${tr('Read on your phone: printed sheets work best; check handwritten ones closely.')}`}</p>
         </div>
       )}
     </Card>

@@ -262,6 +262,8 @@ export default {
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
   "Free club": "Club gratuito",
+  "Reading… {n}%": "Leyendo… {n}%",
+  "Read on your phone: printed sheets work best; check handwritten ones closely.": "Leído en tu teléfono: las hojas impresas funcionan mejor; revisa con cuidado las escritas a mano.",
   "What did you learn?": "¿Qué aprendiste?",
   "(optional, only you see this)": "(opcional, solo tú lo ves)",
   "A moment that stuck with you, a skill you used, why it mattered…": "Un momento que recuerdas, una habilidad que usaste, por qué importó…",
