@@ -7,7 +7,7 @@
 - [Home / overview](https://volunteer-track-two.vercel.app/): what VolunTrack is, features, pricing, and FAQ
 - [Help & Handbooks](https://volunteer-track-two.vercel.app/help): role-by-role guides and a full FAQ for students, parents, volunteers, schools, school co-admins, organizations, and admins
 - [Sign up](https://volunteer-track-two.vercel.app/register): create a free student, parent, or volunteer account
-- [School sign up](https://volunteer-track-two.vercel.app/school/register): set up a school account with the one-time registration code VolunTrack provides (contact us for a quote), then manage students and review reports
+- [School sign up](https://volunteer-track-two.vercel.app/school/register): start a free club for up to 50 students with no code, or set up a whole school with the one-time registration code VolunTrack provides (contact us for a quote), then manage students and review hours
 - [Organization sign up](https://volunteer-track-two.vercel.app/organization/register): manage multiple schools under one organization
 - [For schools](https://volunteer-track-two.vercel.app/for-schools): for NHS, Key Club and service-club advisers — approving hours, requirements, QR check-in, reports, and the starter kit (join link, QR flyer, ready-to-send messages)
 - [Guides](https://volunteer-track-two.vercel.app/guides): practical articles on logging service hours

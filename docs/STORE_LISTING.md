@@ -134,7 +134,7 @@ cost of the app running letterboxed on iPads.
 | Personal info → Other info (date of birth, at sign-up — tick *processed ephemerally*: used for the age rules, never stored) | Yes | No | Required for an account | App functionality |
 | Location → Approximate location | Yes | No | Optional | App functionality |
 | Location → Precise location | Yes | No | Optional | App functionality |
-| Photos and videos → Photos (proof of service; an organizer's task cover photo) | Yes | No | Optional | App functionality |
+| Photos and videos → Photos (proof of service; an organizer's task cover photo; a photo of a paper hours log, read by our AI provider and not stored — tick *processed ephemerally* for this one) | Yes | No | Optional | App functionality |
 | Files and docs | Yes | No | Optional | App functionality |
 | App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages, optional first names of guests brought to a task) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |

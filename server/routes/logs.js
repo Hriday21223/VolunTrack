@@ -8,6 +8,7 @@ import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
 import { validateLogAgainstPolicy, sanitizeCustomFieldValues } from '../requirements.js'
 import { policyForUser, hoursLoggedOn } from '../policy.js'
+import { paperScanAvailable, scanPaperLog } from '../paperScan.js'
 
 const router = express.Router()
 
@@ -57,12 +58,40 @@ async function checkPolicy(req, entry, { excludeLogId = null } = {}) {
   return { ok: errors.length === 0, errors, policy }
 }
 
+// --- Scan a paper log (#516) -------------------------------------------------
+// A photo of an old paper hours sheet becomes draft entries the student reviews
+// on Log Hours before saving any of them. Each scan is a paid API call, so it
+// is limited per account, and the photo is never stored.
+const scanLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.auth?.sub || 'anon',
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "You've scanned a lot of photos this hour. Try again later." },
+})
+
+router.get('/scan/available', limiter, (_req, res) => res.json({ available: paperScanAvailable() }))
+
+router.post('/scan', requireAuth('student', 'volunteer'), scanLimiter, async (req, res) => {
+  if (!paperScanAvailable()) return res.status(503).json({ error: 'Photo scanning is not set up on this server.' })
+  try {
+    const result = await scanPaperLog(req.body?.image)
+    return res.json(result)
+  } catch (error) {
+    // Only our own messages reach the student; an API error's text never does.
+    if (error.expose) return res.status(error.status).json({ error: error.message })
+    console.error('paper scan failed:', error.status || '', error.message)
+    return res.status(502).json({ error: "Couldn't read that photo right now. Please try again." })
+  }
+})
+
 // Write-through sync target for a student's own Log Hours form. Always
 // writes to the caller's own account — there is no way to pass a target
 // user id here, which is what keeps a parent unable to write regardless of
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
-  const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes, customFields, hasLocalProof } = req.body
+  const { date, activity, category, hours, notes, reflection, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes, customFields, hasLocalProof } = req.body
   const signoff = signoffFlags(req.body)
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
@@ -136,9 +165,9 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
 
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields, student_signed, form_submitted, supervisor_signed_in_person)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, reflection)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, String(reflection || '').trim() || null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -150,6 +179,9 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
 // [request field, column] for the optional text PATCH lets a student clear.
 const CLEARABLE_FIELDS = [
   ['notes', 'notes'],
+  // A reflection is the student's own writing about the entry, not a fact a
+  // supervisor signed, so changing it never resets verification.
+  ['reflection', 'reflection'],
   ['location', 'location'],
   ['orgName', 'org_name'],
   ['supervisorName', 'supervisor_name'],
@@ -170,7 +202,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
     const existing = rows[0]
 
-    const { date, activity, category, hours, notes, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
+    const { date, activity, category, hours, notes, reflection, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
     const signoff = signoffFlags(req.body)
     // Optional text a student can empty out. COALESCE alone treats an empty
     // value as "not sent", which kept the old text on the server, so a field
@@ -260,6 +292,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          category = COALESCE($3, category),
          hours = COALESCE($4, hours),
          notes = CASE WHEN 'notes' = ANY($17::text[]) THEN NULL ELSE COALESCE($5, notes) END,
+         reflection = CASE WHEN 'reflection' = ANY($17::text[]) THEN NULL ELSE COALESCE($18, reflection) END,
          location = CASE WHEN 'location' = ANY($17::text[]) THEN NULL ELSE COALESCE($6, location) END,
          org_name = CASE WHEN 'org_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($7, org_name) END,
          supervisor_name = CASE WHEN 'supervisor_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($8, supervisor_name) END,
@@ -276,7 +309,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
        WHERE id = $11`,
-      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared],
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared, String(reflection || '').trim() || null],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -331,16 +364,21 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       // proof_key itself is never returned: it is only useful with a minted
       // URL, and every mint is audited. Callers just need to know one exists.
       `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, supervisor_name, verification_status, task_id, created_at,
+               -- Reflections are private to the student, never shown to a linked parent.
+               CASE WHEN $2::timestamptz IS NULL THEN reflection END AS reflection,
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
                student_signed, form_submitted, supervisor_signed_in_person,
-               (organizer_signature IS NOT NULL) AS organizer_signed
+               (organizer_signature IS NOT NULL) AS organizer_signed,
+               -- Whether the caller (a linked parent) already cheered this one (#514).
+               EXISTS (SELECT 1 FROM log_cheers c WHERE c.log_id = logs.id AND c.parent_id = $3) AS cheered_by_me
        FROM logs WHERE user_id = $1 AND ($2::timestamptz IS NULL OR created_at >= $2)
        ORDER BY logs.date DESC, created_at DESC`,
-      [userId, scope.since],
+      [userId, scope.since, req.auth.sub],
     )
     return res.json({
-      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, ...log }) => ({
+      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, cheered_by_me, ...log }) => ({
         ...log,
+        cheeredByMe: cheered_by_me,
         // Only whether one exists: the image is fetched separately, for the
         // entries a device doesn't have yet (GET /:userId/organizer-signatures).
         organizerSigned: organizer_signed,

@@ -363,6 +363,7 @@ function ChildCard({ child }) {
                       <th className="text-left py-2">Activity</th>
                       <th className="text-left py-2">Status</th>
                       <th className="text-right py-2">Hours</th>
+                      <th className="py-2"><span className="sr-only">Cheer</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -372,6 +373,7 @@ function ChildCard({ child }) {
                         <td className="py-2">{l.activity || '—'}</td>
                         <td className="py-2"><VerificationBadge status={l.verification_status} /></td>
                         <td className="py-2 text-right font-medium">{fmtHours(Number(l.hours) || 0)}</td>
+                        <td className="py-2 pl-3 text-right"><CheerButton log={l} childName={child.name} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -387,6 +389,37 @@ function ChildCard({ child }) {
         </>
       )}
     </Card>
+  )
+}
+
+// "Proud of you" on one entry (#514): the child gets a bell notification.
+// Once per entry; the server ignores a repeat.
+function CheerButton({ log, childName }) {
+  const [state, setState] = useState(log.cheeredByMe ? 'done' : 'idle')
+  const first = String(childName || '').trim().split(/\s+/)[0] || 'them'
+  const cheer = async () => {
+    setState('busy')
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/parent/cheer/${encodeURIComponent(log.id)}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      setState(res.ok ? 'done' : 'idle')
+    } catch {
+      setState('idle')
+    }
+  }
+  if (state === 'done') {
+    return <span className="text-xs text-brand-600 dark:text-brand-400 whitespace-nowrap" title={`${first} got your cheer`}>🎉 Sent</span>
+  }
+  return (
+    <button
+      type="button"
+      onClick={cheer}
+      disabled={state === 'busy'}
+      className="text-xs font-medium px-2 py-1 rounded-full border border-earth-200 dark:border-earth-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 whitespace-nowrap"
+      title={`Tell ${first} you're proud of them`}
+    >
+      🎉 Proud of you
+    </button>
   )
 }
 

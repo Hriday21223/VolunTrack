@@ -601,7 +601,11 @@ export default function Admin() {
 
   // Free club ⇄ paid school plan (#506). A school on the paid plan is locked
   // until it is marked paid, so a club moved up should be invoiced next.
-  const setSchoolPlan = async (id, plan) => {
+  const setSchoolPlan = async (id, plan, name) => {
+    const ok = window.confirm(plan === 'school'
+      ? `Move ${name} to the paid school plan? It is locked until it's marked paid, so invoice it first.`
+      : `Make ${name} a free club? It stops being payment-locked and can have at most 50 students.`)
+    if (!ok) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/school/admin/${id}/plan`, {
@@ -609,11 +613,11 @@ export default function Admin() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to change plan')
       loadSchools()
       setToastMessage(plan === 'school' ? 'Moved to the school plan. It stays locked until marked paid.' : 'Moved to the free club plan')
       setToast(true)
-    } catch { setToastMessage('Failed to change plan'); setToast(true) }
+    } catch (e) { setToastMessage(e.message); setToast(true) }
   }
 
   const saveDueDate = async (id, value = dueDateDraft) => {
@@ -1523,7 +1527,7 @@ export default function Admin() {
             <div className="flex flex-wrap gap-2 mb-4">
               {(() => {
                 const upcoming = schools
-                  .filter((s) => s.payment_due_date && s.payment_status !== 'paid')
+                  .filter((s) => s.payment_due_date && s.payment_status !== 'paid' && s.plan !== 'club')
                   .map((s) => ({ ...s, daysLeft: Math.ceil((parseISO(String(s.payment_due_date).slice(0, 10)) - new Date()) / (1000 * 60 * 60 * 24)) }))
                   .filter((s) => s.daysLeft >= 0 && s.daysLeft <= 10)
                   .sort((a, b) => a.daysLeft - b.daysLeft)
@@ -1621,7 +1625,7 @@ export default function Admin() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 sm:shrink-0">
-                    <button onClick={() => setSchoolPlan(s.id, s.plan === 'club' ? 'school' : 'club')} className="px-2 py-1 text-xs font-medium text-earth-400 hover:text-earth-200" title={s.plan === 'club' ? 'Move to the paid school plan (then invoice it)' : 'Move to the free club plan (50 students, never locked)'}>
+                    <button onClick={() => setSchoolPlan(s.id, s.plan === 'club' ? 'school' : 'club', s.name)} className="px-2 py-1 text-xs font-medium text-earth-400 hover:text-earth-200" title={s.plan === 'club' ? 'Move to the paid school plan (then invoice it)' : 'Move to the free club plan (50 students, never locked)'}>
                       {s.plan === 'club' ? 'Upgrade to school' : 'Make free club'}
                     </button>
                     <button onClick={() => { setNoteModal(s.id); setNoteDraft(s.admin_notes || '') }} className={`p-2 ${s.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">

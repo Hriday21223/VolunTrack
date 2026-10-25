@@ -66,7 +66,7 @@ export default function SchoolRegister() {
       const res = await fetch(`${apiUrl}/school/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, pin: form.pin.toLowerCase(), plan: isClub ? 'club' : 'school', inviteToken: inviteToken || undefined, registrationCode: inviteToken || isClub ? undefined : form.registrationCode, turnstileToken: captchaToken }),
+        body: JSON.stringify({ ...form, referralCode: isClub ? undefined : form.referralCode, pin: form.pin.toLowerCase(), plan: isClub ? 'club' : 'school', inviteToken: inviteToken || undefined, registrationCode: inviteToken || isClub ? undefined : form.registrationCode, turnstileToken: captchaToken }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')

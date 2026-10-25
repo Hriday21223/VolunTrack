@@ -12,6 +12,7 @@ import { policyForUser } from '../policy.js'
 import { goalHoursFor } from '../requirements.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { WAITLIST_POSITION_SQL, decideParentOk } from './school.js'
+import { notify } from '../notifications.js'
 
 const router = express.Router()
 
@@ -39,6 +40,51 @@ function requireDb(_req, res, next) {
   if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
   next()
 }
+
+// POST /api/parent/cheer/:logId (#514): a linked parent says "Proud of you"
+// on one of their child's entries, and the child gets a bell notification.
+// The same read rule as GET /api/logs/:userId applies — only entries logged
+// after the parent linked — so a cheer can't confirm an entry exists that the
+// parent isn't allowed to see. Once per parent per entry.
+const cheerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many cheers just now. Please try again later.' },
+})
+
+router.post('/cheer/:logId', cheerLimiter, requireDb, requireAuth('parent'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT l.id, l.user_id, l.activity, p.name AS parent_name
+         FROM logs l
+         JOIN parent_child_links k ON k.child_id = l.user_id AND k.parent_id = $2 AND l.created_at >= k.created_at
+         JOIN users p ON p.id = $2
+        WHERE l.id = $1`,
+      [req.params.logId, req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Entry not found.' })
+    const log = rows[0]
+    const { rowCount } = await query(
+      'INSERT INTO log_cheers (log_id, parent_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [log.id, req.auth.sub],
+    )
+    if (rowCount > 0) {
+      const who = String(log.parent_name || '').trim().split(/\s+/)[0] || 'Your parent'
+      await notify(log.user_id, {
+        kind: 'parent_cheer',
+        title: `${who} is proud of you 🎉`,
+        body: `For your hours: ${log.activity}.`,
+        link: '/',
+      })
+    }
+    return res.json({ ok: true, cheered: true })
+  } catch (error) {
+    console.error('cheer failed:', error)
+    return res.status(500).json({ error: 'Could not send that.' })
+  }
+})
 
 // A student views their own link code (or null if never generated).
 router.get('/child-link-code', limiter, requireDb, requireAuth('student'), async (req, res) => {

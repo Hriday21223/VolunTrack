@@ -27,7 +27,7 @@ import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
 import { displayName } from './portfolio.js'
 import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
-import { schoolIsActive, clubSeatProblem, CLUB_STUDENT_LIMIT, PLANS } from '../plans.js'
+import { schoolIsActive, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_STUDENT_LIMIT, CLUB_MAX_CO_ADMINS, PLANS } from '../plans.js'
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
 
 const router = express.Router()
@@ -230,7 +230,8 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
     if (seatProblem) return res.status(409).json({ error: seatProblem })
 
     if (!currentSchoolId) {
-      await query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub])
+      const joined = await joinWithSeat(target.id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub]))
+      if (joined.error) return res.status(409).json({ error: joined.error })
       return res.json({ ok: true, schoolId: target.id })
     }
 
@@ -386,7 +387,13 @@ router.post('/transfers/:id/decide', limiter, requireDb, requireAuth('school', '
     const transfer = rows[0]
 
     if (decision === 'accept') {
-      await query('UPDATE users SET school_id = $1 WHERE id = $2', [transfer.to_school_id, transfer.user_id])
+      const moved = await joinWithSeat(transfer.to_school_id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [transfer.to_school_id, transfer.user_id]))
+      if (moved.error) {
+        // The last seat went between the check above and now: leave the
+        // request open rather than mark it accepted with nobody moved.
+        await query(`UPDATE school_transfers SET status = 'pending', decided_by = NULL, decided_at = NULL WHERE id = $1`, [req.params.id])
+        return res.status(409).json({ error: moved.error })
+      }
       // The student's submitted reports go with them. One in the former
       // school's own storage stays there: the new school can't reach that bucket.
       await query(
@@ -1062,9 +1069,8 @@ router.post('/invites/:id/decide', limiter, requireDb, requireAuth('student'), a
       if (me[0]?.school_id) {
         return res.status(409).json({ error: "You're already at a school. To move, enter the new school's code in Settings to request a transfer." })
       }
-      const seatProblem = await clubSeatProblem(rows[0].school_id)
-      if (seatProblem) return res.status(409).json({ error: seatProblem })
-      await query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].school_id, req.auth.sub])
+      const joined = await joinWithSeat(rows[0].school_id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].school_id, req.auth.sub]))
+      if (joined.error) return res.status(409).json({ error: joined.error })
       // Other schools' invites can't be accepted now, so they're closed too.
       await query(
         "UPDATE school_student_invites SET status = 'declined', decided_at = now() WHERE user_id = $1 AND status = 'pending' AND id <> $2",
@@ -1124,6 +1130,11 @@ router.post('/staff', limiter, requireDb, requireAuth('school'), requirePaidScho
       `SELECT COUNT(*) FROM users WHERE school_id = $1 AND role = 'school_staff'`,
       [schoolId],
     )
+    // A free club is for one adviser (#506): one co-adviser at most.
+    const { rows: planRows } = await query('SELECT plan FROM schools WHERE id = $1', [schoolId])
+    if (planRows[0]?.plan === 'club' && Number(countRows[0].count) >= CLUB_MAX_CO_ADMINS) {
+      return res.status(409).json({ error: `A free club can have ${CLUB_MAX_CO_ADMINS} co-adviser. Upgrade to a school plan to add more.` })
+    }
     if (Number(countRows[0].count) >= MAX_CO_ADMINS) {
       return res.status(409).json({ error: `You've reached the limit of ${MAX_CO_ADMINS} co-admins.` })
     }
@@ -1489,8 +1500,7 @@ router.get('/info', limiter, requireDb, async (req, res) => {
 
     let studentCount = null
     if (school.plan === 'club') {
-      const c = await query(`SELECT COUNT(*)::int AS n FROM users WHERE school_id = $1 AND role = 'student'`, [school.id])
-      studentCount = c.rows[0].n
+      studentCount = await clubStudentCount(school.id)
     }
     return res.json({ school: { id: school.id, name: school.name, pin: school.pin, plan: school.plan, studentCount, studentLimit: school.plan === 'club' ? CLUB_STUDENT_LIMIT : null, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date } })
   } catch (error) {
@@ -5458,6 +5468,12 @@ router.patch('/admin/:id/plan', limiter, requireDb, requireAuth('admin'), async 
   const plan = String(req.body.plan || '')
   if (!PLANS.includes(plan)) return res.status(400).json({ error: 'Plan must be club or school.' })
   try {
+    if (plan === 'club') {
+      const n = await clubStudentCount(req.params.id)
+      if (n > CLUB_STUDENT_LIMIT) {
+        return res.status(409).json({ error: `This school has ${n} students, more than a free club's ${CLUB_STUDENT_LIMIT}. It can't be a club.` })
+      }
+    }
     const { rowCount } = await query('UPDATE schools SET plan = $1 WHERE id = $2', [plan, req.params.id])
     if (rowCount === 0) return res.status(404).json({ error: 'School not found.' })
     return res.json({ ok: true, plan })
