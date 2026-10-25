@@ -37,7 +37,7 @@ function partnershipBody({ asksCost, severalSchools, club, saidRole }, site) {
 
   if (asksCost) {
     parts.push(
-      `On cost: VolunTrack is always free for students and parents. ${severalSchools ? 'Accounts for schools and districts are' : 'A school account is'} paid, and the price depends on how many students will use it, so I'll send you a quote once I know a little more. If another school referred you, you both get a discount.`
+      `On cost: VolunTrack is always free for students and parents. ${severalSchools ? 'Accounts for schools and districts are' : 'One club or class with up to 50 students is free too. A whole-school account is'} paid, and the price depends on how many students will use it, so I'll send you a quote once I know a little more. If another school referred you, you both get a discount.`
     )
   }
 
@@ -56,8 +56,12 @@ function partnershipBody({ asksCost, severalSchools, club, saidRole }, site) {
   )
 
   parts.push(
-    `After that you'll get a one-time registration code to create the account at ${site}/${severalSchools ? 'organization' : 'school'}/register. Setup takes about five minutes. There's more detail here: ${site}/for-schools`
+    `After that you'll get a one-time registration code to create the account at ${site}/${severalSchools ? 'organization/register' : 'school/register?plan=school'}. Setup takes about five minutes. There's more detail here: ${site}/for-schools`
   )
+
+  if (!severalSchools) {
+    parts.push(`Want to try it first? You can start a free club for up to 50 students right now, no code needed: ${site}/school/register. It moves to a school plan later without losing anything.`)
+  }
 
   return parts.join('\n\n')
 }

@@ -27,6 +27,7 @@ import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
 import { displayName } from './portfolio.js'
 import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
+import { schoolIsActive, clubSeatProblem, CLUB_STUDENT_LIMIT, PLANS } from '../plans.js'
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
 
 const router = express.Router()
@@ -69,9 +70,10 @@ async function requirePaidSchool(req, res, next) {
     const schoolId = rows[0]?.school_id
     if (!schoolId) return res.status(400).json({ error: 'No school linked to your account.' })
 
-    const { rows: schoolRows } = await query('SELECT payment_status FROM schools WHERE id = $1', [schoolId])
+    const { rows: schoolRows } = await query('SELECT payment_status, plan FROM schools WHERE id = $1', [schoolId])
     if (schoolRows.length === 0) return res.status(404).json({ error: 'School not found.' })
-    if (schoolRows[0].payment_status !== 'paid') {
+    // A free club (#506) is never payment-locked.
+    if (!schoolIsActive(schoolRows[0])) {
       return res.status(403).json({ error: 'This school has not completed payment yet. Submissions are paused until payment is verified.' })
     }
     next()
@@ -90,9 +92,11 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
   const password = req.body.password
   const pin = String(req.body.pin || '').trim().toLowerCase()
   const inviteToken = req.body.inviteToken ? String(req.body.inviteToken).trim() : null
-  // Without an invite link, a one-time code from us is required (#287), so a
-  // school can't become a customer without having contacted us.
-  const registrationCode = !inviteToken && req.body.registrationCode ? String(req.body.registrationCode) : null
+  // A free club (#506) needs no code. An invite link always makes a school.
+  const plan = !inviteToken && req.body.plan === 'club' ? 'club' : 'school'
+  // Otherwise a one-time code from us is required (#287), so a paying school
+  // can't become a customer without having contacted us.
+  const registrationCode = plan === 'school' && !inviteToken && req.body.registrationCode ? String(req.body.registrationCode) : null
   // Optional. A bad or expired code must never block a registration — the
   // school still gets its account, the admin just sees no referral attached.
   const referralCode = req.body.referralCode ? String(req.body.referralCode).trim().toUpperCase() : null
@@ -102,7 +106,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
   if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
   if (!pin || !/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
-  if (!inviteToken && !registrationCode) return res.status(403).json({ error: CODE_REQUIRED_MESSAGE.school })
+  if (plan === 'school' && !inviteToken && !registrationCode) return res.status(403).json({ error: CODE_REQUIRED_MESSAGE.school })
 
   let claimedCodeId = null
   try {
@@ -130,8 +134,8 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
 
     const schoolId = uid('sch')
     await query(
-      'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code) VALUES ($1, $2, $3, $4, $5, $6)',
-      [schoolId, name, pin, email, invite?.organization_id || null, await nextAccountCode('schools')],
+      'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code, plan) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [schoolId, name, pin, email, invite?.organization_id || null, await nextAccountCode('schools'), plan],
     )
     await assignReferralCode('schools', schoolId, name).catch((e) => console.error('referral code failed:', e.message))
 
@@ -220,6 +224,11 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
 
     // First join links immediately — that is the documented flow, and there is
     // no existing school whose roster the student is leaving.
+    // A free club has a student limit (#506). Checked for a transfer request
+    // too, so a student isn't left waiting on a club that can't take them.
+    const seatProblem = await clubSeatProblem(target.id)
+    if (seatProblem) return res.status(409).json({ error: seatProblem })
+
     if (!currentSchoolId) {
       await query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub])
       return res.json({ ok: true, schoolId: target.id })
@@ -355,6 +364,11 @@ router.post('/transfers/:id/decide', limiter, requireDb, requireAuth('school', '
     const { rows: meRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const schoolId = meRows[0]?.school_id
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+
+    if (decision === 'accept') {
+      const seatProblem = await clubSeatProblem(schoolId)
+      if (seatProblem) return res.status(409).json({ error: seatProblem })
+    }
 
     // Scoped to this school and to 'pending' in the same statement, so a
     // request belonging to another school — or already decided — matches
@@ -1048,6 +1062,8 @@ router.post('/invites/:id/decide', limiter, requireDb, requireAuth('student'), a
       if (me[0]?.school_id) {
         return res.status(409).json({ error: "You're already at a school. To move, enter the new school's code in Settings to request a transfer." })
       }
+      const seatProblem = await clubSeatProblem(rows[0].school_id)
+      if (seatProblem) return res.status(409).json({ error: seatProblem })
       await query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].school_id, req.auth.sub])
       // Other schools' invites can't be accepted now, so they're closed too.
       await query(
@@ -1446,7 +1462,7 @@ router.get('/info', limiter, requireDb, async (req, res) => {
     // not expose the bank/payment confirmation reference the school submitted.
     // payment_notes is kept — the school's own dashboard shows it as the
     // "confirmation could not be verified" message (SchoolDashboard.jsx).
-    const cols = 'id, name, pin, payment_status, payment_notes, paid_at, payment_due_date'
+    const cols = 'id, name, pin, plan, payment_status, payment_notes, paid_at, payment_due_date'
     let rows
     if (pin) {
       const r = await query(`SELECT ${cols} FROM schools WHERE pin = $1`, [pin])
@@ -1471,7 +1487,12 @@ router.get('/info', limiter, requireDb, async (req, res) => {
     }
     if (!privileged) return res.json({ school: { id: school.id, name: school.name } })
 
-    return res.json({ school: { id: school.id, name: school.name, pin: school.pin, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date } })
+    let studentCount = null
+    if (school.plan === 'club') {
+      const c = await query(`SELECT COUNT(*)::int AS n FROM users WHERE school_id = $1 AND role = 'student'`, [school.id])
+      studentCount = c.rows[0].n
+    }
+    return res.json({ school: { id: school.id, name: school.name, pin: school.pin, plan: school.plan, studentCount, studentLimit: school.plan === 'club' ? CLUB_STUDENT_LIMIT : null, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
   }
@@ -5362,7 +5383,7 @@ router.post('/submit-payment-confirmation', limiter, requireDb, requireAuth('sch
 router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.account_code, s.contact_email, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at,
+      `SELECT s.id, s.name, s.pin, s.account_code, s.contact_email, s.plan, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s ORDER BY s.created_at DESC`,
     )
@@ -5428,6 +5449,21 @@ router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async
   } catch (error) {
     console.error('admin price update failed:', error)
     return res.status(500).json({ error: 'Could not save price.' })
+  }
+})
+
+// Switch a school between the free club plan and the paid school plan (#506).
+// Moving a club to 'school' makes the payment lock apply, so invoice it first.
+router.patch('/admin/:id/plan', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const plan = String(req.body.plan || '')
+  if (!PLANS.includes(plan)) return res.status(400).json({ error: 'Plan must be club or school.' })
+  try {
+    const { rowCount } = await query('UPDATE schools SET plan = $1 WHERE id = $2', [plan, req.params.id])
+    if (rowCount === 0) return res.status(404).json({ error: 'School not found.' })
+    return res.json({ ok: true, plan })
+  } catch (error) {
+    console.error('admin plan update failed:', error)
+    return res.status(500).json({ error: 'Could not change plan.' })
   }
 })
 
@@ -5969,8 +6005,8 @@ async function reportScope(auth, body) {
     if (!schoolId) return null
     // Mirrors requirePaidSchool, which can't be used as middleware here
     // because org/admin callers have no school of their own.
-    const { rows: paid } = await query('SELECT payment_status FROM schools WHERE id = $1', [schoolId])
-    if (paid[0]?.payment_status !== 'paid') return { unpaid: true }
+    const { rows: paid } = await query('SELECT payment_status, plan FROM schools WHERE id = $1', [schoolId])
+    if (!schoolIsActive(paid[0])) return { unpaid: true }
     return { schoolIds: [schoolId] }
   }
 

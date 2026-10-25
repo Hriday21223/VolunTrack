@@ -261,6 +261,7 @@ export default {
   "Code:": "Código:",
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
+  "Free club": "Club gratuito",
   "Dashboard": "Panel",
   "Payment due in": "El pago vence en",
   "day": "día",

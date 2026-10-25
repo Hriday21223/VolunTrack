@@ -599,6 +599,23 @@ export default function Admin() {
     URL.revokeObjectURL(url)
   }
 
+  // Free club ⇄ paid school plan (#506). A school on the paid plan is locked
+  // until it is marked paid, so a club moved up should be invoiced next.
+  const setSchoolPlan = async (id, plan) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/admin/${id}/plan`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      loadSchools()
+      setToastMessage(plan === 'school' ? 'Moved to the school plan. It stays locked until marked paid.' : 'Moved to the free club plan')
+      setToast(true)
+    } catch { setToastMessage('Failed to change plan'); setToast(true) }
+  }
+
   const saveDueDate = async (id, value = dueDateDraft) => {
     setSavingDueDate(true)
     try {
@@ -1575,6 +1592,9 @@ export default function Admin() {
                         }`}>
                           {s.payment_status === 'paid' ? 'Paid' : s.payment_status === 'pending' ? 'Pending review' : s.payment_status === 'rejected' ? 'Rejected' : 'Unpaid'}
                         </span>
+                        {s.plan === 'club' && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-300" title="Free club plan: up to 50 students, never payment-locked">Free club</span>
+                        )}
                         {s.price_amount && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-400">
                             {s.price_amount}{s.price_period === 'monthly' ? ' / month' : s.price_period === 'yearly' ? ' / year' : s.price_period === 'one_time' ? ' one-time' : ''}
@@ -1601,6 +1621,9 @@ export default function Admin() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 sm:shrink-0">
+                    <button onClick={() => setSchoolPlan(s.id, s.plan === 'club' ? 'school' : 'club')} className="px-2 py-1 text-xs font-medium text-earth-400 hover:text-earth-200" title={s.plan === 'club' ? 'Move to the paid school plan (then invoice it)' : 'Move to the free club plan (50 students, never locked)'}>
+                      {s.plan === 'club' ? 'Upgrade to school' : 'Make free club'}
+                    </button>
                     <button onClick={() => { setNoteModal(s.id); setNoteDraft(s.admin_notes || '') }} className={`p-2 ${s.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
                       <ShieldCheck className="w-4 h-4" />
                     </button>

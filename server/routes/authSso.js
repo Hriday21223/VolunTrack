@@ -9,6 +9,7 @@ import { recordAudit, AUDIT } from '../audit.js'
 import { isPublicHost } from '../publicHost.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { publicUser, USER_WITH_SCHOOL_SELECT } from './auth.js'
+import { clubSeatProblem } from '../plans.js'
 
 const router = express.Router()
 
@@ -369,6 +370,11 @@ async function handleLoginCallback(res, connection, claims, email, subject, stat
   if (!user) {
     if (!connection.jit_enabled) {
       return failRedirect(res, 'No VolunTrack account exists for this email, and automatic account creation is off.')
+    }
+    // A free club's student limit applies here too (#506).
+    if (connection.default_role === 'student' && connection.school_id) {
+      const seatProblem = await clubSeatProblem(connection.school_id)
+      if (seatProblem) return failRedirect(res, seatProblem)
     }
     const id = uid('usr')
     const name = String(claims.name || email.split('@')[0]).slice(0, 100)
