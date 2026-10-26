@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { Mail, Target } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import { printSchoolCertificates } from '@/lib/export.js'
 import { fmtDate } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -95,6 +96,18 @@ export default function StudentProgressPanel({ onSetRequirement }) {
             {data.deadline && <> · due {fmtDate(data.deadline)}{daysLeft != null && (daysLeft >= 0 ? ` (${daysLeft} days left)` : ' (past due)')}</>}
           </p>
         </div>
+        {withGoal.length > behind.length && (
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => {
+              const done = withGoal.filter((s) => s.remaining <= 0).sort((a, b) => String(a.name).localeCompare(String(b.name)))
+              if (!printSchoolCertificates({ schoolName: data.schoolName, students: done })) window.alert('Allow pop-ups for this site to print the certificates.')
+            }}
+          >
+            Print certificates ({withGoal.length - behind.length})
+          </button>
+        )}
         <label className="flex items-center gap-2 text-sm text-earth-300">
           <input type="checkbox" checked={behindOnly} onChange={(e) => setBehindOnly(e.target.checked)} /> Only students with hours to go
         </label>
