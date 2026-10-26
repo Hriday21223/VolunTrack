@@ -25,6 +25,8 @@ export const AUDIT = {
   STAFF_ADDED: 'staff.added',
   STAFF_REMOVED: 'staff.removed',
   HOURS_REVIEWED: 'hours.reviewed',
+  // An adviser added approved hours for several students at once (#539).
+  HOURS_ADDED_FOR_GROUP: 'hours.added_for_group',
   PDF_REVIEWED: 'pdf.reviewed',
   SSO_CONFIG_CHANGED: 'sso.config_changed',
   STORAGE_CONFIG_CHANGED: 'storage.config_changed',
