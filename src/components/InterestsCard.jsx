@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Heart, Check } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
-import { MAX_INTERESTS, fetchInterests, saveInterests } from '@/lib/interests.js'
+import { MAX_INTERESTS, fetchInterests, saveInterests, fetchAlerts, saveAlerts } from '@/lib/interests.js'
 import { tr } from '@/lib/i18n.js'
 
 // Toggle chips over the activity categories. Shared by the Settings card and
@@ -87,6 +87,30 @@ export default function InterestsCard() {
         {msg && <span className="text-sm text-brand-600 dark:text-brand-400">{msg}</span>}
       </div>
       {error && <p role="alert" className="text-sm text-red-500 mt-2">{error}</p>}
+      <AlertsToggle hasCauses={saved?.length > 0} />
     </Card>
+  )
+}
+
+// New opportunity alerts (#543): off until the student turns them on.
+function AlertsToggle({ hasCauses }) {
+  const [enabled, setEnabled] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { fetchAlerts().then(setEnabled).catch(() => {}) }, [])
+  if (enabled === null) return null
+  const flip = async () => {
+    setBusy(true)
+    try { setEnabled(await saveAlerts(!enabled)) } catch { /* left as it was */ } finally { setBusy(false) }
+  }
+  return (
+    <label className="mt-4 pt-3 border-t border-earth-200 dark:border-earth-700 flex items-start gap-3 cursor-pointer">
+      <input type="checkbox" className="mt-1 w-4 h-4" checked={enabled} onChange={flip} disabled={busy} />
+      <span className="text-sm">
+        <span className="font-medium">{tr('Email me new opportunities in these causes')}</span>
+        <span className="block text-earth-500 dark:text-earth-400">
+          {hasCauses ? tr('Once a week, only when something new is posted. You can stop any time.') : tr('Pick at least one cause first.')}
+        </span>
+      </span>
+    </label>
   )
 }

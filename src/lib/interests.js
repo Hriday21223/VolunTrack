@@ -41,3 +41,11 @@ export function promptDismissed() {
 export function dismissPrompt() {
   try { localStorage.setItem(DISMISS_KEY, '1') } catch { /* private mode */ }
 }
+
+// New opportunity alerts (#543): a weekly bell + email of new tasks in these causes.
+export const fetchAlerts = () => call('/alerts').then((d) => d?.enabled ?? null)
+export const saveAlerts = (enabled) => call('/alerts', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ enabled }),
+}).then((d) => d?.enabled ?? null)
