@@ -487,7 +487,7 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
     const progress = await schoolProgress(schoolId)
     recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: progress.students.length } })
-    return res.json({ deadline: progress.deadline, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
+    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })
