@@ -487,7 +487,7 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
     const progress = await schoolProgress(schoolId)
     recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: progress.students.length } })
-    return res.json({ deadline: progress.deadline, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
+    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })
@@ -629,6 +629,60 @@ router.delete('/challenge/:id', limiter, requireDb, requireAuth('school', 'schoo
   } catch (error) {
     console.error('challenge end failed:', error)
     return res.status(500).json({ error: 'Could not end the challenge.' })
+  }
+})
+
+// POST /api/school/group-hours (#539): after a club meeting or event, the
+// adviser adds the same hours for every student who was there, already
+// approved — the adviser is the verifying authority, as a task organizer is.
+// Only students at the adviser's own school; one entry per student per
+// date+activity, so a double click doesn't double the hours.
+const GROUP_HOURS_MAX = 200
+router.post('/group-hours', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const ids = Array.isArray(req.body?.studentIds) ? [...new Set(req.body.studentIds.map(String))] : []
+  const date = String(req.body?.date || '')
+  const activity = String(req.body?.activity || '').trim()
+  const category = String(req.body?.category || '').trim().slice(0, 100) || 'Community Service'
+  const hours = Number(req.body?.hours)
+  const notes = String(req.body?.notes || '').trim().slice(0, 500)
+  if (ids.length === 0) return res.status(400).json({ error: 'Pick at least one student.' })
+  if (ids.length > GROUP_HOURS_MAX) return res.status(400).json({ error: `Up to ${GROUP_HOURS_MAX} students at a time.` })
+  if (!isValidDateString(date) || date > new Date().toISOString().slice(0, 10)) return res.status(400).json({ error: 'Enter a date that isn’t in the future.' })
+  if (!activity || activity.length > 200) return res.status(400).json({ error: 'Say what the students did (up to 200 characters).' })
+  if (!Number.isFinite(hours) || hours <= 0 || hours > MAX_HOURS_PER_ENTRY) return res.status(400).json({ error: `Hours must be more than 0 and at most ${MAX_HOURS_PER_ENTRY}.` })
+  try {
+    const { rows: me } = await query(
+      `SELECT u.school_id, u.name, s.name AS school_name FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
+      [req.auth.sub],
+    )
+    const school = me[0]
+    if (!school) return res.status(404).json({ error: 'School not found.' })
+    const { rows: students } = await query(
+      `SELECT id FROM users WHERE id = ANY($1) AND school_id = $2 AND role = 'student'`,
+      [ids, school.school_id],
+    )
+    let added = 0
+    let skipped = 0
+    const note = notes || `Added by ${school.name || 'your adviser'} (${school.school_name})`
+    for (const { id } of students) {
+      const { rowCount } = await query(
+        `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, verification_status)
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, 'approved'
+          WHERE NOT EXISTS (SELECT 1 FROM logs WHERE user_id = $2 AND date = $3 AND LOWER(activity) = LOWER($4))`,
+        [uid('log'), id, date, activity, category, hours, note, req.auth.sub],
+      )
+      if (rowCount) {
+        added += 1
+        notify(id, { kind: 'hours_approved', title: `${hours} hours added: ${activity}`, body: `${school.school_name} added these for you.`, link: '/' })
+      } else {
+        skipped += 1
+      }
+    }
+    recordAudit(req, { action: AUDIT.HOURS_ADDED_FOR_GROUP, schoolId: school.school_id, objectType: 'logs', meta: { students: added, hours } })
+    return res.json({ ok: true, added, skipped, notAtSchool: ids.length - students.length })
+  } catch (error) {
+    console.error('group hours failed:', error)
+    return res.status(500).json({ error: 'Could not add the hours.' })
   }
 })
 

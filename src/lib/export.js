@@ -247,6 +247,54 @@ export function printCertificate({ user, totalHours, goalReached }) {
   w.document.close()
 }
 
+// One certificate per page for every student who met the school's requirement
+// (#541), signed by the school, for an awards night. Same look as
+// printCertificate; opens the print dialog (save as PDF from there).
+export function printSchoolCertificates({ schoolName, students }) {
+  const w = window.open('', '_blank', 'width=820,height=1000')
+  if (!w) return false
+  const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const logo = `${window.location.origin}${import.meta.env.BASE_URL}logo.png`
+  const pages = students.map((s) => `
+      <section class="page"><div class="frame">
+        <img src="${logo}" alt="" style="width:64px;height:auto;margin:0 auto 12px;display:block;" />
+        <div class="sub">Certificate of Service</div>
+        <h1>${escapeHtml(schoolName || 'VolunTrack')}</h1>
+        <div class="body">This certifies that</div>
+        <div class="name">${escapeHtml(s.name || 'Student')}</div>
+        <div class="body">has completed</div>
+        <div class="hours">${fmtHours(s.hours)} of volunteer service</div>
+        <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. Thank you for serving your community.</div>
+        <div class="sig">
+          <div><div class="sig-value">${escapeHtml(issuedDate)}</div><div class="sig-line">Date</div></div>
+          <div><div class="sig-value signature">${escapeHtml(schoolName || '')}</div><div class="sig-line">Adviser</div></div>
+        </div>
+      </div></section>`).join('')
+  w.document.write(`
+    <html><head><title>Certificates of Service</title>
+    <style>
+      @page { size: letter landscape; margin: 0.4in; }
+      body { font-family: 'Plus Jakarta Sans', Inter, sans-serif; margin:0; }
+      .page { display:flex; align-items:center; justify-content:center; min-height:calc(100vh - 0.1in); page-break-after: always; break-after: page; }
+      .page:last-child { page-break-after: auto; break-after: auto; }
+      .frame { background:white; border:8px double #3f8344; padding:40px 64px; max-width:760px; width:100%; text-align:center; }
+      h1 { color:#27542d; font-size:30px; margin:0 0 8px; letter-spacing:1px; }
+      .sub { color:#6c502d; font-size:14px; letter-spacing:2px; text-transform:uppercase; }
+      .name { font-size:40px; color:#214327; margin:20px 0 8px; font-weight:700; }
+      .body { color:#3a3024; font-size:15px; line-height:1.6; margin-top:12px; }
+      .hours { font-size:26px; color:#3f8344; margin:18px 0; font-weight:700; }
+      .sig { margin-top:40px; display:flex; justify-content:space-between; color:#6c502d; font-size:13px; }
+      .sig div { text-align:center; }
+      .sig-value { margin-bottom:6px; white-space:nowrap; }
+      .sig-line { border-top:1px solid #6c502d; padding-top:6px; width:220px; }
+      .signature { font-family:'Brush Script MT','Segoe Script',cursive; font-size:20px; color:#214327; }
+    </style></head>
+    <body>${pages}<script>window.onload=()=>window.print();</script></body></html>
+  `)
+  w.document.close()
+  return true
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',

@@ -27,6 +27,7 @@ import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
+import GroupHoursCard from '@/components/GroupHoursCard.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -718,6 +719,8 @@ export default function SchoolDashboard() {
                 onOpenSetup={user?.role === 'school' ? (t) => { setTab('setup'); setSetupTab(t) } : null}
               />
             )}
+
+            <GroupHoursCard students={students} onDone={loadData} />
 
             <ChallengeCard manage />
 
