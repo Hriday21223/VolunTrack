@@ -1,0 +1,76 @@
+name: New opportunity alerts
+
+# Weekly: new volunteer tasks in the causes each student follows, for students
+# who turned alerts on (#543). The work happens on the backend
+# (server/taskAlerts.js); the only secret here is CRON_SECRET. Idempotency is
+# the backend's: task_alert_sends (user_id, week_start). The response carries
+# counts and user ids only.
+
+on:
+  schedule:
+    # Thursdays 22:00 UTC (5 PM US Central): in time to plan the weekend.
+    - cron: '0 22 * * 4'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Count who would get it on the backend instead of emailing them
+        type: boolean
+        default: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the opportunity alerts endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ vars.PUBLIC_BACKEND_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || false }}
+        run: |
+          set -uo pipefail
+          # Retry only when no HTTP response came back at all (a Render cold
+          # start). Any actual status is final: 503 means the backend is
+          # unconfigured, which retrying cannot fix, and a 2xx is done.
+          url="$BACKEND_URL/api/interests/internal/run-alerts"
+          body="$(mktemp)"
+          attempt=1
+          while :; do
+            code=$(curl -sS -X POST \
+              --connect-timeout 30 --max-time 900 \
+              -o "$body" -w '%{http_code}' \
+              -H "x-cron-key: $CRON_SECRET" \
+              -H 'content-type: application/json' \
+              -d "{\"dryRun\": $DRY_RUN }" \
+              "$url") || code=000
+            echo "HTTP $code"
+            cat "$body"; echo
+            case "$code" in
+              2??)
+                # A run with nobody to email is a legitimate success, but a
+                # backend that cannot send email is not — the bell entries
+                # would land while every email silently went nowhere.
+                if grep -q '"emailConfigured":false' "$body"; then
+                  echo "::error::backend reached, but no email provider is configured — no alert email was sent."
+                  exit 1
+                fi
+                exit 0
+                ;;
+              503)
+                echo "::error::backend returned 503 (unconfigured CRON_SECRET or database) — retrying will not help."
+                exit 1
+                ;;
+              000)
+                : # no HTTP response: likely a cold start, worth a retry
+                ;;
+              *)
+                echo "::error::unexpected HTTP $code from the opportunity alerts endpoint."
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" -ge 3 ]; then
+              echo "::error::backend unreachable after $attempt attempts."
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            sleep 30
+          done

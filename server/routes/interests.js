@@ -4,6 +4,10 @@ import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { SPOTS_USED_SQL } from '../spots.js'
 import { TASK_CATEGORIES } from './school.js'
+import { requireCronKey, cronLimiter } from '../cronAuth.js'
+import { hasEmail } from '../email.js'
+import { escapeHtml } from '../html.js'
+import { runTaskAlerts } from '../taskAlerts.js'
 
 // A student's interests: the causes they care about, picked from the same
 // activity categories tasks and logs use. They drive the "For you" row at the
@@ -94,6 +98,83 @@ router.get('/for-you', limiter, requireDb, requireAuth('student'), async (req, r
   } catch (error) {
     console.error('for-you tasks failed:', error)
     return res.status(500).json({ error: 'Could not load tasks for you.' })
+  }
+})
+
+// --- New opportunity alerts (#543, server/taskAlerts.js) ---------------------
+
+router.get('/alerts', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT task_alerts_opt_in FROM users WHERE id = $1', [req.auth.sub])
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ enabled: rows[0].task_alerts_opt_in })
+  } catch (error) {
+    console.error('task alerts preference read failed:', error)
+    return res.status(500).json({ error: 'Could not read your alert setting.' })
+  }
+})
+
+router.patch('/alerts', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false.' })
+  try {
+    await query('UPDATE users SET task_alerts_opt_in = $1 WHERE id = $2', [req.body.enabled, req.auth.sub])
+    return res.json({ enabled: req.body.enabled })
+  } catch (error) {
+    console.error('task alerts preference update failed:', error)
+    return res.status(500).json({ error: 'Could not save your alert setting.' })
+  }
+})
+
+// POST /api/interests/internal/run-alerts { dryRun?, only? }
+router.post('/internal/run-alerts', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const dryRun = req.body?.dryRun === true
+  let only = null
+  if (req.body?.only !== undefined) {
+    const ids = req.body.only
+    if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100 || !ids.every((x) => typeof x === 'string' && x.length <= 100)) {
+      return res.status(400).json({ error: 'only must be a list of up to 100 user ids.' })
+    }
+    only = ids
+  }
+  try {
+    const out = await runTaskAlerts({ dryRun, only })
+    return res.json({ ok: true, dryRun, ...out, emailConfigured: hasEmail() })
+  } catch (error) {
+    console.error('task alerts run failed:', error)
+    return res.status(500).json({ error: 'Could not run the opportunity alerts.' })
+  }
+})
+
+const unsubLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false })
+const PAGE_STYLE = 'font-family:system-ui,-apple-system,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5'
+const TOKEN_RE = /^[a-f0-9]{64}$/
+const page = (message) => `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${PAGE_STYLE}"><p>${escapeHtml(message)}</p></body></html>`
+
+// GET only asks (mail scanners open links); POST turns alerts off.
+router.get('/alerts/unsubscribe/:token', unsubLimiter, requireDb, async (req, res) => {
+  const token = String(req.params.token || '')
+  if (!TOKEN_RE.test(token)) return res.status(400).type('html').send(page('This link is not valid.'))
+  try {
+    const { rows } = await query(`SELECT task_alerts_opt_in FROM users WHERE digest_unsub_token = $1 AND role = 'student'`, [token])
+    if (!rows[0]) return res.status(404).type('html').send(page('This unsubscribe link is invalid or expired.'))
+    if (!rows[0].task_alerts_opt_in) return res.type('html').send(page("You're already unsubscribed from these emails."))
+    return res.type('html').send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${PAGE_STYLE}"><p>Stop the weekly emails about new volunteer opportunities?</p><form method="post"><button type="submit" style="font-size:1rem;padding:0.5rem 1rem">Stop these emails</button></form></body></html>`)
+  } catch (error) {
+    console.error('task alerts unsubscribe (GET) failed:', error)
+    return res.status(500).type('html').send(page('Something went wrong. Please try again later.'))
+  }
+})
+
+router.post('/alerts/unsubscribe/:token', unsubLimiter, requireDb, async (req, res) => {
+  const token = String(req.params.token || '')
+  if (!TOKEN_RE.test(token)) return res.status(400).type('html').send(page('This link is not valid.'))
+  try {
+    const { rowCount } = await query(`UPDATE users SET task_alerts_opt_in = false WHERE digest_unsub_token = $1 AND role = 'student'`, [token])
+    if (!rowCount) return res.status(404).type('html').send(page('This unsubscribe link is invalid or expired.'))
+    return res.type('html').send(page("Done — we won't email you about new opportunities any more. You can turn alerts back on in Opportunities."))
+  } catch (error) {
+    console.error('task alerts unsubscribe (POST) failed:', error)
+    return res.status(500).type('html').send(page('Something went wrong. Please try again later.'))
   }
 })
 
