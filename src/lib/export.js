@@ -224,7 +224,7 @@ export function printCertificate({ user, totalHours, goalReached }) {
         <div class="name">${escapeHtml(name)}</div>
         ${school ? `<div class="body">${escapeHtml(school)}</div>` : ''}
         <div class="body">has generously contributed</div>
-        <div class="hours">${fmtHours(totalHours)} of volunteer service</div>
+        <div class="hours">${hoursWords(totalHours)} of volunteer service</div>
         <div class="body">
           ${goalReached
             ? 'and has reached their service goal — a true community hero.'
@@ -263,7 +263,7 @@ export function printSchoolCertificates({ schoolName, students }) {
         <div class="body">This certifies that</div>
         <div class="name">${escapeHtml(s.name || 'Student')}</div>
         <div class="body">has completed</div>
-        <div class="hours">${fmtHours(s.hours)} of volunteer service</div>
+        <div class="hours">${hoursWords(s.hours)} of volunteer service</div>
         <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. Thank you for serving your community.</div>
         <div class="sig">
           <div><div class="sig-value">${escapeHtml(issuedDate)}</div><div class="sig-line">Date</div></div>
@@ -293,6 +293,12 @@ export function printSchoolCertificates({ schoolName, students }) {
   `)
   w.document.close()
   return true
+}
+
+// "42.5 hours" / "1 hour" — for certificates, where "42.50h" reads oddly.
+function hoursWords(h) {
+  const n = Math.round((Number(h) || 0) * 100) / 100
+  return `${n.toLocaleString('en-US')} hour${n === 1 ? '' : 's'}`
 }
 
 function escapeHtml(s) {
