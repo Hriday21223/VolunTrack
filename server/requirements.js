@@ -1,7 +1,7 @@
 // Tenant-defined requirements ("how this school wants hours logged").
 //
 // A school — or the organization that owns it — describes its own rules here
-// instead of every tenant getting the one hard-coded form. Five sections, each
+// instead of every tenant getting the one hard-coded form. Six sections, each
 // independently inheritable:
 //
 //   logRules     what an hour entry must contain to be accepted
@@ -9,6 +9,7 @@
 //   goals        the service-hour requirement a student is working toward
 //   signIn       how this tenant's students are allowed to authenticate
 //   signatures   whether an entry must be signed, by whom, or carry a signed form
+//   certificates who signs the certificates the school prints, and what they say
 //
 // Inheritance is per section, not per field: a school either overrides a whole
 // section or inherits the org's. Per-field merging reads fine in a diff and
@@ -20,7 +21,7 @@
 
 export const POLICY_VERSION = 1
 
-export const SECTIONS = ['logRules', 'customFields', 'goals', 'signIn', 'signatures']
+export const SECTIONS = ['logRules', 'customFields', 'goals', 'signIn', 'signatures', 'certificates']
 
 export const DEFAULT_LOG_RULES = {
   proofRequired: false,
@@ -64,12 +65,30 @@ export const DEFAULT_SIGNATURES = {
   note: '',
 }
 
+// Blank fields fall back when printing: the signer to the school's name, the
+// title to "Adviser", the heading to the school's name, the note to the usual
+// thank-you line. Often it's the principal or a counselor who signs, not the adviser.
+// signStyle  'typed' — the signer's name in a script font (the default)
+//            'drawn' — a signature drawn once on screen (signatureImage, a PNG)
+//            'blank' — an empty line, to sign each printed copy with a pen
+export const CERTIFICATE_SIGN_STYLES = ['typed', 'drawn', 'blank']
+
+export const DEFAULT_CERTIFICATES = {
+  signStyle: 'typed',
+  signatureImage: '',
+  signerName: '',
+  signerTitle: '',
+  title: '',
+  note: '',
+}
+
 export const DEFAULTS = {
   logRules: DEFAULT_LOG_RULES,
   customFields: [],
   goals: DEFAULT_GOALS,
   signIn: DEFAULT_SIGN_IN,
   signatures: DEFAULT_SIGNATURES,
+  certificates: DEFAULT_CERTIFICATES,
 }
 
 export const CUSTOM_FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'select', 'checkbox']
@@ -236,6 +255,25 @@ function normalizeSignatures(input) {
   }
 }
 
+// SignaturePad exports a 400×150 PNG, a few KB; the cap keeps a pasted photo
+// out of a policy every student downloads.
+const SIGNATURE_PNG = /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/
+const MAX_SIGNATURE_CHARS = 100_000
+
+function normalizeCertificates(input) {
+  const raw = input && typeof input === 'object' ? input : {}
+  const signStyle = CERTIFICATE_SIGN_STYLES.includes(raw.signStyle) ? raw.signStyle : 'typed'
+  const image = typeof raw.signatureImage === 'string' ? raw.signatureImage : ''
+  return {
+    signStyle,
+    signatureImage: signStyle === 'drawn' && image.length <= MAX_SIGNATURE_CHARS && SIGNATURE_PNG.test(image) ? image : '',
+    signerName: text(raw.signerName, 80),
+    signerTitle: text(raw.signerTitle, 60),
+    title: text(raw.title, 80),
+    note: text(raw.note, 200),
+  }
+}
+
 /**
  * What kind of form link a school pasted:
  *   { kind: 'embed', embedUrl } — a public Google Form, filled in on Log Hours
@@ -287,6 +325,7 @@ const NORMALIZERS = {
   goals: normalizeGoals,
   signIn: normalizeSignIn,
   signatures: normalizeSignatures,
+  certificates: normalizeCertificates,
 }
 
 /**

@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ClipboardList, Plus, Trash2, RotateCcw } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import SignaturePad from '@/components/SignaturePad.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import {
   DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, classifyFormUrl,
@@ -25,6 +26,7 @@ const SECTION_LABELS = {
   goals: 'Service-hour requirement',
   signIn: 'Sign-in',
   signatures: 'Signatures',
+  certificates: 'Certificates',
 }
 
 const SECTION_HELP = {
@@ -33,6 +35,7 @@ const SECTION_HELP = {
   goals: 'The total each student is working toward. Shown on their dashboard.',
   signIn: 'How students linked to you are allowed to get into their account.',
   signatures: 'Whether each entry has to be signed, and by whom — or carry your own form.',
+  certificates: 'Who signs the certificates you print, and what they say.',
 }
 
 const FIELD_TYPE_LABELS = {
@@ -57,7 +60,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
   const [meta, setMeta] = useState({})
   // null for a section means "inherit" — kept distinct from an empty object,
   // which is a deliberate override that happens to turn everything off.
-  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null, signatures: null })
+  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null, signatures: null, certificates: null })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,6 +75,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
         goals: own.goals ? clone(own.goals) : null,
         signIn: own.signIn ? clone(own.signIn) : null,
         signatures: own.signatures ? clone(own.signatures) : null,
+        certificates: own.certificates ? clone(own.certificates) : null,
       })
     } catch (e) {
       setError(e.message)
@@ -171,6 +175,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
               {section === 'goals' && <GoalsEditor value={sections.goals} onChange={(c) => patch('goals', c)} />}
               {section === 'signIn' && <SignInEditor value={sections.signIn} onChange={(c) => patch('signIn', c)} />}
               {section === 'signatures' && <SignaturesEditor value={sections.signatures} onChange={(c) => patch('signatures', c)} />}
+              {section === 'certificates' && <CertificatesEditor value={sections.certificates} onChange={(c) => patch('certificates', c)} />}
               {section === 'customFields' && (
                 <CustomFieldsEditor
                   value={sections.customFields}
@@ -368,6 +373,73 @@ function SignInEditor({ value, onChange }) {
           })}
           placeholder="school.edu, students.school.edu"
         />
+      </div>
+    </>
+  )
+}
+
+const SIGN_STYLE_OPTIONS = [
+  { value: 'typed', label: 'Typed name', help: 'The signer’s name in a handwriting-style font.' },
+  { value: 'drawn', label: 'Draw a signature', help: 'Sign once below; it prints on every certificate.' },
+  { value: 'blank', label: 'Sign by hand', help: 'Leaves a blank line to sign each printed copy with a pen.' },
+]
+
+// Blank fields fall back when printing (src/lib/export.js): the school's name
+// signs as "Adviser", under the usual heading and thank-you line.
+function CertificatesEditor({ value, onChange }) {
+  const style = value.signStyle || 'typed'
+  const field = (key, label, placeholder, max) => (
+    <div>
+      <label className="label">{label}</label>
+      <input
+        className="input"
+        value={value[key] || ''}
+        maxLength={max}
+        onChange={(e) => onChange({ [key]: e.target.value })}
+        placeholder={placeholder}
+      />
+    </div>
+  )
+  const name = value.signerName?.trim() || 'Your school’s name'
+  const title = value.signerTitle?.trim() || 'Adviser'
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {field('signerName', 'Signed by', 'e.g. Dr. Maria Lopez (blank: your school’s name)', 80)}
+        {field('signerTitle', 'Their title', 'e.g. Principal (blank: Adviser)', 60)}
+      </div>
+      <div>
+        <label className="label">How it’s signed</label>
+        <div className="space-y-2">
+          {SIGN_STYLE_OPTIONS.map((opt) => (
+            <label key={opt.value} className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="certificate-sign-style"
+                className="mt-1"
+                checked={style === opt.value}
+                onChange={() => onChange({ signStyle: opt.value })}
+              />
+              <span>
+                {opt.label}
+                <span className="block text-xs text-earth-400">{opt.help}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+      {style === 'drawn' && (
+        <SignaturePad value={value.signatureImage || ''} onChange={(img) => onChange({ signatureImage: img })} />
+      )}
+      {field('title', 'Certificate heading', 'Blank: your school’s name', 80)}
+      {field('note', 'Closing line', 'Thank you for serving your community.', 200)}
+      <div className="rounded-xl border border-earth-200 dark:border-earth-700 bg-white p-3 text-center text-xs text-earth-500">
+        {style === 'typed' && <p className="font-serif italic text-base text-brand-700">{name}</p>}
+        {style === 'drawn' && (value.signatureImage
+          ? <img src={value.signatureImage} alt="" className="mx-auto h-12 w-auto" />
+          : <p className="h-12 grid place-items-center">Draw the signature above</p>)}
+        {style === 'blank' && <div className="h-12" />}
+        <p className="mx-auto mt-1 w-56 border-t border-earth-400 pt-1">{style === 'typed' ? title : `${name}, ${title}`}</p>
       </div>
     </>
   )

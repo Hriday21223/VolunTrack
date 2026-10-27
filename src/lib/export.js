@@ -192,11 +192,18 @@ export function exportLogsCSV(logs) {
 }
 
 /** Printable certificate — opens the browser print dialog. */
-export function printCertificate({ user, totalHours, goalReached }) {
+// `certificate` is the school's certificates settings (server/requirements.js):
+// a student whose school named a signer gets that signature, not VolunTrack's.
+export function printCertificate({ user, totalHours, goalReached, certificate }) {
   const w = window.open('', '_blank', 'width=820,height=1000')
   if (!w) return
   const name = user?.name || 'Volunteer'
   const school = user?.school || ''
+  const style = certificate?.signStyle || 'typed'
+  const signer = certificate?.signerName?.trim()
+  const ownSigner = Boolean(signer) || style !== 'typed'
+  const signerName = signer || (ownSigner ? school : 'VolunTrack Org')
+  const signerTitle = ownSigner ? (certificate.signerTitle?.trim() || 'Adviser') : 'VolunTrack'
   const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   w.document.write(`
     <html><head><title>Certificate of Service</title>
@@ -209,11 +216,13 @@ export function printCertificate({ user, totalHours, goalReached }) {
       .name { font-size:42px; color:#214327; margin:24px 0 8px; font-weight:700; }
       .body { color:#3a3024; font-size:15px; line-height:1.6; margin-top:16px; }
       .hours { font-size:28px; color:#3f8344; margin:24px 0; font-weight:700; }
-      .sig { margin-top:48px; display:flex; justify-content:space-between; color:#6c502d; font-size:13px; }
+      .sig { margin-top:48px; display:flex; justify-content:space-between; align-items:flex-end; color:#6c502d; font-size:13px; }
       .sig div { text-align:center; }
       .sig-value { margin-bottom:6px; white-space:nowrap; }
       .sig-line { border-top:1px solid #6c502d; padding-top:6px; width:200px; }
       .signature { font-family:'Brush Script MT','Segoe Script',cursive; font-size:20px; color:#214327; }
+      .sig-img { display:block; height:48px; width:auto; margin:0 auto 2px; }
+      .sig-blank { height:42px; }
     </style></head>
     <body>
       <div class="frame">
@@ -235,10 +244,7 @@ export function printCertificate({ user, totalHours, goalReached }) {
             <div class="sig-value">${escapeHtml(issuedDate)}</div>
             <div class="sig-line">Date</div>
           </div>
-          <div>
-            <div class="sig-value signature">VolunTrack Org</div>
-            <div class="sig-line">VolunTrack</div>
-          </div>
+          ${signatureBlock({ name: signerName, title: signerTitle, style, image: certificate?.signatureImage })}
         </div>
       </div>
       <script>window.onload=()=>window.print();</script>
@@ -250,24 +256,30 @@ export function printCertificate({ user, totalHours, goalReached }) {
 // One certificate per page for every student who met the school's requirement
 // (#541), signed by the school, for an awards night. Same look as
 // printCertificate; opens the print dialog (save as PDF from there).
-export function printSchoolCertificates({ schoolName, students }) {
+// `certificate` is the school's certificates settings (server/requirements.js);
+// each blank field keeps the original wording.
+export function printSchoolCertificates({ schoolName, students, certificate }) {
   const w = window.open('', '_blank', 'width=820,height=1000')
   if (!w) return false
   const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const logo = `${window.location.origin}${import.meta.env.BASE_URL}logo.png`
+  const heading = certificate?.title?.trim() || schoolName || 'VolunTrack'
+  const signerName = certificate?.signerName?.trim() || schoolName || ''
+  const signerTitle = certificate?.signerTitle?.trim() || 'Adviser'
+  const note = certificate?.note?.trim() || 'Thank you for serving your community.'
   const pages = students.map((s) => `
       <section class="page"><div class="frame">
         <img src="${logo}" alt="" style="width:64px;height:auto;margin:0 auto 12px;display:block;" />
         <div class="sub">Certificate of Service</div>
-        <h1>${escapeHtml(schoolName || 'VolunTrack')}</h1>
+        <h1>${escapeHtml(heading)}</h1>
         <div class="body">This certifies that</div>
         <div class="name">${escapeHtml(s.name || 'Student')}</div>
         <div class="body">has completed</div>
         <div class="hours">${hoursWords(s.hours)} of volunteer service</div>
-        <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. Thank you for serving your community.</div>
+        <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. ${escapeHtml(note)}</div>
         <div class="sig">
           <div><div class="sig-value">${escapeHtml(issuedDate)}</div><div class="sig-line">Date</div></div>
-          <div><div class="sig-value signature">${escapeHtml(schoolName || '')}</div><div class="sig-line">Adviser</div></div>
+          ${signatureBlock({ name: signerName, title: signerTitle, style: certificate?.signStyle || 'typed', image: certificate?.signatureImage })}
         </div>
       </div></section>`).join('')
   w.document.write(`
@@ -283,11 +295,13 @@ export function printSchoolCertificates({ schoolName, students }) {
       .name { font-size:40px; color:#214327; margin:20px 0 8px; font-weight:700; }
       .body { color:#3a3024; font-size:15px; line-height:1.6; margin-top:12px; }
       .hours { font-size:26px; color:#3f8344; margin:18px 0; font-weight:700; }
-      .sig { margin-top:40px; display:flex; justify-content:space-between; color:#6c502d; font-size:13px; }
+      .sig { margin-top:40px; display:flex; justify-content:space-between; align-items:flex-end; color:#6c502d; font-size:13px; }
       .sig div { text-align:center; }
       .sig-value { margin-bottom:6px; white-space:nowrap; }
       .sig-line { border-top:1px solid #6c502d; padding-top:6px; width:220px; }
       .signature { font-family:'Brush Script MT','Segoe Script',cursive; font-size:20px; color:#214327; }
+      .sig-img { display:block; height:48px; width:auto; margin:0 auto 2px; }
+      .sig-blank { height:42px; }
     </style></head>
     <body>${pages}<script>window.onload=()=>window.print();</script></body></html>
   `)
@@ -299,6 +313,18 @@ export function printSchoolCertificates({ schoolName, students }) {
 function hoursWords(h) {
   const n = Math.round((Number(h) || 0) * 100) / 100
   return `${n.toLocaleString('en-US')} hour${n === 1 ? '' : 's'}`
+}
+
+// The signer's half of a certificate's signature row, per the school's
+// certificates settings: a typed name, a drawn signature, or a blank line to
+// sign by hand. Drawn and blank print the name and title under the line.
+function signatureBlock({ name, title, style, image }) {
+  const caption = escapeHtml([style === 'typed' ? '' : name, title].filter(Boolean).join(', '))
+  if (style === 'drawn' && /^data:image\/png;base64,/.test(image || '')) {
+    return `<div><img class="sig-img" src="${image}" alt="" /><div class="sig-line">${caption}</div></div>`
+  }
+  if (style === 'blank') return `<div><div class="sig-value sig-blank">&nbsp;</div><div class="sig-line">${caption}</div></div>`
+  return `<div><div class="sig-value signature">${escapeHtml(name)}</div><div class="sig-line">${escapeHtml(title)}</div></div>`
 }
 
 function escapeHtml(s) {
