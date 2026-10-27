@@ -1,6 +1,8 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, ExternalLink, Megaphone, Flag } from 'lucide-react'
+import { UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, ExternalLink, Megaphone, Flag } from 'lucide-react'
+import HandoverForm from '@/components/HandoverForm.jsx'
+import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import RegistrationCodesPanel from '@/components/RegistrationCodesPanel.jsx'
@@ -267,6 +269,7 @@ export default function Admin() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [sendingInvite, setSendingInvite] = useState(false)
   const [organizations, setOrganizations] = useState([])
+  const [handoverOrgId, setHandoverOrgId] = useState(null)
   const [loadingOrganizations, setLoadingOrganizations] = useState(false)
   const [incidents, setIncidents] = useState([])
   // The tab badge is a call to action, so resolved history must not count.
@@ -1843,11 +1846,22 @@ export default function Admin() {
                     <button onClick={() => openHistory('organization', org)} className="text-earth-400 hover:text-earth-300 p-2" title="Payment history">
                       <History className="w-4 h-4" />
                     </button>
+                    <button onClick={() => setHandoverOrgId(handoverOrgId === org.id ? null : org.id)} className="text-brand-400 hover:text-brand-300 p-2" title="New main contact">
+                      <UserCog className="w-4 h-4" />
+                    </button>
                     <button onClick={() => deleteOrganization(org.id, org.name)} className="text-red-400 hover:text-red-300 p-2" title="Delete organization">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
+                {handoverOrgId === org.id && (
+                  <div className="mt-3 border-t border-earth-200 dark:border-white/10 pt-3">
+                    <p className="text-xs text-earth-500 mb-2">
+                      For when the organization’s person has left. The new contact gets an email to accept; the current login is removed from {org.name} and signed out.
+                    </p>
+                    <HandoverForm path={HANDOVER_ENDPOINTS.adminOrg(org.id)} needsPassword={false} place={org.name} role="contact" onCancel={() => setHandoverOrgId(null)} />
+                  </div>
+                )}
               </Card>
             ))}
           </div>

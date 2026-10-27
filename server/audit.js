@@ -24,6 +24,10 @@ export const AUDIT = {
   STUDENT_LIST_READ: 'student.list_read',
   STAFF_ADDED: 'staff.added',
   STAFF_REMOVED: 'staff.removed',
+  // The main account of a school or organization was offered to, or taken
+  // over by, a new person (#550).
+  HANDOVER_INVITED: 'account.handover_invited',
+  HANDOVER_ACCEPTED: 'account.handover_accepted',
   HOURS_REVIEWED: 'hours.reviewed',
   // An adviser added approved hours for several students at once (#539).
   HOURS_ADDED_FOR_GROUP: 'hours.added_for_group',

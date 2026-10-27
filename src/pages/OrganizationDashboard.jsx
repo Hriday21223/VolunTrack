@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList } from 'lucide-react'
+import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog } from 'lucide-react'
+import HandoverForm from '@/components/HandoverForm.jsx'
+import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -36,6 +38,8 @@ const ORG_TOUR_STEPS = [
 export default function OrganizationDashboard() {
   const { user } = useAuth()
   const [tab, setTab] = useState('schools')
+  // Which school's "New principal" form is open (#550).
+  const [handoverSchoolId, setHandoverSchoolId] = useState(null)
   const [schools, setSchools] = useState([])
   const [loadingSchools, setLoadingSchools] = useState(true)
   const [invites, setInvites] = useState([])
@@ -285,7 +289,22 @@ export default function OrganizationDashboard() {
                       </span>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm ml-auto shrink-0"
+                    onClick={() => setHandoverSchoolId(handoverSchoolId === s.id ? null : s.id)}
+                  >
+                    <UserCog className="w-3.5 h-3.5 mr-1" /> New principal
+                  </button>
                 </div>
+                {handoverSchoolId === s.id && (
+                  <div className="mt-3 border-t border-earth-200 dark:border-white/10 pt-3">
+                    <p className="text-xs text-earth-500 mb-2">
+                      The new principal gets an email to accept and becomes {s.name}’s main admin. The current one stays as a co-admin and is signed out.
+                    </p>
+                    <HandoverForm path={HANDOVER_ENDPOINTS.orgSchool(s.id)} place={s.name} onCancel={() => setHandoverSchoolId(null)} />
+                  </div>
+                )}
               </Card>
             ))}
           </div>
@@ -339,6 +358,16 @@ export default function OrganizationDashboard() {
           </div>
         )
       ) : null}
+
+      {tab === 'schools' && !loadingSchools && (
+        <Card className="mt-4">
+          <h3 className="font-semibold mb-1 flex items-center gap-2"><UserCog className="w-4 h-4 text-brand-600" /> Someone new running the organization?</h3>
+          <p className="text-sm text-earth-500 mb-3">
+            Hand this organization’s account to them. They get an email to accept and set their own password. When they do, this login is removed from the organization and signed out.
+          </p>
+          <HandoverForm path={HANDOVER_ENDPOINTS.org()} role="director" />
+        </Card>
+      )}
 
       {showInviteModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>

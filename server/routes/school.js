@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
+import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
@@ -1393,6 +1394,30 @@ router.post('/staff', limiter, requireDb, requireAuth('school'), requirePaidScho
   } catch (error) {
     console.error('add school staff failed:', error)
     return res.status(500).json({ error: 'Could not add co-admin.' })
+  }
+})
+
+// Hand the school's main account to a new principal (#550), or promote a
+// co-admin to it ({ staffId }). The main admin confirms their password; the new
+// person accepts from the emailed link (server/handover.js).
+router.post('/handover', limiter, requireDb, requireAuth('school'), async (req, res) => {
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    await confirmPassword(req.auth.sub, req.body?.password)
+    let { name, email } = req.body || {}
+    if (req.body?.staffId) {
+      const { rows } = await query(
+        `SELECT name, email FROM users WHERE id = $1 AND school_id = $2 AND role = 'school_staff'`,
+        [String(req.body.staffId), schoolId],
+      )
+      if (!rows[0]) return res.status(404).json({ error: 'Co-admin not found.' })
+      ;({ name, email } = rows[0])
+    }
+    return res.json(await createHandoverInvite(req, { kind: 'school', targetId: schoolId, name, email }))
+  } catch (error) {
+    return sendHandoverError(res, error, 'Could not send the handover invite.')
   }
 })
 

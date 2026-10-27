@@ -7,6 +7,8 @@ Disallow: /sync-login
 Disallow: /verify-hours
 Disallow: /join/
 Disallow: /invite/
+Disallow: /handover
+Disallow: /sign-certificate/
 Disallow: /parent
 Disallow: /log
 Disallow: /calendar
@@ -44,6 +46,8 @@ Disallow: /sync-login
 Disallow: /verify-hours
 Disallow: /join/
 Disallow: /invite/
+Disallow: /handover
+Disallow: /sign-certificate/
 Disallow: /parent
 Disallow: /log
 Disallow: /calendar

@@ -53,6 +53,19 @@ export function AuthProvider({ children }) {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     try {
       const r = await fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      // The server no longer accepts this login: it expired, or the account
+      // was signed out everywhere (a password change, or handing a school to
+      // a new principal, #550). Sign out here too rather than show a
+      // dashboard whose every request now fails.
+      if (r.status === 401) {
+        remove(SESSION_KEY)
+        localStorage.removeItem('voluntrack:auth_token')
+        clearUserData()
+        syncNativeReminders([])
+        clearWidget()
+        setUser(null)
+        return null
+      }
       if (!r.ok) return null
       const data = await r.json()
       if (data?.user) {
