@@ -3,11 +3,12 @@
 // shape and server/policy.js for the lookups.
 
 import express from 'express'
+import { createHash, randomBytes } from 'node:crypto'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { recordAudit, AUDIT } from '../audit.js'
-import { normalizePolicy, goalHoursFor, SECTIONS } from '../requirements.js'
+import { normalizePolicy, goalHoursFor, SECTIONS, isSignaturePng } from '../requirements.js'
 import { policyForUser, policyForSchool } from '../policy.js'
 
 const router = express.Router()
@@ -169,6 +170,103 @@ router.put('/organization', limiter, requireDb, requireAuth('org'), async (req, 
   } catch (error) {
     console.error('org requirements save failed:', error)
     return res.status(500).json({ error: 'Could not save requirements.' })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Signing a certificate on a phone (#548)
+//
+// Drawing a signature with a mouse is awkward, so the Certificates settings
+// show a QR code for a one-time link. Whoever signs (often the principal)
+// opens it on their phone, draws with a finger, and the settings page polls
+// for the result. Nothing is saved to the policy until the admin presses
+// Save, so a stray signature on a leaked link changes nothing by itself.
+// ---------------------------------------------------------------------------
+
+const SIGN_LINK_MINUTES = 15
+const hashToken = (token) => createHash('sha256').update(String(token)).digest('hex')
+
+const signLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please try again later.' },
+})
+
+router.post('/certificate-sign', limiter, requireDb, requireAuth('school', 'org'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT COALESCE(s.name, o.name) AS tenant_name
+         FROM users u
+         LEFT JOIN schools s ON s.id = u.school_id AND u.role = 'school'
+         LEFT JOIN organizations o ON o.id = u.organization_id AND u.role = 'org'
+        WHERE u.id = $1`,
+      [req.auth.sub],
+    )
+    await query(`DELETE FROM certificate_sign_requests WHERE created_by = $1 OR expires_at < now() - interval '1 day'`, [req.auth.sub])
+    const token = randomBytes(24).toString('base64url')
+    const signerName = typeof req.body?.signerName === 'string' ? req.body.signerName.trim().slice(0, 80) : ''
+    const { rows: created } = await query(
+      `INSERT INTO certificate_sign_requests (token_hash, created_by, signer_name, tenant_name, expires_at)
+       VALUES ($1, $2, $3, $4, now() + ($5 || ' minutes')::interval)
+       RETURNING expires_at`,
+      [hashToken(token), req.auth.sub, signerName || null, rows[0]?.tenant_name || null, String(SIGN_LINK_MINUTES)],
+    )
+    return res.json({ token, expiresAt: created[0].expires_at })
+  } catch (error) {
+    console.error('certificate sign link failed:', error)
+    return res.status(500).json({ error: 'Could not make a signing link.' })
+  }
+})
+
+// The settings page asking whether the phone has signed yet.
+router.get('/certificate-sign/:token/status', limiter, requireDb, requireAuth('school', 'org'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT signature, expires_at < now() AS expired FROM certificate_sign_requests WHERE token_hash = $1 AND created_by = $2`,
+      [hashToken(req.params.token), req.auth.sub],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Signing link not found.' })
+    return res.json({ signed: Boolean(rows[0].signature), signatureImage: rows[0].signature || '', expired: rows[0].expired })
+  } catch (error) {
+    console.error('certificate sign status failed:', error)
+    return res.status(500).json({ error: 'Could not check the signature.' })
+  }
+})
+
+// The phone: who is being asked to sign, for whom. No sign-in; the link is the key.
+router.get('/certificate-sign/:token', signLimiter, requireDb, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT signer_name, tenant_name, signature IS NOT NULL AS signed, expires_at < now() AS expired
+         FROM certificate_sign_requests WHERE token_hash = $1`,
+      [hashToken(req.params.token)],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'This signing link isn’t valid. Make a new QR code on the computer.' })
+    const r = rows[0]
+    return res.json({ signerName: r.signer_name || '', tenantName: r.tenant_name || '', signed: r.signed, expired: r.expired })
+  } catch (error) {
+    console.error('certificate sign lookup failed:', error)
+    return res.status(500).json({ error: 'Could not open the signing link.' })
+  }
+})
+
+router.post('/certificate-sign/:token', signLimiter, requireDb, async (req, res) => {
+  try {
+    const image = req.body?.signatureImage
+    if (!isSignaturePng(image)) return res.status(400).json({ error: 'Draw your signature first.' })
+    const { rows } = await query(
+      `UPDATE certificate_sign_requests SET signature = $2, signed_at = now()
+        WHERE token_hash = $1 AND signature IS NULL AND expires_at > now()
+        RETURNING 1`,
+      [hashToken(req.params.token), image],
+    )
+    if (rows.length === 0) return res.status(410).json({ error: 'This signing link has expired or was already used. Make a new QR code on the computer.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('certificate sign failed:', error)
+    return res.status(500).json({ error: 'Could not save the signature.' })
   }
 })
 

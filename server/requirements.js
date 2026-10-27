@@ -260,13 +260,18 @@ function normalizeSignatures(input) {
 const SIGNATURE_PNG = /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/
 const MAX_SIGNATURE_CHARS = 100_000
 
+/** A signature drawn on SignaturePad: a PNG data URL of sane size. */
+export function isSignaturePng(value) {
+  return typeof value === 'string' && value.length <= MAX_SIGNATURE_CHARS && SIGNATURE_PNG.test(value)
+}
+
 function normalizeCertificates(input) {
   const raw = input && typeof input === 'object' ? input : {}
   const signStyle = CERTIFICATE_SIGN_STYLES.includes(raw.signStyle) ? raw.signStyle : 'typed'
   const image = typeof raw.signatureImage === 'string' ? raw.signatureImage : ''
   return {
     signStyle,
-    signatureImage: signStyle === 'drawn' && image.length <= MAX_SIGNATURE_CHARS && SIGNATURE_PNG.test(image) ? image : '',
+    signatureImage: signStyle === 'drawn' && isSignaturePng(image) ? image : '',
     signerName: text(raw.signerName, 80),
     signerTitle: text(raw.signerTitle, 60),
     title: text(raw.title, 80),
