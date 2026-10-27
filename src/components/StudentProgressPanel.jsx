@@ -102,7 +102,7 @@ export default function StudentProgressPanel({ onSetRequirement }) {
             className="btn-secondary btn-sm"
             onClick={() => {
               const done = withGoal.filter((s) => s.remaining <= 0).sort((a, b) => String(a.name).localeCompare(String(b.name)))
-              if (!printSchoolCertificates({ schoolName: data.schoolName, students: done })) window.alert('Allow pop-ups for this site to print the certificates.')
+              if (!printSchoolCertificates({ schoolName: data.schoolName, students: done, certificate: data.certificate })) window.alert('Allow pop-ups for this site to print the certificates.')
             }}
           >
             Print certificates ({withGoal.length - behind.length})

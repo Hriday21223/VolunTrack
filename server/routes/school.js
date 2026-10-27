@@ -477,7 +477,7 @@ export async function schoolProgress(schoolId) {
       consentPending: r.parental_consent_status === 'pending',
     }
   })
-  return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, students }
+  return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, students }
 }
 
 router.get('/students/progress', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
@@ -487,7 +487,7 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
     const progress = await schoolProgress(schoolId)
     recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: progress.students.length } })
-    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
+    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, certificate: progress.certificate, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })

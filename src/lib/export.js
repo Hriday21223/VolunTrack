@@ -192,11 +192,16 @@ export function exportLogsCSV(logs) {
 }
 
 /** Printable certificate — opens the browser print dialog. */
-export function printCertificate({ user, totalHours, goalReached }) {
+// `certificate` is the school's certificates settings (server/requirements.js):
+// a student whose school named a signer gets that signature, not VolunTrack's.
+export function printCertificate({ user, totalHours, goalReached, certificate }) {
   const w = window.open('', '_blank', 'width=820,height=1000')
   if (!w) return
   const name = user?.name || 'Volunteer'
   const school = user?.school || ''
+  const signer = certificate?.signerName?.trim()
+  const signerName = signer || 'VolunTrack Org'
+  const signerTitle = signer ? (certificate.signerTitle?.trim() || 'Adviser') : 'VolunTrack'
   const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   w.document.write(`
     <html><head><title>Certificate of Service</title>
@@ -236,8 +241,8 @@ export function printCertificate({ user, totalHours, goalReached }) {
             <div class="sig-line">Date</div>
           </div>
           <div>
-            <div class="sig-value signature">VolunTrack Org</div>
-            <div class="sig-line">VolunTrack</div>
+            <div class="sig-value signature">${escapeHtml(signerName)}</div>
+            <div class="sig-line">${escapeHtml(signerTitle)}</div>
           </div>
         </div>
       </div>
@@ -250,24 +255,30 @@ export function printCertificate({ user, totalHours, goalReached }) {
 // One certificate per page for every student who met the school's requirement
 // (#541), signed by the school, for an awards night. Same look as
 // printCertificate; opens the print dialog (save as PDF from there).
-export function printSchoolCertificates({ schoolName, students }) {
+// `certificate` is the school's certificates settings (server/requirements.js);
+// each blank field keeps the original wording.
+export function printSchoolCertificates({ schoolName, students, certificate }) {
   const w = window.open('', '_blank', 'width=820,height=1000')
   if (!w) return false
   const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const logo = `${window.location.origin}${import.meta.env.BASE_URL}logo.png`
+  const heading = certificate?.title?.trim() || schoolName || 'VolunTrack'
+  const signerName = certificate?.signerName?.trim() || schoolName || ''
+  const signerTitle = certificate?.signerTitle?.trim() || 'Adviser'
+  const note = certificate?.note?.trim() || 'Thank you for serving your community.'
   const pages = students.map((s) => `
       <section class="page"><div class="frame">
         <img src="${logo}" alt="" style="width:64px;height:auto;margin:0 auto 12px;display:block;" />
         <div class="sub">Certificate of Service</div>
-        <h1>${escapeHtml(schoolName || 'VolunTrack')}</h1>
+        <h1>${escapeHtml(heading)}</h1>
         <div class="body">This certifies that</div>
         <div class="name">${escapeHtml(s.name || 'Student')}</div>
         <div class="body">has completed</div>
         <div class="hours">${hoursWords(s.hours)} of volunteer service</div>
-        <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. Thank you for serving your community.</div>
+        <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. ${escapeHtml(note)}</div>
         <div class="sig">
           <div><div class="sig-value">${escapeHtml(issuedDate)}</div><div class="sig-line">Date</div></div>
-          <div><div class="sig-value signature">${escapeHtml(schoolName || '')}</div><div class="sig-line">Adviser</div></div>
+          <div><div class="sig-value signature">${escapeHtml(signerName)}</div><div class="sig-line">${escapeHtml(signerTitle)}</div></div>
         </div>
       </div></section>`).join('')
   w.document.write(`

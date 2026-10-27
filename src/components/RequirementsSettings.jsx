@@ -25,6 +25,7 @@ const SECTION_LABELS = {
   goals: 'Service-hour requirement',
   signIn: 'Sign-in',
   signatures: 'Signatures',
+  certificates: 'Certificates',
 }
 
 const SECTION_HELP = {
@@ -33,6 +34,7 @@ const SECTION_HELP = {
   goals: 'The total each student is working toward. Shown on their dashboard.',
   signIn: 'How students linked to you are allowed to get into their account.',
   signatures: 'Whether each entry has to be signed, and by whom — or carry your own form.',
+  certificates: 'Who signs the certificates you print, and what they say.',
 }
 
 const FIELD_TYPE_LABELS = {
@@ -57,7 +59,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
   const [meta, setMeta] = useState({})
   // null for a section means "inherit" — kept distinct from an empty object,
   // which is a deliberate override that happens to turn everything off.
-  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null, signatures: null })
+  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null, signatures: null, certificates: null })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,6 +74,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
         goals: own.goals ? clone(own.goals) : null,
         signIn: own.signIn ? clone(own.signIn) : null,
         signatures: own.signatures ? clone(own.signatures) : null,
+        certificates: own.certificates ? clone(own.certificates) : null,
       })
     } catch (e) {
       setError(e.message)
@@ -171,6 +174,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
               {section === 'goals' && <GoalsEditor value={sections.goals} onChange={(c) => patch('goals', c)} />}
               {section === 'signIn' && <SignInEditor value={sections.signIn} onChange={(c) => patch('signIn', c)} />}
               {section === 'signatures' && <SignaturesEditor value={sections.signatures} onChange={(c) => patch('signatures', c)} />}
+              {section === 'certificates' && <CertificatesEditor value={sections.certificates} onChange={(c) => patch('certificates', c)} />}
               {section === 'customFields' && (
                 <CustomFieldsEditor
                   value={sections.customFields}
@@ -368,6 +372,37 @@ function SignInEditor({ value, onChange }) {
           })}
           placeholder="school.edu, students.school.edu"
         />
+      </div>
+    </>
+  )
+}
+
+// Blank fields fall back when printing (src/lib/export.js): the school's name
+// signs as "Adviser", under the usual heading and thank-you line.
+function CertificatesEditor({ value, onChange }) {
+  const field = (key, label, placeholder, max) => (
+    <div>
+      <label className="label">{label}</label>
+      <input
+        className="input"
+        value={value[key] || ''}
+        maxLength={max}
+        onChange={(e) => onChange({ [key]: e.target.value })}
+        placeholder={placeholder}
+      />
+    </div>
+  )
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {field('signerName', 'Signed by', 'e.g. Dr. Maria Lopez (blank: your school’s name)', 80)}
+        {field('signerTitle', 'Their title', 'e.g. Principal (blank: Adviser)', 60)}
+      </div>
+      {field('title', 'Certificate heading', 'Blank: your school’s name', 80)}
+      {field('note', 'Closing line', 'Thank you for serving your community.', 200)}
+      <div className="rounded-xl border border-earth-200 dark:border-earth-700 p-3 text-center text-xs text-earth-500 dark:text-earth-400">
+        <p className="font-serif italic text-base text-brand-700 dark:text-brand-300">{value.signerName?.trim() || 'Your school’s name'}</p>
+        <p className="mx-auto mt-1 w-48 border-t border-earth-400 pt-1">{value.signerTitle?.trim() || 'Adviser'}</p>
       </div>
     </>
   )
