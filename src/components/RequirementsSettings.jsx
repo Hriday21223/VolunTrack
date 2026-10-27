@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ClipboardList, Plus, Trash2, RotateCcw } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
+import SignaturePad from '@/components/SignaturePad.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import {
   DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, classifyFormUrl,
@@ -377,9 +378,16 @@ function SignInEditor({ value, onChange }) {
   )
 }
 
+const SIGN_STYLE_OPTIONS = [
+  { value: 'typed', label: 'Typed name', help: 'The signer’s name in a handwriting-style font.' },
+  { value: 'drawn', label: 'Draw a signature', help: 'Sign once below; it prints on every certificate.' },
+  { value: 'blank', label: 'Sign by hand', help: 'Leaves a blank line to sign each printed copy with a pen.' },
+]
+
 // Blank fields fall back when printing (src/lib/export.js): the school's name
 // signs as "Adviser", under the usual heading and thank-you line.
 function CertificatesEditor({ value, onChange }) {
+  const style = value.signStyle || 'typed'
   const field = (key, label, placeholder, max) => (
     <div>
       <label className="label">{label}</label>
@@ -392,17 +400,46 @@ function CertificatesEditor({ value, onChange }) {
       />
     </div>
   )
+  const name = value.signerName?.trim() || 'Your school’s name'
+  const title = value.signerTitle?.trim() || 'Adviser'
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
         {field('signerName', 'Signed by', 'e.g. Dr. Maria Lopez (blank: your school’s name)', 80)}
         {field('signerTitle', 'Their title', 'e.g. Principal (blank: Adviser)', 60)}
       </div>
+      <div>
+        <label className="label">How it’s signed</label>
+        <div className="space-y-2">
+          {SIGN_STYLE_OPTIONS.map((opt) => (
+            <label key={opt.value} className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="certificate-sign-style"
+                className="mt-1"
+                checked={style === opt.value}
+                onChange={() => onChange({ signStyle: opt.value })}
+              />
+              <span>
+                {opt.label}
+                <span className="block text-xs text-earth-400">{opt.help}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+      {style === 'drawn' && (
+        <SignaturePad value={value.signatureImage || ''} onChange={(img) => onChange({ signatureImage: img })} />
+      )}
       {field('title', 'Certificate heading', 'Blank: your school’s name', 80)}
       {field('note', 'Closing line', 'Thank you for serving your community.', 200)}
-      <div className="rounded-xl border border-earth-200 dark:border-earth-700 p-3 text-center text-xs text-earth-500 dark:text-earth-400">
-        <p className="font-serif italic text-base text-brand-700 dark:text-brand-300">{value.signerName?.trim() || 'Your school’s name'}</p>
-        <p className="mx-auto mt-1 w-48 border-t border-earth-400 pt-1">{value.signerTitle?.trim() || 'Adviser'}</p>
+      <div className="rounded-xl border border-earth-200 dark:border-earth-700 bg-white p-3 text-center text-xs text-earth-500">
+        {style === 'typed' && <p className="font-serif italic text-base text-brand-700">{name}</p>}
+        {style === 'drawn' && (value.signatureImage
+          ? <img src={value.signatureImage} alt="" className="mx-auto h-12 w-auto" />
+          : <p className="h-12 grid place-items-center">Draw the signature above</p>)}
+        {style === 'blank' && <div className="h-12" />}
+        <p className="mx-auto mt-1 w-56 border-t border-earth-400 pt-1">{style === 'typed' ? title : `${name}, ${title}`}</p>
       </div>
     </>
   )

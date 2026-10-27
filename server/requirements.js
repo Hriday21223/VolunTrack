@@ -68,7 +68,14 @@ export const DEFAULT_SIGNATURES = {
 // Blank fields fall back when printing: the signer to the school's name, the
 // title to "Adviser", the heading to the school's name, the note to the usual
 // thank-you line. Often it's the principal or a counselor who signs, not the adviser.
+// signStyle  'typed' — the signer's name in a script font (the default)
+//            'drawn' — a signature drawn once on screen (signatureImage, a PNG)
+//            'blank' — an empty line, to sign each printed copy with a pen
+export const CERTIFICATE_SIGN_STYLES = ['typed', 'drawn', 'blank']
+
 export const DEFAULT_CERTIFICATES = {
+  signStyle: 'typed',
+  signatureImage: '',
   signerName: '',
   signerTitle: '',
   title: '',
@@ -248,9 +255,18 @@ function normalizeSignatures(input) {
   }
 }
 
+// SignaturePad exports a 400×150 PNG, a few KB; the cap keeps a pasted photo
+// out of a policy every student downloads.
+const SIGNATURE_PNG = /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/
+const MAX_SIGNATURE_CHARS = 100_000
+
 function normalizeCertificates(input) {
   const raw = input && typeof input === 'object' ? input : {}
+  const signStyle = CERTIFICATE_SIGN_STYLES.includes(raw.signStyle) ? raw.signStyle : 'typed'
+  const image = typeof raw.signatureImage === 'string' ? raw.signatureImage : ''
   return {
+    signStyle,
+    signatureImage: signStyle === 'drawn' && image.length <= MAX_SIGNATURE_CHARS && SIGNATURE_PNG.test(image) ? image : '',
     signerName: text(raw.signerName, 80),
     signerTitle: text(raw.signerTitle, 60),
     title: text(raw.title, 80),

@@ -199,9 +199,11 @@ export function printCertificate({ user, totalHours, goalReached, certificate })
   if (!w) return
   const name = user?.name || 'Volunteer'
   const school = user?.school || ''
+  const style = certificate?.signStyle || 'typed'
   const signer = certificate?.signerName?.trim()
-  const signerName = signer || 'VolunTrack Org'
-  const signerTitle = signer ? (certificate.signerTitle?.trim() || 'Adviser') : 'VolunTrack'
+  const ownSigner = Boolean(signer) || style !== 'typed'
+  const signerName = signer || (ownSigner ? school : 'VolunTrack Org')
+  const signerTitle = ownSigner ? (certificate.signerTitle?.trim() || 'Adviser') : 'VolunTrack'
   const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   w.document.write(`
     <html><head><title>Certificate of Service</title>
@@ -214,11 +216,13 @@ export function printCertificate({ user, totalHours, goalReached, certificate })
       .name { font-size:42px; color:#214327; margin:24px 0 8px; font-weight:700; }
       .body { color:#3a3024; font-size:15px; line-height:1.6; margin-top:16px; }
       .hours { font-size:28px; color:#3f8344; margin:24px 0; font-weight:700; }
-      .sig { margin-top:48px; display:flex; justify-content:space-between; color:#6c502d; font-size:13px; }
+      .sig { margin-top:48px; display:flex; justify-content:space-between; align-items:flex-end; color:#6c502d; font-size:13px; }
       .sig div { text-align:center; }
       .sig-value { margin-bottom:6px; white-space:nowrap; }
       .sig-line { border-top:1px solid #6c502d; padding-top:6px; width:200px; }
       .signature { font-family:'Brush Script MT','Segoe Script',cursive; font-size:20px; color:#214327; }
+      .sig-img { display:block; height:48px; width:auto; margin:0 auto 2px; }
+      .sig-blank { height:42px; }
     </style></head>
     <body>
       <div class="frame">
@@ -240,10 +244,7 @@ export function printCertificate({ user, totalHours, goalReached, certificate })
             <div class="sig-value">${escapeHtml(issuedDate)}</div>
             <div class="sig-line">Date</div>
           </div>
-          <div>
-            <div class="sig-value signature">${escapeHtml(signerName)}</div>
-            <div class="sig-line">${escapeHtml(signerTitle)}</div>
-          </div>
+          ${signatureBlock({ name: signerName, title: signerTitle, style, image: certificate?.signatureImage })}
         </div>
       </div>
       <script>window.onload=()=>window.print();</script>
@@ -278,7 +279,7 @@ export function printSchoolCertificates({ schoolName, students, certificate }) {
         <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. ${escapeHtml(note)}</div>
         <div class="sig">
           <div><div class="sig-value">${escapeHtml(issuedDate)}</div><div class="sig-line">Date</div></div>
-          <div><div class="sig-value signature">${escapeHtml(signerName)}</div><div class="sig-line">${escapeHtml(signerTitle)}</div></div>
+          ${signatureBlock({ name: signerName, title: signerTitle, style: certificate?.signStyle || 'typed', image: certificate?.signatureImage })}
         </div>
       </div></section>`).join('')
   w.document.write(`
@@ -294,11 +295,13 @@ export function printSchoolCertificates({ schoolName, students, certificate }) {
       .name { font-size:40px; color:#214327; margin:20px 0 8px; font-weight:700; }
       .body { color:#3a3024; font-size:15px; line-height:1.6; margin-top:12px; }
       .hours { font-size:26px; color:#3f8344; margin:18px 0; font-weight:700; }
-      .sig { margin-top:40px; display:flex; justify-content:space-between; color:#6c502d; font-size:13px; }
+      .sig { margin-top:40px; display:flex; justify-content:space-between; align-items:flex-end; color:#6c502d; font-size:13px; }
       .sig div { text-align:center; }
       .sig-value { margin-bottom:6px; white-space:nowrap; }
       .sig-line { border-top:1px solid #6c502d; padding-top:6px; width:220px; }
       .signature { font-family:'Brush Script MT','Segoe Script',cursive; font-size:20px; color:#214327; }
+      .sig-img { display:block; height:48px; width:auto; margin:0 auto 2px; }
+      .sig-blank { height:42px; }
     </style></head>
     <body>${pages}<script>window.onload=()=>window.print();</script></body></html>
   `)
@@ -310,6 +313,18 @@ export function printSchoolCertificates({ schoolName, students, certificate }) {
 function hoursWords(h) {
   const n = Math.round((Number(h) || 0) * 100) / 100
   return `${n.toLocaleString('en-US')} hour${n === 1 ? '' : 's'}`
+}
+
+// The signer's half of a certificate's signature row, per the school's
+// certificates settings: a typed name, a drawn signature, or a blank line to
+// sign by hand. Drawn and blank print the name and title under the line.
+function signatureBlock({ name, title, style, image }) {
+  const caption = escapeHtml([style === 'typed' ? '' : name, title].filter(Boolean).join(', '))
+  if (style === 'drawn' && /^data:image\/png;base64,/.test(image || '')) {
+    return `<div><img class="sig-img" src="${image}" alt="" /><div class="sig-line">${caption}</div></div>`
+  }
+  if (style === 'blank') return `<div><div class="sig-value sig-blank">&nbsp;</div><div class="sig-line">${caption}</div></div>`
+  return `<div><div class="sig-value signature">${escapeHtml(name)}</div><div class="sig-line">${escapeHtml(title)}</div></div>`
 }
 
 function escapeHtml(s) {
