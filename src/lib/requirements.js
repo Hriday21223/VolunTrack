@@ -151,3 +151,19 @@ export async function saveOrgRequirements(policy) {
   if (!res.ok) throw new Error(body.error || 'Could not save requirements.')
   return body
 }
+
+// Signing a certificate on a phone (#548): a one-time link shown as a QR code.
+async function signCall(path, { method = 'GET', body, auth = true } = {}) {
+  const headers = auth ? authHeaders() : { 'Content-Type': 'application/json' }
+  if (!headers) throw new Error('Sign in again to continue.')
+  const res = await fetch(`${apiUrl}/requirements/certificate-sign${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
+  return data
+}
+
+export const startCertificateSign = (signerName) => signCall('', { method: 'POST', body: { signerName } })
+export const certificateSignStatus = (token) => signCall(`/${encodeURIComponent(token)}/status`)
+export const fetchCertificateSignRequest = (token) => signCall(`/${encodeURIComponent(token)}`, { auth: false })
+export const submitCertificateSign = (token, signatureImage) =>
+  signCall(`/${encodeURIComponent(token)}`, { method: 'POST', body: { signatureImage }, auth: false })

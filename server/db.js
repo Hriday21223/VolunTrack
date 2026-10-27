@@ -1064,6 +1064,25 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('task alert table migration failed:', error) }
 
+  // Signing a certificate on a phone (#548): the settings page shows a QR code
+  // for a one-time link; the phone posts the drawn signature here and the
+  // settings page picks it up. Only the token's hash is kept. Rows are short-
+  // lived and cleared when a new one is made.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS certificate_sign_requests (
+        token_hash  TEXT PRIMARY KEY,
+        created_by  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        signer_name TEXT,
+        tenant_name TEXT,
+        signature   TEXT,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at  TIMESTAMPTZ NOT NULL,
+        signed_at   TIMESTAMPTZ
+      )
+    `)
+  } catch (error) { console.error('certificate sign table migration failed:', error) }
+
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS adviser_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}

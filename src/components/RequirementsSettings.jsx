@@ -12,6 +12,7 @@ import { ClipboardList, Plus, Trash2, RotateCcw } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import SignaturePad from '@/components/SignaturePad.jsx'
+import PhoneSignQr from '@/components/PhoneSignQr.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import {
   DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, classifyFormUrl,
@@ -388,6 +389,11 @@ const SIGN_STYLE_OPTIONS = [
 // signs as "Adviser", under the usual heading and thank-you line.
 function CertificatesEditor({ value, onChange }) {
   const style = value.signStyle || 'typed'
+  const [padKey, setPadKey] = useState(0)
+  const onPhoneSigned = useCallback((img) => {
+    onChange({ signatureImage: img })
+    setPadKey((k) => k + 1)
+  }, [onChange])
   const field = (key, label, placeholder, max) => (
     <div>
       <label className="label">{label}</label>
@@ -429,7 +435,11 @@ function CertificatesEditor({ value, onChange }) {
         </div>
       </div>
       {style === 'drawn' && (
-        <SignaturePad value={value.signatureImage || ''} onChange={(img) => onChange({ signatureImage: img })} />
+        <>
+          {/* Remounted on a phone signature so the pad shows the new drawing. */}
+          <SignaturePad key={padKey} value={value.signatureImage || ''} onChange={(img) => onChange({ signatureImage: img })} />
+          <PhoneSignQr signerName={value.signerName || ''} onSigned={onPhoneSigned} />
+        </>
       )}
       {field('title', 'Certificate heading', 'Blank: your school’s name', 80)}
       {field('note', 'Closing line', 'Thank you for serving your community.', 200)}
