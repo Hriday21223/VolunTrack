@@ -29,6 +29,7 @@ import comebackRouter from './comeback.js'
 import progressRouter from './progress.js'
 import adviserDigestRouter from './adviserDigest.js'
 import interestsRouter from './interests.js'
+import handoverRouter from './handover.js'
 import taskPhotosRouter from './taskPhotos.js'
 import organizerProfileRouter from './organizerProfile.js'
 import weatherRouter from './weather.js'
@@ -281,6 +282,7 @@ const MOUNTED_ROUTERS = [
   ['progress', '/api/progress', progressRouter],
   ['adviser-digest', '/api/adviser-digest', adviserDigestRouter],
   ['interests', '/api/interests', interestsRouter],
+  ['handover', '/api/handover', handoverRouter],
   ['task-photos', '/api/task-photos', taskPhotosRouter],
   ['organizer-profiles', '/api/school/organizers', organizerProfileRouter],
   ['weather', '/api/weather', weatherRouter],

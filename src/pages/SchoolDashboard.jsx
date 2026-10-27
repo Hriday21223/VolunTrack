@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -9,6 +9,8 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
+import HandoverForm from '@/components/HandoverForm.jsx'
+import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import { gradeLabel } from '@policy'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
@@ -98,6 +100,7 @@ export default function SchoolDashboard() {
   const [confirmRef, setConfirmRef] = useState('')
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [staff, setStaff] = useState([])
+  const [handoverStaffId, setHandoverStaffId] = useState(null)
   const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '' })
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffErr, setStaffErr] = useState('')
@@ -931,18 +934,38 @@ export default function SchoolDashboard() {
               ) : (
                 <div className="divide-y divide-white/10">
                   {staff.map((m) => (
-                    <div key={m.id} className="py-3 flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-sm">{m.name}</p>
-                        <p className="text-xs text-earth-400">{m.email}</p>
+                    <div key={m.id}>
+                      <div className="py-3 flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-sm">{m.name}</p>
+                          <p className="text-xs text-earth-400">{m.email}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setHandoverStaffId(handoverStaffId === m.id ? null : m.id)} className="btn-ghost btn-sm">
+                            Make main admin
+                          </button>
+                          <button onClick={() => handleRemoveStaff(m.id)} className="text-red-400 hover:text-red-300 p-2" title="Remove co-admin">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <button onClick={() => handleRemoveStaff(m.id)} className="text-red-400 hover:text-red-300 p-2" title="Remove co-admin">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {handoverStaffId === m.id && (
+                        <div className="pb-3">
+                          <HandoverForm path={HANDOVER_ENDPOINTS.school()} preset={m} onCancel={() => setHandoverStaffId(null)} />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
+            </Card>
+
+            <Card>
+              <h3 className="font-semibold mb-1 flex items-center gap-2"><UserCog className="w-4 h-4 text-brand-600" /> New principal?</h3>
+              <p className="text-sm text-earth-500 mb-3">
+                Hand this school’s main account to the person taking over. They get an email to accept and set their own password. You stay on as a co-admin until they remove you, and you’ll be signed out when they accept.
+              </p>
+              <HandoverForm path={HANDOVER_ENDPOINTS.school()} />
             </Card>
           </div>
         )}

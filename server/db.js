@@ -1083,6 +1083,26 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('certificate sign table migration failed:', error) }
 
+  // Handing a school's or organization's main account to a new person (#550,
+  // server/handover.js). Only the token's hash is kept.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS account_handover_invites (
+        token_hash      TEXT PRIMARY KEY,
+        kind            TEXT NOT NULL CHECK (kind IN ('school','organization')),
+        school_id       TEXT REFERENCES schools(id) ON DELETE CASCADE,
+        organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        email           TEXT NOT NULL,
+        created_by      TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_by_role TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at      TIMESTAMPTZ NOT NULL,
+        accepted_at     TIMESTAMPTZ
+      )
+    `)
+  } catch (error) { console.error('handover table migration failed:', error) }
+
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS adviser_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}

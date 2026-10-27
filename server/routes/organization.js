@@ -10,6 +10,7 @@ import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
+import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { schoolProgress } from './school.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 
@@ -379,6 +380,43 @@ router.post('/invite-school', limiter, requireDb, requireAuth('org'), async (req
   } catch (error) {
     console.error('organization invite-school failed:', error)
     return res.status(500).json({ error: 'Could not send invite.' })
+  }
+})
+
+// Handovers (#550, server/handover.js): a new principal for one of this org's
+// schools, a new person for the organization itself, or — when nobody is left
+// to start it — a VolunTrack admin naming the org's new main contact.
+router.post('/schools/:id/handover', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const { rows: me } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])
+    const organizationId = me[0]?.organization_id
+    const { rows } = await query('SELECT organization_id FROM schools WHERE id = $1', [req.params.id])
+    if (!organizationId || !rows[0] || rows[0].organization_id !== organizationId) {
+      return res.status(404).json({ error: 'School not found.' })
+    }
+    await confirmPassword(req.auth.sub, req.body?.password)
+    return res.json(await createHandoverInvite(req, { kind: 'school', targetId: req.params.id, name: req.body?.name, email: req.body?.email }))
+  } catch (error) {
+    return sendHandoverError(res, error, 'Could not send the handover invite.')
+  }
+})
+
+router.post('/handover', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const { rows: me } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])
+    if (!me[0]?.organization_id) return res.status(404).json({ error: 'Organization not found.' })
+    await confirmPassword(req.auth.sub, req.body?.password)
+    return res.json(await createHandoverInvite(req, { kind: 'organization', targetId: me[0].organization_id, name: req.body?.name, email: req.body?.email }))
+  } catch (error) {
+    return sendHandoverError(res, error, 'Could not send the handover invite.')
+  }
+})
+
+router.post('/admin/:id/handover', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    return res.json(await createHandoverInvite(req, { kind: 'organization', targetId: req.params.id, name: req.body?.name, email: req.body?.email }))
+  } catch (error) {
+    return sendHandoverError(res, error, 'Could not send the handover invite.')
   }
 })
 

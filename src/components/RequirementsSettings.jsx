@@ -390,10 +390,25 @@ const SIGN_STYLE_OPTIONS = [
 function CertificatesEditor({ value, onChange }) {
   const style = value.signStyle || 'typed'
   const [padKey, setPadKey] = useState(0)
+  // A drawn signature belongs to the person who drew it: a new name (say, a
+  // new principal) clears it, so certificates never pair one person's name
+  // with another's signature.
+  const [newSigner, setNewSigner] = useState(false)
   const onPhoneSigned = useCallback((img) => {
     onChange({ signatureImage: img })
+    setNewSigner(false)
     setPadKey((k) => k + 1)
   }, [onChange])
+  const setField = (key, text) => {
+    if (key === 'signerName' && value.signatureImage) {
+      onChange({ signerName: text, signatureImage: '' })
+      setNewSigner(true)
+      setPadKey((k) => k + 1)
+      return
+    }
+    if (key === 'signatureImage' && text) setNewSigner(false)
+    onChange({ [key]: text })
+  }
   const field = (key, label, placeholder, max) => (
     <div>
       <label className="label">{label}</label>
@@ -401,7 +416,7 @@ function CertificatesEditor({ value, onChange }) {
         className="input"
         value={value[key] || ''}
         maxLength={max}
-        onChange={(e) => onChange({ [key]: e.target.value })}
+        onChange={(e) => setField(key, e.target.value)}
         placeholder={placeholder}
       />
     </div>
@@ -437,7 +452,10 @@ function CertificatesEditor({ value, onChange }) {
       {style === 'drawn' && (
         <>
           {/* Remounted on a phone signature so the pad shows the new drawing. */}
-          <SignaturePad key={padKey} value={value.signatureImage || ''} onChange={(img) => onChange({ signatureImage: img })} />
+          {newSigner && style === 'drawn' && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">New signer: the old signature was removed. Draw theirs below, or use the phone QR code.</p>
+          )}
+          <SignaturePad key={padKey} value={value.signatureImage || ''} onChange={(img) => setField('signatureImage', img)} />
           <PhoneSignQr signerName={value.signerName || ''} onSigned={onPhoneSigned} />
         </>
       )}

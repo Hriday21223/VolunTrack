@@ -41,6 +41,8 @@ export const NOTIFICATION_KINDS = new Set([
   'task_answer',
   'attendance_nudge',
   'log_hours_nudge',
+  // To VolunTrack admins: a school or org has a new main admin (#550).
+  'account_handover',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }
