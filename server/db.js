@@ -1106,6 +1106,30 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('handover table migration failed:', error) }
 
+  // A student's regular weekly shifts (#571, server/routes/shifts.js).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS regular_shifts (
+        id               TEXT PRIMARY KEY,
+        user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        activity         TEXT NOT NULL,
+        category         TEXT,
+        org_name         TEXT,
+        location         TEXT,
+        latitude         DECIMAL(10,7),
+        longitude        DECIMAL(10,7),
+        supervisor_name  TEXT,
+        supervisor_email TEXT,
+        weekday          SMALLINT NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+        start_time       TEXT NOT NULL,
+        end_time         TEXT NOT NULL,
+        skipped          JSONB NOT NULL DEFAULT '[]'::jsonb,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`CREATE INDEX IF NOT EXISTS idx_regular_shifts_user ON regular_shifts(user_id)`)
+  } catch (error) { console.error('regular shifts table migration failed:', error) }
+
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS adviser_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}

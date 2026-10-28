@@ -11,6 +11,7 @@ import SignaturePad from '@/components/SignaturePad.jsx'
 import Toast from '@/components/Toast.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
+import { listShifts } from '@/lib/shifts.js'
 import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds } from '@/lib/requirements.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify.js'
@@ -155,6 +156,33 @@ export default function LogHours({ editId, onCloseEdit }) {
     }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskFromLink, myTasks, editId])
+  // /log?shift=<id>&date=YYYY-MM-DD, from "Did you go?" on the dashboard
+  // (#571): fill the form from the student's regular shift, once.
+  const shiftFromLink = searchParams.get('shift')
+  const shiftDate = searchParams.get('date')
+  const appliedShiftLink = useRef(false)
+  useEffect(() => {
+    if (!shiftFromLink || appliedShiftLink.current || editId) return
+    appliedShiftLink.current = true
+    listShifts().then((list) => {
+      const s = list.find((x) => x.id === shiftFromLink)
+      if (!s) return
+      setForm((f) => ({
+        ...f,
+        activity: s.activity,
+        category: s.category || f.category,
+        orgName: s.orgName || f.orgName,
+        location: s.location || f.location,
+        latitude: s.latitude ?? f.latitude,
+        longitude: s.longitude ?? f.longitude,
+        supervisorName: s.supervisorName || f.supervisorName,
+        supervisorEmail: s.supervisorEmail || f.supervisorEmail,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        ...(/^\d{4}-\d{2}-\d{2}$/.test(shiftDate || '') ? { date: shiftDate } : {}),
+      }))
+    }).catch(() => {})
+  }, [shiftFromLink, shiftDate, editId])
   // Until the student says otherwise: a supervisor is assumed to be right
   // there, a task's organizer not (they sign it off on My Tasks).
   const signerHere = form.signerHere ?? !linkedTask
