@@ -1459,6 +1459,100 @@ router.post('/handover', limiter, requireDb, requireAuth('school'), async (req, 
   }
 })
 
+// ---------------------------------------------------------------------------
+// Private adviser notes on a student (#567): school admins and co-admins only,
+// for students at their own school, never shown to the student, a parent or
+// another school. Reading them is audited like any student record.
+// ---------------------------------------------------------------------------
+
+const NOTE_MAX = 1000
+
+async function noteAuthor(req) {
+  const { rows } = await query('SELECT school_id, name FROM users WHERE id = $1', [req.auth.sub])
+  return rows[0] || null
+}
+
+router.get('/student-notes/counts', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const me = await noteAuthor(req)
+    if (!me?.school_id) return res.status(404).json({ error: 'School not found.' })
+    const { rows } = await query(
+      'SELECT student_id, COUNT(*)::int AS n FROM student_notes WHERE school_id = $1 GROUP BY student_id',
+      [me.school_id],
+    )
+    return res.json({ counts: Object.fromEntries(rows.map((r) => [r.student_id, r.n])) })
+  } catch (error) {
+    console.error('student note counts failed:', error)
+    return res.status(500).json({ error: 'Could not load notes.' })
+  }
+})
+
+router.get('/students/:id/notes', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const me = await noteAuthor(req)
+    if (!me?.school_id) return res.status(404).json({ error: 'School not found.' })
+    const { rows: st } = await query(`SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'`, [req.params.id, me.school_id])
+    if (!st[0]) return res.status(404).json({ error: 'Student not found.' })
+    const { rows } = await query(
+      `SELECT id, author_id, author_name, body, created_at FROM student_notes
+        WHERE school_id = $1 AND student_id = $2 ORDER BY created_at DESC LIMIT 200`,
+      [me.school_id, req.params.id],
+    )
+    recordAudit(req, { action: AUDIT.STUDENT_NOTES_READ, subjectUserId: req.params.id, schoolId: me.school_id, objectType: 'student_notes', meta: { count: rows.length } })
+    return res.json({
+      notes: rows.map((n) => ({
+        id: n.id, body: n.body, authorName: n.author_name || 'An adviser', createdAt: n.created_at,
+        mine: n.author_id === req.auth.sub,
+      })),
+    })
+  } catch (error) {
+    console.error('student notes read failed:', error)
+    return res.status(500).json({ error: 'Could not load notes.' })
+  }
+})
+
+router.post('/students/:id/notes', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  const body = String(req.body?.body || '').trim()
+  if (!body) return res.status(400).json({ error: 'Write a note first.' })
+  if (body.length > NOTE_MAX) return res.status(400).json({ error: `Notes can be up to ${NOTE_MAX} characters.` })
+  try {
+    const me = await noteAuthor(req)
+    if (!me?.school_id) return res.status(404).json({ error: 'School not found.' })
+    const { rows: st } = await query(`SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'`, [req.params.id, me.school_id])
+    if (!st[0]) return res.status(404).json({ error: 'Student not found.' })
+    const id = uid('note')
+    const { rows } = await query(
+      `INSERT INTO student_notes (id, school_id, student_id, author_id, author_name, body)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING created_at`,
+      [id, me.school_id, req.params.id, req.auth.sub, me.name, body],
+    )
+    recordAudit(req, { action: AUDIT.STUDENT_NOTE_ADDED, subjectUserId: req.params.id, schoolId: me.school_id, objectType: 'student_note', objectId: id })
+    return res.status(201).json({ note: { id, body, authorName: me.name, createdAt: rows[0].created_at, mine: true } })
+  } catch (error) {
+    console.error('student note add failed:', error)
+    return res.status(500).json({ error: 'Could not save the note.' })
+  }
+})
+
+// The note's author can delete it, and so can the school's main admin.
+router.delete('/student-notes/:noteId', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const me = await noteAuthor(req)
+    if (!me?.school_id) return res.status(404).json({ error: 'School not found.' })
+    const { rows } = await query(
+      `DELETE FROM student_notes WHERE id = $1 AND school_id = $2 AND (author_id = $3 OR $4)
+       RETURNING student_id`,
+      [req.params.noteId, me.school_id, req.auth.sub, req.auth.role === 'school'],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Note not found.' })
+    recordAudit(req, { action: AUDIT.STUDENT_NOTE_DELETED, subjectUserId: rows[0].student_id, schoolId: me.school_id, objectType: 'student_note', objectId: req.params.noteId })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('student note delete failed:', error)
+    return res.status(500).json({ error: 'Could not delete the note.' })
+  }
+})
+
 // Remove a co-admin (school admin only)
 router.delete('/staff/:id', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
   try {
