@@ -1,0 +1,76 @@
+name: Supervisor reminders
+
+# Daily: a supervisor who was emailed to confirm a student's hours and
+# hasn't answered gets a reminder on day 3 and a last one on day 7
+# (#555). The work happens on the backend (server/supervisorReminders.js); the
+# only secret here is CRON_SECRET. Idempotency is the backend's:
+# supervisor_verifications.reminders_sent is claimed before
+# sending. The response carries counts and request ids only.
+
+on:
+  schedule:
+    # Daily 15:30 UTC (10:30 AM US Central).
+    - cron: '30 15 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Count who would be reminded instead of emailing them
+        type: boolean
+        default: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the supervisor reminder endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ vars.PUBLIC_BACKEND_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || false }}
+        run: |
+          set -uo pipefail
+          # Retry only when no HTTP response came back at all (a Render cold
+          # start). Any actual status is final: 503 means the backend is
+          # unconfigured, which retrying cannot fix, and a 2xx is done.
+          url="$BACKEND_URL/api/progress/internal/run-supervisor-reminders"
+          body="$(mktemp)"
+          attempt=1
+          while :; do
+            code=$(curl -sS -X POST \
+              --connect-timeout 30 --max-time 900 \
+              -o "$body" -w '%{http_code}' \
+              -H "x-cron-key: $CRON_SECRET" \
+              -H 'content-type: application/json' \
+              -d "{\"dryRun\": $DRY_RUN }" \
+              "$url") || code=000
+            echo "HTTP $code"
+            cat "$body"; echo
+            case "$code" in
+              2??)
+                # A run with nobody to email is a legitimate success, but a
+                # backend that cannot send email is not: nothing went out.
+                if grep -q '"emailConfigured":false' "$body"; then
+                  echo "::error::backend reached, but no email provider is configured — no supervisor reminder was sent."
+                  exit 1
+                fi
+                exit 0
+                ;;
+              503)
+                echo "::error::backend returned 503 (unconfigured CRON_SECRET or database) — retrying will not help."
+                exit 1
+                ;;
+              000)
+                : # no HTTP response: likely a cold start, worth a retry
+                ;;
+              *)
+                echo "::error::unexpected HTTP $code from the supervisor reminder endpoint."
+                exit 1
+                ;;
+            esac
+            if [ "$attempt" -ge 3 ]; then
+              echo "::error::backend unreachable after $attempt attempts."
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            sleep 30
+          done

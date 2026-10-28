@@ -1304,6 +1304,9 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // An organization's own announcement to its schools (#557). NULL for the
+  // VolunTrack admin's, which reach everyone in their audience.
+  try { await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE`) } catch {}
 
   // One-time codes the admin hands a school or organization so it can
   // register (server/registrationCodes.js, #287). Only a hash is kept: the
@@ -2009,6 +2012,10 @@ export async function initSchema() {
   // Who carried the signing link to the supervisor. 'student' means the
   // student held the approve link too, so a school can weigh it accordingly.
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS delivery TEXT NOT NULL DEFAULT 'voluntrack' CHECK (delivery IN ('voluntrack','student'))`) } catch {}
+  // Supervisor reminders (#555, server/supervisorReminders.js): how many were
+  // sent, and when the last one went, so a run never repeats one.
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS reminders_sent INTEGER NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ`) } catch {}
 
   return true
 }
