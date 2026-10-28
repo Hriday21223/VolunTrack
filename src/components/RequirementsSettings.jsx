@@ -327,7 +327,60 @@ function GoalsEditor({ value, onChange }) {
         </div>
         <AddGrade existing={value.byGrade || {}} onAdd={(grade) => setGrade(grade, value.totalHours || 0)} />
       </div>
+      <CategoryMinimums value={value.byCategory || {}} onChange={(byCategory) => onChange({ byCategory })} />
     </>
+  )
+}
+
+// Minimum hours by type (#561): "at least 10 of the hours in Education &
+// Tutoring". They count toward the total above, not on top of it.
+function CategoryMinimums({ value, onChange }) {
+  const rows = Object.entries(value)
+  const unused = ACTIVITY_CATEGORIES.filter((c) => value[c] == null)
+  const set = (category, hours) => onChange({ ...value, [category]: hours })
+  const remove = (category) => {
+    const next = { ...value }
+    delete next[category]
+    onChange(next)
+  }
+  return (
+    <div>
+      <label className="label">Minimum hours by type</label>
+      <p className="text-xs text-earth-400 mb-2">
+        At least this many of a student’s hours must be of one type. They count toward the total, not on top of it.
+      </p>
+      <div className="space-y-2">
+        {rows.map(([category, hours]) => (
+          <div key={category} className="flex items-center gap-2">
+            <span className="text-sm flex-1 min-w-0 truncate">{category}</span>
+            <input
+              className="input w-28"
+              type="number"
+              min="0.5"
+              step="0.5"
+              value={hours ?? ''}
+              onChange={(e) => set(category, e.target.value === '' ? null : Number(e.target.value))}
+              aria-label={`Minimum hours of ${category}`}
+            />
+            <span className="text-xs text-earth-400">hours</span>
+            <button type="button" onClick={() => remove(category)} className="btn-sm btn-ghost text-red-500" aria-label={`Remove ${category}`}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      {unused.length > 0 && (
+        <select
+          className="input w-auto mt-2"
+          value=""
+          onChange={(e) => { if (e.target.value) set(e.target.value, 5) }}
+          aria-label="Add a type"
+        >
+          <option value="">+ Add a type…</option>
+          {unused.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      )}
+    </div>
   )
 }
 

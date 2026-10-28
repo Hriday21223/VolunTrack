@@ -8,7 +8,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
-import { useMyRequirements, awardFor } from '@/lib/requirements.js'
+import { useMyRequirements, awardFor, requirementShortfall } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { weekStreak } from '@/lib/streak.js'
 import { BADGES, nextBadgeProgress, countedLogs, visibleBadges } from '@/lib/achievements.js'
@@ -135,6 +135,12 @@ export default function Dashboard() {
     logs: primaryLogs,
   }), [target, primaryHours, primary?.deadline, primary?.createdAt, primaryLogs])
 
+  // The requirement with any minimum hours by type (#561).
+  const shortfall = useMemo(() => {
+    const byCategory = {}
+    for (const l of counted) byCategory[l.category || ''] = (byCategory[l.category || ''] || 0) + (Number(l.hours) || 0)
+    return requirementShortfall(requirements.policy, requirements.grade, total, byCategory)
+  }, [requirements.policy, requirements.grade, total, counted])
   // Award levels the school set (#559), counted like the requirement.
   const award = useMemo(() => awardFor(requirements.policy, total), [requirements.policy, total])
 
@@ -718,7 +724,7 @@ export default function Dashboard() {
             personal goal above: one is what they set for themselves, the
             other is what they have to hit. Rendered only when a tenant
             actually set one. */}
-        {requirements.goalHours != null && (
+        {shortfall.target != null && (
           <Card className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div>
@@ -726,7 +732,7 @@ export default function Dashboard() {
                   {requirements.schoolName ? tr('{school} requires', { school: requirements.schoolName }) : tr('School requirement')}
                 </div>
                 <div className="text-lg font-bold text-white">
-                  {total >= requirements.goalHours ? tr('Requirement met') : tr('{hours} to go', { hours: fmtHours(requirements.goalHours - total) })}
+                  {shortfall.remaining <= 0 ? tr('Requirement met') : tr('{hours} to go', { hours: fmtHours(shortfall.remaining) })}
                 </div>
               </div>
               <div className="text-right">
@@ -740,7 +746,19 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            <ProgressBar value={total} target={requirements.goalHours} />
+            <ProgressBar value={total} target={shortfall.target} />
+            {shortfall.categories.length > 0 && (
+              <ul className="mt-3 space-y-1.5" aria-label={tr('Hours by type')}>
+                {shortfall.categories.map((c) => (
+                  <li key={c.category} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="text-earth-300 truncate">{c.category}</span>
+                    <span className={c.remaining > 0 ? 'text-amber-300 shrink-0' : 'text-brand-400 shrink-0'}>
+                      {fmtHours(Math.min(c.hours, c.target))} / {fmtHours(c.target)}{c.remaining > 0 ? '' : ' ✓'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {requirements.policy.goals.note && (
               <p className="text-xs text-earth-400 mt-2">{requirements.policy.goals.note}</p>
             )}

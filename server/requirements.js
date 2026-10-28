@@ -41,6 +41,9 @@ export const DEFAULT_LOG_RULES = {
 export const DEFAULT_GOALS = {
   totalHours: null,
   byGrade: {},
+  // Minimum hours of one type within the requirement (#561): { "Education &
+  // Tutoring": 10 }. Matched to a log's category without regard to case.
+  byCategory: {},
   deadline: null,
   note: '',
 }
@@ -219,9 +222,18 @@ function normalizeGoals(input) {
       if (g && h !== null) byGrade[g] = h
     }
   }
+  const byCategory = {}
+  if (raw.byCategory && typeof raw.byCategory === 'object' && !Array.isArray(raw.byCategory)) {
+    for (const [category, hours] of Object.entries(raw.byCategory).slice(0, 12)) {
+      const c = text(category, 60)
+      const h = posNumber(hours, { max: 10000 })
+      if (c && h !== null) byCategory[c] = h
+    }
+  }
   return {
     totalHours: posNumber(raw.totalHours, { max: 10000 }),
     byGrade,
+    byCategory,
     deadline: isoDate(raw.deadline),
     note: text(raw.note, 300),
   }
@@ -311,6 +323,34 @@ export function awardFor(policy, hours) {
     else { next = level; break }
   }
   return { current, next, toNext: next ? Math.round((next.hours - h) * 100) / 100 : 0, levels }
+}
+
+/**
+ * What a student still needs (#561): the total requirement plus any minimum
+ * hours by type. `hoursByCategory` maps a log category to its counted hours.
+ * Hours of a short type count toward the total too, so the hours still
+ * needed are the larger of the total shortfall and the types' shortfalls
+ * added up. `target` is null when the school asks for nothing.
+ */
+export function requirementShortfall(policy, grade, total, hoursByCategory = {}) {
+  const goalTarget = goalHoursFor(policy, grade)
+  const mins = Object.entries(policy?.goals?.byCategory || {})
+  const byKey = {}
+  for (const [c, h] of Object.entries(hoursByCategory || {})) {
+    const k = String(c || '').trim().toLowerCase()
+    byKey[k] = (byKey[k] || 0) + (Number(h) || 0)
+  }
+  const round = (n) => Math.round(n * 100) / 100
+  const categories = mins.map(([category, min]) => {
+    const hours = round(byKey[category.trim().toLowerCase()] || 0)
+    return { category, target: min, hours, remaining: round(Math.max(0, min - hours)) }
+  })
+  const minsTotal = categories.reduce((sum, c) => sum + c.target, 0)
+  const target = goalTarget ?? (minsTotal > 0 ? minsTotal : null)
+  if (target == null) return { target: null, remaining: null, categories }
+  const totalShort = Math.max(0, target - (Number(total) || 0))
+  const typeShort = categories.reduce((sum, c) => sum + c.remaining, 0)
+  return { target, remaining: round(Math.max(totalShort, typeShort)), categories }
 }
 
 /**
