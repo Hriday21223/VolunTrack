@@ -18,7 +18,7 @@ import { downloadSignedTranscript, hasAccountSession, importTranscript, readTran
 import { syncPullLogs } from '@/lib/logSync.js'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import { tr } from '@/lib/i18n.js'
-import { useMyRequirements } from '@/lib/requirements.js'
+import { useMyRequirements, awardFor } from '@/lib/requirements.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -141,7 +141,7 @@ export default function Reports() {
               <button className="btn-secondary w-full" onClick={() => setSharing(true)} disabled={shareStats.sessions === 0}>
                 <Share2 className="w-4 h-4" />{' '}{tr('Share my hours')}
               </button>
-              <button className="btn-ghost w-full" onClick={() => printCertificate({ user, totalHours: state.totalHours, goalReached: state.goalReached, certificate })}>
+              <button className="btn-ghost w-full" onClick={() => printCertificate({ user, totalHours: state.totalHours, goalReached: state.goalReached, certificate, award: awardFor(requirements.policy, state.totalHours).current?.name || null })}>
                 <Printer className="w-4 h-4" />{' '}{tr('Print certificate')}
               </button>
               {user?.schoolId && (

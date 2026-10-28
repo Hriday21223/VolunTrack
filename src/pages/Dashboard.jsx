@@ -8,7 +8,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
-import { useMyRequirements } from '@/lib/requirements.js'
+import { useMyRequirements, awardFor } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { weekStreak } from '@/lib/streak.js'
 import { BADGES, nextBadgeProgress, countedLogs, visibleBadges } from '@/lib/achievements.js'
@@ -134,6 +134,9 @@ export default function Dashboard() {
     startedAt: primary?.createdAt,
     logs: primaryLogs,
   }), [target, primaryHours, primary?.deadline, primary?.createdAt, primaryLogs])
+
+  // Award levels the school set (#559), counted like the requirement.
+  const award = useMemo(() => awardFor(requirements.policy, total), [requirements.policy, total])
 
   const requirementPace = useMemo(() => goalPace({
     target: requirements.goalHours,
@@ -741,6 +744,33 @@ export default function Dashboard() {
             {requirements.policy.goals.note && (
               <p className="text-xs text-earth-400 mt-2">{requirements.policy.goals.note}</p>
             )}
+          </Card>
+        )}
+
+        {award.levels.length > 0 && (
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div>
+                <div className="text-xs text-earth-400">{tr('Award level')}</div>
+                <div className="text-lg font-bold text-white">{award.current ? award.current.name : tr('Not reached yet')}</div>
+              </div>
+              <div className="text-xs text-earth-400 text-right">
+                {award.next
+                  ? tr('{hours} to {level}', { hours: fmtHours(award.toNext), level: award.next.name })
+                  : tr('Top level reached')}
+              </div>
+            </div>
+            {award.next && <ProgressBar value={total} target={award.next.hours} />}
+            <ul className="flex flex-wrap gap-1.5 mt-3" aria-label={tr('Award levels')}>
+              {award.levels.map((l) => {
+                const reached = total >= l.hours
+                return (
+                  <li key={l.hours} className={`text-xs px-2 py-0.5 rounded-full border ${reached ? 'bg-brand-600 border-brand-600 text-white' : 'border-earth-300 dark:border-white/15 text-earth-500 dark:text-earth-400'}`}>
+                    {l.name} · {fmtHours(l.hours)}{reached ? ' ✓' : ''}
+                  </li>
+                )
+              })}
+            </ul>
           </Card>
         )}
 
