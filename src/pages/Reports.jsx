@@ -9,6 +9,7 @@ import Toast from '@/components/Toast.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import CollegeActivitiesCard from '@/components/CollegeActivitiesCard.jsx'
+import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import ReflectionsCard from '@/components/ReflectionsCard.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
@@ -18,7 +19,7 @@ import { downloadSignedTranscript, hasAccountSession, importTranscript, readTran
 import { syncPullLogs } from '@/lib/logSync.js'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import { tr } from '@/lib/i18n.js'
-import { useMyRequirements } from '@/lib/requirements.js'
+import { useMyRequirements, awardFor } from '@/lib/requirements.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -141,7 +142,7 @@ export default function Reports() {
               <button className="btn-secondary w-full" onClick={() => setSharing(true)} disabled={shareStats.sessions === 0}>
                 <Share2 className="w-4 h-4" />{' '}{tr('Share my hours')}
               </button>
-              <button className="btn-ghost w-full" onClick={() => printCertificate({ user, totalHours: state.totalHours, goalReached: state.goalReached, certificate })}>
+              <button className="btn-ghost w-full" onClick={() => printCertificate({ user, totalHours: state.totalHours, goalReached: state.goalReached, certificate, award: awardFor(requirements.policy, state.totalHours).current?.name || null })}>
                 <Printer className="w-4 h-4" />{' '}{tr('Print certificate')}
               </button>
               {user?.schoolId && (
@@ -152,6 +153,7 @@ export default function Reports() {
             </div>
           </div>
         </Card>
+        <ImpactReportCard scope="student" name={user?.name} logs={countedLogs(logs)} className="mb-6" />
         <CollegeActivitiesCard logs={logs} />
         <ReflectionsCard logs={logs} />
         <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />

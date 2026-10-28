@@ -10,6 +10,7 @@ export const keys = {
   theme:        `${NS}theme`,
   textSize:     `${NS}text-size`,    // 'default' | 'large' | 'xlarge' — this device only
   contrast:     `${NS}contrast`,     // 'normal' | 'high' — this device only
+  font:         `${NS}font`,         // 'default' | 'easy' — this device only (#553)
   reminders:    `${NS}reminders`,
   fired:        `${NS}fired-reminders`, // dedupe list of reminder ids that already fired this cycle
   reviews:      `${NS}reviews`,          // list of review submissions

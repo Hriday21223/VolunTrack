@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog } from 'lucide-react'
+import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog, Megaphone } from 'lucide-react'
 import HandoverForm from '@/components/HandoverForm.jsx'
+import OrgAnnouncementsCard from '@/components/OrgAnnouncementsCard.jsx'
+import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -23,6 +25,7 @@ const TAB_TITLES = {
   schools: 'Your schools',
   hours: 'Hour reports',
   requirements: 'Requirements',
+  announcements: 'Announcements',
   invites: 'Pending invites',
 }
 
@@ -130,10 +133,11 @@ export default function OrganizationDashboard() {
         tab === 'schools' ? `${schools.length} school${schools.length === 1 ? '' : 's'} added`
           : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent`
           : tab === 'requirements' ? 'Defaults for every school you own'
+          : tab === 'announcements' ? 'Notices for every school you own'
           : 'Export hours across your schools'
       }
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button data-tour="org-schools-tab" onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" /> Schools
           </button>
@@ -143,6 +147,9 @@ export default function OrganizationDashboard() {
           <button onClick={() => setTab('requirements')} className={`btn-sm ${tab === 'requirements' ? 'btn-primary' : 'btn-ghost'}`}>
             <ClipboardList className="w-3.5 h-3.5 mr-1" /> Requirements
           </button>
+          <button onClick={() => setTab('announcements')} className={`btn-sm ${tab === 'announcements' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Megaphone className="w-3.5 h-3.5 mr-1" /> Announcements
+          </button>
           <button data-tour="org-invites-tab" onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
@@ -151,6 +158,7 @@ export default function OrganizationDashboard() {
     >
       <AnnouncementBanner />
       {tab === 'requirements' && <RequirementsSettings scope="organization" />}
+      {tab === 'announcements' && <OrgAnnouncementsCard />}
 
       {tab === 'hours' && (
         <Card>
@@ -161,6 +169,7 @@ export default function OrganizationDashboard() {
           <HoursReportPanel title="Organization volunteer hours report" />
         </Card>
       )}
+      {tab === 'hours' && <ImpactReportCard scope="organization" className="mt-4" />}
 
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />

@@ -11,6 +11,7 @@ import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from 
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
+import { impactFor, impactBySchool, PERIODS } from '../impact.js'
 import { schoolProgress } from './school.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 
@@ -465,6 +466,26 @@ router.get('/schools', limiter, requireDb, requireAuth('org'), async (req, res) 
 // anything in the last 30 days, hours this school year (from Aug 1, rejected
 // entries left out) and how many have met their hour requirement. Counts only,
 // never a student's name.
+// GET /api/organization/impact?period=year|all — the impact report for all
+// of this org's schools, with a line per school (#563). Counts only.
+router.get('/impact', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  const period = PERIODS.includes(req.query.period) ? req.query.period : 'year'
+  try {
+    const { rows: me } = await query(
+      'SELECT o.id, o.name FROM users u JOIN organizations o ON o.id = u.organization_id WHERE u.id = $1',
+      [req.auth.sub],
+    )
+    if (!me[0]) return res.status(404).json({ error: 'Organization not found.' })
+    const { rows: schools } = await query('SELECT id FROM schools WHERE organization_id = $1', [me[0].id])
+    const ids = schools.map((s) => s.id)
+    const [impact, perSchool] = await Promise.all([impactFor(ids, period), impactBySchool(ids, period)])
+    return res.json({ name: me[0].name, ...impact, schools: perSchool })
+  } catch (error) {
+    console.error('organization impact failed:', error)
+    return res.status(500).json({ error: 'Could not build the impact report.' })
+  }
+})
+
 router.get('/schools/compare', limiter, requireDb, requireAuth('org'), async (req, res) => {
   try {
     const { rows: userRows } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])

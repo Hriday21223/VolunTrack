@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
+import { impactFor, PERIODS } from '../impact.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
@@ -17,7 +18,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel } from '../requirements.js'
+import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -467,19 +468,56 @@ export async function schoolProgress(schoolId) {
       ORDER BY u.name`,
     [schoolId],
   )
+  // Minimum hours by type (#561) need each student's hours per category.
+  const byCategory = {}
+  if (Object.keys(policy?.goals?.byCategory || {}).length > 0) {
+    const { rows: cats } = await query(
+      `SELECT l.user_id, COALESCE(l.category, '') AS category, SUM(l.hours)::float AS hours
+         FROM logs l JOIN users u ON u.id = l.user_id
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IS DISTINCT FROM 'rejected'
+        GROUP BY l.user_id, COALESCE(l.category, '')`,
+      [schoolId],
+    )
+    for (const c of cats) (byCategory[c.user_id] ||= {})[c.category] = c.hours
+  }
   const students = rows.map((r) => {
-    const target = goalHoursFor(policy, r.grade)
     const hours = Math.round(r.hours * 100) / 100
+    // `remaining` counts any type still short, so everything built on it
+    // (behind, certificates, reminders, digests) treats that student as not done.
+    const { target, remaining, categories } = requirementShortfall(policy, r.grade, hours, byCategory[r.id])
     return {
       id: r.id, name: r.name, email: r.email, grade: r.grade,
-      hours, target, remaining: target ? Math.max(0, Math.round((target - hours) * 100) / 100) : null,
+      hours, target, remaining,
+      categoryShort: categories.filter((c) => c.remaining > 0).map((c) => ({ category: c.category, remaining: c.remaining })),
       lastLogDate: r.last_log_date, remindedAt: r.hours_reminded_at,
       // An under-13 account still waiting for a parent can't sign in yet.
       consentPending: r.parental_consent_status === 'pending',
+      // The highest award level reached (#559), or null.
+      award: awardFor(policy, hours).current?.name || null,
     }
   })
   return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, students }
 }
+
+// GET /api/school/impact?period=year|all — the school's impact report
+// (#563): counts only, so it reads no one student's records.
+router.get('/impact', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const period = PERIODS.includes(req.query.period) ? req.query.period : 'year'
+  try {
+    const { rows } = await query('SELECT u.school_id, s.name FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1', [req.auth.sub])
+    if (!rows[0]) return res.status(404).json({ error: 'School not found.' })
+    const [impact, progress] = await Promise.all([impactFor([rows[0].school_id], period), schoolProgress(rows[0].school_id)])
+    const withGoal = progress.students.filter((s) => s.target)
+    return res.json({
+      name: rows[0].name,
+      ...impact,
+      requirement: withGoal.length ? { students: withGoal.length, met: withGoal.filter((s) => s.remaining <= 0).length } : null,
+    })
+  } catch (error) {
+    console.error('school impact failed:', error)
+    return res.status(500).json({ error: 'Could not build the impact report.' })
+  }
+})
 
 router.get('/students/progress', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   try {

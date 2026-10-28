@@ -254,10 +254,11 @@ export function paymentNoticeHtml({ recipientName, entityLabel = 'school', accou
 
 // An admin announcement (#290) — deliberately not the payment template: no
 // amounts, bank details or "payment notice" wording.
-export function announcementHtml({ recipientName, title, message, dashboardPath }) {
+export function announcementHtml({ recipientName, title, message, dashboardPath, fromName }) {
   const link = `${process.env.FRONTEND_URL || ''}${dashboardPath}`
   return [
     `<p>Hi ${escapeHtml(recipientName)},</p>`,
+    fromName ? `<p style="color:#666;font-size:13px">A message from ${escapeHtml(fromName)}</p>` : '',
     `<h2 style="margin-bottom:4px">${escapeHtml(title)}</h2>`,
     `<p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>`,
     `<p>You'll also see this on your dashboard: <a href="${link}">${link}</a></p>`,
