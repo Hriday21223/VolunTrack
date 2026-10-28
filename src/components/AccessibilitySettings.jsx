@@ -32,11 +32,11 @@ function Switch({ checked, onChange, label, className }) {
   )
 }
 
-// Text size + high contrast. Both are kept on this device only and apply the
+// Text size, high contrast and the easy-read font. All are kept on this device only and apply the
 // moment they change. `compact` is the one-line version for the signed-out
 // screens, next to the language picker.
 export default function AccessibilitySettings({ compact = false, className = '' }) {
-  const { textSize, highContrast, setTextSize, setHighContrast } = useDisplayPrefs()
+  const { textSize, highContrast, easyFont, setTextSize, setHighContrast, setEasyFont } = useDisplayPrefs()
 
   if (compact) {
     return (
@@ -57,6 +57,10 @@ export default function AccessibilitySettings({ compact = false, className = '' 
           <Contrast className="w-4 h-4 text-earth-400" aria-hidden="true" />
           <span className="text-earth-300">{tr('High contrast')}</span>
           <Switch checked={highContrast} onChange={setHighContrast} label={tr('High contrast')} />
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="text-earth-300">{tr('Easy-read font')}</span>
+          <Switch checked={easyFont} onChange={setEasyFont} label={tr('Easy-read font')} />
         </span>
       </div>
     )
@@ -101,6 +105,14 @@ export default function AccessibilitySettings({ compact = false, className = '' 
           <p className="hint">{tr('Brighter text, stronger borders and focus outlines, and underlined links.')}</p>
         </div>
         <Switch checked={highContrast} onChange={setHighContrast} label={tr('High contrast')} className="mt-0.5" />
+      </div>
+
+      <div className="flex items-start justify-between gap-4 mt-4">
+        <div className="min-w-0">
+          <div className="font-medium text-sm">{tr('Easy-read font')}</div>
+          <p className="hint">{tr('A font that keeps similar letters like I, l and 1 easy to tell apart. Can help with dyslexia or low vision.')}</p>
+        </div>
+        <Switch checked={easyFont} onChange={setEasyFont} label={tr('Easy-read font')} className="mt-0.5" />
       </div>
     </div>
   )
