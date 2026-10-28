@@ -10,7 +10,8 @@ const readDismissed = () => {
 }
 
 // Admin announcements (#290) at the top of the school and organization
-// dashboards — e.g. planned downtime. The server picks what this account's
+// dashboards — e.g. planned downtime — and an organization's own to its
+// schools, labelled with who sent it (#557). The server picks what this account's
 // role should see; each one stays until it expires or is closed on this
 // device.
 export default function AnnouncementBanner() {
@@ -44,6 +45,7 @@ export default function AnnouncementBanner() {
         <div key={a.id} role="status" className="flex items-start gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
           <Megaphone className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
+            {a.from && <p className="text-xs text-sky-600 dark:text-sky-400 mb-0.5">{tr('From {name}', { name: a.from })}</p>}
             <p className="font-semibold text-sm">{a.title}</p>
             <p className="text-sm text-earth-600 dark:text-earth-300 whitespace-pre-line mt-0.5">{a.message}</p>
           </div>
