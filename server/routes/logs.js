@@ -6,7 +6,7 @@ import { isValidDateString, logTextError, MAX_HOURS_PER_ENTRY } from '../validat
 import { uid } from '../ids.js'
 import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
-import { validateLogAgainstPolicy, sanitizeCustomFieldValues } from '../requirements.js'
+import { validateLogAgainstPolicy, sanitizeCustomFieldValues, isLockedDate, lockedMessage } from '../requirements.js'
 import { policyForUser, hoursLoggedOn } from '../policy.js'
 import { paperScanAvailable, scanPaperLog } from '../paperScan.js'
 
@@ -201,6 +201,13 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Log not found.' })
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
     const existing = rows[0]
+    // A locked entry can't be edited, including moved out of the locked range (#569).
+    {
+      const resolved = await policyForUser(req.auth.sub)
+      if (resolved && isLockedDate(resolved.policy, existing.date)) {
+        return res.status(403).json({ error: lockedMessage(resolved.policy), locked: true })
+      }
+    }
 
     const { date, activity, category, hours, notes, reflection, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
     const signoff = signoffFlags(req.body)
@@ -320,9 +327,13 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 
 router.delete('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows } = await query('SELECT user_id FROM logs WHERE id = $1', [req.params.id])
+    const { rows } = await query(`SELECT user_id, to_char(date, 'YYYY-MM-DD') AS date FROM logs WHERE id = $1`, [req.params.id])
     if (rows.length === 0) return res.status(404).json({ error: 'Log not found.' })
     if (rows[0].user_id !== req.auth.sub) return res.status(403).json({ error: 'Not allowed.' })
+    const resolved = await policyForUser(req.auth.sub)
+    if (resolved && isLockedDate(resolved.policy, rows[0].date)) {
+      return res.status(403).json({ error: lockedMessage(resolved.policy), locked: true })
+    }
 
     await query('DELETE FROM logs WHERE id = $1', [req.params.id])
     return res.json({ ok: true })
