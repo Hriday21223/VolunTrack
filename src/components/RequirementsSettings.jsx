@@ -28,6 +28,7 @@ const SECTION_LABELS = {
   signIn: 'Sign-in',
   signatures: 'Signatures',
   certificates: 'Certificates',
+  awards: 'Award levels',
 }
 
 const SECTION_HELP = {
@@ -37,6 +38,7 @@ const SECTION_HELP = {
   signIn: 'How students linked to you are allowed to get into their account.',
   signatures: 'Whether each entry has to be signed, and by whom — or carry your own form.',
   certificates: 'Who signs the certificates you print, and what they say.',
+  awards: 'Levels like Bronze, Silver and Gold that students reach as their hours grow. Shown on their dashboard and printed on certificates.',
 }
 
 const FIELD_TYPE_LABELS = {
@@ -61,7 +63,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
   const [meta, setMeta] = useState({})
   // null for a section means "inherit" — kept distinct from an empty object,
   // which is a deliberate override that happens to turn everything off.
-  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null, signatures: null, certificates: null })
+  const [sections, setSections] = useState({ logRules: null, customFields: null, goals: null, signIn: null, signatures: null, certificates: null, awards: null })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,6 +79,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
         signIn: own.signIn ? clone(own.signIn) : null,
         signatures: own.signatures ? clone(own.signatures) : null,
         certificates: own.certificates ? clone(own.certificates) : null,
+        awards: own.awards ? clone(own.awards) : null,
       })
     } catch (e) {
       setError(e.message)
@@ -177,6 +180,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
               {section === 'signIn' && <SignInEditor value={sections.signIn} onChange={(c) => patch('signIn', c)} />}
               {section === 'signatures' && <SignaturesEditor value={sections.signatures} onChange={(c) => patch('signatures', c)} />}
               {section === 'certificates' && <CertificatesEditor value={sections.certificates} onChange={(c) => patch('certificates', c)} />}
+              {section === 'awards' && <AwardsEditor value={sections.awards} onChange={(c) => patch('awards', c)} />}
               {section === 'customFields' && (
                 <CustomFieldsEditor
                   value={sections.customFields}
@@ -428,6 +432,50 @@ function SignInEditor({ value, onChange }) {
           placeholder="school.edu, students.school.edu"
         />
       </div>
+    </>
+  )
+}
+
+const AWARD_PRESET = [
+  { name: 'Bronze', hours: 25 },
+  { name: 'Silver', hours: 50 },
+  { name: 'Gold', hours: 100 },
+]
+const MAX_LEVELS = 6
+
+// Award levels (#559). Rows are edited as typed and tidied on save by the
+// server (sorted by hours, blanks dropped), so a half-typed row isn't lost.
+function AwardsEditor({ value, onChange }) {
+  const levels = value.levels || []
+  const setLevels = (next) => onChange({ levels: next })
+  const update = (i, key, v) => setLevels(levels.map((l, j) => (j === i ? { ...l, [key]: v } : l)))
+  return (
+    <>
+      {levels.length === 0 ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-earth-500">
+          No levels yet.
+          <button type="button" className="btn-sm btn-secondary" onClick={() => setLevels(AWARD_PRESET)}>Use Bronze, Silver, Gold</button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {levels.map((l, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input className="input flex-1" placeholder="Level name" maxLength={40} value={l.name} onChange={(e) => update(i, 'name', e.target.value)} aria-label={`Level ${i + 1} name`} />
+              <input className="input w-28" type="number" min="0.5" step="0.5" placeholder="Hours" value={l.hours ?? ''} onChange={(e) => update(i, 'hours', e.target.value === '' ? null : Number(e.target.value))} aria-label={`Level ${i + 1} hours`} />
+              <span className="text-xs text-earth-400">hours</span>
+              <button type="button" className="p-2 text-red-400 hover:text-red-300" onClick={() => setLevels(levels.filter((_, j) => j !== i))} aria-label={`Remove level ${i + 1}`}>
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {levels.length > 0 && levels.length < MAX_LEVELS && (
+        <button type="button" className="btn-sm btn-ghost" onClick={() => setLevels([...levels, { name: '', hours: null }])}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Add a level
+        </button>
+      )}
+      <p className="text-xs text-earth-400">Hours count the same way as your requirement: everything logged except rejected entries.</p>
     </>
   )
 }

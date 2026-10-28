@@ -1,7 +1,7 @@
 // Tenant-defined requirements ("how this school wants hours logged").
 //
 // A school — or the organization that owns it — describes its own rules here
-// instead of every tenant getting the one hard-coded form. Six sections, each
+// instead of every tenant getting the one hard-coded form. Seven sections, each
 // independently inheritable:
 //
 //   logRules     what an hour entry must contain to be accepted
@@ -10,6 +10,7 @@
 //   signIn       how this tenant's students are allowed to authenticate
 //   signatures   whether an entry must be signed, by whom, or carry a signed form
 //   certificates who signs the certificates the school prints, and what they say
+//   awards       levels like Bronze, Silver and Gold that students reach by hours
 //
 // Inheritance is per section, not per field: a school either overrides a whole
 // section or inherits the org's. Per-field merging reads fine in a diff and
@@ -21,7 +22,7 @@
 
 export const POLICY_VERSION = 1
 
-export const SECTIONS = ['logRules', 'customFields', 'goals', 'signIn', 'signatures', 'certificates']
+export const SECTIONS = ['logRules', 'customFields', 'goals', 'signIn', 'signatures', 'certificates', 'awards']
 
 export const DEFAULT_LOG_RULES = {
   proofRequired: false,
@@ -85,6 +86,11 @@ export const DEFAULT_CERTIFICATES = {
   note: '',
 }
 
+// Award levels (#559): up to six { name, hours }, kept sorted by hours. None
+// by default, so a school that sets nothing shows nothing.
+export const MAX_AWARD_LEVELS = 6
+export const DEFAULT_AWARDS = { levels: [] }
+
 export const DEFAULTS = {
   logRules: DEFAULT_LOG_RULES,
   customFields: [],
@@ -92,6 +98,7 @@ export const DEFAULTS = {
   signIn: DEFAULT_SIGN_IN,
   signatures: DEFAULT_SIGNATURES,
   certificates: DEFAULT_CERTIFICATES,
+  awards: DEFAULT_AWARDS,
 }
 
 export const CUSTOM_FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'select', 'checkbox']
@@ -291,6 +298,33 @@ function normalizeCertificates(input) {
   }
 }
 
+function normalizeAwards(input) {
+  const raw = input && typeof input === 'object' ? input : {}
+  const seen = new Set()
+  const levels = (Array.isArray(raw.levels) ? raw.levels : [])
+    .map((l) => ({ name: text(l?.name, 40), hours: posNumber(l?.hours, { max: 10000 }) }))
+    .filter((l) => l.name && l.hours !== null && !seen.has(l.hours) && seen.add(l.hours))
+    .sort((a, b) => a.hours - b.hours)
+    .slice(0, MAX_AWARD_LEVELS)
+  return { levels }
+}
+
+/**
+ * Where `hours` stands against the award levels: the highest level reached
+ * (or null), the next one (or null), and the hours still to go to it.
+ */
+export function awardFor(policy, hours) {
+  const levels = policy?.awards?.levels || []
+  const h = Number(hours) || 0
+  let current = null
+  let next = null
+  for (const level of levels) {
+    if (h >= level.hours) current = level
+    else { next = level; break }
+  }
+  return { current, next, toNext: next ? Math.round((next.hours - h) * 100) / 100 : 0, levels }
+}
+
 /**
  * What a student still needs (#561): the total requirement plus any minimum
  * hours by type. `hoursByCategory` maps a log category to its counted hours.
@@ -371,6 +405,7 @@ const NORMALIZERS = {
   signIn: normalizeSignIn,
   signatures: normalizeSignatures,
   certificates: normalizeCertificates,
+  awards: normalizeAwards,
 }
 
 /**

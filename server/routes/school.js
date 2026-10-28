@@ -17,7 +17,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, requirementShortfall } from '../requirements.js'
+import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -491,6 +491,8 @@ export async function schoolProgress(schoolId) {
       lastLogDate: r.last_log_date, remindedAt: r.hours_reminded_at,
       // An under-13 account still waiting for a parent can't sign in yet.
       consentPending: r.parental_consent_status === 'pending',
+      // The highest award level reached (#559), or null.
+      award: awardFor(policy, hours).current?.name || null,
     }
   })
   return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, students }
