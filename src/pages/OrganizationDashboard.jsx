@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog } from 'lucide-react'
 import HandoverForm from '@/components/HandoverForm.jsx'
+import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -161,6 +162,7 @@ export default function OrganizationDashboard() {
           <HoursReportPanel title="Organization volunteer hours report" />
         </Card>
       )}
+      {tab === 'hours' && <ImpactReportCard scope="organization" className="mt-4" />}
 
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />

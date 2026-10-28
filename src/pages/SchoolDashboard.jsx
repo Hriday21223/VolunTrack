@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
+import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import { gradeLabel } from '@policy'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
@@ -868,6 +869,7 @@ export default function SchoolDashboard() {
             <HoursReportPanel title="Volunteer hours report" />
           </Card>
         )}
+        {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && <ImpactReportCard scope="school" className="mt-4" />}
 
         {tab === 'setup' && setupTab === 'requirements' && user?.role === 'school' && (
           <RequirementsSettings scope="school" />

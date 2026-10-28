@@ -9,6 +9,7 @@ import Toast from '@/components/Toast.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import CollegeActivitiesCard from '@/components/CollegeActivitiesCard.jsx'
+import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import ReflectionsCard from '@/components/ReflectionsCard.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
@@ -152,6 +153,7 @@ export default function Reports() {
             </div>
           </div>
         </Card>
+        <ImpactReportCard scope="student" name={user?.name} logs={countedLogs(logs)} className="mb-6" />
         <CollegeActivitiesCard logs={logs} />
         <ReflectionsCard logs={logs} />
         <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
