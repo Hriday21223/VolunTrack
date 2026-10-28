@@ -262,6 +262,8 @@ export default {
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
   "Free club": "Club gratuito",
+  "Easy-read font": "Letra fácil de leer",
+  "A font that keeps similar letters like I, l and 1 easy to tell apart. Can help with dyslexia or low vision.": "Una letra que hace fácil distinguir letras parecidas como I, l y 1. Puede ayudar con la dislexia o la baja visión.",
   "From {name}": "De {name}",
   "Sign on your phone instead": "Firmar en tu teléfono",
   "Scan with the signer’s phone camera": "Escanea con la cámara del teléfono de quien firma",

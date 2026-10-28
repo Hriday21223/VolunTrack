@@ -4,28 +4,34 @@ import { keys, read, write } from '@/lib/storage.js'
 // Bigger text and high contrast: device-level display preferences, kept in
 // localStorage like the theme and never sent to the server. They live as
 // attributes on <html> — data-text-size scales the root font size, so every
-// rem-based Tailwind size grows with it, and data-contrast="high" switches on
-// the overrides in src/index.css.
+// rem-based Tailwind size grows with it, data-contrast="high" switches on
+// the overrides in src/index.css, and data-font="easy" swaps in Atkinson
+// Hyperlegible, a font made to keep similar letters apart (#553).
 
 export const TEXT_SIZES = ['default', 'large', 'xlarge']
 const CONTRASTS = ['normal', 'high']
+const FONTS = ['default', 'easy']
 const CHANGE_EVENT = 'voluntrack:display-prefs'
 
 function stored() {
   const textSize = read(keys.textSize, 'default')
   const contrast = read(keys.contrast, 'normal')
+  const font = read(keys.font, 'default')
   return {
     textSize: TEXT_SIZES.includes(textSize) ? textSize : 'default',
     contrast: CONTRASTS.includes(contrast) ? contrast : 'normal',
+    font: FONTS.includes(font) ? font : 'default',
   }
 }
 
-function apply({ textSize, contrast }) {
+function apply({ textSize, contrast, font }) {
   const html = document.documentElement
   if (textSize === 'default') html.removeAttribute('data-text-size')
   else html.setAttribute('data-text-size', textSize)
   if (contrast === 'high') html.setAttribute('data-contrast', 'high')
   else html.removeAttribute('data-contrast')
+  if (font === 'easy') html.setAttribute('data-font', 'easy')
+  else html.removeAttribute('data-font')
 }
 
 // Called at the very top of main.jsx, before React renders anything, so a
@@ -63,6 +69,14 @@ export function useDisplayPrefs() {
 
   const setTextSize = useCallback((v) => update('textSize', keys.textSize, TEXT_SIZES.includes(v) ? v : 'default'), [update])
   const setHighContrast = useCallback((on) => update('contrast', keys.contrast, on ? 'high' : 'normal'), [update])
+  const setEasyFont = useCallback((on) => update('font', keys.font, on ? 'easy' : 'default'), [update])
 
-  return { textSize: prefs.textSize, highContrast: prefs.contrast === 'high', setTextSize, setHighContrast }
+  return {
+    textSize: prefs.textSize,
+    highContrast: prefs.contrast === 'high',
+    easyFont: prefs.font === 'easy',
+    setTextSize,
+    setHighContrast,
+    setEasyFont,
+  }
 }
