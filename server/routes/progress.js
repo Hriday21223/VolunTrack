@@ -11,6 +11,7 @@ import { escapeHtml } from '../html.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { runMonthlyProgress } from '../monthlyProgress.js'
 import { runDeadlineReminders } from '../deadlineReminders.js'
+import { runSupervisorReminders } from '../supervisorReminders.js'
 
 const router = express.Router()
 
@@ -71,6 +72,19 @@ router.post('/internal/run-deadline', cronLimiter(), requireCronKey, requireDb, 
   } catch (error) {
     console.error('deadline reminder run failed:', error)
     return res.status(500).json({ error: 'Could not run the deadline reminders.' })
+  }
+})
+
+// POST /api/progress/internal/run-supervisor-reminders { dryRun? } (#555).
+// Answers counts and request ids only: the body lands in an Actions log.
+router.post('/internal/run-supervisor-reminders', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const dryRun = req.body?.dryRun === true
+  try {
+    const out = await runSupervisorReminders({ dryRun })
+    return res.json({ ok: true, dryRun, ...out, emailConfigured: hasEmail() })
+  } catch (error) {
+    console.error('supervisor reminder run failed:', error)
+    return res.status(500).json({ error: 'Could not run the supervisor reminders.' })
   }
 })
 
