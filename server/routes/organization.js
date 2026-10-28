@@ -12,6 +12,7 @@ import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { impactFor, impactBySchool, PERIODS } from '../impact.js'
+import { activeOrgChallenge, scoreboard, METRICS } from '../orgChallenge.js'
 import { schoolProgress } from './school.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 
@@ -483,6 +484,64 @@ router.get('/impact', limiter, requireDb, requireAuth('org'), async (req, res) =
   } catch (error) {
     console.error('organization impact failed:', error)
     return res.status(500).json({ error: 'Could not build the impact report.' })
+  }
+})
+
+// School vs school challenge (#575): the org's running challenge and board.
+async function myOrgId(req) {
+  const { rows } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])
+  return rows[0]?.organization_id || null
+}
+
+router.get('/challenge', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const orgId = await myOrgId(req)
+    if (!orgId) return res.status(404).json({ error: 'Organization not found.' })
+    const challenge = await activeOrgChallenge(orgId)
+    return res.json({ challenge, scoreboard: challenge ? await scoreboard(orgId, challenge) : [] })
+  } catch (error) {
+    console.error('org challenge read failed:', error)
+    return res.status(500).json({ error: 'Could not load the challenge.' })
+  }
+})
+
+router.post('/challenge', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  const title = String(req.body?.title || '').trim()
+  const metric = METRICS.includes(req.body?.metric) ? req.body.metric : 'total'
+  const startsOn = String(req.body?.startsOn || '')
+  const endsOn = String(req.body?.endsOn || '')
+  const DATE = /^\d{4}-\d{2}-\d{2}$/
+  if (!title || title.length > 120) return res.status(400).json({ error: 'Give the challenge a title (up to 120 characters).' })
+  if (!DATE.test(startsOn) || !DATE.test(endsOn) || endsOn < startsOn) return res.status(400).json({ error: 'Pick a start date and an end date after it.' })
+  try {
+    const orgId = await myOrgId(req)
+    if (!orgId) return res.status(404).json({ error: 'Organization not found.' })
+    if (await activeOrgChallenge(orgId)) return res.status(409).json({ error: 'End the current challenge before starting a new one.' })
+    await query(
+      `INSERT INTO org_challenges (id, organization_id, title, metric, starts_on, ends_on, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [uid('ochal'), orgId, title, metric, startsOn, endsOn, req.auth.sub],
+    )
+    const challenge = await activeOrgChallenge(orgId)
+    return res.status(201).json({ challenge, scoreboard: await scoreboard(orgId, challenge) })
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'End the current challenge before starting a new one.' })
+    console.error('org challenge create failed:', error)
+    return res.status(500).json({ error: 'Could not start the challenge.' })
+  }
+})
+
+router.post('/challenge/:id/end', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const orgId = await myOrgId(req)
+    const { rowCount } = await query(
+      'UPDATE org_challenges SET ended_at = now() WHERE id = $1 AND organization_id = $2 AND ended_at IS NULL',
+      [req.params.id, orgId],
+    )
+    if (rowCount === 0) return res.status(404).json({ error: 'Challenge not found.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('org challenge end failed:', error)
+    return res.status(500).json({ error: 'Could not end the challenge.' })
   }
 })
 

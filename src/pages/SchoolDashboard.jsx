@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
+import SchoolVsSchoolCard from '@/components/SchoolVsSchoolCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import { gradeLabel } from '@policy'
@@ -727,6 +728,7 @@ export default function SchoolDashboard() {
             <GroupHoursCard students={students} onDone={loadData} />
 
             <ChallengeCard manage />
+            <SchoolVsSchoolCard />
 
             <LeaderboardSettingsCard canEdit={user?.role === 'school'} />
 
