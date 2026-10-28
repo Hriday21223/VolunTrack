@@ -194,7 +194,7 @@ export function exportLogsCSV(logs) {
 /** Printable certificate — opens the browser print dialog. */
 // `certificate` is the school's certificates settings (server/requirements.js):
 // a student whose school named a signer gets that signature, not VolunTrack's.
-export function printCertificate({ user, totalHours, goalReached, certificate }) {
+export function printCertificate({ user, totalHours, goalReached, certificate, award = null }) {
   const w = window.open('', '_blank', 'width=820,height=1000')
   if (!w) return
   const name = user?.name || 'Volunteer'
@@ -235,7 +235,7 @@ export function printCertificate({ user, totalHours, goalReached, certificate })
         <div class="body">has generously contributed</div>
         <div class="hours">${hoursWords(totalHours)} of volunteer service</div>
         <div class="body">
-          ${goalReached
+          ${award ? `and has reached the <strong>${escapeHtml(award)}</strong> award level.` : goalReached
             ? 'and has reached their service goal — a true community hero.'
             : 'in service of their community.'}
         </div>
@@ -276,7 +276,7 @@ export function printSchoolCertificates({ schoolName, students, certificate }) {
         <div class="name">${escapeHtml(s.name || 'Student')}</div>
         <div class="body">has completed</div>
         <div class="hours">${hoursWords(s.hours)} of volunteer service</div>
-        <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement. ${escapeHtml(note)}</div>
+        <div class="body">meeting the ${escapeHtml(String(s.target))}-hour service requirement${s.award ? ` and reaching the <strong>${escapeHtml(s.award)}</strong> award level` : ''}. ${escapeHtml(note)}</div>
         <div class="sig">
           <div><div class="sig-value">${escapeHtml(issuedDate)}</div><div class="sig-line">Date</div></div>
           ${signatureBlock({ name: signerName, title: signerTitle, style: certificate?.signStyle || 'typed', image: certificate?.signatureImage })}

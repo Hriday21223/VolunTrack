@@ -131,7 +131,10 @@ export default function StudentProgressPanel({ onSetRequirement }) {
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <span className="font-medium truncate">{s.name}{s.grade ? <span className="text-xs text-earth-500"> · Grade {s.grade}</span> : null}</span>
+                    <span className="font-medium truncate">
+                      {s.name}{s.grade ? <span className="text-xs text-earth-500"> · Grade {s.grade}</span> : null}
+                      {s.award && <span className="ml-2 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-brand-600/15 text-brand-600 dark:text-brand-300">{s.award}</span>}
+                    </span>
                     <span className="text-sm whitespace-nowrap">
                       {s.target ? <>{s.hours} / {s.target} h{s.remaining > 0 && <span className="text-amber-300"> · {s.remaining} to go</span>}</> : <span className="text-earth-500">No goal for this grade</span>}
                     </span>
