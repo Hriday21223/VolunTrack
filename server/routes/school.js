@@ -5,6 +5,7 @@ import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settl
 import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { impactFor, PERIODS } from '../impact.js'
+import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
@@ -518,6 +519,26 @@ router.get('/impact', limiter, requireDb, requireAuth('school', 'school_staff'),
     return res.status(500).json({ error: 'Could not build the impact report.' })
   }
 })
+
+// Who gets the monthly impact email (#573). The school's main admin chooses.
+async function impactRecipientsHandler(req, res, action) {
+  try {
+    const { rows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = rows[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const recipients = action === 'add' ? await addRecipient('school', schoolId, req.body?.email, req.auth.sub)
+      : action === 'remove' ? await removeRecipient('school', schoolId, req.params.id)
+        : await listRecipients('school', schoolId)
+    return res.json({ recipients })
+  } catch (error) {
+    if (error instanceof RecipientError) return res.status(error.status).json({ error: error.message })
+    console.error('impact recipients failed:', error)
+    return res.status(500).json({ error: 'Could not update the list.' })
+  }
+}
+router.get('/impact-recipients', limiter, requireDb, requireAuth('school'), (req, res) => impactRecipientsHandler(req, res, 'list'))
+router.post('/impact-recipients', limiter, requireDb, requireAuth('school'), (req, res) => impactRecipientsHandler(req, res, 'add'))
+router.delete('/impact-recipients/:id', limiter, requireDb, requireAuth('school'), (req, res) => impactRecipientsHandler(req, res, 'remove'))
 
 router.get('/students/progress', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   try {
