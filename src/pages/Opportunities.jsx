@@ -540,6 +540,11 @@ export default function Opportunities() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{t.title}</p>
+                    {t.for_my_schools && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-500 dark:text-sky-300 font-medium shrink-0">
+                        {tr('For your school')}
+                      </span>
+                    )}
                     {t.distance != null && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 font-medium shrink-0">
                         {fmtDist(t.distance)}{' '}{tr('away')}

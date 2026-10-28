@@ -40,6 +40,7 @@ const CORE_ITEMS = {
   ],
   org: [
     { to: '/organization/dashboard', label: 'Dashboard', icon: Home },
+    { to: '/my-tasks',     label: 'Events',    icon: ClipboardList },
     { to: '/profile',      label: 'Profile',   icon: User },
     { to: '/settings',     label: 'Settings',  icon: Settings },
   ],

@@ -772,6 +772,9 @@ export async function initSchema() {
   // task, and a sign-up then brings 0–3 guests (optional first names), taking
   // 1 + guest_count spots. Guests have no accounts and no hours.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS allow_guests BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // An event an organization posted for its schools (#565): their students
+  // are told and see it marked "For your school". Still public like any task.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_count SMALLINT NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_names TEXT[]`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_guest_count_check CHECK (guest_count BETWEEN 0 AND 3)`) } catch {}

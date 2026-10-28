@@ -19,9 +19,10 @@ export const ROUTE_ROLES = {
   '/reports': STUDENT,
   '/reminders': STUDENT,
   '/checkin': STUDENT,
-  // Students run events too (Dashboard → Your events).
-  '/my-tasks': PERSONAL,
-  '/attendance': PERSONAL,
+  // Students run events too (Dashboard → Your events), and organizations post
+  // events for all their schools (#565).
+  '/my-tasks': [...PERSONAL, 'org'],
+  '/attendance': [...PERSONAL, 'org'],
   '/profile': ['student', 'volunteer', 'school', 'school_staff', 'org'],
   '/settings': ['student', 'volunteer', 'school', 'school_staff', 'org', 'parent'],
   // A linked student uploads verification PDFs here (Settings → School);

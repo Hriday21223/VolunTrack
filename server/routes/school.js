@@ -1954,12 +1954,20 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   })
 
   try {
-    const { rows } = await query('SELECT name, email, posting_suspended_at FROM users WHERE id = $1', [req.auth.sub])
+    const { rows } = await query(
+      `SELECT u.name, u.email, u.posting_suspended_at, o.id AS org_id, o.name AS org_name
+         FROM users u LEFT JOIN organizations o ON o.id = u.organization_id AND u.role = 'org'
+        WHERE u.id = $1`,
+      [req.auth.sub],
+    )
     if (rows.length === 0) return res.status(404).json({ error: 'User not found.' })
     // Suspended by the admin after a report (server/routes/reports.js).
     if (rows[0].posting_suspended_at) {
       return res.status(403).json({ error: "Your account can't post volunteer tasks right now. Contact us if you think this is a mistake." })
     }
+    // An organization posts for its schools (#565), under its own name.
+    const orgId = rows[0].org_id || null
+    const creatorName = rows[0].org_name || rows[0].name
 
     // Every week of a repeat goes in together or not at all, so a failure
     // can't leave the organizer with half a series to find and fix.
@@ -1971,10 +1979,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
-          [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, rows[0].name, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests],
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+          [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId],
         )
         created.push({ id, date: day })
       }
@@ -1987,6 +1995,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     }
     // Once per post, after it's saved: a weekly series is one email, not one per week.
     notifyFollowers(req.auth.sub, created[0].id)
+    if (orgId) notifyOrgSchools(orgId, created[0].id)
     return res.status(201).json({ ok: true, id: created[0].id, createdCount: created.length, tasks: created })
   } catch (error) {
     console.error('create public task failed:', error)
@@ -2042,6 +2051,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
                t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
+               ${userId ? `COALESCE(t.organization_id IS NOT NULL AND t.organization_id = (SELECT s.organization_id FROM users mu JOIN schools s ON s.id = mu.school_id WHERE mu.id = $1), false)` : 'false'} AS for_my_schools,
                ${SPOTS_USED_SQL('t.id')} AS slots_filled,
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
@@ -2469,6 +2479,38 @@ async function remindSavedTasks({ dryRun = false } = {}) {
 // announcements do — the @test.com fixtures. Throttle: the UPDATE claims only
 // follows not emailed in the last hour and stamps them in the same statement,
 // so a burst of postings (or a repeating task) sends each follower one email.
+// Every student at an organization's schools hears about an event it posted
+// for them (#565): a bell entry each, no email, so a district-wide post can't
+// flood inboxes. Same skips as the follower bell.
+async function notifyOrgSchools(orgId, taskId) {
+  try {
+    const { rows: taskRows } = await query(
+      `SELECT title, to_char(date, 'YYYY-MM-DD') AS date, time, creator_name FROM public_tasks WHERE id = $1 AND status = 'open'`,
+      [taskId],
+    )
+    const task = taskRows[0]
+    if (!task) return
+    const { rows: students } = await query(
+      `SELECT u.id FROM users u JOIN schools s ON s.id = u.school_id
+        WHERE s.organization_id = $1 AND u.role = 'student'
+          AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+        LIMIT 20000`,
+      [orgId],
+    )
+    const when = friendlyWhen(task.date, task.time)
+    for (const st of students) {
+      await notify(st.id, {
+        kind: 'new_task',
+        title: task.title,
+        body: `${task.creator_name || 'Your organization'} posted this for your school${when ? ` · ${when}` : ''}`,
+        link: `/opportunities?task=${encodeURIComponent(taskId)}`,
+      })
+    }
+  } catch (error) {
+    console.error('org event notification failed:', error.message)
+  }
+}
+
 async function notifyFollowers(organizerId, taskId) {
   try {
     const { rows: taskRows } = await query(
