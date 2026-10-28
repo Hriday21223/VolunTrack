@@ -144,6 +144,7 @@ export default function StudentProgressPanel({ onSetRequirement }) {
                   <p className="text-xs text-earth-500 mt-1">
                     {s.lastLogDate ? `Last logged ${fmtDate(s.lastLogDate)}` : 'Nothing logged yet'}
                     {weeksLeft && s.remaining > 0 ? ` · needs ${Math.ceil((s.remaining / weeksLeft) * 4) / 4} h/week` : ''}
+                    {s.categoryShort?.length > 0 && <span className="text-amber-300">{' · still needs '}{s.categoryShort.map((c) => `${c.remaining} h ${c.category}`).join(', ')}</span>}
                     {s.consentPending ? ' · waiting for parent approval' : recentlyReminded(s) ? ` · reminded ${fmtDate(String(s.remindedAt).slice(0, 10))}` : ''}
                   </p>
                 </div>

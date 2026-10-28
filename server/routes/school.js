@@ -17,7 +17,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel } from '../requirements.js'
+import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, requirementShortfall } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -467,12 +467,27 @@ export async function schoolProgress(schoolId) {
       ORDER BY u.name`,
     [schoolId],
   )
+  // Minimum hours by type (#561) need each student's hours per category.
+  const byCategory = {}
+  if (Object.keys(policy?.goals?.byCategory || {}).length > 0) {
+    const { rows: cats } = await query(
+      `SELECT l.user_id, COALESCE(l.category, '') AS category, SUM(l.hours)::float AS hours
+         FROM logs l JOIN users u ON u.id = l.user_id
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IS DISTINCT FROM 'rejected'
+        GROUP BY l.user_id, COALESCE(l.category, '')`,
+      [schoolId],
+    )
+    for (const c of cats) (byCategory[c.user_id] ||= {})[c.category] = c.hours
+  }
   const students = rows.map((r) => {
-    const target = goalHoursFor(policy, r.grade)
     const hours = Math.round(r.hours * 100) / 100
+    // `remaining` counts any type still short, so everything built on it
+    // (behind, certificates, reminders, digests) treats that student as not done.
+    const { target, remaining, categories } = requirementShortfall(policy, r.grade, hours, byCategory[r.id])
     return {
       id: r.id, name: r.name, email: r.email, grade: r.grade,
-      hours, target, remaining: target ? Math.max(0, Math.round((target - hours) * 100) / 100) : null,
+      hours, target, remaining,
+      categoryShort: categories.filter((c) => c.remaining > 0).map((c) => ({ category: c.category, remaining: c.remaining })),
       lastLogDate: r.last_log_date, remindedAt: r.hours_reminded_at,
       // An under-13 account still waiting for a parent can't sign in yet.
       consentPending: r.parental_consent_status === 'pending',

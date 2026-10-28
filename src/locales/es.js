@@ -262,6 +262,7 @@ export default {
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
   "Free club": "Club gratuito",
+  "Hours by type": "Horas por tipo",
   "Sign on your phone instead": "Firmar en tu teléfono",
   "Scan with the signer’s phone camera": "Escanea con la cámara del teléfono de quien firma",
   "They sign with a finger and tap Done. The signature shows up here by itself. The code works once, for 15 minutes.": "Firma con el dedo y toca Listo. La firma aparece aquí sola. El código funciona una vez, durante 15 minutos.",
