@@ -1304,6 +1304,9 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // An organization's own announcement to its schools (#557). NULL for the
+  // VolunTrack admin's, which reach everyone in their audience.
+  try { await query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE`) } catch {}
 
   // One-time codes the admin hands a school or organization so it can
   // register (server/registrationCodes.js, #287). Only a hash is kept: the
