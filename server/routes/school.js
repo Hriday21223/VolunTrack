@@ -4,6 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
+import { impactFor, PERIODS } from '../impact.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
@@ -497,6 +498,26 @@ export async function schoolProgress(schoolId) {
   })
   return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, students }
 }
+
+// GET /api/school/impact?period=year|all — the school's impact report
+// (#563): counts only, so it reads no one student's records.
+router.get('/impact', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const period = PERIODS.includes(req.query.period) ? req.query.period : 'year'
+  try {
+    const { rows } = await query('SELECT u.school_id, s.name FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1', [req.auth.sub])
+    if (!rows[0]) return res.status(404).json({ error: 'School not found.' })
+    const [impact, progress] = await Promise.all([impactFor([rows[0].school_id], period), schoolProgress(rows[0].school_id)])
+    const withGoal = progress.students.filter((s) => s.target)
+    return res.json({
+      name: rows[0].name,
+      ...impact,
+      requirement: withGoal.length ? { students: withGoal.length, met: withGoal.filter((s) => s.remaining <= 0).length } : null,
+    })
+  } catch (error) {
+    console.error('school impact failed:', error)
+    return res.status(500).json({ error: 'Could not build the impact report.' })
+  }
+})
 
 router.get('/students/progress', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   try {
