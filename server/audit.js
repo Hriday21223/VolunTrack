@@ -24,6 +24,8 @@ export const AUDIT = {
   STUDENT_LIST_READ: 'student.list_read',
   // An adviser's private notes on a student (#567).
   STUDENT_NOTES_READ: 'student.notes_read',
+  // An adviser set or corrected a student's grade (#581).
+  STUDENT_GRADE_SET: 'student.grade_set',
   STUDENT_NOTE_ADDED: 'student.note_added',
   STUDENT_NOTE_DELETED: 'student.note_deleted',
   STAFF_ADDED: 'staff.added',

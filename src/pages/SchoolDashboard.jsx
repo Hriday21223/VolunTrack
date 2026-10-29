@@ -16,7 +16,8 @@ import { fetchNoteCounts } from '@/lib/studentNotes.js'
 import SchoolVsSchoolCard from '@/components/SchoolVsSchoolCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
-import { gradeLabel } from '@policy'
+import { gradeLabel, gradeKey, SCHOOL_GRADES } from '@policy'
+import { useMyRequirements } from '@/lib/requirements.js'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
@@ -136,6 +137,22 @@ export default function SchoolDashboard() {
   const [handoverStaffId, setHandoverStaffId] = useState(null)
   // Private adviser notes (#567): which student's are open, and how many each has.
   const [notesFor, setNotesFor] = useState(null)
+  // A student's grade, set by the adviser (#581), from the school's own grades.
+  const schoolRequirements = useMyRequirements()
+  const schoolGradeOptions = schoolRequirements.policy?.goals?.grades?.length ? schoolRequirements.policy.goals.grades : SCHOOL_GRADES
+  const setStudentGrade = async (id, grade) => {
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/school/students/${encodeURIComponent(id)}/grade`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ grade: grade || null }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not save the grade.')
+      setStudents((list) => list.map((st) => (st.id === id ? { ...st, grade: data.grade } : st)))
+    } catch (e) { setToastMsg(e.message); setToast(true) }
+  }
   const [noteCounts, setNoteCounts] = useState({})
   useEffect(() => {
     if (tab === 'students' && subTab === 'list') fetchNoteCounts().then(setNoteCounts)
@@ -892,9 +909,18 @@ export default function SchoolDashboard() {
                         <div className="flex justify-between items-center gap-2">
                           <div className="min-w-0">
                             <p className="font-medium text-sm">{s.name}</p>
-                            <p className="text-xs text-earth-400">{s.email}{s.grade ? ` · ${gradeLabel(s.grade)}` : ''}</p>
+                            <p className="text-xs text-earth-400">{s.email}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
+                            <select
+                              className="input py-1 text-xs w-auto"
+                              value={gradeKey(s.grade) || ''}
+                              onChange={(e) => setStudentGrade(s.id, e.target.value)}
+                              aria-label={`Grade for ${s.name}`}
+                            >
+                              <option value="">{!s.grade ? 'No grade' : schoolGradeOptions.includes(gradeKey(s.grade)) ? 'No grade' : /^(graduated|moved on)$/i.test(s.grade) ? s.grade : `${gradeLabel(s.grade)} (fix)`}</option>
+                              {schoolGradeOptions.map((g) => <option key={g} value={g}>{gradeLabel(g)}</option>)}
+                            </select>
                             <span className="text-xs text-earth-500 hidden sm:inline">{new Date(s.created_at).toLocaleDateString()}</span>
                             <button type="button" className="btn-ghost btn-sm" onClick={() => setNotesFor(notesFor === s.id ? null : s.id)} aria-expanded={notesFor === s.id}>
                               Notes{noteCounts[s.id] ? ` (${noteCounts[s.id]})` : ''}

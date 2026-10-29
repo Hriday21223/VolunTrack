@@ -1,3 +1,4 @@
+import GradePicker from '@/components/GradePicker.jsx'
 import { useEffect, useState } from 'react'
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { School, Loader2, CheckCircle2, ArrowRight, Clock } from 'lucide-react'
@@ -49,15 +50,19 @@ export default function JoinSchool() {
 
   const alreadyHere = Boolean(user && school && user.schoolId === school.id)
 
-  const doJoin = async () => {
+  // A school that set its grades asks for one (#581).
+  const [gradeAsk, setGradeAsk] = useState(null)
+  const doJoin = async (grade = null) => {
     setJoin({ status: 'busy', message: '' })
     try {
       const res = await fetch(`${apiUrl}/school/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
-        body: JSON.stringify({ pin: code }),
+        body: JSON.stringify({ pin: code, ...(grade ? { grade } : {}) }),
       })
       const data = await res.json().catch(() => ({}))
+      if (data.needsGrade) { setGradeAsk({ grades: data.grades || [], schoolName: data.schoolName }); setJoin({ status: 'idle', message: '' }); return }
+      setGradeAsk(null)
       if (res.status === 409) { setJoin({ status: 'linked', message: '' }); return }
       if (!res.ok) throw new Error(data.error || tr('Could not join that school.'))
       if (data.pending) { setJoin({ status: 'transfer', message: data.message || '' }); return }
@@ -152,9 +157,13 @@ export default function JoinSchool() {
           </p>
           {join.status === 'error' && <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{join.message}</p>}
           <div className="mt-6">
-            <button type="button" className="btn-primary" onClick={doJoin} disabled={join.status === 'busy'}>
+            {gradeAsk ? (
+              <GradePicker grades={gradeAsk.grades} schoolName={gradeAsk.schoolName} busy={join.status === 'busy'} onPick={(g) => doJoin(g)} />
+            ) : (
+            <button type="button" className="btn-primary" onClick={() => doJoin()} disabled={join.status === 'busy'}>
               {join.status === 'busy' ? <><Loader2 className="w-4 h-4 animate-spin" /> {tr('Joining…')}</> : tr('Join {school}', { school: school.name })}
             </button>
+            )}
           </div>
         </>
       )
