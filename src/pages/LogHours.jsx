@@ -11,7 +11,8 @@ import SignaturePad from '@/components/SignaturePad.jsx'
 import Toast from '@/components/Toast.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
-import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds } from '@/lib/requirements.js'
+import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds, isLockedDate, lockedMessage } from '@/lib/requirements.js'
+import { listShifts } from '@/lib/shifts.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify.js'
 import ScanPaperLog from '@/components/ScanPaperLog.jsx'
@@ -107,6 +108,8 @@ export default function LogHours({ editId, onCloseEdit }) {
   // the form is usable on the first paint and in client-only mode, and
   // tightens once the policy lands.
   const requirements = useMyRequirements()
+  // Editing an entry the school has locked (#569): show why, and allow no changes.
+  const editingLocked = Boolean(editId) && isLockedDate(requirements.policy, logs.find((l) => l.id === editId)?.date)
   const { policy, sources } = requirements
   const customFields = policy.customFields || []
   const policyNotes = describePolicy(policy)
@@ -155,6 +158,33 @@ export default function LogHours({ editId, onCloseEdit }) {
     }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskFromLink, myTasks, editId])
+  // /log?shift=<id>&date=YYYY-MM-DD, from "Did you go?" on the dashboard
+  // (#571): fill the form from the student's regular shift, once.
+  const shiftFromLink = searchParams.get('shift')
+  const shiftDate = searchParams.get('date')
+  const appliedShiftLink = useRef(false)
+  useEffect(() => {
+    if (!shiftFromLink || appliedShiftLink.current || editId) return
+    appliedShiftLink.current = true
+    listShifts().then((list) => {
+      const s = list.find((x) => x.id === shiftFromLink)
+      if (!s) return
+      setForm((f) => ({
+        ...f,
+        activity: s.activity,
+        category: s.category || f.category,
+        orgName: s.orgName || f.orgName,
+        location: s.location || f.location,
+        latitude: s.latitude ?? f.latitude,
+        longitude: s.longitude ?? f.longitude,
+        supervisorName: s.supervisorName || f.supervisorName,
+        supervisorEmail: s.supervisorEmail || f.supervisorEmail,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        ...(/^\d{4}-\d{2}-\d{2}$/.test(shiftDate || '') ? { date: shiftDate } : {}),
+      }))
+    }).catch(() => {})
+  }, [shiftFromLink, shiftDate, editId])
   // Until the student says otherwise: a supervisor is assumed to be right
   // there, a task's organizer not (they sign it off on My Tasks).
   const signerHere = form.signerHere ?? !linkedTask
@@ -769,10 +799,13 @@ export default function LogHours({ editId, onCloseEdit }) {
 
           <Card>
             {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg mb-3">{error}</div>}
-            <button type="submit" disabled={saving} className="btn-primary w-full disabled:opacity-60">
+            {editingLocked && (
+              <div className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-300 px-3 py-2 rounded-lg mb-3">{tr(lockedMessage(requirements.policy))}</div>
+            )}
+            <button type="submit" disabled={saving || editingLocked} className="btn-primary w-full disabled:opacity-60">
               <Save className="w-4 h-4" /> {saving ? tr('Saving…') : editId ? tr('Save changes') : tr('Save hours')}
             </button>
-            {editId && (
+            {editId && !editingLocked && (
               <button
                 type="button"
                 className="btn-ghost w-full mt-2 text-red-600"

@@ -1106,6 +1106,45 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('handover table migration failed:', error) }
 
+  // An adviser's private notes on a student (#567). Kept per school: a
+  // student who moves takes none of them to the next school.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS student_notes (
+        id          TEXT PRIMARY KEY,
+        school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        student_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        author_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        author_name TEXT,
+        body        TEXT NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`CREATE INDEX IF NOT EXISTS idx_student_notes_student ON student_notes(school_id, student_id)`)
+  } catch (error) { console.error('student notes table migration failed:', error) }
+  // A student's regular weekly shifts (#571, server/routes/shifts.js).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS regular_shifts (
+        id               TEXT PRIMARY KEY,
+        user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        activity         TEXT NOT NULL,
+        category         TEXT,
+        org_name         TEXT,
+        location         TEXT,
+        latitude         DECIMAL(10,7),
+        longitude        DECIMAL(10,7),
+        supervisor_name  TEXT,
+        supervisor_email TEXT,
+        weekday          SMALLINT NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+        start_time       TEXT NOT NULL,
+        end_time         TEXT NOT NULL,
+        skipped          JSONB NOT NULL DEFAULT '[]'::jsonb,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`CREATE INDEX IF NOT EXISTS idx_regular_shifts_user ON regular_shifts(user_id)`)
+  } catch (error) { console.error('regular shifts table migration failed:', error) }
   // Monthly impact email (#573, server/impactEmail.js): who gets it for a
   // school or an organization, each with their own unsubscribe token, and one
   // row per school/org per month so a re-run mails nobody twice.
