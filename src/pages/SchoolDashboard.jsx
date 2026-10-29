@@ -36,6 +36,7 @@ import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
 import GroupHoursCard from '@/components/GroupHoursCard.jsx'
+import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -90,6 +91,7 @@ export default function SchoolDashboard() {
   const [toastMsg, setToastMsg] = useState('')
   const [uploading, setUploading] = useState(false)
   const [selectedPdf, setSelectedPdf] = useState(null)
+  const [rejecting, setRejecting] = useState(null)
   const [addEmail, setAddEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [addErr, setAddErr] = useState('')
@@ -377,18 +379,29 @@ export default function SchoolDashboard() {
     }
   }
 
+  // Approving is one tap; rejecting opens RejectReportDialog for the reason
+  // the student will see (#583), and that dialog shows any error itself.
+  const sendReview = async (id, status, notes) => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    const res = await fetch(`${apiUrl}/school/pdf/${id}/review`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status, notes }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Failed to update')
+    setToastMsg(status === 'approved' ? 'Approved. The student has been told.' : 'Sent back. The student can see why.')
+    setToast(true)
+    if (selectedPdf?.id === id) setSelectedPdf((p) => (p ? { ...p, status, notes } : p))
+    loadData()
+  }
   const reviewPdf = async (id, status) => {
+    if (status === 'rejected') {
+      setRejecting(pdfs.find((p) => p.id === id) || selectedPdf || { id })
+      return
+    }
     try {
-      const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/school/pdf/${id}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status }),
-      })
-      if (!res.ok) throw new Error('Failed to update')
-      setToastMsg(`PDF ${status}`)
-      setToast(true)
-      loadData()
+      await sendReview(id, status)
     } catch (e) {
       setToastMsg(e.message)
       setToast(true)
@@ -445,8 +458,18 @@ export default function SchoolDashboard() {
                 </button>
               </div>
             )}
+            {selectedPdf.status !== 'pending' && selectedPdf.notes && (
+              <p className="text-sm text-earth-500 dark:text-earth-400 mt-4"><span className="font-medium">Note to the student:</span> {selectedPdf.notes}</p>
+            )}
           </Card>
         </div>
+      {rejecting && (
+        <RejectReportDialog
+          report={rejecting}
+          onClose={() => setRejecting(null)}
+          onReject={async (reason) => { await sendReview(rejecting.id, 'rejected', reason); setRejecting(null) }}
+        />
+      )}
       </AppLayout>
     )
   }
@@ -1177,6 +1200,9 @@ export default function SchoolDashboard() {
                       {pdf.user_name && `${pdf.user_name} · `}
                       {new Date(pdf.created_at).toLocaleDateString()}
                     </p>
+                    {pdf.status === 'rejected' && pdf.notes && (
+                      <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 line-clamp-2">Sent back: {pdf.notes}</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -1202,6 +1228,13 @@ export default function SchoolDashboard() {
         )}
       </div>
 
+      {rejecting && (
+        <RejectReportDialog
+          report={rejecting}
+          onClose={() => setRejecting(null)}
+          onReject={async (reason) => { await sendReview(rejecting.id, 'rejected', reason); setRejecting(null) }}
+        />
+      )}
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
 
       {previewInvoice && (
