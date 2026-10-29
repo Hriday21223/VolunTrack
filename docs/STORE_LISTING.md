@@ -87,15 +87,17 @@ icon label stays *VolunTrack*:
 > • We never sell your data
 > • In English and Spanish
 
-**Release notes / What's new** (Play 500 max) — 0.8.0:
+**Release notes / What's new** (Play 500 max) — 0.9.0:
 
-> New in 0.8.0:
-> • Home-screen widget: your hours and goal, and a Log hours button
-> • Scan a paper log: photograph an old hours sheet to add the entries
-> • "What did you learn?" reflections, private to you
-> • College applications: your hours as Common App entries, ready to copy
-> • Parents can cheer an entry with "Proud of you"
-> • Advisers: start a free club for up to 50 students
+> New in 0.9.0:
+> • Hours due soon? Get a reminder before your school's deadline
+> • Alerts for new opportunities in the causes you pick
+> • Repeat a regular shift in one tap
+> • See your impact: hours, places, and what they're worth
+> • Hear back when your school reviews a report you sent
+> • Award levels like Bronze, Silver and Gold
+> • Easy-read font option
+> • Schools: group challenges, adviser notes, class invites with grades
 
 ## Graphics
 
@@ -130,12 +132,12 @@ cost of the app running letterboxed on iPads.
 | Personal info → Name | Yes | No | Required for an account | App functionality, Account management |
 | Personal info → Email address | Yes | No | Required for an account | App functionality, Account management |
 | Personal info → User IDs (account ID; the student ID number, if entered) | Yes | No | Required for an account | App functionality, Account management |
-| Personal info → Other info (date of birth, at sign-up — tick *processed ephemerally*: used for the age rules, never stored) | Yes | No | Required for an account | App functionality |
+| Personal info → Other info (school grade, which the student or their school sets, and which a school's class roster can fill in; date of birth at sign-up, *processed ephemerally*: used for the age rules, never stored) | Yes | No | Required for an account (date of birth); grade optional | App functionality |
 | Location → Approximate location | Yes | No | Optional | App functionality |
 | Location → Precise location | Yes | No | Optional | App functionality |
 | Photos and videos → Photos (proof of service; an organizer's task cover photo; a photo of a paper hours log — read on the device and not collected; only if the optional AI reader is switched on is it sent to our AI provider, processed ephemerally and not stored) | Yes | No | Optional | App functionality |
 | Files and docs | Yes | No | Optional | App functionality |
-| App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages, optional first names of guests brought to a task) | Yes | No | Required | App functionality |
+| App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages, optional first names of guests brought to a task; for students in a school, the notes their school writes: private adviser notes and the reason a submitted report was sent back) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
 | App info and performance → Crash logs (error message, technical details, page and app version, with no account, name or email attached) | Yes | No | Required | App functionality |
 
