@@ -1145,6 +1145,31 @@ export async function initSchema() {
     `)
     await query(`CREATE INDEX IF NOT EXISTS idx_regular_shifts_user ON regular_shifts(user_id)`)
   } catch (error) { console.error('regular shifts table migration failed:', error) }
+  // Monthly impact email (#573, server/impactEmail.js): who gets it for a
+  // school or an organization, each with their own unsubscribe token, and one
+  // row per school/org per month so a re-run mails nobody twice.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS impact_report_recipients (
+        id              TEXT PRIMARY KEY,
+        school_id       TEXT REFERENCES schools(id) ON DELETE CASCADE,
+        organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+        email           TEXT NOT NULL,
+        token           TEXT NOT NULL UNIQUE,
+        added_by        TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS impact_report_sends (
+        target_kind TEXT NOT NULL,
+        target_id   TEXT NOT NULL,
+        month       TEXT NOT NULL,
+        sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (target_kind, target_id, month)
+      )
+    `)
+  } catch (error) { console.error('impact email tables migration failed:', error) }
 
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
