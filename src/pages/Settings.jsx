@@ -1,3 +1,4 @@
+import GradePicker from '@/components/GradePicker.jsx'
 import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, ChevronRight, Users, X, HelpCircle, Mail, Activity, FileText } from 'lucide-react'
@@ -112,7 +113,9 @@ export default function Settings() {
   // One path for both cases: the server decides whether a code links straight
   // away (no school yet) or opens a transfer request (already at a school),
   // and says which it did. The client never has to guess.
-  const handleSchoolCode = async () => {
+  // A school that set its grades asks for one (#581).
+  const [gradeAsk, setGradeAsk] = useState(null)
+  const handleSchoolCode = async (grade = null) => {
     if (!schoolCode) return
     setSchoolBusy(true)
     try {
@@ -120,9 +123,11 @@ export default function Settings() {
       const res = await fetch(`${apiUrl}/school/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pin: schoolCode }),
+        body: JSON.stringify({ pin: schoolCode, ...(typeof grade === 'string' ? { grade } : {}) }),
       })
       const data = await res.json()
+      if (data.needsGrade) { setGradeAsk({ grades: data.grades || [], schoolName: data.schoolName }); return }
+      setGradeAsk(null)
       if (!res.ok) throw new Error(data.error || 'Failed to join')
       setSchoolCode('')
       if (data.pending) {
@@ -1371,6 +1376,7 @@ export default function Settings() {
                         >
                           {schoolBusy ? 'Requesting…' : 'Request transfer'}
                         </button>
+                  {gradeAsk && <GradePicker grades={gradeAsk.grades} schoolName={gradeAsk.schoolName} busy={schoolBusy} onPick={(g) => handleSchoolCode(g)} />}
                       </div>
                     )}
                   </div>
@@ -1424,6 +1430,7 @@ export default function Settings() {
                   >
                     {schoolBusy ? 'Joining…' : 'Join school'}
                   </button>
+                  {gradeAsk && <GradePicker grades={gradeAsk.grades} schoolName={gradeAsk.schoolName} busy={schoolBusy} onPick={(g) => handleSchoolCode(g)} />}
                 </div>
               )}
             </Card>

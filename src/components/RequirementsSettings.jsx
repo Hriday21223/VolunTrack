@@ -18,7 +18,7 @@ import {
   DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, classifyFormUrl,
   fetchSchoolRequirements, saveSchoolRequirements,
   fetchOrgRequirements, saveOrgRequirements, fetchTemplate, saveTemplate,
-  gradeKey, gradeLabel,
+  gradeKey, gradeLabel, SCHOOL_GRADES, gradeOptionLabel,
 } from '@/lib/requirements.js'
 
 const SECTION_LABELS = {
@@ -308,6 +308,28 @@ function GoalsEditor({ value, onChange }) {
         <div>
           <label className="label">Deadline</label>
           <input className="input" type="date" value={value.deadline || ''} onChange={(e) => onChange({ deadline: e.target.value || null })} />
+        </div>
+      </div>
+      <div>
+        <label className="label">Grades at your school</label>
+        <p className="text-xs text-earth-400 mb-2">
+          Tick the grades you have, e.g. only 9th, or 10th–12th. Students then pick from these, must pick one to join, and “New school year” moves your top grade on. Leave all unticked to allow any grade.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {SCHOOL_GRADES.map((g) => {
+            const on = (value.grades || []).includes(g)
+            return (
+              <button
+                key={g}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onChange({ grades: on ? value.grades.filter((x) => x !== g) : SCHOOL_GRADES.filter((x) => x === g || (value.grades || []).includes(x)) })}
+                className={`btn-sm ${on ? 'btn-primary' : 'btn-ghost'}`}
+              >
+                {gradeOptionLabel(g)}
+              </button>
+            )
+          })}
         </div>
       </div>
       <div>

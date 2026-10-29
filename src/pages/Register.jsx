@@ -91,6 +91,21 @@ export default function Register() {
     return fromUrl || readInvite()
   })
   const [form, setForm] = useState(() => ({ name: '', email: '', password: '', school: '', grade: '', studentIdNumber: '', schoolCode: String(params.get('school') || '').trim().slice(0, 40), dateOfBirth: '', parentEmail: '' }))
+  // The grades the school behind the code has (#581), so the picker offers
+  // only those. Looked up once the code looks complete.
+  const [codeGrades, setCodeGrades] = useState([])
+  useEffect(() => {
+    const pin = String(form.schoolCode || '').trim().toLowerCase()
+    if (pin.length < 4) { setCodeGrades([]); return undefined }
+    let live = true
+    const t = setTimeout(() => {
+      fetch(`${import.meta.env.VITE_API_URL || '/api'}/school/info?pin=${encodeURIComponent(pin)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (live) setCodeGrades(d?.school?.grades || []) })
+        .catch(() => { if (live) setCodeGrades([]) })
+    }, 400)
+    return () => { live = false; clearTimeout(t) }
+  }, [form.schoolCode])
   // Set once an under-13 sign-up is waiting on its parent's emailed approval.
   const [awaitingParent, setAwaitingParent] = useState('')
   // The checked form, kept while the person enters the emailed code (#310).
@@ -399,12 +414,12 @@ export default function Register() {
                   <Field icon={Hash}          label={tr('School code (optional)')} value={form.schoolCode} onChange={onChange('schoolCode')} placeholder={tr('cisd-12345')} />
                 </div>
                 <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
-                  <label className="label" htmlFor="register-grade">{tr('Grade (optional)')}</label>
+                  <label className="label" htmlFor="register-grade">{codeGrades.length ? tr('Grade') : tr('Grade (optional)')}</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                    <select id="register-grade" className="input pl-9" value={form.grade} onChange={onChange('grade')}>
+                    <select id="register-grade" className="input pl-9" value={form.grade} onChange={onChange('grade')} required={codeGrades.length > 0}>
                       <option value="">{tr('Select your grade')}</option>
-                      {SCHOOL_GRADES.map((g) => (
+                      {(codeGrades.length ? codeGrades : SCHOOL_GRADES).map((g) => (
                         <option key={g} value={g}>{gradeOptionLabel(g)}</option>
                       ))}
                     </select>

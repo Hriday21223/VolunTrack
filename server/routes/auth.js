@@ -11,7 +11,8 @@ import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole, endSessions } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from '../validate.js'
-import { signInPolicyForEmail } from '../policy.js'
+import { signInPolicyForEmail, policyForUser } from '../policy.js'
+import { gradeAllowed } from '../requirements.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { turnstileUnlessMonitor } from '../monitor.js'
 import { recordAuditNow, AUDIT } from '../audit.js'
@@ -664,6 +665,13 @@ router.patch('/profile', requireDb, requireAuth(), async (req, res) => {
   const studentIdNumber = req.body.studentIdNumber !== undefined ? validateStudentIdNumber(req.body.studentIdNumber || '') : undefined
 
   try {
+    // A student at a school that set its grades (#581) picks one of them.
+    if (grade) {
+      const resolved = await policyForUser(req.auth.sub)
+      if (resolved?.schoolId && !gradeAllowed(resolved.policy, grade)) {
+        return res.status(400).json({ error: `Pick one of ${resolved.schoolName || 'your school'}’s grades.` })
+      }
+    }
     await query(
       `UPDATE users SET
          name = COALESCE($1, name),

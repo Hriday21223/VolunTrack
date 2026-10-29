@@ -20,7 +20,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall } from '../requirements.js'
+import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -207,7 +207,7 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
     if (rows.length === 0) return res.status(404).json({ error: 'No school found with that code.' })
     const target = rows[0]
 
-    const { rows: meRows } = await query('SELECT school_id, email FROM users WHERE id = $1', [req.auth.sub])
+    const { rows: meRows } = await query('SELECT school_id, email, grade FROM users WHERE id = $1', [req.auth.sub])
     const currentSchoolId = meRows[0]?.school_id || null
 
     // A school may restrict which email domains can join it — the code alone
@@ -224,6 +224,18 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
 
     if (currentSchoolId === target.id) {
       return res.status(409).json({ error: 'You are already linked to that school.' })
+    }
+
+    // A school that set its grades (#581) needs one of them from every student
+    // who joins: the one they already have if it fits, else the one they pick
+    // now. The client shows a picker when it gets needsGrade back.
+    if (targetPolicy && !gradeAllowed(targetPolicy.policy, meRows[0]?.grade)) {
+      const picked = req.body?.grade ? gradeKey(String(req.body.grade)) : null
+      const grades = schoolGrades(targetPolicy.policy)
+      if (!picked || !grades.includes(picked)) {
+        return res.status(400).json({ error: `Pick your grade at ${target.name}.`, needsGrade: true, grades, schoolName: target.name })
+      }
+      await query('UPDATE users SET grade = $1 WHERE id = $2', [picked, req.auth.sub])
     }
 
     // First join links immediately — that is the documented flow, and there is
@@ -878,9 +890,14 @@ const GRADE_REPEAT_GUARD_DAYS = 180
 // "Year 12"-style labels are left alone: gradeKey() reads them as 12, but a
 // school counting in years (where Year 12 isn't the last) doesn't line up
 // with US grades, and moving them on a guess could graduate a whole class.
-function nextGrade(grade) {
+// A school that set its grades (#581) sends its top grade on: "Moved on" when
+// it isn't 12th (a 9th-grade-only school), "Graduated" when it is.
+const MOVED_ON = 'Moved on'
+
+function nextGrade(grade, offered = []) {
   if (/\b(year|yr)\b/i.test(String(grade ?? ''))) return null
   const key = gradeKey(grade)
+  if (offered.length && key === offered[offered.length - 1]) return key === '12' ? GRADUATED : MOVED_ON
   if (key === 'K') return '1'
   if (key && /^\d{1,2}$/.test(key)) {
     const n = Number(key)
@@ -891,6 +908,7 @@ function nextGrade(grade) {
 }
 
 async function gradeRolloverPlan(schoolId) {
+  const offered = (await policyForSchool(schoolId))?.policy?.goals?.grades || []
   const { rows } = await query(
     "SELECT id, grade FROM users WHERE school_id = $1 AND role = 'student' ORDER BY id",
     [schoolId],
@@ -898,7 +916,7 @@ async function gradeRolloverPlan(schoolId) {
   const changes = []
   let skipped = 0
   for (const r of rows) {
-    const to = nextGrade(r.grade)
+    const to = nextGrade(r.grade, offered)
     if (to) changes.push({ userId: r.id, from: r.grade, to })
     else skipped++
   }
@@ -1594,6 +1612,32 @@ router.delete('/student-notes/:noteId', limiter, requireDb, requireAuth('school'
   }
 })
 
+// PATCH /api/school/students/:id/grade { grade | null } — an adviser sets or
+// corrects a student's grade (#581), from the school's own grades if it set any.
+router.patch('/students/:id/grade', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const raw = req.body?.grade
+    const grade = raw === null || raw === '' ? null : gradeKey(String(raw).slice(0, 20))
+    const resolved = await policyForSchool(schoolId)
+    if (grade && !schoolGrades(resolved?.policy).includes(grade)) {
+      return res.status(400).json({ error: 'Pick one of your school’s grades.' })
+    }
+    const { rowCount } = await query(
+      `UPDATE users SET grade = $1 WHERE id = $2 AND school_id = $3 AND role = 'student'`,
+      [grade, req.params.id, schoolId],
+    )
+    if (rowCount === 0) return res.status(404).json({ error: 'Student not found.' })
+    recordAudit(req, { action: AUDIT.STUDENT_GRADE_SET, subjectUserId: req.params.id, schoolId, objectType: 'user', objectId: req.params.id, meta: { grade } })
+    return res.json({ ok: true, grade })
+  } catch (error) {
+    console.error('student grade set failed:', error)
+    return res.status(500).json({ error: 'Could not save the grade.' })
+  }
+})
+
 // Remove a co-admin (school admin only)
 router.delete('/staff/:id', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
   try {
@@ -1926,13 +1970,15 @@ router.get('/info', limiter, requireDb, async (req, res) => {
       const me = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
       privileged = me.rows[0]?.school_id === school.id
     }
-    if (!privileged) return res.json({ school: { id: school.id, name: school.name } })
+    // The grades a school has (#581) are public: sign-up pages show them.
+    const ownGrades = (await policyForSchool(school.id))?.policy?.goals?.grades || []
+    if (!privileged) return res.json({ school: { id: school.id, name: school.name, grades: ownGrades } })
 
     let studentCount = null
     if (school.plan === 'club') {
       studentCount = await clubStudentCount(school.id)
     }
-    return res.json({ school: { id: school.id, name: school.name, pin: school.pin, plan: school.plan, studentCount, studentLimit: school.plan === 'club' ? CLUB_STUDENT_LIMIT : null, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date } })
+    return res.json({ school: { id: school.id, name: school.name, grades: ownGrades, pin: school.pin, plan: school.plan, studentCount, studentLimit: school.plan === 'club' ? CLUB_STUDENT_LIMIT : null, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
   }

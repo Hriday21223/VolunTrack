@@ -47,6 +47,9 @@ export const DEFAULT_GOALS = {
   // Minimum hours of one type within the requirement (#561): { "Education &
   // Tutoring": 10 }. Matched to a log's category without regard to case.
   byCategory: {},
+  // The grades this school has (#581), e.g. ['9'] or ['10','11','12']. Empty
+  // means any: students pick from the full list and nothing is enforced.
+  grades: [],
   deadline: null,
   note: '',
 }
@@ -234,10 +237,14 @@ function normalizeGoals(input) {
       if (c && h !== null) byCategory[c] = h
     }
   }
+  const grades = Array.isArray(raw.grades)
+    ? SCHOOL_GRADES.filter((g) => raw.grades.some((x) => gradeKey(text(String(x ?? ''), 20)) === g))
+    : []
   return {
     totalHours: posNumber(raw.totalHours, { max: 10000 }),
     byGrade,
     byCategory,
+    grades,
     deadline: isoDate(raw.deadline),
     note: text(raw.note, 300),
   }
@@ -368,6 +375,19 @@ export function lockedMessage(policy) {
   const [y, m, d] = String(lock || '').split('-').map(Number)
   const shown = lock ? new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ''
   return `Your school has locked entries dated before ${shown}. Ask your adviser if one needs to change.`
+}
+
+/** The grades a student at this school can pick (#581): the school's own, or all. */
+export function schoolGrades(policy) {
+  const own = policy?.goals?.grades || []
+  return own.length ? own : SCHOOL_GRADES
+}
+
+/** Whether `grade` is one this school has. Always true when it set none. */
+export function gradeAllowed(policy, grade) {
+  const own = policy?.goals?.grades || []
+  if (!own.length) return true
+  return own.includes(gradeKey(grade))
 }
 
 /**

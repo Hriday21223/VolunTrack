@@ -1,3 +1,4 @@
+import GradePicker from '@/components/GradePicker.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { ArrowRight, Award, CalendarDays, Check, GraduationCap, Hash, School, Sparkles, Target } from 'lucide-react'
@@ -44,7 +45,9 @@ export default function Welcome() {
   // idle | busy | linked | transfer | error
   const [join, setJoin] = useState({ status: 'idle', message: '' })
 
-  const joinSchool = async (code) => {
+  // A school that set its grades asks for one (#581).
+  const [gradeAsk, setGradeAsk] = useState(null)
+  const joinSchool = async (code, grade = null) => {
     const pin = String(code || '').trim()
     if (!pin) return
     setJoin({ status: 'busy', message: '' })
@@ -53,9 +56,11 @@ export default function Welcome() {
       const res = await fetch(`${apiUrl}/school/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin, ...(grade ? { grade } : {}) }),
       })
       const data = await res.json().catch(() => ({}))
+      if (data.needsGrade) { setGradeAsk({ pin, grades: data.grades || [], schoolName: data.schoolName }); setJoin({ status: 'idle', message: '' }); return }
+      setGradeAsk(null)
       // 409 means this account is already on that school's roster — the
       // outcome the student wanted, so it reads as success.
       if (res.status === 409) { setJoin({ status: 'linked', message: '' }); return }
@@ -208,6 +213,9 @@ export default function Welcome() {
                   <span>{join.message || 'Your school has been asked to accept you.'}</span>
                 </div>
               ) : (
+                gradeAsk ? (
+                  <GradePicker grades={gradeAsk.grades} schoolName={gradeAsk.schoolName} busy={join.status === 'busy'} onPick={(g) => joinSchool(gradeAsk.pin, g)} />
+                ) : (
                 <form onSubmit={(e) => { e.preventDefault(); joinSchool(schoolCode) }} className="space-y-3">
                   {join.status === 'error' && (
                     <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg" role="alert">
@@ -229,6 +237,7 @@ export default function Welcome() {
                     </div>
                   </div>
                 </form>
+                )
               )}
 
               <div className="flex justify-end">

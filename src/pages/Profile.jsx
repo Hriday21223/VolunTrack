@@ -48,7 +48,7 @@ export default function Profile() {
   const isVolunteerProfile = !['school', 'school_staff', 'org', 'parent'].includes(user?.role)
   // A student who joined a school is filed under that school, whatever the
   // free-text School field below says — show the school they actually belong to.
-  const { schoolName: linkedSchoolName } = useMyRequirements()
+  const { schoolName: linkedSchoolName, policy: myPolicy } = useMyRequirements()
   // A student's grade is a fact a school files them under — and it decides
   // which per-grade hour requirement applies (server/requirements.js), which
   // only works if everyone picks from the same list rather than typing prose.
@@ -164,7 +164,7 @@ export default function Profile() {
               <>
                 <Field icon={School}        label={tr('School / Organization')} value={form.school} onChange={onChange('school')} />
                 {isStudent ? (
-                  <GradeField value={form.grade} onChange={onChange('grade')} />
+                  <GradeField value={form.grade} onChange={onChange('grade')} grades={myPolicy?.goals?.grades} />
                 ) : (
                   <Field icon={GraduationCap} label={tr('Role')} value={form.grade} onChange={onChange('grade')} placeholder={tr('Volunteer lead')} />
                 )}
@@ -218,11 +218,13 @@ function Field({ icon: Icon, label, ...rest }) {
   )
 }
 
-function GradeField({ value, onChange }) {
+function GradeField({ value, onChange, grades }) {
   // A grade stored before this was a picker ("11th grade", "Junior") resolves
-  // onto the matching option rather than needing one of its own.
+  // onto the matching option rather than needing one of its own. A school that
+  // set its grades (#581) offers only those.
+  const options = grades?.length ? grades : SCHOOL_GRADES
   const current = gradeKey(value)
-  const selected = SCHOOL_GRADES.includes(current) ? current : ''
+  const selected = options.includes(current) ? current : ''
   return (
     <div>
       <label className="label flex items-center gap-1.5" htmlFor="profile-grade">
@@ -230,7 +232,7 @@ function GradeField({ value, onChange }) {
       </label>
       <select id="profile-grade" className="input" value={selected} onChange={onChange}>
         <option value="">{tr('Select your grade')}</option>
-        {SCHOOL_GRADES.map((g) => (
+        {options.map((g) => (
           <option key={g} value={g}>{gradeOptionLabel(g)}</option>
         ))}
       </select>
