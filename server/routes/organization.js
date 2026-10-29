@@ -12,6 +12,7 @@ import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { impactFor, impactBySchool, PERIODS } from '../impact.js'
+import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { activeOrgChallenge, scoreboard, METRICS } from '../orgChallenge.js'
 import { schoolProgress } from './school.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
@@ -487,6 +488,25 @@ router.get('/impact', limiter, requireDb, requireAuth('org'), async (req, res) =
   }
 })
 
+// Who gets the monthly impact email for the whole organization (#573).
+async function orgImpactRecipients(req, res, action) {
+  try {
+    const { rows } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])
+    const orgId = rows[0]?.organization_id
+    if (!orgId) return res.status(404).json({ error: 'Organization not found.' })
+    const recipients = action === 'add' ? await addRecipient('organization', orgId, req.body?.email, req.auth.sub)
+      : action === 'remove' ? await removeRecipient('organization', orgId, req.params.id)
+        : await listRecipients('organization', orgId)
+    return res.json({ recipients })
+  } catch (error) {
+    if (error instanceof RecipientError) return res.status(error.status).json({ error: error.message })
+    console.error('org impact recipients failed:', error)
+    return res.status(500).json({ error: 'Could not update the list.' })
+  }
+}
+router.get('/impact-recipients', limiter, requireDb, requireAuth('org'), (req, res) => orgImpactRecipients(req, res, 'list'))
+router.post('/impact-recipients', limiter, requireDb, requireAuth('org'), (req, res) => orgImpactRecipients(req, res, 'add'))
+router.delete('/impact-recipients/:id', limiter, requireDb, requireAuth('org'), (req, res) => orgImpactRecipients(req, res, 'remove'))
 // School vs school challenge (#575): the org's running challenge and board.
 async function myOrgId(req) {
   const { rows } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])
