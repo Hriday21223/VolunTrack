@@ -8,6 +8,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
+import RegularShiftsCard from '@/components/RegularShiftsCard.jsx'
 import { useMyRequirements, awardFor, requirementShortfall } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { weekStreak } from '@/lib/streak.js'
@@ -719,6 +720,8 @@ export default function Dashboard() {
             </ul>
           </Card>
         )}
+
+        <RegularShiftsCard logs={logs} />
 
         {/* The school's own requirement, kept separate from the student's
             personal goal above: one is what they set for themselves, the
