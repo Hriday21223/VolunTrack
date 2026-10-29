@@ -202,6 +202,14 @@ const ES = {
   'See your progress': 'Ver tu progreso',
   'Share my hours': 'Compartir mis horas',
   'You get this once a month after logging hours. {link} or turn it off in Settings.': 'Recibes esto una vez al mes cuando registras horas. {link} o desactívalo en Ajustes.',
+  '{school} approved your report': '{school} aprobó tu informe',
+  '{school} sent back your report': '{school} te devolvió tu informe',
+  'Reason: {reason}': 'Motivo: {reason}',
+  'The report you sent on {date}.': 'El informe que enviaste el {date}.',
+  'Note from your school:': 'Nota de tu escuela:',
+  'Why:': 'Motivo:',
+  'Fix what they asked for, then send a new report from Reports.': 'Corrige lo que te pidieron y envía un informe nuevo desde Informes.',
+  'Open Reports': 'Abrir Informes',
 }
 
 const DICTIONARIES = { es: ES }

@@ -43,6 +43,9 @@ export const NOTIFICATION_KINDS = new Set([
   'log_hours_nudge',
   // To VolunTrack admins: a school or org has a new main admin (#550).
   'account_handover',
+  // To a student: the school reviewed a report they sent (#583).
+  'report_approved',
+  'report_rejected',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }
