@@ -12,6 +12,7 @@ import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { runMonthlyProgress } from '../monthlyProgress.js'
 import { runDeadlineReminders } from '../deadlineReminders.js'
 import { runSupervisorReminders } from '../supervisorReminders.js'
+import { runImpactEmails } from '../impactEmail.js'
 
 const router = express.Router()
 
@@ -88,6 +89,19 @@ router.post('/internal/run-supervisor-reminders', cronLimiter(), requireCronKey,
   }
 })
 
+// POST /api/progress/internal/run-impact-emails { dryRun?, month? } (#573).
+router.post('/internal/run-impact-emails', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const dryRun = req.body?.dryRun === true
+  const month = /^\d{4}-\d{2}$/.test(String(req.body?.month || '')) ? req.body.month : null
+  try {
+    const out = await runImpactEmails({ dryRun, month })
+    return res.json({ ok: true, dryRun, ...out, emailConfigured: hasEmail() })
+  } catch (error) {
+    console.error('impact email run failed:', error)
+    return res.status(500).json({ error: 'Could not run the impact emails.' })
+  }
+})
+
 router.get('/preference', limiter, requireDb, requireAuth('student'), async (req, res) => {
   try {
     const { rows } = await query('SELECT monthly_progress_opt_out FROM users WHERE id = $1', [req.auth.sub])
@@ -154,6 +168,33 @@ router.post('/unsubscribe/:token', unsubLimiter, requireDb, async (req, res) => 
     return res.type('html').send(page("Done — we won't send you these monthly emails any more. You can turn them back on in Settings."))
   } catch (error) {
     console.error('monthly progress unsubscribe (POST) failed:', error)
+    return res.status(500).type('html').send(page('Something went wrong. Please try again later.'))
+  }
+})
+
+// The monthly impact email's own unsubscribe (#573): removes just that address
+// from that school's or organization's list. GET asks, POST does it (RFC 8058).
+router.get('/impact-unsubscribe/:token', unsubLimiter, requireDb, async (req, res) => {
+  const token = String(req.params.token || '')
+  if (!TOKEN_RE.test(token)) return res.status(400).type('html').send(page('This link is not valid.'))
+  try {
+    const { rows } = await query('SELECT 1 FROM impact_report_recipients WHERE token = $1', [token])
+    if (rows.length === 0) return res.type('html').send(page("You're not on this list any more."))
+    return res.type('html').send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VolunTrack</title><body style="${PAGE_STYLE}"><p>Stop the monthly volunteer impact emails?</p><form method="post"><button type="submit" style="font-size:1rem;padding:0.5rem 1rem">Stop these emails</button></form></body></html>`)
+  } catch (error) {
+    console.error('impact unsubscribe (GET) failed:', error)
+    return res.status(500).type('html').send(page('Something went wrong. Please try again later.'))
+  }
+})
+
+router.post('/impact-unsubscribe/:token', unsubLimiter, requireDb, async (req, res) => {
+  const token = String(req.params.token || '')
+  if (!TOKEN_RE.test(token)) return res.status(400).type('html').send(page('This link is not valid.'))
+  try {
+    await query('DELETE FROM impact_report_recipients WHERE token = $1', [token])
+    return res.type('html').send(page("Done — you won't get these monthly emails any more."))
+  } catch (error) {
+    console.error('impact unsubscribe (POST) failed:', error)
     return res.status(500).type('html').send(page('Something went wrong. Please try again later.'))
   }
 })

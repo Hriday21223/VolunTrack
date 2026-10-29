@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, MapPin, Clock, X, Plus, Edit2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Clock, X, Plus, Edit2, Lock } from 'lucide-react'
+import { useMyRequirements, isLockedDate } from '@/lib/requirements.js'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -11,6 +12,8 @@ import { addMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfI
 import { tr } from '@/lib/i18n.js'
 
 export default function CalendarView() {
+  // The school's lock date (#569): locked entries can't be edited or deleted.
+  const requirements = useMyRequirements()
   const { logs, removeLog } = useData()
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState(null)
@@ -107,13 +110,14 @@ export default function CalendarView() {
           onClose={() => setSelected(null)}
           onEdit={(id) => { setSelected(null); setEditing(id) }}
           onDelete={(id) => removeLog(id)}
+          isLocked={(date) => isLockedDate(requirements.policy, date)}
         />
       )}
     </AppLayout>
   )
 }
 
-function DayModal({ day, logs, onClose, onEdit, onDelete }) {
+function DayModal({ day, logs, onClose, onEdit, onDelete, isLocked = () => false }) {
   const [confirmId, setConfirmId] = useState(null)
 
   return (
@@ -149,6 +153,9 @@ function DayModal({ day, logs, onClose, onEdit, onDelete }) {
                     </div>
                     {l.notes && <p className="text-sm text-earth-600 dark:text-earth-300 mt-1.5">{l.notes}</p>}
                   </div>
+                  {isLocked(l.date) ? (
+                    <span className="p-1.5 text-earth-400" title={tr('Locked by your school')}><Lock className="w-4 h-4" aria-label={tr('Locked by your school')} /></span>
+                  ) : (
                   <div className="flex flex-col gap-1">
                     <button onClick={() => onEdit(l.id)} className="p-1.5 rounded-lg hover:bg-earth-100 dark:hover:bg-[#1b2a22]" title={tr('Edit')}><Edit2 className="w-4 h-4" /></button>
                     {confirmId === l.id ? (
@@ -160,6 +167,7 @@ function DayModal({ day, logs, onClose, onEdit, onDelete }) {
                       <button onClick={() => setConfirmId(l.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20" title={tr('Delete')}><X className="w-4 h-4" /></button>
                     )}
                   </div>
+                  )}
                 </div>
               </li>
             ))}

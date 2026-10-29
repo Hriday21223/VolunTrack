@@ -42,6 +42,7 @@ import progressRoutes from './server/routes/progress.js'
 import adviserDigestRoutes from './server/routes/adviserDigest.js'
 import inviteRoutes from './server/routes/invites.js'
 import handoverRoutes from './server/routes/handover.js'
+import shiftRoutes from './server/routes/shifts.js'
 import interestsRoutes from './server/routes/interests.js'
 import taskPhotoRoutes from './server/routes/taskPhotos.js'
 import organizerProfileRoutes from './server/routes/organizerProfile.js'
@@ -177,6 +178,7 @@ app.use('/api/progress', progressRoutes)
 app.use('/api/adviser-digest', adviserDigestRoutes)
 app.use('/api/invites', inviteRoutes)
 app.use('/api/handover', handoverRoutes)
+app.use('/api/shifts', shiftRoutes)
 app.use('/api/interests', interestsRoutes)
 app.use('/api/task-photos', taskPhotoRoutes)
 app.use('/api/weather', weatherRoutes)

@@ -22,12 +22,16 @@ const TOP_PLACES = 5
 
 const round = (n) => Math.round((Number(n) || 0) * 100) / 100
 
-export async function impactFor(schoolIds, period = 'year', now = new Date()) {
-  const since = period === 'all' ? null : schoolYearStart(now)
+// `range` ({ from, to }, to exclusive) overrides the period, e.g. one month
+// for the monthly impact email (#573).
+export async function impactFor(schoolIds, period = 'year', now = new Date(), range = null) {
+  const since = range ? range.from : period === 'all' ? null : schoolYearStart(now)
+  const until = range ? range.to : null
   const where = `u.school_id = ANY($1) AND u.role = 'student'
     AND l.verification_status IS DISTINCT FROM 'rejected'
-    AND ($2::date IS NULL OR l.date >= $2::date)`
-  const params = [schoolIds, since]
+    AND ($2::date IS NULL OR l.date >= $2::date)
+    AND ($3::date IS NULL OR l.date < $3::date)`
+  const params = [schoolIds, since, until]
 
   const [totals, people, cats, months, places] = await Promise.all([
     query(`SELECT COALESCE(SUM(l.hours), 0)::float AS hours, COUNT(*)::int AS entries,

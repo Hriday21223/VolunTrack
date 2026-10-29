@@ -3,6 +3,7 @@ import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardLi
 import HandoverForm from '@/components/HandoverForm.jsx'
 import OrgAnnouncementsCard from '@/components/OrgAnnouncementsCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
+import SchoolVsSchoolCard from '@/components/SchoolVsSchoolCard.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -264,6 +265,7 @@ export default function OrganizationDashboard() {
         ) : (
           <div className="space-y-3">
             {schools.length > 1 && <CompareSchoolsCard />}
+            {schools.length > 1 && <SchoolVsSchoolCard manage />}
             <div className="flex justify-end mb-4">
               <button data-tour="org-add-school" onClick={() => setShowInviteModal(true)} className="btn-sm btn-primary">
                 <UserPlus className="w-3.5 h-3.5 mr-1" /> Add school

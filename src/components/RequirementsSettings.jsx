@@ -264,6 +264,11 @@ function LogRulesEditor({ value, onChange }) {
         <NumberBox label="Maximum hours on one day" value={value.maxHoursPerDay} onChange={(v) => onChange({ maxHoursPerDay: v })} />
         <NumberBox label="Log within N days of the activity" value={value.maxBackdateDays} onChange={(v) => onChange({ maxBackdateDays: v })} step="1" placeholder="Any time after" />
         <NumberBox label="Minimum description length" value={value.notesMinLength || null} onChange={(v) => onChange({ notesMinLength: v || 0 })} step="1" placeholder="No minimum" />
+        <div>
+          <label className="label">Lock entries before</label>
+          <input className="input" type="date" value={value.lockedBefore || ''} onChange={(e) => onChange({ lockedBefore: e.target.value || null })} />
+          <p className="text-xs text-earth-400 mt-1">Students can’t add, edit or delete entries dated before this, e.g. once a semester’s report is done. You can still add hours for them.</p>
+        </div>
       </div>
       <div>
         <label className="label">Allowed categories</label>

@@ -34,6 +34,9 @@ export const DEFAULT_LOG_RULES = {
   maxHoursPerEntry: null,
   maxHoursPerDay: null,
   maxBackdateDays: null,
+  // Entries dated before this (YYYY-MM-DD) can't be added, edited or deleted
+  // by the student (#569), so reports a school already ran stay final.
+  lockedBefore: null,
   allowFutureDates: true,
   allowedCategories: [],
 }
@@ -170,6 +173,7 @@ function normalizeLogRules(input) {
     maxHoursPerEntry: max,
     maxHoursPerDay: posNumber(raw.maxHoursPerDay, { max: 24 }),
     maxBackdateDays: posInt(raw.maxBackdateDays, { max: 3650 }),
+    lockedBefore: isoDate(raw.lockedBefore),
     allowFutureDates: bool(raw.allowFutureDates, true),
     allowedCategories: categories,
   }
@@ -351,6 +355,19 @@ export function requirementShortfall(policy, grade, total, hoursByCategory = {})
   const totalShort = Math.max(0, target - (Number(total) || 0))
   const typeShort = categories.reduce((sum, c) => sum + c.remaining, 0)
   return { target, remaining: round(Math.max(totalShort, typeShort)), categories }
+}
+
+/** Whether an entry dated `date` is locked by the school's lock date (#569). */
+export function isLockedDate(policy, date) {
+  const lock = policy?.logRules?.lockedBefore
+  return Boolean(lock && date && String(date).slice(0, 10) < lock)
+}
+
+export function lockedMessage(policy) {
+  const lock = policy?.logRules?.lockedBefore
+  const [y, m, d] = String(lock || '').split('-').map(Number)
+  const shown = lock ? new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : ''
+  return `Your school has locked entries dated before ${shown}. Ask your adviser if one needs to change.`
 }
 
 /**
@@ -623,6 +640,9 @@ export function validateLogAgainstPolicy(policy, entry = {}, { now = new Date() 
     const today = todayUtc(now)
     if (!rules.allowFutureDates && dayDiff(date, today) > 0) {
       add('date', 'Your school does not accept hours dated in the future.')
+    }
+    if (isLockedDate(policy, entry.date)) {
+      add('date', lockedMessage(policy))
     }
     // One day of slack: "today" here is UTC's, already tomorrow on a US
     // evening, which would refuse an entry exactly maxBackdateDays old.
