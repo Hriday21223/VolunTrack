@@ -1021,6 +1021,21 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('school email invites table migration failed:', error) }
+  // Class roster (#584, server/roster.js): the name and grade a school's
+  // roster CSV gave for an address, until that student joins.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_roster_entries (
+        school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        email      TEXT NOT NULL,
+        name       TEXT,
+        grade      TEXT,
+        added_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        added_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (school_id, email)
+      )
+    `)
+  } catch (error) { console.error('school roster table migration failed:', error) }
   // Deadline reminders (#533, server/deadlineReminders.js): each stage
   // (30, 14, 3 days before) once per student per deadline.
   try {
