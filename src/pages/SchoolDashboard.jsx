@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, Link, useParams, useLocation } from 'react-router-dom'
+import { schoolTabsFromPath, schoolPathFor } from '@/lib/dashboardTabs.js'
 import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -75,7 +76,11 @@ export default function SchoolDashboard() {
   const { user, refreshUser } = useAuth()
   const nav = useNavigate()
   const isSchoolAdmin = user?.role === 'school' || user?.role === 'school_staff'
-  const [tab, setTab] = useState('pdfs')
+  // The tab and sub-tab live in the address (#579): /school/dashboard/setup/requirements.
+  const { tab: tabParam, sub: subParam } = useParams()
+  const location = useLocation()
+  const tabsSettled = useRef(false)
+  const [tab, setTab] = useState(() => schoolTabsFromPath(tabParam, subParam).tab)
   const [pdfs, setPdfs] = useState([])
   const [students, setStudents] = useState([])
   const [tasks, setTasks] = useState([])
@@ -87,12 +92,36 @@ export default function SchoolDashboard() {
   const [addEmail, setAddEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [addErr, setAddErr] = useState('')
-  const [subTab, setSubTab] = useState('reports')
+  const [subTab, setSubTab] = useState(() => schoolTabsFromPath(tabParam, subParam).subTab)
   // Reports and School setup each group what used to be their own top-level
   // tabs, so they carry their own sub-tab state rather than sharing subTab
   // (which the students list/add toggle already owns).
-  const [reportTab, setReportTab] = useState('documents')
-  const [setupTab, setSetupTab] = useState('staff')
+  const [reportTab, setReportTab] = useState(() => schoolTabsFromPath(tabParam, subParam).reportTab)
+  const [setupTab, setSetupTab] = useState(() => schoolTabsFromPath(tabParam, subParam).setupTab)
+
+  // Back/forward (or a link) changed the address: show that tab.
+  useEffect(() => {
+    const s = schoolTabsFromPath(tabParam, subParam)
+    setTab(s.tab)
+    setSubTab(s.subTab)
+    setReportTab(s.reportTab)
+    setSetupTab(s.setupTab)
+  }, [tabParam, subParam])
+  // A tab was picked: put it in the address, so a reload or a shared link lands
+  // here. An address that only spelled the tab differently is tidied in place.
+  // Students reach this page for their upload card and keep the plain address.
+  useEffect(() => {
+    if (!isSchoolAdmin) return
+    // School setup is the main admin's; a co-admin following a link to it
+    // gets Reports rather than an empty page.
+    if (tab === 'setup' && user?.role !== 'school') { setTab('pdfs'); return }
+    const path = schoolPathFor({ tab, subTab, reportTab, setupTab })
+    // Tidying the address the page opened at replaces it; every tab picked
+    // after that is its own history entry, so Back steps through them.
+    if (path !== location.pathname) nav(path, { replace: !tabsSettled.current || location.pathname.toLowerCase() === path })
+    tabsSettled.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, subTab, reportTab, setupTab, isSchoolAdmin])
   const [taskForm, setTaskForm] = useState({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '' })
   const [taskBusy, setTaskBusy] = useState(false)
   const [messages, setMessages] = useState([])
@@ -154,6 +183,11 @@ export default function SchoolDashboard() {
       loadMessages()
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setSendingMsg(false) }
   }
+
+  // Messages load whenever that tab opens, including from its address.
+  useEffect(() => {
+    if (tab === 'chat') loadMessages()
+  }, [tab])
 
   const handleAddStaff = async (e) => {
     e.preventDefault()
@@ -501,7 +535,7 @@ export default function SchoolDashboard() {
           {isSchoolAdmin && (
             <button
               data-tour="tab-chat"
-              onClick={() => { setTab('chat'); loadMessages() }}
+              onClick={() => setTab('chat')}
               className={`btn-sm ${tab === 'chat' ? 'btn-primary' : 'btn-ghost'}`}
               title="Announcements"
               aria-label="Announcements"
