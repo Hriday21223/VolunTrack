@@ -18,7 +18,7 @@ import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { friendlyWhen } from '../when.js'
 import { ensureDigestUnsubToken } from '../digest.js'
-import { emailLang, et } from '../emailStrings.js'
+import { emailLang, et, emailDate } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
 import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed } from '../requirements.js'
@@ -1930,9 +1930,56 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 })
 
 // Approve or reject a PDF (school admin)
+const REVIEW_NOTE_MAX = 500
+
+// The student hears back on a report they sent (#583): a bell notice, and an
+// email unless the address is a test one. Fire-and-forget, like notify(): a
+// mail server having a bad day must not fail the school's review.
+async function tellStudentReportReviewed({ userId, schoolId, status, notes, sentAt }) {
+  try {
+    const { rows } = await query(
+      'SELECT u.email, u.name, u.language, s.name AS school_name FROM users u JOIN schools s ON s.id = $2 WHERE u.id = $1',
+      [userId, schoolId],
+    )
+    const r = rows[0]
+    if (!r) return
+    const lang = emailLang(r.language)
+    const approved = status === 'approved'
+    const when = sentAt ? emailDate(lang, new Date(sentAt)) : ''
+    const title = approved
+      ? et(lang, '{school} approved your report', { school: r.school_name })
+      : et(lang, '{school} sent back your report', { school: r.school_name })
+    const body = notes
+      ? (approved ? notes : et(lang, 'Reason: {reason}', { reason: notes }))
+      : et(lang, 'The report you sent on {date}.', { date: when })
+    await notify(userId, { kind: approved ? 'report_approved' : 'report_rejected', title, body, link: '/reports' })
+    if (!r.email || /@test\.com$/i.test(r.email)) return
+    const site = frontendBase()
+    await sendEmail({
+      to: r.email,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(emailHi(lang, r.name))}</p>
+        <p>${escapeHtml(et(lang, 'The report you sent on {date}.', { date: when }))}</p>
+        ${notes ? `<p><strong>${escapeHtml(et(lang, approved ? 'Note from your school:' : 'Why:'))}</strong> ${escapeHtml(notes)}</p>` : ''}
+        ${approved ? '' : `<p>${escapeHtml(et(lang, 'Fix what they asked for, then send a new report from Reports.'))}</p>`}
+        <p><a href="${escapeHtml(site)}/reports">${escapeHtml(et(lang, 'Open Reports'))}</a></p>
+        ${emailFooterHtml()}
+      `,
+    })
+  } catch (error) {
+    console.error('report review notice failed:', error.message)
+  }
+}
+
 router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
-  const { status, notes } = req.body
+  const { status } = req.body
   if (!status || !['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Status must be approved or rejected.' })
+  if (req.body.notes != null && typeof req.body.notes !== 'string') return res.status(400).json({ error: 'The note must be text.' })
+  const notes = String(req.body.notes || '').trim().slice(0, REVIEW_NOTE_MAX) || null
+  // A rejection the student can't act on helps no one (#583).
+  if (status === 'rejected' && !notes) return res.status(400).json({ error: 'Say why, so the student can fix it.' })
 
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
@@ -1944,8 +1991,13 @@ router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'schoo
 
     await query(
       'UPDATE pdf_uploads SET status = $1, notes = $2, reviewed_by = $3, reviewed_at = now() WHERE id = $4',
-      [status, notes || null, req.auth.sub, req.params.id],
+      [status, notes, req.auth.sub, req.params.id],
     )
+    // Only a change tells the student anything: re-saving the same decision
+    // (a double click) must not ring the bell twice.
+    if (rows[0].status !== status || (rows[0].notes || null) !== notes) {
+      tellStudentReportReviewed({ userId: rows[0].user_id, schoolId: rows[0].school_id, status, notes, sentAt: rows[0].created_at })
+    }
     recordAudit(req, {
       action: AUDIT.PDF_REVIEWED,
       subjectUserId: rows[0].user_id,

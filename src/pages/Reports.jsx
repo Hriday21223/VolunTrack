@@ -11,6 +11,7 @@ import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import CollegeActivitiesCard from '@/components/CollegeActivitiesCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import ReflectionsCard from '@/components/ReflectionsCard.jsx'
+import SentReportsCard from '@/components/SentReportsCard.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { categoryColor } from '@/lib/categories.js'
@@ -30,6 +31,7 @@ export default function Reports() {
   const certificate = requirements.sources?.certificates === 'default' ? null : requirements.policy?.certificates
   const { logs, goals } = useData()
   const [submitting, setSubmitting] = useState(false)
+  const [sentCount, setSentCount] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
   const [toastOpen, setToastOpen] = useState(false)
   const [category, setCategory] = useState('all')
@@ -57,6 +59,7 @@ export default function Reports() {
         filename: `report-${Date.now()}.pdf`,
         fileType: 'application/pdf',
       })
+      setSentCount((n) => n + 1)
       setToastMsg(tr('Report submitted to school!'))
       setToastOpen(true)
     } catch (e) {
@@ -153,6 +156,7 @@ export default function Reports() {
             </div>
           </div>
         </Card>
+        {user?.schoolId && <SentReportsCard refreshKey={sentCount} />}
         <ImpactReportCard scope="student" name={user?.name} logs={countedLogs(logs)} className="mb-6" />
         <CollegeActivitiesCard logs={logs} />
         <ReflectionsCard logs={logs} />
