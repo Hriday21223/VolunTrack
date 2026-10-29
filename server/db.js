@@ -1170,6 +1170,24 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('impact email tables migration failed:', error) }
+  // School vs school challenge (#575, server/orgChallenge.js): one running per
+  // organization.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS org_challenges (
+        id              TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        title           TEXT NOT NULL,
+        metric          TEXT NOT NULL DEFAULT 'total' CHECK (metric IN ('total','per_student')),
+        starts_on       DATE NOT NULL,
+        ends_on         DATE NOT NULL,
+        created_by      TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ended_at        TIMESTAMPTZ
+      )
+    `)
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS org_challenges_one_running ON org_challenges (organization_id) WHERE ended_at IS NULL`)
+  } catch (error) { console.error('org challenges table migration failed:', error) }
 
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.

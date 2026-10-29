@@ -5,6 +5,7 @@ import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settl
 import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { impactFor, PERIODS } from '../impact.js'
+import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge.js'
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { signupPlatform } from '../platform.js'
@@ -520,6 +521,25 @@ router.get('/impact', limiter, requireDb, requireAuth('school', 'school_staff'),
   }
 })
 
+// GET /api/school/org-challenge — the school vs school challenge run by the
+// organization this account's school belongs to (#575), for its students and
+// advisers. School names and numbers only.
+router.get('/org-challenge', limiter, requireDb, requireAuth('school', 'school_staff', 'student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      'SELECT s.id, s.organization_id, o.name AS org_name FROM users u JOIN schools s ON s.id = u.school_id LEFT JOIN organizations o ON o.id = s.organization_id WHERE u.id = $1',
+      [req.auth.sub],
+    )
+    const me = rows[0]
+    if (!me?.organization_id) return res.json({ challenge: null })
+    const challenge = await activeOrgChallenge(me.organization_id)
+    if (!challenge) return res.json({ challenge: null })
+    return res.json({ challenge, organizationName: me.org_name, mySchoolId: me.id, scoreboard: await orgScoreboard(me.organization_id, challenge) })
+  } catch (error) {
+    console.error('org challenge (school view) failed:', error)
+    return res.status(500).json({ error: 'Could not load the challenge.' })
+  }
+})
 // Who gets the monthly impact email (#573). The school's main admin chooses.
 async function impactRecipientsHandler(req, res, action) {
   try {

@@ -8,6 +8,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
+import SchoolVsSchoolCard from '@/components/SchoolVsSchoolCard.jsx'
 import RegularShiftsCard from '@/components/RegularShiftsCard.jsx'
 import { useMyRequirements, awardFor, requirementShortfall } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
@@ -919,6 +920,7 @@ export default function Dashboard() {
         {reviewYear && !reviewSeason && <YearInReviewLink year={reviewYear} />}
 
         {user?.role === 'student' && user?.schoolId && <ChallengeCard className="lg:col-span-3" />}
+        {user?.role === 'student' && user?.schoolId && <SchoolVsSchoolCard className="lg:col-span-3" />}
         {user?.role === 'student' && <LeaderboardCard className="lg:col-span-3" />}
 
         <InviteFriendsCard className="lg:col-span-3" />
