@@ -7,6 +7,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
+import { uid } from '../ids.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { normalizePolicy, goalHoursFor, SECTIONS, isSignaturePng } from '../requirements.js'
 import { policyForUser, policyForSchool } from '../policy.js'
@@ -170,6 +171,121 @@ router.put('/organization', limiter, requireDb, requireAuth('org'), async (req, 
   } catch (error) {
     console.error('org requirements save failed:', error)
     return res.status(500).json({ error: 'Could not save requirements.' })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Requirement templates (#577): an organization's named rule sets, like
+// "Middle schools" and "High schools". A school assigned to one follows it for
+// any section it hasn't set itself, ahead of the org's defaults.
+// ---------------------------------------------------------------------------
+
+const MAX_TEMPLATES = 10
+
+async function ownTemplate(orgId, id) {
+  const { rows } = await query('SELECT id, name, requirements FROM requirement_templates WHERE id = $1 AND organization_id = $2', [id, orgId])
+  return rows[0] || null
+}
+
+router.get('/organization/templates', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const orgId = await callerOrgId(req)
+    if (!orgId) return res.status(404).json({ error: 'Organization not found.' })
+    const { rows } = await query(
+      `SELECT t.id, t.name, (SELECT COUNT(*)::int FROM schools s WHERE s.requirement_template_id = t.id) AS school_count
+         FROM requirement_templates t WHERE t.organization_id = $1 ORDER BY t.created_at`,
+      [orgId],
+    )
+    return res.json({ templates: rows.map((r) => ({ id: r.id, name: r.name, schoolCount: r.school_count })) })
+  } catch (error) {
+    console.error('templates list failed:', error)
+    return res.status(500).json({ error: 'Could not load templates.' })
+  }
+})
+
+router.post('/organization/templates', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  const name = String(req.body?.name || '').trim()
+  if (!name || name.length > 60) return res.status(400).json({ error: 'Name the template (up to 60 characters).' })
+  try {
+    const orgId = await callerOrgId(req)
+    if (!orgId) return res.status(404).json({ error: 'Organization not found.' })
+    const { rows: count } = await query('SELECT COUNT(*)::int AS n FROM requirement_templates WHERE organization_id = $1', [orgId])
+    if (count[0].n >= MAX_TEMPLATES) return res.status(409).json({ error: `You can have up to ${MAX_TEMPLATES} templates.` })
+    const id = uid('rtpl')
+    await query('INSERT INTO requirement_templates (id, organization_id, name) VALUES ($1, $2, $3)', [id, orgId, name])
+    return res.status(201).json({ template: { id, name, schoolCount: 0 } })
+  } catch (error) {
+    console.error('template create failed:', error)
+    return res.status(500).json({ error: 'Could not create the template.' })
+  }
+})
+
+// Same shape as GET /organization, so the editor treats a template like the
+// org's defaults.
+router.get('/organization/templates/:id', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const orgId = await callerOrgId(req)
+    const t = orgId && await ownTemplate(orgId, req.params.id)
+    if (!t) return res.status(404).json({ error: 'Template not found.' })
+    return res.json({ templateName: t.name, own: normalizePolicy(t.requirements) })
+  } catch (error) {
+    console.error('template read failed:', error)
+    return res.status(500).json({ error: 'Could not load the template.' })
+  }
+})
+
+router.put('/organization/templates/:id', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const orgId = await callerOrgId(req)
+    const t = orgId && await ownTemplate(orgId, req.params.id)
+    if (!t) return res.status(404).json({ error: 'Template not found.' })
+    const policy = policyFromBody(req.body || {})
+    const name = typeof req.body?.name === 'string' && req.body.name.trim() ? req.body.name.trim().slice(0, 60) : t.name
+    await query('UPDATE requirement_templates SET requirements = $1, name = $2 WHERE id = $3', [JSON.stringify(policy), name, t.id])
+    recordAudit(req, {
+      action: AUDIT.REQUIREMENTS_CHANGED,
+      organizationId: orgId,
+      objectType: 'requirement_template',
+      objectId: t.id,
+      meta: { sections: Object.keys(policy).filter((k) => k !== 'version') },
+    })
+    return res.json({ own: policy, templateName: name })
+  } catch (error) {
+    console.error('template save failed:', error)
+    return res.status(500).json({ error: 'Could not save the template.' })
+  }
+})
+
+// Deleting one sends its schools back to the org's defaults (ON DELETE SET NULL).
+router.delete('/organization/templates/:id', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const orgId = await callerOrgId(req)
+    const { rowCount } = await query('DELETE FROM requirement_templates WHERE id = $1 AND organization_id = $2', [req.params.id, orgId])
+    if (rowCount === 0) return res.status(404).json({ error: 'Template not found.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('template delete failed:', error)
+    return res.status(500).json({ error: 'Could not delete the template.' })
+  }
+})
+
+// PUT /organization/schools/:schoolId/template { templateId | null }
+router.put('/organization/schools/:schoolId/template', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const orgId = await callerOrgId(req)
+    if (!orgId) return res.status(404).json({ error: 'Organization not found.' })
+    const templateId = req.body?.templateId || null
+    if (templateId && !(await ownTemplate(orgId, templateId))) return res.status(404).json({ error: 'Template not found.' })
+    const { rowCount } = await query(
+      'UPDATE schools SET requirement_template_id = $1 WHERE id = $2 AND organization_id = $3',
+      [templateId, req.params.schoolId, orgId],
+    )
+    if (rowCount === 0) return res.status(404).json({ error: 'School not found.' })
+    recordAudit(req, { action: AUDIT.REQUIREMENTS_CHANGED, organizationId: orgId, schoolId: req.params.schoolId, objectType: 'school', objectId: req.params.schoolId, meta: { template: templateId } })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('template assign failed:', error)
+    return res.status(500).json({ error: 'Could not change the school’s template.' })
   }
 })
 

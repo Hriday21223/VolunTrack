@@ -450,7 +450,7 @@ router.get('/schools', limiter, requireDb, requireAuth('org'), async (req, res) 
     if (!userRows[0]?.organization_id) return res.status(400).json({ error: 'No organization linked to your account.' })
 
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.created_at,
+      `SELECT s.id, s.name, s.pin, s.contact_email, s.payment_status, s.created_at, s.requirement_template_id,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s WHERE s.organization_id = $1
        ORDER BY s.created_at DESC`,

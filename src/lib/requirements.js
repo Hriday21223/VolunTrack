@@ -69,7 +69,7 @@ export function useMyRequirements() {
  * validateLogAgainstPolicy waives the same fields for the same entries.
  */
 export function formFieldRequirements({ policy, sources }, { taskLinked = false, signsInPerson = false } = {}) {
-  const configured = sources?.logRules === 'school' || sources?.logRules === 'organization'
+  const configured = ['school', 'template', 'organization'].includes(sources?.logRules)
   const rules = policy?.logRules || {}
   const needs = signatureNeeds(policy)
   // The school's own rules ask for a supervisor on every entry — or, with no
@@ -167,3 +167,20 @@ export const certificateSignStatus = (token) => signCall(`/${encodeURIComponent(
 export const fetchCertificateSignRequest = (token) => signCall(`/${encodeURIComponent(token)}`, { auth: false })
 export const submitCertificateSign = (token, signatureImage) =>
   signCall(`/${encodeURIComponent(token)}`, { method: 'POST', body: { signatureImage }, auth: false })
+
+// Requirement templates (#577): an organization's named rule sets.
+async function templateCall(path, { method = 'GET', body } = {}) {
+  const headers = authHeaders()
+  if (!headers) throw new Error('Sign in to manage requirements.')
+  const res = await fetch(`${apiUrl}/requirements/organization${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
+  return data
+}
+export const listTemplates = () => templateCall('/templates').then((d) => d.templates || [])
+export const createTemplate = (name) => templateCall('/templates', { method: 'POST', body: { name } }).then((d) => d.template)
+export const fetchTemplate = (id) => templateCall(`/templates/${encodeURIComponent(id)}`)
+export const saveTemplate = (id, policy) => templateCall(`/templates/${encodeURIComponent(id)}`, { method: 'PUT', body: policy })
+export const deleteTemplate = (id) => templateCall(`/templates/${encodeURIComponent(id)}`, { method: 'DELETE' })
+export const assignTemplate = (schoolId, templateId) =>
+  templateCall(`/schools/${encodeURIComponent(schoolId)}/template`, { method: 'PUT', body: { templateId } })

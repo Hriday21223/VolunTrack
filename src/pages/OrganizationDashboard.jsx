@@ -15,7 +15,7 @@ import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
-import RequirementsSettings from '@/components/RequirementsSettings.jsx'
+import OrgRequirements from '@/components/OrgRequirements.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import CompareSchoolsCard from '@/components/CompareSchoolsCard.jsx'
 import { fmtDate } from '@/utils/date.js'
@@ -158,7 +158,7 @@ export default function OrganizationDashboard() {
       }
     >
       <AnnouncementBanner />
-      {tab === 'requirements' && <RequirementsSettings scope="organization" />}
+      {tab === 'requirements' && <OrgRequirements schools={schools} onSchoolsChange={loadSchools} />}
       {tab === 'announcements' && <OrgAnnouncementsCard />}
 
       {tab === 'hours' && (

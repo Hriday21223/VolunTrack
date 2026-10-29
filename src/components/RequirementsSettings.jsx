@@ -17,7 +17,7 @@ import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import {
   DEFAULTS, SECTIONS, CUSTOM_FIELD_TYPES, classifyFormUrl,
   fetchSchoolRequirements, saveSchoolRequirements,
-  fetchOrgRequirements, saveOrgRequirements,
+  fetchOrgRequirements, saveOrgRequirements, fetchTemplate, saveTemplate,
   gradeKey, gradeLabel,
 } from '@/lib/requirements.js'
 
@@ -54,8 +54,11 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value))
 }
 
-export default function RequirementsSettings({ scope = 'school', readOnly = false }) {
+// scope: 'school', 'organization' (its defaults), or 'template' with
+// templateId (#577) — a template is edited exactly like the org's defaults.
+export default function RequirementsSettings({ scope = 'school', templateId = null, readOnly = false }) {
   const isSchool = scope === 'school'
+  const isTemplate = scope === 'template'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -69,7 +72,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
     setLoading(true)
     setError('')
     try {
-      const data = isSchool ? await fetchSchoolRequirements() : await fetchOrgRequirements()
+      const data = isSchool ? await fetchSchoolRequirements() : isTemplate ? await fetchTemplate(templateId) : await fetchOrgRequirements()
       setMeta(data)
       const own = data.own || {}
       setSections({
@@ -86,7 +89,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
     } finally {
       setLoading(false)
     }
-  }, [isSchool])
+  }, [isSchool, isTemplate, templateId])
 
   useEffect(() => { load() }, [load])
 
@@ -110,7 +113,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
     try {
       const payload = {}
       for (const key of SECTIONS) payload[key] = sections[key]
-      const data = isSchool ? await saveSchoolRequirements(payload) : await saveOrgRequirements(payload)
+      const data = isSchool ? await saveSchoolRequirements(payload) : isTemplate ? await saveTemplate(templateId, payload) : await saveOrgRequirements(payload)
       setMeta((m) => ({ ...m, ...data }))
       setToast('Requirements saved.')
     } catch (e) {
@@ -123,9 +126,11 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
   if (loading) return <Card><p className="text-sm text-earth-500">Loading requirements…</p></Card>
 
   const sourceNote = (section) => {
-    if (sections[section]) return isSchool ? 'Set by your school' : 'Your default'
+    if (sections[section]) return isSchool ? 'Set by your school' : isTemplate ? 'Set in this template' : 'Your default'
+    if (isTemplate) return 'Not set — these schools use your defaults'
     if (!isSchool) return 'Not set — schools use VolunTrack defaults'
     const from = meta.sources?.[section]
+    if (from === 'template') return `From ${meta.organizationName || 'your organization'}’s “${meta.templateName}” rules`
     if (from === 'organization') return `Inherited from ${meta.organizationName || 'your organization'}`
     return 'VolunTrack defaults'
   }
@@ -134,10 +139,12 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
     <div className="space-y-4">
       <Card>
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
-          <ClipboardList className="w-4 h-4 text-brand-600" /> Your requirements
+          <ClipboardList className="w-4 h-4 text-brand-600" /> {isTemplate ? `Rules for “${meta.templateName || ''}”` : 'Your requirements'}
         </h2>
         <p className="text-sm text-earth-500 dark:text-earth-400">
-          {isSchool
+          {isTemplate
+            ? 'Schools you assign to this template follow these sections instead of your defaults. A section left unset here uses your defaults, and a school can still set its own.'
+            : isSchool
             ? 'Every rule here applies to the students linked to your school. Anything you leave inherited follows your organization, or VolunTrack’s defaults if you have none.'
             : 'These are the defaults for every school you own. A school that sets its own version of a section keeps it — your changes reach the rest.'}
         </p>
@@ -167,7 +174,7 @@ export default function RequirementsSettings({ scope = 'school', readOnly = fals
                 )
                 : (
                   <button type="button" onClick={() => override(section)} className="btn-sm btn-secondary shrink-0">
-                    {isSchool ? 'Set our own' : 'Set a default'}
+                    {isSchool ? 'Set our own' : isTemplate ? 'Set in this template' : 'Set a default'}
                   </button>
                 )
             )}
