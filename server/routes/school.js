@@ -9,6 +9,7 @@ import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { signupPlatform } from '../platform.js'
+import { saveRoster, rosterEntry, rosterGrade, applyRosterGrade } from '../roster.js'
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
@@ -229,7 +230,11 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
     // A school that set its grades (#581) needs one of them from every student
     // who joins: the one they already have if it fits, else the one they pick
     // now. The client shows a picker when it gets needsGrade back.
-    if (targetPolicy && !gradeAllowed(targetPolicy.policy, meRows[0]?.grade)) {
+    // A grade from the school's own roster (#584) counts as picked; it is
+    // set for good once the student is linked (applyRosterGrade below).
+    const roster = await rosterEntry(target.id, meRows[0]?.email)
+    const fromRoster = roster?.grade ? rosterGrade(targetPolicy?.policy, roster.grade) : null
+    if (targetPolicy && !fromRoster && !gradeAllowed(targetPolicy.policy, meRows[0]?.grade)) {
       const picked = req.body?.grade ? gradeKey(String(req.body.grade)) : null
       const grades = schoolGrades(targetPolicy.policy)
       if (!picked || !grades.includes(picked)) {
@@ -248,7 +253,8 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
     if (!currentSchoolId) {
       const joined = await joinWithSeat(target.id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub]))
       if (joined.error) return res.status(409).json({ error: joined.error })
-      return res.json({ ok: true, schoolId: target.id })
+      const grade = await applyRosterGrade(target.id, req.auth.sub)
+      return res.json({ ok: true, schoolId: target.id, ...(grade ? { grade } : {}) })
     }
 
     // A transfer is different: it hands this student's whole record to a
@@ -410,6 +416,7 @@ router.post('/transfers/:id/decide', limiter, requireDb, requireAuth('school', '
         await query(`UPDATE school_transfers SET status = 'pending', decided_by = NULL, decided_at = NULL WHERE id = $1`, [req.params.id])
         return res.status(409).json({ error: moved.error })
       }
+      await applyRosterGrade(transfer.to_school_id, transfer.user_id)
       // The student's submitted reports go with them. One in the former
       // school's own storage stays there: the new school can't reach that bucket.
       await query(
@@ -1279,7 +1286,20 @@ const classInviteLimiter = rateLimit({
 
 router.post('/invite-class', limiter, classInviteLimiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const raw = Array.isArray(req.body?.emails) ? req.body.emails : []
-  const emails = [...new Set(raw.map((e) => String(e || '').trim().toLowerCase()).filter(Boolean))]
+  // A roster CSV (#584) also sends { email, name, grade } for each student.
+  const people = Array.isArray(req.body?.students) ? req.body.students.slice(0, CLASS_INVITE_MAX + 1) : []
+  const rosterByEmail = new Map()
+  for (const p of people) {
+    if (!p || typeof p !== 'object') continue
+    const email = String(p.email || '').trim().toLowerCase()
+    if (!email) continue
+    rosterByEmail.set(email, {
+      email,
+      name: typeof p.name === 'string' ? p.name.trim().slice(0, 100) : '',
+      grade: typeof p.grade === 'string' || typeof p.grade === 'number' ? String(p.grade).trim().slice(0, 30) : '',
+    })
+  }
+  const emails = [...new Set([...raw.map((e) => String(e || '').trim().toLowerCase()), ...rosterByEmail.keys()].filter(Boolean))]
   if (emails.length === 0) return res.status(400).json({ error: 'Add at least one email address.' })
   if (emails.length > CLASS_INVITE_MAX) return res.status(400).json({ error: `Up to ${CLASS_INVITE_MAX} addresses at a time.` })
   const valid = emails.filter((e) => e.length <= 254 && validator.isEmail(e))
@@ -1291,6 +1311,9 @@ router.post('/invite-class', limiter, classInviteLimiter, requireDb, requireAuth
     )
     const school = me[0]
     if (!school) return res.status(404).json({ error: 'School not found.' })
+    const roster = await saveRoster(school.school_id, req.auth.sub, valid.map((e) => rosterByEmail.get(e)).filter(Boolean))
+    result.gradesSaved = roster.grades
+    result.unknownGrades = roster.unknownGrades
     const { rows: today } = await query(
       `SELECT COUNT(*)::int AS n FROM school_email_invites WHERE school_id = $1 AND sent_at > now() - interval '1 day'`,
       [school.school_id],
@@ -1337,7 +1360,7 @@ router.post('/invite-class', limiter, classInviteLimiter, requireDb, requireAuth
       sendEmail({
         to: email,
         subject: `${school.name} invited you to VolunTrack`,
-        html: `<p>Hi,</p><p>${escapeHtml(school.name)} uses VolunTrack to keep track of volunteer and service hours, and your adviser invited you to join.</p><p><a href="${joinLink}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">Join ${escapeHtml(school.name)}</a></p><p>It's free for students. If the button doesn't work, sign up and enter the school code <strong>${escapeHtml(school.pin)}</strong>. If you weren't expecting this, you can ignore it.</p>${emailFooterHtml()}`,
+        html: `<p>Hi${rosterByEmail.get(email)?.name ? ` ${escapeHtml(rosterByEmail.get(email).name.split(/\s+/)[0])}` : ''},</p><p>${escapeHtml(school.name)} uses VolunTrack to keep track of volunteer and service hours, and your adviser invited you to join.</p><p><a href="${joinLink}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">Join ${escapeHtml(school.name)}</a></p><p>It's free for students. If the button doesn't work, sign up and enter the school code <strong>${escapeHtml(school.pin)}</strong>. If you weren't expecting this, you can ignore it.</p>${emailFooterHtml()}`,
       }).catch((e) => console.error('class invite email failed:', e.message))
     }
     return res.json({ ok: true, ...result })
@@ -1401,6 +1424,7 @@ router.post('/invites/:id/decide', limiter, requireDb, requireAuth('student'), a
       }
       const joined = await joinWithSeat(rows[0].school_id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].school_id, req.auth.sub]))
       if (joined.error) return res.status(409).json({ error: joined.error })
+      await applyRosterGrade(rows[0].school_id, req.auth.sub)
       // Other schools' invites can't be accepted now, so they're closed too.
       await query(
         "UPDATE school_student_invites SET status = 'declined', decided_at = now() WHERE user_id = $1 AND status = 'pending' AND id <> $2",
