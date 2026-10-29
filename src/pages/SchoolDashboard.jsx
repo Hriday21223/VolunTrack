@@ -10,6 +10,8 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import SsoSettings from '@/components/SsoSettings.jsx'
 import RequirementsSettings from '@/components/RequirementsSettings.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
+import StudentNotes from '@/components/StudentNotes.jsx'
+import { fetchNoteCounts } from '@/lib/studentNotes.js'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import { gradeLabel } from '@policy'
@@ -102,6 +104,12 @@ export default function SchoolDashboard() {
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [staff, setStaff] = useState([])
   const [handoverStaffId, setHandoverStaffId] = useState(null)
+  // Private adviser notes (#567): which student's are open, and how many each has.
+  const [notesFor, setNotesFor] = useState(null)
+  const [noteCounts, setNoteCounts] = useState({})
+  useEffect(() => {
+    if (tab === 'students' && subTab === 'list') fetchNoteCounts().then(setNoteCounts)
+  }, [tab, subTab])
   const [staffForm, setStaffForm] = useState({ name: '', email: '', password: '' })
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffErr, setStaffErr] = useState('')
@@ -844,12 +852,22 @@ export default function SchoolDashboard() {
                 ) : (
                   <div className="divide-y divide-white/10">
                     {students.map((s) => (
-                      <div key={s.id} className="py-3 flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-sm">{s.name}</p>
-                          <p className="text-xs text-earth-400">{s.email}{s.grade ? ` · ${gradeLabel(s.grade)}` : ''}</p>
+                      <div key={s.id} className="py-3">
+                        <div className="flex justify-between items-center gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm">{s.name}</p>
+                            <p className="text-xs text-earth-400">{s.email}{s.grade ? ` · ${gradeLabel(s.grade)}` : ''}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs text-earth-500 hidden sm:inline">{new Date(s.created_at).toLocaleDateString()}</span>
+                            <button type="button" className="btn-ghost btn-sm" onClick={() => setNotesFor(notesFor === s.id ? null : s.id)} aria-expanded={notesFor === s.id}>
+                              Notes{noteCounts[s.id] ? ` (${noteCounts[s.id]})` : ''}
+                            </button>
+                          </div>
                         </div>
-                        <span className="text-xs text-earth-500">{new Date(s.created_at).toLocaleDateString()}</span>
+                        {notesFor === s.id && (
+                          <StudentNotes studentId={s.id} onCount={(n) => setNoteCounts((c) => ({ ...c, [s.id]: n }))} />
+                        )}
                       </div>
                     ))}
                   </div>
