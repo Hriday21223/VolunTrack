@@ -4,9 +4,9 @@
 // drift apart. See server/routes/requirements.js for the endpoints.
 
 import { useEffect, useState } from 'react'
-import { resolvePolicy, validateLogAgainstPolicy, goalHoursFor, signatureNeeds, awardFor, requirementShortfall } from '@policy'
+import { resolvePolicy, validateLogAgainstPolicy, goalHoursFor, signatureNeeds, awardFor, requirementShortfall, isLockedDate, lockedMessage } from '@policy'
 
-export { validateLogAgainstPolicy, goalHoursFor, signatureNeeds, awardFor, requirementShortfall }
+export { validateLogAgainstPolicy, goalHoursFor, signatureNeeds, awardFor, requirementShortfall, isLockedDate, lockedMessage }
 export { SIGNATURE_MODES, SIGNERS, classifyFormUrl } from '@policy'
 export { SCHOOL_GRADES, gradeKey, gradeLabel, gradeName, gradeOptionLabel } from '@policy'
 export { CUSTOM_FIELD_TYPES, SECTIONS, DEFAULTS, normalizePolicy } from '@policy'
