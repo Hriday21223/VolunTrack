@@ -234,7 +234,7 @@ export function paymentInstructionsHtml(instructions, accountCode) {
 // flow) a link back to the dashboard where they submit their bank
 // confirmation number. Shared by school and organization notify routes.
 export function paymentNoticeHtml({ recipientName, entityLabel = 'school', accountCode, amount, billingPeriod, dueDate, message, includeDashboardLink = true, paymentInstructions }) {
-  const dashboardLink = `${process.env.FRONTEND_URL || ''}/school/dashboard`
+  const dashboardLink = `${process.env.FRONTEND_URL || ''}/school/dashboard/setup/billing`
   const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : null
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
   return [
@@ -346,7 +346,7 @@ export function welcomeEmailContent({ name, role, schoolPin = null, plan = null 
       html: `${hi}
 <p>${club ? 'Your free club is set up' : 'Your school account is set up'}. The next step is getting students on board, and it takes about five minutes.</p>
 <p>Your dashboard has a <strong>starter kit</strong>: a join link${schoolPin ? ` (students can also type the code <strong>${escapeHtml(schoolPin)}</strong>)` : ''}, a QR code, a printable flyer in English and Spanish, and messages ready to paste into email or Google Classroom.</p>
-${button(`${site}/school/dashboard`, 'Open your starter kit')}
+${button(`${site}/school/dashboard/students`, 'Open your starter kit')}
 <p>Then set your hour requirement under School setup → Requirements, so students can see how close they are.${club ? ' A free club can have up to 50 students. For more, use <strong>Upgrade to a school plan</strong> on your dashboard or <a href="${site}/contact?topic=school">contact us</a>.' : ''}</p>
 ${sign}`,
     }

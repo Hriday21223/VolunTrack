@@ -115,7 +115,7 @@ export async function runImpactEmails({ dryRun = false, month: monthKey = null, 
       impactFor(ids, 'year', now, { from: month.from, to: month.to }),
       impactFor(ids, 'year', new Date(`${month.to}T00:00:00Z`)),
     ])
-    const link = `${emailApiBase()}${t.kind === 'school' ? '/school/dashboard' : '/organization/dashboard'}`
+    const link = `${emailApiBase()}${t.kind === 'school' ? '/school/dashboard/reports/hours' : '/organization/dashboard/hours'}`
     const { rows: recipients } = await query(
       `SELECT email, token FROM impact_report_recipients WHERE ${column(t.kind)} = $1`,
       [t.id],

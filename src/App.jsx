@@ -169,9 +169,9 @@ function Shell() {
           <Route path="/my-tasks"    element={<Protected roles={ROUTE_ROLES['/my-tasks']}><MyTasks /></Protected>} />
           <Route path="/attendance"  element={<Protected roles={ROUTE_ROLES['/attendance']}><Attendance /></Protected>} />
           <Route path="/admin/:tab?"  element={<AdminProtected><Admin /></AdminProtected>} />
-          <Route path="/school/dashboard" element={<Protected roles={ROUTE_ROLES['/school/dashboard']}><SchoolDashboard /></Protected>} />
+          <Route path="/school/dashboard/:tab?/:sub?" element={<Protected roles={ROUTE_ROLES['/school/dashboard']}><SchoolDashboard /></Protected>} />
           <Route path="/school/flyer"  element={<Protected roles={ROUTE_ROLES['/school/flyer']}><SchoolFlyer /></Protected>} />
-          <Route path="/organization/dashboard" element={<Protected roles={ROUTE_ROLES['/organization/dashboard']}><OrganizationDashboard /></Protected>} />
+          <Route path="/organization/dashboard/:tab?" element={<Protected roles={ROUTE_ROLES['/organization/dashboard']}><OrganizationDashboard /></Protected>} />
 
           {/* The home page is the dashboard; older sign-in links used /dashboard. */}
           <Route path="/checkin/:taskId" element={<Protected roles={ROUTE_ROLES['/checkin']}><CheckIn /></Protected>} />

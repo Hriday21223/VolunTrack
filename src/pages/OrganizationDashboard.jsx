@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { orgTabFromPath, orgPathFor } from '@/lib/dashboardTabs.js'
 import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog, Megaphone } from 'lucide-react'
 import HandoverForm from '@/components/HandoverForm.jsx'
 import OrgAnnouncementsCard from '@/components/OrgAnnouncementsCard.jsx'
@@ -41,7 +43,19 @@ const ORG_TOUR_STEPS = [
 // payment) stays entirely on each school's own dashboard (SchoolDashboard.jsx).
 export default function OrganizationDashboard() {
   const { user } = useAuth()
-  const [tab, setTab] = useState('schools')
+  // The tab lives in the address (#579): /organization/dashboard/announcements.
+  const { tab: tabParam } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const tabSettled = useRef(false)
+  const [tab, setTab] = useState(() => orgTabFromPath(tabParam))
+  useEffect(() => { setTab(orgTabFromPath(tabParam)) }, [tabParam])
+  useEffect(() => {
+    const path = orgPathFor(tab)
+    if (path !== location.pathname) navigate(path, { replace: !tabSettled.current || location.pathname.toLowerCase() === path })
+    tabSettled.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
   // Which school's "New principal" form is open (#550).
   const [handoverSchoolId, setHandoverSchoolId] = useState(null)
   const [schools, setSchools] = useState([])
@@ -101,6 +115,8 @@ export default function OrganizationDashboard() {
       setLoadingInvites(false)
     }
   }, [])
+  // Invites load whenever that tab opens, including from its address.
+  useEffect(() => { if (tab === 'invites') loadInvites() }, [tab, loadInvites])
 
   useEffect(() => {
     if (!user) return
@@ -151,7 +167,7 @@ export default function OrganizationDashboard() {
           <button onClick={() => setTab('announcements')} className={`btn-sm ${tab === 'announcements' ? 'btn-primary' : 'btn-ghost'}`}>
             <Megaphone className="w-3.5 h-3.5 mr-1" /> Announcements
           </button>
-          <button data-tour="org-invites-tab" onClick={() => { setTab('invites'); loadInvites() }} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="org-invites-tab" onClick={() => setTab('invites')} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
         </div>

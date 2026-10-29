@@ -83,7 +83,7 @@ export function renderAdviserEmail({ name, schoolName, summary: s, unsubToken })
   const button = (href, label) => `<a href="${href}" style="display:inline-block;margin:4px 8px 4px 0;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">${escapeHtml(label)}</a>`
   const html = [
     ...lines,
-    `<p>${button(`${site}/school/dashboard`, 'Open your dashboard')}</p>`,
+    `<p>${button(`${site}/school/dashboard/students/progress`, 'Open your dashboard')}</p>`,
     `<p style="font-size:12px;color:#888">You get this every Monday as an adviser at ${escapeHtml(schoolName)}. <a href="${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}">Stop these emails</a> or turn them off in Settings.</p>`,
     emailFooterHtml('en'),
   ].join('')
