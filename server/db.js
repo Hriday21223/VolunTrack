@@ -1106,6 +1106,22 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('handover table migration failed:', error) }
 
+  // An adviser's private notes on a student (#567). Kept per school: a
+  // student who moves takes none of them to the next school.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS student_notes (
+        id          TEXT PRIMARY KEY,
+        school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        student_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        author_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        author_name TEXT,
+        body        TEXT NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`CREATE INDEX IF NOT EXISTS idx_student_notes_student ON student_notes(school_id, student_id)`)
+  } catch (error) { console.error('student notes table migration failed:', error) }
   // A student's regular weekly shifts (#571, server/routes/shifts.js).
   try {
     await query(`

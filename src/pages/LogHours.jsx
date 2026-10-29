@@ -11,6 +11,7 @@ import SignaturePad from '@/components/SignaturePad.jsx'
 import Toast from '@/components/Toast.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
+import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds, isLockedDate, lockedMessage } from '@/lib/requirements.js'
 import { listShifts } from '@/lib/shifts.js'
 import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds } from '@/lib/requirements.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
@@ -108,6 +109,8 @@ export default function LogHours({ editId, onCloseEdit }) {
   // the form is usable on the first paint and in client-only mode, and
   // tightens once the policy lands.
   const requirements = useMyRequirements()
+  // Editing an entry the school has locked (#569): show why, and allow no changes.
+  const editingLocked = Boolean(editId) && isLockedDate(requirements.policy, logs.find((l) => l.id === editId)?.date)
   const { policy, sources } = requirements
   const customFields = policy.customFields || []
   const policyNotes = describePolicy(policy)
@@ -797,10 +800,13 @@ export default function LogHours({ editId, onCloseEdit }) {
 
           <Card>
             {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg mb-3">{error}</div>}
-            <button type="submit" disabled={saving} className="btn-primary w-full disabled:opacity-60">
+            {editingLocked && (
+              <div className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-300 px-3 py-2 rounded-lg mb-3">{tr(lockedMessage(requirements.policy))}</div>
+            )}
+            <button type="submit" disabled={saving || editingLocked} className="btn-primary w-full disabled:opacity-60">
               <Save className="w-4 h-4" /> {saving ? tr('Saving…') : editId ? tr('Save changes') : tr('Save hours')}
             </button>
-            {editId && (
+            {editId && !editingLocked && (
               <button
                 type="button"
                 className="btn-ghost w-full mt-2 text-red-600"

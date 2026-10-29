@@ -262,6 +262,8 @@ export default {
   "Paid": "Pagado",
   "Unpaid": "Sin pagar",
   "Free club": "Club gratuito",
+  "Lock entries before": "Bloquear entradas anteriores a",
+  "Locked by your school": "Bloqueado por tu escuela",
   "Regular shifts": "Turnos habituales",
   "Add a shift": "Añadir un turno",
   "Did you go on {day}?": "¿Fuiste el {day}?",
