@@ -432,8 +432,11 @@ export function normalizePolicy(input) {
  * from — the UI says "inherited from <org>" rather than leaving an admin
  * guessing why a rule they never set is being enforced.
  */
-export function resolvePolicy({ schoolPolicy, orgPolicy, orgName } = {}) {
+export function resolvePolicy({ schoolPolicy, templatePolicy, orgPolicy, orgName, templateName } = {}) {
   const school = normalizePolicy(schoolPolicy)
+  // An org's named rule set the school was assigned to (#577), between the
+  // school's own sections and the org's defaults.
+  const template = normalizePolicy(templatePolicy)
   const org = normalizePolicy(orgPolicy)
   const policy = { version: POLICY_VERSION }
   const sources = {}
@@ -441,6 +444,9 @@ export function resolvePolicy({ schoolPolicy, orgPolicy, orgName } = {}) {
     if (school[section] !== undefined) {
       policy[section] = school[section]
       sources[section] = 'school'
+    } else if (template[section] !== undefined) {
+      policy[section] = template[section]
+      sources[section] = 'template'
     } else if (org[section] !== undefined) {
       policy[section] = org[section]
       sources[section] = 'organization'
@@ -449,7 +455,7 @@ export function resolvePolicy({ schoolPolicy, orgPolicy, orgName } = {}) {
       sources[section] = 'default'
     }
   }
-  return { policy, sources, orgName: orgName || null }
+  return { policy, sources, orgName: orgName || null, templateName: templateName || null }
 }
 
 // ---------------------------------------------------------------------------

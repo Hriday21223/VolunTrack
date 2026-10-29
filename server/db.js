@@ -1106,6 +1106,22 @@ export async function initSchema() {
     `)
   } catch (error) { console.error('handover table migration failed:', error) }
 
+  // Requirement templates (#577): an organization's named rule sets
+  // ("Middle schools"), each school assigned to at most one. A school's rules
+  // resolve own section → template → org default → VolunTrack default.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS requirement_templates (
+        id              TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        requirements    JSONB,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS requirement_template_id TEXT REFERENCES requirement_templates(id) ON DELETE SET NULL`)
+  } catch (error) { console.error('requirement templates migration failed:', error) }
+
   // Weekly adviser email (#527, server/adviserDigest.js): the adviser's
   // opt-out, and one row per adviser per week so a re-run mails no one twice.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS adviser_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
