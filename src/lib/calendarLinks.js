@@ -10,7 +10,10 @@ export function googleCalendarUrl(task) {
   let dates
   if (hm) {
     const start = new Date(Date.UTC(y, m - 1, d, Number(hm[1]), Number(hm[2])))
-    dates = `${stamp(start)}/${stamp(new Date(start.getTime() + 2 * 3600e3))}`
+    // A shift (#589) carries its own end time.
+    const endHm = /^(\d{1,2}):(\d{2})/.exec(task.end_time || '')
+    const end = endHm ? new Date(Date.UTC(y, m - 1, d, Number(endHm[1]), Number(endHm[2]))) : null
+    dates = `${stamp(start)}/${stamp(end && end > start ? end : new Date(start.getTime() + 2 * 3600e3))}`
   } else {
     const day = new Date(Date.UTC(y, m - 1, d))
     dates = `${stamp(day).slice(0, 8)}/${stamp(new Date(day.getTime() + 86400e3)).slice(0, 8)}`
