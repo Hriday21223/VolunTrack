@@ -210,6 +210,7 @@ const ES = {
   'Why:': 'Motivo:',
   'Fix what they asked for, then send a new report from Reports.': 'Corrige lo que te pidieron y envía un informe nuevo desde Informes.',
   'Open Reports': 'Abrir Informes',
+  'Your shift: {shift}': 'Tu turno: {shift}',
   'Your entry': 'Tu registro',
   '{school} approved: {what}': '{school} aprobó: {what}',
   '{school} approved {n} of your entries': '{school} aprobó {n} de tus registros',

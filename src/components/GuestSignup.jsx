@@ -29,8 +29,12 @@ export default function GuestSignup({ task, user, onSignUp, onDone, onError }) {
   if (status && !signedUp) return null
   if (!status && task.my_too_young) return null
 
-  const total = Number(task.slots_total) || 0
-  const filled = Number(task.slots_filled) || 0
+  // Shifts (#589): sign up for a shift first, then add guests to it; the
+  // spots are that shift's.
+  const myShift = Array.isArray(task.shifts) && task.shifts.length ? task.shifts.find((sh) => sh.id === task.my_shift_id) : null
+  if (Array.isArray(task.shifts) && task.shifts.length && !signedUp) return null
+  const total = myShift ? Number(myShift.slots) || 0 : Number(task.slots_total) || 0
+  const filled = myShift ? Number(myShift.filled) || 0 : Number(task.slots_filled) || 0
   // Spots this sign-up could use: the free ones, plus its own if it holds some.
   const holds = status === 'pending' || status === 'approved'
   const left = Math.max(0, total - filled + (holds ? 1 + current : 0))

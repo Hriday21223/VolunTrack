@@ -778,6 +778,25 @@ export async function initSchema() {
   // are told and see it marked "For your school". Still public like any task.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_count SMALLINT NOT NULL DEFAULT 0`) } catch {}
+  // Shifts within an event (#589, server/taskShifts.js): a task's time slots or
+  // roles, each with its own spots. A sign-up names one; NULL on a task
+  // without shifts.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS public_task_shifts (
+        id          TEXT PRIMARY KEY,
+        task_id     TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+        label       TEXT NOT NULL DEFAULT '',
+        start_time  TEXT NOT NULL,
+        end_time    TEXT NOT NULL,
+        slots_total INTEGER NOT NULL CHECK (slots_total BETWEEN 1 AND 1000),
+        position    SMALLINT NOT NULL DEFAULT 0
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_public_task_shifts_task ON public_task_shifts(task_id)')
+  } catch (error) { console.error('task shifts table migration failed:', error) }
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS shift_id TEXT REFERENCES public_task_shifts(id) ON DELETE SET NULL`) } catch {}
+  try { await query('CREATE INDEX IF NOT EXISTS idx_public_signups_shift ON public_task_signups(shift_id)') } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_names TEXT[]`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_guest_count_check CHECK (guest_count BETWEEN 0 AND 3)`) } catch {}
 

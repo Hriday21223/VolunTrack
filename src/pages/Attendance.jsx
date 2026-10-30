@@ -14,6 +14,7 @@ import RateTask from '@/components/RateTask.jsx'
 import DayOfPanel from '@/components/DayOfPanel.jsx'
 import WeatherChip from '@/components/WeatherChip.jsx'
 import { tr } from '@/lib/i18n.js'
+import { shiftText } from '@/lib/taskShifts.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -41,6 +42,8 @@ const ATTENDANCE_META = {
 function SignupRow({ s, onChanged, canRate }) {
   const cancelled = s.task_status === 'cancelled'
   const signup = cancelled ? CANCELLED_LABEL : (SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending)
+  // Shifts (#589): the volunteer's own time slot, not the whole event's.
+  const myShift = Array.isArray(s.shifts) ? s.shifts.find((sh) => sh.id === s.shift_id) : null
   const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
   const isPast = dayOf(s.date) < todayDay()
   const { user } = useAuth()
@@ -54,7 +57,7 @@ function SignupRow({ s, onChanged, canRate }) {
           {s.creator_name && <p className="text-xs text-earth-500 mt-0.5">{tr('Posted by')}{' '}{s.creator_name}</p>}
           <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.location}</span>
-            <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{s.time ? ` · ${s.time}` : ''}</span>
+            <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{myShift ? ` · ${shiftText(myShift)}` : s.time ? ` · ${s.time}` : ''}</span>
           </div>
           {!['rejected', 'parent_declined'].includes(s.signup_status) && <WeatherChip task={s} className="mt-2" />}
           {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
