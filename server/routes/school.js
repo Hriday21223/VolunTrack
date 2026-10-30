@@ -34,6 +34,7 @@ import { displayName } from './portfolio.js'
 import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
 import { schoolIsActive, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_STUDENT_LIMIT, CLUB_MAX_CO_ADMINS, PLANS } from '../plans.js'
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
+import { readWaiverText, readWaiverAgreement, saveWaiverAgreement, hashWaiverToken, WAIVER_STATUS_SQL } from '../taskWaivers.js'
 
 const router = express.Router()
 
@@ -2197,6 +2198,9 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     return res.status(400).json({ error: 'Allow guests must be true or false.' })
   }
   const allowGuests = req.body.allowGuests === true
+  // A waiver volunteers agree to (#595), in the organizer's own words.
+  const waiver = readWaiverText(req.body.waiverText)
+  if (!waiver.ok) return res.status(400).json({ error: waiver.error })
   // Online: the address is optional and there is no map pin.
   if (isOnline) {
     if (location != null && typeof location !== 'string') return res.status(400).json({ error: 'Location must be text.' })
@@ -2274,10 +2278,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null],
         )
         created.push({ id, date: day })
       }
@@ -2352,6 +2356,9 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
                ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
                t.allow_guests,
+               -- Waiver (#595): public, so it can be read before signing up.
+               t.waiver_text,
+               ${userId ? `(SELECT waiver_at FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_waiver_at` : 'NULL AS my_waiver_at'},
                ${userId ? `(SELECT guest_count FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_guest_count` : 'NULL AS my_guest_count'},
                ${userId ? `(SELECT guest_names FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_guest_names` : 'NULL AS my_guest_names'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
@@ -3058,7 +3065,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   try {
     await client.query('BEGIN')
     const { rows } = await client.query(
-      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age, t.allow_guests,
+      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age, t.allow_guests, t.waiver_text, t.title,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$2')} AS too_young,
               (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
               EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = t.created_by) AS host_blocked
@@ -3113,6 +3120,26 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       return res.status(400).json({ error: "This task doesn't take guests. Sign up on your own, or ask the organizer." })
     }
 
+    // A waiver (#595): agreed to with a typed name, and for someone under 18
+    // a parent or guardian too.
+    const { rows: who } = await client.query('SELECT under_13, email, name FROM users WHERE id = $1', [req.auth.sub])
+    let waiverAgreement = null
+    if (rows[0].waiver_text) {
+      const read = readWaiverAgreement(req.body?.waiver, { under13: who[0]?.under_13 === true, ownEmail: who[0]?.email })
+      if (!read.ok) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: read.error, needsWaiver: true })
+      }
+      waiverAgreement = read.agreement
+    }
+    let waiverToken = null
+    const agreeTo = async (signupId) => {
+      if (waiverAgreement) waiverToken = await saveWaiverAgreement(client, signupId, rows[0].waiver_text, waiverAgreement, { under13: who[0]?.under_13 === true })
+    }
+    const askParent = () => {
+      if (waiverToken) sendWaiverParentEmail({ token: waiverToken, agreement: waiverAgreement, childName: who[0]?.name, taskId: req.params.id })
+    }
+
     // Came from a friend's invite link: kept only when that friend really
     // invited this address to this task and is still going. Anything else is
     // ignored, never an error — the link is shareable and can go stale.
@@ -3159,6 +3186,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
         "INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by) VALUES ($1, $2, $3, 'parent_pending', $4)",
         [pid, req.params.id, req.auth.sub, invitedBy],
       )
+      await agreeTo(pid)
       await client.query('COMMIT')
       const asked = await requestParentOk(pid)
       return res.json({ ok: true, id: pid, parentPending: true, parentAsked: asked })
@@ -3186,7 +3214,9 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
         [wid, req.params.id, req.auth.sub, invitedBy, guests.count, guests.names.length ? guests.names : null],
       )
       const { rows: pos } = await client.query(`SELECT ${WAITLIST_POSITION_SQL('$1', '$2')} AS position`, [req.params.id, req.auth.sub])
+      await agreeTo(wid)
       await client.query('COMMIT')
+      askParent()
       if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
       return res.json({ ok: true, id: wid, waitlisted: true, position: Number(pos[0].position) || 1 })
     }
@@ -3197,7 +3227,9 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
        VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
       [sid, req.params.id, req.auth.sub, 'pending', invitedBy, guests.count, guests.names.length ? guests.names : null],
     )
+    await agreeTo(sid)
     await client.query('COMMIT')
+    askParent()
     if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
     return res.json({ ok: true, id: sid })
   } catch (error) {
@@ -3458,6 +3490,99 @@ const childFirstName = (name) => String(name || '').trim().split(/\s+/)[0] || 'Y
  * awaited; emails are sent after it returns.
  * @returns {Promise<'linked'|'email'|'none'>} who was asked.
  */
+// --- Waivers: the parent of a 13-17-year-old agrees (#595) -----------------
+//
+// The volunteer named a parent or guardian at sign-up; they get one email with
+// a one-time link to /waiver/<token>, read the waiver and agree with their own
+// typed name. Nothing else about the volunteer is shown there.
+
+async function sendWaiverParentEmail({ token, agreement, childName, taskId }) {
+  try {
+    if (!agreement?.parentEmail || /@test\.com$/i.test(agreement.parentEmail)) return
+    const { rows } = await query(`SELECT title, to_char(date, 'YYYY-MM-DD') AS date, time, location, creator_name FROM public_tasks WHERE id = $1`, [taskId])
+    const t = rows[0]
+    if (!t) return
+    const child = childFirstName(childName) || 'Your child'
+    const link = `${frontendBase()}/waiver/${token}`
+    await sendEmail({
+      to: agreement.parentEmail,
+      subject: `${child} needs you to agree to a volunteer waiver`,
+      html: taskEmailHtml({
+        lang: 'en',
+        heading: `${child} needs you to agree to a waiver`,
+        lines: [
+          `Hi ${agreement.parentName},`,
+          `${childName || child} signed up to volunteer at this event on VolunTrack and named you as their parent or guardian. The organizer asks every volunteer to agree to a waiver, and because ${child} is under 18, they need you to agree too.`,
+          'Open the link to read the waiver. Nothing is recorded until you type your name and press Agree, and the link works once.',
+          `If you don't know ${child}, you can ignore this email.`,
+        ],
+        task: t,
+        link,
+        linkLabel: 'Read and agree',
+      }),
+    })
+  } catch (error) {
+    console.error('waiver parent email failed:', error.message)
+  }
+}
+
+async function waiverSignupForToken(token) {
+  if (!/^[a-f0-9]{64}$/.test(String(token || ''))) return null
+  const { rows } = await query(
+    `SELECT s.id, s.user_id, s.waiver_parent_name, s.waiver_parent_at, s.status, c.name AS child_name,
+            t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.waiver_text, t.status AS task_status
+       FROM public_task_signups s JOIN users c ON c.id = s.user_id JOIN public_tasks t ON t.id = s.task_id
+      WHERE s.waiver_parent_token = $1`,
+    [hashWaiverToken(token)],
+  )
+  return rows[0] || null
+}
+
+router.get('/waiver/:token', limiter, requireDb, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try {
+    const w = await waiverSignupForToken(req.params.token)
+    if (!w) return res.status(404).json({ error: 'This link is not valid, or it was already used.' })
+    return res.json({
+      childFirstName: childFirstName(w.child_name),
+      parentName: w.waiver_parent_name,
+      task: { title: w.title, date: w.date, time: w.time, location: w.location, organizer: w.creator_name },
+      waiverText: w.waiver_text,
+      done: Boolean(w.waiver_parent_at),
+      closed: w.task_status === 'cancelled' || ['rejected', 'parent_declined'].includes(w.status),
+    })
+  } catch (error) {
+    console.error('waiver page failed:', error)
+    return res.status(500).json({ error: 'Could not load this waiver.' })
+  }
+})
+
+router.post('/waiver/:token', limiter, requireDb, async (req, res) => {
+  const name = String(req.body?.name || '').replace(/\s+/g, ' ').trim().slice(0, 100)
+  if (name.length < 2) return res.status(400).json({ error: 'Type your full name to agree.' })
+  if (req.body?.agree !== true) return res.status(400).json({ error: 'Tick the box to agree.' })
+  try {
+    const w = await waiverSignupForToken(req.params.token)
+    if (!w) return res.status(404).json({ error: 'This link is not valid, or it was already used.' })
+    const { rows } = await query(
+      `UPDATE public_task_signups SET waiver_parent_at = now(), waiver_parent_name = $2, waiver_parent_token = NULL
+        WHERE id = $1 AND waiver_parent_at IS NULL RETURNING user_id`,
+      [w.id, name],
+    )
+    if (!rows[0]) return res.status(409).json({ error: 'You already agreed. Thank you!' })
+    notify(rows[0].user_id, {
+      kind: 'parent_ok_given',
+      title: w.title,
+      body: `${name} agreed to the waiver for you.`,
+      link: '/attendance',
+    })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('waiver agree failed:', error)
+    return res.status(500).json({ error: 'Could not save that.' })
+  }
+})
+
 export async function requestParentOk(signupId) {
   try {
     const { rows } = await query(
@@ -3617,7 +3742,10 @@ export async function decideParentOk(signupId, approve) {
       // line behind people who were already waiting.
       const status = taken + 1 + (Number(signup.guest_count) || 0) <= task.slots_total ? 'pending' : 'waitlisted'
       await client.query(
-        `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_decided_at = now()
+        `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_decided_at = now(),
+                -- Approving an under-13's sign-up is the parent's agreement to its waiver (#595).
+                waiver_parent_at = CASE WHEN waiver_at IS NOT NULL THEN now() ELSE waiver_parent_at END,
+                waiver_parent_name = CASE WHEN waiver_at IS NOT NULL THEN COALESCE(waiver_parent_name, 'Parent or guardian') ELSE waiver_parent_name END
           WHERE id = $1`,
         [signupId, status],
       )
@@ -4146,7 +4274,7 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
   const detailReaders = {
@@ -4154,6 +4282,8 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     meetingPoint: taskMeetingPoint, dayOfContact: taskDayOfContact,
     // Turning guests off later keeps the guests already signed up.
     allowGuests: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Allow guests must be true or false.' }),
+    // Changing it keeps earlier agreements, shown as "an earlier version" (#595).
+    waiverText: readWaiverText,
   }
 
   try {
@@ -4181,7 +4311,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
         wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', isOutdoor: 'is_outdoor',
-        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests',
+        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -4783,6 +4913,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
+              t.waiver_text,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
@@ -4793,6 +4924,9 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'late_at', CASE WHEN t.date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 THEN s.late_at END,
                 -- Group sign-ups (#439): guests coming with them.
                 'guest_count', s.guest_count, 'guest_names', COALESCE(s.guest_names, '{}'),
+                -- Waiver (#595): who agreed, when, and whether a parent still has to.
+                'waiver_status', ${WAIVER_STATUS_SQL('s', 't')}, 'waiver_name', s.waiver_name, 'waiver_at', s.waiver_at,
+                'waiver_parent_name', s.waiver_parent_name, 'waiver_parent_at', s.waiver_parent_at,
                 -- Who invited them, when they signed up from a friend's link.
                 'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
                 -- Checked in, never out, the day is over and no hours yet.

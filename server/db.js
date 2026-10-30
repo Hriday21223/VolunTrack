@@ -1021,6 +1021,16 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('school email invites table migration failed:', error) }
+  // Event waivers (#595, server/taskWaivers.js): the organizer's text, and
+  // each sign-up's agreement (typed name, version, and a parent's for minors).
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS waiver_text TEXT') } catch {}
+  for (const col of [
+    'waiver_name TEXT', 'waiver_at TIMESTAMPTZ', 'waiver_version TEXT', 'waiver_minor BOOLEAN NOT NULL DEFAULT false',
+    'waiver_parent_name TEXT', 'waiver_parent_email TEXT', 'waiver_parent_token TEXT', 'waiver_parent_at TIMESTAMPTZ',
+  ]) {
+    try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS ${col}`) } catch {}
+  }
+  try { await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_signups_waiver_token ON public_task_signups(waiver_parent_token) WHERE waiver_parent_token IS NOT NULL') } catch {}
   // Class roster (#584, server/roster.js): the name and grade a school's
   // roster CSV gave for an address, until that student joins.
   try {

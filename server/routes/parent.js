@@ -310,7 +310,8 @@ router.get('/task-approvals', limiter, requireDb, requireAuth('parent'), async (
   try {
     const { rows } = await query(
       `SELECT s.id AS signup_id, s.user_id AS child_id, c.name AS child_name, s.signed_up_at,
-              t.id AS task_id, t.title, t.description, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name
+              t.id AS task_id, t.title, t.description, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
+              CASE WHEN s.waiver_at IS NOT NULL THEN t.waiver_text END AS waiver_text
          FROM public_task_signups s
          JOIN parent_child_links l ON l.child_id = s.user_id AND l.parent_id = $1
          JOIN users c ON c.id = s.user_id
@@ -341,6 +342,7 @@ router.get('/task-approvals', limiter, requireDb, requireAuth('parent'), async (
         location: r.location,
         organizerName: r.creator_name || null,
         signedUpAt: r.signed_up_at,
+        waiverText: r.waiver_text || null,
       })),
     })
   } catch (error) {
@@ -565,7 +567,8 @@ const TASK_OK_GONE = 'This link has already been used or has expired. If you mea
 
 async function signupForToken(token) {
   const { rows } = await query(
-    `SELECT s.id, c.name AS child_name, t.title, t.description, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name
+    `SELECT s.id, c.name AS child_name, t.title, t.description, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
+            CASE WHEN s.waiver_at IS NOT NULL THEN t.waiver_text END AS waiver_text
        FROM public_task_signups s
        JOIN users c ON c.id = s.user_id
        JOIN public_tasks t ON t.id = s.task_id
@@ -591,6 +594,7 @@ ${s.description ? `<p>${escapeHtml(s.description)}</p>` : ''}
 ${when ? `<p><strong>When:</strong> ${escapeHtml(when)}</p>` : ''}
 ${s.location ? `<p><strong>Where:</strong> ${escapeHtml(s.location)}</p>` : ''}
 ${s.creator_name ? `<p><strong>Organizer:</strong> ${escapeHtml(s.creator_name)}</p>` : ''}
+${s.waiver_text ? `<h2 style="font-size:1.05rem">The organizer's waiver</h2><div style="white-space:pre-line;border:1px solid #ccc;border-radius:8px;padding:10px 12px;max-height:18rem;overflow:auto">${escapeHtml(s.waiver_text)}</div><p><strong>By pressing Approve, you also agree to this waiver on your child's behalf.</strong></p>` : ''}
 <p>If you approve, the organizer sees your child's name and email and confirms the sign-up. If you decline, nothing is shared with the organizer.</p>
 <form method="post" action="${action}/approve" style="display:inline"><button type="submit" style="${TASK_OK_BUTTON}">Approve</button></form>
 <form method="post" action="${action}/decline" style="display:inline"><button type="submit" style="${TASK_OK_BUTTON}">Decline</button></form>`,
