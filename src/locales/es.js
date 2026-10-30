@@ -1483,4 +1483,14 @@ export default {
   "Hours spent using each skill. Handy for a résumé.": "Horas usando cada habilidad. Útil para un currículum.",
   "Copy list": "Copiar lista",
   "Top skills": "Principales habilidades",
+  // Impact report date ranges (#610)
+  "Last month": "El mes pasado",
+  "Last quarter": "El trimestre pasado",
+  "This calendar year": "Este año",
+  "Last calendar year": "El año pasado",
+  "Custom dates…": "Fechas personalizadas…",
+  "Pick a start and an end date.": "Elige una fecha de inicio y una de fin.",
+  "The start date must be on or before the end date.": "La fecha de inicio debe ser igual o anterior a la de fin.",
+  "Download CSV": "Descargar CSV",
+  "{from} to {to}, compared with the same dates last year.": "Del {from} al {to}, comparado con las mismas fechas del año pasado.",
 }
