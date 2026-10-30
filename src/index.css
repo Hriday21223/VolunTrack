@@ -360,3 +360,18 @@ html[data-contrast='high'] a:is([class*='text-sky-'], [class*='text-brand-']):no
 .vt-pin-body:has(.vt-pin-count)::after { display: none; }
 .leaflet-popup-content .vt-map-popup p { margin: 0; }
 .vt-map-popup { max-height: 15rem; overflow-y: auto; padding-right: 0.25rem; }
+
+/* Volunteer badge (#597): a slow moving shine, so a live badge looks
+   different from a screenshot of one. */
+.badge-shine {
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.28) 45%, transparent 60%);
+  background-size: 250% 100%;
+  animation: badge-shine 3.2s linear infinite;
+}
+@keyframes badge-shine {
+  from { background-position: 150% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge-shine { animation-duration: 12s; }
+}

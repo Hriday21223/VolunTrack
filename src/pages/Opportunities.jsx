@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2, List, Map as MapIcon, Loader2, FileSignature } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2, List, Map as MapIcon, Loader2, IdCard, FileSignature } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
@@ -14,6 +14,7 @@ import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import GuestSignup from '@/components/GuestSignup.jsx'
+import VolunteerBadge from '@/components/VolunteerBadge.jsx'
 import WaiverDialog from '@/components/WaiverDialog.jsx'
 import ShiftPicker from '@/components/ShiftPicker.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
@@ -217,6 +218,7 @@ export default function Opportunities() {
     setToast(true)
   }
   const scrolledTo = useRef(false)
+  const [badgeFor, setBadgeFor] = useState(null)
   const [waiverFor, setWaiverFor] = useState(null)
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
   const reload = () => { loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius); if (canFollow) loadSaved() }
@@ -656,6 +658,11 @@ export default function Opportunities() {
                   {approved && String(t.date).slice(0, 10) === format(new Date(), 'yyyy-MM-dd') && (
                     <div className="mt-2"><ScanCheckinButton className="btn-secondary text-sm" /></div>
                   )}
+                  {approved && (
+                    <button type="button" className="btn-secondary btn-sm mt-2" onClick={(e) => { e.stopPropagation(); setBadgeFor(t.id) }}>
+                      <IdCard className="w-4 h-4" />{' '}{tr('Show my volunteer badge')}
+                    </button>
+                  )}
                   <TaskQuestions task={t} className="mt-2" />
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
@@ -709,6 +716,7 @@ export default function Opportunities() {
       </div>
 
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
+      {badgeFor && <VolunteerBadge taskId={badgeFor} onClose={() => setBadgeFor(null)} />}
       {waiverFor && (
         <WaiverDialog
           task={waiverFor.t}
