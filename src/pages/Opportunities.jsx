@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2, List, Map as MapIcon, Loader2, IdCard } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, Users, Flag, X, Bell, BellRing, ChevronDown, Bookmark, BookmarkCheck, Search, Share2, List, Map as MapIcon, Loader2, IdCard, FileSignature } from 'lucide-react'
 import { addDays, format, nextSaturday, isSaturday, isSunday } from 'date-fns'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import AddToCalendar from '@/components/AddToCalendar.jsx'
@@ -15,6 +15,8 @@ import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import GuestSignup from '@/components/GuestSignup.jsx'
 import VolunteerBadge from '@/components/VolunteerBadge.jsx'
+import WaiverDialog from '@/components/WaiverDialog.jsx'
+import ShiftPicker from '@/components/ShiftPicker.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
 import TaskCoverPhoto from '@/components/TaskCoverPhoto.jsx'
@@ -217,40 +219,47 @@ export default function Opportunities() {
   }
   const scrolledTo = useRef(false)
   const [badgeFor, setBadgeFor] = useState(null)
+  const [waiverFor, setWaiverFor] = useState(null)
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
   const reload = () => { loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius); if (canFollow) loadSaved() }
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
   // `extra` carries a group's guests (GuestSignup, #439).
   const signUp = async (t, full, extra = {}) => {
+    // A waiver (#595) is agreed to first, in WaiverDialog, which calls back here.
+    if (t.waiver_text && !extra.waiver) { setWaiverFor({ t, full, extra }); return }
+    try {
+      await doSignUp(t, full, extra)
+    } catch (e) { setToastMsg(e.message); setToast(true) }
+  }
+  // Throws on failure, so WaiverDialog can show the error and stay open.
+  const doSignUp = async (t, full, extra = {}) => {
     // Minimum age (#426): no birth date is kept, so the student confirms it.
     if (t.min_age != null && !window.confirm(tr("This task is for volunteers {n} or older. Are you {n} or older?", { n: t.min_age }))) return
-    try {
-      const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          ...(full ? { waitlist: true } : {}),
-          ...(t.min_age != null ? { ageConfirmed: true } : {}),
-          ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
-          ...extra,
-        }),
-      })
-      const d = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(d.error || 'Failed')
-      // Under 13: a parent says yes first (server/routes/school.js,
-      // requestParentOk). parentAsked says who was asked.
-      setToastMsg(d.parentPending
-        ? (d.parentAsked === 'none'
-          ? tr('Signed up. A parent needs to OK this first: ask them to make a VolunTrack parent account and link to you with the code from Settings → Family.')
-          : tr("Signed up. We asked your parent to OK it — the organizer sees it once they do."))
-        : d.waitlisted
-          ? `You're #${d.position} on the waitlist. We'll email you if a spot opens up.`
-          : tr('Signed up — awaiting organizer approval'))
-      setToast(true)
-      reload()
-    } catch (e) { setToastMsg(e.message); setToast(true) }
+    const token = localStorage.getItem('voluntrack:auth_token')
+    const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        ...(full ? { waitlist: true } : {}),
+        ...(t.min_age != null ? { ageConfirmed: true } : {}),
+        ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
+        ...extra,
+      }),
+    })
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(d.error || 'Failed')
+    // Under 13: a parent says yes first (server/routes/school.js,
+    // requestParentOk). parentAsked says who was asked.
+    setToastMsg(d.parentPending
+      ? (d.parentAsked === 'none'
+        ? tr('Signed up. A parent needs to OK this first: ask them to make a VolunTrack parent account and link to you with the code from Settings → Family.')
+        : tr("Signed up. We asked your parent to OK it — the organizer sees it once they do."))
+      : d.waitlisted
+        ? `You're #${d.position} on the waitlist. We'll email you if a spot opens up.`
+        : tr('Signed up — awaiting organizer approval'))
+    setToast(true)
+    reload()
   }
   // Filters run on the list already loaded; distance is the server's radius.
   const [category, setCategory] = useState('')
@@ -535,6 +544,8 @@ export default function Opportunities() {
           const total = Number(t.slots_total)
           const full = filled >= total
           const approved = t.my_signup_status === 'approved'
+          // Shifts (#589): signing up happens on a shift, in ShiftPicker.
+          const hasShifts = Array.isArray(t.shifts) && t.shifts.length > 0
           return (
             <Card key={t.id} id={`task-${t.id}`} padded={false} className={`p-4 ${t.id === linkedTask ? 'ring-2 ring-brand-400' : ''}`}>
               <TaskCoverPhoto photoId={t.cover_photo_id} title={t.title} className="-mx-4 -mt-4 mb-3 rounded-t-2xl" />
@@ -559,6 +570,14 @@ export default function Opportunities() {
                   {t.category && <span className={`chip mt-1 ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <TaskDetailBadges task={t} className="mt-2" />
+                  {t.waiver_text && (
+                    <details className="mt-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                      <summary className="cursor-pointer text-earth-500 dark:text-earth-400 inline-flex items-center gap-1">
+                        <FileSignature className="w-3.5 h-3.5" />{' '}{t.my_waiver_at ? tr('You agreed to the waiver') : tr('Waiver to agree to when you sign up')}
+                      </summary>
+                      <p className="mt-1 whitespace-pre-line rounded-lg border border-earth-200 dark:border-white/10 p-2 max-h-48 overflow-auto">{t.waiver_text}</p>
+                    </details>
+                  )}
                   <WeatherChip task={t} className="mt-2" />
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     {t.is_online ? (t.location && t.location !== 'Online' && <span>{t.location}</span>) : (
@@ -632,6 +651,7 @@ export default function Opportunities() {
                   {t.my_signup_status === 'parent_declined' && (
                     <p className="text-xs text-red-400 mt-1">{tr('Your parent said no to this one. Talk with them, then you can ask again.')}</p>
                   )}
+                  <ShiftPicker task={t} onSignUp={signUp} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} className="mt-3" />
                   <GuestSignup task={t} user={user} onSignUp={signUp} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} />
                   {(approved || t.my_signup_status === 'pending') && <AddToCalendar task={t} className="mt-2" />}
                   {canInvite && (approved || t.my_signup_status === 'pending') && <InviteFriends task={t} className="mt-2" />}
@@ -657,12 +677,14 @@ export default function Opportunities() {
                   ) : t.my_signup_status === 'parent_pending' ? (
                     <span className="text-xs text-amber-400 font-medium">{tr("Waiting for a parent's OK")}</span>
                   ) : t.my_signup_status === 'parent_declined' ? (
-                    <button onClick={() => signUp(t, full)} className="btn-secondary text-sm">{tr('Ask again')}</button>
+                    hasShifts ? null : <button onClick={() => signUp(t, full)} className="btn-secondary text-sm">{tr('Ask again')}</button>
                   ) : t.my_too_young ? (
                     <>
                       <button disabled className="btn-secondary text-sm opacity-50 cursor-not-allowed">{tr('Sign up')}</button>
                       <span className="text-xs text-earth-500 text-right max-w-[10rem]">{tr('This task is for volunteers {n} or older.', { n: t.min_age })}</span>
                     </>
+                  ) : hasShifts ? (
+                    <span className="text-xs text-earth-500 text-right max-w-[8rem]">{tr('{n} shifts', { n: t.shifts.length })}</span>
                   ) : (
                     <button onClick={() => signUp(t, full)} className={full ? 'btn-secondary text-sm' : 'btn-primary text-sm'}>
                       {full ? tr('Join waitlist') : tr('Sign up')}
@@ -695,6 +717,17 @@ export default function Opportunities() {
 
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
       {badgeFor && <VolunteerBadge taskId={badgeFor} onClose={() => setBadgeFor(null)} />}
+      {waiverFor && (
+        <WaiverDialog
+          task={waiverFor.t}
+          user={user}
+          onClose={() => setWaiverFor(null)}
+          onAgree={async (waiver) => {
+            await doSignUp(waiverFor.t, waiverFor.full, { ...waiverFor.extra, waiver })
+            setWaiverFor(null)
+          }}
+        />
+      )}
       {reporting && (
         <ReportTaskDialog
           task={reporting}

@@ -4,6 +4,7 @@ import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { generatePortfolioSlug } from '../ids.js'
 import { recordAudit, AUDIT } from '../audit.js'
+import { portfolioReferences } from './references.js'
 
 // Volunteer portfolio: an opt-in public page (/p/<slug>) a student can put on a
 // college application. Off by default. The slug is the only key to it — no
@@ -309,6 +310,9 @@ router.get('/:slug', publicLimiter, requireDb, async (req, res) => {
       }))
       out.activitiesTruncated = logs.length > MAX_ACTIVITIES
     }
+    // References the student chose to show, and whose writers agreed (#593).
+    const references = await portfolioReferences(owner.id)
+    if (references.length) out.references = references
     return res.json(out)
   } catch (error) {
     console.error('portfolio page failed:', error)

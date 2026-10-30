@@ -21,7 +21,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et, emailDate } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed } from '../requirements.js'
+import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -34,6 +34,8 @@ import { displayName } from './portfolio.js'
 import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
 import { schoolIsActive, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_STUDENT_LIMIT, CLUB_MAX_CO_ADMINS, PLANS } from '../plans.js'
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
+import { readWaiverText, readWaiverAgreement, saveWaiverAgreement, hashWaiverToken, WAIVER_STATUS_SQL } from '../taskWaivers.js'
+import { readShifts, saveShifts, chooseShift, capacityFor, taskShifts, SHIFTS_JSON_SQL, shiftText } from '../taskShifts.js'
 
 const router = express.Router()
 
@@ -1237,6 +1239,178 @@ router.post('/students/remind', limiter, requireDb, requireAuth('school', 'schoo
   }
 })
 
+// --- Hours to check (#591) --------------------------------------------------
+//
+// Entries no supervisor or organizer has confirmed ('none', or a supervisor
+// request still 'pending') from the school's students. An adviser approves
+// them, or sends one back with a reason the student sees. Entries from a
+// place that isn't on the school's approved list (logRules.approvedPlaces)
+// are flagged and listed first. They still count until sent back, like any
+// unconfirmed entry: sending back is what stops them counting.
+
+const REVIEW_LIST_MAX = 200
+const REVIEW_NOTE_MAX_LOG = 500
+const REVIEW_BULK_MAX = 100
+
+router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const onlyOffList = req.query.show === 'offlist'
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const target = await policyForSchool(schoolId)
+    const places = target?.policy?.logRules?.approvedPlaces || []
+    const { rows } = await query(
+      `SELECT l.id, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours::float8 AS hours, l.notes, l.org_name,
+              l.location, l.supervisor_name, l.verification_status, (l.proof_key IS NOT NULL) AS has_proof,
+              u.id AS student_id, u.name AS student_name, u.grade
+         FROM logs l JOIN users u ON u.id = l.user_id
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')
+        ORDER BY l.date DESC, l.created_at DESC
+        LIMIT 2000`,
+      [schoolId],
+    )
+    const all = rows.map((r) => ({ ...r, offList: places.length > 0 && !placeApproved(target.policy, r.org_name) }))
+    const offList = all.filter((r) => r.offList).length
+    const shown = (onlyOffList ? all.filter((r) => r.offList) : all)
+      .sort((a, b) => Number(b.offList) - Number(a.offList))
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'hours_review', meta: { shown: Math.min(shown.length, REVIEW_LIST_MAX) } })
+    return res.json({
+      entries: shown.slice(0, REVIEW_LIST_MAX),
+      counts: { unconfirmed: all.length, offList },
+      truncated: shown.length > REVIEW_LIST_MAX || rows.length === 2000,
+      hasPlaceList: places.length > 0,
+    })
+  } catch (error) {
+    console.error('hours review list failed:', error)
+    return res.status(500).json({ error: 'Could not load the hours to check.' })
+  }
+})
+
+// Approve or send back one entry: { decision: 'approve' | 'reject', note }.
+router.post('/hours-review/:logId', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const decision = req.body?.decision
+  if (decision !== 'approve' && decision !== 'reject') return res.status(400).json({ error: 'Decision must be approve or reject.' })
+  if (req.body?.note != null && typeof req.body.note !== 'string') return res.status(400).json({ error: 'The note must be text.' })
+  const note = String(req.body?.note || '').trim().slice(0, REVIEW_NOTE_MAX_LOG) || null
+  if (decision === 'reject' && !note) return res.status(400).json({ error: 'Say why, so the student can fix it.' })
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    // Decided only while still unconfirmed, and only for a student at this
+    // school: the WHERE does both, so a race or another school gets nothing.
+    const { rows } = await query(
+      `UPDATE logs l SET verification_status = $3, verified_by = $4, review_note = $5, verification_token = NULL
+         FROM users u
+        WHERE l.id = $1 AND u.id = l.user_id AND u.school_id = $2 AND u.role = 'student'
+          AND l.verification_status IN ('none', 'pending')
+        RETURNING l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
+      [req.params.logId, schoolId, decision === 'approve' ? 'approved' : 'rejected', req.auth.sub, note],
+    )
+    if (rows.length === 0) {
+      const { rows: found } = await query(
+        'SELECT l.verification_status FROM logs l JOIN users u ON u.id = l.user_id WHERE l.id = $1 AND u.school_id = $2',
+        [req.params.logId, schoolId],
+      )
+      if (found.length === 0) return res.status(404).json({ error: 'That entry is not from a student at your school.' })
+      return res.status(409).json({ error: 'That entry was already decided.' })
+    }
+    recordAudit(req, {
+      action: AUDIT.HOURS_REVIEWED,
+      subjectUserId: rows[0].user_id,
+      schoolId,
+      objectType: 'log',
+      objectId: req.params.logId,
+      meta: { decision, by: 'school' },
+    })
+    tellStudentHoursReviewed({ userId: rows[0].user_id, schoolId, approved: decision === 'approve', entries: rows, note })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('hours review failed:', error)
+    return res.status(500).json({ error: 'Could not save the decision.' })
+  }
+})
+
+// Approve several at once: { ids }. Sending back is one at a time, with a reason.
+router.post('/hours-review-approve', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? [...new Set(req.body.ids.map(String))] : []
+  if (ids.length === 0) return res.status(400).json({ error: 'Choose at least one entry.' })
+  if (ids.length > REVIEW_BULK_MAX) return res.status(400).json({ error: `Approve at most ${REVIEW_BULK_MAX} at once.` })
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    const { rows } = await query(
+      `UPDATE logs l SET verification_status = 'approved', verified_by = $3, review_note = NULL, verification_token = NULL
+         FROM users u
+        WHERE l.id = ANY($1::text[]) AND u.id = l.user_id AND u.school_id = $2 AND u.role = 'student'
+          AND l.verification_status IN ('none', 'pending')
+        RETURNING l.id, l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
+      [ids, schoolId, req.auth.sub],
+    )
+    const byStudent = new Map()
+    for (const r of rows) byStudent.set(r.user_id, [...(byStudent.get(r.user_id) || []), r])
+    for (const [userId, entries] of byStudent) {
+      recordAudit(req, { action: AUDIT.HOURS_REVIEWED, subjectUserId: userId, schoolId, objectType: 'log', meta: { decision: 'approve', by: 'school', count: entries.length } })
+      tellStudentHoursReviewed({ userId, schoolId, approved: true, entries })
+    }
+    return res.json({ ok: true, approved: rows.length, skipped: ids.length - rows.length })
+  } catch (error) {
+    console.error('hours bulk approve failed:', error)
+    return res.status(500).json({ error: 'Could not approve those entries.' })
+  }
+})
+
+// The student hears what their school decided: a bell, and an email when an
+// entry is sent back (an approval isn't worth an email). Fire-and-forget.
+async function tellStudentHoursReviewed({ userId, schoolId, approved, entries, note = null }) {
+  try {
+    const { rows } = await query(
+      'SELECT u.email, u.name, u.language, s.name AS school_name FROM users u JOIN schools s ON s.id = $2 WHERE u.id = $1',
+      [userId, schoolId],
+    )
+    const r = rows[0]
+    if (!r) return
+    const lang = emailLang(r.language)
+    const one = entries.length === 1 ? entries[0] : null
+    const what = one ? `${one.activity || et(lang, 'Your entry')} (${one.hours}h, ${emailDate(lang, new Date(`${one.date}T12:00:00Z`))})` : ''
+    if (approved) {
+      await notify(userId, {
+        kind: 'hours_approved',
+        title: one
+          ? et(lang, '{school} approved: {what}', { school: r.school_name, what })
+          : et(lang, '{school} approved {n} of your entries', { school: r.school_name, n: entries.length }),
+        body: note || undefined,
+        link: '/reports',
+      })
+      return
+    }
+    await notify(userId, {
+      kind: 'hours_rejected',
+      title: et(lang, '{school} sent back: {what}', { school: r.school_name, what }),
+      body: et(lang, 'Reason: {reason}', { reason: note }),
+      link: '/reports',
+    })
+    if (!r.email || /@test\.com$/i.test(r.email)) return
+    const site = frontendBase()
+    const title = et(lang, '{school} sent back an entry', { school: r.school_name })
+    await sendEmail({
+      to: r.email,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(emailHi(lang, r.name))}</p>
+        <p>${escapeHtml(what)}</p>
+        <p><strong>${escapeHtml(et(lang, 'Why:'))}</strong> ${escapeHtml(note)}</p>
+        <p>${escapeHtml(et(lang, "These hours don't count for now. Fix the entry in VolunTrack (editing it sends it for review again), or talk with your adviser."))}</p>
+        <p><a href="${escapeHtml(site)}/reports">${escapeHtml(et(lang, 'Open Reports'))}</a></p>
+        ${emailFooterHtml()}
+      `,
+    })
+  } catch (error) {
+    console.error('hours review notice failed:', error.message)
+  }
+}
+
 // Invite a student to the school by email (school admin only)
 router.post('/add-student', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase()
@@ -2197,6 +2371,12 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     return res.status(400).json({ error: 'Allow guests must be true or false.' })
   }
   const allowGuests = req.body.allowGuests === true
+  // A waiver volunteers agree to (#595), in the organizer's own words.
+  const waiver = readWaiverText(req.body.waiverText)
+  if (!waiver.ok) return res.status(400).json({ error: waiver.error })
+  // Shifts within the event (#589): when given, they set the spots and time.
+  const shiftsIn = readShifts(req.body.shifts)
+  if (!shiftsIn.ok) return res.status(400).json({ error: shiftsIn.error })
   // Online: the address is optional and there is no map pin.
   if (isOnline) {
     if (location != null && typeof location !== 'string') return res.status(400).json({ error: 'Location must be text.' })
@@ -2231,7 +2411,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
   // slip past the `|| 1` default below and permanently lock the task as full.
   // Same bounds as editing the task (PATCH below); a huge number overflowed
   // the INTEGER column and came back as a server error.
-  if (slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1 || Number(slotsTotal) > 1000)) {
+  if (!shiftsIn.shifts && slotsTotal != null && slotsTotal !== '' && (!Number.isInteger(Number(slotsTotal)) || Number(slotsTotal) < 1 || Number(slotsTotal) > 1000)) {
     return res.status(400).json({ error: 'Volunteers needed must be between 1 and 1000.' })
   }
   // "Repeat every week for N more weeks": N copies, each 7 days after the
@@ -2274,11 +2454,16 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null],
         )
+        // Each week of a series gets its own copy of the shifts.
+        if (shiftsIn.shifts) {
+          const saved = await saveShifts(client, id, shiftsIn.shifts.map((sh) => ({ ...sh, id: null })))
+          if (!saved.ok) throw Object.assign(new Error(saved.error), { status: 400 })
+        }
         created.push({ id, date: day })
       }
       await client.query('COMMIT')
@@ -2293,6 +2478,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     if (orgId) notifyOrgSchools(orgId, created[0].id)
     return res.status(201).json({ ok: true, id: created[0].id, createdCount: created.length, tasks: created })
   } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message })
     console.error('create public task failed:', error)
     return res.status(500).json({ error: 'Could not create task.' })
   }
@@ -2348,10 +2534,15 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                ${userId ? `COALESCE(t.organization_id IS NOT NULL AND t.organization_id = (SELECT s.organization_id FROM users mu JOIN schools s ON s.id = mu.school_id WHERE mu.id = $1), false)` : 'false'} AS for_my_schools,
                ${SPOTS_USED_SQL('t.id')} AS slots_filled,
+               ${SHIFTS_JSON_SQL('t.id')} AS shifts,
+               ${userId ? '(SELECT shift_id FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_shift_id' : 'NULL AS my_shift_id'},
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
                ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
                t.allow_guests,
+               -- Waiver (#595): public, so it can be read before signing up.
+               t.waiver_text,
+               ${userId ? `(SELECT waiver_at FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_waiver_at` : 'NULL AS my_waiver_at'},
                ${userId ? `(SELECT guest_count FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_guest_count` : 'NULL AS my_guest_count'},
                ${userId ? `(SELECT guest_names FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_guest_names` : 'NULL AS my_guest_names'},
                ${userId ? `CASE WHEN (SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) = 'approved' THEN t.phone ELSE NULL END AS phone` : 'NULL AS phone'},
@@ -2905,6 +3096,11 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
     const t = rows[0]
     // People reach this from an email link, so a gone task gets a page, not JSON.
     if (!t) return res.status(404).type('html').send(taskGonePage())
+    // ?shift=<id> (#589): the volunteer's own time slot.
+    if (req.query.shift) {
+      const { rows: sh } = await query('SELECT label, start_time, end_time FROM public_task_shifts WHERE id = $1 AND task_id = $2', [String(req.query.shift), t.id])
+      if (sh[0]) Object.assign(t, { time: sh[0].start_time, end_time: sh[0].end_time, title: sh[0].label ? `${t.title} (${sh[0].label})` : t.title })
+    }
     const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
     res.set('Content-Type', 'text/calendar; charset=utf-8')
     res.set('Content-Disposition', 'attachment; filename="volunteer-task.ics"')
@@ -3058,7 +3254,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   try {
     await client.query('BEGIN')
     const { rows } = await client.query(
-      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age, t.allow_guests,
+      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age, t.allow_guests, t.waiver_text, t.title,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$2')} AS too_young,
               (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
               EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = t.created_by) AS host_blocked
@@ -3113,6 +3309,34 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       return res.status(400).json({ error: "This task doesn't take guests. Sign up on your own, or ask the organizer." })
     }
 
+    // A waiver (#595): agreed to with a typed name, and for someone under 18
+    // a parent or guardian too.
+    const { rows: who } = await client.query('SELECT under_13, email, name FROM users WHERE id = $1', [req.auth.sub])
+    let waiverAgreement = null
+    if (rows[0].waiver_text) {
+      const read = readWaiverAgreement(req.body?.waiver, { under13: who[0]?.under_13 === true, ownEmail: who[0]?.email })
+      if (!read.ok) {
+        await client.query('ROLLBACK')
+        return res.status(400).json({ error: read.error, needsWaiver: true })
+      }
+      waiverAgreement = read.agreement
+    }
+    let waiverToken = null
+    const agreeTo = async (signupId) => {
+      if (waiverAgreement) waiverToken = await saveWaiverAgreement(client, signupId, rows[0].waiver_text, waiverAgreement, { under13: who[0]?.under_13 === true })
+    }
+    const askParent = () => {
+      if (waiverToken) sendWaiverParentEmail({ token: waiverToken, agreement: waiverAgreement, childName: who[0]?.name, taskId: req.params.id })
+    }
+    // Shifts (#589): a task with shifts needs one picked, and its spots are
+    // that shift's.
+    const picked = await chooseShift(client, req.params.id, req.body?.shiftId)
+    if (!picked.ok) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: picked.error, needsShift: true })
+    }
+    const shiftId = picked.shiftId
+
     // Came from a friend's invite link: kept only when that friend really
     // invited this address to this task and is still going. Anything else is
     // ignored, never an error — the link is shareable and can go stale.
@@ -3149,16 +3373,17 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
         await client.query('ROLLBACK')
         return res.status(400).json({ error: "Students under 13 can't bring guests. Sign up on your own." })
       }
-      const taken = await spotsUsed(client, req.params.id)
-      if (taken >= rows[0].slots_total && req.body?.waitlist !== true) {
+      const cap = await capacityFor(client, req.params.id, shiftId, rows[0].slots_total)
+      if (cap.used >= cap.slots && req.body?.waitlist !== true) {
         await client.query('ROLLBACK')
-        return res.status(400).json({ error: 'Task is full.' })
+        return res.status(400).json({ error: shiftId ? 'That shift is full.' : 'Task is full.' })
       }
       const pid = uid('psig')
       await client.query(
-        "INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by) VALUES ($1, $2, $3, 'parent_pending', $4)",
-        [pid, req.params.id, req.auth.sub, invitedBy],
+        "INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by, shift_id) VALUES ($1, $2, $3, 'parent_pending', $4, $5)",
+        [pid, req.params.id, req.auth.sub, invitedBy, shiftId],
       )
+      await agreeTo(pid)
       await client.query('COMMIT')
       const asked = await requestParentOk(pid)
       return res.json({ ok: true, id: pid, parentPending: true, parentAsked: asked })
@@ -3167,37 +3392,42 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     // Rejected and waitlisted signups don't hold a slot: turning three
     // applicants away on a four-slot task used to leave room for one, and
     // then report "full".
-    const taken = await spotsUsed(client, req.params.id)
+    const cap = await capacityFor(client, req.params.id, shiftId, rows[0].slots_total)
+    const taken = cap.used
     const groupSize = 1 + guests.count
-    if (taken + groupSize > rows[0].slots_total) {
+    if (taken + groupSize > cap.slots) {
       // Full: join the waitlist only when asked to, so an older client that
       // didn't know a task was full still gets "full" rather than a surprise.
       if (req.body?.waitlist !== true) {
         await client.query('ROLLBACK')
-        const left = Math.max(0, rows[0].slots_total - taken)
+        const left = Math.max(0, cap.slots - taken)
         return res.status(400).json(left === 0
-          ? { error: 'Task is full.' }
+          ? { error: shiftId ? 'That shift is full.' : 'Task is full.' }
           : { error: groupTooBigMessage(left, groupSize), spotsLeft: left, groupTooBig: true })
       }
       const wid = uid('psig')
       await client.query(
-        `INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by, guest_count, guest_names)
-         VALUES ($1, $2, $3, 'waitlisted', $4, $5, $6) ON CONFLICT DO NOTHING`,
-        [wid, req.params.id, req.auth.sub, invitedBy, guests.count, guests.names.length ? guests.names : null],
+        `INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by, guest_count, guest_names, shift_id)
+         VALUES ($1, $2, $3, 'waitlisted', $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
+        [wid, req.params.id, req.auth.sub, invitedBy, guests.count, guests.names.length ? guests.names : null, shiftId],
       )
       const { rows: pos } = await client.query(`SELECT ${WAITLIST_POSITION_SQL('$1', '$2')} AS position`, [req.params.id, req.auth.sub])
+      await agreeTo(wid)
       await client.query('COMMIT')
+      askParent()
       if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
       return res.json({ ok: true, id: wid, waitlisted: true, position: Number(pos[0].position) || 1 })
     }
 
     const sid = uid('psig')
     await client.query(
-      `INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by, guest_count, guest_names)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
-      [sid, req.params.id, req.auth.sub, 'pending', invitedBy, guests.count, guests.names.length ? guests.names : null],
+      `INSERT INTO public_task_signups (id, task_id, user_id, status, invited_by, guest_count, guest_names, shift_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING`,
+      [sid, req.params.id, req.auth.sub, 'pending', invitedBy, guests.count, guests.names.length ? guests.names : null, shiftId],
     )
+    await agreeTo(sid)
     await client.query('COMMIT')
+    askParent()
     if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
     return res.json({ ok: true, id: sid })
   } catch (error) {
@@ -3553,6 +3783,99 @@ router.get('/badge/:code', badgeLimiter, requireDb, async (req, res) => {
   }
 })
 
+// --- Waivers: the parent of a 13-17-year-old agrees (#595) -----------------
+//
+// The volunteer named a parent or guardian at sign-up; they get one email with
+// a one-time link to /waiver/<token>, read the waiver and agree with their own
+// typed name. Nothing else about the volunteer is shown there.
+
+async function sendWaiverParentEmail({ token, agreement, childName, taskId }) {
+  try {
+    if (!agreement?.parentEmail || /@test\.com$/i.test(agreement.parentEmail)) return
+    const { rows } = await query(`SELECT title, to_char(date, 'YYYY-MM-DD') AS date, time, location, creator_name FROM public_tasks WHERE id = $1`, [taskId])
+    const t = rows[0]
+    if (!t) return
+    const child = childFirstName(childName) || 'Your child'
+    const link = `${frontendBase()}/waiver/${token}`
+    await sendEmail({
+      to: agreement.parentEmail,
+      subject: `${child} needs you to agree to a volunteer waiver`,
+      html: taskEmailHtml({
+        lang: 'en',
+        heading: `${child} needs you to agree to a waiver`,
+        lines: [
+          `Hi ${agreement.parentName},`,
+          `${childName || child} signed up to volunteer at this event on VolunTrack and named you as their parent or guardian. The organizer asks every volunteer to agree to a waiver, and because ${child} is under 18, they need you to agree too.`,
+          'Open the link to read the waiver. Nothing is recorded until you type your name and press Agree, and the link works once.',
+          `If you don't know ${child}, you can ignore this email.`,
+        ],
+        task: t,
+        link,
+        linkLabel: 'Read and agree',
+      }),
+    })
+  } catch (error) {
+    console.error('waiver parent email failed:', error.message)
+  }
+}
+
+async function waiverSignupForToken(token) {
+  if (!/^[a-f0-9]{64}$/.test(String(token || ''))) return null
+  const { rows } = await query(
+    `SELECT s.id, s.user_id, s.waiver_parent_name, s.waiver_parent_at, s.status, c.name AS child_name,
+            t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.waiver_text, t.status AS task_status
+       FROM public_task_signups s JOIN users c ON c.id = s.user_id JOIN public_tasks t ON t.id = s.task_id
+      WHERE s.waiver_parent_token = $1`,
+    [hashWaiverToken(token)],
+  )
+  return rows[0] || null
+}
+
+router.get('/waiver/:token', limiter, requireDb, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try {
+    const w = await waiverSignupForToken(req.params.token)
+    if (!w) return res.status(404).json({ error: 'This link is not valid, or it was already used.' })
+    return res.json({
+      childFirstName: childFirstName(w.child_name),
+      parentName: w.waiver_parent_name,
+      task: { title: w.title, date: w.date, time: w.time, location: w.location, organizer: w.creator_name },
+      waiverText: w.waiver_text,
+      done: Boolean(w.waiver_parent_at),
+      closed: w.task_status === 'cancelled' || ['rejected', 'parent_declined'].includes(w.status),
+    })
+  } catch (error) {
+    console.error('waiver page failed:', error)
+    return res.status(500).json({ error: 'Could not load this waiver.' })
+  }
+})
+
+router.post('/waiver/:token', limiter, requireDb, async (req, res) => {
+  const name = String(req.body?.name || '').replace(/\s+/g, ' ').trim().slice(0, 100)
+  if (name.length < 2) return res.status(400).json({ error: 'Type your full name to agree.' })
+  if (req.body?.agree !== true) return res.status(400).json({ error: 'Tick the box to agree.' })
+  try {
+    const w = await waiverSignupForToken(req.params.token)
+    if (!w) return res.status(404).json({ error: 'This link is not valid, or it was already used.' })
+    const { rows } = await query(
+      `UPDATE public_task_signups SET waiver_parent_at = now(), waiver_parent_name = $2, waiver_parent_token = NULL
+        WHERE id = $1 AND waiver_parent_at IS NULL RETURNING user_id`,
+      [w.id, name],
+    )
+    if (!rows[0]) return res.status(409).json({ error: 'You already agreed. Thank you!' })
+    notify(rows[0].user_id, {
+      kind: 'parent_ok_given',
+      title: w.title,
+      body: `${name} agreed to the waiver for you.`,
+      link: '/attendance',
+    })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('waiver agree failed:', error)
+    return res.status(500).json({ error: 'Could not save that.' })
+  }
+})
+
 export async function requestParentOk(signupId) {
   try {
     const { rows } = await query(
@@ -3674,7 +3997,7 @@ export async function decideParentOk(signupId, approve) {
       [found[0].task_id],
     )
     const { rows: signupRows } = await client.query(
-      `SELECT s.status, s.user_id, s.guest_count,
+      `SELECT s.status, s.user_id, s.guest_count, s.shift_id,
               EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $2) AS host_blocked
          FROM public_task_signups s WHERE s.id = $1 FOR UPDATE`,
       [signupId, taskRows[0]?.created_by || null],
@@ -3706,13 +4029,17 @@ export async function decideParentOk(signupId, approve) {
         await client.query('ROLLBACK')
         return { ok: false, code: 400, error: "This task isn't taking sign-ups any more." }
       }
-      const taken = await spotsUsed(client, found[0].task_id)
+      // Its shift's spots when it has one (#589).
+      const cap = await capacityFor(client, found[0].task_id, signup.shift_id, task.slots_total)
       // Filled up while the parent was deciding: the waitlist, never over
       // capacity. signed_up_at restarts at the OK, so the child joins the
       // line behind people who were already waiting.
-      const status = taken + 1 + (Number(signup.guest_count) || 0) <= task.slots_total ? 'pending' : 'waitlisted'
+      const status = cap.used + 1 + (Number(signup.guest_count) || 0) <= cap.slots ? 'pending' : 'waitlisted'
       await client.query(
-        `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_decided_at = now()
+        `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_decided_at = now(),
+                -- Approving an under-13's sign-up is the parent's agreement to its waiver (#595).
+                waiver_parent_at = CASE WHEN waiver_at IS NOT NULL THEN now() ELSE waiver_parent_at END,
+                waiver_parent_name = CASE WHEN waiver_at IS NOT NULL THEN COALESCE(waiver_parent_name, 'Parent or guardian') ELSE waiver_parent_name END
           WHERE id = $1`,
         [signupId, status],
       )
@@ -3774,6 +4101,8 @@ export const WAITLIST_POSITION_SQL = (taskExpr, userExpr) => `(
   SELECT CASE WHEN me.status = 'waitlisted' THEN (
            SELECT COUNT(*) FROM public_task_signups w
             WHERE w.task_id = me.task_id AND w.status = 'waitlisted'
+              -- Each shift has its own line (#589).
+              AND w.shift_id IS NOT DISTINCT FROM me.shift_id
               AND (w.signed_up_at, w.id) <= (me.signed_up_at, me.id))
          END
     FROM public_task_signups me WHERE me.task_id = ${taskExpr} AND me.user_id = ${userExpr})`
@@ -3791,14 +4120,21 @@ async function promoteFromWaitlist(taskId) {
     )
     const task = rows[0]
     if (task && task.status === 'open' && !task.past) {
-      let free = task.slots_total - await spotsUsed(client, taskId)
-      if (free > 0) {
+      // A task with shifts (#589) has one line per shift, each filling only
+      // its own spots; without shifts, the task is one line.
+      const shifts = await taskShifts(client, taskId)
+      const lines = shifts.length ? shifts.map((sh) => sh.id) : [null]
+      const ids = []
+      for (const shiftId of lines) {
+        const cap = await capacityFor(client, taskId, shiftId, task.slots_total)
+        let free = cap.slots - cap.used
+        if (free <= 0) continue
         const { rows: waiting } = await client.query(
           `SELECT id, user_id, ${SIGNUP_SPOTS_SQL('w')} AS size FROM public_task_signups w
-            WHERE w.task_id = $1 AND w.status = 'waitlisted' ORDER BY w.signed_up_at, w.id`,
-          [taskId],
+            WHERE w.task_id = $1 AND w.status = 'waitlisted' AND w.shift_id IS NOT DISTINCT FROM $2
+            ORDER BY w.signed_up_at, w.id`,
+          [taskId, shiftId],
         )
-        const ids = []
         for (const w of waiting) {
           if (free <= 0) break
           if (w.size > free) continue
@@ -3806,9 +4142,9 @@ async function promoteFromWaitlist(taskId) {
           promoted.push(w.user_id)
           free -= w.size
         }
-        if (ids.length) {
-          await client.query("UPDATE public_task_signups SET status = 'pending' WHERE id = ANY($1::text[])", [ids])
-        }
+      }
+      if (ids.length) {
+        await client.query("UPDATE public_task_signups SET status = 'pending' WHERE id = ANY($1::text[])", [ids])
       }
     }
     await client.query('COMMIT')
@@ -3994,6 +4330,75 @@ router.post('/public-tasks/:id/cant-make-it', dayOfLimiter, requireDb, requireAu
 // fit in the spots left; on the waitlist the group just waits as its new size.
 // Fewer guests free spots, so the waitlist moves up. Not once the day has
 // passed or attendance is marked, as for cancelling.
+// A volunteer moves to another shift of the same task (#589). Their place
+// moves only if the new shift has room for them and their guests; otherwise,
+// with { waitlist: true }, they join the new shift's waitlist. The organizer's
+// approval carries over: it's the same person at the same event.
+router.patch('/public-tasks/:id/signup/shift', limiter, requireDb, requireAuth(), async (req, res) => {
+  const client = await getPool().connect()
+  let fromShift = null
+  let moved = false
+  try {
+    await client.query('BEGIN')
+    const { rows: taskRows } = await client.query(
+      'SELECT status, slots_total, date < CURRENT_DATE - 1 AS past FROM public_tasks WHERE id = $1 FOR UPDATE',
+      [req.params.id],
+    )
+    const { rows: signupRows } = await client.query(
+      `SELECT id, status, guest_count, attendance_status, shift_id FROM public_task_signups
+        WHERE task_id = $1 AND user_id = $2 FOR UPDATE`,
+      [req.params.id, req.auth.sub],
+    )
+    const task = taskRows[0]
+    const signup = signupRows[0]
+    const refuse = async (code, error, extra = {}) => {
+      await client.query('ROLLBACK')
+      return res.status(code).json({ error, ...extra })
+    }
+    if (!task || !signup) return await refuse(404, "You aren't signed up for this task.")
+    if (!['pending', 'approved', 'waitlisted', 'parent_pending'].includes(signup.status)) return await refuse(400, "This sign-up can't be changed.")
+    if (task.status === 'cancelled') return await refuse(400, 'This task was cancelled.')
+    if (task.past || signup.attendance_status) return await refuse(400, 'This task has already happened.')
+    const picked = await chooseShift(client, req.params.id, req.body?.shiftId)
+    if (!picked.ok || !picked.shiftId) return await refuse(400, 'Pick one of this event\'s shifts.')
+    if (picked.shiftId === signup.shift_id) {
+      await client.query('COMMIT')
+      return res.json({ ok: true, status: signup.status, shiftId: signup.shift_id })
+    }
+    let status = signup.status
+    if (['pending', 'approved', 'waitlisted'].includes(signup.status)) {
+      const cap = await capacityFor(client, req.params.id, picked.shiftId, task.slots_total)
+      const fits = cap.used + 1 + (Number(signup.guest_count) || 0) <= cap.slots
+      if (!fits) {
+        if (req.body?.waitlist !== true) {
+          return await refuse(400, 'That shift is full. Join its waitlist, or pick another shift.', { shiftFull: true })
+        }
+        status = 'waitlisted'
+      } else if (signup.status === 'waitlisted') {
+        status = 'pending'
+      }
+    }
+    await client.query(
+      `UPDATE public_task_signups SET shift_id = $2, status = $3,
+              signed_up_at = CASE WHEN $3 = 'waitlisted' AND status <> 'waitlisted' THEN now() ELSE signed_up_at END
+        WHERE id = $1`,
+      [signup.id, picked.shiftId, status],
+    )
+    await client.query('COMMIT')
+    fromShift = signup.shift_id
+    moved = ['pending', 'approved'].includes(signup.status)
+    res.json({ ok: true, status, shiftId: picked.shiftId })
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
+    console.error('change shift failed:', error)
+    return res.status(500).json({ error: 'Could not change your shift.' })
+  } finally {
+    client.release()
+  }
+  // The spot left behind goes to that shift's waitlist.
+  if (moved && fromShift) await promoteFromWaitlist(req.params.id)
+})
+
 router.patch('/public-tasks/:id/signup/guests', limiter, requireDb, requireAuth(), async (req, res) => {
   const guests = readGuests({ guestCount: req.body?.guestCount ?? 0, guestNames: req.body?.guestNames })
   if (!guests.ok) return res.status(400).json({ error: guests.error })
@@ -4007,7 +4412,7 @@ router.patch('/public-tasks/:id/signup/guests', limiter, requireDb, requireAuth(
       [req.params.id],
     )
     const { rows: signupRows } = await client.query(
-      `SELECT s.status, s.guest_count, s.attendance_status, u.under_13
+      `SELECT s.status, s.guest_count, s.attendance_status, s.shift_id, u.under_13
          FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.user_id = $2 FOR UPDATE OF s`,
       [req.params.id, req.auth.sub],
@@ -4027,8 +4432,9 @@ router.patch('/public-tasks/:id/signup/guests', limiter, requireDb, requireAuth(
       if (!task.allow_guests) return await refuse(400, "This task doesn't take guests.")
       if (signup.under_13 === true) return await refuse(400, "Students under 13 can't bring guests.")
       if (signup.status !== 'waitlisted') {
-        const others = await spotsUsed(client, req.params.id) - (1 + before)
-        const left = task.slots_total - others
+        const cap = await capacityFor(client, req.params.id, signup.shift_id, task.slots_total)
+        const others = cap.used - (1 + before)
+        const left = cap.slots - others
         if (1 + guests.count > left) {
           return await refuse(400, groupTooBigMessage(Math.max(0, left), 1 + guests.count), { spotsLeft: Math.max(0, left), groupTooBig: true })
         }
@@ -4241,7 +4647,7 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
   const detailReaders = {
@@ -4249,6 +4655,8 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     meetingPoint: taskMeetingPoint, dayOfContact: taskDayOfContact,
     // Turning guests off later keeps the guests already signed up.
     allowGuests: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Allow guests must be true or false.' }),
+    // Changing it keeps earlier agreements, shown as "an earlier version" (#595).
+    waiverText: readWaiverText,
   }
 
   try {
@@ -4264,6 +4672,11 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       return res.status(400).json({ error: 'Online must be true or false.' })
     }
     const onlineAfter = req.body.isOnline !== undefined ? req.body.isOnline : rows[0].is_online
+    // Shifts (#589): when the task has them (or is getting them), they set
+    // its spots and time, so those two fields aren't edited directly.
+    const shiftsIn = req.body.shifts === undefined ? null : readShifts(req.body.shifts)
+    if (shiftsIn && !shiftsIn.ok) return res.status(400).json({ error: shiftsIn.error })
+    const hasShifts = shiftsIn ? Boolean(shiftsIn.shifts) : (await taskShifts({ query }, req.params.id)).length > 0
     // Back to in person: it needs a real address again.
     if (!onlineAfter && rows[0].is_online && req.body.location === undefined && rows[0].location === ONLINE_LOCATION) {
       return res.status(400).json({ error: 'Add the address for an in-person task.' })
@@ -4273,10 +4686,11 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     const values = []
     for (const field of editable) {
       if (req.body[field] === undefined) continue
+      if (hasShifts && (field === 'slotsTotal' || field === 'time')) continue
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
         wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', isOutdoor: 'is_outdoor',
-        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests',
+        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -4336,16 +4750,34 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       sets.push(`${column} = $${values.length}`)
     }
 
-    if (sets.length === 0) return res.status(400).json({ error: 'Nothing to change.' })
+    if (sets.length === 0 && !shiftsIn) return res.status(400).json({ error: 'Nothing to change.' })
+    if (shiftsIn) {
+      const client = await getPool().connect()
+      try {
+        await client.query('BEGIN')
+        await client.query('SELECT 1 FROM public_tasks WHERE id = $1 FOR UPDATE', [req.params.id])
+        const saved = await saveShifts(client, req.params.id, shiftsIn.shifts)
+        if (!saved.ok) {
+          await client.query('ROLLBACK')
+          return res.status(400).json({ error: saved.error })
+        }
+        await client.query('COMMIT')
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => {})
+        throw error
+      } finally {
+        client.release()
+      }
+    }
     if (onlineAfter) sets.push('latitude = NULL', 'longitude = NULL')
     values.push(req.params.id)
     const { rows: updated } = await query(
-      `UPDATE public_tasks SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length} RETURNING *`,
+      `UPDATE public_tasks SET ${[...sets, 'updated_at = now()'].join(', ')} WHERE id = $${values.length} RETURNING *`,
       values,
     )
     // More spots: the waitlist moves up into them.
-    if (req.body.slotsTotal !== undefined) await promoteFromWaitlist(req.params.id)
-    return res.json({ task: updated[0] })
+    if (req.body.slotsTotal !== undefined || shiftsIn) await promoteFromWaitlist(req.params.id)
+    return res.json({ task: updated[0], shifts: await taskShifts({ query }, req.params.id) })
   } catch (error) {
     console.error('task edit failed:', error)
     return res.status(500).json({ error: 'Could not update the task.' })
@@ -4555,7 +4987,9 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
     const results = []
     for (const task of tasks) {
       const { rows: people } = await query(
-        `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        `SELECT u.email, u.name, u.language, sh.label AS shift_label, sh.start_time, sh.end_time
+           FROM public_task_signups s JOIN users u ON u.id = s.user_id
+           LEFT JOIN public_task_shifts sh ON sh.id = s.shift_id
           WHERE s.task_id = $1 AND s.status = 'approved'`,
         [task.id],
       )
@@ -4575,6 +5009,8 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
               lines: [
                 emailHi(lang, person.name),
                 et(lang, 'This is a reminder about tomorrow.'),
+                // Shifts (#589): their own time, not the whole event's.
+                ...(person.start_time ? [et(lang, 'Your shift: {shift}', { shift: shiftText({ label: person.shift_label, start_time: person.start_time, end_time: person.end_time }) })] : []),
                 ...(task.important_info ? [task.important_info] : []),
                 // Only approved volunteers get this email, so the day-of details may go in.
                 ...(task.meeting_point ? [et(lang, 'Meeting point: {place}', { place: task.meeting_point })] : []),
@@ -4878,7 +5314,9 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
+              t.waiver_text,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
+              ${SHIFTS_JSON_SQL('t.id')} AS shifts,
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
                 'attendance_status', s.attendance_status, 'attendance_marked_at', s.attendance_marked_at,
@@ -4888,6 +5326,11 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'late_at', CASE WHEN t.date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 THEN s.late_at END,
                 -- Group sign-ups (#439): guests coming with them.
                 'guest_count', s.guest_count, 'guest_names', COALESCE(s.guest_names, '{}'),
+                -- Waiver (#595): who agreed, when, and whether a parent still has to.
+                'waiver_status', ${WAIVER_STATUS_SQL('s', 't')}, 'waiver_name', s.waiver_name, 'waiver_at', s.waiver_at,
+                'waiver_parent_name', s.waiver_parent_name, 'waiver_parent_at', s.waiver_parent_at,
+                -- Shifts (#589): which one they picked.
+                'shift_id', s.shift_id,
                 -- Who invited them, when they signed up from a friend's link.
                 'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
                 -- Checked in, never out, the day is over and no hours yet.
@@ -5283,6 +5726,8 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
               CASE WHEN s.status = 'approved' THEN t.day_of_contact END AS day_of_contact,
               s.late_eta_minutes, s.late_at, s.checked_in_at,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
+              -- Shifts (#589): theirs, and all of them so they can switch.
+              s.shift_id, ${SHIFTS_JSON_SQL('t.id')} AS shifts,
               ${WAITLIST_POSITION_SQL('t.id', 's.user_id')} AS waitlist_position,
               ${RATING_OPEN_SQL} AS can_rate,
               (SELECT json_build_object('stars', r.stars, 'comment', r.comment, 'updated_at', r.updated_at)

@@ -11,6 +11,7 @@ import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import CollegeActivitiesCard from '@/components/CollegeActivitiesCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import ReflectionsCard from '@/components/ReflectionsCard.jsx'
+import ReferencesCard from '@/components/ReferencesCard.jsx'
 import SentReportsCard from '@/components/SentReportsCard.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
@@ -158,6 +159,7 @@ export default function Reports() {
         </Card>
         {user?.schoolId && <SentReportsCard refreshKey={sentCount} />}
         <ImpactReportCard scope="student" name={user?.name} logs={countedLogs(logs)} className="mb-6" />
+        <ReferencesCard logs={logs} notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
         <CollegeActivitiesCard logs={logs} />
         <ReflectionsCard logs={logs} />
         <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
@@ -230,7 +232,7 @@ export default function Reports() {
                         <td className="px-4 py-2">{l.activity || '—'}</td>
                         <td className="px-4 py-2">{l.category && <span className={`chip ${categoryColor(l.category)}`}>{tr(l.category)}</span>}</td>
                         <td className="px-4 py-2">{l.supervisorName || '—'}</td>
-                        <td className="px-4 py-2"><VerificationBadge status={l.verificationStatus} /></td>
+                        <td className="px-4 py-2"><VerificationBadge status={l.verificationStatus} bySchool={l.reviewedBySchool} note={l.reviewNote} /></td>
                         <td className="px-4 py-2 text-right font-medium">{fmtHours(Number(l.hours) || 0)}</td>
                       </tr>
                     ))}

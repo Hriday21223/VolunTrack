@@ -371,7 +371,7 @@ function ChildCard({ child }) {
                       <tr key={l.id} className="border-t border-earth-100 dark:border-[#1f2e25]">
                         <td className="py-2 whitespace-nowrap">{fmtDate(l.date)}</td>
                         <td className="py-2">{l.activity || '—'}</td>
-                        <td className="py-2"><VerificationBadge status={l.verification_status} /></td>
+                        <td className="py-2"><VerificationBadge status={l.verification_status} bySchool={l.reviewedBySchool} /></td>
                         <td className="py-2 text-right font-medium">{fmtHours(Number(l.hours) || 0)}</td>
                         <td className="py-2 pl-3 text-right"><CheerButton log={l} childName={child.name} /></td>
                       </tr>
@@ -600,6 +600,12 @@ function TaskApprovals({ onDecided }) {
                   </span>
                 </p>
                 {item.description && <p className="text-xs text-earth-500 dark:text-earth-400 mt-1 break-words">{item.description}</p>}
+                {item.waiverText && (
+                  <details className="mt-2 text-xs">
+                    <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-300">The organizer&apos;s waiver: approving also agrees to it for your child</summary>
+                    <p className="mt-1 whitespace-pre-line rounded-lg border border-earth-200 dark:border-white/10 p-2 max-h-48 overflow-auto">{item.waiverText}</p>
+                  </details>
+                )}
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => decide(item, true)} disabled={busy === item.signupId} className="btn-primary btn-sm disabled:opacity-50">

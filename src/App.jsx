@@ -61,6 +61,8 @@ const Status = lazy(() => import('@/pages/Status.jsx'))
 const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
 const SignCertificate = lazy(() => import('@/pages/SignCertificate.jsx'))
 const BadgeCheck = lazy(() => import('@/pages/BadgeCheck.jsx'))
+const ParentWaiver = lazy(() => import('@/pages/ParentWaiver.jsx'))
+const WriteReference = lazy(() => import('@/pages/WriteReference.jsx'))
 const AccountHandover = lazy(() => import('@/pages/AccountHandover.jsx'))
 const VerifyTranscript = lazy(() => import('@/pages/VerifyTranscript.jsx'))
 const Portfolio = lazy(() => import('@/pages/Portfolio.jsx'))
@@ -149,6 +151,8 @@ function Shell() {
           <Route path="/verify-hours"   element={<VerifyHours />} />
           <Route path="/sign-certificate/:token" element={<SignCertificate />} />
           <Route path="/badge/:code" element={<BadgeCheck />} />
+          <Route path="/waiver/:token" element={<ParentWaiver />} />
+          <Route path="/reference/:token" element={<WriteReference />} />
           <Route path="/handover" element={<AccountHandover />} />
           <Route path="/verify-transcript" element={<VerifyTranscript />} />
           {/* A student's opt-in public volunteer portfolio — open to anyone with the link. */}

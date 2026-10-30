@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer, FileSignature } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -21,6 +21,8 @@ import { EMPTY_TASK_DETAILS, taskDetailsFromRow } from '@/lib/taskDetails.js'
 import { guestSummary } from '@/lib/guests.js'
 import { tr } from '@/lib/i18n.js'
 import TaskPhotoPicker from '@/components/TaskPhotoPicker.jsx'
+import ShiftsEditor from '@/components/ShiftsEditor.jsx'
+import { shiftText, shiftHours, starterShifts, shiftsFromRow, shiftsPayload } from '@/lib/taskShifts.js'
 import { uploadTaskPhoto, fetchTaskPhoto } from '@/lib/taskPhoto.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -33,7 +35,7 @@ const THANKS_MAX = 500
 const defaultThanks = (title) => tr('Thank you so much for volunteering at {title}! Your time and effort made a real difference, and we hope to see you again soon.', { title })
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
-const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1, ...EMPTY_TASK_DETAILS }
+const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1, shifts: null, waiverText: '', ...EMPTY_TASK_DETAILS }
 
 export default function MyTasks() {
   const { refreshLogs } = useData()
@@ -172,6 +174,8 @@ export default function MyTasks() {
       latitude: t.latitude ?? null,
       longitude: t.longitude ?? null,
       category: t.category || '',
+      waiverText: t.waiver_text || '',
+      shifts: shiftsFromRow(t),
       ...taskDetailsFromRow(t),
     })
   }
@@ -180,7 +184,7 @@ export default function MyTasks() {
     setActionBusy(true)
     try {
       const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}`, {
-        method: 'PATCH', headers: authHeaders(), body: JSON.stringify(editForm),
+        method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ ...editForm, shifts: shiftsPayload(editForm.shifts) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Could not save the changes')
@@ -460,7 +464,7 @@ export default function MyTasks() {
       const res = await fetch(`${apiUrl}/school/public-tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...taskForm, repeatWeeks: repeatWeekly ? Number(taskForm.repeatWeeks) : 0 }),
+        body: JSON.stringify({ ...taskForm, shifts: shiftsPayload(taskForm.shifts), repeatWeeks: repeatWeekly ? Number(taskForm.repeatWeeks) : 0 }),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error || 'Failed')
@@ -502,6 +506,9 @@ export default function MyTasks() {
       latitude: t.latitude ?? null,
       longitude: t.longitude ?? null,
       category: t.category || '',
+      waiverText: t.waiver_text || '',
+      // Same shifts, as new ones: nobody's sign-up carries over.
+      shifts: shiftsFromRow(t)?.map(({ label, start, end, slots }) => ({ label, start, end, slots })) || null,
       ...taskDetailsFromRow(t),
     })
     setPostAgainFrom(t.title || 'an earlier task')
@@ -573,20 +580,32 @@ export default function MyTasks() {
                 </select>
               </div>
               <TaskDetailFields idPrefix="new-task" value={taskForm} onChange={(patch) => setTaskForm((f) => ({ ...f, ...patch }))} />
+              <WaiverField id="new-task-waiver" value={taskForm.waiverText} onChange={(waiverText) => setTaskForm((f) => ({ ...f, waiverText }))} />
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="label text-xs">Date *</label>
                   <input type="date" className="input" value={taskForm.date} onChange={(e) => setTaskForm({...taskForm, date: e.target.value})} required />
                 </div>
-                <div>
-                  <label className="label text-xs">Time *</label>
-                  <input type="time" className="input" value={taskForm.time} onChange={(e) => setTaskForm({...taskForm, time: e.target.value})} required />
-                </div>
-                <div>
-                  <label className="label text-xs">Volunteers needed *</label>
-                  <input type="number" className="input" min={1} placeholder="Slots" value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
-                </div>
+                {!taskForm.shifts && (
+                  <>
+                    <div>
+                      <label className="label text-xs">Time *</label>
+                      <input type="time" className="input" value={taskForm.time} onChange={(e) => setTaskForm({...taskForm, time: e.target.value})} required />
+                    </div>
+                    <div>
+                      <label className="label text-xs">Volunteers needed *</label>
+                      <input type="number" className="input" min={1} placeholder="Slots" value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
+                    </div>
+                  </>
+                )}
               </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={Boolean(taskForm.shifts)} onChange={(e) => setTaskForm((f) => ({ ...f, shifts: e.target.checked ? starterShifts(f.time) : null }))} />
+                <span>Split into shifts<span className="block text-xs text-earth-500 dark:text-earth-400">Several time slots or roles, each with its own spots. Volunteers pick one.</span></span>
+              </label>
+              {taskForm.shifts && (
+                <ShiftsEditor idPrefix="new-shift" value={taskForm.shifts} onChange={(shifts) => setTaskForm((f) => ({ ...f, shifts }))} />
+              )}
               {!taskForm.isOnline && !(taskForm.latitude && taskForm.longitude) && (
                 <p className="text-xs text-earth-500">Pick a pin on the map above so this task can be sorted by distance.</p>
               )}
@@ -697,7 +716,13 @@ export default function MyTasks() {
         ) : tasks.map((t) => {
           const filled = Number(t.slots_filled)
           const total = Number(t.slots_total)
-          const signups = t.signups || []
+          const shifts = Array.isArray(t.shifts) ? t.shifts : []
+          const shiftById = new Map(shifts.map((sh) => [sh.id, sh]))
+          // With shifts (#589), the roster is grouped by shift, in shift order.
+          const shiftOrder = new Map(shifts.map((sh, i) => [sh.id, i]))
+          const signups = shifts.length
+            ? [...(t.signups || [])].sort((a, b) => (shiftOrder.get(a.shift_id) ?? 99) - (shiftOrder.get(b.shift_id) ?? 99))
+            : (t.signups || [])
           const isExpanded = expanded === t.id
           return (
             <Card key={t.id} padded={false} className="p-4">
@@ -715,6 +740,11 @@ export default function MyTasks() {
                     {!(t.is_online && t.location === 'Online') && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>}
                     <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} signed up</span>
+                    {shifts.map((sh) => (
+                      <span key={sh.id} className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5">
+                        <Clock className="w-3 h-3" /> {shiftText(sh)}: {sh.filled}/{sh.slots}{sh.waitlist ? ` · ${sh.waitlist} waiting` : ''}
+                      </span>
+                    ))}
                     {t.rating_count > 0 && (
                       <span className="flex items-center gap-1 text-amber-400" title="Average rating from volunteers who came">
                         ★ {Number(t.rating_avg).toFixed(1)} <span className="text-earth-500">({t.rating_count} {t.rating_count === 1 ? 'rating' : 'ratings'})</span>
@@ -869,13 +899,24 @@ export default function MyTasks() {
                         {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                       </select>
                       <TaskDetailFields idPrefix={`edit-${t.id}`} value={editForm} onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))} />
+                      <WaiverField id={`edit-${t.id}-waiver`} value={editForm.waiverText} onChange={(waiverText) => setEditForm((f) => ({ ...f, waiverText }))} hasSignups={(t.signups || []).length > 0} />
                       <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder="Important info — approved volunteers only" />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <input type="date" className="input" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} aria-label="Date" />
-                        <input type="time" className="input" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} aria-label="Time" />
-                        <input type="number" min={1} className="input" value={editForm.slotsTotal} onChange={(e) => setEditForm({ ...editForm, slotsTotal: e.target.value })} aria-label="Volunteers needed" />
+                        {!editForm.shifts && <input type="time" className="input" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} aria-label="Time" />}
+                        {!editForm.shifts && <input type="number" min={1} className="input" value={editForm.slotsTotal} onChange={(e) => setEditForm({ ...editForm, slotsTotal: e.target.value })} aria-label="Volunteers needed" />}
                         <input type="tel" className="input" maxLength={30} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} aria-label="Phone" />
                       </div>
+                      {/* Shifts can be added only before anyone signs up (server/taskShifts.js). */}
+                      {(editForm.shifts || (t.signups || []).length === 0) && (
+                        <label className="flex items-start gap-2 text-sm">
+                          <input type="checkbox" className="mt-1" checked={Boolean(editForm.shifts)} disabled={Boolean(editForm.shifts?.some((sh) => sh.filled > 0))} onChange={(e) => setEditForm((f) => ({ ...f, shifts: e.target.checked ? starterShifts(/^\d{2}:\d{2}$/.test(f.time) ? f.time : '') : null }))} />
+                          <span>Split into shifts</span>
+                        </label>
+                      )}
+                      {editForm.shifts && (
+                        <ShiftsEditor idPrefix={`edit-${t.id}-shift`} value={editForm.shifts} onChange={(shifts) => setEditForm((f) => ({ ...f, shifts }))} />
+                      )}
                       <button onClick={() => saveEdit(t.id)} className="btn-primary btn-sm" disabled={actionBusy}>
                         {actionBusy ? 'Saving…' : 'Save changes'}
                       </button>
@@ -911,7 +952,25 @@ export default function MyTasks() {
                     <p className="text-sm text-earth-500 text-center py-4">No one has signed up yet.</p>
                   ) : (
                     <div className="space-y-3">
-                      <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Volunteers signed up</p>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Volunteers signed up</p>
+                        {shifts.length > 0 && signups.some((s) => s.status === 'approved' && s.attendance_status !== 'absent' && shiftHours(shiftById.get(s.shift_id))) && (
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm text-xs"
+                            onClick={() => setBatchHours((h) => {
+                              const next = { ...h }
+                              for (const s of signups) {
+                                const len = shiftHours(shiftById.get(s.shift_id))
+                                if (s.status === 'approved' && s.attendance_status !== 'absent' && len && !next[s.id]) next[s.id] = String(len)
+                              }
+                              return next
+                            })}
+                          >
+                            Fill in shift lengths
+                          </button>
+                        )}
+                      </div>
                       {signups.map((s) => {
                         const isApproved = s.status === 'approved'
                         const isAbsent = s.attendance_status === 'absent'
@@ -920,15 +979,17 @@ export default function MyTasks() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{s.name}</p>
                               <p className="text-xs text-earth-400 truncate">{s.email}</p>
+                              {shiftById.get(s.shift_id) && <p className="text-xs text-sky-300 truncate">{shiftText(shiftById.get(s.shift_id))}</p>}
                               {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
                               <LateBadge signup={s} />
                               {s.guest_count > 0 && <p className="text-xs text-brand-400 truncate">{guestSummary(s.guest_count, s.guest_names)}</p>}
+                              <WaiverStatus signup={s} />
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}
                               {s.status === 'waitlisted' && (
                                 <p className="text-xs text-sky-300 mt-0.5">
-                                  Waitlist #{signups.filter((w) => w.status === 'waitlisted').indexOf(s) + 1} · moves up when a spot opens
+                                  Waitlist #{signups.filter((w) => w.status === 'waitlisted' && (w.shift_id || null) === (s.shift_id || null)).indexOf(s) + 1} · moves up when a spot opens
                                 </p>
                               )}
                               {isApproved && s.attendance_status && (
@@ -965,7 +1026,7 @@ export default function MyTasks() {
                                   step="0.5"
                                   min="0.5"
                                   className="input w-16 text-center text-xs py-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                                  placeholder={isAbsent ? 'absent' : 'hrs'}
+                                  placeholder={isAbsent ? 'absent' : (shiftHours(shiftById.get(s.shift_id)) ? String(shiftHours(shiftById.get(s.shift_id))) : 'hrs')}
                                   value={batchHours[s.id] || ''}
                                   onChange={(e) => setBatchHours((h) => ({ ...h, [s.id]: e.target.value }))}
                                   disabled={isAbsent}
@@ -1198,5 +1259,45 @@ function ReportStat({ label, value }) {
       <div className="text-[0.6875rem] text-earth-400">{label}</div>
       <div className="font-semibold mt-0.5">{value}</div>
     </div>
+  )
+}
+
+// Event waivers (#595): the organizer's own wording, optional.
+function WaiverField({ id, value, onChange, hasSignups = false }) {
+  const [open, setOpen] = useState(Boolean(value))
+  if (!open) {
+    return (
+      <button type="button" className="btn-ghost btn-sm self-start" onClick={() => setOpen(true)}>
+        <FileSignature className="w-4 h-4" /> Add a waiver volunteers must agree to
+      </button>
+    )
+  }
+  return (
+    <div>
+      <label className="label text-xs" htmlFor={id}>Waiver (optional)</label>
+      <textarea id={id} className="input min-h-[120px] text-sm" maxLength={5000} value={value} onChange={(e) => onChange(e.target.value)} placeholder="Paste your organization's waiver or release. Volunteers agree by typing their name; for anyone under 18, a parent or guardian agrees too." />
+      <p className="text-xs text-earth-500 mt-1">
+        VolunTrack shows this text and records who agreed and when. Use your organization&apos;s own wording.
+        {hasSignups ? ' If you change it, people who already agreed show as agreeing to an earlier version.' : ''}
+      </p>
+    </div>
+  )
+}
+
+const WAIVER_LABELS = {
+  agreed: ['text-emerald-400', 'Waiver agreed'],
+  waiting_parent: ['text-amber-300', 'Waiver: waiting for a parent'],
+  old_version: ['text-amber-300', 'Waiver: agreed to an earlier version'],
+  missing: ['text-red-400', 'Waiver not agreed'],
+}
+
+function WaiverStatus({ signup: s }) {
+  if (!s.waiver_status) return null
+  const [className, label] = WAIVER_LABELS[s.waiver_status] || WAIVER_LABELS.missing
+  const who = [s.waiver_name, s.waiver_parent_at && s.waiver_parent_name ? `parent: ${s.waiver_parent_name}` : null].filter(Boolean).join(' · ')
+  return (
+    <p className={`text-xs ${className} flex items-center gap-1`} title={s.waiver_at ? `Agreed ${new Date(s.waiver_at).toLocaleString()}` : undefined}>
+      <FileSignature className="w-3 h-3 shrink-0" /> {label}{who ? ` (${who})` : ''}
+    </p>
   )
 }
