@@ -600,6 +600,12 @@ function TaskApprovals({ onDecided }) {
                   </span>
                 </p>
                 {item.description && <p className="text-xs text-earth-500 dark:text-earth-400 mt-1 break-words">{item.description}</p>}
+                {item.waiverText && (
+                  <details className="mt-2 text-xs">
+                    <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-300">The organizer&apos;s waiver: approving also agrees to it for your child</summary>
+                    <p className="mt-1 whitespace-pre-line rounded-lg border border-earth-200 dark:border-white/10 p-2 max-h-48 overflow-auto">{item.waiverText}</p>
+                  </details>
+                )}
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => decide(item, true)} disabled={busy === item.signupId} className="btn-primary btn-sm disabled:opacity-50">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer, FileSignature } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -35,7 +35,7 @@ const THANKS_MAX = 500
 const defaultThanks = (title) => tr('Thank you so much for volunteering at {title}! Your time and effort made a real difference, and we hope to see you again soon.', { title })
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
-const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1, shifts: null, ...EMPTY_TASK_DETAILS }
+const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1, shifts: null, waiverText: '', ...EMPTY_TASK_DETAILS }
 
 export default function MyTasks() {
   const { refreshLogs } = useData()
@@ -174,6 +174,7 @@ export default function MyTasks() {
       latitude: t.latitude ?? null,
       longitude: t.longitude ?? null,
       category: t.category || '',
+      waiverText: t.waiver_text || '',
       shifts: shiftsFromRow(t),
       ...taskDetailsFromRow(t),
     })
@@ -505,6 +506,7 @@ export default function MyTasks() {
       latitude: t.latitude ?? null,
       longitude: t.longitude ?? null,
       category: t.category || '',
+      waiverText: t.waiver_text || '',
       // Same shifts, as new ones: nobody's sign-up carries over.
       shifts: shiftsFromRow(t)?.map(({ label, start, end, slots }) => ({ label, start, end, slots })) || null,
       ...taskDetailsFromRow(t),
@@ -578,6 +580,7 @@ export default function MyTasks() {
                 </select>
               </div>
               <TaskDetailFields idPrefix="new-task" value={taskForm} onChange={(patch) => setTaskForm((f) => ({ ...f, ...patch }))} />
+              <WaiverField id="new-task-waiver" value={taskForm.waiverText} onChange={(waiverText) => setTaskForm((f) => ({ ...f, waiverText }))} />
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="label text-xs">Date *</label>
@@ -896,6 +899,7 @@ export default function MyTasks() {
                         {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                       </select>
                       <TaskDetailFields idPrefix={`edit-${t.id}`} value={editForm} onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))} />
+                      <WaiverField id={`edit-${t.id}-waiver`} value={editForm.waiverText} onChange={(waiverText) => setEditForm((f) => ({ ...f, waiverText }))} hasSignups={(t.signups || []).length > 0} />
                       <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder="Important info — approved volunteers only" />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <input type="date" className="input" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} aria-label="Date" />
@@ -979,6 +983,7 @@ export default function MyTasks() {
                               {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
                               <LateBadge signup={s} />
                               {s.guest_count > 0 && <p className="text-xs text-brand-400 truncate">{guestSummary(s.guest_count, s.guest_names)}</p>}
+                              <WaiverStatus signup={s} />
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}
@@ -1254,5 +1259,45 @@ function ReportStat({ label, value }) {
       <div className="text-[0.6875rem] text-earth-400">{label}</div>
       <div className="font-semibold mt-0.5">{value}</div>
     </div>
+  )
+}
+
+// Event waivers (#595): the organizer's own wording, optional.
+function WaiverField({ id, value, onChange, hasSignups = false }) {
+  const [open, setOpen] = useState(Boolean(value))
+  if (!open) {
+    return (
+      <button type="button" className="btn-ghost btn-sm self-start" onClick={() => setOpen(true)}>
+        <FileSignature className="w-4 h-4" /> Add a waiver volunteers must agree to
+      </button>
+    )
+  }
+  return (
+    <div>
+      <label className="label text-xs" htmlFor={id}>Waiver (optional)</label>
+      <textarea id={id} className="input min-h-[120px] text-sm" maxLength={5000} value={value} onChange={(e) => onChange(e.target.value)} placeholder="Paste your organization's waiver or release. Volunteers agree by typing their name; for anyone under 18, a parent or guardian agrees too." />
+      <p className="text-xs text-earth-500 mt-1">
+        VolunTrack shows this text and records who agreed and when. Use your organization&apos;s own wording.
+        {hasSignups ? ' If you change it, people who already agreed show as agreeing to an earlier version.' : ''}
+      </p>
+    </div>
+  )
+}
+
+const WAIVER_LABELS = {
+  agreed: ['text-emerald-400', 'Waiver agreed'],
+  waiting_parent: ['text-amber-300', 'Waiver: waiting for a parent'],
+  old_version: ['text-amber-300', 'Waiver: agreed to an earlier version'],
+  missing: ['text-red-400', 'Waiver not agreed'],
+}
+
+function WaiverStatus({ signup: s }) {
+  if (!s.waiver_status) return null
+  const [className, label] = WAIVER_LABELS[s.waiver_status] || WAIVER_LABELS.missing
+  const who = [s.waiver_name, s.waiver_parent_at && s.waiver_parent_name ? `parent: ${s.waiver_parent_name}` : null].filter(Boolean).join(' · ')
+  return (
+    <p className={`text-xs ${className} flex items-center gap-1`} title={s.waiver_at ? `Agreed ${new Date(s.waiver_at).toLocaleString()}` : undefined}>
+      <FileSignature className="w-3 h-3 shrink-0" /> {label}{who ? ` (${who})` : ''}
+    </p>
   )
 }
