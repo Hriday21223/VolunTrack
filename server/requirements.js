@@ -39,6 +39,9 @@ export const DEFAULT_LOG_RULES = {
   lockedBefore: null,
   allowFutureDates: true,
   allowedCategories: [],
+  // Places whose hours count without a second look (#591). Empty = any place.
+  // An entry elsewhere isn't refused: it's flagged for the adviser to check.
+  approvedPlaces: [],
 }
 
 export const DEFAULT_GOALS = {
@@ -179,7 +182,42 @@ function normalizeLogRules(input) {
     lockedBefore: isoDate(raw.lockedBefore),
     allowFutureDates: bool(raw.allowFutureDates, true),
     allowedCategories: categories,
+    approvedPlaces: Array.isArray(raw.approvedPlaces)
+      ? uniqueBy(raw.approvedPlaces.map((p) => text(p, 120)).filter(Boolean), placeKey).slice(0, MAX_APPROVED_PLACES)
+      : [],
   }
+}
+
+export const MAX_APPROVED_PLACES = 200
+
+// The first of each group of items that share a key, in order.
+function uniqueBy(items, key) {
+  const seen = new Set()
+  return items.filter((item) => {
+    const k = key(item)
+    if (!k || seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+
+// How two spellings of a place are compared (#591): case, punctuation, a
+// leading "The" and spacing don't matter ("The Food Bank, Inc." = "food bank inc").
+export function placeKey(name) {
+  return String(name ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/^the /, '')
+}
+
+/**
+ * Whether an entry's place is on the school's approved list. True when the
+ * school keeps no list. A blank place is not on it.
+ */
+export function placeApproved(policy, orgName) {
+  const list = policy?.logRules?.approvedPlaces || []
+  if (!list.length) return true
+  const key = placeKey(orgName)
+  if (!key) return false
+  return list.some((p) => placeKey(p) === key)
 }
 
 // Keys address a stored answer forever, so they are slugged once here and then

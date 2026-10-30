@@ -209,16 +209,23 @@ export async function syncPullLogs(userId) {
   const additions = []
   // Only a final decision is taken from the server. A request this device sent
   // is 'pending' here before the server row says so, and must not be undone.
-  const decided = new Map(serverLogs
-    .filter((row) => row?.id && (row.verification_status === 'approved' || row.verification_status === 'rejected'))
-    .map((row) => [row.id, row]))
+  const byId = new Map(serverLogs.filter((row) => row?.id).map((row) => [row.id, row]))
   const updated = []
   for (const l of local) {
-    const row = l.serverId && decided.get(l.serverId)
-    if (!row || l.verificationStatus === row.verification_status) continue
+    const row = l.serverId && byId.get(l.serverId)
+    if (!row) continue
+    const decided = row.verification_status === 'approved' || row.verification_status === 'rejected'
+    // A school's send-back (#591) is undone on the server by the student's
+    // edit; the device follows it back to unchecked.
+    const reopened = row.verification_status === 'none' && l.verificationStatus === 'rejected' && Boolean(l.reviewNote)
+    const note = row.reviewNote || ''
+    if (!decided && !reopened) continue
+    if (l.verificationStatus === row.verification_status && (l.reviewNote || '') === note) continue
     l.verificationStatus = row.verification_status
     l.verified = row.verification_status === 'approved'
     l.organizerSigned = Boolean(row.organizerSigned)
+    l.reviewNote = note
+    l.reviewedBySchool = Boolean(row.reviewedBySchool)
     updated.push(l)
   }
   for (const row of serverLogs) {
@@ -246,6 +253,8 @@ export async function syncPullLogs(userId) {
       supervisorEmail: '',
       verificationStatus: row.verification_status ?? 'none',
       verified: row.verification_status === 'approved',
+      reviewNote: row.reviewNote || '',
+      reviewedBySchool: Boolean(row.reviewedBySchool),
       taskId: row.task_id ?? '',
       customFields: row.customFields ?? {},
       // The image isn't restorable either, but that the entry was signed is.

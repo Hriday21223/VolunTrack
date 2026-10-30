@@ -43,9 +43,12 @@ export function icsEvent(t, { link = '', summaryPrefix = '', now = new Date(), d
     `UID:${t.id}@voluntrack`,
     `DTSTAMP:${icsLocal(now)}Z`,
   ]
+  // A shift (#589) has a real end time; a task's own time has only a start.
+  const endHm = /^(\d{1,2}):(\d{2})/.exec(t.end_time || '')
   if (hm) {
     const start = new Date(Date.UTC(y, m - 1, d, Number(hm[1]), Number(hm[2])))
-    lines.push(`DTSTART:${icsLocal(start)}`, `DTEND:${icsLocal(new Date(start.getTime() + 2 * 3600e3))}`)
+    const end = endHm ? new Date(Date.UTC(y, m - 1, d, Number(endHm[1]), Number(endHm[2]))) : null
+    lines.push(`DTSTART:${icsLocal(start)}`, `DTEND:${icsLocal(end && end > start ? end : new Date(start.getTime() + 2 * 3600e3))}`)
   } else {
     const day = new Date(Date.UTC(y, m - 1, d))
     lines.push(`DTSTART;VALUE=DATE:${icsDay(day)}`, `DTEND;VALUE=DATE:${icsDay(new Date(day.getTime() + 86400e3))}`)
@@ -54,7 +57,7 @@ export function icsEvent(t, { link = '', summaryPrefix = '', now = new Date(), d
     `SUMMARY:${icsText(summaryPrefix + t.title)}`,
     // An online task (#426) has no place: LOCATION says so and there's no GEO.
     `LOCATION:${icsText(t.is_online ? onlineLocation(t.location) : t.location)}`,
-    `DESCRIPTION:${icsText([t.description, ...details, t.creator_name && `Posted by ${t.creator_name}`, hm && 'End time is an estimate. Check with the organizer.', link].filter(Boolean).join('\n\n'))}`,
+    `DESCRIPTION:${icsText([t.description, ...details, t.creator_name && `Posted by ${t.creator_name}`, hm && !endHm && 'End time is an estimate. Check with the organizer.', link].filter(Boolean).join('\n\n'))}`,
   )
   if (!t.is_online && t.latitude != null && t.longitude != null) lines.push(`GEO:${Number(t.latitude)};${Number(t.longitude)}`)
   if (link) lines.push(`URL:${link}`)

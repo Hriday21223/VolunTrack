@@ -149,7 +149,7 @@ function DayModal({ day, logs, onClose, onEdit, onDelete, isLocked = () => false
                       {l.startTime && <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{fmtTime(`${l.date}T${l.startTime}:00`)} – {fmtTime(`${l.date}T${l.endTime}:00`)}</span>}
                       {l.location && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{l.location}</span>}
                       {l.category && <span className={`chip ${categoryColor(l.category)}`}>{tr(l.category)}</span>}
-                      <VerificationBadge status={l.verificationStatus} />
+                      <VerificationBadge status={l.verificationStatus} bySchool={l.reviewedBySchool} note={l.reviewNote} />
                     </div>
                     {l.notes && <p className="text-sm text-earth-600 dark:text-earth-300 mt-1.5">{l.notes}</p>}
                   </div>
