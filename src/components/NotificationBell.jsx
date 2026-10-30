@@ -39,6 +39,8 @@ const KIND_LABELS = {
   attendance_nudge: tr('Mark attendance'),
   log_hours_nudge: tr('Log your hours'),
   account_handover: tr('New main admin'),
+  reference_received: tr('New reference'),
+  reference_declined: tr('Reference request'),
   report_approved: tr('Report approved'),
   report_rejected: tr('Report sent back'),
 }
