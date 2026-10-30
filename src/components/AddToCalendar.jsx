@@ -9,11 +9,15 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // Calendar's own "new event" page. Both are free and need no account here.
 export default function AddToCalendar({ task, className = '' }) {
   const link = 'inline-flex items-center gap-1 hover:text-brand-400 hover:underline'
+  // Signed up for a shift (#589): the calendar gets that shift's times.
+  const shift = Array.isArray(task.shifts) ? task.shifts.find((sh) => sh.id === (task.my_shift_id || task.shift_id)) : null
+  const forCalendar = shift ? { ...task, time: shift.start, end_time: shift.end, title: shift.label ? `${task.title} (${shift.label})` : task.title } : task
+  const ics = `${apiUrl}/school/public-tasks/${encodeURIComponent(task.id)}/calendar.ics${shift ? `?shift=${encodeURIComponent(shift.id)}` : ''}`
   return (
     <p className={`text-xs text-earth-500 flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
       <span className="flex items-center gap-1"><CalendarPlus className="w-3.5 h-3.5" />{' '}{tr('Add to calendar:')}</span>
-      <a href={`${apiUrl}/school/public-tasks/${encodeURIComponent(task.id)}/calendar.ics`} className={link} onClick={(e) => e.stopPropagation()}>{tr('Apple / Outlook')}</a>
-      <a href={googleCalendarUrl(task)} target="_blank" rel="noopener noreferrer" className={link} onClick={(e) => e.stopPropagation()}>Google</a>
+      <a href={ics} className={link} onClick={(e) => e.stopPropagation()}>{tr('Apple / Outlook')}</a>
+      <a href={googleCalendarUrl(forCalendar)} target="_blank" rel="noopener noreferrer" className={link} onClick={(e) => e.stopPropagation()}>Google</a>
     </p>
   )
 }

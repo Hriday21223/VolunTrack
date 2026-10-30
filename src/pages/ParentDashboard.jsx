@@ -371,7 +371,7 @@ function ChildCard({ child }) {
                       <tr key={l.id} className="border-t border-earth-100 dark:border-[#1f2e25]">
                         <td className="py-2 whitespace-nowrap">{fmtDate(l.date)}</td>
                         <td className="py-2">{l.activity || '—'}</td>
-                        <td className="py-2"><VerificationBadge status={l.verification_status} /></td>
+                        <td className="py-2"><VerificationBadge status={l.verification_status} bySchool={l.reviewedBySchool} /></td>
                         <td className="py-2 text-right font-medium">{fmtHours(Number(l.hours) || 0)}</td>
                         <td className="py-2 pl-3 text-right"><CheerButton log={l} childName={child.name} /></td>
                       </tr>

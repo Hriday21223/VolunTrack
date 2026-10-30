@@ -391,6 +391,8 @@ export async function initSchema() {
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_notes TEXT`) } catch {}
   // "What did you learn?" (#510). Private to the student: never sent to a parent or school.
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS reflection TEXT`) } catch {}
+  // Why the school sent an entry back, or a note with its approval (#591).
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS review_note TEXT`) } catch {}
   // 'club' = free, up to 50 students, never payment-locked; 'school' = paid (#506).
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'school'`) } catch {}
   try { await query(`ALTER TABLE schools ADD CONSTRAINT schools_plan_check CHECK (plan IN ('club','school'))`) } catch {}
@@ -776,6 +778,25 @@ export async function initSchema() {
   // are told and see it marked "For your school". Still public like any task.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS organization_id TEXT REFERENCES organizations(id) ON DELETE SET NULL`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_count SMALLINT NOT NULL DEFAULT 0`) } catch {}
+  // Shifts within an event (#589, server/taskShifts.js): a task's time slots or
+  // roles, each with its own spots. A sign-up names one; NULL on a task
+  // without shifts.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS public_task_shifts (
+        id          TEXT PRIMARY KEY,
+        task_id     TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+        label       TEXT NOT NULL DEFAULT '',
+        start_time  TEXT NOT NULL,
+        end_time    TEXT NOT NULL,
+        slots_total INTEGER NOT NULL CHECK (slots_total BETWEEN 1 AND 1000),
+        position    SMALLINT NOT NULL DEFAULT 0
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_public_task_shifts_task ON public_task_shifts(task_id)')
+  } catch (error) { console.error('task shifts table migration failed:', error) }
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS shift_id TEXT REFERENCES public_task_shifts(id) ON DELETE SET NULL`) } catch {}
+  try { await query('CREATE INDEX IF NOT EXISTS idx_public_signups_shift ON public_task_signups(shift_id)') } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS guest_names TEXT[]`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD CONSTRAINT public_task_signups_guest_count_check CHECK (guest_count BETWEEN 0 AND 3)`) } catch {}
 
@@ -1031,6 +1052,31 @@ export async function initSchema() {
     try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS ${col}`) } catch {}
   }
   try { await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_signups_waiver_token ON public_task_signups(waiver_parent_token) WHERE waiver_parent_token IS NOT NULL') } catch {}
+  // References (#593, server/routes/references.js): a student's request for a
+  // written reference, then the reference itself. Only the link token's hash.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS reference_requests (
+        id            TEXT PRIMARY KEY,
+        user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash    TEXT NOT NULL UNIQUE,
+        referee_name  TEXT NOT NULL,
+        referee_email TEXT NOT NULL,
+        organization  TEXT,
+        message       TEXT,
+        status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'written', 'declined')),
+        text          TEXT,
+        referee_title TEXT,
+        relationship  TEXT,
+        public_ok     BOOLEAN NOT NULL DEFAULT false,
+        on_portfolio  BOOLEAN NOT NULL DEFAULT false,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at    TIMESTAMPTZ NOT NULL,
+        written_at    TIMESTAMPTZ
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_reference_requests_user ON reference_requests(user_id)')
+  } catch (error) { console.error('reference requests table migration failed:', error) }
   // Class roster (#584, server/roster.js): the name and grade a school's
   // roster CSV gave for an address, until that student joins.
   try {

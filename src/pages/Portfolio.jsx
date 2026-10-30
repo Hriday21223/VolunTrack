@@ -139,6 +139,22 @@ function PortfolioBody({ data }) {
         </section>
       )}
 
+      {/* References the student chose to show, whose writers agreed (#593). */}
+      {data.references?.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display font-semibold mb-3">{tr('References')}</h2>
+          <ul className="space-y-4">
+            {data.references.map((r, i) => (
+              <li key={`${r.date}-${i}`} className="rounded-xl border border-earth-100 dark:border-[#1f2e25] p-4 break-inside-avoid">
+                <p className="text-sm whitespace-pre-line">{r.text}</p>
+                <p className="text-sm font-medium mt-3">{r.writerName}{r.writerTitle ? `, ${r.writerTitle}` : ''}</p>
+                <p className="text-xs text-earth-500 dark:text-earth-400">{[r.organization, r.relationship, fmtDate(r.date)].filter(Boolean).join(' · ')}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {data.activities?.length > 0 && (
         <section className="mt-8">
           <h2 className="font-display font-semibold mb-3">{tr('Activities')}</h2>

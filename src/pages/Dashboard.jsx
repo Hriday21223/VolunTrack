@@ -952,7 +952,7 @@ export default function Dashboard() {
                       <span>{fromNow(l.createdAt)}</span>
                     </div>
                   </div>
-                  <VerificationBadge status={l.verificationStatus} />
+                  <VerificationBadge status={l.verificationStatus} bySchool={l.reviewedBySchool} note={l.reviewNote} />
                   {l.category && (
                     <span className={`chip ${categoryColor(l.category)}`}>{tr(l.category)}</span>
                   )}
