@@ -123,6 +123,19 @@ function PortfolioBody({ data }) {
         </section>
       )}
 
+      {data.skills?.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-display font-semibold mb-3">{tr('Top skills')}</h2>
+          <ul className="flex flex-wrap gap-2">
+            {data.skills.map((k) => (
+              <li key={k.skill} className="rounded-full border border-earth-100 dark:border-[#1f2e25] px-3 py-1 text-sm">
+                {tr(k.skill)} <span className="text-earth-500 tabular-nums">· {hours(k.hours)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {badges.length > 0 && (
         <section className="mt-8">
           <h2 className="font-display font-semibold mb-3">{tr('Badges')}</h2>
