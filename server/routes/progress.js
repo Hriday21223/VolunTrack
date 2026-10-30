@@ -13,6 +13,7 @@ import { runMonthlyProgress } from '../monthlyProgress.js'
 import { runDeadlineReminders } from '../deadlineReminders.js'
 import { runSupervisorReminders } from '../supervisorReminders.js'
 import { runImpactEmails } from '../impactEmail.js'
+import { recordRequirementMet } from '../goalReached.js'
 
 const router = express.Router()
 
@@ -99,6 +100,20 @@ router.post('/internal/run-impact-emails', cronLimiter(), requireCronKey, requir
   } catch (error) {
     console.error('impact email run failed:', error)
     return res.status(500).json({ error: 'Could not run the impact emails.' })
+  }
+})
+
+// POST /api/progress/requirement-met (#607): the Dashboard asks when it sees
+// the school requirement met. The server re-checks the hours itself; the
+// first time, it records it and tells the student's parents. `first` lets the
+// app skip the celebration on a second device.
+router.post('/requirement-met', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const out = await recordRequirementMet(req.auth.sub)
+    return res.json(out)
+  } catch (error) {
+    console.error('requirement met failed:', error)
+    return res.status(500).json({ error: 'Could not check your requirement.' })
   }
 })
 

@@ -52,6 +52,12 @@ const ES = {
   'We miss you — here are {n} volunteer tasks near you': 'Te extrañamos: aquí tienes {n} tareas de voluntariado cerca de ti',
   'We miss you — here are {n} volunteer tasks coming up': 'Te extrañamos: aquí tienes {n} tareas de voluntariado próximas',
   'Hi there,': '¡Hola!',
+
+  // Goal reached (server/goalReached.js, #607)
+  '{name} reached {hours} volunteer hours 🎉': '{name} llegó a {hours} horas de voluntariado 🎉',
+  '{name} has met the volunteer hour requirement at {school}, with {hours} hours logged. That took real commitment, so it might be a good moment to say well done.':
+    '{name} cumplió con las horas de voluntariado que pide {school}, con {hours} horas registradas. Eso requirió mucho compromiso, así que puede ser un buen momento para felicitarle.',
+  'See their hours': 'Ver sus horas',
   '{date} at {time}': '{date} a las {time}',
   "It's been a little while since you logged any volunteer hours on VolunTrack. No pressure — whenever you're ready, here is a task you could join:":
     'Hace un tiempo que no registras horas de voluntariado en VolunTrack. Sin presión: cuando quieras, aquí tienes una tarea a la que podrías unirte:',

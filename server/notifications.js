@@ -49,6 +49,8 @@ export const NOTIFICATION_KINDS = new Set([
   // To a student: the school reviewed a report they sent (#583).
   'report_approved',
   'report_rejected',
+  // To a parent: their child met the school's hour requirement (#607).
+  'goal_reached',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }

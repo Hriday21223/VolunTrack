@@ -32,6 +32,10 @@ import { format, startOfWeek, startOfMonth, addDays, parseISO } from 'date-fns'
 import { tr } from '@/lib/i18n.js'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
+import GoalCelebration from '@/components/GoalCelebration.jsx'
+import ShareHoursModal from '@/components/ShareHoursModal.jsx'
+import { nextCelebration, markCelebrated } from '@/lib/celebrations.js'
+import { printCertificate } from '@/lib/export.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -322,6 +326,57 @@ export default function Dashboard() {
     return years.length ? defaultReviewYear(years) : null
   }, [logs])
   const reviewSeason = isReviewSeason()
+
+  // Goal reached (#607): celebrate the school requirement or the primary goal
+  // the first time it's met. The requirement is checked again on the server,
+  // which tells the parents once; `first: false` means another device already
+  // showed it. If the server can't be reached, this device celebrates anyway.
+  const [celebration, setCelebration] = useState(null)
+  const [sharing, setSharing] = useState(false)
+  useEffect(() => {
+    if (celebration || requirements.loading) return
+    const next = nextCelebration({
+      requirement: user?.role === 'student' && shortfall.target
+        ? { target: shortfall.target, remaining: shortfall.remaining, hours: total, schoolName: requirements.schoolName, schoolKey: user?.schoolId || requirements.schoolName }
+        : null,
+      goal: primary ? { id: primary.id, title: primary.title, target, hours: primaryHours } : null,
+    })
+    if (!next) return
+    let live = true
+    let token = null
+    try { token = localStorage.getItem('voluntrack:auth_token') } catch { /* storage blocked */ }
+    if (next.kind !== 'requirement' || !token) {
+      setCelebration(next)
+      return () => { live = false }
+    }
+    fetch(`${apiUrl}/progress/requirement-met`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((out) => {
+        if (!live) return
+        if (out && !out.met) return // the server's count disagrees (e.g. not synced yet): wait
+        if (out && out.first === false) { markCelebrated(next.key); return }
+        setCelebration({ ...next, parentsTold: Boolean(out?.parents) })
+      })
+    return () => { live = false }
+  }, [celebration, requirements.loading, requirements.schoolName, user?.role, user?.schoolId, shortfall.target, shortfall.remaining, total, primary, target, primaryHours])
+
+  const closeCelebration = () => {
+    if (celebration) markCelebrated(celebration.key)
+    setCelebration(null)
+  }
+  const shareStats = useMemo(() => {
+    const byCause = new Map()
+    for (const l of counted) byCause.set(l.category || 'Other', (byCause.get(l.category || 'Other') || 0) + (Number(l.hours) || 0))
+    return {
+      totalHours: total,
+      approvedHours: counted
+        .filter((l) => (l.verificationStatus || l.verification_status) === 'approved')
+        .reduce((s, l) => s + (Number(l.hours) || 0), 0),
+      sessions: counted.length,
+      causes: [...byCause.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([c]) => tr(c)),
+    }
+  }, [counted, total])
 
   return (
     <AppLayout
@@ -965,6 +1020,30 @@ export default function Dashboard() {
       </>
       )}
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
+      {celebration && !sharing && (
+        <GoalCelebration
+          celebration={celebration}
+          onShare={() => setSharing(true)}
+          onPrint={() => printCertificate({
+            user,
+            totalHours: total,
+            goalReached: true,
+            certificate: requirements.sources?.certificates === 'default' ? null : requirements.policy?.certificates,
+            award: award.current?.name || null,
+          })}
+          onClose={closeCelebration}
+        />
+      )}
+      {sharing && (
+        <ShareHoursModal
+          name={user?.name || ''}
+          totalHours={shareStats.totalHours}
+          approvedHours={shareStats.approvedHours}
+          sessions={shareStats.sessions}
+          causes={shareStats.causes}
+          onClose={() => { setSharing(false); closeCelebration() }}
+        />
+      )}
     </AppLayout>
   )
 }

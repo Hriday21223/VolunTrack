@@ -1448,4 +1448,13 @@ export default {
   "List": "Lista",
   "Map": "Mapa",
   "Loading map…": "Cargando el mapa…",
+  // Goal reached (#607)
+  "Goal reached": "Meta alcanzada",
+  "You met your requirement!": "¡Cumpliste con tus horas!",
+  "You reached your goal!": "¡Alcanzaste tu meta!",
+  "{hours} logged. That’s everything {school} asks for.": "{hours} registradas. Es todo lo que pide {school}.",
+  "{hours} logged. That’s everything your school asks for.": "{hours} registradas. Es todo lo que pide tu escuela.",
+  "{hours} toward “{goal}”.": "{hours} para “{goal}”.",
+  "your goal": "tu meta",
+  "We’ve let your linked parents know.": "Se lo hemos contado a tus padres vinculados.",
 }
