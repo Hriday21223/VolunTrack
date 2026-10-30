@@ -2575,7 +2575,11 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
           ${userId ? 'AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $1 AND b.blocked_id = t.created_by)' : ''}
        ) sub
        ${filterClause}
-       ${useDist ? `ORDER BY distance ASC NULLS LAST, date ASC, created_at DESC` : 'ORDER BY date ASC, created_at DESC'}`,
+       -- Among events on the same day, well-rated organizers come first (#606);
+       -- organizer_rating_avg is NULL until an organizer has 3 ratings.
+       ${useDist
+    ? 'ORDER BY distance ASC NULLS LAST, date ASC, organizer_rating_avg DESC NULLS LAST, created_at DESC'
+    : 'ORDER BY date ASC, organizer_rating_avg DESC NULLS LAST, created_at DESC'}`,
       [...selectParams, ...filterParams],
     )
     return res.json({ tasks: rows })
@@ -2808,6 +2812,44 @@ router.post('/public-tasks/internal/run-attendance-nudges', cronLimiter(), requi
             linkLabel: et(lang, 'Log my hours'),
           }),
         }).catch((error) => console.error('log hours nudge email failed:', error))
+      }
+    }
+
+    // 3. "How was it?" (#606): once per task, 2–7 days after, a bell for each
+    //    student who was there and hasn't rated yet. No email.
+    results.ratingPrompts = []
+    const { rows: forRating } = await query(
+      `SELECT t.id, t.title FROM public_tasks t
+        WHERE t.status <> 'cancelled'
+          AND t.date BETWEEN current_date - 7 AND current_date - 2
+          AND NOT EXISTS (SELECT 1 FROM public_task_attendance_nudges n WHERE n.task_id = t.id AND n.rating_prompt_sent_at IS NOT NULL)`,
+    )
+    for (const t of forRating) {
+      const { rows: people } = await query(
+        `SELECT u.id, u.language FROM public_task_signups s
+           JOIN public_tasks t ON t.id = s.task_id
+           JOIN users u ON u.id = s.user_id
+          WHERE s.task_id = $1 AND u.role = 'student' AND ${RATING_OPEN_SQL}
+            AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+            AND NOT EXISTS (SELECT 1 FROM task_ratings r WHERE r.task_id = s.task_id AND r.user_id = s.user_id)`,
+        [t.id],
+      )
+      if (people.length > 0) results.ratingPrompts.push({ task: t.title, recipients: people.length })
+      if (dryRun) continue
+      const claim = await query(
+        `INSERT INTO public_task_attendance_nudges (task_id, rating_prompt_sent_at) VALUES ($1, now())
+         ON CONFLICT (task_id) DO UPDATE SET rating_prompt_sent_at = now()
+           WHERE public_task_attendance_nudges.rating_prompt_sent_at IS NULL`,
+        [t.id],
+      )
+      if (claim.rowCount === 0) continue
+      for (const p of people) {
+        notify(p.id, {
+          kind: 'rate_task',
+          title: t.title,
+          body: et(emailLang(p.language), 'How was it? Rate this event to help other volunteers.'),
+          link: '/attendance',
+        })
       }
     }
     return res.json({ ok: true, ...results })
@@ -5584,14 +5626,14 @@ router.put('/public-tasks/:id/rating', limiter, requireDb, requireAuth('student'
   }
   const rawComment = req.body?.comment
   if (rawComment != null && typeof rawComment !== 'string') return res.status(400).json({ error: 'The comment must be text.' })
-  const comment = (rawComment || '').trim() || null
+  let comment = (rawComment || '').trim() || null
   if (comment && comment.length > RATING_COMMENT_MAX) {
     return res.status(400).json({ error: `Keep the comment to ${RATING_COMMENT_MAX} characters.` })
   }
   try {
     const { rows } = await query(
-      `SELECT ${RATING_OPEN_SQL} AS can_rate
-         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id
+      `SELECT ${RATING_OPEN_SQL} AS can_rate, u.under_13
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.user_id = $2`,
       [req.params.id, req.auth.sub],
     )
@@ -5599,6 +5641,9 @@ router.put('/public-tasks/:id/rating', limiter, requireDb, requireAuth('student'
     if (!rows[0].can_rate) {
       return res.status(403).json({ error: 'You can rate a task once its day is over, if you were there.' })
     }
+    // Under 13: stars only (#606). A free-text note to an adult stranger is
+    // what the under-13 rules keep children from sending.
+    if (rows[0].under_13 === true) comment = null
     const { rows: saved } = await query(
       `INSERT INTO task_ratings (task_id, user_id, stars, comment) VALUES ($1, $2, $3, $4)
        ON CONFLICT (task_id, user_id) DO UPDATE SET stars = EXCLUDED.stars, comment = EXCLUDED.comment, updated_at = now()
