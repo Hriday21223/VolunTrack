@@ -1021,6 +1021,31 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('school email invites table migration failed:', error) }
+  // References (#593, server/routes/references.js): a student's request for a
+  // written reference, then the reference itself. Only the link token's hash.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS reference_requests (
+        id            TEXT PRIMARY KEY,
+        user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash    TEXT NOT NULL UNIQUE,
+        referee_name  TEXT NOT NULL,
+        referee_email TEXT NOT NULL,
+        organization  TEXT,
+        message       TEXT,
+        status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'written', 'declined')),
+        text          TEXT,
+        referee_title TEXT,
+        relationship  TEXT,
+        public_ok     BOOLEAN NOT NULL DEFAULT false,
+        on_portfolio  BOOLEAN NOT NULL DEFAULT false,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at    TIMESTAMPTZ NOT NULL,
+        written_at    TIMESTAMPTZ
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_reference_requests_user ON reference_requests(user_id)')
+  } catch (error) { console.error('reference requests table migration failed:', error) }
   // Class roster (#584, server/roster.js): the name and grade a school's
   // roster CSV gave for an address, until that student joins.
   try {

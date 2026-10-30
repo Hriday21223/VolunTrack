@@ -11,6 +11,7 @@ import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import CollegeActivitiesCard from '@/components/CollegeActivitiesCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
 import ReflectionsCard from '@/components/ReflectionsCard.jsx'
+import ReferencesCard from '@/components/ReferencesCard.jsx'
 import SentReportsCard from '@/components/SentReportsCard.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
@@ -158,6 +159,7 @@ export default function Reports() {
         </Card>
         {user?.schoolId && <SentReportsCard refreshKey={sentCount} />}
         <ImpactReportCard scope="student" name={user?.name} logs={countedLogs(logs)} className="mb-6" />
+        <ReferencesCard logs={logs} notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
         <CollegeActivitiesCard logs={logs} />
         <ReflectionsCard logs={logs} />
         <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />

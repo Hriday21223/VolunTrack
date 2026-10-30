@@ -43,6 +43,9 @@ export const NOTIFICATION_KINDS = new Set([
   'log_hours_nudge',
   // To VolunTrack admins: a school or org has a new main admin (#550).
   'account_handover',
+  // To a student: someone answered their reference request (#593).
+  'reference_received',
+  'reference_declined',
   // To a student: the school reviewed a report they sent (#583).
   'report_approved',
   'report_rejected',
