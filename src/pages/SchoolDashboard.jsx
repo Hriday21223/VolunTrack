@@ -35,6 +35,7 @@ import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
+import HoursReviewPanel from '@/components/HoursReviewPanel.jsx'
 import GroupHoursCard from '@/components/GroupHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
@@ -861,6 +862,9 @@ export default function SchoolDashboard() {
               <button onClick={() => setSubTab('list')} className={`btn-sm ${subTab === 'list' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Search className="w-3.5 h-3.5 mr-1" /> Student list ({students.length})
               </button>
+              <button onClick={() => setSubTab('review')} className={`btn-sm ${subTab === 'review' ? 'btn-primary' : 'btn-ghost'}`}>
+                <CheckCircle className="w-3.5 h-3.5 mr-1" /> Hours to check
+              </button>
               <button onClick={() => setSubTab('progress')} className={`btn-sm ${subTab === 'progress' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Clock className="w-3.5 h-3.5 mr-1" /> Hours progress
               </button>
@@ -871,6 +875,10 @@ export default function SchoolDashboard() {
                 <Upload className="w-3.5 h-3.5 mr-1" /> Invite student
               </button>
             </div>
+
+            {subTab === 'review' && (
+              <HoursReviewPanel onSetPlaces={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
+            )}
 
             {subTab === 'progress' && (
               <StudentProgressPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />

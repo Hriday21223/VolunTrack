@@ -211,6 +211,12 @@ const ES = {
   'Fix what they asked for, then send a new report from Reports.': 'Corrige lo que te pidieron y envía un informe nuevo desde Informes.',
   'Open Reports': 'Abrir Informes',
   'Your shift: {shift}': 'Tu turno: {shift}',
+  'Your entry': 'Tu registro',
+  '{school} approved: {what}': '{school} aprobó: {what}',
+  '{school} approved {n} of your entries': '{school} aprobó {n} de tus registros',
+  '{school} sent back: {what}': '{school} devolvió: {what}',
+  '{school} sent back an entry': '{school} te devolvió un registro',
+  "These hours don't count for now. Fix the entry in VolunTrack (editing it sends it for review again), or talk with your adviser.": 'Estas horas no cuentan por ahora. Corrige el registro en VolunTrack (al editarlo se vuelve a revisar) o habla con tu asesor.',
 }
 
 const DICTIONARIES = { es: ES }

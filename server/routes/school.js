@@ -21,7 +21,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et, emailDate } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed } from '../requirements.js'
+import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -1237,6 +1237,178 @@ router.post('/students/remind', limiter, requireDb, requireAuth('school', 'schoo
     return res.status(500).json({ error: 'Could not send reminders.' })
   }
 })
+
+// --- Hours to check (#591) --------------------------------------------------
+//
+// Entries no supervisor or organizer has confirmed ('none', or a supervisor
+// request still 'pending') from the school's students. An adviser approves
+// them, or sends one back with a reason the student sees. Entries from a
+// place that isn't on the school's approved list (logRules.approvedPlaces)
+// are flagged and listed first. They still count until sent back, like any
+// unconfirmed entry: sending back is what stops them counting.
+
+const REVIEW_LIST_MAX = 200
+const REVIEW_NOTE_MAX_LOG = 500
+const REVIEW_BULK_MAX = 100
+
+router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const onlyOffList = req.query.show === 'offlist'
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(404).json({ error: 'School not found.' })
+    const target = await policyForSchool(schoolId)
+    const places = target?.policy?.logRules?.approvedPlaces || []
+    const { rows } = await query(
+      `SELECT l.id, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours::float8 AS hours, l.notes, l.org_name,
+              l.location, l.supervisor_name, l.verification_status, (l.proof_key IS NOT NULL) AS has_proof,
+              u.id AS student_id, u.name AS student_name, u.grade
+         FROM logs l JOIN users u ON u.id = l.user_id
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')
+        ORDER BY l.date DESC, l.created_at DESC
+        LIMIT 2000`,
+      [schoolId],
+    )
+    const all = rows.map((r) => ({ ...r, offList: places.length > 0 && !placeApproved(target.policy, r.org_name) }))
+    const offList = all.filter((r) => r.offList).length
+    const shown = (onlyOffList ? all.filter((r) => r.offList) : all)
+      .sort((a, b) => Number(b.offList) - Number(a.offList))
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'hours_review', meta: { shown: Math.min(shown.length, REVIEW_LIST_MAX) } })
+    return res.json({
+      entries: shown.slice(0, REVIEW_LIST_MAX),
+      counts: { unconfirmed: all.length, offList },
+      truncated: shown.length > REVIEW_LIST_MAX || rows.length === 2000,
+      hasPlaceList: places.length > 0,
+    })
+  } catch (error) {
+    console.error('hours review list failed:', error)
+    return res.status(500).json({ error: 'Could not load the hours to check.' })
+  }
+})
+
+// Approve or send back one entry: { decision: 'approve' | 'reject', note }.
+router.post('/hours-review/:logId', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const decision = req.body?.decision
+  if (decision !== 'approve' && decision !== 'reject') return res.status(400).json({ error: 'Decision must be approve or reject.' })
+  if (req.body?.note != null && typeof req.body.note !== 'string') return res.status(400).json({ error: 'The note must be text.' })
+  const note = String(req.body?.note || '').trim().slice(0, REVIEW_NOTE_MAX_LOG) || null
+  if (decision === 'reject' && !note) return res.status(400).json({ error: 'Say why, so the student can fix it.' })
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    // Decided only while still unconfirmed, and only for a student at this
+    // school: the WHERE does both, so a race or another school gets nothing.
+    const { rows } = await query(
+      `UPDATE logs l SET verification_status = $3, verified_by = $4, review_note = $5, verification_token = NULL
+         FROM users u
+        WHERE l.id = $1 AND u.id = l.user_id AND u.school_id = $2 AND u.role = 'student'
+          AND l.verification_status IN ('none', 'pending')
+        RETURNING l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
+      [req.params.logId, schoolId, decision === 'approve' ? 'approved' : 'rejected', req.auth.sub, note],
+    )
+    if (rows.length === 0) {
+      const { rows: found } = await query(
+        'SELECT l.verification_status FROM logs l JOIN users u ON u.id = l.user_id WHERE l.id = $1 AND u.school_id = $2',
+        [req.params.logId, schoolId],
+      )
+      if (found.length === 0) return res.status(404).json({ error: 'That entry is not from a student at your school.' })
+      return res.status(409).json({ error: 'That entry was already decided.' })
+    }
+    recordAudit(req, {
+      action: AUDIT.HOURS_REVIEWED,
+      subjectUserId: rows[0].user_id,
+      schoolId,
+      objectType: 'log',
+      objectId: req.params.logId,
+      meta: { decision, by: 'school' },
+    })
+    tellStudentHoursReviewed({ userId: rows[0].user_id, schoolId, approved: decision === 'approve', entries: rows, note })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('hours review failed:', error)
+    return res.status(500).json({ error: 'Could not save the decision.' })
+  }
+})
+
+// Approve several at once: { ids }. Sending back is one at a time, with a reason.
+router.post('/hours-review-approve', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? [...new Set(req.body.ids.map(String))] : []
+  if (ids.length === 0) return res.status(400).json({ error: 'Choose at least one entry.' })
+  if (ids.length > REVIEW_BULK_MAX) return res.status(400).json({ error: `Approve at most ${REVIEW_BULK_MAX} at once.` })
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    const { rows } = await query(
+      `UPDATE logs l SET verification_status = 'approved', verified_by = $3, review_note = NULL, verification_token = NULL
+         FROM users u
+        WHERE l.id = ANY($1::text[]) AND u.id = l.user_id AND u.school_id = $2 AND u.role = 'student'
+          AND l.verification_status IN ('none', 'pending')
+        RETURNING l.id, l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
+      [ids, schoolId, req.auth.sub],
+    )
+    const byStudent = new Map()
+    for (const r of rows) byStudent.set(r.user_id, [...(byStudent.get(r.user_id) || []), r])
+    for (const [userId, entries] of byStudent) {
+      recordAudit(req, { action: AUDIT.HOURS_REVIEWED, subjectUserId: userId, schoolId, objectType: 'log', meta: { decision: 'approve', by: 'school', count: entries.length } })
+      tellStudentHoursReviewed({ userId, schoolId, approved: true, entries })
+    }
+    return res.json({ ok: true, approved: rows.length, skipped: ids.length - rows.length })
+  } catch (error) {
+    console.error('hours bulk approve failed:', error)
+    return res.status(500).json({ error: 'Could not approve those entries.' })
+  }
+})
+
+// The student hears what their school decided: a bell, and an email when an
+// entry is sent back (an approval isn't worth an email). Fire-and-forget.
+async function tellStudentHoursReviewed({ userId, schoolId, approved, entries, note = null }) {
+  try {
+    const { rows } = await query(
+      'SELECT u.email, u.name, u.language, s.name AS school_name FROM users u JOIN schools s ON s.id = $2 WHERE u.id = $1',
+      [userId, schoolId],
+    )
+    const r = rows[0]
+    if (!r) return
+    const lang = emailLang(r.language)
+    const one = entries.length === 1 ? entries[0] : null
+    const what = one ? `${one.activity || et(lang, 'Your entry')} (${one.hours}h, ${emailDate(lang, new Date(`${one.date}T12:00:00Z`))})` : ''
+    if (approved) {
+      await notify(userId, {
+        kind: 'hours_approved',
+        title: one
+          ? et(lang, '{school} approved: {what}', { school: r.school_name, what })
+          : et(lang, '{school} approved {n} of your entries', { school: r.school_name, n: entries.length }),
+        body: note || undefined,
+        link: '/reports',
+      })
+      return
+    }
+    await notify(userId, {
+      kind: 'hours_rejected',
+      title: et(lang, '{school} sent back: {what}', { school: r.school_name, what }),
+      body: et(lang, 'Reason: {reason}', { reason: note }),
+      link: '/reports',
+    })
+    if (!r.email || /@test\.com$/i.test(r.email)) return
+    const site = frontendBase()
+    const title = et(lang, '{school} sent back an entry', { school: r.school_name })
+    await sendEmail({
+      to: r.email,
+      subject: title,
+      html: `
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(emailHi(lang, r.name))}</p>
+        <p>${escapeHtml(what)}</p>
+        <p><strong>${escapeHtml(et(lang, 'Why:'))}</strong> ${escapeHtml(note)}</p>
+        <p>${escapeHtml(et(lang, "These hours don't count for now. Fix the entry in VolunTrack (editing it sends it for review again), or talk with your adviser."))}</p>
+        <p><a href="${escapeHtml(site)}/reports">${escapeHtml(et(lang, 'Open Reports'))}</a></p>
+        ${emailFooterHtml()}
+      `,
+    })
+  } catch (error) {
+    console.error('hours review notice failed:', error.message)
+  }
+}
 
 // Invite a student to the school by email (school admin only)
 router.post('/add-student', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {

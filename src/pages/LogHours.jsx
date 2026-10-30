@@ -11,7 +11,7 @@ import SignaturePad from '@/components/SignaturePad.jsx'
 import Toast from '@/components/Toast.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
-import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds, isLockedDate, lockedMessage } from '@/lib/requirements.js'
+import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds, isLockedDate, lockedMessage, placeApproved } from '@/lib/requirements.js'
 import { listShifts } from '@/lib/shifts.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify.js'
@@ -108,6 +108,8 @@ export default function LogHours({ editId, onCloseEdit }) {
   // the form is usable on the first paint and in client-only mode, and
   // tightens once the policy lands.
   const requirements = useMyRequirements()
+  const approvedPlaces = requirements.policy?.logRules?.approvedPlaces || []
+  const [showAllPlaces, setShowAllPlaces] = useState(false)
   // Editing an entry the school has locked (#569): show why, and allow no changes.
   const editingLocked = Boolean(editId) && isLockedDate(requirements.policy, logs.find((l) => l.id === editId)?.date)
   const { policy, sources } = requirements
@@ -588,6 +590,26 @@ export default function LogHours({ editId, onCloseEdit }) {
                 <input className="input" placeholder={tr('123 Main St, Springfield, IL')} value={form.orgAddress} onChange={onChange('orgAddress')} />
               </div>
             </div>
+            {/* The school's approved places (#591): a place off the list is
+                still logged, and the adviser checks it. */}
+            {approvedPlaces.length > 0 && (
+              <div className="mt-4 text-sm">
+                {form.orgName.trim() && !placeApproved(requirements.policy, form.orgName) && (
+                  <p className="mb-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 px-3 py-2">
+                    {tr("{place} isn't on your school's list of approved places. You can still log it, and your adviser will check it.", { place: form.orgName.trim() })}
+                  </p>
+                )}
+                <p className="text-earth-500 dark:text-earth-400 mb-1.5">{tr('Approved places:')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(showAllPlaces ? approvedPlaces : approvedPlaces.slice(0, 8)).map((p) => (
+                    <button key={p} type="button" className="chip hover:ring-1 hover:ring-brand-400" onClick={() => setForm((f) => ({ ...f, orgName: p }))}>{p}</button>
+                  ))}
+                  {approvedPlaces.length > 8 && !showAllPlaces && (
+                    <button type="button" className="text-xs text-brand-500 underline" onClick={() => setShowAllPlaces(true)}>{tr('and {n} more', { n: approvedPlaces.length - 8 })}</button>
+                  )}
+                </div>
+              </div>
+            )}
           </Card>
 
           <Card>
@@ -600,7 +622,7 @@ export default function LogHours({ editId, onCloseEdit }) {
               <Field icon={Mail}        label={`${tr('Supervisor email')} ${required.supervisorEmailRequired ? '*' : ''}`} value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder={tr('johnson@school.edu')} type="email" required={required.supervisorEmailRequired} />
               {form.supervisorEmail?.trim() ? (
                 <div className="sm:col-span-2">
-                  <VerificationBadge status={form.verificationStatus} />
+                  <VerificationBadge status={form.verificationStatus} bySchool={form.reviewedBySchool} note={form.reviewNote} />
                   {(!form.verificationStatus || form.verificationStatus === 'none') && (
                     <p className="text-xs text-earth-400 mt-1">
                       {organizerOnFile

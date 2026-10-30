@@ -13,6 +13,8 @@ import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
 import { escapeHtml } from './html.js'
 import { ensureDigestUnsubToken } from './digest.js'
 import { schoolProgress } from './routes/school.js'
+import { policyForSchool } from './policy.js'
+import { placeApproved } from './requirements.js'
 
 export const SEND_BATCH = 5
 
@@ -45,11 +47,23 @@ export async function schoolSummary(schoolId) {
     ),
     schoolProgress(schoolId),
   ])
+  // Entries from places off the school's approved list (#591), not yet checked.
+  let offList = 0
+  const target = await policyForSchool(schoolId)
+  if (target?.policy?.logRules?.approvedPlaces?.length) {
+    const { rows } = await query(
+      `SELECT l.org_name FROM logs l JOIN users u ON u.id = l.user_id
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')`,
+      [schoolId],
+    )
+    offList = rows.filter((r) => !placeApproved(target.policy, r.org_name)).length
+  }
   const students = progress.students
   const withGoal = students.filter((s) => s.target)
   return {
     pendingDocs: docs[0].n,
     pendingTransfers: transfers[0].n,
+    offList,
     weekHours: round(week[0].hours),
     weekStudents: week[0].students,
     students: students.length,
@@ -64,6 +78,7 @@ export function renderAdviserEmail({ name, schoolName, summary: s, unsubToken })
   const todo = []
   if (s.pendingDocs) todo.push(`${s.pendingDocs} document${s.pendingDocs === 1 ? '' : 's'} waiting for your review`)
   if (s.pendingTransfers) todo.push(`${s.pendingTransfers} transfer request${s.pendingTransfers === 1 ? '' : 's'} to accept or decline`)
+  if (s.offList) todo.push(`${s.offList} entr${s.offList === 1 ? 'y' : 'ies'} from places not on your approved list, to check`)
   const subject = todo.length
     ? `${schoolName}: ${todo[0]}${todo.length > 1 ? ' and more' : ''}`
     : `${schoolName}: your week on VolunTrack`
@@ -83,7 +98,7 @@ export function renderAdviserEmail({ name, schoolName, summary: s, unsubToken })
   const button = (href, label) => `<a href="${href}" style="display:inline-block;margin:4px 8px 4px 0;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">${escapeHtml(label)}</a>`
   const html = [
     ...lines,
-    `<p>${button(`${site}/school/dashboard/students/progress`, 'Open your dashboard')}</p>`,
+    `<p>${button(`${site}/school/dashboard/students/progress`, 'Open your dashboard')}${s.offList ? button(`${site}/school/dashboard/students/review`, 'Hours to check') : ''}</p>`,
     `<p style="font-size:12px;color:#888">You get this every Monday as an adviser at ${escapeHtml(schoolName)}. <a href="${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}">Stop these emails</a> or turn them off in Settings.</p>`,
     emailFooterHtml('en'),
   ].join('')
