@@ -188,6 +188,20 @@ html.native-app .app-page-enter {
   html.native-app .app-page-enter { animation: none; }
 }
 
+/* Goal reached (#607): confetti behind the celebration card. */
+.confetti { position: absolute; inset: 0; pointer-events: none; }
+.confetti span {
+  position: absolute; top: -12px; width: 8px; height: 14px; border-radius: 2px;
+  opacity: 0; animation-name: confetti-fall; animation-timing-function: linear; animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(105vh) rotate(540deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti { display: none; }
+}
+
 /* ---------------------------------------------------------------------
    Display preferences (src/hooks/useDisplayPrefs.js). Device-only, set as
    attributes on <html> before the first render, so nothing flashes.

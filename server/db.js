@@ -1080,6 +1080,22 @@ export async function initSchema() {
     `)
     await query('CREATE INDEX IF NOT EXISTS idx_reference_requests_user ON reference_requests(user_id)')
   } catch (error) { console.error('reference requests table migration failed:', error) }
+  // Goal reached (#607, server/goalReached.js): the first time a student's
+  // counted hours met their school's requirement. One row per student per
+  // school, so editing an entry down and back up never celebrates twice.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS requirement_completions (
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        target     NUMERIC NOT NULL,
+        hours      NUMERIC NOT NULL,
+        reached_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, school_id)
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_requirement_completions_school ON requirement_completions(school_id, reached_at)')
+  } catch (error) { console.error('requirement completions table migration failed:', error) }
   // Class roster (#584, server/roster.js): the name and grade a school's
   // roster CSV gave for an address, until that student joins.
   try {

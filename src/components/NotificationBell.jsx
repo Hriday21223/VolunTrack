@@ -43,6 +43,7 @@ const KIND_LABELS = {
   reference_declined: tr('Reference request'),
   report_approved: tr('Report approved'),
   report_rejected: tr('Report sent back'),
+  goal_reached: tr('Goal reached'),
 }
 
 const getToken = () => {

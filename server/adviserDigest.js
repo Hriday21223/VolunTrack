@@ -15,6 +15,7 @@ import { ensureDigestUnsubToken } from './digest.js'
 import { schoolProgress } from './routes/school.js'
 import { policyForSchool } from './policy.js'
 import { placeApproved } from './requirements.js'
+import { completionsThisWeek } from './goalReached.js'
 
 export const SEND_BATCH = 5
 
@@ -34,7 +35,7 @@ export function weekStart(now = new Date()) {
 
 /** Counts for one school. */
 export async function schoolSummary(schoolId) {
-  const [{ rows: docs }, { rows: transfers }, { rows: week }, progress] = await Promise.all([
+  const [{ rows: docs }, { rows: transfers }, { rows: week }, progress, finished] = await Promise.all([
     query(`SELECT COUNT(*)::int AS n FROM pdf_uploads WHERE school_id = $1 AND status = 'pending'`, [schoolId]),
     query(`SELECT COUNT(*)::int AS n FROM school_transfers WHERE to_school_id = $1 AND status = 'pending'`, [schoolId]),
     query(
@@ -46,6 +47,7 @@ export async function schoolSummary(schoolId) {
       [schoolId],
     ),
     schoolProgress(schoolId),
+    completionsThisWeek(schoolId),
   ])
   // Entries from places off the school's approved list (#591), not yet checked.
   let offList = 0
@@ -69,6 +71,8 @@ export async function schoolSummary(schoolId) {
     students: students.length,
     withGoal: withGoal.length,
     behind: withGoal.filter((s) => s.remaining > 0).length,
+    // Students who first met the requirement in the past 7 days (#607).
+    finished,
     deadline: progress.deadline,
   }
 }
@@ -92,6 +96,9 @@ export function renderAdviserEmail({ name, schoolName, summary: s, unsubToken })
     s.withGoal
       ? `<li>${s.behind} of ${s.withGoal} student${s.withGoal === 1 ? ' is' : 's are'} still short of your hour requirement${s.deadline ? ` (due ${escapeHtml(String(s.deadline).slice(0, 10))})` : ''}.</li>`
       : '<li>You haven\'t set an hour requirement yet, so we can\'t tell who is behind. You can set one under School setup → Requirements.</li>',
+    s.finished
+      ? `<li>🎉 ${s.finished} student${s.finished === 1 ? '' : 's'} met your hour requirement this week.</li>`
+      : '',
     '</ul>',
   ]
   if (s.behind) lines.push('<p>You can send the students who are behind a reminder from the Students tab.</p>')
