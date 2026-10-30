@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Star } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const COMMENT_MAX = 500
@@ -34,6 +35,9 @@ function Stars({ value, onPick, size = 'w-6 h-6' }) {
 // (PUT /api/school/public-tasks/:id/rating). The comment goes only to the
 // organizer, without the student's name. Saved ratings can be changed.
 export default function RateTask({ task, onSaved, onError }) {
+  const { user } = useAuth()
+  // Under 13: stars only (#606); the server drops a comment too.
+  const noComment = Boolean(user?.under13)
   const mine = task.my_rating
   const [editing, setEditing] = useState(false)
   const [stars, setStars] = useState(mine?.stars || 0)
@@ -47,7 +51,7 @@ export default function RateTask({ task, onSaved, onError }) {
       const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(task.id)}/rating`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
-        body: JSON.stringify({ stars, comment }),
+        body: JSON.stringify({ stars, comment: noComment ? '' : comment }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || tr('Could not save your rating.'))
@@ -91,15 +95,19 @@ export default function RateTask({ task, onSaved, onError }) {
     <div className="mt-3 pt-3 border-t border-earth-200 dark:border-[#22352b] space-y-2">
       <p className="text-sm font-medium">{tr('How was it?')}</p>
       <Stars value={stars} onPick={setStars} />
-      <textarea
-        value={comment}
-        onChange={(e) => setComment(e.target.value.slice(0, COMMENT_MAX))}
-        maxLength={COMMENT_MAX}
-        rows={2}
-        placeholder={tr('Anything the organizer should know? (optional)')}
-        className="input w-full text-sm min-h-[64px] resize-y"
-      />
-      <p className="text-xs text-earth-500">{tr('Only the organizer sees your comment, and not your name.')}</p>
+      {!noComment && (
+        <>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value.slice(0, COMMENT_MAX))}
+            maxLength={COMMENT_MAX}
+            rows={2}
+            placeholder={tr('Anything the organizer should know? (optional)')}
+            className="input w-full text-sm min-h-[64px] resize-y"
+          />
+          <p className="text-xs text-earth-500">{tr('Only the organizer sees your comment, and not your name.')}</p>
+        </>
+      )}
       <div className="flex items-center gap-2">
         <button type="button" onClick={save} disabled={!stars || busy} className="btn-sm btn-primary disabled:opacity-50">
           {busy ? tr('Saving…') : tr('Save')}

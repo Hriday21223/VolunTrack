@@ -1457,4 +1457,5 @@ export default {
   "{hours} toward “{goal}”.": "{hours} para “{goal}”.",
   "your goal": "tu meta",
   "We’ve let your linked parents know.": "Se lo hemos contado a tus padres vinculados.",
+  "Rate an event": "Calificar un evento",
 }

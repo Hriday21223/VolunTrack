@@ -1336,6 +1336,8 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('attendance nudge table migration failed:', error) }
+  // When a task's volunteers were asked "How was it?" (#606).
+  try { await query('ALTER TABLE public_task_attendance_nudges ADD COLUMN IF NOT EXISTS rating_prompt_sent_at TIMESTAMPTZ') } catch {}
 
   // Attendance for public-task signups — a volunteer marks present/absent/excused
   // for students approved on a task they posted. See POST /school/public-tasks/:taskId/attendance/:userId.

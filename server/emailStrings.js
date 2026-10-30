@@ -53,6 +53,8 @@ const ES = {
   'We miss you — here are {n} volunteer tasks coming up': 'Te extrañamos: aquí tienes {n} tareas de voluntariado próximas',
   'Hi there,': '¡Hola!',
 
+  'How was it? Rate this event to help other volunteers.': '¿Qué tal fue? Califica este evento para ayudar a otros voluntarios.',
+
   // Goal reached (server/goalReached.js, #607)
   '{name} reached {hours} volunteer hours 🎉': '{name} llegó a {hours} horas de voluntariado 🎉',
   '{name} has met the volunteer hour requirement at {school}, with {hours} hours logged. That took real commitment, so it might be a good moment to say well done.':

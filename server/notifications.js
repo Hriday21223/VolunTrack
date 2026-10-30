@@ -51,6 +51,8 @@ export const NOTIFICATION_KINDS = new Set([
   'report_rejected',
   // To a parent: their child met the school's hour requirement (#607).
   'goal_reached',
+  // To a student who was at an event: rate it (#606).
+  'rate_task',
 ])
 
 const LIMITS = { title: 200, body: 500, link: 300 }
