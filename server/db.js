@@ -391,6 +391,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS payment_notes TEXT`) } catch {}
   // "What did you learn?" (#510). Private to the student: never sent to a parent or school.
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS reflection TEXT`) } catch {}
+  // Skills a student tagged on an entry (#605, server/skills.js). Private like
+  // the reflection; only the portfolio shows totals, and only if they choose.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS skills TEXT[]`) } catch {}
   // Why the school sent an entry back, or a note with its approval (#591).
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS review_note TEXT`) } catch {}
   // 'club' = free, up to 50 students, never payment-locked; 'school' = paid (#506).

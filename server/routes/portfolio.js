@@ -1,4 +1,5 @@
 import express from 'express'
+import { hoursBySkill } from '../skills.js'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
@@ -44,6 +45,7 @@ const publicLimiter = rateLimit({
 
 const SLUG_RE = /^[A-Za-z0-9]{12}$/
 const MAX_ACTIVITIES = 200
+const MAX_PORTFOLIO_SKILLS = 6
 
 export const DEFAULT_OPTIONS = Object.freeze({
   nameDisplay: 'first_initial', // or 'full'
@@ -51,6 +53,7 @@ export const DEFAULT_OPTIONS = Object.freeze({
   showCategories: true,
   showBadges: true,
   showActivities: true,
+  showSkills: true,
 })
 
 const UNDER_13_ERROR = 'Public portfolios are for students 13 and older.'
@@ -70,7 +73,7 @@ function pickKnown(obj) {
   const out = {}
   if (!obj || typeof obj !== 'object') return out
   if (obj.nameDisplay === 'full' || obj.nameDisplay === 'first_initial') out.nameDisplay = obj.nameDisplay
-  for (const key of ['showSchool', 'showCategories', 'showBadges', 'showActivities']) {
+  for (const key of ['showSchool', 'showCategories', 'showBadges', 'showActivities', 'showSkills']) {
     if (typeof obj[key] === 'boolean') out[key] = obj[key]
   }
   return out
@@ -275,9 +278,10 @@ router.get('/:slug', publicLimiter, requireDb, async (req, res) => {
     if (!owner) return notFound()
     const options = sanitizeOptions(owner.options)
 
-    // Only these four columns of approved entries ever leave this route.
+    // Only these columns of approved entries ever leave this route, and
+    // skills only as totals.
     const { rows: logs } = await query(
-      `SELECT to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours
+      `SELECT to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, skills
          FROM logs
         WHERE user_id = $1 AND verification_status = 'approved'
         ORDER BY date DESC, created_at DESC`,
@@ -302,6 +306,11 @@ router.get('/:slug', publicLimiter, requireDb, async (req, res) => {
         .sort((a, b) => b.hours - a.hours || a.category.localeCompare(b.category))
     }
     if (options.showBadges) out.badges = earnedBadges(logs)
+    // Top skills by hours (#605), from approved entries only.
+    if (options.showSkills) {
+      const skills = hoursBySkill(logs).slice(0, MAX_PORTFOLIO_SKILLS).map(({ skill, hours }) => ({ skill, hours }))
+      if (skills.length) out.skills = skills
+    }
     if (options.showActivities) {
       out.activities = logs.slice(0, MAX_ACTIVITIES).map((l) => ({
         title: String(l.activity || l.category || 'Volunteer activity').slice(0, 140),

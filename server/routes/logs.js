@@ -1,4 +1,5 @@
 import express from 'express'
+import { cleanSkills } from '../skills.js'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
@@ -92,6 +93,7 @@ router.post('/scan', requireAuth('student', 'volunteer'), scanLimiter, async (re
 // role checks (no route accepts one).
 router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
   const { date, activity, category, hours, notes, reflection, location, orgName, supervisorName, supervisorEmail, taskId, proofKey, proofStorageId, proofMime, proofBytes, customFields, hasLocalProof } = req.body
+  const skills = cleanSkills(req.body.skills)
   const signoff = signoffFlags(req.body)
   const hoursNum = Number(hours)
   if (!date || !activity || typeof activity !== 'string' || !Number.isFinite(hoursNum) || hoursNum <= 0) {
@@ -165,9 +167,9 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
 
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, reflection)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, String(reflection || '').trim() || null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, reflection, skills)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, String(reflection || '').trim() || null, skills.length ? skills : null],
     )
     return res.status(201).json({ id })
   } catch (error) {
@@ -211,6 +213,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 
     const { date, activity, category, hours, notes, reflection, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
     const signoff = signoffFlags(req.body)
+    const patchSkills = cleanSkills(req.body.skills)
     // Optional text a student can empty out. COALESCE alone treats an empty
     // value as "not sent", which kept the old text on the server, so a field
     // sent empty is named here and set to NULL instead.
@@ -304,6 +307,9 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          hours = COALESCE($4, hours),
          notes = CASE WHEN 'notes' = ANY($17::text[]) THEN NULL ELSE COALESCE($5, notes) END,
          reflection = CASE WHEN 'reflection' = ANY($17::text[]) THEN NULL ELSE COALESCE($18, reflection) END,
+         -- Skills (#605): replaced only when sent; like the reflection they're
+         -- the student's own description, so they never reset verification.
+         skills = CASE WHEN $19::boolean THEN $20::text[] ELSE skills END,
          location = CASE WHEN 'location' = ANY($17::text[]) THEN NULL ELSE COALESCE($6, location) END,
          org_name = CASE WHEN 'org_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($7, org_name) END,
          supervisor_name = CASE WHEN 'supervisor_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($8, supervisor_name) END,
@@ -321,7 +327,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
        WHERE id = $11`,
-      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared, String(reflection || '').trim() || null],
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared, String(reflection || '').trim() || null, Object.hasOwn(req.body, 'skills'), patchSkills.length ? patchSkills : null],
     )
     return res.json({ ok: true })
   } catch (error) {
@@ -385,6 +391,8 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
                EXISTS (SELECT 1 FROM users v WHERE v.id = logs.verified_by AND v.role IN ('school', 'school_staff')) AS reviewed_by_school,
                -- Reflections are private to the student, never shown to a linked parent.
                CASE WHEN $2::timestamptz IS NULL THEN reflection END AS reflection,
+               -- Skills (#605) are private to the student too.
+               CASE WHEN $2::timestamptz IS NULL THEN skills END AS skills,
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
                student_signed, form_submitted, supervisor_signed_in_person,
                (organizer_signature IS NOT NULL) AS organizer_signed,

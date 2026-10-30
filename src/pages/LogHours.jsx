@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import SkillsPicker from '@/components/SkillsPicker.jsx'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Save, Trash2, Upload, Mail, User, ShieldCheck, Building2, Phone, MapPin, ClipboardList, FileSignature, ExternalLink, Copy, Send, X, Repeat } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
@@ -69,6 +70,7 @@ const blank = () => ({
   longitude: null,
   notes: '',
   reflection: '',
+  skills: [],
   orgName: '',
   orgAddress: '',
   orgPhone: '',
@@ -573,6 +575,9 @@ export default function LogHours({ editId, onCloseEdit }) {
                 <label className="label">{tr('What did you learn?')} <span className="text-earth-400 font-normal">{tr('(optional, only you see this)')}</span></label>
                 <textarea className="input min-h-[90px] resize-y" maxLength={2000} placeholder={tr('A moment that stuck with you, a skill you used, why it mattered…')} value={form.reflection} onChange={onChange('reflection')} />
                 <p className="text-xs text-earth-400 mt-1">{tr('Handy later for NHS reflections, scholarships and college essays.')}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <SkillsPicker value={form.skills || []} onChange={(skills) => setForm((f) => ({ ...f, skills }))} />
               </div>
             </div>
           </Card>

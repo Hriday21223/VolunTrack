@@ -11,6 +11,7 @@ import {
 // the link is the only key to it, and "Get a new link" kills the old one.
 const SHOW_OPTIONS = [
   { key: 'showCategories', label: () => tr('Hours by category') },
+  { key: 'showSkills', label: () => tr('Top skills') },
   { key: 'showBadges', label: () => tr('Badges') },
   { key: 'showActivities', label: () => tr('List of activities (title, date and hours)') },
   { key: 'showSchool', label: () => tr('My school') },

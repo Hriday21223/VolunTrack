@@ -3,6 +3,7 @@
 // it can be checked without the page. Nothing here is stored or sent.
 
 import { countedLogs } from '@/lib/achievements.js'
+import { hoursBySkill } from '@/lib/skills.js'
 
 // Common App's character limits for an activity.
 export const LIMITS = { position: 50, organization: 100, description: 150 }
@@ -37,14 +38,17 @@ export function clip(text, max) {
 const tidy = (s) => String(s || '').replace(/\s+/g, ' ').trim()
 const fmt = (n) => (Math.round(n * 10) / 10).toString()
 
-function draftDescription({ activities, category, hours, sessions }) {
+function draftDescription({ activities, category, hours, sessions, skills = [] }) {
   const count = `${fmt(hours)} hours over ${sessions} session${sessions === 1 ? '' : 's'}`
+  // Top skills tagged on these entries (#605), when there's room for them.
+  const used = skills.length ? ` Skills: ${skills.slice(0, 3).join(', ').toLowerCase()}.` : ''
+  const fit = (text) => (text.length + used.length <= LIMITS.description ? text + used : text)
   if (activities.length === 0) {
     const cause = category && category !== 'Other' && category !== 'Community Service' ? ` (${category.toLowerCase()})` : ''
-    return clip(`Volunteer work${cause}: ${count}.`, LIMITS.description)
+    return clip(fit(`Volunteer work${cause}: ${count}.`), LIMITS.description)
   }
   const what = activities.slice(0, 3).join(', ')
-  return clip(`${what[0].toUpperCase()}${what.slice(1)}. ${count}.`, LIMITS.description)
+  return clip(fit(`${what[0].toUpperCase()}${what.slice(1)}. ${count}.`), LIMITS.description)
 }
 
 // Groups the logs by organization and returns entries, most hours first.
@@ -88,7 +92,7 @@ export function buildActivities(logs) {
       type: 'Community Service (Volunteer)',
       position: 'Volunteer',
       organization: clip(name, LIMITS.organization),
-      description: draftDescription({ activities, category, hours, sessions: list.length }),
+      description: draftDescription({ activities, category, hours, sessions: list.length, skills: hoursBySkill(list).map((s) => s.skill) }),
       totalHours: hours,
       sessions: list.length,
       // Common App asks for typical hours per week and weeks per year while
