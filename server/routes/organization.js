@@ -11,7 +11,7 @@ import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from 
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
-import { impactFor, impactBySchool, PERIODS } from '../impact.js'
+import { impactFor, impactBySchool, PERIODS, rangeFromQuery } from '../impact.js'
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { activeOrgChallenge, scoreboard, METRICS } from '../orgChallenge.js'
 import { schoolProgress } from './school.js'
@@ -472,6 +472,9 @@ router.get('/schools', limiter, requireDb, requireAuth('org'), async (req, res) 
 // of this org's schools, with a line per school (#563). Counts only.
 router.get('/impact', limiter, requireDb, requireAuth('org'), async (req, res) => {
   const period = PERIODS.includes(req.query.period) ? req.query.period : 'year'
+  // ?from=&to= (#610): any date range, for grant and board reports.
+  const range = rangeFromQuery(req.query)
+  if (range?.error) return res.status(400).json({ error: range.error })
   try {
     const { rows: me } = await query(
       'SELECT o.id, o.name FROM users u JOIN organizations o ON o.id = u.organization_id WHERE u.id = $1',
@@ -480,7 +483,7 @@ router.get('/impact', limiter, requireDb, requireAuth('org'), async (req, res) =
     if (!me[0]) return res.status(404).json({ error: 'Organization not found.' })
     const { rows: schools } = await query('SELECT id FROM schools WHERE organization_id = $1', [me[0].id])
     const ids = schools.map((s) => s.id)
-    const [impact, perSchool] = await Promise.all([impactFor(ids, period), impactBySchool(ids, period)])
+    const [impact, perSchool] = await Promise.all([impactFor(ids, period, new Date(), range), impactBySchool(ids, period, new Date(), range)])
     return res.json({ name: me[0].name, ...impact, schools: perSchool })
   } catch (error) {
     console.error('organization impact failed:', error)

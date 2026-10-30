@@ -10,7 +10,34 @@
 export const VALUE_PER_HOUR = 36.14
 export const VALUE_SOURCE = 'Independent Sector, 2026 national value of volunteer time'
 
-export const PERIOD_LABELS = { year: 'This school year', all: 'All time' }
+export const PERIOD_LABELS = {
+  year: 'This school year',
+  lastMonth: 'Last month',
+  lastQuarter: 'Last quarter',
+  calendarYear: 'This calendar year',
+  lastCalendarYear: 'Last calendar year',
+  all: 'All time',
+  custom: 'Custom dates…',
+}
+
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/**
+ * The dates a preset covers, both days included, or null for 'year' and
+ * 'all' (the server's own periods) and 'custom' (the person picks).
+ */
+export function presetRange(preset, now = new Date()) {
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  if (preset === 'lastMonth') return { from: ymd(new Date(y, m - 1, 1)), to: ymd(new Date(y, m, 0)) }
+  if (preset === 'lastQuarter') {
+    const q = Math.floor(m / 3)
+    return { from: ymd(new Date(y, q * 3 - 3, 1)), to: ymd(new Date(y, q * 3, 0)) }
+  }
+  if (preset === 'calendarYear') return { from: `${y}-01-01`, to: ymd(now) }
+  if (preset === 'lastCalendarYear') return { from: `${y - 1}-01-01`, to: `${y - 1}-12-31` }
+  return null
+}
 
 const round = (n) => Math.round((Number(n) || 0) * 100) / 100
 
@@ -24,9 +51,14 @@ export function schoolYearStart(now = new Date()) {
  * A student's own impact from their counted logs (rejected already left out),
  * in the same shape the server sends for a school.
  */
-export function studentImpact(logs, period = 'year', now = new Date()) {
-  const since = period === 'all' ? null : schoolYearStart(now)
-  const inPeriod = (logs || []).filter((l) => l.date && (!since || String(l.date).slice(0, 10) >= since))
+export function studentImpact(logs, period = 'year', now = new Date(), range = null) {
+  const since = range ? range.from : period === 'all' ? null : schoolYearStart(now)
+  const until = range ? range.to : null
+  const inRange = (l, from, to) => {
+    const d = String(l.date).slice(0, 10)
+    return (!from || d >= from) && (!to || d <= to)
+  }
+  const inPeriod = (logs || []).filter((l) => l.date && inRange(l, since, until))
   const sum = (list) => list.reduce((s, l) => s + (Number(l.hours) || 0), 0)
   const group = (key) => {
     const map = new Map()
@@ -45,14 +77,24 @@ export function studentImpact(logs, period = 'year', now = new Date()) {
     const m = String(l.date).slice(0, 7)
     months.set(m, (months.get(m) || 0) + (Number(l.hours) || 0))
   }
-  const byMonth = [...months.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-12).map(([month, hours]) => ({ month, hours: round(hours) }))
+  const byMonth = [...months.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-24).map(([month, hours]) => ({ month, hours: round(hours) }))
   const cats = group((l) => l.category || 'Other')
   const byCategory = cats.slice(0, 6)
   const rest = cats.slice(6).reduce((s, c) => s + c.hours, 0)
   if (rest > 0) byCategory.push({ name: 'Everything else', hours: round(rest) })
+  // The same dates a year earlier (#610).
+  const yearBack = (s) => `${Number(s.slice(0, 4)) - 1}${s.slice(4)}`
+  const lastYear = range
+    ? (() => {
+      const prev = (logs || []).filter((l) => l.date && inRange(l, yearBack(range.from), yearBack(range.to)))
+      return { from: yearBack(range.from), to: yearBack(range.to), hours: round(sum(prev)), entries: prev.length }
+    })()
+    : null
   return {
-    period,
+    period: range ? 'range' : period,
     since,
+    until,
+    lastYear,
     hours: round(sum(inPeriod)),
     entries: inPeriod.length,
     byCategory,
@@ -93,6 +135,60 @@ function monthsHtml(byMonth) {
     </div>`).join('')}</div>`
 }
 
+const longDate = (s) => new Date(`${s}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+const gradeText = (g) => (/^\d+$/.test(String(g)) ? `Grade ${g}` : String(g))
+
+/** "This school year, since August 1, 2026" / "January 1, 2026 – June 30, 2026" / "All time". */
+export function periodDescription(data) {
+  if (data.period === 'range' && data.since && data.until) return `${longDate(data.since)} – ${longDate(data.until)}`
+  if (data.since) return `${PERIOD_LABELS.year}, since ${longDate(data.since)}`
+  return PERIOD_LABELS.all
+}
+
+/** "Up 24% on the same dates last year (310 hours)." or null. */
+export function comparisonText(data) {
+  const prev = data.lastYear
+  if (!prev) return null
+  if (!prev.hours) return 'No hours were logged on the same dates last year.'
+  const change = Math.round(((data.hours - prev.hours) / prev.hours) * 100)
+  const word = change > 0 ? `Up ${change}%` : change < 0 ? `Down ${-change}%` : 'Level'
+  return `${word} on the same dates last year (${num(prev.hours)} hours).`
+}
+
+/** The report as a CSV a grant writer can paste into a spreadsheet (#610). */
+export function impactCsv({ name, kind, data }) {
+  const cell = (v) => {
+    const s = String(v ?? '')
+    return /^[=+\-@\t\r]/.test(s) ? `"'${s.replace(/"/g, '""')}"` : /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const rows = []
+  const add = (...r) => rows.push(r.map(cell).join(','))
+  add('Volunteer impact report', name || '')
+  add('Period', periodDescription(data))
+  add('')
+  add('Total hours', data.hours)
+  add('Value to the community (USD)', Math.round(data.hours * VALUE_PER_HOUR))
+  add('Entries logged', data.entries)
+  if (kind !== 'student') add('Students volunteering', data.activeStudents, data.totalStudents != null ? `of ${data.totalStudents}` : '')
+  if (data.requirement) add('Met the hour requirement', data.requirement.met, `of ${data.requirement.students}`)
+  if (data.lastYear) add('Same dates last year (hours)', data.lastYear.hours)
+  const section = (title, head, list, map) => {
+    if (!list?.length) return
+    add('')
+    add(title)
+    add(...head)
+    for (const r of list) add(...map(r))
+  }
+  section('Hours by month', ['Month', 'Hours'], data.byMonth, (m) => [m.month, m.hours])
+  section('Causes', ['Cause', 'Hours'], data.byCategory, (c) => [c.name, c.hours])
+  section('Top places served', ['Place', 'Hours'], data.topPlaces, (p) => [p.name, p.hours])
+  section('By grade', ['Grade', 'Hours', 'Students volunteering'], data.byGrade, (g) => [gradeText(g.name), g.hours, g.students])
+  section('By school', ['School', 'Hours', 'Value (USD)', 'Students volunteering', 'Students'], data.schools, (s) => [s.name, s.hours, Math.round(s.hours * VALUE_PER_HOUR), s.activeStudents, s.students])
+  add('')
+  add(`Value uses $${VALUE_PER_HOUR.toFixed(2)} per hour (${VALUE_SOURCE}). Rejected entries are left out.${kind === 'student' ? '' : ' Totals only, never individual students.'}`)
+  return `${rows.join('\n')}\n`
+}
+
 /**
  * Opens the report in a new window and its print dialog.
  * { name, kind: 'student'|'school'|'organization', data, period }
@@ -103,9 +199,7 @@ export function printImpactReport({ name, kind, data, period }) {
   if (!w) return false
   const value = data.hours * VALUE_PER_HOUR
   const issued = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-  const periodText = data.since
-    ? `${PERIOD_LABELS.year}, since ${new Date(`${data.since}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-    : PERIOD_LABELS.all
+  const periodText = periodDescription(data)
   const stats = [
     [`${num(data.hours)}`, 'volunteer hours'],
     [money(value), 'value to the community'],
@@ -113,6 +207,7 @@ export function printImpactReport({ name, kind, data, period }) {
   ]
   if (kind !== 'student') stats.push([`${data.activeStudents}${data.totalStudents ? ` of ${data.totalStudents}` : ''}`, 'students volunteered'])
   if (data.requirement) stats.push([`${data.requirement.met} of ${data.requirement.students}`, 'met the hour requirement'])
+  const compare = comparisonText(data)
   const logo = `${window.location.origin}${import.meta.env.BASE_URL}logo.png`
 
   w.document.write(`<!doctype html>
@@ -159,6 +254,7 @@ export function printImpactReport({ name, kind, data, period }) {
   </header>
 
   <div class="stats">${stats.map(([b, s]) => `<div class="stat"><b>${escapeHtml(b)}</b><span>${escapeHtml(s)}</span></div>`).join('')}</div>
+  ${compare ? `<p class="muted" style="margin-top:-8px">${escapeHtml(compare)}</p>` : ''}
 
   <h2>Hours by month</h2>
   ${monthsHtml(data.byMonth)}
@@ -173,6 +269,13 @@ export function printImpactReport({ name, kind, data, period }) {
       ${data.topPlaces.length ? barsHtml(data.topPlaces) : `<p class="muted">${kind === 'student' ? 'Add the organization when you log hours to see it here.' : 'Places appear once two or more students have served there.'}</p>`}
     </div>
   </div>
+
+  ${data.byGrade?.length ? `
+  <h2>By grade</h2>
+  <table>
+    <thead><tr><th>Grade</th><th class="n">Hours</th><th class="n">Students volunteering</th></tr></thead>
+    <tbody>${data.byGrade.map((g) => `<tr><td>${escapeHtml(gradeText(g.name))}</td><td class="n">${num(g.hours)}</td><td class="n">${g.students}</td></tr>`).join('')}</tbody>
+  </table>` : ''}
 
   ${data.schools?.length ? `
   <h2>By school</h2>

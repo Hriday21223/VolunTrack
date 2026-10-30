@@ -4,7 +4,7 @@ import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { uid, generateToken } from '../ids.js'
-import { impactFor, PERIODS } from '../impact.js'
+import { impactFor, PERIODS, rangeFromQuery } from '../impact.js'
 import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge.js'
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
@@ -522,14 +522,16 @@ export async function schoolProgress(schoolId) {
   return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, students }
 }
 
-// GET /api/school/impact?period=year|all — the school's impact report
-// (#563): counts only, so it reads no one student's records.
+// GET /api/school/impact?period=year|all or ?from=&to= (#610) — the school's
+// impact report (#563): counts only, so it reads no one student's records.
 router.get('/impact', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const period = PERIODS.includes(req.query.period) ? req.query.period : 'year'
+  const range = rangeFromQuery(req.query)
+  if (range?.error) return res.status(400).json({ error: range.error })
   try {
     const { rows } = await query('SELECT u.school_id, s.name FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1', [req.auth.sub])
     if (!rows[0]) return res.status(404).json({ error: 'School not found.' })
-    const [impact, progress] = await Promise.all([impactFor([rows[0].school_id], period), schoolProgress(rows[0].school_id)])
+    const [impact, progress] = await Promise.all([impactFor([rows[0].school_id], period, new Date(), range), schoolProgress(rows[0].school_id)])
     const withGoal = progress.students.filter((s) => s.target)
     return res.json({
       name: rows[0].name,
