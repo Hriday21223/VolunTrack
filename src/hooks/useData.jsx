@@ -182,9 +182,14 @@ export function DataProvider({ children }) {
     // the sign-off no longer describes this log — drop it, signature included,
     // rather than leave rewritten hours wearing an "approved" badge.
     const before = listLogs().find((l) => l.id === id)
+    // An entry the school sent back (#591) is reopened by any edit, as the
+    // server does: fixing it is what the student was asked to do.
+    const schoolSentBack = before?.verificationStatus === 'rejected' && Boolean(before?.reviewNote)
     const effective = before && changesVerifiedFacts(before, patch)
-      ? { ...patch, verified: false, verificationStatus: 'none', verificationToken: null, supervisorSignature: '' }
-      : patch
+      ? { ...patch, verified: false, verificationStatus: 'none', verificationToken: null, supervisorSignature: '', reviewNote: '', reviewedBySchool: false }
+      : schoolSentBack
+        ? { ...patch, verified: false, verificationStatus: 'none', reviewNote: '', reviewedBySchool: false }
+        : patch
     const log = updateLog(id, effective)
     if (log) {
       setLogs((prev) => prev.map((l) => (l.id === id ? log : l)))

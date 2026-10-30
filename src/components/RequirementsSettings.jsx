@@ -270,6 +270,7 @@ function LogRulesEditor({ value, onChange }) {
           <p className="text-xs text-earth-400 mt-1">Students can’t add, edit or delete entries dated before this, e.g. once a semester’s report is done. You can still add hours for them.</p>
         </div>
       </div>
+      <ApprovedPlacesEditor value={value.approvedPlaces || []} onChange={(approvedPlaces) => onChange({ approvedPlaces })} />
       <div>
         <label className="label">Allowed categories</label>
         <p className="text-xs text-earth-400 mb-2">Leave all unchecked to accept every category.</p>
@@ -290,6 +291,32 @@ function LogRulesEditor({ value, onChange }) {
         </div>
       </div>
     </>
+  )
+}
+
+// Approved places (#591): one per line. Kept as typed while editing, so a new
+// line isn't swallowed before the next name is written.
+function ApprovedPlacesEditor({ value, onChange }) {
+  const [text, setText] = useState(() => value.join('\n'))
+  const count = text.split('\n').map((l) => l.trim()).filter(Boolean).length
+  return (
+    <div>
+      <label className="label" htmlFor="approved-places">Approved places</label>
+      <p className="text-xs text-earth-400 mb-2">
+        One per line. Hours from anywhere else still go in, but they&apos;re flagged in Students → Hours to check so you can look at them first. Leave empty to accept every place.
+      </p>
+      <textarea
+        id="approved-places"
+        className="input min-h-[110px] text-sm"
+        placeholder={'Riverside Food Bank\nCity Animal Shelter\nLincoln Public Library'}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          onChange(e.target.value.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 200))
+        }}
+      />
+      <p className="text-xs text-earth-400 mt-1">{count} place{count === 1 ? '' : 's'}{count > 200 ? ' (only the first 200 are kept)' : ''}</p>
+    </div>
   )
 }
 

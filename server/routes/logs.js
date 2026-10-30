@@ -292,6 +292,10 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       OR COALESCE($5, notes) IS DISTINCT FROM notes
       OR ('notes' = ANY($17::text[]) AND notes IS NOT NULL)
     )`
+    // An entry the school sent back (#591) goes back to its list after any
+    // edit, even one (like the place) that wouldn't undo a supervisor's answer:
+    // the student was asked to fix it, and this is them fixing it.
+    const SCHOOL_SENT_BACK = `(verification_status = 'rejected' AND review_note IS NOT NULL)`
     await query(
       `UPDATE logs SET
          date = COALESCE($1, date),
@@ -309,9 +313,10 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          student_signed = student_signed OR $14::boolean,
          form_submitted = form_submitted OR $15::boolean,
          supervisor_signed_in_person = supervisor_signed_in_person OR $16::boolean,
-         verification_status = CASE WHEN ${VERIFICATION_STALE} THEN 'none' ELSE verification_status END,
+         verification_status = CASE WHEN ${VERIFICATION_STALE} OR ${SCHOOL_SENT_BACK} THEN 'none' ELSE verification_status END,
          verification_token  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verification_token END,
-         verified_by         = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE verified_by END,
+         verified_by         = CASE WHEN ${VERIFICATION_STALE} OR ${SCHOOL_SENT_BACK} THEN NULL ELSE verified_by END,
+         review_note         = CASE WHEN ${VERIFICATION_STALE} OR ${SCHOOL_SENT_BACK} THEN NULL ELSE review_note END,
          organizer_signature = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE organizer_signature END,
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
@@ -375,6 +380,9 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       // proof_key itself is never returned: it is only useful with a minted
       // URL, and every mint is audited. Callers just need to know one exists.
       `SELECT id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes, location, org_name, supervisor_name, verification_status, task_id, created_at,
+               -- A school's review (#591): its note, and that the school decided.
+               review_note,
+               EXISTS (SELECT 1 FROM users v WHERE v.id = logs.verified_by AND v.role IN ('school', 'school_staff')) AS reviewed_by_school,
                -- Reflections are private to the student, never shown to a linked parent.
                CASE WHEN $2::timestamptz IS NULL THEN reflection END AS reflection,
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
@@ -387,8 +395,10 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       [userId, scope.since, req.auth.sub],
     )
     return res.json({
-      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, cheered_by_me, ...log }) => ({
+      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, cheered_by_me, review_note, reviewed_by_school, ...log }) => ({
         ...log,
+        reviewNote: review_note || null,
+        reviewedBySchool: reviewed_by_school,
         cheeredByMe: cheered_by_me,
         // Only whether one exists: the image is fetched separately, for the
         // entries a device doesn't have yet (GET /:userId/organizer-signatures).
