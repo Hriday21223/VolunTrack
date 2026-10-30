@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3, ClipboardList, Heart } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3, ClipboardList, Heart, IdCard } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { format } from 'date-fns'
@@ -13,6 +13,7 @@ import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
 import RateTask from '@/components/RateTask.jsx'
 import DayOfPanel from '@/components/DayOfPanel.jsx'
 import WeatherChip from '@/components/WeatherChip.jsx'
+import VolunteerBadge from '@/components/VolunteerBadge.jsx'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -43,6 +44,7 @@ function SignupRow({ s, onChanged, canRate }) {
   const signup = cancelled ? CANCELLED_LABEL : (SIGNUP_LABELS[s.signup_status] || SIGNUP_LABELS.pending)
   const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
   const isPast = dayOf(s.date) < todayDay()
+  const [showBadge, setShowBadge] = useState(false)
   const { user } = useAuth()
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
 
@@ -58,6 +60,13 @@ function SignupRow({ s, onChanged, canRate }) {
           </div>
           {!['rejected', 'parent_declined'].includes(s.signup_status) && <WeatherChip task={s} className="mt-2" />}
           {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
+          {/* Digital volunteer badge (#597), once approved. */}
+          {!cancelled && !isPast && s.signup_status === 'approved' && (
+            <button type="button" className="btn-secondary btn-sm mt-2" onClick={() => setShowBadge(true)}>
+              <IdCard className="w-4 h-4" />{' '}{tr('Show my volunteer badge')}
+            </button>
+          )}
+          {showBadge && <VolunteerBadge taskId={s.id} onClose={() => setShowBadge(false)} />}
           {!cancelled && !isPast && s.signup_status === 'parent_pending' && (
             <p className="text-xs text-amber-400 mt-2">{tr('The organizer sees your sign-up once a parent approves it. No parent linked yet? Ask them to make a VolunTrack parent account and enter the link code from Settings → Family.')}</p>
           )}

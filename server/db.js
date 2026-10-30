@@ -1021,6 +1021,9 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('school email invites table migration failed:', error) }
+  // Volunteer badge (#597): a random code per sign-up, behind the badge's QR.
+  try { await query('ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS badge_code TEXT') } catch {}
+  try { await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_signups_badge_code ON public_task_signups(badge_code) WHERE badge_code IS NOT NULL') } catch {}
   // Class roster (#584, server/roster.js): the name and grade a school's
   // roster CSV gave for an address, until that student joins.
   try {
