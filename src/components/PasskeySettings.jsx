@@ -5,6 +5,7 @@ import { fmtDate } from '@/utils/date.js'
 import {
   passkeysAvailable, addPasskey, listPasskeys, removePasskey, defaultPasskeyName, isPasskeyCancel,
 } from '@/lib/passkey.js'
+import { tr } from '@/lib/i18n.js'
 
 /**
  * Passkeys as a second sign-in step (server/routes/passkeys.js). Works the
@@ -36,7 +37,7 @@ export default function PasskeySettings() {
     setErr(''); setMsg(''); setBusy(true)
     try {
       const result = await addPasskey(token, defaultPasskeyName())
-      setMsg('Passkey added. You can use it the next time you sign in.')
+      setMsg(tr('Passkey added. You can use it the next time you sign in.'))
       if (result?.backupCodes?.length) setBackupCodes(result.backupCodes)
       await load()
     } catch (e) {
@@ -52,7 +53,7 @@ export default function PasskeySettings() {
     try {
       await removePasskey(token, removing, password)
       setRemoving(null); setPassword('')
-      setMsg('Passkey removed.')
+      setMsg(tr('Passkey removed.'))
       await load()
     } catch (e2) {
       setErr(e2.message)
@@ -64,12 +65,10 @@ export default function PasskeySettings() {
   return (
     <Card>
       <h3 className="font-display font-semibold mb-3 flex items-center gap-2">
-        <KeyRound className="w-4 h-4 text-brand-600" /> Passkeys
+        <KeyRound className="w-4 h-4 text-brand-600" />{' '}{tr('Passkeys')}
       </h3>
       <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-        After your password, confirm it’s you with Face ID, Touch ID, your fingerprint or your
-        device PIN instead of typing a code. Keep your authenticator app too — its backup codes are
-        how you get back in if you lose every device with a passkey.
+        {tr('After your password, confirm it’s you with Face ID, Touch ID, your fingerprint or your device PIN instead of typing a code. Keep your authenticator app too — its backup codes are how you get back in if you lose every device with a passkey.')}
       </p>
 
       {passkeys.length > 0 && (
@@ -81,7 +80,7 @@ export default function PasskeySettings() {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{p.name}</div>
                   <div className="text-xs text-earth-500 dark:text-earth-400">
-                    Added {fmtDate(p.createdAt)}{p.lastUsedAt ? ` · last used ${fmtDate(p.lastUsedAt)}` : ''}
+                    {tr('Added {date}', { date: fmtDate(p.createdAt) })}{p.lastUsedAt ? ` · ${tr('last used {date}', { date: fmtDate(p.lastUsedAt) })}` : ''}
                   </div>
                 </div>
                 <button
@@ -99,13 +98,13 @@ export default function PasskeySettings() {
                     type="password"
                     required
                     autoComplete="current-password"
-                    placeholder="Your password"
+                    placeholder={tr('Your password')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="input flex-1"
                   />
-                  <button type="submit" className="btn-primary" disabled={busy}>Remove</button>
-                  <button type="button" className="btn-ghost" onClick={() => setRemoving(null)}>Cancel</button>
+                  <button type="submit" className="btn-primary" disabled={busy}>{tr('Remove')}</button>
+                  <button type="button" className="btn-ghost" onClick={() => setRemoving(null)}>{tr('Cancel')}</button>
                 </form>
               )}
             </li>
@@ -114,26 +113,25 @@ export default function PasskeySettings() {
       )}
 
       {supported === false ? (
-        <p className="text-sm text-earth-500 dark:text-earth-400">This device can’t create passkeys.</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400">{tr('This device can’t create passkeys.')}</p>
       ) : (
         <button type="button" onClick={onAdd} disabled={busy || supported === null} className="btn-primary">
-          {busy && !removing ? 'Waiting for passkey…' : 'Add a passkey'}
+          {busy && !removing ? tr('Waiting for passkey…') : tr('Add a passkey')}
         </button>
       )}
       {msg && <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{msg}</p>}
       {backupCodes && (
         <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-          <p className="text-xs font-semibold text-amber-300 mb-1">Save your backup codes</p>
+          <p className="text-xs font-semibold text-amber-300 mb-1">{tr('Save your backup codes')}</p>
           <p className="text-xs text-amber-200/80 mb-2">
-            If you lose this device, sign in with one of these instead of your passkey. Each works once, and
-            this is the only time they&apos;re shown.
+            {tr('If you lose this device, sign in with one of these instead of your passkey. Each works once, and this is the only time they\'re shown.')}
           </p>
           <div className="grid grid-cols-2 gap-1">
             {backupCodes.map((code) => (
               <code key={code} className="text-xs font-mono text-amber-100 bg-slate-900/50 px-2 py-1 rounded text-center">{code}</code>
             ))}
           </div>
-          <button type="button" className="btn-ghost text-xs mt-2" onClick={() => setBackupCodes(null)}>I&apos;ve saved them</button>
+          <button type="button" className="btn-ghost text-xs mt-2" onClick={() => setBackupCodes(null)}>{tr('I\'ve saved them')}</button>
         </div>
       )}
       {err && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{err}</p>}

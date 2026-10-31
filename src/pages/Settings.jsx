@@ -138,7 +138,7 @@ export default function Settings() {
         setToast(true)
         return
       }
-      setToastMessage('School linked!')
+      setToastMessage(tr('School linked!'))
       setToast(true)
       window.location.reload()
     } catch (e) {
@@ -156,7 +156,7 @@ export default function Settings() {
       const res = await fetch(`${apiUrl}/school/leave`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not leave the school.')
-      setToastMessage('You left your school.')
+      setToastMessage(tr('You left your school.'))
       setToast(true)
       window.location.reload()
     } catch (e) {
@@ -177,7 +177,7 @@ export default function Settings() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not cancel the request.')
       setPendingTransfer(null)
-      setToastMessage('Transfer request cancelled.')
+      setToastMessage(tr('Transfer request cancelled.'))
       setToast(true)
     } catch (e) {
       setToastMessage(e.message)
@@ -211,13 +211,13 @@ export default function Settings() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not save your answer.')
       if (data.joined) {
-        setToastMessage('School linked!')
+        setToastMessage(tr('School linked!'))
         setToast(true)
         window.location.reload()
         return
       }
       setSchoolInvites((list) => list.filter((i) => i.id !== id))
-      setToastMessage('Invite declined.')
+      setToastMessage(tr('Invite declined.'))
       setToast(true)
     } catch (e) {
       setToastMessage(e.message)
@@ -317,7 +317,7 @@ export default function Settings() {
       await disableTotp(disablePw)
       setShowDisableForm(false)
       setDisablePw('')
-      setToastMessage('2FA disabled')
+      setToastMessage(tr('2FA disabled'))
       setToast(true)
     } catch (e) {
       setTotpErr(e.message)
@@ -406,7 +406,7 @@ export default function Settings() {
       category: newGoal.category || null,
     })
     setNewGoal({ title: '', targetHours: 50, deadline: '', category: '', primary: false })
-    setToastMessage('Goal added')
+    setToastMessage(tr('Goal added'))
     setToast(true)
   }
 
@@ -626,7 +626,7 @@ export default function Settings() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not remove the parent.')
       setLinkedParents((list) => list.filter((p) => p.id !== parentId))
-      setToastMessage('Parent removed')
+      setToastMessage(tr('Parent removed'))
       setToast(true)
     } catch (error) {
       setToastMessage(error.message)
@@ -655,7 +655,7 @@ export default function Settings() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Could not generate a code.')
       setChildLinkCode(data.childLinkCode)
-      setToastMessage('Code generated')
+      setToastMessage(tr('Code generated'))
       setToast(true)
     } catch (error) {
       setToastMessage(error.message)
@@ -700,14 +700,14 @@ export default function Settings() {
     if (!/^[0-9]{4}$/.test(pin)) return
     if (pin !== pinConfirm) return
     if (!updateProfile({ pinHash: hashPin(pin) })) {
-      setToastMessage('Could not save the PIN on this device.')
+      setToastMessage(tr('Could not save the PIN on this device.'))
       setToast(true)
       return
     }
     setPin('')
     setPinConfirm('')
     setPinSaved(true)
-    setToastMessage('PIN saved')
+    setToastMessage(tr('PIN saved'))
     setToast(true)
   }
 
@@ -734,7 +734,7 @@ export default function Settings() {
       setSyncPinExpiresAt(updated?.syncPinExpiresAt ? new Date(updated.syncPinExpiresAt).getTime() : null)
       setSyncClock(Date.now())
       setShowSyncPin(true)
-      setToastMessage('Sync PIN generated')
+      setToastMessage(tr('Sync PIN generated'))
       setToast(true)
     } catch (error) {
       setToastMessage(error.message || 'Failed to generate sync PIN')
@@ -770,7 +770,7 @@ export default function Settings() {
       setShowSyncPin(true)
       setShowSyncPasswordPrompt(false)
       setSyncPassword('')
-      setToastMessage('Account linked! Sync PIN generated.')
+      setToastMessage(tr('Account linked! Sync PIN generated.'))
       setToast(true)
     } catch (error) {
       setToastMessage(error.message || 'Failed to link account')
@@ -796,7 +796,7 @@ export default function Settings() {
       setSyncTotpCode('')
       setShowSyncPin(true)
       setShowSyncPasswordPrompt(false)
-      setToastMessage('Account linked! Sync PIN generated.')
+      setToastMessage(tr('Account linked! Sync PIN generated.'))
       setToast(true)
     } catch (error) {
       setToastMessage(error.message || 'Failed to link account')
@@ -808,12 +808,12 @@ export default function Settings() {
 
   const copySyncPin = () => {
     navigator.clipboard.writeText(displaySyncPin)
-    setToastMessage('PIN copied to clipboard')
+    setToastMessage(tr('PIN copied to clipboard'))
     setToast(true)
   }
 
   return (
-    <AppLayout title="Settings" subtitle="Make VolunTrack your own.">
+    <AppLayout title={tr('Settings')} subtitle={tr('Make VolunTrack your own.')}>
       <div className="space-y-3">
         <Card>
           <LanguagePicker />
@@ -823,14 +823,14 @@ export default function Settings() {
           <AccessibilitySettings />
         </Card>
 
-        <CollapsibleSection icon={Star} label="Goals & Data" defaultOpen={true}>
+        <CollapsibleSection icon={Star} label={tr('Goals & Data')} defaultOpen={true}>
           <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Star className="w-4 h-4 text-amber-500" /> Goals</h3>
-            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">Set a target and we'll track your progress toward it. The primary goal powers your dashboard ring.</p>
+            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Star className="w-4 h-4 text-amber-500" />{' '}{tr('Goals')}</h3>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">{tr('Set a target and we\'ll track your progress toward it. The primary goal powers your dashboard ring.')}</p>
 
             {goals.length === 0 ? (
               <div className="text-sm text-earth-500 dark:text-earth-400 py-4 text-center border border-dashed border-earth-200 dark:border-[#243529] rounded-xl mb-4">
-                No goals yet — add one below.
+                {tr('No goals yet — add one below.')}
               </div>
             ) : (
               <ul className="space-y-2 mb-4">
@@ -839,20 +839,20 @@ export default function Settings() {
                     <button
                       onClick={() => makePrimary(g.id)}
                       className={`w-5 h-5 rounded-full border-2 ${g.primary ? 'bg-brand-500 border-brand-500' : 'border-earth-300 dark:border-[#3a4a3f]'}`}
-                      title={g.primary ? 'Primary goal' : 'Make primary'}
-                      aria-label="Toggle primary"
+                      title={g.primary ? tr('Primary goal') : tr('Make primary')}
+                      aria-label={tr('Toggle primary')}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{g.title}</div>
                       <div className="text-xs text-earth-500 dark:text-earth-400">
                         {tr('{done} of {target}h', { done: Math.round(hoursForGoal(g, counted) * 10) / 10, target: g.targetHours })}
-                        {g.deadline && <> · by {format(parseISO(g.deadline), 'd MMM yyyy')}</>}
+                        {g.deadline && <> · {tr('by {date}', { date: format(parseISO(g.deadline), 'd MMM yyyy') })}</>}
                       </div>
                       {goalCategory(g) && (
                         <span className={`chip mt-1 ${categoryColor(goalCategory(g))}`}>{tr('Only {category} hours', { category: tr(goalCategory(g)) })}</span>
                       )}
                     </div>
-                    <button onClick={() => removeGoal(g.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Delete">
+                    <button onClick={() => removeGoal(g.id)} className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title={tr('Delete')}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </li>
@@ -863,17 +863,17 @@ export default function Settings() {
             <form onSubmit={addGoal} className="flex flex-wrap gap-2">
               <input
                 id="goal-title"
-                className="input flex-1 min-w-[180px]" placeholder="Goal title (e.g. Service hours)"
+                className="input flex-1 min-w-[180px]" placeholder={tr('Goal title (e.g. Service hours)')}
                 value={newGoal.title} onChange={(e) => setNewGoal((g) => ({ ...g, title: e.target.value }))}
               />
               <input
                 id="goal-target"
-                type="number" min="1" className="input w-24" aria-label="Target hours" title="Target hours"
+                type="number" min="1" className="input w-24" aria-label={tr('Target hours')} title={tr('Target hours')}
                 value={newGoal.targetHours} onChange={(e) => setNewGoal((g) => ({ ...g, targetHours: e.target.value }))}
               />
               <input
                 id="goal-deadline"
-                type="date" className="input w-[150px]" aria-label="Deadline (optional)" title="Deadline (optional)"
+                type="date" className="input w-[150px]" aria-label={tr('Deadline (optional)')} title={tr('Deadline (optional)')}
                 value={newGoal.deadline} onChange={(e) => setNewGoal((g) => ({ ...g, deadline: e.target.value }))}
               />
               <select
@@ -884,9 +884,9 @@ export default function Settings() {
                 <option value="">{tr('All causes')}</option>
                 {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
               </select>
-              <button className="btn-primary shrink-0"><Plus className="w-4 h-4" /> Add</button>
+              <button className="btn-primary shrink-0"><Plus className="w-4 h-4" />{' '}{tr('Add')}</button>
             </form>
-            <p className="text-xs text-earth-400 mt-2">Add a deadline and the dashboard works out the pace you need to keep.</p>
+            <p className="text-xs text-earth-400 mt-2">{tr('Add a deadline and the dashboard works out the pace you need to keep.')}</p>
             <p className="text-xs text-earth-400 mt-1">{tr('Pick a cause to count only hours logged in that category, like 20 hours in Environmental.')}</p>
           </Card>
           {user?.role === 'student' && <PortfolioCard />}
@@ -894,7 +894,7 @@ export default function Settings() {
           {['student', 'volunteer', 'school', 'school_staff', 'org'].includes(user?.role) && <OrganizerProfileCard />}
         </CollapsibleSection>
 
-        <CollapsibleSection icon={Lock} label="Account & Security" defaultOpen={true}>
+        <CollapsibleSection icon={Lock} label={tr('Account & Security')} defaultOpen={true}>
           <Card>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 font-display font-bold text-sm uppercase">
@@ -968,88 +968,88 @@ export default function Settings() {
           )}
 
           <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Lock className="w-4 h-4 text-brand-600" /> Change password</h3>
+            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Lock className="w-4 h-4 text-brand-600" />{' '}{tr('Change password')}</h3>
             <form onSubmit={onChangePassword} className="grid sm:grid-cols-3 gap-4">
               <div>
-                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" /> Current password</label>
+                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('Current password')}</label>
                 <input type={showPw ? 'text' : 'password'} className="input" value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))} required />
               </div>
               <div>
-                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" /> New password</label>
+                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('New password')}</label>
                 <input type={showPw ? 'text' : 'password'} className="input" value={pwForm.newPw} onChange={(e) => setPwForm((f) => ({ ...f, newPw: e.target.value }))} required minLength={8} />
               </div>
               <div>
-                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" /> Confirm new</label>
+                <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('Confirm new')}</label>
                 <div className="flex gap-2">
                   <input type={showPw ? 'text' : 'password'} className="input flex-1" value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))} required />
-                  <button type="button" onClick={() => setShowPw(!showPw)} className="btn-ghost px-2" title={showPw ? 'Hide' : 'Show'}>
+                  <button type="button" onClick={() => setShowPw(!showPw)} className="btn-ghost px-2" title={showPw ? tr('Hide') : tr('Show')}>
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               {pwError && <div className="sm:col-span-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{pwError}</div>}
-              {pwDone && <div className="sm:col-span-3 text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300 px-3 py-2 rounded-lg flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Password updated</div>}
+              {pwDone && <div className="sm:col-span-3 text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300 px-3 py-2 rounded-lg flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />{' '}{tr('Password updated')}</div>}
               <div className="sm:col-span-3">
                 <button className="btn-primary" type="submit" disabled={pwBusy}>
-                  {pwBusy ? 'Updating\u2026' : 'Update password'}
+                  {pwBusy ? tr('Updating…') : tr('Update password')}
                 </button>
               </div>
             </form>
           </Card>
 
           <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Two-Factor Authentication</h3>
+            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" />{' '}{tr('Two-Factor Authentication')}</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Add an extra layer of security to your account by requiring a code from your authenticator app when you sign in.
+              {tr('Add an extra layer of security to your account by requiring a code from your authenticator app when you sign in.')}
             </p>
 
             {user?.totpEnabled ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                   <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-300">2FA is enabled</span>
+                  <span className="text-sm font-medium text-emerald-300">{tr('2FA is enabled')}</span>
                 </div>
                 {showDisableForm ? (
                   <form onSubmit={handleDisableTotp} className="space-y-3">
-                    <p className="text-sm text-earth-400">Enter your password to disable 2FA:</p>
+                    <p className="text-sm text-earth-400">{tr('Enter your password to disable 2FA:')}</p>
                     <input
                       type="password"
                       value={disablePw}
                       onChange={(e) => setDisablePw(e.target.value)}
-                      placeholder="Your password"
+                      placeholder={tr('Your password')}
                       className="input w-full"
                       required
                     />
                     {totpErr && <div className="text-sm text-red-400">{totpErr}</div>}
                     <div className="flex gap-2">
                       <button type="submit" disabled={totpBusy} className="btn-danger flex-1">
-                        {totpBusy ? 'Disabling…' : 'Disable 2FA'}
+                        {totpBusy ? tr('Disabling…') : tr('Disable 2FA')}
                       </button>
                       <button type="button" onClick={() => { setShowDisableForm(false); setDisablePw(''); setTotpErr('') }} className="btn-ghost flex-1">
-                        Cancel
+                        {tr('Cancel')}
                       </button>
                     </div>
                   </form>
                 ) : (
                   <button onClick={() => setShowDisableForm(true)} className="btn-ghost w-full text-red-400 hover:text-red-300">
-                    Disable 2FA
+                    {tr('Disable 2FA')}
                   </button>
                 )}
               </div>
             ) : totpSetup ? (
               <div className="space-y-4">
                 <div className="text-center">
-                  <p className="text-sm text-earth-400 mb-3">Scan this QR code with your authenticator app:</p>
+                  <p className="text-sm text-earth-400 mb-3">{tr('Scan this QR code with your authenticator app:')}</p>
                   <div className="flex justify-center p-4 bg-white rounded-xl">
                     <canvas ref={totpQrRef} />
                   </div>
-                  <p className="text-xs text-earth-500 mt-2">Or enter this code manually:</p>
+                  <p className="text-xs text-earth-500 mt-2">{tr('Or enter this code manually:')}</p>
                   <p className="font-mono text-sm text-earth-300 bg-slate-900/50 px-3 py-1.5 rounded-lg mt-1 select-all">{totpSetup.secret}</p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                  <p className="text-xs font-semibold text-amber-300 mb-1">Save your backup codes</p>
-                  <p className="text-xs text-amber-200/80 mb-2">Store these safely. Each code can only be used once if you lose access to your authenticator.</p>
+                  <p className="text-xs font-semibold text-amber-300 mb-1">{tr('Save your backup codes')}</p>
+                  <p className="text-xs text-amber-200/80 mb-2">{tr('Store these safely. Each code can only be used once if you lose access to your authenticator.')}</p>
                   <div className="grid grid-cols-2 gap-1">
                     {totpSetup.backupCodes.map((code, i) => (
                       <code key={i} className="text-xs font-mono text-amber-100 bg-slate-900/50 px-2 py-1 rounded text-center">{code}</code>
@@ -1058,7 +1058,7 @@ export default function Settings() {
                 </div>
 
                 <form onSubmit={handleVerifyTotpSetup} className="space-y-3">
-                  <label className="label">Enter the 6-digit code from your app to confirm</label>
+                  <label className="label">{tr('Enter the 6-digit code from your app to confirm')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1073,23 +1073,23 @@ export default function Settings() {
                   {totpErr && <div className="text-sm text-red-400">{totpErr}</div>}
                   <div className="flex gap-2">
                     <button type="submit" disabled={totpBusy || totpCode.length !== 6} className="btn-primary flex-1">
-                      {totpBusy ? 'Verifying…' : 'Enable 2FA'}
+                      {totpBusy ? tr('Verifying…') : tr('Enable 2FA')}
                     </button>
                     <button type="button" onClick={() => { setTotpSetup(null); setTotpCode(''); setTotpErr('') }} className="btn-ghost flex-1">
-                      Cancel
+                      {tr('Cancel')}
                     </button>
                   </div>
                 </form>
               </div>
             ) : (
               <button onClick={handleSetupTotp} disabled={totpBusy} className="btn-primary w-full">
-                {totpBusy ? 'Setting up…' : 'Enable 2FA'}
+                {totpBusy ? tr('Setting up…') : tr('Enable 2FA')}
               </button>
             )}
 
             {totpDone && (
               <div className="mt-3 text-sm text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> 2FA enabled successfully!
+                <CheckCircle2 className="w-4 h-4" />{' '}{tr('2FA enabled successfully!')}
               </div>
             )}
           </Card>
@@ -1144,13 +1144,13 @@ export default function Settings() {
           {!hasServerAccount && <Card>
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-brand-600" />
-              <h3 className="font-display font-semibold">App unlock PIN</h3>
+              <h3 className="font-display font-semibold">{tr('App unlock PIN')}</h3>
             </div>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Set a 4-digit app unlock PIN to sign in quickly instead of typing your password. If you forget it, reset it with your email and a PIN recovery code.
+              {tr('Set a 4-digit app unlock PIN to sign in quickly instead of typing your password. If you forget it, reset it with your email and a PIN recovery code.')}
             </p>
             <div className="space-y-3">
-              <label className="label">New app unlock PIN</label>
+              <label className="label">{tr('New app unlock PIN')}</label>
               <input
                 type="password"
                 inputMode="numeric"
@@ -1160,7 +1160,7 @@ export default function Settings() {
                 placeholder="1234"
                 className="input w-full bg-slate-900/80 text-white border-white/10"
               />
-              <label className="label">Confirm app unlock PIN</label>
+              <label className="label">{tr('Confirm app unlock PIN')}</label>
               <input
                 type="password"
                 inputMode="numeric"
@@ -1176,12 +1176,12 @@ export default function Settings() {
                 disabled={!/^[0-9]{4}$/.test(pin) || pin !== pinConfirm}
                 className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Save app unlock PIN
+                {tr('Save app unlock PIN')}
               </button>
               <div className="text-xs text-earth-400">
-                Forgot your app unlock PIN? <Link to="/reset-pin" className="text-brand-700 hover:underline">Reset it via email</Link>.
+                {tr('Forgot your app unlock PIN?')}{' '}<Link to="/reset-pin" className="text-brand-700 hover:underline">{tr('Reset it via email')}</Link>.
               </div>
-              {pinSaved && <div className="text-sm text-emerald-300">App unlock PIN saved. Use it on the login screen.</div>}
+              {pinSaved && <div className="text-sm text-emerald-300">{tr('App unlock PIN saved. Use it on the login screen.')}</div>}
             </div>
           </Card>}
 
@@ -1189,20 +1189,19 @@ export default function Settings() {
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-brand-600" />
               <h3 className="font-display font-semibold">
-                {isMobile ? 'Laptop sync PIN' : 'Mobile sync PIN'}
+                {isMobile ? tr('Laptop sync PIN') : tr('Mobile sync PIN')}
               </h3>
             </div>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
               {isMobile
-                ? 'Generate a 5-digit PIN to sync your account with your laptop. Enter it on your computer within 15 minutes — it works once.'
-                : 'Generate a 5-digit PIN to sync your account with the mobile app. Enter it on your phone within 15 minutes — it works once.'}
+                ? tr('Generate a 5-digit PIN to sync your account with your laptop. Enter it on your computer within 15 minutes — it works once.')
+                : tr('Generate a 5-digit PIN to sync your account with the mobile app. Enter it on your phone within 15 minutes — it works once.')}
             </p>
             {showSyncPasswordPrompt && syncTotpTempToken ? (
               <div className="space-y-3">
                 <div className="p-4 bg-slate-900/80 rounded-xl border border-amber-500/30">
                   <p className="text-xs text-amber-300 mb-2">
-                    This account uses two-factor authentication. Enter the current code from your
-                    authenticator app to finish linking.
+                    {tr('This account uses two-factor authentication. Enter the current code from your authenticator app to finish linking.')}
                   </p>
                   <input
                     type="text"
@@ -1220,7 +1219,7 @@ export default function Settings() {
                   disabled={syncTotpCode.length !== 6 || syncPasswordBusy}
                   className="btn-primary w-full"
                 >
-                  {syncPasswordBusy ? 'Verifying…' : 'Verify & generate PIN'}
+                  {syncPasswordBusy ? tr('Verifying…') : tr('Verify & generate PIN')}
                 </button>
                 {syncTotpMethods.includes('passkey') && (
                   <button
@@ -1228,28 +1227,28 @@ export default function Settings() {
                     disabled={syncPasswordBusy}
                     className="btn-secondary w-full"
                   >
-                    Use a passkey instead
+                    {tr('Use a passkey instead')}
                   </button>
                 )}
                 <button
                   onClick={() => { setShowSyncPasswordPrompt(false); setSyncTotpTempToken(''); setSyncTotpCode('') }}
                   className="btn-ghost w-full text-sm"
                 >
-                  Cancel
+                  {tr('Cancel')}
                 </button>
               </div>
             ) : showSyncPasswordPrompt ? (
               <div className="space-y-3">
                 <div className="p-4 bg-slate-900/80 rounded-xl border border-amber-500/30">
                   <p className="text-xs text-amber-300 mb-2">
-                    To enable cross-device sync, enter your account password to link this device to the server.
+                    {tr('To enable cross-device sync, enter your account password to link this device to the server.')}
                   </p>
                   <div className="relative">
                     <input
                       type={showPwText ? 'text' : 'password'}
                       value={syncPassword}
                       onChange={(e) => setSyncPassword(e.target.value)}
-                      placeholder="Your password"
+                      placeholder={tr('Your password')}
                       className="input w-full bg-slate-900/80 text-white border-white/10 pr-10"
                     />
                     <button
@@ -1267,13 +1266,13 @@ export default function Settings() {
                   disabled={!syncPassword || syncPasswordBusy}
                   className="btn-primary w-full"
                 >
-                  {syncPasswordBusy ? 'Linking…' : 'Link account & generate PIN'}
+                  {syncPasswordBusy ? tr('Linking…') : tr('Link account & generate PIN')}
                 </button>
                 <button
                   onClick={() => { setShowSyncPasswordPrompt(false); setSyncPassword('') }}
                   className="btn-ghost w-full text-sm"
                 >
-                  Cancel
+                  {tr('Cancel')}
                 </button>
               </div>
             ) : !showSyncPin ? (
@@ -1281,16 +1280,16 @@ export default function Settings() {
                 onClick={generateSyncPin}
                 className="btn-primary w-full"
               >
-                Generate {isMobile ? 'laptop' : 'mobile'} sync PIN
+                {isMobile ? tr('Generate laptop sync PIN') : tr('Generate mobile sync PIN')}
               </button>
             ) : (
               <div className="space-y-3">
                 <div className="p-4 bg-slate-900/80 rounded-xl border border-white/10">
-                  <div className="text-xs text-earth-400 mb-1">Your sync PIN</div>
+                  <div className="text-xs text-earth-400 mb-1">{tr('Your sync PIN')}</div>
                   <div className="text-2xl font-mono font-bold text-white tracking-wider">{displaySyncPin}</div>
                   {syncSecondsLeft != null && (
                     <div className="text-xs text-earth-400 mt-1" aria-live="polite">
-                      Works once · expires in {Math.floor(syncSecondsLeft / 60)}:{String(syncSecondsLeft % 60).padStart(2, '0')}
+                      {tr('Works once · expires in {time}', { time: `${Math.floor(syncSecondsLeft / 60)}:${String(syncSecondsLeft % 60).padStart(2, '0')}` })}
                     </div>
                   )}
                 </div>
@@ -1300,14 +1299,14 @@ export default function Settings() {
                   </div>
                 ) : (
                   <button onClick={() => setShowQR(true)} className="btn-secondary w-full">
-                    <QrCode className="w-4 h-4 mr-2" /> Show QR code
+                    <QrCode className="w-4 h-4 mr-2" />{' '}{tr('Show QR code')}
                   </button>
                 )}
                 <button onClick={copySyncPin} className="btn-secondary w-full">
-                  <Copy className="w-4 h-4 mr-2" /> Copy PIN
+                  <Copy className="w-4 h-4 mr-2" />{' '}{tr('Copy PIN')}
                 </button>
                 <button onClick={generateSyncPin} className="btn-ghost w-full text-sm">
-                  Generate new PIN
+                  {tr('Generate new PIN')}
                 </button>
               </div>
             )}
@@ -1315,7 +1314,7 @@ export default function Settings() {
         </CollapsibleSection>
 
         {(canJoinSchool || user?.role === 'school') && (
-        <CollapsibleSection icon={School} label="School" defaultOpen={true}>
+        <CollapsibleSection icon={School} label={tr('School')} defaultOpen={true}>
           {canJoinSchool && (
             <Card>
               <div className="flex items-center gap-2 mb-3">
@@ -1323,7 +1322,7 @@ export default function Settings() {
                 {/* Once linked this card is about the school you are in —
                     and about moving to another one — so "Join school" only
                     describes the unlinked case. */}
-                <h3 className="font-display font-semibold">{user.schoolId ? 'Your school' : 'Join school'}</h3>
+                <h3 className="font-display font-semibold">{user.schoolId ? tr('Your school') : tr('Join school')}</h3>
               </div>
               {user.schoolId ? (
                 <div className="space-y-3">
@@ -1334,9 +1333,9 @@ export default function Settings() {
                       <p className="font-medium">{schoolInfo.name}</p>
                     </div>
                   )}
-                  <p className="text-sm text-earth-500 dark:text-earth-400">Upload verification PDFs for approval.</p>
+                  <p className="text-sm text-earth-500 dark:text-earth-400">{tr('Upload verification PDFs for approval.')}</p>
                   <Link to="/school/dashboard" className="btn-secondary w-full flex items-center justify-center">
-                    <Upload className="w-4 h-4 mr-2" /> Upload & view PDFs
+                    <Upload className="w-4 h-4 mr-2" />{' '}{tr('Upload & view PDFs')}
                   </Link>
 
                   {/* Changing schools keeps the same account: the hours and
@@ -1347,20 +1346,22 @@ export default function Settings() {
                     {pendingTransfer ? (
                       <div className="space-y-2">
                         <p className="text-sm">
-                          Waiting for <span className="font-medium">{pendingTransfer.to_school_name}</span> to accept your transfer.
+                          {tr('Waiting for {school} to accept your transfer.', { school: pendingTransfer.to_school_name })}
                         </p>
                         <p className="text-xs text-earth-500 dark:text-earth-400">
-                          Your hours stay with {schoolInfo?.name || 'your current school'} until they do.
+                          {schoolInfo?.name
+                            ? tr('Your hours stay with {school} until they do.', { school: schoolInfo.name })
+                            : tr('Your hours stay with your current school until they do.')}
                         </p>
                         <button onClick={cancelTransfer} disabled={transferBusy} className="btn-ghost w-full text-sm">
-                          {transferBusy ? 'Cancelling…' : 'Cancel request'}
+                          {transferBusy ? tr('Cancelling…') : tr('Cancel request')}
                         </button>
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <p className="text-sm font-medium">Moving to a different school?</p>
+                        <p className="text-sm font-medium">{tr('Moving to a different school?')}</p>
                         <p className="text-xs text-earth-500 dark:text-earth-400">
-                          Enter their code. Your hours and approvals move with your account once they accept.
+                          {tr('Enter their code. Your hours and approvals move with your account once they accept.')}
                         </p>
                         <input
                           type="text"
@@ -1374,7 +1375,7 @@ export default function Settings() {
                           disabled={!schoolCode || schoolBusy}
                           className="btn-secondary w-full"
                         >
-                          {schoolBusy ? 'Requesting…' : 'Request transfer'}
+                          {schoolBusy ? tr('Requesting…') : tr('Request transfer')}
                         </button>
                   {gradeAsk && <GradePicker grades={gradeAsk.grades} schoolName={gradeAsk.schoolName} busy={schoolBusy} onPick={(g) => handleSchoolCode(g)} />}
                       </div>
@@ -1385,20 +1386,20 @@ export default function Settings() {
                   <div className="pt-3 border-t border-white/10">
                     {confirmLeave ? (
                       <div className="space-y-2">
-                        <p className="text-sm">Leave {schoolInfo?.name || 'your school'}?</p>
+                        <p className="text-sm">{tr('Leave')}{' '}{schoolInfo?.name || tr('your school')}?</p>
                         <p className="text-xs text-earth-500 dark:text-earth-400">
-                          They will no longer see your hours or the reports you sent them. Your hours stay in your account, and you can join a school again with its code.
+                          {tr('They will no longer see your hours or the reports you sent them. Your hours stay in your account, and you can join a school again with its code.')}
                         </p>
                         <div className="flex gap-2">
                           <button onClick={leaveSchool} disabled={leaveBusy} className="btn-danger flex-1 text-sm">
-                            {leaveBusy ? 'Leaving…' : 'Leave school'}
+                            {leaveBusy ? tr('Leaving…') : tr('Leave school')}
                           </button>
-                          <button onClick={() => setConfirmLeave(false)} disabled={leaveBusy} className="btn-ghost flex-1 text-sm">Cancel</button>
+                          <button onClick={() => setConfirmLeave(false)} disabled={leaveBusy} className="btn-ghost flex-1 text-sm">{tr('Cancel')}</button>
                         </div>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmLeave(true)} className="btn-ghost w-full text-sm text-red-400">
-                        Leave school
+                        {tr('Leave school')}
                       </button>
                     )}
                   </div>
@@ -1407,15 +1408,15 @@ export default function Settings() {
                 <div className="space-y-3">
                   {schoolInvites.map((inv) => (
                     <div key={inv.id} className="rounded-xl border border-brand-500/40 bg-brand-500/10 p-3 space-y-2">
-                      <p className="text-sm"><span className="font-medium">{inv.schoolName}</span> wants to add you to their school.</p>
-                      <p className="text-xs text-earth-500 dark:text-earth-400">If you accept, they can see the hours you log and review them.</p>
+                      <p className="text-sm">{tr('{school} wants to add you to their school.', { school: inv.schoolName })}</p>
+                      <p className="text-xs text-earth-500 dark:text-earth-400">{tr('If you accept, they can see the hours you log and review them.')}</p>
                       <div className="flex gap-2">
-                        <button onClick={() => decideSchoolInvite(inv.id, 'accept')} disabled={inviteBusy === inv.id} className="btn-primary flex-1 text-sm">Accept</button>
-                        <button onClick={() => decideSchoolInvite(inv.id, 'decline')} disabled={inviteBusy === inv.id} className="btn-ghost flex-1 text-sm">Decline</button>
+                        <button onClick={() => decideSchoolInvite(inv.id, 'accept')} disabled={inviteBusy === inv.id} className="btn-primary flex-1 text-sm">{tr('Accept')}</button>
+                        <button onClick={() => decideSchoolInvite(inv.id, 'decline')} disabled={inviteBusy === inv.id} className="btn-ghost flex-1 text-sm">{tr('Decline')}</button>
                       </div>
                     </div>
                   ))}
-                  <p className="text-sm text-earth-500 dark:text-earth-400">Enter your school code to link your account.</p>
+                  <p className="text-sm text-earth-500 dark:text-earth-400">{tr('Enter your school code to link your account.')}</p>
                   <input
                     type="text"
                     value={schoolCode}
@@ -1428,7 +1429,7 @@ export default function Settings() {
                     disabled={!schoolCode || schoolBusy}
                     className="btn-primary w-full"
                   >
-                    {schoolBusy ? 'Joining…' : 'Join school'}
+                    {schoolBusy ? tr('Joining…') : tr('Join school')}
                   </button>
                   {gradeAsk && <GradePicker grades={gradeAsk.grades} schoolName={gradeAsk.schoolName} busy={schoolBusy} onPick={(g) => handleSchoolCode(g)} />}
                 </div>
@@ -1440,11 +1441,11 @@ export default function Settings() {
             <Card>
               <div className="flex items-center gap-2 mb-3">
                 <School className="w-4 h-4 text-brand-600" />
-                <h3 className="font-display font-semibold">School dashboard</h3>
+                <h3 className="font-display font-semibold">{tr('School dashboard')}</h3>
               </div>
-              <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">View students, review uploaded PDFs, and manage approvals.</p>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">{tr('View students, review uploaded PDFs, and manage approvals.')}</p>
               <Link to="/school/dashboard" className="btn-primary w-full flex items-center justify-center">
-                Open school dashboard
+                {tr('Open school dashboard')}
               </Link>
             </Card>
           )}
@@ -1453,17 +1454,17 @@ export default function Settings() {
             <Card>
               <div className="flex items-center gap-2 mb-3">
                 <Hash className="w-4 h-4 text-brand-600" />
-                <h3 className="font-display font-semibold">School code</h3>
+                <h3 className="font-display font-semibold">{tr('School code')}</h3>
               </div>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-                Students enter this in Settings → Join school to link their account to {schoolInfo.name}.
+                {tr('Students enter this in Settings → Join school to link their account to {school}.', { school: schoolInfo.name })}
               </p>
 
               <div className="flex items-center gap-2 mb-4">
                 <code className="flex-1 overflow-x-auto rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{schoolInfo.pin}</code>
                 <button
                   type="button"
-                  title="Copy school code"
+                  title={tr('Copy school code')}
                   className="btn-sm btn-ghost shrink-0"
                   onClick={async () => {
                     try {
@@ -1495,7 +1496,7 @@ export default function Settings() {
                     if (!res.ok) throw new Error(data.error || 'Could not update school code.')
                     setSchoolInfo({ ...schoolInfo, pin: data.pin })
                     setOwnCodeDraft(data.pin)
-                    setToastMessage('School code updated!')
+                    setToastMessage(tr('School code updated!'))
                     setToast(true)
                   } catch (err) {
                     setOwnCodeErr(err.message)
@@ -1504,7 +1505,7 @@ export default function Settings() {
                   }
                 }}
               >
-                <label className="text-sm text-earth-500 dark:text-earth-400">Change code</label>
+                <label className="text-sm text-earth-500 dark:text-earth-400">{tr('Change code')}</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1514,13 +1515,12 @@ export default function Settings() {
                     className="input flex-1"
                   />
                   <button type="submit" className="btn-primary" disabled={ownCodeBusy || !ownCodeDraft.trim() || ownCodeDraft.trim() === schoolInfo.pin}>
-                    {ownCodeBusy ? 'Saving…' : 'Save'}
+                    {ownCodeBusy ? tr('Saving…') : tr('Save')}
                   </button>
                 </div>
                 {ownCodeErr && <p className="text-sm text-red-500">{ownCodeErr}</p>}
                 <p className="text-xs text-earth-500 dark:text-earth-400">
-                  Letters followed by 3–5 digits, e.g. <span className="font-mono">cisd-12345</span>. Students already linked to
-                  your school stay linked — only the code new students type changes.
+                  {tr('Letters followed by 3–5 digits, e.g. {example}. Students already linked to your school stay linked — only the code new students type changes.', { example: 'cisd-12345' })}
                 </p>
               </form>
             </Card>
@@ -1529,7 +1529,7 @@ export default function Settings() {
         )}
 
         {user?.role === 'org' && (
-          <CollapsibleSection icon={Building2} label="Organization" defaultOpen={true}>
+          <CollapsibleSection icon={Building2} label={tr('Organization')} defaultOpen={true}>
             <Card>
               <div className="flex items-center gap-2 mb-3">
                 <Building2 className="w-4 h-4 text-brand-600" />
@@ -1537,7 +1537,7 @@ export default function Settings() {
               </div>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
                 {orgSchools === null
-                  ? 'Manage the schools your organization owns, review their hours, and invite new ones.'
+                  ? tr('Manage the schools your organization owns, review their hours, and invite new ones.')
                   : `${orgSchools.length} ${orgSchools.length === 1 ? 'school' : 'schools'} in your organization.`}
               </p>
               {orgSchools?.length > 0 && (
@@ -1548,45 +1548,45 @@ export default function Settings() {
                 </ul>
               )}
               <Link to="/organization/dashboard" className="btn-primary w-full flex items-center justify-center">
-                Open organization dashboard
+                {tr('Open organization dashboard')}
               </Link>
               <p className="text-xs text-earth-500 dark:text-earth-400 mt-3">
-                Organizations add schools by email invite from the dashboard — there is no organization-wide join code.
+                {tr('Organizations add schools by email invite from the dashboard — there is no organization-wide join code.')}
               </p>
             </Card>
           </CollapsibleSection>
         )}
 
         {(user?.role === 'student' || user?.role === 'parent') && (
-          <CollapsibleSection icon={Users} label="Family" defaultOpen={false}>
+          <CollapsibleSection icon={Users} label={tr('Family')} defaultOpen={false}>
             {user?.role === 'student' && (
               <Card>
                 <div className="flex items-center gap-2 mb-3">
                   <Users className="w-4 h-4 text-brand-600" />
-                  <h3 className="font-display font-semibold">Share with a parent</h3>
+                  <h3 className="font-display font-semibold">{tr('Share with a parent')}</h3>
                 </div>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-                  Generate a code and share it with a parent so they can follow your logged hours and verification status. Only hours logged from now on will be visible to them. Each code works once — generate another for a second parent.
+                  {tr('Generate a code and share it with a parent so they can follow your logged hours and verification status. Only hours logged from now on will be visible to them. Each code works once — generate another for a second parent.')}
                 </p>
                 {childLinkCode ? (
                   <div className="space-y-3">
                     <div className="p-4 bg-slate-900/80 rounded-xl border border-white/10">
-                      <div className="text-xs text-earth-400 mb-1">Your link code</div>
+                      <div className="text-xs text-earth-400 mb-1">{tr('Your link code')}</div>
                       <div className="text-2xl font-mono font-bold text-white tracking-wider">{childLinkCode}</div>
                     </div>
                     <button onClick={generateChildLinkCode} disabled={childLinkBusy} className="btn-ghost w-full text-sm">
-                      {childLinkBusy ? 'Generating…' : 'Generate new code'}
+                      {childLinkBusy ? tr('Generating…') : tr('Generate new code')}
                     </button>
                   </div>
                 ) : (
                   <button onClick={generateChildLinkCode} disabled={childLinkBusy} className="btn-primary w-full">
-                    {childLinkBusy ? 'Generating…' : 'Generate link code'}
+                    {childLinkBusy ? tr('Generating…') : tr('Generate link code')}
                   </button>
                 )}
                 <div className="mt-5 border-t border-white/10 pt-4">
-                  <div className="text-sm font-medium mb-2">Parents who can see your hours</div>
+                  <div className="text-sm font-medium mb-2">{tr('Parents who can see your hours')}</div>
                   {linkedParents.length === 0 ? (
-                    <div className="text-sm text-earth-500 dark:text-earth-400">No one yet.</div>
+                    <div className="text-sm text-earth-500 dark:text-earth-400">{tr('No one yet.')}</div>
                   ) : (
                     <ul className="space-y-2">
                       {linkedParents.map((p) => (
@@ -1595,7 +1595,7 @@ export default function Settings() {
                             <div className="text-sm font-medium truncate">{p.name}</div>
                             <div className="text-xs text-earth-400 truncate">{p.email}</div>
                           </div>
-                          <button onClick={() => removeLinkedParent(p.id)} className="btn-ghost text-sm shrink-0">Remove</button>
+                          <button onClick={() => removeLinkedParent(p.id)} className="btn-ghost text-sm shrink-0">{tr('Remove')}</button>
                         </li>
                       ))}
                     </ul>
@@ -1608,10 +1608,10 @@ export default function Settings() {
               <Card>
                 <div className="flex items-center gap-2 mb-3">
                   <Users className="w-4 h-4 text-brand-600" />
-                  <h3 className="font-display font-semibold">Link your child</h3>
+                  <h3 className="font-display font-semibold">{tr('Link your child')}</h3>
                 </div>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-                  Enter the code your child generated in their Settings to follow their logged hours.
+                  {tr('Enter the code your child generated in their Settings to follow their logged hours.')}
                 </p>
                 <input
                   type="text"
@@ -1622,19 +1622,19 @@ export default function Settings() {
                 />
                 {linkChildErr && <div className="text-sm text-red-600 dark:text-red-300 mt-2">{linkChildErr}</div>}
                 <button onClick={linkChild} disabled={!linkChildInput.trim() || linkChildBusy} className="btn-primary w-full mt-3 disabled:opacity-50 disabled:cursor-not-allowed">
-                  {linkChildBusy ? 'Linking…' : 'Link child'}
+                  {linkChildBusy ? tr('Linking…') : tr('Link child')}
                 </button>
 
                 {linkedChildren.length > 0 && (
                   <div className="mt-5 space-y-2">
-                    <div className="text-xs text-earth-400 uppercase tracking-wide">Linked children</div>
+                    <div className="text-xs text-earth-400 uppercase tracking-wide">{tr('Linked children')}</div>
                     {linkedChildren.map((c) => (
                       <div key={c.id} className="flex items-center justify-between rounded-xl border border-earth-200/60 dark:border-white/[0.06] px-3 py-2">
                         <div>
                           <div className="text-sm font-medium">{c.name}</div>
                           <div className="text-xs text-earth-400">{c.email}</div>
                         </div>
-                        <button onClick={() => unlinkChild(c.id)} className="btn-ghost p-1.5" title="Unlink">
+                        <button onClick={() => unlinkChild(c.id)} className="btn-ghost p-1.5" title={tr('Unlink')}>
                           <X className="w-4 h-4" />
                         </button>
                       </div>
@@ -1646,15 +1646,15 @@ export default function Settings() {
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection icon={Bell} label="Reminders & Notifications" defaultOpen={false}>
+        <CollapsibleSection icon={Bell} label={tr('Reminders & Notifications')} defaultOpen={false}>
           {canOpen(user?.role, '/reminders') && (
             <Card>
-              <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" /> Reminders</h3>
+              <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Bell className="w-4 h-4 text-brand-600" />{' '}{tr('Reminders')}</h3>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-                Set up weekly or one-time reminders so you never forget to log your volunteer hours.
+                {tr('Set up weekly or one-time reminders so you never forget to log your volunteer hours.')}
               </p>
               <Link to="/reminders" className="btn-primary inline-flex items-center gap-2">
-                <Bell className="w-4 h-4" /> Manage reminders
+                <Bell className="w-4 h-4" />{' '}{tr('Manage reminders')}
               </Link>
             </Card>
           )}
@@ -1666,13 +1666,13 @@ export default function Settings() {
           {(user?.role === 'school' || user?.role === 'school_staff') && <AdviserDigestEmailCard />}
 
           <Card>
-            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Privacy</h3>
+            <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" />{' '}{tr('Privacy')}</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400">
-              Your logged hours are stored on this device. If you've created an account, some features above (Family sharing, school linking, cross-device sync, two-factor authentication) also store data on our server. Sign out below to clear your session.
+              {tr('Your logged hours are stored on this device. If you\'ve created an account, some features above (Family sharing, school linking, cross-device sync, two-factor authentication) also store data on our server. Sign out below to clear your session.')}
             </p>
             <div className="text-xs text-earth-500 dark:text-earth-400 mt-3 space-y-1">
-              <div>Signed in as <span className="font-medium text-earth-800 dark:text-earth-100">{user?.email}</span></div>
-              <div>Role: <span className="font-medium text-earth-800 dark:text-earth-100 capitalize">{user?.role}</span></div>
+              <div>{tr('Signed in as')}{' '}<span className="font-medium text-earth-800 dark:text-earth-100">{user?.email}</span></div>
+              <div>{tr('Role:')}{' '}<span className="font-medium text-earth-800 dark:text-earth-100 capitalize">{user?.role}</span></div>
             </div>
           </Card>
 
@@ -1681,15 +1681,15 @@ export default function Settings() {
               <Link to="/admin" className="block p-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition">
                 <div className="flex items-center gap-2 mb-1">
                   <ShieldCheck className="w-4 h-4 text-brand-600" />
-                  <span className="font-semibold text-earth-900 dark:text-earth-100">Admin inbox</span>
+                  <span className="font-semibold text-earth-900 dark:text-earth-100">{tr('Admin inbox')}</span>
                 </div>
-                <p className="text-sm text-earth-500 dark:text-earth-400">Review contact form submissions.</p>
+                <p className="text-sm text-earth-500 dark:text-earth-400">{tr('Review contact form submissions.')}</p>
               </Link>
             </Card>
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection icon={Info} label="About & Account" defaultOpen={false}>
+        <CollapsibleSection icon={Info} label={tr('About & Account')} defaultOpen={false}>
           {(user?.role === 'student' || user?.role === 'volunteer') && <BlockedOrganizers />}
           {isNativeApp ? (
             // The app has no website footer, so the links it carried live here.
@@ -1711,9 +1711,9 @@ export default function Settings() {
             </Card>
           ) : (
             <Card>
-              <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Info className="w-4 h-4 text-brand-600" /> About</h3>
+              <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Info className="w-4 h-4 text-brand-600" />{' '}{tr('About')}</h3>
               <p className="text-sm text-earth-500 dark:text-earth-400">
-                VolunTrack co. Visit the <Link to="/about" className="text-brand-700 dark:text-brand-300 hover:underline">About page</Link> or <Link to="/contact" className="text-brand-700 dark:text-brand-300 hover:underline">get in touch</Link>.
+                {tr('VolunTrack co.')}{' '}<Link to="/about" className="text-brand-700 dark:text-brand-300 hover:underline">{tr('About')}</Link>{' · '}<Link to="/contact" className="text-brand-700 dark:text-brand-300 hover:underline">{tr('Contact us')}</Link>
               </p>
             </Card>
           )}
@@ -1723,25 +1723,25 @@ export default function Settings() {
               onClick={() => { logout(); nav('/login') }}
               className="btn-danger w-full"
             >
-              <LogOut className="w-4 h-4" /> Sign out
+              <LogOut className="w-4 h-4" />{' '}{tr('Sign out')}
             </button>
           </Card>
 
           <Card className="border-red-500/30 bg-red-950/10">
             <div className="inline-flex items-center gap-3 rounded-3xl border border-red-500/40 bg-red-600/10 px-4 py-3 text-sm font-semibold text-red-100 shadow-sm shadow-red-500/10 mb-4">
               <span className="inline-flex h-3 w-3 rounded-full bg-red-400 shadow-red-500/30 shadow-md" />
-              <span className="uppercase tracking-[0.22em] text-red-100/90">Warning</span>
-              <span className="text-red-100 max-w-xl">Deleting your account erases it from this device and from our servers, and cannot be undone.</span>
+              <span className="uppercase tracking-[0.22em] text-red-100/90">{tr('Warning')}</span>
+              <span className="text-red-100 max-w-xl">{tr('Deleting your account erases it from this device and from our servers, and cannot be undone.')}</span>
             </div>
-            <h3 className="font-display font-semibold mb-3 text-red-300">Delete account</h3>
+            <h3 className="font-display font-semibold mb-3 text-red-300">{tr('Delete account')}</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Remove your account and your VolunTrack data — from this device and, if you have an account with us, from our servers too. This action cannot be undone.
+              {tr('Remove your account and your VolunTrack data — from this device and, if you have an account with us, from our servers too. This action cannot be undone.')}
             </p>
             {confirmDelete ? (
               <div className="space-y-4">
                 <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-4 text-red-100">
-                  <p className="font-semibold">Confirm account deletion</p>
-                  <p className="text-sm text-red-100/80">This is permanent. Your volunteer logs, goals, achievements, and reminder data will be erased.</p>
+                  <p className="font-semibold">{tr('Confirm account deletion')}</p>
+                  <p className="text-sm text-red-100/80">{tr('This is permanent. Your volunteer logs, goals, achievements, and reminder data will be erased.')}</p>
                   {hasServerAccount && user?.role !== 'parent' && (
                     <p className="text-sm text-red-100/80 mt-2">{tr("We'll email you a copy of your logged hours as a spreadsheet, so you keep a record.")}</p>
                   )}
@@ -1763,26 +1763,26 @@ export default function Settings() {
                   </div>
                 )}
                 <div className="space-y-3">
-                  <div className="text-sm text-earth-200">Type <span className="font-semibold text-black">delete</span> to confirm.</div>
+                  <div className="text-sm text-earth-200">{tr('Type {word} to confirm.', { word: 'delete' })}</div>
                   <input
                     value={deleteConfirmationText}
                     onChange={(e) => setDeleteConfirmationText(e.target.value)}
-                    placeholder="Type delete to confirm"
+                    placeholder={tr('Type delete to confirm')}
                     className="input w-full bg-slate-900/80 text-white border-white/10"
                   />
                   {hasServerAccount && (
                     <>
                       <div className="text-sm text-earth-200">
                         {isSsoAccount
-                          ? <>Then type your email address, <span className="font-semibold text-black">{user?.email}</span>.</>
-                          : 'Then re-enter your password.'}
+                          ? tr('Then type your email address, {email}.', { email: user?.email || '' })
+                          : tr('Then re-enter your password.')}
                       </div>
                       <input
                         type={isSsoAccount ? 'email' : 'password'}
                         autoComplete={isSsoAccount ? 'email' : 'current-password'}
                         value={deleteSecret}
                         onChange={(e) => setDeleteSecret(e.target.value)}
-                        placeholder={isSsoAccount ? 'your email address' : 'Your password'}
+                        placeholder={isSsoAccount ? tr('your email address') : tr('Your password')}
                         className="input w-full bg-slate-900/80 text-white border-white/10"
                       />
                     </>
@@ -1795,14 +1795,14 @@ export default function Settings() {
                     disabled={deleteBusy || deleteConfirmationText.trim().toLowerCase() !== 'delete' || (hasServerAccount && !deleteSecret)}
                     className="btn-danger w-full disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {deleteBusy ? 'Deleting…' : 'Yes, delete everything'}
+                    {deleteBusy ? tr('Deleting…') : tr('Yes, delete everything')}
                   </button>
-                  <button onClick={() => { setConfirmDelete(false); setDeleteConfirmationText(''); setDeleteSecret(''); setDeleteError('') }} className="btn-secondary w-full">Cancel</button>
+                  <button onClick={() => { setConfirmDelete(false); setDeleteConfirmationText(''); setDeleteSecret(''); setDeleteError('') }} className="btn-secondary w-full">{tr('Cancel')}</button>
                 </div>
               </div>
             ) : (
               <button onClick={() => setConfirmDelete(true)} className="btn-danger w-full">
-                <Trash2 className="w-4 h-4 mr-2" /> Delete account
+                <Trash2 className="w-4 h-4 mr-2" />{' '}{tr('Delete account')}
               </button>
             )}
           </Card>
