@@ -4,6 +4,7 @@ import { Mail, Target } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { printSchoolCertificates } from '@/lib/export.js'
 import { fmtDate } from '@/utils/date.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
@@ -43,7 +44,7 @@ export default function StudentProgressPanel({ onSetRequirement }) {
   }, [data, behindOnly])
 
   if (error) return <Card><p className="text-sm text-red-400">{error}</p></Card>
-  if (!data) return <Card><p className="text-sm text-earth-500 py-6 text-center">Loading…</p></Card>
+  if (!data) return <Card><p className="text-sm text-earth-500 py-6 text-center">{tr('Loading…')}</p></Card>
 
   const students = data.students
   const withGoal = students.filter((s) => s.target)
@@ -79,9 +80,9 @@ export default function StudentProgressPanel({ onSetRequirement }) {
     return (
       <Card className="text-center py-8">
         <Target className="w-8 h-8 mx-auto text-earth-500 mb-2" />
-        <p className="font-medium">No hour requirement set yet</p>
-        <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">Set how many hours your students need (one total, or per grade) to see who is behind.</p>
-        {onSetRequirement && <button onClick={onSetRequirement} className="btn-primary btn-sm mt-4">Set the requirement</button>}
+        <p className="font-medium">{tr('No hour requirement set yet')}</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{tr('Set how many hours your students need (one total, or per grade) to see who is behind.')}</p>
+        {onSetRequirement && <button onClick={onSetRequirement} className="btn-primary btn-sm mt-4">{tr('Set the requirement')}</button>}
       </Card>
     )
   }
@@ -90,10 +91,10 @@ export default function StudentProgressPanel({ onSetRequirement }) {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-brand-600" /> Hours progress</h3>
+          <h3 className="font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-brand-600" />{' '}{tr('Hours progress')}</h3>
           <p className="text-sm text-earth-500 dark:text-earth-400">
-            {behind.length} of {withGoal.length} students still have hours to go
-            {data.deadline && <> · due {fmtDate(data.deadline)}{daysLeft != null && (daysLeft >= 0 ? ` (${daysLeft} days left)` : ' (past due)')}</>}
+            {tr('{n} of {total} students still have hours to go', { n: behind.length, total: withGoal.length })}
+            {data.deadline && <> · {tr('due {date}', { date: fmtDate(data.deadline) })}{daysLeft != null && (daysLeft >= 0 ? ` ${tr('({n} days left)', { n: daysLeft })}` : ` ${tr('(past due)')}`)}</>}
           </p>
         </div>
         {withGoal.length > behind.length && (
@@ -102,19 +103,19 @@ export default function StudentProgressPanel({ onSetRequirement }) {
             className="btn-secondary btn-sm"
             onClick={() => {
               const done = withGoal.filter((s) => s.remaining <= 0).sort((a, b) => String(a.name).localeCompare(String(b.name)))
-              if (!printSchoolCertificates({ schoolName: data.schoolName, students: done, certificate: data.certificate })) window.alert('Allow pop-ups for this site to print the certificates.')
+              if (!printSchoolCertificates({ schoolName: data.schoolName, students: done, certificate: data.certificate })) window.alert(tr('Allow pop-ups for this site to print the certificates.'))
             }}
           >
-            Print certificates ({withGoal.length - behind.length})
+            {tr('Print certificates ({n})', { n: withGoal.length - behind.length })}
           </button>
         )}
         <label className="flex items-center gap-2 text-sm text-earth-300">
-          <input type="checkbox" checked={behindOnly} onChange={(e) => setBehindOnly(e.target.checked)} /> Only students with hours to go
+          <input type="checkbox" checked={behindOnly} onChange={(e) => setBehindOnly(e.target.checked)} />{' '}{tr('Only students with hours to go')}
         </label>
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-emerald-400 py-6 text-center">Everyone has met their hours. 🎉</p>
+        <p className="text-sm text-emerald-400 py-6 text-center">{tr('Everyone has met their hours. 🎉')}</p>
       ) : (
         <ul className="divide-y divide-white/10">
           {rows.map((s) => {
@@ -132,11 +133,11 @@ export default function StudentProgressPanel({ onSetRequirement }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                     <span className="font-medium truncate">
-                      {s.name}{s.grade ? <span className="text-xs text-earth-500"> · Grade {s.grade}</span> : null}
+                      {s.name}{s.grade ? <span className="text-xs text-earth-500"> · {tr('Grade {grade}', { grade: s.grade })}</span> : null}
                       {s.award && <span className="ml-2 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-brand-600/15 text-brand-600 dark:text-brand-300">{s.award}</span>}
                     </span>
                     <span className="text-sm whitespace-nowrap">
-                      {s.target ? <>{s.hours} / {s.target} h{s.remaining > 0 && <span className="text-amber-300"> · {s.remaining} to go</span>}</> : <span className="text-earth-500">No goal for this grade</span>}
+                      {s.target ? <>{s.hours} / {s.target} h{s.remaining > 0 && <span className="text-amber-300"> · {tr('{n} to go', { n: s.remaining })}</span>}</> : <span className="text-earth-500">{tr('No goal for this grade')}</span>}
                     </span>
                   </div>
                   {s.target ? (
@@ -145,10 +146,10 @@ export default function StudentProgressPanel({ onSetRequirement }) {
                     </div>
                   ) : null}
                   <p className="text-xs text-earth-500 mt-1">
-                    {s.lastLogDate ? `Last logged ${fmtDate(s.lastLogDate)}` : 'Nothing logged yet'}
+                    {s.lastLogDate ? `Last logged ${fmtDate(s.lastLogDate)}` : tr('Nothing logged yet')}
                     {weeksLeft && s.remaining > 0 ? ` · needs ${Math.ceil((s.remaining / weeksLeft) * 4) / 4} h/week` : ''}
-                    {s.categoryShort?.length > 0 && <span className="text-amber-300">{' · still needs '}{s.categoryShort.map((c) => `${c.remaining} h ${c.category}`).join(', ')}</span>}
-                    {s.consentPending ? ' · waiting for parent approval' : recentlyReminded(s) ? ` · reminded ${fmtDate(String(s.remindedAt).slice(0, 10))}` : ''}
+                    {s.categoryShort?.length > 0 && <span className="text-amber-300">{` · ${tr('still needs')} `}{s.categoryShort.map((c) => `${c.remaining} h ${c.category}`).join(', ')}</span>}
+                    {s.consentPending ? ` · ${tr('waiting for parent approval')}` : recentlyReminded(s) ? ` · ${tr('reminded {date}', { date: fmtDate(String(s.remindedAt).slice(0, 10)) })}` : ''}
                   </p>
                 </div>
               </li>
@@ -159,19 +160,19 @@ export default function StudentProgressPanel({ onSetRequirement }) {
 
       {remindable.length > 0 && (
         <div className="mt-4 border-t border-white/10 pt-3 flex flex-wrap items-center gap-2">
-          <button onClick={() => setPicked(new Set(remindable.map((s) => s.id)))} className="btn-ghost btn-sm">Select all ({remindable.length})</button>
+          <button onClick={() => setPicked(new Set(remindable.map((s) => s.id)))} className="btn-ghost btn-sm">{tr('Select all ({n})', { n: remindable.length })}</button>
           {confirming ? (
             <>
-              <span className="text-sm text-earth-300">Email {chosen.length} student{chosen.length === 1 ? '' : 's'} how many hours they have left?</span>
-              <button onClick={send} disabled={sending} className="btn-primary btn-sm">{sending ? 'Sending…' : 'Yes, send'}</button>
-              <button onClick={() => setConfirming(false)} disabled={sending} className="btn-ghost btn-sm">No</button>
+              <span className="text-sm text-earth-300">{chosen.length === 1 ? tr('Email 1 student how many hours they have left?') : tr('Email {n} students how many hours they have left?', { n: chosen.length })}</span>
+              <button onClick={send} disabled={sending} className="btn-primary btn-sm">{sending ? tr('Sending…') : tr('Yes, send')}</button>
+              <button onClick={() => setConfirming(false)} disabled={sending} className="btn-ghost btn-sm">{tr('No')}</button>
             </>
           ) : (
             <button onClick={() => { setResult(null); setConfirming(true) }} disabled={chosen.length === 0} className="btn-primary btn-sm inline-flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5" /> Email reminder{chosen.length ? ` (${chosen.length})` : ''}
+              <Mail className="w-3.5 h-3.5" />{' '}{tr('Email reminder')}{chosen.length ? ` (${chosen.length})` : ''}
             </button>
           )}
-          <p className="w-full text-xs text-earth-500">Each student gets at most one reminder every {gapDays} days.</p>
+          <p className="w-full text-xs text-earth-500">{tr('Each student gets at most one reminder every {n} days.', { n: gapDays })}</p>
         </div>
       )}
       {result && <p className={`text-sm mt-2 ${result.ok ? 'text-emerald-300' : 'text-red-400'}`} role="status">{result.text}</p>}

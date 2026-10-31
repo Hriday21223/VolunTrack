@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, Download, Loader2 } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 /**
  * Full-screen preview for a generated PDF. Schools and orgs review invoices
@@ -66,17 +67,17 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
       className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={title ? `Preview of ${title}` : 'PDF preview'}
+      aria-label={title ? `Preview of ${title}` : tr('PDF preview')}
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.() }}
     >
       <div className="relative w-full max-w-5xl rounded-2xl border border-white/10 bg-[#0f1813] p-4 sm:p-6 shadow-soft text-white">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h2 className="text-sm font-medium truncate">{title || 'Preview'}</h2>
+          <h2 className="text-sm font-medium truncate">{title || tr('Preview')}</h2>
           <div className="flex items-center gap-2">
             <button type="button" onClick={download} disabled={!url} className="btn-sm btn-ghost">
-              <Download className="w-4 h-4 mr-1" /> Download
+              <Download className="w-4 h-4 mr-1" />{' '}{tr('Download')}
             </button>
-            <button type="button" onClick={onClose} aria-label="Close" className="p-1 text-earth-400 hover:text-white transition-colors">
+            <button type="button" onClick={onClose} aria-label={tr('Close')} className="p-1 text-earth-400 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -89,7 +90,7 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
               Download button above stays the fallback. */}
           {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
               every preview blank on the live site. frame-src allows blob:. */}
-          {url && <iframe src={url} title={title || 'PDF preview'} className="w-full h-full" />}
+          {url && <iframe src={url} title={title || tr('PDF preview')} className="w-full h-full" />}
         </div>
       </div>
     </div>

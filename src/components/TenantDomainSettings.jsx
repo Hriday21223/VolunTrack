@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, Copy, Globe, Loader2, RefreshCw, ShieldCheck, ShieldAlert, Trash2 } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -12,10 +13,10 @@ function authHeaders() {
 }
 
 const STATUS_LABEL = {
-  pending: { text: 'Awaiting DNS', tone: 'amber' },
-  verifying: { text: 'Issuing certificate', tone: 'amber' },
-  active: { text: 'Live', tone: 'emerald' },
-  disabled: { text: 'Disabled', tone: 'slate' },
+  pending: { text: tr('Awaiting DNS'), tone: 'amber' },
+  verifying: { text: tr('Issuing certificate'), tone: 'amber' },
+  active: { text: tr('Live'), tone: 'emerald' },
+  disabled: { text: tr('Disabled'), tone: 'slate' },
 }
 
 function CopyRow({ label, value }) {
@@ -100,7 +101,7 @@ export default function TenantDomainSettings() {
   }
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading domains…</div>
+    return <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />{' '}{tr('Loading domains…')}</div>
   }
 
   return (
@@ -110,8 +111,7 @@ export default function TenantDomainSettings() {
 
       {!provisioningConfigured && (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-200">
-          Custom domains can be claimed and their ownership verified, but this server
-          cannot issue certificates yet, so a domain cannot go live. Contact VolunTrack support.
+          {tr('Custom domains can be claimed and their ownership verified, but this server cannot issue certificates yet, so a domain cannot go live. Contact VolunTrack support.')}
         </div>
       )}
 
@@ -134,20 +134,19 @@ export default function TenantDomainSettings() {
 
             <div className="flex items-center gap-2 text-sm">
               {d.verifiedAt
-                ? <><ShieldCheck className="h-4 w-4 text-emerald-500" /> <span className="text-slate-600 dark:text-slate-300">Ownership verified</span></>
-                : <><ShieldAlert className="h-4 w-4 text-amber-500" /> <span className="text-slate-600 dark:text-slate-300">Ownership not verified yet</span></>}
+                ? <><ShieldCheck className="h-4 w-4 text-emerald-500" /> <span className="text-slate-600 dark:text-slate-300">{tr('Ownership verified')}</span></>
+                : <><ShieldAlert className="h-4 w-4 text-amber-500" /> <span className="text-slate-600 dark:text-slate-300">{tr('Ownership not verified yet')}</span></>}
             </div>
 
             {d.status !== 'active' && (
               <div className="space-y-2 rounded-xl bg-slate-50 dark:bg-slate-900/40 p-3">
                 <p className="text-xs text-slate-500">
-                  Add these two records at your DNS provider. The TXT record proves you own the
-                  domain; the CNAME sends visitors to VolunTrack.
+                  {tr('Add these two records at your DNS provider. The TXT record proves you own the domain; the CNAME sends visitors to VolunTrack.')}
                 </p>
-                <CopyRow label="TXT name" value={d.dns.txtName} />
-                <CopyRow label="TXT value" value={d.dns.txtValue} />
+                <CopyRow label={tr('TXT name')} value={d.dns.txtName} />
+                <CopyRow label={tr('TXT value')} value={d.dns.txtValue} />
                 <CopyRow label="CNAME" value={d.dns.cnameName} />
-                <CopyRow label="Points to" value={d.dns.cnameTarget || '(not configured on this server yet)'} />
+                <CopyRow label={tr('Points to')} value={d.dns.cnameTarget || '(not configured on this server yet)'} />
               </div>
             )}
 
@@ -155,18 +154,18 @@ export default function TenantDomainSettings() {
               {d.status !== 'active' && (
                 <button type="button" className="btn-sm btn-primary" disabled={busy}
                   onClick={() => call(`/tenant/domains/${d.id}/verify`, { method: 'POST' }, 'Verified. Certificate issuance started.')}>
-                  Verify DNS
+                  {tr('Verify DNS')}
                 </button>
               )}
               {d.status === 'verifying' && (
                 <button type="button" className="btn-sm btn-ghost" disabled={busy}
                   onClick={() => call(`/tenant/domains/${d.id}/refresh`, { method: 'POST' })}>
-                  <RefreshCw className="h-3.5 w-3.5" /> Check certificate
+                  <RefreshCw className="h-3.5 w-3.5" />{' '}{tr('Check certificate')}
                 </button>
               )}
               <button type="button" className="btn-sm btn-ghost text-red-600" disabled={busy}
                 onClick={() => call(`/tenant/domains/${d.id}`, { method: 'DELETE' }, 'Domain removed.')}>
-                <Trash2 className="h-3.5 w-3.5" /> Remove
+                <Trash2 className="h-3.5 w-3.5" />{' '}{tr('Remove')}
               </button>
             </div>
           </div>
@@ -174,20 +173,19 @@ export default function TenantDomainSettings() {
       })}
 
       <form onSubmit={add} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-        <div className="font-semibold">Add a custom domain</div>
+        <div className="font-semibold">{tr('Add a custom domain')}</div>
         <p className="text-sm text-slate-500">
-          A hostname you already own, e.g. <code>volunteer.yourschool.edu</code>. You will need
-          access to its DNS settings.
+          {tr('A hostname you already own, e.g. {example}. You will need access to its DNS settings.', { example: 'volunteer.yourschool.edu' })}
         </p>
         <input
           className="input" placeholder="volunteer.yourschool.edu"
           value={hostname} onChange={(e) => setHostname(e.target.value)}
         />
         <button type="submit" className="btn-primary" disabled={busy || !hostname.trim()}>
-          {busy ? 'Working…' : 'Add domain'}
+          {busy ? tr('Working…') : tr('Add domain')}
         </button>
         {cnameTarget && (
-          <p className="text-xs text-slate-500">Domains point to <code>{cnameTarget}</code>.</p>
+          <p className="text-xs text-slate-500">{tr('Domains point to')}{' '}<code>{cnameTarget}</code>.</p>
         )}
       </form>
     </div>

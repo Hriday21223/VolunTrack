@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { XCircle, X } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 // Common reasons a school sends back a report a student submitted (#583).
 // Picking one fills the box, which stays editable.
 const QUICK_REASONS = [
-  'A supervisor signature is missing.',
-  "The hours don't match what you logged.",
-  'Some entries are from a different school year.',
-  'Some entries are hard to read. Please add more detail.',
+  tr('A supervisor signature is missing.'),
+  tr('The hours don\'t match what you logged.'),
+  tr('Some entries are from a different school year.'),
+  tr('Some entries are hard to read. Please add more detail.'),
 ]
 
 // Reject a submitted report, saying why. The reason goes to the student
@@ -20,7 +21,7 @@ export default function RejectReportDialog({ report, onClose, onReject }) {
   const send = async (e) => {
     e.preventDefault()
     const text = reason.trim()
-    if (!text) { setError('Say why, so the student can fix it.'); return }
+    if (!text) { setError(tr('Say why, so the student can fix it.')); return }
     setBusy(true)
     setError('')
     try {
@@ -43,11 +44,11 @@ export default function RejectReportDialog({ report, onClose, onReject }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 id="reject-report-title" className="font-display font-semibold text-lg flex items-center gap-2">
-              <XCircle className="w-4 h-4 text-red-400" /> Send this report back
+              <XCircle className="w-4 h-4 text-red-400" />{' '}{tr('Send this report back')}
             </h2>
             <p className="text-sm text-earth-400 mt-0.5 truncate">{report.user_name ? `${report.user_name} · ` : ''}{report.filename}</p>
           </div>
-          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost p-1" aria-label="Close"><X className="w-4 h-4" /></button>
+          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost p-1" aria-label={tr('Close')}><X className="w-4 h-4" /></button>
         </div>
         <div className="flex flex-wrap gap-2">
           {QUICK_REASONS.map((r) => (
@@ -62,20 +63,20 @@ export default function RejectReportDialog({ report, onClose, onReject }) {
           ))}
         </div>
         <label className="block">
-          <span className="text-sm font-medium">Why are you sending it back?</span>
+          <span className="text-sm font-medium">{tr('Why are you sending it back?')}</span>
           <textarea
             className="input mt-1 min-h-[90px] text-sm"
             maxLength={500}
             value={reason}
             onChange={(e) => { setReason(e.target.value); setError('') }}
-            placeholder="The student sees this, so say what to fix."
+            placeholder={tr('The student sees this, so say what to fix.')}
             autoFocus
           />
         </label>
         {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost flex-1">Cancel</button>
-          <button type="submit" disabled={busy} className="btn-danger flex-1">{busy ? 'Sending…' : 'Send back'}</button>
+          <button type="button" onClick={onClose} disabled={busy} className="btn-ghost flex-1">{tr('Cancel')}</button>
+          <button type="submit" disabled={busy} className="btn-danger flex-1">{busy ? tr('Sending…') : tr('Send back')}</button>
         </div>
       </form>
     </div>

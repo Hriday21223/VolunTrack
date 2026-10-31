@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -27,17 +28,17 @@ export default function CompareSchoolsCard() {
 
   return (
     <Card>
-      <h3 className="font-display font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-brand-600" /> Compare schools</h3>
-      <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5 mb-4">Hours since {since}. Active means logged hours in the last 30 days.</p>
+      <h3 className="font-display font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-brand-600" />{' '}{tr('Compare schools')}</h3>
+      <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5 mb-4">{tr('Hours since {date}. Active means logged hours in the last 30 days.', { date: since })}</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-earth-500 dark:text-earth-400 text-left">
             <tr>
-              <th className="py-2 pr-3 font-medium">School</th>
-              <th className="py-2 pr-3 font-medium w-1/3">Hours this year</th>
-              <th className="py-2 pr-3 font-medium text-right">Students</th>
-              <th className="py-2 pr-3 font-medium text-right">Active</th>
-              <th className="py-2 font-medium text-right">Met requirement</th>
+              <th className="py-2 pr-3 font-medium">{tr('School')}</th>
+              <th className="py-2 pr-3 font-medium w-1/3">{tr('Hours this year')}</th>
+              <th className="py-2 pr-3 font-medium text-right">{tr('Students')}</th>
+              <th className="py-2 pr-3 font-medium text-right">{tr('Active')}</th>
+              <th className="py-2 font-medium text-right">{tr('Met requirement')}</th>
             </tr>
           </thead>
           <tbody>
@@ -54,7 +55,7 @@ export default function CompareSchoolsCard() {
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">{r.students}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{r.active} <span className="text-earth-400">({pct(r.active, r.students)})</span></td>
-                <td className="py-2 text-right tabular-nums">{r.withGoal ? <>{r.met} of {r.withGoal} <span className="text-earth-400">({pct(r.met, r.withGoal)})</span></> : <span className="text-earth-400">No requirement</span>}</td>
+                <td className="py-2 text-right tabular-nums">{r.withGoal ? <>{r.met} of {r.withGoal} <span className="text-earth-400">({pct(r.met, r.withGoal)})</span></> : <span className="text-earth-400">{tr('No requirement')}</span>}</td>
               </tr>
             ))}
           </tbody>

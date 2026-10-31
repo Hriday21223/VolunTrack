@@ -4,6 +4,7 @@ import Card from '@/components/Card.jsx'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import { graduationReportCSV, graduationReportPDF, graduationSlug } from '@/lib/export.js'
 import { fmtDate, fmtHours } from '@/utils/date.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
@@ -53,15 +54,15 @@ export default function GraduationReportPanel({ onSetRequirement }) {
   useEffect(() => { load() }, [load])
 
   if (error) return <Card><p className="text-sm text-red-400">{error}</p></Card>
-  if (!report) return <Card><p className="text-sm text-earth-500 py-6 text-center">Loading…</p></Card>
+  if (!report) return <Card><p className="text-sm text-earth-500 py-6 text-center">{tr('Loading…')}</p></Card>
 
   if (!report.requirementSet) {
     return (
       <Card className="text-center py-8">
         <Target className="w-8 h-8 mx-auto text-earth-500 mb-2" />
-        <p className="font-medium">No hour requirement set yet</p>
-        <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">Set how many hours your students need (one total, or per grade) to see who met it.</p>
-        {onSetRequirement && <button onClick={onSetRequirement} className="btn-primary btn-sm mt-4">Set the requirement</button>}
+        <p className="font-medium">{tr('No hour requirement set yet')}</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{tr('Set how many hours your students need (one total, or per grade) to see who met it.')}</p>
+        {onSetRequirement && <button onClick={onSetRequirement} className="btn-primary btn-sm mt-4">{tr('Set the requirement')}</button>}
       </Card>
     )
   }
@@ -83,43 +84,45 @@ export default function GraduationReportPanel({ onSetRequirement }) {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
-          <h3 className="font-semibold flex items-center gap-2"><GraduationCap className="w-4 h-4 text-brand-600" /> Graduation report</h3>
+          <h3 className="font-semibold flex items-center gap-2"><GraduationCap className="w-4 h-4 text-brand-600" />{' '}{tr('Graduation report')}</h3>
           <p className="text-sm text-earth-500 dark:text-earth-400">
-            Who in a grade met the hour requirement{report.deadline ? `, due ${fmtDate(report.deadline)}` : ''}.
+            {report.deadline
+              ? tr('Who in a grade met the hour requirement, due {date}.', { date: fmtDate(report.deadline) })
+              : tr('Who in a grade met the hour requirement.')}
           </p>
         </div>
         {report.grades.length > 0 && (
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="label" htmlFor="grad-grade">Grade</label>
+              <label className="label" htmlFor="grad-grade">{tr('Grade')}</label>
               <select id="grad-grade" className="input py-1.5" value={report.grade || ''} onChange={(e) => setGrade(e.target.value)}>
                 {report.grades.map((g) => (
                   <option key={g.key} value={g.key}>{g.label} ({g.count})</option>
                 ))}
               </select>
             </div>
-            <div role="group" aria-label="Which hours count" className="flex rounded-xl overflow-hidden border border-white/10">
-              <button type="button" onClick={() => setMode('approved')} aria-pressed={mode === 'approved'} className={`btn-sm rounded-none ${mode === 'approved' ? 'btn-primary' : 'btn-ghost'}`}>Approved hours only</button>
-              <button type="button" onClick={() => setMode('counted')} aria-pressed={mode === 'counted'} className={`btn-sm rounded-none ${mode === 'counted' ? 'btn-primary' : 'btn-ghost'}`}>Approved + pending</button>
+            <div role="group" aria-label={tr('Which hours count')} className="flex rounded-xl overflow-hidden border border-white/10">
+              <button type="button" onClick={() => setMode('approved')} aria-pressed={mode === 'approved'} className={`btn-sm rounded-none ${mode === 'approved' ? 'btn-primary' : 'btn-ghost'}`}>{tr('Approved hours only')}</button>
+              <button type="button" onClick={() => setMode('counted')} aria-pressed={mode === 'counted'} className={`btn-sm rounded-none ${mode === 'counted' ? 'btn-primary' : 'btn-ghost'}`}>{tr('Approved + pending')}</button>
             </div>
           </div>
         )}
       </div>
 
       {report.grades.length === 0 ? (
-        <p className="text-sm text-earth-500 py-6 text-center">None of your students has a grade on their account yet, so there is nothing to group.</p>
+        <p className="text-sm text-earth-500 py-6 text-center">{tr('None of your students has a grade on their account yet, so there is nothing to group.')}</p>
       ) : target == null ? (
         <p className="text-sm text-earth-500 py-6 text-center">
-          No hour requirement applies to {gradeName}. Add one for this grade (or a school-wide total) in Requirements.
-          {onSetRequirement && <> <button onClick={onSetRequirement} className="text-brand-400 hover:underline">Set the requirement</button></>}
+          {tr('No hour requirement applies to {grade}. Add one for this grade (or a school-wide total) in Requirements.', { grade: gradeName })}
+          {onSetRequirement && <> <button onClick={onSetRequirement} className="text-brand-400 hover:underline">{tr('Set the requirement')}</button></>}
         </p>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <p className="text-sm" role="status">
-              <strong>{summary.met} of {summary.students}</strong> met the {target}-hour requirement
+              <strong>{tr('{n} of {total}', { n: summary.met, total: summary.students })}</strong>{' '}{tr('met the {hours}-hour requirement', { hours: target })}
               {summary.missed > 0 && <span className="text-amber-300"> · {summary.missed} missed</span>}
-              <span className="text-earth-500"> · counting {report.hoursMode === 'counted' ? 'approved + pending' : 'approved'} hours</span>
+              <span className="text-earth-500"> · {report.hoursMode === 'counted' ? tr('counting approved + pending hours') : tr('counting approved hours')}</span>
               {loading && <Loader2 className="inline w-3.5 h-3.5 ml-2 animate-spin" />}
             </p>
             {students.length > 0 && (
@@ -128,28 +131,28 @@ export default function GraduationReportPanel({ onSetRequirement }) {
                   <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
                 </button>
                 <button type="button" className="btn-sm btn-ghost" onClick={() => setPreview(true)}>
-                  <Eye className="h-3.5 w-3.5" /> Preview / print
+                  <Eye className="h-3.5 w-3.5" />{' '}{tr('Preview / print')}
                 </button>
                 <button type="button" className="btn-sm btn-primary" disabled={pdfBusy} onClick={savePdf}>
-                  <FileText className="h-3.5 w-3.5" /> {pdfBusy ? 'Building…' : 'PDF'}
+                  <FileText className="h-3.5 w-3.5" /> {pdfBusy ? tr('Building…') : 'PDF'}
                 </button>
               </div>
             )}
           </div>
 
           {students.length === 0 ? (
-            <p className="text-sm text-earth-500 py-6 text-center">No students in {gradeName}.</p>
+            <p className="text-sm text-earth-500 py-6 text-center">{tr('No students in {grade}.', { grade: gradeName })}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-earth-500">
-                    <th className="py-2 pr-3">Student</th>
-                    <th className="py-2 pr-3 text-right">Approved</th>
-                    <th className="py-2 pr-3 text-right">Pending</th>
-                    <th className="py-2 pr-3 text-right">Counted</th>
-                    <th className="py-2 pr-3">Status</th>
-                    <th className="py-2 pr-3 text-right">Short by</th>
+                    <th className="py-2 pr-3">{tr('Student')}</th>
+                    <th className="py-2 pr-3 text-right">{tr('Approved')}</th>
+                    <th className="py-2 pr-3 text-right">{tr('Pending')}</th>
+                    <th className="py-2 pr-3 text-right">{tr('Counted')}</th>
+                    <th className="py-2 pr-3">{tr('Status')}</th>
+                    <th className="py-2 pr-3 text-right">{tr('Short by')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -164,8 +167,8 @@ export default function GraduationReportPanel({ onSetRequirement }) {
                       <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtHours(s.countedHours)}</td>
                       <td className="py-2 pr-3">
                         {s.met
-                          ? <span className="inline-block rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-xs font-medium">Met</span>
-                          : <span className="inline-block rounded-full bg-red-500/15 text-red-300 px-2 py-0.5 text-xs font-medium">Missed</span>}
+                          ? <span className="inline-block rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-xs font-medium">{tr('Met')}</span>
+                          : <span className="inline-block rounded-full bg-red-500/15 text-red-300 px-2 py-0.5 text-xs font-medium">{tr('Missed')}</span>}
                       </td>
                       <td className="py-2 pr-3 text-right whitespace-nowrap">{s.shortfall ? fmtHours(s.shortfall) : '—'}</td>
                     </tr>
@@ -175,7 +178,7 @@ export default function GraduationReportPanel({ onSetRequirement }) {
             </div>
           )}
           {report.ungraded > 0 && (
-            <p className="mt-3 text-xs text-earth-500">{report.ungraded} student{report.ungraded === 1 ? ' has' : 's have'} no grade on their account and {report.ungraded === 1 ? 'is' : 'are'} not in any grade's report.</p>
+            <p className="mt-3 text-xs text-earth-500">{report.ungraded === 1 ? tr('1 student has no grade on their account and is not in any grade’s report.') : tr('{n} students have no grade on their account and are not in any grade’s report.', { n: report.ungraded })}</p>
           )}
         </>
       )}

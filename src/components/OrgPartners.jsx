@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Handshake, Pencil, Trash2, Upload, Download, Plus, ExternalLink } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { parseCsv } from '@/lib/rosterCsv.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const EMPTY = { name: '', address: '', causes: '', contactName: '', contactEmail: '', website: '', notes: '' }
@@ -78,7 +79,7 @@ export default function OrgPartners() {
       const out = editing === 'new'
         ? await call('', { method: 'POST', body: JSON.stringify(body()) })
         : await call(`/${encodeURIComponent(editing)}`, { method: 'PATCH', body: JSON.stringify(body()) })
-      if (editing === 'new' && out.added === 0) setNote('That partner is already on the list.')
+      if (editing === 'new' && out.added === 0) setNote(tr('That partner is already on the list.'))
       setState(out)
       setEditing(null)
       setForm(EMPTY)
@@ -116,7 +117,7 @@ export default function OrgPartners() {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
-  if (!state) return <Card>{error ? <p className="text-sm text-red-500">{error}</p> : <p className="text-sm text-earth-500">Loading…</p>}</Card>
+  if (!state) return <Card>{error ? <p className="text-sm text-red-500">{error}</p> : <p className="text-sm text-earth-500">{tr('Loading…')}</p>}</Card>
   const field = (key, label, props = {}) => (
     <label className="block text-sm">
       <span className="label">{label}</span>
@@ -129,21 +130,21 @@ export default function OrgPartners() {
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="font-semibold flex items-center gap-2"><Handshake className="w-4 h-4 text-brand-600" /> Partner organizations</h3>
+            <h3 className="font-semibold flex items-center gap-2"><Handshake className="w-4 h-4 text-brand-600" />{' '}{tr('Partner organizations')}</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">
-              The nonprofits your schools work with, kept in one list. Students at your schools see it on Opportunities, and advisers also see the contact person.
+              {tr('The nonprofits your schools work with, kept in one list. Students at your schools see it on Opportunities, and advisers also see the contact person.')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-sm btn-primary" onClick={() => { setEditing('new'); setForm(EMPTY) }} disabled={busy || state.partners.length >= state.max}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add partner
+              <Plus className="w-3.5 h-3.5 mr-1" />{' '}{tr('Add partner')}
             </button>
             <button type="button" className="btn-sm btn-ghost" onClick={() => fileRef.current?.click()} disabled={busy}>
-              <Upload className="w-3.5 h-3.5 mr-1" /> Import CSV
+              <Upload className="w-3.5 h-3.5 mr-1" />{' '}{tr('Import CSV')}
             </button>
             {state.partners.length > 0 && (
               <button type="button" className="btn-sm btn-ghost" onClick={exportCsv}>
-                <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+                <Download className="w-3.5 h-3.5 mr-1" />{' '}{tr('Export CSV')}
               </button>
             )}
             <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={importFile} />
@@ -152,12 +153,12 @@ export default function OrgPartners() {
         <label className="mt-3 flex items-start gap-2 text-sm">
           <input type="checkbox" className="mt-1" checked={state.asPlaces} disabled={busy} onChange={(e) => toggle(e.target.checked)} />
           <span>
-            Count these as approved places at all my schools.
-            <span className="block text-xs text-earth-500 dark:text-earth-400">They are added to each school's own list. Hours from other places are still counted, but advisers see them flagged to check.</span>
+            {tr('Count these as approved places at all my schools.')}
+            <span className="block text-xs text-earth-500 dark:text-earth-400">{tr('They are added to each school\'s own list. Hours from other places are still counted, but advisers see them flagged to check.')}</span>
           </span>
         </label>
         <p className="text-xs text-earth-500 dark:text-earth-400 mt-2">
-          A partner whose contact email matches the account they post events from gets a <em>District partner</em> label on those events for your students. CSV columns: {CSV_HEAD.join(', ')} (separate causes with semicolons).
+          {tr('A partner whose contact email matches the account they post events from gets a “District partner” label on those events for your students.')}{' '}{tr('CSV columns: {columns} (separate causes with semicolons).', { columns: CSV_HEAD.join(', ') })}
         </p>
         {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
         {note && <p className="text-sm text-brand-600 dark:text-brand-300 mt-2">{note}</p>}
@@ -174,8 +175,8 @@ export default function OrgPartners() {
             {field('website', 'Website', { maxLength: 200, placeholder: 'https://' })}
             {field('notes', 'Notes for advisers', { maxLength: 500 })}
             <div className="sm:col-span-2 flex gap-2">
-              <button type="submit" className="btn-primary btn-sm" disabled={busy}>{editing === 'new' ? 'Add partner' : 'Save'}</button>
-              <button type="button" className="btn-ghost btn-sm" onClick={() => { setEditing(null); setForm(EMPTY) }}>Cancel</button>
+              <button type="submit" className="btn-primary btn-sm" disabled={busy}>{editing === 'new' ? tr('Add partner') : tr('Save')}</button>
+              <button type="button" className="btn-ghost btn-sm" onClick={() => { setEditing(null); setForm(EMPTY) }}>{tr('Cancel')}</button>
             </div>
           </form>
         </Card>
@@ -183,7 +184,7 @@ export default function OrgPartners() {
 
       <Card padded={false}>
         {state.partners.length === 0 ? (
-          <p className="p-4 text-sm text-earth-500">No partners yet. Add one, or import a CSV.</p>
+          <p className="p-4 text-sm text-earth-500">{tr('No partners yet. Add one, or import a CSV.')}</p>
         ) : (
           <ul className="divide-y divide-earth-100 dark:divide-[#1f2e25]">
             {state.partners.map((p) => (

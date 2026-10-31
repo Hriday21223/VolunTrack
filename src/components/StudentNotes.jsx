@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Lock, Trash2 } from 'lucide-react'
 import { notesCall as call } from '@/lib/studentNotes.js'
+import { tr } from '@/lib/i18n.js'
 
 // An adviser's private notes on one student (#567): only this school's
 // advisers see them. server/routes/school.js.
@@ -49,16 +50,16 @@ export default function StudentNotes({ studentId, onCount }) {
 
   return (
     <div className="mt-2 rounded-xl border border-earth-200 dark:border-white/10 p-3 space-y-3">
-      <p className="flex items-center gap-1.5 text-xs text-earth-500"><Lock className="w-3 h-3" /> Only your school’s advisers can see these notes.</p>
+      <p className="flex items-center gap-1.5 text-xs text-earth-500"><Lock className="w-3 h-3" />{' '}{tr('Only your school’s advisers can see these notes.')}</p>
       <form onSubmit={add} className="flex flex-col sm:flex-row gap-2">
-        <textarea className="input flex-1" rows={2} maxLength={1000} placeholder="e.g. Talked to mom about missing hours" value={text} onChange={(e) => setText(e.target.value)} />
-        <button type="submit" className="btn-primary btn-sm sm:self-start" disabled={busy || !text.trim()}>{busy ? 'Saving…' : 'Add note'}</button>
+        <textarea className="input flex-1" rows={2} maxLength={1000} placeholder={tr('e.g. Talked to mom about missing hours')} value={text} onChange={(e) => setText(e.target.value)} />
+        <button type="submit" className="btn-primary btn-sm sm:self-start" disabled={busy || !text.trim()}>{busy ? tr('Saving…') : tr('Add note')}</button>
       </form>
       {error && <p className="text-xs text-red-500">{error}</p>}
       {notes === null ? (
-        <p className="text-xs text-earth-500">Loading…</p>
+        <p className="text-xs text-earth-500">{tr('Loading…')}</p>
       ) : notes.length === 0 ? (
-        <p className="text-xs text-earth-500">No notes yet.</p>
+        <p className="text-xs text-earth-500">{tr('No notes yet.')}</p>
       ) : (
         <ul className="space-y-2">
           {notes.map((n) => (
@@ -68,7 +69,7 @@ export default function StudentNotes({ studentId, onCount }) {
                 <p className="text-xs text-earth-500">{n.authorName} · {new Date(n.createdAt).toLocaleDateString()}</p>
               </div>
               {n.mine && (
-                <button type="button" className="p-1 text-red-400 hover:text-red-300 shrink-0" onClick={() => remove(n.id)} aria-label="Delete note">
+                <button type="button" className="p-1 text-red-400 hover:text-red-300 shrink-0" onClick={() => remove(n.id)} aria-label={tr('Delete note')}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}

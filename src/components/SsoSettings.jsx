@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, Copy, Loader2, ShieldCheck, ShieldAlert, Trash2 } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -18,29 +19,29 @@ const PROVIDER_HELP = {
   google: {
     label: 'Google Workspace',
     steps: [
-      'Open Google Cloud Console → APIs & Services → Credentials.',
-      'Create Credentials → OAuth client ID → Application type "Web application".',
-      'Under "Authorized redirect URIs", add the redirect URI shown below.',
-      'Set the OAuth consent screen to "Internal" so only your school can sign in.',
-      'Copy the Client ID and Client secret into the form.',
+      tr('Open Google Cloud Console → APIs & Services → Credentials.'),
+      tr('Create Credentials → OAuth client ID → Application type \"Web application\".'),
+      tr('Under \"Authorized redirect URIs\", add the redirect URI shown below.'),
+      tr('Set the OAuth consent screen to \"Internal\" so only your school can sign in.'),
+      tr('Copy the Client ID and Client secret into the form.'),
     ],
   },
   microsoft: {
     label: 'Microsoft Entra ID',
     steps: [
-      'Open the Microsoft Entra admin center → App registrations → New registration.',
-      'Under "Redirect URI", choose "Web" and add the redirect URI shown below.',
-      'From the app Overview, copy the Application (client) ID and Directory (tenant) ID.',
-      'Go to Certificates & secrets → New client secret, then copy its Value.',
+      tr('Open the Microsoft Entra admin center → App registrations → New registration.'),
+      tr('Under \"Redirect URI\", choose \"Web\" and add the redirect URI shown below.'),
+      tr('From the app Overview, copy the Application (client) ID and Directory (tenant) ID.'),
+      tr('Go to Certificates & secrets → New client secret, then copy its Value.'),
     ],
   },
   oidc: {
-    label: 'Other (generic OIDC)',
+    label: tr('Other (generic OIDC)'),
     steps: [
-      'In your identity provider, create an OpenID Connect web application.',
-      'Add the redirect URI shown below as an allowed redirect/callback URL.',
-      'Copy the issuer URL, client ID, and client secret into the form.',
-      'Because we cannot read a domain claim from a generic provider, you will also need to add a DNS TXT record to prove you own your email domain.',
+      tr('In your identity provider, create an OpenID Connect web application.'),
+      tr('Add the redirect URI shown below as an allowed redirect/callback URL.'),
+      tr('Copy the issuer URL, client ID, and client secret into the form.'),
+      tr('Because we cannot read a domain claim from a generic provider, you will also need to add a DNS TXT record to prove you own your email domain.'),
     ],
   },
 }
@@ -122,7 +123,7 @@ export default function SsoSettings() {
       if (!res.ok) throw new Error(data.error || 'Could not create the connection.')
       setForm({ provider: 'google', displayName: '', clientId: '', clientSecret: '', tenantId: '', issuer: '', defaultRole: 'student' })
       await load()
-      setNotice('Connection saved. Run a test to verify it before enabling.')
+      setNotice(tr('Connection saved. Run a test to verify it before enabling.'))
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -156,7 +157,7 @@ export default function SsoSettings() {
       const res = await fetch(`${apiUrl}/auth/sso/connections/${id}`, { method: 'DELETE', headers: authHeaders() })
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not remove the connection.')
       await load()
-      setNotice('Connection removed.')
+      setNotice(tr('Connection removed.'))
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -195,7 +196,7 @@ export default function SsoSettings() {
   }
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading SSO settings…</div>
+    return <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />{' '}{tr('Loading SSO settings…')}</div>
   }
 
   const help = PROVIDER_HELP[form.provider]
@@ -206,12 +207,12 @@ export default function SsoSettings() {
       {notice && <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">{notice}</div>}
 
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
-        <div className="text-sm font-semibold">Redirect URI</div>
+        <div className="text-sm font-semibold">{tr('Redirect URI')}</div>
         <p className="mt-1 text-sm text-slate-500">
-          Paste this into your identity provider when you create the app. It is the same for every school.
+          {tr('Paste this into your identity provider when you create the app. It is the same for every school.')}
         </p>
         <div className="mt-3 flex items-center gap-2">
-          <code className="flex-1 overflow-x-auto rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs">{redirectUri || '(server URL not configured)'}</code>
+          <code className="flex-1 overflow-x-auto rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs">{redirectUri || tr('(server URL not configured)')}</code>
           <button type="button" onClick={copyRedirect} className="btn-sm btn-ghost shrink-0">
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           </button>
@@ -226,20 +227,20 @@ export default function SsoSettings() {
               <div className="text-xs text-slate-500">{PROVIDER_HELP[c.provider]?.label || c.provider} · {c.issuer}</div>
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${c.enabled ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
-              {c.enabled ? 'Enabled' : 'Disabled'}
+              {c.enabled ? tr('Enabled') : tr('Disabled')}
             </span>
           </div>
 
           <div className="flex items-center gap-2 text-sm">
             {c.lastTestOk
-              ? <><ShieldCheck className="h-4 w-4 text-emerald-500" /> <span className="text-slate-600 dark:text-slate-300">Last test passed</span></>
-              : <><ShieldAlert className="h-4 w-4 text-amber-500" /> <span className="text-slate-600 dark:text-slate-300">Not tested yet</span></>}
+              ? <><ShieldCheck className="h-4 w-4 text-emerald-500" /> <span className="text-slate-600 dark:text-slate-300">{tr('Last test passed')}</span></>
+              : <><ShieldAlert className="h-4 w-4 text-amber-500" /> <span className="text-slate-600 dark:text-slate-300">{tr('Not tested yet')}</span></>}
           </div>
 
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email domains</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{tr('Email domains')}</div>
             {c.domains.length === 0 ? (
-              <p className="mt-1 text-sm text-slate-500">None yet — run a test to verify your domain automatically.</p>
+              <p className="mt-1 text-sm text-slate-500">{tr('None yet — run a test to verify your domain automatically.')}</p>
             ) : (
               <ul className="mt-1 space-y-1 text-sm">
                 {c.domains.map((d) => (
@@ -247,7 +248,7 @@ export default function SsoSettings() {
                     <span className="font-mono">{d.domain}</span>
                     {d.verified
                       ? <span className="text-xs text-emerald-600 dark:text-emerald-300">verified</span>
-                      : <span className="text-xs text-amber-600 dark:text-amber-300">pending — add TXT record {d.verifyToken}</span>}
+                      : <span className="text-xs text-amber-600 dark:text-amber-300">{tr('pending — add TXT record')}{' '}{d.verifyToken}</span>}
                   </li>
                 ))}
               </ul>
@@ -255,17 +256,17 @@ export default function SsoSettings() {
           </div>
 
           <div className="flex flex-wrap gap-2 pt-1">
-            <button type="button" className="btn-sm btn-ghost" disabled={busy} onClick={() => test(c.id)}>Test connection</button>
+            <button type="button" className="btn-sm btn-ghost" disabled={busy} onClick={() => test(c.id)}>{tr('Test connection')}</button>
             <button
               type="button"
               className="btn-sm btn-primary"
               disabled={busy}
               onClick={() => patch(c.id, { enabled: !c.enabled })}
             >
-              {c.enabled ? 'Disable SSO' : 'Enable SSO'}
+              {c.enabled ? tr('Disable SSO') : tr('Enable SSO')}
             </button>
             <button type="button" className="btn-sm btn-ghost text-red-600" disabled={busy} onClick={() => remove(c.id)}>
-              <Trash2 className="h-4 w-4" /> Remove
+              <Trash2 className="h-4 w-4" />{' '}{tr('Remove')}
             </button>
           </div>
         </div>
@@ -273,10 +274,10 @@ export default function SsoSettings() {
 
       {connections.length === 0 && (
         <form onSubmit={create} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-4">
-          <div className="font-semibold">Connect your school&apos;s login</div>
+          <div className="font-semibold">{tr('Connect your school\'s login')}</div>
 
           <div>
-            <label className="label" htmlFor="sso-provider">Identity provider</label>
+            <label className="label" htmlFor="sso-provider">{tr('Identity provider')}</label>
             <select
               id="sso-provider"
               className="input"
@@ -285,7 +286,7 @@ export default function SsoSettings() {
             >
               <option value="google">Google Workspace</option>
               <option value="microsoft">Microsoft Entra ID (Microsoft 365)</option>
-              <option value="oidc">Other (generic OIDC)</option>
+              <option value="oidc">{tr('Other (generic OIDC)')}</option>
             </select>
           </div>
 
@@ -294,10 +295,10 @@ export default function SsoSettings() {
           </ol>
 
           <div>
-            <label className="label" htmlFor="sso-name">Button label</label>
+            <label className="label" htmlFor="sso-name">{tr('Button label')}</label>
             <input
               id="sso-name" className="input" required maxLength={100}
-              placeholder="Sign in with Lincoln High School"
+              placeholder={tr('Sign in with Lincoln High School')}
               value={form.displayName}
               onChange={(e) => setForm({ ...form, displayName: e.target.value })}
             />
@@ -305,7 +306,7 @@ export default function SsoSettings() {
 
           {form.provider === 'microsoft' && (
             <div>
-              <label className="label" htmlFor="sso-tenant">Directory (tenant) ID</label>
+              <label className="label" htmlFor="sso-tenant">{tr('Directory (tenant) ID')}</label>
               <input
                 id="sso-tenant" className="input" required
                 placeholder="00000000-0000-0000-0000-000000000000"
@@ -317,7 +318,7 @@ export default function SsoSettings() {
 
           {form.provider === 'oidc' && (
             <div>
-              <label className="label" htmlFor="sso-issuer">Issuer URL</label>
+              <label className="label" htmlFor="sso-issuer">{tr('Issuer URL')}</label>
               <input
                 id="sso-issuer" className="input" required type="url"
                 placeholder="https://idp.example.edu"
@@ -328,7 +329,7 @@ export default function SsoSettings() {
           )}
 
           <div>
-            <label className="label" htmlFor="sso-client-id">Client ID</label>
+            <label className="label" htmlFor="sso-client-id">{tr('Client ID')}</label>
             <input
               id="sso-client-id" className="input" required
               value={form.clientId}
@@ -337,29 +338,29 @@ export default function SsoSettings() {
           </div>
 
           <div>
-            <label className="label" htmlFor="sso-client-secret">Client secret</label>
+            <label className="label" htmlFor="sso-client-secret">{tr('Client secret')}</label>
             <input
               id="sso-client-secret" className="input" required type="password"
               value={form.clientSecret}
               onChange={(e) => setForm({ ...form, clientSecret: e.target.value })}
             />
-            <p className="mt-1 text-xs text-slate-500">Stored encrypted. It is never shown again after saving.</p>
+            <p className="mt-1 text-xs text-slate-500">{tr('Stored encrypted. It is never shown again after saving.')}</p>
           </div>
 
           <div>
-            <label className="label" htmlFor="sso-role">Role for new accounts</label>
+            <label className="label" htmlFor="sso-role">{tr('Role for new accounts')}</label>
             <select
               id="sso-role" className="input"
               value={form.defaultRole}
               onChange={(e) => setForm({ ...form, defaultRole: e.target.value })}
             >
-              <option value="student">Student</option>
-              <option value="school_staff">Co-admin (staff)</option>
+              <option value="student">{tr('Student')}</option>
+              <option value="school_staff">{tr('Co-admin (staff)')}</option>
             </select>
           </div>
 
           <button type="submit" className="btn-primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save connection'}
+            {busy ? tr('Saving…') : tr('Save connection')}
           </button>
         </form>
       )}

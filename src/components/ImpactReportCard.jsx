@@ -127,8 +127,8 @@ function MonthlyRecipients({ scope }) {
   }
   return (
     <div className="mt-4 border-t border-earth-200 dark:border-white/10 pt-3">
-      <p className="text-sm font-medium flex items-center gap-2"><Mail className="w-4 h-4" aria-hidden="true" /> Email it every month</p>
-      <p className="text-xs text-earth-500 dark:text-earth-400 mb-2">On the 1st, each person here gets last month’s numbers and the school year so far, with a link to the full report. Up to 5 people; each can unsubscribe.</p>
+      <p className="text-sm font-medium flex items-center gap-2"><Mail className="w-4 h-4" aria-hidden="true" />{' '}{tr('Email it every month')}</p>
+      <p className="text-xs text-earth-500 dark:text-earth-400 mb-2">{tr('On the 1st, each person here gets last month’s numbers and the school year so far, with a link to the full report. Up to 5 people; each can unsubscribe.')}</p>
       {list.length > 0 && (
         <ul className="mb-2 space-y-1">
           {list.map((r) => (
@@ -142,7 +142,7 @@ function MonthlyRecipients({ scope }) {
       {list.length < 5 && (
         <form onSubmit={add} className="flex gap-2">
           <input className="input flex-1" type="email" placeholder="principal@school.org" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <button type="submit" className="btn-secondary btn-sm">Add</button>
+          <button type="submit" className="btn-secondary btn-sm">{tr('Add')}</button>
         </form>
       )}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}

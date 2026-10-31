@@ -89,26 +89,26 @@ export default function SchoolVsSchoolCard({ manage = false, className = '' }) {
               {challenge.finished ? ` · ${tr('Final results')}` : ''}
             </p>
           ) : (
-            <p className="text-sm text-earth-500">Rank your schools by the hours their students log, e.g. “Most hours in November”. Students and advisers see school names and totals, never individual students.</p>
+            <p className="text-sm text-earth-500">{tr('Rank your schools by the hours their students log, e.g. “Most hours in November”. Students and advisers see school names and totals, never individual students.')}</p>
           )}
         </div>
-        {manage && challenge && <button type="button" className="btn-ghost btn-sm shrink-0" onClick={end}>{challenge.finished ? 'Clear' : 'End now'}</button>}
+        {manage && challenge && <button type="button" className="btn-ghost btn-sm shrink-0" onClick={end}>{challenge.finished ? tr('Clear') : tr('End now')}</button>}
       </div>
 
       {challenge && <Board challenge={challenge} board={data.scoreboard || []} mySchoolId={data.mySchoolId} />}
 
       {manage && !challenge && (
         <form onSubmit={start} className="space-y-2">
-          <input className="input" placeholder="Most hours in November" maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          <input className="input" placeholder={tr('Most hours in November')} maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           <div className="grid sm:grid-cols-3 gap-2">
-            <select className="input" value={form.metric} onChange={(e) => setForm({ ...form, metric: e.target.value })} aria-label="Rank by">
-              <option value="per_student">Hours per student (fair for small schools)</option>
-              <option value="total">Total hours</option>
+            <select className="input" value={form.metric} onChange={(e) => setForm({ ...form, metric: e.target.value })} aria-label={tr('Rank by')}>
+              <option value="per_student">{tr('Hours per student (fair for small schools)')}</option>
+              <option value="total">{tr('Total hours')}</option>
             </select>
-            <input className="input" type="date" value={form.startsOn} onChange={(e) => setForm({ ...form, startsOn: e.target.value })} aria-label="Starts" required />
-            <input className="input" type="date" value={form.endsOn} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} aria-label="Ends" required />
+            <input className="input" type="date" value={form.startsOn} onChange={(e) => setForm({ ...form, startsOn: e.target.value })} aria-label={tr('Starts')} required />
+            <input className="input" type="date" value={form.endsOn} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} aria-label={tr('Ends')} required />
           </div>
-          <button type="submit" className="btn-primary btn-sm" disabled={busy}>{busy ? 'Starting…' : 'Start the challenge'}</button>
+          <button type="submit" className="btn-primary btn-sm" disabled={busy}>{busy ? tr('Starting…') : tr('Start the challenge')}</button>
         </form>
       )}
       {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
