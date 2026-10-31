@@ -84,7 +84,7 @@ router.post('/:token/approve', limiter, requireDb, async (req, res) => {
           SET parental_consent_status = 'approved', parental_consent_at = COALESCE(u.parental_consent_at, now())
          FROM prev
         WHERE u.id = prev.id
-        RETURNING u.name, u.email, prev.was`,
+        RETURNING u.name, u.email, u.language, prev.was`,
       [token],
     )
     const child = rows[0]
@@ -92,7 +92,7 @@ router.post('/:token/approve', limiter, requireDb, async (req, res) => {
     // The welcome email was held back at sign-up; it goes out once, on the
     // approval that actually unlocked the account.
     if (child.was === 'pending') {
-      sendWelcomeEmail({ to: child.email, name: child.name, role: 'student' }).catch((e) => console.error('welcome email failed:', e.message))
+      sendWelcomeEmail({ to: child.email, name: child.name, role: 'student', language: child.language }).catch((e) => console.error('welcome email failed:', e.message))
     }
     return res.status(200).type('html').send(message(`Thank you. ${child.name} can now sign in to VolunTrack.`))
   } catch (error) {

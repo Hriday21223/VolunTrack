@@ -13,6 +13,7 @@
 // and its unsubscribe link turns both off.
 import { query } from './db.js'
 import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
+import { et, emailLang } from './emailStrings.js'
 import { escapeHtml } from './html.js'
 import { ensureDigestUnsubToken } from './digest.js'
 import { notify } from './notifications.js'
@@ -39,17 +40,20 @@ function frontendUrl() {
 
 const fmt = (n) => String(Math.round(n * 10) / 10)
 
-export function renderDeadlineEmail({ name, schoolName, remaining, target, days, deadline, unsubToken }) {
-  const due = new Date(`${String(deadline).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
-  const subject = `${fmt(remaining)} hours to go: due ${due}`
+export function renderDeadlineEmail({ name, schoolName, remaining, target, days, deadline, unsubToken, language = null }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const due = new Date(`${String(deadline).slice(0, 10)}T00:00:00Z`).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+  const subject = t('{n} hours to go: due {date}', { n: fmt(remaining), date: due })
   const site = frontendUrl()
+  const when = days === 1 ? t('tomorrow') : t('in {n} days', { n: days })
   const html = [
-    `<p>Hi ${escapeHtml(name || 'there')},</p>`,
-    `<p>${escapeHtml(schoolName)}'s volunteer hours are due on <strong>${due}</strong>, ${days === 1 ? 'tomorrow' : `in ${days} days`}. You have ${fmt(target - remaining)} of ${fmt(target)} hours, so <strong>${fmt(remaining)} to go</strong>.</p>`,
-    `<p>Already did hours you haven't logged? Add them now. Looking for something to do? Opportunities lists events near you.</p>`,
-    `<p><a href="${site}/log" style="display:inline-block;margin:4px 8px 4px 0;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">Log hours</a><a href="${site}/opportunities" style="display:inline-block;margin:4px 8px 4px 0;padding:10px 16px;border-radius:8px;background:#ffffff;color:#2e7d32;border:1px solid #2e7d32;text-decoration:none;font-weight:600">Find opportunities</a></p>`,
-    `<p style="font-size:12px;color:#888">Sent because your hours are due soon. <a href="${emailApiBase()}/api/progress/unsubscribe/${unsubToken}">Stop progress emails</a> or turn them off in Settings.</p>`,
-    emailFooterHtml(),
+    `<p>${name ? t('Hi {name},', { name: escapeHtml(name) }) : t('Hi there,')}</p>`,
+    `<p>${t('{school}’s volunteer hours are due on <strong>{date}</strong>, {when}. You have {done} of {target} hours, so <strong>{left} to go</strong>.', { school: escapeHtml(schoolName), date: due, when, done: fmt(target - remaining), target: fmt(target), left: fmt(remaining) })}</p>`,
+    `<p>${t('Already did hours you haven’t logged? Add them now. Looking for something to do? Opportunities lists events near you.')}</p>`,
+    `<p><a href="${site}/log" style="display:inline-block;margin:4px 8px 4px 0;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">${t('Log hours')}</a><a href="${site}/opportunities" style="display:inline-block;margin:4px 8px 4px 0;padding:10px 16px;border-radius:8px;background:#ffffff;color:#2e7d32;border:1px solid #2e7d32;text-decoration:none;font-weight:600">${t('Find opportunities')}</a></p>`,
+    `<p style="font-size:12px;color:#888">${t('Sent because your hours are due soon. <a href="{link}">Stop progress emails</a> or turn them off in Settings.', { link: `${emailApiBase()}/api/progress/unsubscribe/${unsubToken}` })}</p>`,
+    emailFooterHtml(lang),
   ].join('')
   return { subject, html }
 }
@@ -94,10 +98,10 @@ export async function runDeadlineReminders({ dryRun = false, now = new Date() } 
         link: '/log',
       })
       if (!s.email || /@test\.com$/i.test(s.email)) continue
-      const { rows } = await query('SELECT monthly_progress_opt_out FROM users WHERE id = $1', [s.id])
+      const { rows } = await query('SELECT monthly_progress_opt_out, language FROM users WHERE id = $1', [s.id])
       if (rows[0]?.monthly_progress_opt_out) continue
       const unsubToken = await ensureDigestUnsubToken(s.id)
-      const { subject, html } = renderDeadlineEmail({ ...s, unsubToken })
+      const { subject, html } = renderDeadlineEmail({ ...s, unsubToken, language: rows[0]?.language })
       const r = await sendEmail({ to: s.email, subject, html, unsubscribeUrl: `${emailApiBase()}/api/progress/unsubscribe/${unsubToken}` }).catch(() => ({ sent: false }))
       if (r.sent) emailed += 1
     } catch (error) {

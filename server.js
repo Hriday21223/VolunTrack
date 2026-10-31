@@ -1,4 +1,5 @@
 import express from 'express'
+import { translateErrors } from './server/errorStrings.js'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
@@ -137,6 +138,9 @@ app.post('/api/contact/inbound', webhookLimiter, express.raw({ type: 'applicatio
 app.post('/api/status/github-webhook', webhookLimiter, express.raw({ type: 'application/json' }), handleGithubWebhook)
 
 app.use(express.json({ limit: '1mb' }))
+// Error messages in the app's language (#604): rewrites `error` in JSON
+// responses for callers whose Accept-Language is Spanish.
+app.use(translateErrors)
 app.use(apiLimiter)
 app.use(authenticate)
 
