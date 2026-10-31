@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { orgTabFromPath, orgPathFor } from '@/lib/dashboardTabs.js'
-import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog, Megaphone } from 'lucide-react'
+import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog, Megaphone, Handshake } from 'lucide-react'
+import OrgPartners from '@/components/OrgPartners.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
 import OrgAnnouncementsCard from '@/components/OrgAnnouncementsCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
@@ -28,6 +29,7 @@ const TAB_TITLES = {
   schools: 'Your schools',
   hours: 'Hour reports',
   requirements: 'Requirements',
+  partners: 'Partner organizations',
   announcements: 'Announcements',
   invites: 'Pending invites',
 }
@@ -151,6 +153,7 @@ export default function OrganizationDashboard() {
           : tab === 'invites' ? `${invites.length} invite${invites.length === 1 ? '' : 's'} sent`
           : tab === 'requirements' ? 'Defaults for every school you own'
           : tab === 'announcements' ? 'Notices for every school you own'
+          : tab === 'partners' ? 'Nonprofits shared with every school you own'
           : 'Export hours across your schools'
       }
       action={
@@ -164,6 +167,9 @@ export default function OrganizationDashboard() {
           <button onClick={() => setTab('requirements')} className={`btn-sm ${tab === 'requirements' ? 'btn-primary' : 'btn-ghost'}`}>
             <ClipboardList className="w-3.5 h-3.5 mr-1" /> Requirements
           </button>
+          <button onClick={() => setTab('partners')} className={`btn-sm ${tab === 'partners' ? 'btn-primary' : 'btn-ghost'}`}>
+            <Handshake className="w-3.5 h-3.5 mr-1" /> Partners
+          </button>
           <button onClick={() => setTab('announcements')} className={`btn-sm ${tab === 'announcements' ? 'btn-primary' : 'btn-ghost'}`}>
             <Megaphone className="w-3.5 h-3.5 mr-1" /> Announcements
           </button>
@@ -176,6 +182,7 @@ export default function OrganizationDashboard() {
       <AnnouncementBanner />
       {tab === 'requirements' && <OrgRequirements schools={schools} onSchoolsChange={loadSchools} />}
       {tab === 'announcements' && <OrgAnnouncementsCard />}
+      {tab === 'partners' && <OrgPartners />}
 
       {tab === 'hours' && (
         <Card>

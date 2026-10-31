@@ -18,6 +18,7 @@ import VolunteerBadge from '@/components/VolunteerBadge.jsx'
 import WaiverDialog from '@/components/WaiverDialog.jsx'
 import ShiftPicker from '@/components/ShiftPicker.jsx'
 import ForYouTasks from '@/components/ForYouTasks.jsx'
+import PartnersCard from '@/components/PartnersCard.jsx'
 import TaskDetailBadges from '@/components/TaskDetailBadges.jsx'
 import TaskCoverPhoto from '@/components/TaskCoverPhoto.jsx'
 import TaskQuestions from '@/components/TaskQuestions.jsx'
@@ -431,6 +432,8 @@ export default function Opportunities() {
 
         <ForYouTasks />
 
+        {user?.schoolId && <PartnersCard />}
+
         {canFollow && following?.length > 0 && (
           <Card padded={false} className="p-3">
             <button
@@ -556,6 +559,11 @@ export default function Opportunities() {
                     {t.for_my_schools && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-500 dark:text-sky-300 font-medium shrink-0">
                         {tr('For your school')}
+                      </span>
+                    )}
+                    {t.by_partner && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-500 dark:text-violet-300 font-medium shrink-0">
+                        {tr('District partner')}
                       </span>
                     )}
                     {t.distance != null && (

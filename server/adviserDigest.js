@@ -16,6 +16,7 @@ import { schoolProgress } from './routes/school.js'
 import { policyForSchool } from './policy.js'
 import { placeApproved } from './requirements.js'
 import { completionsThisWeek } from './goalReached.js'
+import { withPartnerPlaces } from './partners.js'
 
 export const SEND_BATCH = 5
 
@@ -52,6 +53,7 @@ export async function schoolSummary(schoolId) {
   // Entries from places off the school's approved list (#591), not yet checked.
   let offList = 0
   const target = await policyForSchool(schoolId)
+  if (target) target.policy = await withPartnerPlaces(target.policy, target.organizationId)
   if (target?.policy?.logRules?.approvedPlaces?.length) {
     const { rows } = await query(
       `SELECT l.org_name FROM logs l JOIN users u ON u.id = l.user_id

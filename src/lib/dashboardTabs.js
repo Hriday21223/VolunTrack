@@ -34,7 +34,7 @@ export function schoolPathFor({ tab, subTab, reportTab, setupTab }) {
   return `${SCHOOL_BASE}/${slug}${sub && def.subs.includes(sub) && sub !== sub0 ? `/${sub}` : ''}`
 }
 
-const ORG_TABS = ['schools', 'hours', 'requirements', 'announcements', 'invites']
+const ORG_TABS = ['schools', 'hours', 'requirements', 'partners', 'announcements', 'invites']
 const ORG_BASE = '/organization/dashboard'
 
 export function orgTabFromPath(tabParam) {

@@ -15,6 +15,7 @@ import { impactFor, impactBySchool, PERIODS, rangeFromQuery } from '../impact.js
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { activeOrgChallenge, scoreboard, METRICS } from '../orgChallenge.js'
 import { schoolProgress } from './school.js'
+import { listPartners, addPartners, updatePartner, removePartner, PartnerError, MAX_PARTNERS } from '../partners.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 
 const router = express.Router()
@@ -489,6 +490,73 @@ router.get('/impact', limiter, requireDb, requireAuth('org'), async (req, res) =
     console.error('organization impact failed:', error)
     return res.status(500).json({ error: 'Could not build the impact report.' })
   }
+})
+
+// Partner list (#611): the organization's approved nonprofits, shared with
+// all its schools. POST takes one partner or { partners: [...] } (a CSV import).
+async function myOrg(req) {
+  const { rows } = await query(
+    'SELECT o.id, o.partners_as_places FROM users u JOIN organizations o ON o.id = u.organization_id WHERE u.id = $1',
+    [req.auth.sub],
+  )
+  return rows[0] || null
+}
+async function partnersResponse(org) {
+  return { partners: await listPartners(org.id), asPlaces: org.partners_as_places, max: MAX_PARTNERS }
+}
+const partnerError = (res, error, what) => {
+  if (error instanceof PartnerError) return res.status(error.status).json({ error: error.message })
+  console.error(`org partners ${what} failed:`, error)
+  return res.status(500).json({ error: 'Could not update the partner list.' })
+}
+
+router.get('/partners', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const org = await myOrg(req)
+    if (!org) return res.status(404).json({ error: 'Organization not found.' })
+    return res.json(await partnersResponse(org))
+  } catch (error) { return partnerError(res, error, 'list') }
+})
+
+router.post('/partners', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const org = await myOrg(req)
+    if (!org) return res.status(404).json({ error: 'Organization not found.' })
+    const list = Array.isArray(req.body?.partners) ? req.body.partners : [req.body || {}]
+    if (list.length === 0) return res.status(400).json({ error: 'That file has no partners in it.' })
+    if (list.length > MAX_PARTNERS) return res.status(400).json({ error: `Import up to ${MAX_PARTNERS} partners at a time.` })
+    const result = await addPartners(org.id, list)
+    return res.status(201).json({ ...result, ...(await partnersResponse(org)) })
+  } catch (error) { return partnerError(res, error, 'add') }
+})
+
+router.patch('/partners/:id', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const org = await myOrg(req)
+    if (!org) return res.status(404).json({ error: 'Organization not found.' })
+    await updatePartner(org.id, req.params.id, req.body || {})
+    return res.json(await partnersResponse(org))
+  } catch (error) { return partnerError(res, error, 'update') }
+})
+
+router.delete('/partners/:id', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const org = await myOrg(req)
+    if (!org) return res.status(404).json({ error: 'Organization not found.' })
+    await removePartner(org.id, req.params.id)
+    return res.json(await partnersResponse(org))
+  } catch (error) { return partnerError(res, error, 'remove') }
+})
+
+// PUT { asPlaces }: whether partner names count as approved places at every school.
+router.put('/partners/settings', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  if (typeof req.body?.asPlaces !== 'boolean') return res.status(400).json({ error: 'asPlaces must be true or false.' })
+  try {
+    const org = await myOrg(req)
+    if (!org) return res.status(404).json({ error: 'Organization not found.' })
+    await query('UPDATE organizations SET partners_as_places = $2 WHERE id = $1', [org.id, req.body.asPlaces])
+    return res.json(await partnersResponse({ ...org, partners_as_places: req.body.asPlaces }))
+  } catch (error) { return partnerError(res, error, 'settings') }
 })
 
 // Who gets the monthly impact email for the whole organization (#573).
