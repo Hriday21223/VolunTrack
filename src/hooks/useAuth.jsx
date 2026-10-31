@@ -12,6 +12,7 @@ import { syncKeptSession } from '@/lib/appSession.js'
 import { signInWithPasskey } from '@/lib/passkey.js'
 import { syncNativeReminders } from '@/lib/nativeReminders.js'
 import { clearWidget } from '@/lib/widget.js'
+import { forgetNativePushOnSignOut } from '@/lib/nativePush.js'
 import { syncLanguageWithServer } from '@/lib/i18n.js'
 
 const AuthContext = createContext(null)
@@ -475,6 +476,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
+    // Phone push (#603): forget this install's token while the session still works.
+    forgetNativePushOnSignOut()
     remove(SESSION_KEY)
     localStorage.removeItem('voluntrack:auth_token')
     // Local logs/goals/achievements are stored under one global key, not

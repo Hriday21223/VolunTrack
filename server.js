@@ -24,6 +24,7 @@ import settingsRoutes from './server/routes/settings.js'
 import statusRoutes, { handleGithubWebhook } from './server/routes/status.js'
 import tenantRoutes from './server/routes/tenant.js'
 import remindersRoutes from './server/routes/reminders.js'
+import pushRoutes from './server/routes/push.js'
 import goalsRoutes from './server/routes/goals.js'
 import reportsRoutes from './server/routes/reports.js'
 import clientErrorsRoutes from './server/routes/clientErrors.js'
@@ -165,6 +166,7 @@ app.use('/api/settings', settingsRoutes)
 app.use('/api/status', statusRoutes)
 app.use('/api/tenant', tenantRoutes)
 app.use('/api/reminders', remindersRoutes)
+app.use('/api/push', pushRoutes)
 app.use('/api/goals', goalsRoutes)
 app.use('/api/reports', reportsRoutes)
 app.use('/api/client-errors', clientErrorsRoutes)

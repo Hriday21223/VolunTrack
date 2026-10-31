@@ -1,5 +1,6 @@
 import { query, hasDatabase } from './db.js'
 import { uid } from './ids.js'
+import { pushNotification } from './pushNotify.js'
 
 // In-app notifications: the bell in the app header (src/components/
 // NotificationBell.jsx, read through server/routes/notifications.js).
@@ -84,6 +85,8 @@ export async function notify(userId, { kind, title, body, link } = {}) {
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [uid('ntf'), String(userId), kind, clip(title, LIMITS.title), clip(body, LIMITS.body) || null, safeLink(link)],
     )
+    // The same notice as a phone or browser push, if they turned one on (#603).
+    pushNotification(String(userId), { kind, title: clip(title, LIMITS.title), body: clip(body, LIMITS.body), link: safeLink(link) })
     await query(
       `DELETE FROM notifications WHERE user_id = $1 AND created_at < now() - interval '${NOTIFICATION_RETENTION_DAYS} days'`,
       [String(userId)],
