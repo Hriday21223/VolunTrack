@@ -1,4 +1,5 @@
 import { query, getPool } from './db.js'
+import { emitStudent } from './webhooks.js'
 
 // A school account is on one of two plans (#506):
 //  - 'school': the paid plan. Registered with a code or invite from us, and
@@ -43,7 +44,7 @@ export async function clubSeatProblem(schoolId) {
 // only if a seat is free, holding the school row locked so two joins at the
 // same moment can't both take the last seat. Returns { error } when the club
 // is full, else { result } with whatever `write` returned.
-export async function joinWithSeat(schoolId, write) {
+export async function joinWithSeat(schoolId, write, { userId = null } = {}) {
   const client = await getPool().connect()
   try {
     await client.query('BEGIN')
@@ -55,6 +56,8 @@ export async function joinWithSeat(schoolId, write) {
     }
     const result = await write(client)
     await client.query('COMMIT')
+    // Webhooks (#622): tell the school's systems a student joined.
+    if (userId) emitStudent('student.joined', userId, schoolId)
     return { result }
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})

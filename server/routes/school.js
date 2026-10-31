@@ -1,4 +1,5 @@
 import express from 'express'
+import { emitStudent, emitHours, emitSignupFor, emitEventSignup } from '../webhooks.js'
 import { withPartnerPlaces, listPartners, PARTNER_TASK_SQL } from '../partners.js'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
@@ -254,7 +255,7 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
     if (seatProblem) return res.status(409).json({ error: seatProblem })
 
     if (!currentSchoolId) {
-      const joined = await joinWithSeat(target.id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub]))
+      const joined = await joinWithSeat(target.id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub]), { userId: req.auth.sub })
       if (joined.error) return res.status(409).json({ error: joined.error })
       const grade = await applyRosterGrade(target.id, req.auth.sub)
       return res.json({ ok: true, schoolId: target.id, ...(grade ? { grade } : {}) })
@@ -335,6 +336,9 @@ router.delete('/transfer/mine', limiter, requireDb, requireAuth('student'), asyn
 // school; the hours themselves stay in the student's account.
 router.post('/leave', limiter, requireDb, requireAuth('student'), async (req, res) => {
   try {
+    const { rows: before } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    // Before the change, so the student is still on the school's list to describe.
+    if (before[0]?.school_id) await emitStudent('student.left', req.auth.sub, before[0].school_id)
     const { rows } = await query(
       'UPDATE users SET school_id = NULL WHERE id = $1 AND school_id IS NOT NULL RETURNING id',
       [req.auth.sub],
@@ -412,7 +416,8 @@ router.post('/transfers/:id/decide', limiter, requireDb, requireAuth('school', '
     const transfer = rows[0]
 
     if (decision === 'accept') {
-      const moved = await joinWithSeat(transfer.to_school_id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [transfer.to_school_id, transfer.user_id]))
+      const moved = await joinWithSeat(transfer.to_school_id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [transfer.to_school_id, transfer.user_id]), { userId: transfer.user_id })
+      if (!moved.error && transfer.from_school_id) emitStudent('student.left', transfer.user_id, transfer.from_school_id)
       if (moved.error) {
         // The last seat went between the check above and now: leave the
         // request open rather than mark it accepted with nobody moved.
@@ -769,13 +774,15 @@ router.post('/group-hours', limiter, requireDb, requireAuth('school', 'school_st
     let skipped = 0
     const note = notes || `Added by ${school.name || 'your adviser'} (${school.school_name})`
     for (const { id } of students) {
+      const newLogId = uid('log')
       const { rowCount } = await query(
         `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, verification_status)
          SELECT $1, $2, $3, $4, $5, $6, $7, $8, 'approved'
           WHERE NOT EXISTS (SELECT 1 FROM logs WHERE user_id = $2 AND date = $3 AND LOWER(activity) = LOWER($4))`,
-        [uid('log'), id, date, activity, category, hours, note, req.auth.sub],
+        [newLogId, id, date, activity, category, hours, note, req.auth.sub],
       )
       if (rowCount) {
+        emitHours('hours.created', newLogId)
         added += 1
         notify(id, { kind: 'hours_approved', title: `${hours} hours added: ${activity}`, body: `${school.school_name} added these for you.`, link: '/' })
       } else {
@@ -1331,6 +1338,7 @@ router.post('/hours-review/:logId', limiter, requireDb, requireAuth('school', 's
         RETURNING l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
       [req.params.logId, schoolId, decision === 'approve' ? 'approved' : 'rejected', req.auth.sub, note],
     )
+    if (rows.length) emitHours(decision === 'approve' ? 'hours.approved' : 'hours.rejected', req.params.logId)
     if (rows.length === 0) {
       const { rows: found } = await query(
         'SELECT l.verification_status FROM logs l JOIN users u ON u.id = l.user_id WHERE l.id = $1 AND u.school_id = $2',
@@ -1371,6 +1379,7 @@ router.post('/hours-review-approve', limiter, requireDb, requireAuth('school', '
         RETURNING l.id, l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
       [ids, schoolId, req.auth.sub],
     )
+    for (const r of rows) emitHours('hours.approved', r.id)
     const byStudent = new Map()
     for (const r of rows) byStudent.set(r.user_id, [...(byStudent.get(r.user_id) || []), r])
     for (const [userId, entries] of byStudent) {
@@ -1634,7 +1643,7 @@ router.post('/invites/:id/decide', limiter, requireDb, requireAuth('student'), a
       if (me[0]?.school_id) {
         return res.status(409).json({ error: "You're already at a school. To move, enter the new school's code in Settings to request a transfer." })
       }
-      const joined = await joinWithSeat(rows[0].school_id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].school_id, req.auth.sub]))
+      const joined = await joinWithSeat(rows[0].school_id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [rows[0].school_id, req.auth.sub]), { userId: req.auth.sub })
       if (joined.error) return res.status(409).json({ error: joined.error })
       await applyRosterGrade(rows[0].school_id, req.auth.sub)
       // Other schools' invites can't be accepted now, so they're closed too.
@@ -3497,6 +3506,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       await client.query('COMMIT')
       askParent()
       if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
+      emitEventSignup('event.signup', wid)
       return res.json({ ok: true, id: wid, waitlisted: true, position: Number(pos[0].position) || 1 })
     }
 
@@ -3510,6 +3520,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     await client.query('COMMIT')
     askParent()
     if (invitedBy) notifyFriendJoined(invitedBy, req.params.id, req.auth.sub)
+    emitEventSignup('event.signup', sid)
     return res.json({ ok: true, id: sid })
   } catch (error) {
     try { await client.query('ROLLBACK') } catch { /* connection already broken */ }
@@ -5904,11 +5915,14 @@ function scannedHours(inAt, outAt) {
 async function logCheckout(task, userId, inAt, outAt, note) {
   const day = dayString(task.date)
   if (await alreadyLogged(task.id, userId, day)) return false
+  const logId = uid('log')
   await query(
     `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
-    [uid('log'), userId, day, task.title, ORGANIZER_LOG_CATEGORY, scannedHours(inAt, outAt), note, task.created_by, task.id],
+    [logId, userId, day, task.title, ORGANIZER_LOG_CATEGORY, scannedHours(inAt, outAt), note, task.created_by, task.id],
   )
+  emitHours('hours.created', logId)
+  emitSignupFor('event.attendance', task.id, userId)
   return true
 }
 
@@ -6091,6 +6105,7 @@ router.post('/public-tasks/:id/log-hours', limiter, requireDb, requireAuth(), as
         req.params.id,
       ],
     )
+    emitHours('hours.created', lid)
     return res.status(201).json({ ok: true, id: lid })
   } catch (error) {
     console.error('log hours failed:', error)
@@ -6152,6 +6167,7 @@ router.post('/public-tasks/:id/log-hours-batch', limiter, requireDb, requireAuth
           req.params.id,
         ],
       )
+      emitHours('hours.created', lid)
       logged++
     }
     return res.status(201).json({ ok: true, logged, skipped })
@@ -6299,7 +6315,10 @@ async function verifyStudentLog({ organizerId, studentId, logId, status, signatu
     'UPDATE logs SET verification_status = $1, verified_by = $2, organizer_signature = $4 WHERE id = $3',
     [status, organizerId, logId, status === 'approved' ? signature : null],
   )
-  if (status !== previousStatus) notifyHoursDecision(studentId, logId, status)
+  if (status !== previousStatus) {
+    notifyHoursDecision(studentId, logId, status)
+    if (status === 'approved' || status === 'rejected') emitHours(`hours.${status}`, logId)
+  }
 
   // Spend any still-pending supervisor link for this log. Without this the
   // emailed link stays 'pending', so a supervisor clicking it days later
@@ -6449,6 +6468,7 @@ router.post('/public-tasks/:id/attendance/:userId', limiter, requireDb, requireA
       'UPDATE public_task_signups SET attendance_status = $1, attendance_marked_at = now() WHERE task_id = $2 AND user_id = $3',
       [status, req.params.id, req.params.userId],
     )
+    emitSignupFor('event.attendance', req.params.id, req.params.userId)
     return res.json({ ok: true })
   } catch (error) {
     console.error('mark attendance failed:', error)

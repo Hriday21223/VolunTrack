@@ -1,4 +1,5 @@
 import express from 'express'
+import { emitHours } from '../webhooks.js'
 import { cleanSkills } from '../skills.js'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
@@ -171,6 +172,7 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
       [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, String(reflection || '').trim() || null, skills.length ? skills : null],
     )
+    emitHours('hours.created', id)
     return res.status(201).json({ id })
   } catch (error) {
     console.error('log create failed:', error)
