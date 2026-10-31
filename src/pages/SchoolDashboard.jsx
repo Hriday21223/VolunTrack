@@ -35,6 +35,7 @@ import PaymentDetails from '@/components/PaymentDetails.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
+import RosterSyncCard from '@/components/RosterSyncCard.jsx'
 import HoursReviewPanel from '@/components/HoursReviewPanel.jsx'
 import GroupHoursCard from '@/components/GroupHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
@@ -894,6 +895,7 @@ export default function SchoolDashboard() {
               </>
             )}
 
+            {subTab === 'add' && <RosterSyncCard onDone={loadData} />}
             {subTab === 'add' && <InviteClassCard onDone={loadData} />}
 
             {subTab === 'add' && (

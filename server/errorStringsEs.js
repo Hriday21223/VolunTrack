@@ -314,4 +314,13 @@ export const ERRORS_ES = {
   "Enter the mobile number with its area code, like (555) 123-4567, or +44… for outside the US.": "Escribe el móvil con su código de área, como (555) 123-4567, o +44… fuera de EE. UU.",
   "That is enough texts for today. Try again tomorrow, or send it by email only.": "Ya son suficientes mensajes de texto por hoy. Vuelve a intentarlo mañana o envíalo solo por correo.",
   "That number already got several requests today. Try again tomorrow.": "Ese número ya recibió varias solicitudes hoy. Vuelve a intentarlo mañana.",
+  "Google Classroom isn’t set up on this server.": "Google Classroom no está configurado en este servidor.",
+  "Clever isn’t set up on this server.": "Clever no está configurado en este servidor.",
+  "Pick Google Classroom or Clever.": "Elige Google Classroom o Clever.",
+  "Pick at least one class.": "Elige al menos una clase.",
+  "Pick up to 10 classes at a time.": "Elige hasta 10 clases a la vez.",
+  "Connect Google Classroom first.": "Primero conecta Google Classroom.",
+  "Could not reach the roster service. Try again in a minute.": "No se pudo conectar con el servicio de listas. Vuelve a intentarlo en un minuto.",
+  "That section isn’t one of yours in Clever.": "Esa sección no es tuya en Clever.",
+  "Your account is not linked to a school.": "Tu cuenta no está vinculada a una escuela.",
 }

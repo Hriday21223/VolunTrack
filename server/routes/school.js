@@ -1486,6 +1486,27 @@ router.post('/invite-class', limiter, classInviteLimiter, requireDb, requireAuth
   const raw = Array.isArray(req.body?.emails) ? req.body.emails : []
   // A roster CSV (#584) also sends { email, name, grade } for each student.
   const people = Array.isArray(req.body?.students) ? req.body.students.slice(0, CLASS_INVITE_MAX + 1) : []
+  const emailCount = new Set([...raw.map((e) => String(e || '').trim().toLowerCase()), ...people.map((p) => String(p?.email || '').trim().toLowerCase())].filter(Boolean)).size
+  if (emailCount === 0) return res.status(400).json({ error: 'Add at least one email address.' })
+  if (emailCount > CLASS_INVITE_MAX) return res.status(400).json({ error: `Up to ${CLASS_INVITE_MAX} addresses at a time.` })
+  try {
+    const result = await inviteStudentsToSchool(req.auth.sub, { emails: raw, students: people })
+    if (!result) return res.status(404).json({ error: 'School not found.' })
+    return res.json({ ok: true, ...result })
+  } catch (error) {
+    console.error('invite-class failed:', error)
+    return res.status(500).json({ error: 'Could not send the invites.' })
+  }
+})
+
+/**
+ * Invites students to the adviser's school, the way Invite a whole class does
+ * (#532): an account without a school gets an in-app invite, a new address an
+ * email with the join link, a roster's names and grades are kept (#584).
+ * Shared with roster sync (#608). Returns the counts, or null when the
+ * adviser has no school. The caller enforces CLASS_INVITE_MAX per call.
+ */
+export async function inviteStudentsToSchool(adviserId, { emails: raw = [], students: people = [] } = {}) {
   const rosterByEmail = new Map()
   for (const p of people) {
     if (!p || typeof p !== 'object') continue
@@ -1498,75 +1519,68 @@ router.post('/invite-class', limiter, classInviteLimiter, requireDb, requireAuth
     })
   }
   const emails = [...new Set([...raw.map((e) => String(e || '').trim().toLowerCase()), ...rosterByEmail.keys()].filter(Boolean))]
-  if (emails.length === 0) return res.status(400).json({ error: 'Add at least one email address.' })
-  if (emails.length > CLASS_INVITE_MAX) return res.status(400).json({ error: `Up to ${CLASS_INVITE_MAX} addresses at a time.` })
   const valid = emails.filter((e) => e.length <= 254 && validator.isEmail(e))
   const result = { invited: 0, emailed: 0, alreadyHere: 0, atAnotherSchool: 0, notStudent: 0, recentlyEmailed: 0, invalid: emails.length - valid.length }
-  try {
-    const { rows: me } = await query(
-      `SELECT u.school_id, s.name, s.pin FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
-      [req.auth.sub],
-    )
-    const school = me[0]
-    if (!school) return res.status(404).json({ error: 'School not found.' })
-    const roster = await saveRoster(school.school_id, req.auth.sub, valid.map((e) => rosterByEmail.get(e)).filter(Boolean))
-    result.gradesSaved = roster.grades
-    result.unknownGrades = roster.unknownGrades
-    const { rows: today } = await query(
-      `SELECT COUNT(*)::int AS n FROM school_email_invites WHERE school_id = $1 AND sent_at > now() - interval '1 day'`,
-      [school.school_id],
-    )
-    let budget = Math.max(0, CLASS_INVITE_DAILY - today[0].n)
+  const { rows: me } = await query(
+    `SELECT u.school_id, s.name, s.pin FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
+    [adviserId],
+  )
+  const school = me[0]
+  if (!school) return null
+  const roster = await saveRoster(school.school_id, adviserId, valid.map((e) => rosterByEmail.get(e)).filter(Boolean))
+  result.gradesSaved = roster.grades
+  result.unknownGrades = roster.unknownGrades
+  const { rows: today } = await query(
+    `SELECT COUNT(*)::int AS n FROM school_email_invites WHERE school_id = $1 AND sent_at > now() - interval '1 day'`,
+    [school.school_id],
+  )
+  let budget = Math.max(0, CLASS_INVITE_DAILY - today[0].n)
 
-    const { rows: accounts } = await query(
-      'SELECT id, email, role, school_id FROM users WHERE email = ANY($1)',
-      [valid],
-    )
-    const byEmail = new Map(accounts.map((a) => [a.email.toLowerCase(), a]))
-    const site = String(process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app').split(',')[0].trim().replace(/\/$/, '')
-    const joinLink = `${site}/join/${encodeURIComponent(school.pin)}`
+  const { rows: accounts } = await query(
+    'SELECT id, email, role, school_id FROM users WHERE email = ANY($1)',
+    [valid],
+  )
+  const byEmail = new Map(accounts.map((a) => [a.email.toLowerCase(), a]))
+  const site = String(process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app').split(',')[0].trim().replace(/\/$/, '')
+  const joinLink = `${site}/join/${encodeURIComponent(school.pin)}`
 
-    for (const email of valid) {
-      const account = byEmail.get(email)
-      if (account) {
-        if (account.role !== 'student') { result.notStudent += 1; continue }
-        if (account.school_id === school.school_id) { result.alreadyHere += 1; continue }
-        if (account.school_id) { result.atAnotherSchool += 1; continue }
-        const { rows: invited } = await query(
-          `INSERT INTO school_student_invites (id, school_id, user_id, invited_by)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT (school_id, user_id) WHERE status = 'pending' DO NOTHING
-           RETURNING id`,
-          [uid('sinv'), school.school_id, account.id, req.auth.sub],
-        )
-        if (invited.length > 0) notifyStudentInvite(school.school_id, account.id)
-        result.invited += 1
-        continue
-      }
-      if (budget <= 0) { result.recentlyEmailed += 1; continue }
-      // Claimed before sending, and only if not emailed in the last week.
-      const { rowCount } = await query(
-        `INSERT INTO school_email_invites (school_id, email, invited_by) VALUES ($1, $2, $3)
-         ON CONFLICT (school_id, email) DO UPDATE SET sent_at = now(), invited_by = EXCLUDED.invited_by
-           WHERE school_email_invites.sent_at < now() - interval '7 days'`,
-        [school.school_id, email, req.auth.sub],
+  for (const email of valid) {
+    const account = byEmail.get(email)
+    if (account) {
+      if (account.role !== 'student') { result.notStudent += 1; continue }
+      if (account.school_id === school.school_id) { result.alreadyHere += 1; continue }
+      if (account.school_id) { result.atAnotherSchool += 1; continue }
+      const { rows: invited } = await query(
+        `INSERT INTO school_student_invites (id, school_id, user_id, invited_by)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (school_id, user_id) WHERE status = 'pending' DO NOTHING
+         RETURNING id`,
+        [uid('sinv'), school.school_id, account.id, adviserId],
       )
-      if (rowCount === 0) { result.recentlyEmailed += 1; continue }
-      budget -= 1
-      result.emailed += 1
-      if (/@test\.com$/i.test(email)) continue
-      sendEmail({
-        to: email,
-        subject: `${school.name} invited you to VolunTrack`,
-        html: `<p>Hi${rosterByEmail.get(email)?.name ? ` ${escapeHtml(rosterByEmail.get(email).name.split(/\s+/)[0])}` : ''},</p><p>${escapeHtml(school.name)} uses VolunTrack to keep track of volunteer and service hours, and your adviser invited you to join.</p><p><a href="${joinLink}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">Join ${escapeHtml(school.name)}</a></p><p>It's free for students. If the button doesn't work, sign up and enter the school code <strong>${escapeHtml(school.pin)}</strong>. If you weren't expecting this, you can ignore it.</p>${emailFooterHtml()}`,
-      }).catch((e) => console.error('class invite email failed:', e.message))
+      if (invited.length > 0) notifyStudentInvite(school.school_id, account.id)
+      result.invited += 1
+      continue
     }
-    return res.json({ ok: true, ...result })
-  } catch (error) {
-    console.error('invite-class failed:', error)
-    return res.status(500).json({ error: 'Could not send the invites.' })
+    if (budget <= 0) { result.recentlyEmailed += 1; continue }
+    // Claimed before sending, and only if not emailed in the last week.
+    const { rowCount } = await query(
+      `INSERT INTO school_email_invites (school_id, email, invited_by) VALUES ($1, $2, $3)
+       ON CONFLICT (school_id, email) DO UPDATE SET sent_at = now(), invited_by = EXCLUDED.invited_by
+         WHERE school_email_invites.sent_at < now() - interval '7 days'`,
+      [school.school_id, email, adviserId],
+    )
+    if (rowCount === 0) { result.recentlyEmailed += 1; continue }
+    budget -= 1
+    result.emailed += 1
+    if (/@test\.com$/i.test(email)) continue
+    sendEmail({
+      to: email,
+      subject: `${school.name} invited you to VolunTrack`,
+      html: `<p>Hi${rosterByEmail.get(email)?.name ? ` ${escapeHtml(rosterByEmail.get(email).name.split(/\s+/)[0])}` : ''},</p><p>${escapeHtml(school.name)} uses VolunTrack to keep track of volunteer and service hours, and your adviser invited you to join.</p><p><a href="${joinLink}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">Join ${escapeHtml(school.name)}</a></p><p>It's free for students. If the button doesn't work, sign up and enter the school code <strong>${escapeHtml(school.pin)}</strong>. If you weren't expecting this, you can ignore it.</p>${emailFooterHtml()}`,
+    }).catch((e) => console.error('class invite email failed:', e.message))
   }
-})
+  return result
+}
 
 async function notifyStudentInvite(schoolId, userId) {
   try {
