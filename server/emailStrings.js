@@ -11,6 +11,16 @@
 
 export const EMAIL_LANGUAGES = ['en', 'es']
 
+/**
+ * The language a request asked for (#604). The app sets Accept-Language to
+ * its own chosen language on every API call (src/lib/apiFetch.js), so this is
+ * the app's setting, not just the browser's. 'es' or 'en'.
+ */
+export function requestLang(req) {
+  const h = String(req?.headers?.['accept-language'] || '').trim().toLowerCase()
+  return h.startsWith('es') ? 'es' : 'en'
+}
+
 /** Any stored/requested value → a language we can render ('en' fallback). */
 export function emailLang(value) {
   return EMAIL_LANGUAGES.includes(value) ? value : 'en'
@@ -54,6 +64,52 @@ const ES = {
   'Hi there,': '¡Hola!',
 
   'How was it? Rate this event to help other volunteers.': '¿Qué tal fue? Califica este evento para ayudar a otros voluntarios.',
+
+  // Sign-up code and welcome emails (server/email.js, #604)
+  '{code} is your VolunTrack code': '{code} es tu código de VolunTrack',
+  'Enter this code to finish creating your VolunTrack account:': 'Escribe este código para terminar de crear tu cuenta de VolunTrack:',
+  'It works once and expires in {n} minutes. If you didn’t try to sign up, you can ignore this email — no account is created without the code.': 'Sirve una vez y vence en {n} minutos. Si no intentaste registrarte, puedes ignorar este correo: no se crea ninguna cuenta sin el código.',
+  '— The VolunTrack Team': '— El equipo de VolunTrack',
+  'Your free VolunTrack club is ready': 'Tu club gratuito de VolunTrack está listo',
+  'Your VolunTrack school account is ready': 'La cuenta de tu escuela en VolunTrack está lista',
+  'Your free club is set up.': 'Tu club gratuito está configurado.',
+  'Your school account is set up.': 'La cuenta de tu escuela está configurada.',
+  'The next step is getting students on board, and it takes about five minutes.': 'El siguiente paso es sumar a los estudiantes, y lleva unos cinco minutos.',
+  'Your dashboard has a <strong>starter kit</strong>: a join link (students can also type the code <strong>{code}</strong>), a QR code, a printable flyer in English and Spanish, and messages ready to paste into email or Google Classroom.': 'Tu panel tiene un <strong>kit de inicio</strong>: un enlace para unirse (los estudiantes también pueden escribir el código <strong>{code}</strong>), un código QR, un volante para imprimir en inglés y español, y mensajes listos para pegar en un correo o en Google Classroom.',
+  'Your dashboard has a <strong>starter kit</strong>: a join link, a QR code, a printable flyer in English and Spanish, and messages ready to paste into email or Google Classroom.': 'Tu panel tiene un <strong>kit de inicio</strong>: un enlace para unirse, un código QR, un volante para imprimir en inglés y español, y mensajes listos para pegar en un correo o en Google Classroom.',
+  'Open your starter kit': 'Abrir tu kit de inicio',
+  'Then set your hour requirement under School setup → Requirements, so students can see how close they are.': 'Luego define tu requisito de horas en Configuración de la escuela → Requisitos, para que los estudiantes vean cuánto les falta.',
+  'A free club can have up to 50 students. For more, use <strong>Upgrade to a school plan</strong> on your dashboard or <a href="{link}">contact us</a>.': 'Un club gratuito puede tener hasta 50 estudiantes. Para más, usa <strong>Cambiar al plan para escuelas</strong> en tu panel o <a href="{link}">escríbenos</a>.',
+  'Your VolunTrack organization is ready': 'Tu organización en VolunTrack está lista',
+  'Your organization account is set up. Start by adding your first school: you send the invite, and the school finishes setting itself up.': 'La cuenta de tu organización está configurada. Empieza agregando tu primera escuela: tú envías la invitación y la escuela termina de configurarse.',
+  'Add your first school': 'Agregar tu primera escuela',
+  'Once you have two or more schools, your dashboard compares them side by side.': 'Cuando tengas dos o más escuelas, tu panel las compara una al lado de la otra.',
+  'Welcome to VolunTrack': 'Te damos la bienvenida a VolunTrack',
+  'Welcome! To follow your student’s volunteer hours, ask them for a <strong>family link code</strong>: they make one in VolunTrack under Settings → Family. Then enter it in your Settings.': '¡Bienvenido! Para seguir las horas de voluntariado de tu hijo o hija, pídele un <strong>código de vinculación familiar</strong>: lo crea en VolunTrack en Configuración → Familia. Luego escríbelo en tu Configuración.',
+  'Enter a link code': 'Escribir un código de vinculación',
+  'You’ll see the hours they log from then on, and you can get a short weekly summary by email.': 'Verás las horas que registre desde ese momento, y puedes recibir un breve resumen semanal por correo.',
+  'Welcome to VolunTrack!': '¡Te damos la bienvenida a VolunTrack!',
+  'Welcome! The best time to log volunteer hours is right after you do them. It takes about a minute: the date, what you did, and how long.': '¡Bienvenido! El mejor momento para registrar horas de voluntariado es justo después de hacerlas. Lleva un minuto: la fecha, qué hiciste y cuánto tiempo.',
+  'Log your first hours': 'Registrar tus primeras horas',
+  'If your school or club uses VolunTrack, ask your adviser for the school code and enter it in Settings, so they can approve your hours.': 'Si tu escuela o club usa VolunTrack, pide a tu asesor el código de la escuela y escríbelo en Configuración, para que pueda aprobar tus horas.',
+  'Have old hours on paper? On Log Hours, tap <strong>Scan a paper log</strong> to add them from a photo.': '¿Tienes horas antiguas en papel? En Registrar horas, toca <strong>Escanear un registro en papel</strong> para agregarlas desde una foto.',
+
+  // Deadline reminders (server/deadlineReminders.js) and opportunity alerts (server/taskAlerts.js), #604
+  '{n} hours to go: due {date}': 'Te faltan {n} horas: fecha límite {date}',
+  'tomorrow': 'mañana',
+  'in {n} days': 'en {n} días',
+  '{school}’s volunteer hours are due on <strong>{date}</strong>, {when}. You have {done} of {target} hours, so <strong>{left} to go</strong>.': 'Las horas de voluntariado de {school} vencen el <strong>{date}</strong>, {when}. Tienes {done} de {target} horas, así que <strong>te faltan {left}</strong>.',
+  'Already did hours you haven’t logged? Add them now. Looking for something to do? Opportunities lists events near you.': '¿Ya hiciste horas que no registraste? Agrégalas ahora. ¿Buscas algo que hacer? Oportunidades muestra eventos cerca de ti.',
+  'Log hours': 'Registrar horas',
+  'Find opportunities': 'Buscar oportunidades',
+  'Sent because your hours are due soon. <a href="{link}">Stop progress emails</a> or turn them off in Settings.': 'Te lo enviamos porque tus horas vencen pronto. <a href="{link}">Dejar de recibir correos de progreso</a> o desactívalos en Configuración.',
+  'New volunteer opportunity: {title}': 'Nueva oportunidad de voluntariado: {title}',
+  '{n} new volunteer opportunities for you': '{n} nuevas oportunidades de voluntariado para ti',
+  'at': 'a las',
+  'A new task was posted this week in the causes you follow:': 'Esta semana se publicó una tarea nueva en las causas que sigues:',
+  'New tasks were posted this week in the causes you follow:': 'Esta semana se publicaron tareas nuevas en las causas que sigues:',
+  'See all opportunities': 'Ver todas las oportunidades',
+  'You turned on new opportunity alerts. <a href="{link}">Stop these emails</a> or change your causes on Opportunities.': 'Activaste los avisos de nuevas oportunidades. <a href="{link}">Dejar de recibir estos correos</a> o cambia tus causas en Oportunidades.',
 
   // Goal reached (server/goalReached.js, #607)
   '{name} reached {hours} volunteer hours 🎉': '{name} llegó a {hours} horas de voluntariado 🎉',

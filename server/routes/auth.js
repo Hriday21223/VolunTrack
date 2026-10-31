@@ -20,7 +20,7 @@ import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, sendAcco
          sendEmailChangeCodeEmail, sendEmailChangedNotice, sendEmailOtpEmail, hasEmail, forLog } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
-import { EMAIL_LANGUAGES } from '../emailStrings.js'
+import { EMAIL_LANGUAGES, requestLang } from '../emailStrings.js'
 import { upcomingEventsFor, notifyEventsCancelledByDeletion } from './school.js'
 
 const router = express.Router()
@@ -254,7 +254,7 @@ router.post('/register/send-code', authLimiter, requireDb, verifyTurnstile(), as
     if (devLog) {
       console.log(`[dev] No email provider configured — sign-up code for ${forLog(email)}: ${code}`)
     } else {
-      const sent = await sendSignupCodeEmail({ to: email, code, minutes: SIGNUP_CODE_TTL_MINUTES })
+      const sent = await sendSignupCodeEmail({ to: email, code, minutes: SIGNUP_CODE_TTL_MINUTES, language: requestLang(req) })
       if (!sent.sent) {
         await query('DELETE FROM signup_codes WHERE email = $1', [email])
         return res.status(502).json({ error: 'We could not send the verification email. Check the address and try again.' })
@@ -310,10 +310,11 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
     const hash = await hashPassword(password)
     const id = uid('usr')
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, grade, student_id_number, signup_platform)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO users (id, role, name, email, password_hash, grade, student_id_number, signup_platform, language)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req)],
+      // The app's language at sign-up (#604), so the first emails already use it.
+      [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req), requestLang(req) === 'es' ? 'es' : null],
     )
     const user = publicUser(rows[0])
     // Signed up through a friend's invite link (#493): remember who, so the
@@ -340,7 +341,7 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
       // No session and no welcome email: nothing is usable until the parent approves.
       return res.status(201).json({ pendingParentalConsent: true })
     }
-    await sendWelcomeEmail({ to: user.email, name: user.name, role: user.role })
+    await sendWelcomeEmail({ to: user.email, name: user.name, role: user.role, language: requestLang(req) })
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     console.error('register failed:', error)

@@ -12,6 +12,7 @@
 // under-13s are skipped.
 import { query } from './db.js'
 import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
+import { et, emailLang } from './emailStrings.js'
 import { escapeHtml } from './html.js'
 import { ensureDigestUnsubToken } from './digest.js'
 import { notify } from './notifications.js'
@@ -27,7 +28,7 @@ function frontendUrl() {
 
 export async function findSubscribers({ only = null } = {}) {
   const { rows } = await query(
-    `SELECT u.id, u.name, u.email, u.interests
+    `SELECT u.id, u.name, u.email, u.interests, u.language
        FROM users u
       WHERE u.role = 'student' AND u.task_alerts_opt_in
         AND cardinality(u.interests) > 0
@@ -84,21 +85,23 @@ export async function newTasksFor(userId, interests) {
   return rows
 }
 
-export function renderAlertEmail({ name, tasks, unsubToken }) {
+export function renderAlertEmail({ name, tasks, unsubToken, language = null }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
   const n = tasks.length
-  const subject = n === 1 ? `New volunteer opportunity: ${tasks[0].title}` : `${n} new volunteer opportunities for you`
-  const items = tasks.map((t) => {
-    const link = `${frontendUrl()}/opportunities?task=${encodeURIComponent(t.id)}`
-    const when = [t.date, t.time].filter(Boolean).join(' at ')
-    return `<li style="margin-bottom:8px"><a href="${link}"><strong>${escapeHtml(t.title)}</strong></a><br>${escapeHtml(when)}${t.location ? ` · ${escapeHtml(t.location)}` : ''}${t.category ? ` · ${escapeHtml(t.category)}` : ''}</li>`
+  const subject = n === 1 ? t('New volunteer opportunity: {title}', { title: tasks[0].title }) : t('{n} new volunteer opportunities for you', { n })
+  const items = tasks.map((task) => {
+    const link = `${frontendUrl()}/opportunities?task=${encodeURIComponent(task.id)}`
+    const when = [task.date, task.time].filter(Boolean).join(` ${t('at')} `)
+    return `<li style="margin-bottom:8px"><a href="${link}"><strong>${escapeHtml(task.title)}</strong></a><br>${escapeHtml(when)}${task.location ? ` · ${escapeHtml(task.location)}` : ''}${task.category ? ` · ${escapeHtml(task.category)}` : ''}</li>`
   }).join('')
   const html = [
-    `<p>Hi ${escapeHtml(name || 'there')},</p>`,
-    `<p>${n === 1 ? 'A new task was' : 'New tasks were'} posted this week in the causes you follow:</p>`,
+    `<p>${name ? t('Hi {name},', { name: escapeHtml(name) }) : t('Hi there,')}</p>`,
+    `<p>${n === 1 ? t('A new task was posted this week in the causes you follow:') : t('New tasks were posted this week in the causes you follow:')}</p>`,
     `<ul style="padding-left:18px">${items}</ul>`,
-    `<p><a href="${frontendUrl()}/opportunities">See all opportunities</a></p>`,
-    `<p style="font-size:12px;color:#888">You turned on new opportunity alerts. <a href="${emailApiBase()}/api/interests/alerts/unsubscribe/${unsubToken}">Stop these emails</a> or change your causes on Opportunities.</p>`,
-    emailFooterHtml(),
+    `<p><a href="${frontendUrl()}/opportunities">${t('See all opportunities')}</a></p>`,
+    `<p style="font-size:12px;color:#888">${t('You turned on new opportunity alerts. <a href="{link}">Stop these emails</a> or change your causes on Opportunities.', { link: `${emailApiBase()}/api/interests/alerts/unsubscribe/${unsubToken}` })}</p>`,
+    emailFooterHtml(lang),
   ].join('')
   return { subject, html }
 }
@@ -127,7 +130,7 @@ export async function runTaskAlerts({ dryRun = false, only = null } = {}) {
       })
       if (!u.email || /@test\.com$/i.test(u.email)) continue
       const unsubToken = await ensureDigestUnsubToken(u.id)
-      const { subject, html } = renderAlertEmail({ name: u.name, tasks: u.tasks, unsubToken })
+      const { subject, html } = renderAlertEmail({ name: u.name, tasks: u.tasks, unsubToken, language: u.language })
       const r = await sendEmail({ to: u.email, subject, html, unsubscribeUrl: `${emailApiBase()}/api/interests/alerts/unsubscribe/${unsubToken}` }).catch(() => ({ sent: false }))
       if (r.sent) emailed += 1
     } catch (error) {

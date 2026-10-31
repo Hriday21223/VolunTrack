@@ -1,3 +1,4 @@
+import { language } from './i18n.js'
 // One place that every call to our own API passes through (installed in
 // main.jsx), instead of editing the ~220 fetch calls one by one.
 //
@@ -32,6 +33,12 @@ function emit(name) {
   window.dispatchEvent(new Event(name))
 }
 
+function withLanguage(init) {
+  const headers = new Headers(init?.headers || {})
+  if (!headers.has('Accept-Language')) headers.set('Accept-Language', language)
+  return { ...(init || {}), headers }
+}
+
 export function installApiFetchGuard() {
   if (typeof window === 'undefined' || window.__voluntrackFetchGuard) return
   window.__voluntrackFetchGuard = true
@@ -41,7 +48,12 @@ export function installApiFetchGuard() {
     // The app always passes a URL string; a Request object (which always
     // carries its own signal) or a call with its own signal is left as is.
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : null
-    if (!url || init?.signal || !isOurApi(url)) return original(input, init)
+    if (!url || !isOurApi(url)) return original(input, init)
+    // The app's language, so emails sent from this request (a sign-up code,
+    // the welcome email) and error messages come back in it (#604).
+    // Accept-Language is a CORS-safelisted header: no extra preflight.
+    init = withLanguage(init)
+    if (init?.signal) return original(input, init)
     const request = original(input, { ...(init || {}), signal: AbortSignal.timeout(API_TIMEOUT_MS) })
     let slow = false
     const timer = setTimeout(() => {
