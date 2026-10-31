@@ -1284,6 +1284,28 @@ export async function initSchema() {
   // Requirement templates (#577): an organization's named rule sets
   // ("Middle schools"), each school assigned to at most one. A school's rules
   // resolve own section → template → org default → VolunTrack default.
+  // Public API keys (#622, server/apiKeys.js). Only a hash of the key is kept.
+  // owner_id is a school id, an organization id, or an organizer's user id.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id           TEXT PRIMARY KEY,
+        owner_type   TEXT NOT NULL CHECK (owner_type IN ('school', 'organization', 'organizer')),
+        owner_id     TEXT NOT NULL,
+        name         TEXT NOT NULL,
+        prefix       TEXT NOT NULL,
+        secret_hash  TEXT NOT NULL,
+        scopes       TEXT[] NOT NULL,
+        mode         TEXT NOT NULL DEFAULT 'live' CHECK (mode IN ('live', 'test')),
+        created_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_used_at TIMESTAMPTZ,
+        revoked_at   TIMESTAMPTZ,
+        UNIQUE (mode, prefix)
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_api_keys_owner ON api_keys(owner_type, owner_id)')
+  } catch (error) { console.error('api keys table migration failed:', error) }
   // Roster sync (#608, server/rosterSync.js). A connection holds an adviser's
   // encrypted Google refresh token; sections are the classes a school imported,
   // and members the emails seen last time, to tell who left.

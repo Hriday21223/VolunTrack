@@ -18,6 +18,7 @@ import BlockedOrganizers from '@/components/BlockedOrganizers.jsx'
 import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 import ComebackEmailCard from '@/components/ComebackEmailCard.jsx'
 import PushNotificationsCard from '@/components/PushNotificationsCard.jsx'
+import ApiKeysCard from '@/components/ApiKeysCard.jsx'
 import MonthlyProgressEmailCard from '@/components/MonthlyProgressEmailCard.jsx'
 import AdviserDigestEmailCard from '@/components/AdviserDigestEmailCard.jsx'
 import InterestsCard from '@/components/InterestsCard.jsx'
@@ -1661,6 +1662,8 @@ export default function Settings() {
           )}
 
           <PushNotificationsCard />
+
+          {['school', 'org', 'volunteer'].includes(user?.role) && <ApiKeysCard />}
 
           {(user?.role === 'student' || user?.role === 'volunteer') && <CalendarFeedCard />}
 
