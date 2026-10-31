@@ -53,7 +53,7 @@ router.post('/', limiter, requireDb, requireAuth(...OWNER_ROLES), async (req, re
     if (!o) return
     const out = await createKey(o, req.auth.sub, req.body || {})
     recordAudit(req, {
-      action: AUDIT.API_KEY_CREATED,
+      action: AUDIT.INTEGRATION_ACCESS_GRANTED,
       schoolId: o.ownerType === 'school' ? o.ownerId : null,
       organizationId: o.ownerType === 'organization' ? o.ownerId : null,
       objectType: 'api_key', objectId: out.apiKey.id,
@@ -70,7 +70,7 @@ router.delete('/:id', limiter, requireDb, requireAuth(...OWNER_ROLES), async (re
     if (!o) return
     const apiKey = await revokeKey(o, req.params.id)
     recordAudit(req, {
-      action: AUDIT.API_KEY_REVOKED,
+      action: AUDIT.INTEGRATION_ACCESS_REVOKED,
       schoolId: o.ownerType === 'school' ? o.ownerId : null,
       organizationId: o.ownerType === 'organization' ? o.ownerId : null,
       objectType: 'api_key', objectId: apiKey.id,
