@@ -23,7 +23,7 @@ const API = (process.env.API_URL || 'https://voluntrack-backend-frrh.onrender.co
 // which only works mid sign-in. The verify pages load without a token and
 // show their own "link missing" message, which is still a working page.
 const PAGES = [
-  '/', '/about', '/help', '/contact', '/terms', '/privacy', '/guides', '/guides/nhs-service-hours', '/for-schools',
+  '/', '/about', '/help', '/contact', '/terms', '/privacy', '/guides', '/guides/nhs-service-hours', '/for-schools', '/developers',
   '/login', '/register', '/forgot-password', '/reset-password', '/reset-pin', '/sync-login',
   '/school/register', '/organization/register',
   '/status', '/status/incidents', '/status/system',

@@ -29,6 +29,7 @@ const SyncLogin = lazy(() => import('@/pages/SyncLogin.jsx'))
 const SsoReturn = lazy(() => import('@/pages/SsoReturn.jsx'))
 const Contact = lazy(() => import('@/pages/Contact.jsx'))
 const ForSchools = lazy(() => import('@/pages/ForSchools.jsx'))
+const Developers = lazy(() => import('@/pages/Developers.jsx'))
 const JoinSchool = lazy(() => import('@/pages/JoinSchool.jsx'))
 const SchoolFlyer = lazy(() => import('@/pages/SchoolFlyer.jsx'))
 const InviteLanding = lazy(() => import('@/pages/InviteLanding.jsx'))
@@ -137,6 +138,7 @@ function Shell() {
           <Route path="/about"           element={<About />} />
           <Route path="/contact"         element={<Contact />} />
           <Route path="/for-schools"     element={<ForSchools />} />
+          <Route path="/developers"      element={<Developers />} />
           <Route path="/join/:code"      element={<JoinSchool />} />
           <Route path="/invite/:code"    element={<InviteLanding />} />
           <Route path="/terms"           element={<Terms />} />
