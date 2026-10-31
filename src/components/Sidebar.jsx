@@ -72,16 +72,16 @@ ROLE_ITEMS.school_staff = ROLE_ITEMS.school
 // for accounts that log their own hours. An institution or parent account
 // stores everything server-side, so it gets copy that matches what it holds.
 const STORAGE_NOTE = {
-  school: "Your students' uploads and hour records are stored on our servers, visible only to your school's admins and co-admins.",
-  org: "Your organization's schools, invites and billing records are stored on our servers.",
-  parent: "Your linked children's hour records are stored on our servers so you can follow their progress.",
+  school: tr("Your students' uploads and hour records are stored on our servers, visible only to your school's admins and co-admins."),
+  org: tr("Your organization's schools, invites and billing records are stored on our servers."),
+  parent: tr("Your linked children's hour records are stored on our servers so you can follow their progress."),
 }
 STORAGE_NOTE.school_staff = STORAGE_NOTE.school
 // Students and volunteers: a signed-in account keeps its hours on our servers
 // (synced to every device); an account that exists only on this device
 // (no server connection when it was made) keeps them here.
-const ACCOUNT_STORAGE_NOTE = 'Your hours are saved to your account and synced across your devices. A copy stays on this device so the app works offline.'
-const DEVICE_STORAGE_NOTE = 'This account and its hours are stored only on this device.'
+const ACCOUNT_STORAGE_NOTE = tr('Your hours are saved to your account and synced across your devices. A copy stays on this device so the app works offline.')
+const DEVICE_STORAGE_NOTE = tr('This account and its hours are stored only on this device.')
 
 export default function Sidebar() {
   const { user } = useAuth()

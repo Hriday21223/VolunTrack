@@ -43,14 +43,14 @@ import { tr } from '@/lib/i18n.js'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 const SCHOOL_TOUR_STEPS = [
-  { selector: '[data-tour="tab-students"]', title: 'Students', description: 'See everyone linked to your school, and invite students by email.' },
-  { selector: '[data-tour="tab-reports"]', title: 'Reports', description: 'Review the PDF proof documents students upload and approve or reject each one — and export every student\'s hours for a date range.' },
-  { selector: '[data-tour="tab-chat"]', title: 'Announcements', description: 'Send a message to every student linked to your school at once.' },
+  { selector: '[data-tour="tab-students"]', title: tr('Students'), description: tr('See everyone linked to your school, and invite students by email.') },
+  { selector: '[data-tour="tab-reports"]', title: tr('Reports'), description: tr('Review the PDF proof documents students upload and approve or reject each one — and export every student\'s hours for a date range.') },
+  { selector: '[data-tour="tab-chat"]', title: tr('Announcements'), description: tr('Send a message to every student linked to your school at once.') },
 ]
 
 // School setup is only rendered for the primary school-admin role, not
 // school_staff — so its tour step only applies there too.
-const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: 'School setup', description: 'Add co-admins, let students sign in with your school\'s Google or Microsoft account, and serve VolunTrack on your own domain.' }
+const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: tr('School setup'), description: tr('Add co-admins, let students sign in with your school\'s Google or Microsoft account, and serve VolunTrack on your own domain.') }
 
 // How full a free club is, and how to upgrade (#506).
 function ClubPlanCard({ count, limit }) {
@@ -61,12 +61,12 @@ function ClubPlanCard({ count, limit }) {
     <Card>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-semibold">Free club plan</h3>
+          <h3 className="font-semibold">{tr('Free club plan')}</h3>
           <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">
-            {count} of {limit} students. {full ? 'Your club is full, so new students can’t join.' : near ? 'You’re close to the limit.' : 'Every school feature is included.'}
+            {count} of {limit} students. {full ? tr('Your club is full, so new students can’t join.') : near ? tr('You’re close to the limit.') : tr('Every school feature is included.')}
           </p>
         </div>
-        <Link to="/contact?topic=school" className={full || near ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>Upgrade to a school plan</Link>
+        <Link to="/contact?topic=school" className={full || near ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>{tr('Upgrade to a school plan')}</Link>
       </div>
       <div className="mt-3 h-1.5 rounded-full bg-earth-100 dark:bg-earth-800 overflow-hidden">
         <div className={`h-full rounded-full ${full ? 'bg-amber-500' : 'bg-brand-500'}`} style={{ width: `${Math.min(100, (count / limit) * 100)}%` }} />
@@ -222,7 +222,7 @@ export default function SchoolDashboard() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to add co-admin')
-      setToastMsg('Co-admin added!')
+      setToastMsg(tr('Co-admin added!'))
       setToast(true)
       setStaffForm({ name: '', email: '', password: '' })
       loadData()
@@ -230,7 +230,7 @@ export default function SchoolDashboard() {
   }
 
   const handleRemoveStaff = async (id) => {
-    if (!confirm('Remove this co-admin? They will lose access immediately.')) return
+    if (!confirm(tr('Remove this co-admin? They will lose access immediately.'))) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/school/staff/${id}`, {
@@ -238,10 +238,10 @@ export default function SchoolDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error('Failed')
-      setToastMsg('Co-admin removed')
+      setToastMsg(tr('Co-admin removed'))
       setToast(true)
       loadData()
-    } catch { setToastMsg('Failed to remove co-admin'); setToast(true) }
+    } catch { setToastMsg(tr('Failed to remove co-admin')); setToast(true) }
   }
 
   const loadData = async () => {
@@ -318,7 +318,7 @@ export default function SchoolDashboard() {
         body: JSON.stringify({ reference: confirmRef.trim() }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to submit') }
-      setToastMsg('Confirmation submitted — please allow 3–5 business days for verification. We\'ll email you once approved.')
+      setToastMsg(tr('Confirmation submitted — please allow 3–5 business days for verification. We\'ll email you once approved.'))
       setToast(true)
       setConfirmRef('')
       await refreshUser()
@@ -335,7 +335,7 @@ export default function SchoolDashboard() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 10 * 1024 * 1024) {
-      setToastMsg('File too large. Max 10MB.')
+      setToastMsg(tr('File too large. Max 10MB.'))
       setToast(true)
       return
     }
@@ -344,7 +344,7 @@ export default function SchoolDashboard() {
       // Uploads to the school's own storage where one is configured, so the
       // document never passes through us (#143 step 6).
       await submitDocumentToSchool(file)
-      setToastMsg('PDF uploaded!')
+      setToastMsg(tr('PDF uploaded!'))
       setToast(true)
       loadData()
     } catch (e) {
@@ -434,11 +434,11 @@ export default function SchoolDashboard() {
 
   if (selectedPdf) {
     return (
-      <AppLayout title="PDF Preview" subtitle={selectedPdf.filename}>
+      <AppLayout title={tr('PDF Preview')} subtitle={selectedPdf.filename}>
         <div className="max-w-4xl mx-auto">
           <Card className="mb-4">
             <button onClick={() => setSelectedPdf(null)} className="btn-ghost mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
+              <ArrowLeft className="w-4 h-4 mr-2" />{' '}{tr('Back')}
             </button>
             <div className="flex items-center gap-2 mb-4">
               {statusIcon(selectedPdf.status)}
@@ -452,15 +452,15 @@ export default function SchoolDashboard() {
             {isSchoolAdmin && selectedPdf.status === 'pending' && (
               <div className="flex gap-2 mt-4">
                 <button onClick={() => reviewPdf(selectedPdf.id, 'approved')} className="btn-primary flex-1">
-                  <CheckCircle className="w-4 h-4 mr-2" /> Approve
+                  <CheckCircle className="w-4 h-4 mr-2" />{' '}{tr('Approve')}
                 </button>
                 <button onClick={() => reviewPdf(selectedPdf.id, 'rejected')} className="btn-danger flex-1">
-                  <XCircle className="w-4 h-4 mr-2" /> Reject
+                  <XCircle className="w-4 h-4 mr-2" />{' '}{tr('Reject')}
                 </button>
               </div>
             )}
             {selectedPdf.status !== 'pending' && selectedPdf.notes && (
-              <p className="text-sm text-earth-500 dark:text-earth-400 mt-4"><span className="font-medium">Note to the student:</span> {selectedPdf.notes}</p>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mt-4"><span className="font-medium">{tr('Note to the student:')}</span> {selectedPdf.notes}</p>
             )}
           </Card>
         </div>
@@ -485,7 +485,7 @@ export default function SchoolDashboard() {
   const paymentStatus = isClub ? 'paid' : user?.schoolPaymentStatus
   if (isSchoolAdmin && paymentStatus && paymentStatus !== 'paid') {
     return (
-      <AppLayout title="Payment Required" subtitle="Your school's account is locked until payment is verified">
+      <AppLayout title={tr('Payment Required')} subtitle={tr('Your school\'s account is locked until payment is verified')}>
         <div className="max-w-lg mx-auto space-y-4">
           <AnnouncementBanner />
           {adminNotifs.length > 0 && (
@@ -500,36 +500,36 @@ export default function SchoolDashboard() {
           )}
           <Card>
             <h3 className="font-semibold mb-2">
-              {paymentStatus === 'pending' ? 'Confirmation submitted' : paymentStatus === 'rejected' ? 'Confirmation rejected' : 'Payment required'}
+              {paymentStatus === 'pending' ? tr('Confirmation submitted') : paymentStatus === 'rejected' ? tr('Confirmation rejected') : tr('Payment required')}
             </h3>
             {paymentStatus === 'pending' && (
-              <p className="text-sm text-earth-500 mb-3">We received your bank confirmation number. Please allow 3–5 business days for our team to verify it — you'll get an approval email once it's confirmed, and student uploads and management will unlock automatically.</p>
+              <p className="text-sm text-earth-500 mb-3">{tr('We received your bank confirmation number. Please allow 3–5 business days for our team to verify it — you\'ll get an approval email once it\'s confirmed, and student uploads and management will unlock automatically.')}</p>
             )}
             {paymentStatus === 'rejected' && (
-              <p className="text-sm text-red-500 mb-3">{schoolInfo?.paymentNotes || 'Your confirmation could not be verified.'} Please double-check the number and resubmit.</p>
+              <p className="text-sm text-red-500 mb-3">{schoolInfo?.paymentNotes || tr('Your confirmation could not be verified.')}{' '}{tr('Please double-check the number and resubmit.')}</p>
             )}
             {paymentStatus === 'unpaid' && (
-              <p className="text-sm text-earth-500 mb-3">Please complete payment using the details below, then enter the bank confirmation number.</p>
+              <p className="text-sm text-earth-500 mb-3">{tr('Please complete payment using the details below, then enter the bank confirmation number.')}</p>
             )}
             <PaymentDetails accountCode={accountCode} className="mb-3 text-left" />
             {paymentStatus !== 'pending' && user?.role === 'school' && (
               <form onSubmit={handleSubmitConfirmation} className="space-y-3">
-                <label htmlFor="confirmRef" className="text-sm text-earth-500">Please enter your bank confirmation / reference number</label>
+                <label htmlFor="confirmRef" className="text-sm text-earth-500">{tr('Please enter your bank confirmation / reference number')}</label>
                 <input
                   id="confirmRef"
                   type="text"
-                  placeholder="e.g. WIRE-12345 or check #4821"
+                  placeholder={tr('e.g. WIRE-12345 or check #4821')}
                   value={confirmRef}
                   onChange={(e) => setConfirmRef(e.target.value)}
                   className="input"
                 />
                 <button type="submit" className="btn-primary w-full" disabled={confirmBusy || !confirmRef.trim()}>
-                  {confirmBusy ? 'Submitting…' : 'Submit confirmation'}
+                  {confirmBusy ? tr('Submitting…') : tr('Submit confirmation')}
                 </button>
               </form>
             )}
             {paymentStatus !== 'pending' && user?.role === 'school_staff' && (
-              <p className="text-sm text-earth-500">Only the school's primary admin account can submit a payment confirmation.</p>
+              <p className="text-sm text-earth-500">{tr('Only the school\'s primary admin account can submit a payment confirmation.')}</p>
             )}
           </Card>
         </div>
@@ -540,19 +540,19 @@ export default function SchoolDashboard() {
 
   return (
     <AppLayout
-      title={isSchoolAdmin ? 'School Dashboard' : 'My Documents'}
+      title={isSchoolAdmin ? tr('School Dashboard') : tr('My Documents')}
       subtitle={
         <span className="flex items-center gap-2">
-          {isSchoolAdmin ? 'Review student uploads' : 'Upload verification documents'}
+          {isSchoolAdmin ? tr('Review student uploads') : tr('Upload verification documents')}
           {schoolInfo?.plan === 'club' ? (
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-700 dark:text-brand-300">Free club</span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-700 dark:text-brand-300">{tr('Free club')}</span>
           ) : schoolInfo?.paymentStatus && (
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               schoolInfo.paymentStatus === 'paid'
                 ? 'bg-emerald-500/20 text-emerald-600'
                 : 'bg-amber-500/20 text-amber-600'
             }`}>
-              {schoolInfo.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+              {schoolInfo.paymentStatus === 'paid' ? tr('Paid') : tr('Unpaid')}
             </span>
           )}
         </span>
@@ -560,15 +560,15 @@ export default function SchoolDashboard() {
       action={
         <div className="flex flex-wrap gap-2">
           {isSchoolAdmin && (
-            <button data-tour="tab-students" onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>Students</button>
+            <button data-tour="tab-students" onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>{tr('Students')}</button>
           )}
-          <button data-tour="tab-reports" onClick={() => setTab('pdfs')} className={`btn-sm ${tab === 'pdfs' ? 'btn-primary' : 'btn-ghost'}`}>Reports</button>
+          <button data-tour="tab-reports" onClick={() => setTab('pdfs')} className={`btn-sm ${tab === 'pdfs' ? 'btn-primary' : 'btn-ghost'}`}>{tr('Reports')}</button>
           <button onClick={() => setTab('volunteer')} className={`btn-sm ${tab === 'volunteer' ? 'btn-primary' : 'btn-ghost'}`}>
-            <Users className="w-3.5 h-3.5 mr-1" /> Volunteer
+            <Users className="w-3.5 h-3.5 mr-1" />{' '}{tr('Volunteer')}
           </button>
           {user?.role === 'school' && (
             <button data-tour="tab-staff" onClick={() => setTab('setup')} className={`btn-sm ${tab === 'setup' ? 'btn-primary' : 'btn-ghost'}`}>
-              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> School setup
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" />{' '}{tr('School setup')}
             </button>
           )}
           {/* Announcements are a quick action, not a section of the dashboard —
@@ -578,8 +578,8 @@ export default function SchoolDashboard() {
               data-tour="tab-chat"
               onClick={() => setTab('chat')}
               className={`btn-sm ${tab === 'chat' ? 'btn-primary' : 'btn-ghost'}`}
-              title="Announcements"
-              aria-label="Announcements"
+              title={tr('Announcements')}
+              aria-label={tr('Announcements')}
             >
               <MessageSquare className="w-3.5 h-3.5" />
             </button>
@@ -601,10 +601,10 @@ export default function SchoolDashboard() {
         {tab === 'pdfs' && isSchoolAdmin && (
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => setReportTab('documents')} className={`btn-sm ${reportTab === 'documents' ? 'btn-primary' : 'btn-ghost'}`}>
-              <FileText className="w-3.5 h-3.5 mr-1" /> Documents
+              <FileText className="w-3.5 h-3.5 mr-1" />{' '}{tr('Documents')}
             </button>
             <button onClick={() => setReportTab('hours')} className={`btn-sm ${reportTab === 'hours' ? 'btn-primary' : 'btn-ghost'}`}>
-              <Download className="w-3.5 h-3.5 mr-1" /> Hours
+              <Download className="w-3.5 h-3.5 mr-1" />{' '}{tr('Hours')}
             </button>
           </div>
         )}
@@ -612,29 +612,29 @@ export default function SchoolDashboard() {
         {tab === 'setup' && user?.role === 'school' && (
           <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => setSetupTab('staff')} className={`btn-sm ${setupTab === 'staff' ? 'btn-primary' : 'btn-ghost'}`}>
-              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Co-admins
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" />{' '}{tr('Co-admins')}
             </button>
             <button onClick={() => setSetupTab('requirements')} className={`btn-sm ${setupTab === 'requirements' ? 'btn-primary' : 'btn-ghost'}`}>
-              <ClipboardList className="w-3.5 h-3.5 mr-1" /> Requirements
+              <ClipboardList className="w-3.5 h-3.5 mr-1" />{' '}{tr('Requirements')}
             </button>
             <button onClick={() => setSetupTab('sso')} className={`btn-sm ${setupTab === 'sso' ? 'btn-primary' : 'btn-ghost'}`}>
-              <KeyRound className="w-3.5 h-3.5 mr-1" /> Sign-in
+              <KeyRound className="w-3.5 h-3.5 mr-1" />{' '}{tr('Sign-in')}
             </button>
             <button onClick={() => setSetupTab('domain')} className={`btn-sm ${setupTab === 'domain' ? 'btn-primary' : 'btn-ghost'}`}>
-              <Globe className="w-3.5 h-3.5 mr-1" /> Domain
+              <Globe className="w-3.5 h-3.5 mr-1" />{' '}{tr('Domain')}
             </button>
             <button onClick={() => setSetupTab('branding')} className={`btn-sm ${setupTab === 'branding' ? 'btn-primary' : 'btn-ghost'}`}>
-              <Palette className="w-3.5 h-3.5 mr-1" /> Branding
+              <Palette className="w-3.5 h-3.5 mr-1" />{' '}{tr('Branding')}
             </button>
             <button onClick={() => setSetupTab('billing')} className={`btn-sm ${setupTab === 'billing' ? 'btn-primary' : 'btn-ghost'}`}>
-              <Receipt className="w-3.5 h-3.5 mr-1" /> Billing
+              <Receipt className="w-3.5 h-3.5 mr-1" />{' '}{tr('Billing')}
             </button>
           </div>
         )}
 
         {billingTab && adminNotifs.length > 0 && (
           <Card>
-            <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Bell className="w-4 h-4 text-brand-600" /> Payment notices</h3>
+            <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Bell className="w-4 h-4 text-brand-600" />{' '}{tr('Payment notices')}</h3>
             <div className="space-y-2">
               {adminNotifs.map((n) => (
                 <div key={n.id} className="text-sm p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
@@ -651,7 +651,7 @@ export default function SchoolDashboard() {
             return (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm">
                 <Calendar className="w-4 h-4 inline mr-1" />
-                Payment due in <strong>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>
+                {tr('Payment due in')}{' '}<strong>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>
               </div>
             )
           }
@@ -665,7 +665,7 @@ export default function SchoolDashboard() {
         )}
         {billingTab && invoices.length > 0 && (
           <Card>
-            <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" /> Invoices</h3>
+            <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" />{' '}{tr('Invoices')}</h3>
             <div className="space-y-2">
               {invoices.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between gap-3 text-sm p-3 rounded-xl bg-earth-500/5">
@@ -693,12 +693,12 @@ export default function SchoolDashboard() {
                         ? 'bg-earth-500/20 text-earth-500'
                         : 'bg-amber-500/20 text-amber-600'
                     }`}>
-                      {inv.status === 'paid' ? 'Paid' : inv.status === 'void' ? 'Void' : 'Sent'}
+                      {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Sent')}
                     </span>
                     <button
                       onClick={() => setPreviewInvoice(inv)}
                       className="p-1.5 text-earth-400 hover:text-earth-300"
-                      title="Preview invoice"
+                      title={tr('Preview invoice')}
                     >
                       <Eye className="w-4 h-4" />
                     </button>
@@ -717,7 +717,7 @@ export default function SchoolDashboard() {
                         createdAt: inv.created_at,
                       })}
                       className="p-1.5 text-earth-400 hover:text-earth-300"
-                      title="Download PDF"
+                      title={tr('Download PDF')}
                     >
                       <Download className="w-4 h-4" />
                     </button>
@@ -730,21 +730,21 @@ export default function SchoolDashboard() {
         {tab === 'chat' && isSchoolAdmin && (
           <div className="space-y-4">
             <Card>
-              <h3 className="font-semibold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-brand-600" /> Send announcement</h3>
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-brand-600" />{' '}{tr('Send announcement')}</h3>
               <form onSubmit={handleSendMessage} className="space-y-3">
                 <textarea
-                  className="input" rows={3} placeholder="Write a message to all students…"
+                  className="input" rows={3} placeholder={tr('Write a message to all students…')}
                   value={messageText} onChange={(e) => setMessageText(e.target.value)} maxLength={2000} required
                 />
                 <button type="submit" className="btn-primary" disabled={sendingMsg || !messageText.trim()}>
-                  {sendingMsg ? 'Sending…' : 'Send to all students'}
+                  {sendingMsg ? tr('Sending…') : tr('Send to all students')}
                 </button>
               </form>
             </Card>
             <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-earth-400 uppercase tracking-wider">Previously sent</h3>
+              <h3 className="font-semibold text-sm text-earth-400 uppercase tracking-wider">{tr('Previously sent')}</h3>
               {messages.length === 0 ? (
-                <Card><p className="text-center text-earth-500 py-6 text-sm">No messages sent yet.</p></Card>
+                <Card><p className="text-center text-earth-500 py-6 text-sm">{tr('No messages sent yet.')}</p></Card>
               ) : messages.map((m) => (
                 <Card key={m.id} padded={false} className="p-4">
                   <p className="text-sm">{m.message}</p>
@@ -759,16 +759,16 @@ export default function SchoolDashboard() {
 
         {user?.role === 'student' && (
           <Card>
-            <h3 className="font-semibold mb-3 flex items-center gap-2"><Upload className="w-4 h-4 text-brand-600" /> Upload verification PDF</h3>
+            <h3 className="font-semibold mb-3 flex items-center gap-2"><Upload className="w-4 h-4 text-brand-600" />{' '}{tr('Upload verification PDF')}</h3>
             {paymentStatus && paymentStatus !== 'paid' ? (
               <p className="text-sm p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
-                Your school hasn't completed payment yet — submissions are paused until payment is verified.
+                {tr('Your school hasn\'t completed payment yet — submissions are paused until payment is verified.')}
               </p>
             ) : (
               <>
-                <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">Upload volunteer hour verification documents for your school to review.</p>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">{tr('Upload volunteer hour verification documents for your school to review.')}</p>
                 <label className="btn-primary inline-flex items-center cursor-pointer">
-                  {uploading ? 'Uploading…' : <><Upload className="w-4 h-4 mr-2" /> Choose PDF</>}
+                  {uploading ? tr('Uploading…') : <><Upload className="w-4 h-4 mr-2" />{' '}{tr('Choose PDF')}</>}
                   <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFileUpload} disabled={uploading} />
                 </label>
               </>
@@ -780,19 +780,19 @@ export default function SchoolDashboard() {
           <>
             {schoolInfo?.pin && (
               <Card className="mb-4">
-                <h3 className="font-semibold mb-1 flex items-center gap-2"><Hash className="w-4 h-4 text-brand-600" /> School code</h3>
+                <h3 className="font-semibold mb-1 flex items-center gap-2"><Hash className="w-4 h-4 text-brand-600" />{' '}{tr('School code')}</h3>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-                  Students enter this in Settings → Join school to link themselves to you, or use the join link in the starter kit below.
+                  {tr('Students enter this in Settings → Join school to link themselves to you, or use the join link in the starter kit below.')}
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 overflow-x-auto rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{schoolInfo.pin}</code>
-                  <button type="button" onClick={copyCode} className="btn-sm btn-ghost shrink-0" title="Copy school code">
+                  <button type="button" onClick={copyCode} className="btn-sm btn-ghost shrink-0" title={tr('Copy school code')}>
                     {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
                 {user?.role === 'school' && (
                   <p className="text-xs text-earth-500 dark:text-earth-400 mt-2">
-                    To change it, go to <Link to="/settings" className="text-brand-400 hover:underline">Settings</Link>.
+                    {tr('To change it, go to')}{' '}<Link to="/settings" className="text-brand-400 hover:underline">{tr('Settings')}</Link>.
                   </p>
                 )}
               </Card>
@@ -821,10 +821,10 @@ export default function SchoolDashboard() {
             {transfers.length > 0 && (
               <Card className="mb-4">
                 <h3 className="font-semibold mb-1 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-brand-600" /> Transfer requests ({transfers.length})
+                  <Users className="w-4 h-4 text-brand-600" />{' '}{tr('Transfer requests ({n})', { n: transfers.length })}
                 </h3>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-                  These students asked to move to your school. Their volunteer record moves with them.
+                  {tr('These students asked to move to your school. Their volunteer record moves with them.')}
                 </p>
                 <div className="divide-y divide-white/10">
                   {transfers.map((t) => (
@@ -832,7 +832,7 @@ export default function SchoolDashboard() {
                       <div className="min-w-0">
                         <div className="font-medium truncate">{t.student_name}</div>
                         <div className="text-xs text-earth-500 dark:text-earth-400 truncate">
-                          {t.student_email}{t.grade ? ` · Grade ${t.grade}` : ''}
+                          {t.student_email}{t.grade ? ` · ${tr('Grade {grade}', { grade: t.grade })}` : ''}
                           {t.from_school_name ? ` · currently at ${t.from_school_name}` : ''}
                         </div>
                       </div>
@@ -842,14 +842,14 @@ export default function SchoolDashboard() {
                           disabled={transferBusy === t.id}
                           className="btn-sm btn-primary"
                         >
-                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> {transferBusy === t.id ? 'Working…' : 'Accept'}
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> {transferBusy === t.id ? tr('Working…') : tr('Accept')}
                         </button>
                         <button
                           onClick={() => decideTransfer(t.id, 'decline')}
                           disabled={transferBusy === t.id}
                           className="btn-sm btn-ghost"
                         >
-                          <XCircle className="w-3.5 h-3.5 mr-1" /> Decline
+                          <XCircle className="w-3.5 h-3.5 mr-1" />{' '}{tr('Decline')}
                         </button>
                       </div>
                     </div>
@@ -860,19 +860,19 @@ export default function SchoolDashboard() {
 
             <div className="flex flex-wrap gap-2 mb-4">
               <button onClick={() => setSubTab('list')} className={`btn-sm ${subTab === 'list' ? 'btn-primary' : 'btn-ghost'}`}>
-                <Search className="w-3.5 h-3.5 mr-1" /> Student list ({students.length})
+                <Search className="w-3.5 h-3.5 mr-1" />{' '}{tr('Student list ({n})', { n: students.length })}
               </button>
               <button onClick={() => setSubTab('review')} className={`btn-sm ${subTab === 'review' ? 'btn-primary' : 'btn-ghost'}`}>
-                <CheckCircle className="w-3.5 h-3.5 mr-1" /> Hours to check
+                <CheckCircle className="w-3.5 h-3.5 mr-1" />{' '}{tr('Hours to check')}
               </button>
               <button onClick={() => setSubTab('progress')} className={`btn-sm ${subTab === 'progress' ? 'btn-primary' : 'btn-ghost'}`}>
-                <Clock className="w-3.5 h-3.5 mr-1" /> Hours progress
+                <Clock className="w-3.5 h-3.5 mr-1" />{' '}{tr('Hours progress')}
               </button>
               <button onClick={() => setSubTab('graduation')} className={`btn-sm ${subTab === 'graduation' ? 'btn-primary' : 'btn-ghost'}`}>
-                <GraduationCap className="w-3.5 h-3.5 mr-1" /> Graduation report
+                <GraduationCap className="w-3.5 h-3.5 mr-1" />{' '}{tr('Graduation report')}
               </button>
               <button onClick={() => setSubTab('add')} className={`btn-sm ${subTab === 'add' ? 'btn-primary' : 'btn-ghost'}`}>
-                <Upload className="w-3.5 h-3.5 mr-1" /> Invite student
+                <Upload className="w-3.5 h-3.5 mr-1" />{' '}{tr('Invite student')}
               </button>
             </div>
 
@@ -898,8 +898,8 @@ export default function SchoolDashboard() {
 
             {subTab === 'add' && (
               <Card>
-                <h3 className="font-semibold mb-1">Invite a student by email</h3>
-                <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">They get an email and accept in their Settings. You'll see them in your student list once they do. Students can also join with your school code.</p>
+                <h3 className="font-semibold mb-1">{tr('Invite a student by email')}</h3>
+                <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">{tr('They get an email and accept in their Settings. You\'ll see them in your student list once they do. Students can also join with your school code.')}</p>
                 <form onSubmit={async (e) => {
                   e.preventDefault()
                   setAddErr('')
@@ -913,7 +913,7 @@ export default function SchoolDashboard() {
                     })
                     const data = await res.json()
                     if (!res.ok) throw new Error(data.error || 'Failed')
-                    setToastMsg('Invite sent. They\'ll appear once they accept.')
+                    setToastMsg(tr('Invite sent. They\'ll appear once they accept.'))
                     setToast(true)
                     setAddEmail('')
                     loadData()
@@ -921,7 +921,7 @@ export default function SchoolDashboard() {
                 }} className="space-y-3">
                   <div className="flex gap-2">
                     <input type="email" className="input flex-1" placeholder="student@school.edu" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} required />
-                    <button type="submit" className="btn-primary" disabled={adding}>{adding ? 'Sending…' : 'Invite'}</button>
+                    <button type="submit" className="btn-primary" disabled={adding}>{adding ? tr('Sending…') : tr('Invite')}</button>
                   </div>
                   {addErr && <p className="text-sm text-red-500">{addErr}</p>}
                 </form>
@@ -930,9 +930,9 @@ export default function SchoolDashboard() {
 
             {subTab === 'list' && (
               <Card>
-                <h3 className="font-semibold mb-3 flex items-center gap-2"><Search className="w-4 h-4 text-brand-600" /> Students ({students.length})</h3>
+                <h3 className="font-semibold mb-3 flex items-center gap-2"><Search className="w-4 h-4 text-brand-600" />{' '}{tr('Students ({n})', { n: students.length })}</h3>
                 {students.length === 0 ? (
-                  <p className="text-sm text-earth-500">No students linked to your school yet.</p>
+                  <p className="text-sm text-earth-500">{tr('No students linked to your school yet.')}</p>
                 ) : (
                   <div className="divide-y divide-white/10">
                     {students.map((s) => (
@@ -949,12 +949,12 @@ export default function SchoolDashboard() {
                               onChange={(e) => setStudentGrade(s.id, e.target.value)}
                               aria-label={`Grade for ${s.name}`}
                             >
-                              <option value="">{!s.grade ? 'No grade' : schoolGradeOptions.includes(gradeKey(s.grade)) ? 'No grade' : /^(graduated|moved on)$/i.test(s.grade) ? s.grade : `${gradeLabel(s.grade)} (fix)`}</option>
+                              <option value="">{!s.grade ? tr('No grade') : schoolGradeOptions.includes(gradeKey(s.grade)) ? tr('No grade') : /^(graduated|moved on)$/i.test(s.grade) ? s.grade : `${gradeLabel(s.grade)} (fix)`}</option>
                               {schoolGradeOptions.map((g) => <option key={g} value={g}>{gradeLabel(g)}</option>)}
                             </select>
                             <span className="text-xs text-earth-500 hidden sm:inline">{new Date(s.created_at).toLocaleDateString()}</span>
                             <button type="button" className="btn-ghost btn-sm" onClick={() => setNotesFor(notesFor === s.id ? null : s.id)} aria-expanded={notesFor === s.id}>
-                              Notes{noteCounts[s.id] ? ` (${noteCounts[s.id]})` : ''}
+                              {tr('Notes')}{noteCounts[s.id] ? ` (${noteCounts[s.id]})` : ''}
                             </button>
                           </div>
                         </div>
@@ -972,12 +972,11 @@ export default function SchoolDashboard() {
 
         {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && (
           <Card>
-            <h2 className="text-lg font-semibold mb-1">Hour reports</h2>
+            <h2 className="text-lg font-semibold mb-1">{tr('Hour reports')}</h2>
             <p className="text-sm text-slate-500 mb-4">
-              Export every student's logged hours for a date range — for administrators,
-              service-hour compliance, or grant reporting.
+              {tr('Export every student\'s logged hours for a date range — for administrators, service-hour compliance, or grant reporting.')}
             </p>
-            <HoursReportPanel title="Volunteer hours report" />
+            <HoursReportPanel title={tr('Volunteer hours report')} />
           </Card>
         )}
         {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && <ImpactReportCard scope="school" className="mt-4" />}
@@ -988,9 +987,9 @@ export default function SchoolDashboard() {
 
         {tab === 'setup' && setupTab === 'sso' && user?.role === 'school' && (
           <Card>
-            <h2 className="text-lg font-semibold mb-1">Single sign-on</h2>
+            <h2 className="text-lg font-semibold mb-1">{tr('Single sign-on')}</h2>
             <p className="text-sm text-slate-500 mb-4">
-              Let students sign in with your school&apos;s Google or Microsoft account instead of a VolunTrack password.
+              {tr('Let students sign in with your school\'s Google or Microsoft account instead of a VolunTrack password.')}
             </p>
             <SsoSettings />
           </Card>
@@ -998,9 +997,9 @@ export default function SchoolDashboard() {
 
         {tab === 'setup' && setupTab === 'domain' && user?.role === 'school' && (
           <Card>
-            <h2 className="text-lg font-semibold mb-1">Custom domain</h2>
+            <h2 className="text-lg font-semibold mb-1">{tr('Custom domain')}</h2>
             <p className="text-sm text-slate-500 mb-4">
-              Serve VolunTrack to your students on your own web address instead of the shared one.
+              {tr('Serve VolunTrack to your students on your own web address instead of the shared one.')}
             </p>
             <TenantDomainSettings />
           </Card>
@@ -1010,9 +1009,9 @@ export default function SchoolDashboard() {
             directly after the Custom domain tab that makes one exist. */}
         {tab === 'setup' && setupTab === 'branding' && user?.role === 'school' && (
           <Card>
-            <h2 className="text-lg font-semibold mb-1">Branding</h2>
+            <h2 className="text-lg font-semibold mb-1">{tr('Branding')}</h2>
             <p className="text-sm text-slate-500 mb-4">
-              Put your school&apos;s logo and colour on the sign-in page students see at your own web address.
+              {tr('Put your school\'s logo and colour on the sign-in page students see at your own web address.')}
             </p>
             <TenantBrandingSettings />
           </Card>
@@ -1021,29 +1020,29 @@ export default function SchoolDashboard() {
         {tab === 'setup' && setupTab === 'staff' && user?.role === 'school' && (
           <div className="space-y-4">
             <Card>
-              <h3 className="font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" /> Add a co-admin</h3>
+              <h3 className="font-semibold mb-1 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" />{' '}{tr('Add a co-admin')}</h3>
               <p className="text-sm text-earth-500 mb-3">
-                Co-admins can review uploads, manage students, and send announcements — {staff.length}/10 used.
+                {tr('Co-admins can review uploads, manage students, and send announcements — {n}/10 used.', { n: staff.length })}
               </p>
               {staff.length >= 10 ? (
                 <p className="text-sm p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
-                  You've reached the limit of 10 co-admins. Remove one below to add another.
+                  {tr('You\'ve reached the limit of 10 co-admins. Remove one below to add another.')}
                 </p>
               ) : (
                 <form onSubmit={handleAddStaff} className="space-y-3">
-                  <input type="text" className="input" placeholder="Name" value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
-                  <input type="email" className="input" placeholder="Email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} required />
-                  <input type="password" className="input" placeholder="Temporary password (min 8 chars)" value={staffForm.password} onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })} minLength={8} required />
-                  <button type="submit" className="btn-primary" disabled={addingStaff}>{addingStaff ? 'Adding…' : 'Add co-admin'}</button>
+                  <input type="text" className="input" placeholder={tr('Name')} value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
+                  <input type="email" className="input" placeholder={tr('Email')} value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} required />
+                  <input type="password" className="input" placeholder={tr('Temporary password (min 8 chars)')} value={staffForm.password} onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })} minLength={8} required />
+                  <button type="submit" className="btn-primary" disabled={addingStaff}>{addingStaff ? tr('Adding…') : tr('Add co-admin')}</button>
                   {staffErr && <p className="text-sm text-red-500">{staffErr}</p>}
                 </form>
               )}
             </Card>
 
             <Card>
-              <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-brand-600" /> Co-admins ({staff.length})</h3>
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-brand-600" />{' '}{tr('Co-admins ({n})', { n: staff.length })}</h3>
               {staff.length === 0 ? (
-                <p className="text-sm text-earth-500">No co-admins added yet.</p>
+                <p className="text-sm text-earth-500">{tr('No co-admins added yet.')}</p>
               ) : (
                 <div className="divide-y divide-white/10">
                   {staff.map((m) => (
@@ -1055,9 +1054,9 @@ export default function SchoolDashboard() {
                         </div>
                         <div className="flex items-center gap-1">
                           <button onClick={() => setHandoverStaffId(handoverStaffId === m.id ? null : m.id)} className="btn-ghost btn-sm">
-                            Make main admin
+                            {tr('Make main admin')}
                           </button>
-                          <button onClick={() => handleRemoveStaff(m.id)} className="text-red-400 hover:text-red-300 p-2" title="Remove co-admin">
+                          <button onClick={() => handleRemoveStaff(m.id)} className="text-red-400 hover:text-red-300 p-2" title={tr('Remove co-admin')}>
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -1074,9 +1073,9 @@ export default function SchoolDashboard() {
             </Card>
 
             <Card>
-              <h3 className="font-semibold mb-1 flex items-center gap-2"><UserCog className="w-4 h-4 text-brand-600" /> New principal?</h3>
+              <h3 className="font-semibold mb-1 flex items-center gap-2"><UserCog className="w-4 h-4 text-brand-600" />{' '}{tr('New principal?')}</h3>
               <p className="text-sm text-earth-500 mb-3">
-                Hand this school’s main account to the person taking over. They get an email to accept and set their own password. You stay on as a co-admin until they remove you, and you’ll be signed out when they accept.
+                {tr('Hand this school’s main account to the person taking over. They get an email to accept and set their own password. You stay on as a co-admin until they remove you, and you’ll be signed out when they accept.')}
               </p>
               <HandoverForm path={HANDOVER_ENDPOINTS.school()} />
             </Card>
@@ -1086,7 +1085,7 @@ export default function SchoolDashboard() {
         {tab === 'volunteer' && (
           <div className="space-y-4">
             <Card>
-              <h3 className="font-semibold mb-3">Post a volunteer task</h3>
+              <h3 className="font-semibold mb-3">{tr('Post a volunteer task')}</h3>
               <form onSubmit={async (e) => {
                 e.preventDefault(); setTaskBusy(true)
                 try {
@@ -1098,34 +1097,34 @@ export default function SchoolDashboard() {
                   })
                   if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
                    setTaskForm({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '' })
-                  setToastMsg('Task posted!'); setToast(true); loadData()
+                  setToastMsg(tr('Task posted!')); setToast(true); loadData()
                 } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
               }} className="space-y-3">
-                <input className="input" maxLength={200} placeholder="Task title" value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
-                <textarea className="input" rows={2} maxLength={5000} placeholder="Description — what volunteers will do" value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
-                <input className="input" maxLength={300} placeholder="Location — where it happens" value={taskForm.location} onChange={(e) => setTaskForm({...taskForm, location: e.target.value})} required />
-                <textarea className="input" rows={2} maxLength={2000} placeholder="Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)" value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
-                <input className="input" type="tel" maxLength={30} placeholder="Phone number — shown to approved volunteers" value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
+                <input className="input" maxLength={200} placeholder={tr('Task title')} value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
+                <textarea className="input" rows={2} maxLength={5000} placeholder={tr('Description — what volunteers will do')} value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
+                <input className="input" maxLength={300} placeholder={tr('Location — where it happens')} value={taskForm.location} onChange={(e) => setTaskForm({...taskForm, location: e.target.value})} required />
+                <textarea className="input" rows={2} maxLength={2000} placeholder={tr('Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)')} value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
+                <input className="input" type="tel" maxLength={30} placeholder={tr('Phone number — shown to approved volunteers')} value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="label text-xs">Date *</label>
+                    <label className="label text-xs">{tr('Date *')}</label>
                     <input type="date" className="input" value={taskForm.date} onChange={(e) => setTaskForm({...taskForm, date: e.target.value})} required />
                   </div>
                   <div>
-                    <label className="label text-xs">Time *</label>
+                    <label className="label text-xs">{tr('Time *')}</label>
                     <input type="time" className="input" value={taskForm.time} onChange={(e) => setTaskForm({...taskForm, time: e.target.value})} required />
                   </div>
                   <div>
-                    <label className="label text-xs">Volunteers needed *</label>
-                    <input type="number" className="input" min={1} placeholder="Slots" value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
+                    <label className="label text-xs">{tr('Volunteers needed *')}</label>
+                    <input type="number" className="input" min={1} placeholder={tr('Slots')} value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
                   </div>
                 </div>
-                <button type="submit" className="btn-primary w-full" disabled={taskBusy}>{taskBusy ? 'Posting…' : 'Post task'}</button>
+                <button type="submit" className="btn-primary w-full" disabled={taskBusy}>{taskBusy ? tr('Posting…') : tr('Post task')}</button>
               </form>
             </Card>
 
             {tasks.length === 0 ? (
-              <Card><p className="text-center text-earth-500 py-8">No volunteer tasks yet.</p></Card>
+              <Card><p className="text-center text-earth-500 py-8">{tr('No volunteer tasks yet.')}</p></Card>
             ) : tasks.map((t) => {
               const filled = Number(t.slots_filled)
               const total = Number(t.slots_total)
@@ -1143,30 +1142,30 @@ export default function SchoolDashboard() {
                         <span>{filled}/{total} filled</span>
                       </div>
                       {approved && t.phone && (
-                        <p className="text-xs text-emerald-400 mt-1 font-medium">Contact: {t.phone}</p>
+                        <p className="text-xs text-emerald-400 mt-1 font-medium">{tr('Contact:')}{' '}{t.phone}</p>
                       )}
                       {approved && t.important_info && (
                         <div className="mt-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                          <p className="text-xs font-semibold text-emerald-300 mb-0.5">Important info</p>
+                          <p className="text-xs font-semibold text-emerald-300 mb-0.5">{tr('Important info')}</p>
                           <p className="text-xs text-emerald-200/80">{t.important_info}</p>
                         </div>
                       )}
                       {t.my_signup_status === 'pending' && (
-                        <p className="text-xs text-amber-400 mt-1">Awaiting organizer approval</p>
+                        <p className="text-xs text-amber-400 mt-1">{tr('Awaiting organizer approval')}</p>
                       )}
                       {t.my_signup_status === 'rejected' && (
-                        <p className="text-xs text-red-400 mt-1">Signup rejected</p>
+                        <p className="text-xs text-red-400 mt-1">{tr('Signup rejected')}</p>
                       )}
                     </div>
                     <div className="shrink-0">
                       {t.my_signup_status === 'approved' ? (
-                        <span className="text-xs text-emerald-400 font-medium">Approved</span>
+                        <span className="text-xs text-emerald-400 font-medium">{tr('Approved')}</span>
                       ) : t.my_signup_status === 'pending' ? (
-                        <span className="text-xs text-amber-400 font-medium">Pending</span>
+                        <span className="text-xs text-amber-400 font-medium">{tr('Pending')}</span>
                       ) : t.my_signup_status === 'rejected' ? (
-                        <span className="text-xs text-red-400 font-medium">Rejected</span>
+                        <span className="text-xs text-red-400 font-medium">{tr('Rejected')}</span>
                       ) : full ? (
-                        <span className="text-xs text-red-400 font-medium">Full</span>
+                        <span className="text-xs text-red-400 font-medium">{tr('Full')}</span>
                       ) : (
                         <button onClick={async () => {
                           // Minimum age (#426): confirmed by the student, as on Opportunities.
@@ -1179,9 +1178,9 @@ export default function SchoolDashboard() {
                               body: JSON.stringify(t.min_age != null ? { ageConfirmed: true } : {}),
                             })
                             if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
-                            setToastMsg('Signed up — awaiting organizer approval'); setToast(true); loadData()
+                            setToastMsg(tr('Signed up — awaiting organizer approval')); setToast(true); loadData()
                           } catch (e) { setToastMsg(e.message); setToast(true) }
-                        }} className="btn-primary text-sm">Sign up</button>
+                        }} className="btn-primary text-sm">{tr('Sign up')}</button>
                       )}
                     </div>
                   </div>
@@ -1194,9 +1193,9 @@ export default function SchoolDashboard() {
         {tab === 'pdfs' && reportTab === 'documents' && (
         <div className="space-y-3">
           {loading ? (
-            <p className="text-center text-earth-400 py-8">Loading…</p>
+            <p className="text-center text-earth-400 py-8">{tr('Loading…')}</p>
           ) : pdfs.length === 0 ? (
-            <Card><p className="text-center text-earth-500 py-8">No PDFs yet.</p></Card>
+            <Card><p className="text-center text-earth-500 py-8">{tr('No PDFs yet.')}</p></Card>
           ) : pdfs.map((pdf) => (
             <Card key={pdf.id} padded={false} className="p-4">
               <div className="flex items-center justify-between gap-4">
@@ -1209,7 +1208,7 @@ export default function SchoolDashboard() {
                       {new Date(pdf.created_at).toLocaleDateString()}
                     </p>
                     {pdf.status === 'rejected' && pdf.notes && (
-                      <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 line-clamp-2">Sent back: {pdf.notes}</p>
+                      <p className="text-xs text-red-500 dark:text-red-400 mt-0.5 line-clamp-2">{tr('Sent back:')}{' '}{pdf.notes}</p>
                     )}
                   </div>
                 </div>
@@ -1220,10 +1219,10 @@ export default function SchoolDashboard() {
                   </button>
                   {isSchoolAdmin && pdf.status === 'pending' && (
                     <>
-                      <button onClick={() => reviewPdf(pdf.id, 'approved')} className="text-emerald-400 hover:text-emerald-300 p-1" title="Approve">
+                      <button onClick={() => reviewPdf(pdf.id, 'approved')} className="text-emerald-400 hover:text-emerald-300 p-1" title={tr('Approve')}>
                         <CheckCircle className="w-5 h-5" />
                       </button>
-                      <button onClick={() => reviewPdf(pdf.id, 'rejected')} className="text-red-400 hover:text-red-300 p-1" title="Reject">
+                      <button onClick={() => reviewPdf(pdf.id, 'rejected')} className="text-red-400 hover:text-red-300 p-1" title={tr('Reject')}>
                         <XCircle className="w-5 h-5" />
                       </button>
                     </>

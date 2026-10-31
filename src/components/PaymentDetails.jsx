@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { CreditCard } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 const FIELDS = [
-  ['bankName', 'Bank'],
-  ['accountName', 'Account name'],
-  ['accountNumber', 'Account number'],
-  ['routingNumber', 'Routing number'],
+  ['bankName', tr('Bank')],
+  ['accountName', tr('Account name')],
+  ['accountNumber', tr('Account number')],
+  ['routingNumber', tr('Routing number')],
   ['swift', 'SWIFT/BIC'],
 ]
 
@@ -42,11 +43,11 @@ export default function PaymentDetails({ accountCode, className = '' }) {
   return (
     <div className={`text-sm rounded-xl bg-earth-500/5 p-3 ${className}`}>
       <p className="font-medium flex items-center gap-2">
-        <CreditCard className="w-4 h-4 text-brand-600" /> How to pay
+        <CreditCard className="w-4 h-4 text-brand-600" />{' '}{tr('How to pay')}
       </p>
       <dl className="mt-2 space-y-1">
         <div className="flex gap-2">
-          <dt className="text-earth-500 w-32 shrink-0">Account ID</dt>
+          <dt className="text-earth-500 w-32 shrink-0">{tr('Account ID')}</dt>
           <dd className="font-mono">{accountCode}</dd>
         </div>
         {rows.map(([label, value]) => (
@@ -56,7 +57,7 @@ export default function PaymentDetails({ accountCode, className = '' }) {
           </div>
         ))}
         <div className="flex gap-2">
-          <dt className="text-earth-500 w-32 shrink-0">Reference</dt>
+          <dt className="text-earth-500 w-32 shrink-0">{tr('Reference')}</dt>
           <dd>{instructions?.reference || `Quote ${accountCode} on your transfer`}</dd>
         </div>
       </dl>

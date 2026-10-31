@@ -45,7 +45,7 @@ export default function ChallengeCard({ manage = false, className = '' }) {
   }
 
   const end = async () => {
-    if (!window.confirm('End this challenge now? Students will stop seeing it.')) return
+    if (!window.confirm(tr('End this challenge now? Students will stop seeing it.'))) return
     setBusy(true)
     try {
       await fetch(`${apiUrl}/school/challenge/${challenge.id}`, { method: 'DELETE', headers: auth() })
@@ -56,13 +56,13 @@ export default function ChallengeCard({ manage = false, className = '' }) {
   if (!challenge) {
     return (
       <Card className={className}>
-        <h3 className="font-semibold flex items-center gap-2"><Flag className="w-4 h-4 text-brand-600" /> Start a group challenge</h3>
-        <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5 mb-3">A shared goal for all your students, like &ldquo;500 hours together by Dec 1&rdquo;. Everyone sees one progress bar fill up as anyone logs hours.</p>
+        <h3 className="font-semibold flex items-center gap-2"><Flag className="w-4 h-4 text-brand-600" />{' '}{tr('Start a group challenge')}</h3>
+        <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5 mb-3">{tr('A shared goal for all your students, like “500 hours together by Dec 1”. Everyone sees one progress bar fill up as anyone logs hours.')}</p>
         <form onSubmit={start} className="grid sm:grid-cols-[1fr,8rem,10rem,auto] gap-2">
-          <input className="input" placeholder="Fall food drive" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required maxLength={120} />
-          <input className="input" type="number" min="1" placeholder="Hours" value={form.goalHours} onChange={(e) => setForm({ ...form, goalHours: e.target.value })} required />
-          <input className="input" type="date" value={form.endsOn} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} required aria-label="End date" />
-          <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Starting…' : 'Start'}</button>
+          <input className="input" placeholder={tr('Fall food drive')} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required maxLength={120} />
+          <input className="input" type="number" min="1" placeholder={tr('Hours')} value={form.goalHours} onChange={(e) => setForm({ ...form, goalHours: e.target.value })} required />
+          <input className="input" type="date" value={form.endsOn} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} required aria-label={tr('End date')} />
+          <button type="submit" className="btn-primary" disabled={busy}>{busy ? tr('Starting…') : tr('Start')}</button>
         </form>
         {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
       </Card>
@@ -78,7 +78,7 @@ export default function ChallengeCard({ manage = false, className = '' }) {
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5"><Flag className="w-3.5 h-3.5" /> {tr('Group challenge')}</p>
           <h3 className="font-display font-semibold mt-0.5 truncate">{challenge.title}</h3>
         </div>
-        {manage && <button type="button" className="btn-ghost btn-sm shrink-0" onClick={end} disabled={busy}>End</button>}
+        {manage && <button type="button" className="btn-ghost btn-sm shrink-0" onClick={end} disabled={busy}>{tr('End')}</button>}
       </div>
       <div className="mt-3 h-3 rounded-full bg-earth-100 dark:bg-earth-800 overflow-hidden">
         <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />

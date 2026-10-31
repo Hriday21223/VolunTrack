@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { GraduationCap, Loader2, Undo2, ArrowRight } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const headers = () => ({
@@ -77,9 +78,9 @@ export default function GradeRolloverCard({ onChanged, onOpenGraduationReport })
 
   return (
     <Card className="mt-4">
-      <h3 className="font-semibold mb-1 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-brand-600" /> New school year</h3>
+      <h3 className="font-semibold mb-1 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-brand-600" />{' '}{tr('New school year')}</h3>
       <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-        Move every student up a grade at the start of the year. 12th graders become Graduated. You can undo it for {plan?.undoDays || 14} days.
+        {tr('Move every student up a grade at the start of the year. 12th graders become Graduated. You can undo it for {n} days.', { n: plan?.undoDays || 14 })}
       </p>
 
       {msg && (
@@ -90,20 +91,20 @@ export default function GradeRolloverCard({ onChanged, onOpenGraduationReport })
 
       {last && !last.undoneAt && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-earth-500 dark:text-earth-400">Last moved up on {fmtDay(last.runAt)} ({last.moved} {last.moved === 1 ? 'student' : 'students'}).</span>
+          <span className="text-earth-500 dark:text-earth-400">{last.moved === 1 ? tr('Last moved up on {date} (1 student).', { date: fmtDay(last.runAt) }) : tr('Last moved up on {date} ({n} students).', { date: fmtDay(last.runAt), n: last.moved })}</span>
           {last.canUndo && (
             <button type="button" className="btn-sm btn-ghost" onClick={undo} disabled={busy}>
-              <Undo2 className="w-3.5 h-3.5" /> Undo
+              <Undo2 className="w-3.5 h-3.5" />{' '}{tr('Undo')}
             </button>
           )}
         </div>
       )}
 
       {!plan ? (
-        <p className="text-sm text-earth-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</p>
+        <p className="text-sm text-earth-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{' '}{tr('Loading…')}</p>
       ) : plan.moving === 0 ? (
         <p className="text-sm text-earth-500 dark:text-earth-400">
-          No students have a grade from Kindergarten to 12th to move up{plan.skipped ? ` (${plan.skipped} with another grade or none)` : ''}.
+          {tr('No students have a grade from Kindergarten to 12th to move up')}{plan.skipped ? ` (${plan.skipped} with another grade or none)` : ''}.
         </p>
       ) : (
         <>
@@ -117,14 +118,14 @@ export default function GradeRolloverCard({ onChanged, onOpenGraduationReport })
           </ul>
           {plan.skipped > 0 && (
             <p className="mb-3 text-xs text-earth-500 dark:text-earth-400">
-              {plan.skipped} {plan.skipped === 1 ? 'student stays' : 'students stay'} as they are (College, Graduated, another label, or no grade).
+              {plan.skipped === 1 ? tr('1 student stays as they are (College, Graduated, another label, or no grade).') : tr('{n} students stay as they are (College, Graduated, another label, or no grade).', { n: plan.skipped })}
             </p>
           )}
           {graduating > 0 && (
             <p className="mb-3 text-sm p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300">
-              Print the graduation report for your seniors first: after this they are listed as Graduated, not 12th grade.{' '}
+              {tr('Print the graduation report for your seniors first: after this they are listed as Graduated, not 12th grade.')}{' '}
               {onOpenGraduationReport && (
-                <button type="button" className="underline font-medium" onClick={onOpenGraduationReport}>Open the graduation report</button>
+                <button type="button" className="underline font-medium" onClick={onOpenGraduationReport}>{tr('Open the graduation report')}</button>
               )}
             </p>
           )}
@@ -132,23 +133,23 @@ export default function GradeRolloverCard({ onChanged, onOpenGraduationReport })
           {already ? (
             <div className="space-y-2">
               <p className="text-sm text-amber-700 dark:text-amber-300">
-                Grades were already moved up on {fmtDay(already)}. Doing it again moves every student up another grade.
+                {tr('Grades were already moved up on {date}. Doing it again moves every student up another grade.', { date: fmtDay(already) })}
               </p>
               <div className="flex gap-2">
-                <button type="button" className="btn-danger" onClick={() => run(true)} disabled={busy}>Move up again anyway</button>
-                <button type="button" className="btn-ghost" onClick={() => { setAlready(null); setConfirming(false) }}>Cancel</button>
+                <button type="button" className="btn-danger" onClick={() => run(true)} disabled={busy}>{tr('Move up again anyway')}</button>
+                <button type="button" className="btn-ghost" onClick={() => { setAlready(null); setConfirming(false) }}>{tr('Cancel')}</button>
               </div>
             </div>
           ) : confirming ? (
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-primary" onClick={() => run(false)} disabled={busy}>
-                {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Moving…</> : `Yes, move ${plan.moving} ${plan.moving === 1 ? 'student' : 'students'} up`}
+                {busy ? <><Loader2 className="w-4 h-4 animate-spin" />{' '}{tr('Moving…')}</> : `Yes, move ${plan.moving} ${plan.moving === 1 ? 'student' : 'students'} up`}
               </button>
-              <button type="button" className="btn-ghost" onClick={() => setConfirming(false)} disabled={busy}>Cancel</button>
+              <button type="button" className="btn-ghost" onClick={() => setConfirming(false)} disabled={busy}>{tr('Cancel')}</button>
             </div>
           ) : (
             <button type="button" className="btn-secondary" onClick={() => { setMsg(null); setConfirming(true) }}>
-              Move everyone up a grade
+              {tr('Move everyone up a grade')}
             </button>
           )}
         </>

@@ -4,6 +4,7 @@ import QRCode from 'qrcode'
 import { Rocket, Copy, Check, Download, Printer, Mail, MessageSquare, ClipboardList, ShieldCheck, Link2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { kitCopy, KIT_LANGUAGES } from '@/lib/starterKit.js'
+import { tr } from '@/lib/i18n.js'
 
 function CopyButton({ text, label = 'Copy' }) {
   const [done, setDone] = useState(false)
@@ -16,7 +17,7 @@ function CopyButton({ text, label = 'Copy' }) {
   }
   return (
     <button type="button" onClick={copy} className="btn-sm btn-ghost shrink-0" aria-label={label}>
-      {done ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {done ? 'Copied' : label}
+      {done ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {done ? tr('Copied') : label}
     </button>
   )
 }
@@ -59,15 +60,15 @@ export default function SchoolStarterKit({ pin, schoolName, onOpenSetup }) {
 
   return (
     <Card className="mb-4">
-      <h3 className="font-semibold mb-1 flex items-center gap-2"><Rocket className="w-4 h-4 text-brand-600" /> Starter kit</h3>
+      <h3 className="font-semibold mb-1 flex items-center gap-2"><Rocket className="w-4 h-4 text-brand-600" />{' '}{tr('Starter kit')}</h3>
       <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-        Get your students on VolunTrack in five minutes. Students who open your link or scan the code join {schoolName} without typing the code.
+        {tr('Get your students on VolunTrack in five minutes. Students who open your link or scan the code join {school} without typing the code.', { school: schoolName })}
       </p>
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0 space-y-4">
           <div>
-            <div className="label">Join link</div>
+            <div className="label">{tr('Join link')}</div>
             <div className="flex items-center gap-2">
               <code className="flex-1 min-w-0 overflow-x-auto whitespace-nowrap rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{copy.url}</code>
               <CopyButton text={copy.url} />
@@ -75,7 +76,7 @@ export default function SchoolStarterKit({ pin, schoolName, onOpenSetup }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-earth-500 dark:text-earth-400">Language for students:</span>
+            <span className="text-sm text-earth-500 dark:text-earth-400">{tr('Language for students:')}</span>
             {KIT_LANGUAGES.map((l) => (
               <button key={l.code} type="button" onClick={() => setLang(l.code)} className={`btn-sm ${lang === l.code ? 'btn-primary' : 'btn-ghost'}`} aria-pressed={lang === l.code}>
                 {l.label}
@@ -84,8 +85,8 @@ export default function SchoolStarterKit({ pin, schoolName, onOpenSetup }) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link to={`/school/flyer?lang=${lang}`} className="btn-secondary"><Printer className="w-4 h-4" /> Print the flyer</Link>
-            <button type="button" className="btn-ghost" onClick={downloadQr} disabled={!qr}><Download className="w-4 h-4" /> Download QR code</button>
+            <Link to={`/school/flyer?lang=${lang}`} className="btn-secondary"><Printer className="w-4 h-4" />{' '}{tr('Print the flyer')}</Link>
+            <button type="button" className="btn-ghost" onClick={downloadQr} disabled={!qr}><Download className="w-4 h-4" />{' '}{tr('Download QR code')}</button>
           </div>
         </div>
 
@@ -97,15 +98,15 @@ export default function SchoolStarterKit({ pin, schoolName, onOpenSetup }) {
       <div className="mt-5 space-y-3">
         <div className="rounded-xl border border-earth-200 dark:border-white/10 p-3">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm font-medium flex items-center gap-2"><Mail className="w-4 h-4 text-brand-600" /> Email or Google Classroom</span>
+            <span className="text-sm font-medium flex items-center gap-2"><Mail className="w-4 h-4 text-brand-600" />{' '}{tr('Email or Google Classroom')}</span>
             <CopyButton text={`${copy.emailSubject}\n\n${copy.email}`} />
           </div>
-          <p className="text-xs text-earth-500 dark:text-earth-400 mb-1">Subject: {copy.emailSubject}</p>
+          <p className="text-xs text-earth-500 dark:text-earth-400 mb-1">{tr('Subject:')}{' '}{copy.emailSubject}</p>
           <pre className="whitespace-pre-wrap break-words font-sans text-sm text-earth-600 dark:text-earth-300 max-h-48 overflow-y-auto">{copy.email}</pre>
         </div>
         <div className="rounded-xl border border-earth-200 dark:border-white/10 p-3">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm font-medium flex items-center gap-2"><MessageSquare className="w-4 h-4 text-brand-600" /> Short message (Remind, group chat, Instagram)</span>
+            <span className="text-sm font-medium flex items-center gap-2"><MessageSquare className="w-4 h-4 text-brand-600" />{' '}{tr('Short message (Remind, group chat, Instagram)')}</span>
             <CopyButton text={copy.short} />
           </div>
           <p className="text-sm text-earth-600 dark:text-earth-300 break-words">{copy.short}</p>
@@ -113,7 +114,7 @@ export default function SchoolStarterKit({ pin, schoolName, onOpenSetup }) {
       </div>
 
       <div className="mt-5">
-        <div className="text-sm font-medium mb-2">Set up in 5 minutes</div>
+        <div className="text-sm font-medium mb-2">{tr('Set up in 5 minutes')}</div>
         <ol className="space-y-2">
           {steps.map((s, i) => (
             <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">

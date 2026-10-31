@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download, ExternalLink } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 // A document a student submitted to their school, shown to that school.
 //
@@ -49,23 +50,23 @@ export default function SubmittedDocument({ doc }) {
     return (
       <div className="grid place-items-center h-full p-6 text-center text-earth-700">
         <div>
-          <p className="mb-3">This document is kept in your school&apos;s own storage.</p>
+          <p className="mb-3">{tr('This document is kept in your school\'s own storage.')}</p>
           <a href={doc.url} target="_blank" rel="noopener noreferrer" className="btn-primary inline-flex">
-            <ExternalLink className="w-4 h-4 mr-2" /> Open document
+            <ExternalLink className="w-4 h-4 mr-2" />{' '}{tr('Open document')}
           </a>
-          <p className="text-xs mt-2 text-earth-500">The link works for a few minutes.</p>
+          <p className="text-xs mt-2 text-earth-500">{tr('The link works for a few minutes.')}</p>
         </div>
       </div>
     )
   }
-  if (failed) return <p className="p-6 text-center text-earth-700">This document couldn&apos;t be read.</p>
+  if (failed) return <p className="p-6 text-center text-earth-700">{tr('This document couldn\'t be read.')}</p>
   if (!url) return null
-  if (kind === 'pdf') return <iframe src={url} title={doc.filename || 'Submitted document'} className="w-full h-full" />
-  if (kind === 'image') return <img src={url} alt={doc.filename || 'Submitted document'} className="w-full h-full object-contain" />
+  if (kind === 'pdf') return <iframe src={url} title={doc.filename || tr('Submitted document')} className="w-full h-full" />
+  if (kind === 'image') return <img src={url} alt={doc.filename || tr('Submitted document')} className="w-full h-full object-contain" />
   return (
     <div className="grid place-items-center h-full p-6 text-center text-earth-700">
       <a href={url} download={doc.filename || 'document'} className="btn-primary inline-flex">
-        <Download className="w-4 h-4 mr-2" /> Download {doc.filename || 'document'}
+        <Download className="w-4 h-4 mr-2" />{' '}{tr('Download')}{' '}{doc.filename || 'document'}
       </a>
     </div>
   )

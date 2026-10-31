@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Gift, Copy, Check } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -46,11 +47,11 @@ export default function ReferralCard({ className = '' }) {
     <div className={`rounded-xl border border-brand-500/30 bg-brand-500/10 p-4 ${className}`}>
       <p className="font-display font-semibold text-sm flex items-center gap-2">
         <Gift className="w-4 h-4 text-brand-600 shrink-0" />
-        {offer ? offer.headline : 'Your referral code'}
+        {offer ? offer.headline : tr('Your referral code')}
       </p>
       {offer && (
         <p className="text-sm text-earth-600 dark:text-earth-300 mt-1.5">
-          Invite another school or organization — you both get {offer.percentOff}% off.
+          {tr('Invite another school or organization — you both get {n}% off.', { n: offer.percentOff })}
         </p>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -59,7 +60,7 @@ export default function ReferralCard({ className = '' }) {
         </code>
         <button type="button" onClick={copy} className="btn-ghost btn-sm inline-flex items-center gap-1.5">
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? tr('Copied') : tr('Copy')}
         </button>
       </div>
 
@@ -74,16 +75,16 @@ export default function ReferralCard({ className = '' }) {
       {credits.length > 0 && (
         <div className="mt-3 rounded-lg bg-brand-500/10 p-2.5">
           <p className="text-sm font-medium">
-            {credits.length === 1 ? '1 discount waiting' : `${credits.length} discounts waiting`}
+            {credits.length === 1 ? tr('1 discount waiting') : `${credits.length} discounts waiting`}
           </p>
           <ul className="mt-1 space-y-0.5">
             {credits.map((c) => (
               <li key={c.id} className="text-xs text-earth-600 dark:text-earth-300">
-                {Number(c.percent_off)}% off — for referring {c.referred_name || 'a new customer'}
+                {c.referred_name ? tr('{n}% off — for referring {name}', { n: Number(c.percent_off), name: c.referred_name }) : tr('{n}% off — for referring a new customer', { n: Number(c.percent_off) })}
               </li>
             ))}
           </ul>
-          <p className="text-xs text-earth-500 dark:text-earth-400 mt-1.5">Applied to your next invoice.</p>
+          <p className="text-xs text-earth-500 dark:text-earth-400 mt-1.5">{tr('Applied to your next invoice.')}</p>
         </div>
       )}
     </div>

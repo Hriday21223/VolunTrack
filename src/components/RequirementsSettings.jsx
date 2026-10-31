@@ -20,34 +20,35 @@ import {
   fetchOrgRequirements, saveOrgRequirements, fetchTemplate, saveTemplate,
   gradeKey, gradeLabel, SCHOOL_GRADES, gradeOptionLabel,
 } from '@/lib/requirements.js'
+import { tr } from '@/lib/i18n.js'
 
 const SECTION_LABELS = {
-  logRules: 'Hour-entry rules',
-  customFields: 'Extra questions',
-  goals: 'Service-hour requirement',
-  signIn: 'Sign-in',
-  signatures: 'Signatures',
-  certificates: 'Certificates',
-  awards: 'Award levels',
+  logRules: tr('Hour-entry rules'),
+  customFields: tr('Extra questions'),
+  goals: tr('Service-hour requirement'),
+  signIn: tr('Sign-in'),
+  signatures: tr('Signatures'),
+  certificates: tr('Certificates'),
+  awards: tr('Award levels'),
 }
 
 const SECTION_HELP = {
-  logRules: 'What an entry must contain before your students can save it.',
-  customFields: 'Your own questions, added to the bottom of the Log Hours form.',
-  goals: 'The total each student is working toward. Shown on their dashboard.',
-  signIn: 'How students linked to you are allowed to get into their account.',
-  signatures: 'Whether each entry has to be signed, and by whom — or carry your own form.',
-  certificates: 'Who signs the certificates you print, and what they say.',
-  awards: 'Levels like Bronze, Silver and Gold that students reach as their hours grow. Shown on their dashboard and printed on certificates.',
+  logRules: tr('What an entry must contain before your students can save it.'),
+  customFields: tr('Your own questions, added to the bottom of the Log Hours form.'),
+  goals: tr('The total each student is working toward. Shown on their dashboard.'),
+  signIn: tr('How students linked to you are allowed to get into their account.'),
+  signatures: tr('Whether each entry has to be signed, and by whom — or carry your own form.'),
+  certificates: tr('Who signs the certificates you print, and what they say.'),
+  awards: tr('Levels like Bronze, Silver and Gold that students reach as their hours grow. Shown on their dashboard and printed on certificates.'),
 }
 
 const FIELD_TYPE_LABELS = {
-  text: 'Short text',
-  textarea: 'Long text',
-  number: 'Number',
-  date: 'Date',
-  select: 'Choose one',
-  checkbox: 'Checkbox',
+  text: tr('Short text'),
+  textarea: tr('Long text'),
+  number: tr('Number'),
+  date: tr('Date'),
+  select: tr('Choose one'),
+  checkbox: tr('Checkbox'),
 }
 
 function clone(value) {
@@ -115,7 +116,7 @@ export default function RequirementsSettings({ scope = 'school', templateId = nu
       for (const key of SECTIONS) payload[key] = sections[key]
       const data = isSchool ? await saveSchoolRequirements(payload) : isTemplate ? await saveTemplate(templateId, payload) : await saveOrgRequirements(payload)
       setMeta((m) => ({ ...m, ...data }))
-      setToast('Requirements saved.')
+      setToast(tr('Requirements saved.'))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -123,36 +124,42 @@ export default function RequirementsSettings({ scope = 'school', templateId = nu
     }
   }
 
-  if (loading) return <Card><p className="text-sm text-earth-500">Loading requirements…</p></Card>
+  if (loading) return <Card><p className="text-sm text-earth-500">{tr('Loading requirements…')}</p></Card>
 
   const sourceNote = (section) => {
-    if (sections[section]) return isSchool ? 'Set by your school' : isTemplate ? 'Set in this template' : 'Your default'
-    if (isTemplate) return 'Not set — these schools use your defaults'
-    if (!isSchool) return 'Not set — schools use VolunTrack defaults'
+    if (sections[section]) return isSchool ? tr('Set by your school') : isTemplate ? tr('Set in this template') : tr('Your default')
+    if (isTemplate) return tr('Not set — these schools use your defaults')
+    if (!isSchool) return tr('Not set — schools use VolunTrack defaults')
     const from = meta.sources?.[section]
-    if (from === 'template') return `From ${meta.organizationName || 'your organization'}’s “${meta.templateName}” rules`
-    if (from === 'organization') return `Inherited from ${meta.organizationName || 'your organization'}`
-    return 'VolunTrack defaults'
+    if (from === 'template') {
+      return meta.organizationName
+        ? tr('From {org}’s “{template}” rules', { org: meta.organizationName, template: meta.templateName })
+        : tr('From your organization’s “{template}” rules', { template: meta.templateName })
+    }
+    if (from === 'organization') {
+      return meta.organizationName ? tr('Inherited from {org}', { org: meta.organizationName }) : tr('Inherited from your organization')
+    }
+    return tr('VolunTrack defaults')
   }
 
   return (
     <div className="space-y-4">
       <Card>
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
-          <ClipboardList className="w-4 h-4 text-brand-600" /> {isTemplate ? `Rules for “${meta.templateName || ''}”` : 'Your requirements'}
+          <ClipboardList className="w-4 h-4 text-brand-600" /> {isTemplate ? `Rules for “${meta.templateName || ''}”` : tr('Your requirements')}
         </h2>
         <p className="text-sm text-earth-500 dark:text-earth-400">
           {isTemplate
-            ? 'Schools you assign to this template follow these sections instead of your defaults. A section left unset here uses your defaults, and a school can still set its own.'
+            ? tr('Schools you assign to this template follow these sections instead of your defaults. A section left unset here uses your defaults, and a school can still set its own.')
             : isSchool
-            ? 'Every rule here applies to the students linked to your school. Anything you leave inherited follows your organization, or VolunTrack’s defaults if you have none.'
-            : 'These are the defaults for every school you own. A school that sets its own version of a section keeps it — your changes reach the rest.'}
+            ? tr('Every rule here applies to the students linked to your school. Anything you leave inherited follows your organization, or VolunTrack’s defaults if you have none.')
+            : tr('These are the defaults for every school you own. A school that sets its own version of a section keeps it — your changes reach the rest.')}
         </p>
         {!isSchool && meta.schoolCount > 0 && (
           <p className="text-xs text-earth-400 mt-2">
-            {meta.schoolCount} school(s){meta.overridingSchoolCount > 0
-              ? ` — ${meta.overridingSchoolCount} of them override at least one section.`
-              : '.'}
+            {meta.overridingSchoolCount > 0
+              ? tr('{n} schools — {k} of them override at least one section.', { n: meta.schoolCount, k: meta.overridingSchoolCount })
+              : tr('{n} schools.', { n: meta.schoolCount })}
           </p>
         )}
       </Card>
@@ -169,12 +176,12 @@ export default function RequirementsSettings({ scope = 'school', templateId = nu
               sections[section]
                 ? (
                   <button type="button" onClick={() => inherit(section)} className="btn-sm btn-ghost shrink-0">
-                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> {isSchool ? 'Inherit' : 'Clear'}
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> {isSchool ? tr('Inherit') : tr('Clear')}
                   </button>
                 )
                 : (
                   <button type="button" onClick={() => override(section)} className="btn-sm btn-secondary shrink-0">
-                    {isSchool ? 'Set our own' : isTemplate ? 'Set in this template' : 'Set a default'}
+                    {isSchool ? tr('Set our own') : isTemplate ? tr('Set in this template') : tr('Set a default')}
                   </button>
                 )
             )}
@@ -202,7 +209,7 @@ export default function RequirementsSettings({ scope = 'school', templateId = nu
       {error && <p className="text-sm text-red-500">{error}</p>}
       {!readOnly && (
         <button type="button" onClick={onSave} disabled={saving} className="btn-primary w-full">
-          {saving ? 'Saving…' : 'Save requirements'}
+          {saving ? tr('Saving…') : tr('Save requirements')}
         </button>
       )}
 
@@ -252,28 +259,28 @@ function LogRulesEditor({ value, onChange }) {
   return (
     <>
       <div className="grid sm:grid-cols-2 gap-2">
-        <Check label="Require a proof file" checked={value.proofRequired} onChange={(v) => onChange({ proofRequired: v })} />
-        <Check label="Require a supervisor name and email" checked={value.supervisorRequired} onChange={(v) => onChange({ supervisorRequired: v })} />
-        <Check label="Require a location" checked={value.locationRequired} onChange={(v) => onChange({ locationRequired: v })} />
-        <Check label="Require the organization name" checked={value.orgNameRequired} onChange={(v) => onChange({ orgNameRequired: v })} />
-        <Check label="Allow future-dated entries" checked={value.allowFutureDates} onChange={(v) => onChange({ allowFutureDates: v })} />
+        <Check label={tr('Require a proof file')} checked={value.proofRequired} onChange={(v) => onChange({ proofRequired: v })} />
+        <Check label={tr('Require a supervisor name and email')} checked={value.supervisorRequired} onChange={(v) => onChange({ supervisorRequired: v })} />
+        <Check label={tr('Require a location')} checked={value.locationRequired} onChange={(v) => onChange({ locationRequired: v })} />
+        <Check label={tr('Require the organization name')} checked={value.orgNameRequired} onChange={(v) => onChange({ orgNameRequired: v })} />
+        <Check label={tr('Allow future-dated entries')} checked={value.allowFutureDates} onChange={(v) => onChange({ allowFutureDates: v })} />
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
-        <NumberBox label="Minimum hours per entry" value={value.minHoursPerEntry} onChange={(v) => onChange({ minHoursPerEntry: v })} placeholder="No minimum" />
-        <NumberBox label="Maximum hours per entry" value={value.maxHoursPerEntry} onChange={(v) => onChange({ maxHoursPerEntry: v })} />
-        <NumberBox label="Maximum hours on one day" value={value.maxHoursPerDay} onChange={(v) => onChange({ maxHoursPerDay: v })} />
-        <NumberBox label="Log within N days of the activity" value={value.maxBackdateDays} onChange={(v) => onChange({ maxBackdateDays: v })} step="1" placeholder="Any time after" />
-        <NumberBox label="Minimum description length" value={value.notesMinLength || null} onChange={(v) => onChange({ notesMinLength: v || 0 })} step="1" placeholder="No minimum" />
+        <NumberBox label={tr('Minimum hours per entry')} value={value.minHoursPerEntry} onChange={(v) => onChange({ minHoursPerEntry: v })} placeholder={tr('No minimum')} />
+        <NumberBox label={tr('Maximum hours per entry')} value={value.maxHoursPerEntry} onChange={(v) => onChange({ maxHoursPerEntry: v })} />
+        <NumberBox label={tr('Maximum hours on one day')} value={value.maxHoursPerDay} onChange={(v) => onChange({ maxHoursPerDay: v })} />
+        <NumberBox label={tr('Log within N days of the activity')} value={value.maxBackdateDays} onChange={(v) => onChange({ maxBackdateDays: v })} step="1" placeholder={tr('Any time after')} />
+        <NumberBox label={tr('Minimum description length')} value={value.notesMinLength || null} onChange={(v) => onChange({ notesMinLength: v || 0 })} step="1" placeholder={tr('No minimum')} />
         <div>
-          <label className="label">Lock entries before</label>
+          <label className="label">{tr('Lock entries before')}</label>
           <input className="input" type="date" value={value.lockedBefore || ''} onChange={(e) => onChange({ lockedBefore: e.target.value || null })} />
-          <p className="text-xs text-earth-400 mt-1">Students can’t add, edit or delete entries dated before this, e.g. once a semester’s report is done. You can still add hours for them.</p>
+          <p className="text-xs text-earth-400 mt-1">{tr('Students can’t add, edit or delete entries dated before this, e.g. once a semester’s report is done. You can still add hours for them.')}</p>
         </div>
       </div>
       <ApprovedPlacesEditor value={value.approvedPlaces || []} onChange={(approvedPlaces) => onChange({ approvedPlaces })} />
       <div>
-        <label className="label">Allowed categories</label>
-        <p className="text-xs text-earth-400 mb-2">Leave all unchecked to accept every category.</p>
+        <label className="label">{tr('Allowed categories')}</label>
+        <p className="text-xs text-earth-400 mb-2">{tr('Leave all unchecked to accept every category.')}</p>
         <div className="flex flex-wrap gap-2">
           {ACTIVITY_CATEGORIES.map((cat) => {
             const on = (value.allowedCategories || []).includes(cat)
@@ -301,9 +308,9 @@ function ApprovedPlacesEditor({ value, onChange }) {
   const count = text.split('\n').map((l) => l.trim()).filter(Boolean).length
   return (
     <div>
-      <label className="label" htmlFor="approved-places">Approved places</label>
+      <label className="label" htmlFor="approved-places">{tr('Approved places')}</label>
       <p className="text-xs text-earth-400 mb-2">
-        One per line. Hours from anywhere else still go in, but they&apos;re flagged in Students → Hours to check so you can look at them first. Leave empty to accept every place.
+        {tr('One per line. Hours from anywhere else still go in, but they\'re flagged in Students → Hours to check so you can look at them first. Leave empty to accept every place.')}
       </p>
       <textarea
         id="approved-places"
@@ -315,7 +322,7 @@ function ApprovedPlacesEditor({ value, onChange }) {
           onChange(e.target.value.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 200))
         }}
       />
-      <p className="text-xs text-earth-400 mt-1">{count} place{count === 1 ? '' : 's'}{count > 200 ? ' (only the first 200 are kept)' : ''}</p>
+      <p className="text-xs text-earth-400 mt-1">{count === 1 ? tr('1 place') : tr('{n} places', { n: count })}{count > 200 ? ` ${tr('(only the first 200 are kept)')}` : ''}</p>
     </div>
   )
 }
@@ -331,16 +338,16 @@ function GoalsEditor({ value, onChange }) {
   return (
     <>
       <div className="grid sm:grid-cols-2 gap-4">
-        <NumberBox label="Total hours required" value={value.totalHours} onChange={(v) => onChange({ totalHours: v })} placeholder="None" />
+        <NumberBox label={tr('Total hours required')} value={value.totalHours} onChange={(v) => onChange({ totalHours: v })} placeholder={tr('None')} />
         <div>
-          <label className="label">Deadline</label>
+          <label className="label">{tr('Deadline')}</label>
           <input className="input" type="date" value={value.deadline || ''} onChange={(e) => onChange({ deadline: e.target.value || null })} />
         </div>
       </div>
       <div>
-        <label className="label">Grades at your school</label>
+        <label className="label">{tr('Grades at your school')}</label>
         <p className="text-xs text-earth-400 mb-2">
-          Tick the grades you have, e.g. only 9th, or 10th–12th. Students then pick from these, must pick one to join, and “New school year” moves your top grade on. Leave all unticked to allow any grade.
+          {tr('Tick the grades you have, e.g. only 9th, or 10th–12th. Students then pick from these, must pick one to join, and “New school year” moves your top grade on. Leave all unticked to allow any grade.')}
         </p>
         <div className="flex flex-wrap gap-2">
           {SCHOOL_GRADES.map((g) => {
@@ -360,13 +367,13 @@ function GoalsEditor({ value, onChange }) {
         </div>
       </div>
       <div>
-        <label className="label">Note to students</label>
-        <input className="input" maxLength={300} value={value.note || ''} onChange={(e) => onChange({ note: e.target.value })} placeholder="Due before senior year begins." />
+        <label className="label">{tr('Note to students')}</label>
+        <input className="input" maxLength={300} value={value.note || ''} onChange={(e) => onChange({ note: e.target.value })} placeholder={tr('Due before senior year begins.')} />
       </div>
       <div>
-        <label className="label">Per-grade overrides</label>
+        <label className="label">{tr('Per-grade overrides')}</label>
         <p className="text-xs text-earth-400 mb-2">
-          A student in one of these grades is held to its number instead of the total above.
+          {tr('A student in one of these grades is held to its number instead of the total above.')}
         </p>
         <div className="space-y-2">
           {grades.map(([grade, hours]) => (
@@ -406,9 +413,9 @@ function CategoryMinimums({ value, onChange }) {
   }
   return (
     <div>
-      <label className="label">Minimum hours by type</label>
+      <label className="label">{tr('Minimum hours by type')}</label>
       <p className="text-xs text-earth-400 mb-2">
-        At least this many of a student’s hours must be of one type. They count toward the total, not on top of it.
+        {tr('At least this many of a student’s hours must be of one type. They count toward the total, not on top of it.')}
       </p>
       <div className="space-y-2">
         {rows.map(([category, hours]) => (
@@ -435,9 +442,9 @@ function CategoryMinimums({ value, onChange }) {
           className="input w-auto mt-2"
           value=""
           onChange={(e) => { if (e.target.value) set(e.target.value, 5) }}
-          aria-label="Add a type"
+          aria-label={tr('Add a type')}
         >
-          <option value="">+ Add a type…</option>
+          <option value="">{tr('+ Add a type…')}</option>
           {unused.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       )}
@@ -451,7 +458,7 @@ function AddGrade({ existing, onAdd }) {
     <div className="flex gap-2 mt-2">
       <input
         className="input flex-1"
-        placeholder="Grade (e.g. 11, Junior, Year 12)"
+        placeholder={tr('Grade (e.g. 11, Junior, Year 12)')}
         value={grade}
         onChange={(e) => setGrade(e.target.value)}
       />
@@ -463,7 +470,7 @@ function AddGrade({ existing, onAdd }) {
         disabled={!grade.trim() || Object.hasOwn(existing, gradeKey(grade) ?? grade.trim())}
         onClick={() => { onAdd(gradeKey(grade)); setGrade('') }}
       >
-        <Plus className="w-3.5 h-3.5 mr-1" /> Add
+        <Plus className="w-3.5 h-3.5 mr-1" />{' '}{tr('Add')}
       </button>
     </div>
   )
@@ -473,16 +480,15 @@ function SignInEditor({ value, onChange }) {
   return (
     <>
       <Check
-        label="Students must sign in with our school account (SSO)"
+        label={tr('Students must sign in with our school account (SSO)')}
         checked={value.ssoOnly}
         onChange={(v) => onChange({ ssoOnly: v })}
         help="Password sign-in is refused for these accounts. Set up the connection on the Sign-in tab first, or nobody can get in."
       />
       <div>
-        <label className="label">Allowed email domains</label>
+        <label className="label">{tr('Allowed email domains')}</label>
         <p className="text-xs text-earth-400 mb-2">
-          Comma-separated, e.g. <span className="font-mono">school.edu</span>. Only accounts on these domains can join
-          with your school code. Students already linked keep their access.
+          {tr('Comma-separated, e.g. {example}. Only accounts on these domains can join with your school code. Students already linked keep their access.', { example: 'school.edu' })}
         </p>
         <input
           className="input"
@@ -490,7 +496,7 @@ function SignInEditor({ value, onChange }) {
           onChange={(e) => onChange({
             allowedEmailDomains: e.target.value.split(',').map((d) => d.trim()).filter(Boolean),
           })}
-          placeholder="school.edu, students.school.edu"
+          placeholder={tr('school.edu, students.school.edu')}
         />
       </div>
     </>
@@ -514,15 +520,15 @@ function AwardsEditor({ value, onChange }) {
     <>
       {levels.length === 0 ? (
         <div className="flex flex-wrap items-center gap-2 text-sm text-earth-500">
-          No levels yet.
-          <button type="button" className="btn-sm btn-secondary" onClick={() => setLevels(AWARD_PRESET)}>Use Bronze, Silver, Gold</button>
+          {tr('No levels yet.')}
+          <button type="button" className="btn-sm btn-secondary" onClick={() => setLevels(AWARD_PRESET)}>{tr('Use Bronze, Silver, Gold')}</button>
         </div>
       ) : (
         <div className="space-y-2">
           {levels.map((l, i) => (
             <div key={i} className="flex items-center gap-2">
-              <input className="input flex-1" placeholder="Level name" maxLength={40} value={l.name} onChange={(e) => update(i, 'name', e.target.value)} aria-label={`Level ${i + 1} name`} />
-              <input className="input w-28" type="number" min="0.5" step="0.5" placeholder="Hours" value={l.hours ?? ''} onChange={(e) => update(i, 'hours', e.target.value === '' ? null : Number(e.target.value))} aria-label={`Level ${i + 1} hours`} />
+              <input className="input flex-1" placeholder={tr('Level name')} maxLength={40} value={l.name} onChange={(e) => update(i, 'name', e.target.value)} aria-label={`Level ${i + 1} name`} />
+              <input className="input w-28" type="number" min="0.5" step="0.5" placeholder={tr('Hours')} value={l.hours ?? ''} onChange={(e) => update(i, 'hours', e.target.value === '' ? null : Number(e.target.value))} aria-label={`Level ${i + 1} hours`} />
               <span className="text-xs text-earth-400">hours</span>
               <button type="button" className="p-2 text-red-400 hover:text-red-300" onClick={() => setLevels(levels.filter((_, j) => j !== i))} aria-label={`Remove level ${i + 1}`}>
                 <Trash2 className="w-4 h-4" />
@@ -533,18 +539,18 @@ function AwardsEditor({ value, onChange }) {
       )}
       {levels.length > 0 && levels.length < MAX_LEVELS && (
         <button type="button" className="btn-sm btn-ghost" onClick={() => setLevels([...levels, { name: '', hours: null }])}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Add a level
+          <Plus className="w-3.5 h-3.5 mr-1" />{' '}{tr('Add a level')}
         </button>
       )}
-      <p className="text-xs text-earth-400">Hours count the same way as your requirement: everything logged except rejected entries.</p>
+      <p className="text-xs text-earth-400">{tr('Hours count the same way as your requirement: everything logged except rejected entries.')}</p>
     </>
   )
 }
 
 const SIGN_STYLE_OPTIONS = [
-  { value: 'typed', label: 'Typed name', help: 'The signer’s name in a handwriting-style font.' },
-  { value: 'drawn', label: 'Draw a signature', help: 'Sign once below; it prints on every certificate.' },
-  { value: 'blank', label: 'Sign by hand', help: 'Leaves a blank line to sign each printed copy with a pen.' },
+  { value: 'typed', label: tr('Typed name'), help: tr('The signer’s name in a handwriting-style font.') },
+  { value: 'drawn', label: tr('Draw a signature'), help: tr('Sign once below; it prints on every certificate.') },
+  { value: 'blank', label: tr('Sign by hand'), help: tr('Leaves a blank line to sign each printed copy with a pen.') },
 ]
 
 // Blank fields fall back when printing (src/lib/export.js): the school's name
@@ -592,7 +598,7 @@ function CertificatesEditor({ value, onChange }) {
         {field('signerTitle', 'Their title', 'e.g. Principal (blank: Adviser)', 60)}
       </div>
       <div>
-        <label className="label">How it’s signed</label>
+        <label className="label">{tr('How it’s signed')}</label>
         <div className="space-y-2">
           {SIGN_STYLE_OPTIONS.map((opt) => (
             <label key={opt.value} className="flex items-start gap-2 text-sm">
@@ -615,7 +621,7 @@ function CertificatesEditor({ value, onChange }) {
         <>
           {/* Remounted on a phone signature so the pad shows the new drawing. */}
           {newSigner && style === 'drawn' && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">New signer: the old signature was removed. Draw theirs below, or use the phone QR code.</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">{tr('New signer: the old signature was removed. Draw theirs below, or use the phone QR code.')}</p>
           )}
           <SignaturePad key={padKey} value={value.signatureImage || ''} onChange={(img) => setField('signatureImage', img)} />
           <PhoneSignQr signerName={value.signerName || ''} onSigned={onPhoneSigned} />
@@ -627,7 +633,7 @@ function CertificatesEditor({ value, onChange }) {
         {style === 'typed' && <p className="font-serif italic text-base text-brand-700">{name}</p>}
         {style === 'drawn' && (value.signatureImage
           ? <img src={value.signatureImage} alt="" className="mx-auto h-12 w-auto" />
-          : <p className="h-12 grid place-items-center">Draw the signature above</p>)}
+          : <p className="h-12 grid place-items-center">{tr('Draw the signature above')}</p>)}
         {style === 'blank' && <div className="h-12" />}
         <p className="mx-auto mt-1 w-56 border-t border-earth-400 pt-1">{style === 'typed' ? title : `${name}, ${title}`}</p>
       </div>
@@ -636,15 +642,15 @@ function CertificatesEditor({ value, onChange }) {
 }
 
 const SIGNATURE_MODE_OPTIONS = [
-  { value: 'none', label: 'No signature needed', help: 'Students log hours as usual.' },
-  { value: 'signature', label: 'Signature required', help: 'Each entry is signed on screen before it is saved or approved.' },
-  { value: 'paperForm', label: 'Our own form', help: 'Students fill in your form, or print it, get it signed and upload it.' },
+  { value: 'none', label: tr('No signature needed'), help: tr('Students log hours as usual.') },
+  { value: 'signature', label: tr('Signature required'), help: tr('Each entry is signed on screen before it is saved or approved.') },
+  { value: 'paperForm', label: tr('Our own form'), help: tr('Students fill in your form, or print it, get it signed and upload it.') },
 ]
 
 const SIGNER_OPTIONS = [
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'student', label: 'Student' },
-  { value: 'both', label: 'Both' },
+  { value: 'supervisor', label: tr('Supervisor') },
+  { value: 'student', label: tr('Student') },
+  { value: 'both', label: tr('Both') },
 ]
 
 function SignaturesEditor({ value, onChange }) {
@@ -652,7 +658,7 @@ function SignaturesEditor({ value, onChange }) {
   return (
     <>
       <div>
-        <label className="label">What each entry needs</label>
+        <label className="label">{tr('What each entry needs')}</label>
         <div className="space-y-2">
           {SIGNATURE_MODE_OPTIONS.map((opt) => (
             <label key={opt.value} className="flex items-start gap-2 text-sm">
@@ -674,7 +680,7 @@ function SignaturesEditor({ value, onChange }) {
 
       {value.mode !== 'none' && (
         <div>
-          <label className="label">Who signs</label>
+          <label className="label">{tr('Who signs')}</label>
           <div className="flex flex-wrap gap-2">
             {SIGNER_OPTIONS.map((opt) => (
               <button
@@ -689,9 +695,9 @@ function SignaturesEditor({ value, onChange }) {
           </div>
           {value.mode === 'signature' && (
             <p className="text-xs text-earth-400 mt-2">
-              {value.signer === 'student' && 'Students sign on the Log Hours form before they can save.'}
-              {value.signer === 'supervisor' && 'Students must name a supervisor, who gets an emailed link and signs there to approve.'}
-              {value.signer === 'both' && 'Students sign on the form, and their supervisor signs on the emailed link to approve.'}
+              {value.signer === 'student' && tr('Students sign on the Log Hours form before they can save.')}
+              {value.signer === 'supervisor' && tr('Students must name a supervisor, who gets an emailed link and signs there to approve.')}
+              {value.signer === 'both' && tr('Students sign on the form, and their supervisor signs on the emailed link to approve.')}
             </p>
           )}
         </div>
@@ -699,7 +705,7 @@ function SignaturesEditor({ value, onChange }) {
 
       {value.mode === 'paperForm' && (
         <div>
-          <label className="label">Link to your form</label>
+          <label className="label">{tr('Link to your form')}</label>
           <input
             className="input"
             type="url"
@@ -709,17 +715,17 @@ function SignaturesEditor({ value, onChange }) {
           />
           <p className="text-xs text-earth-400 mt-1">
             {linkKind === 'embed'
-              ? 'Google Form — students fill it in right on the Log Hours page, then tick a box to say they sent it.'
-              : 'A Google Form opens right on the Log Hours page. Any other link (a PDF, a doc) is something students download, get signed, and upload. Leave blank if they get the form in class.'}
+              ? tr('Google Form — students fill it in right on the Log Hours page, then tick a box to say they sent it.')
+              : tr('A Google Form opens right on the Log Hours page. Any other link (a PDF, a doc) is something students download, get signed, and upload. Leave blank if they get the form in class.')}
           </p>
           {linkKind === 'editor' && (
             <p className="text-xs text-amber-500 mt-1">
-              This looks like the link for editing the form. Use Send → link in Google Forms instead, so students can fill it in.
+              {tr('This looks like the link for editing the form. Use Send → link in Google Forms instead, so students can fill it in.')}
             </p>
           )}
           {linkKind === 'short' && (
             <p className="text-xs text-amber-500 mt-1">
-              Short forms.gle links can’t open inside VolunTrack. Paste the full docs.google.com link to keep students on the page.
+              {tr('Short forms.gle links can’t open inside VolunTrack. Paste the full docs.google.com link to keep students on the page.')}
             </p>
           )}
         </div>
@@ -727,13 +733,13 @@ function SignaturesEditor({ value, onChange }) {
 
       {value.mode !== 'none' && (
         <div>
-          <label className="label">Note to students (optional)</label>
+          <label className="label">{tr('Note to students (optional)')}</label>
           <input
             className="input"
             maxLength={300}
             value={value.note || ''}
             onChange={(e) => onChange({ note: e.target.value })}
-            placeholder="Your supervisor must sign in blue or black ink."
+            placeholder={tr('Your supervisor must sign in blue or black ink.')}
           />
         </div>
       )}
@@ -755,17 +761,17 @@ function CustomFieldsEditor({ value, onChange }) {
           <div key={index} className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="label">Question</label>
+                <label className="label">{tr('Question')}</label>
                 <input
                   className="input"
                   maxLength={80}
                   value={field.label}
                   onChange={(e) => update(index, { label: e.target.value })}
-                  placeholder="Advisor name"
+                  placeholder={tr('Advisor name')}
                 />
               </div>
               <div>
-                <label className="label">Answer type</label>
+                <label className="label">{tr('Answer type')}</label>
                 <select className="input" value={field.type} onChange={(e) => update(index, { type: e.target.value })}>
                   {CUSTOM_FIELD_TYPES.map((t) => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
                 </select>
@@ -773,31 +779,31 @@ function CustomFieldsEditor({ value, onChange }) {
             </div>
             {field.type === 'select' && (
               <div>
-                <label className="label">Choices</label>
+                <label className="label">{tr('Choices')}</label>
                 <input
                   className="input"
                   value={(field.options || []).join(', ')}
                   onChange={(e) => update(index, { options: e.target.value.split(',').map((o) => o.trim()).filter(Boolean) })}
-                  placeholder="First period, Second period, Third period"
+                  placeholder={tr('First period, Second period, Third period')}
                 />
-                <p className="text-xs text-earth-400 mt-1">Comma-separated. A question with no choices is dropped when you save.</p>
+                <p className="text-xs text-earth-400 mt-1">{tr('Comma-separated. A question with no choices is dropped when you save.')}</p>
               </div>
             )}
             <div>
-              <label className="label">Helper text (optional)</label>
+              <label className="label">{tr('Helper text (optional)')}</label>
               <input className="input" maxLength={200} value={field.help || ''} onChange={(e) => update(index, { help: e.target.value })} />
             </div>
             <div className="flex items-center justify-between">
-              <Check label="Required" checked={field.required} onChange={(v) => update(index, { required: v })} />
+              <Check label={tr('Required')} checked={field.required} onChange={(v) => update(index, { required: v })} />
               <button type="button" onClick={() => remove(index)} className="btn-sm btn-ghost text-red-500">
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> Remove
+                <Trash2 className="w-3.5 h-3.5 mr-1" />{' '}{tr('Remove')}
               </button>
             </div>
           </div>
         ))}
       </div>
       <button type="button" onClick={add} className="btn-sm btn-secondary">
-        <Plus className="w-3.5 h-3.5 mr-1" /> Add a question
+        <Plus className="w-3.5 h-3.5 mr-1" />{' '}{tr('Add a question')}
       </button>
     </>
   )

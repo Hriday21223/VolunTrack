@@ -5,6 +5,7 @@ import { fmtHours } from '@/utils/date.js'
 import { gradeLabel } from '@policy'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import { format } from 'date-fns'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -81,20 +82,20 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="label" htmlFor="report-from">From</label>
+          <label className="label" htmlFor="report-from">{tr('From')}</label>
           <input id="report-from" type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div>
-          <label className="label" htmlFor="report-to">To</label>
+          <label className="label" htmlFor="report-to">{tr('To')}</label>
           <input id="report-to" type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <label className="flex items-end gap-2 pb-2 text-sm">
           <input type="checkbox" checked={approvedOnly} onChange={(e) => setApprovedOnly(e.target.checked)} />
-          Approved hours only
+          {tr('Approved hours only')}
         </label>
         <div className="flex items-end">
           <button type="button" className="btn-primary w-full" onClick={run} disabled={busy || !from || !to}>
-            {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Building…</> : <>Build report</>}
+            {busy ? <><Loader2 className="h-4 w-4 animate-spin" />{' '}{tr('Building…')}</> : <>{tr('Build report')}</>}
           </button>
         </div>
       </div>
@@ -102,40 +103,39 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
       {report && (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-4 text-sm">
-            <Stat label="Students" value={report.totals.students} />
-            <Stat label="Entries" value={report.totals.logs} />
-            <Stat label="Approved" value={fmtHours(report.totals.approvedHours)} />
-            <Stat label="Pending" value={fmtHours(report.totals.pendingHours)} />
+            <Stat label={tr('Students')} value={report.totals.students} />
+            <Stat label={tr('Entries')} value={report.totals.logs} />
+            <Stat label={tr('Approved')} value={fmtHours(report.totals.approvedHours)} />
+            <Stat label={tr('Pending')} value={fmtHours(report.totals.pendingHours)} />
           </div>
 
           {report.truncated && (
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
-              This range hit the {report.rowCap.toLocaleString()}-row limit, so the export is incomplete.
-              Narrow the dates and run it again.
+              {tr('This range hit the {n}-row limit, so the export is incomplete. Narrow the dates and run it again.', { n: report.rowCap.toLocaleString() })}
             </div>
           )}
 
           {report.totals.students === 0 ? (
-            <p className="text-sm text-slate-500">No students found for this range.</p>
+            <p className="text-sm text-slate-500">{tr('No students found for this range.')}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               <button
                 type="button" className="btn-sm btn-ghost"
                 onClick={() => download(schoolHoursCSV(report.logs), `voluntrack-hours-detail-${stamp}.csv`, 'text/csv;charset=utf-8')}
               >
-                <FileSpreadsheet className="h-3.5 w-3.5" /> Detail CSV
+                <FileSpreadsheet className="h-3.5 w-3.5" />{' '}{tr('Detail CSV')}
               </button>
               <button
                 type="button" className="btn-sm btn-ghost"
                 onClick={() => download(schoolSummaryCSV(report.students), `voluntrack-hours-summary-${stamp}.csv`, 'text/csv;charset=utf-8')}
               >
-                <FileSpreadsheet className="h-3.5 w-3.5" /> Summary CSV
+                <FileSpreadsheet className="h-3.5 w-3.5" />{' '}{tr('Summary CSV')}
               </button>
               <button
                 type="button" className="btn-sm btn-ghost" disabled={busy}
                 onClick={() => setPreview(true)}
               >
-                <Eye className="h-3.5 w-3.5" /> Preview
+                <Eye className="h-3.5 w-3.5" />{' '}{tr('Preview')}
               </button>
               <button
                 type="button" className="btn-sm btn-primary" disabled={busy}
@@ -150,7 +150,7 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
                   }
                 }}
               >
-                <FileText className="h-3.5 w-3.5" /> Summary PDF
+                <FileText className="h-3.5 w-3.5" />{' '}{tr('Summary PDF')}
               </button>
             </div>
           )}
@@ -160,11 +160,11 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                    <th className="py-2 pr-3">Student</th>
-                    <th className="py-2 pr-3">Grade</th>
-                    <th className="py-2 pr-3">Entries</th>
-                    <th className="py-2 pr-3">Approved</th>
-                    <th className="py-2 pr-3">Pending</th>
+                    <th className="py-2 pr-3">{tr('Student')}</th>
+                    <th className="py-2 pr-3">{tr('Grade')}</th>
+                    <th className="py-2 pr-3">{tr('Entries')}</th>
+                    <th className="py-2 pr-3">{tr('Approved')}</th>
+                    <th className="py-2 pr-3">{tr('Pending')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -181,7 +181,7 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
               </table>
               {report.students.length > 25 && (
                 <p className="mt-2 text-xs text-slate-500">
-                  Showing 25 of {report.students.length}. The exports contain every student.
+                  {tr('Showing 25 of {n}. The exports contain every student.', { n: report.students.length })}
                 </p>
               )}
             </div>

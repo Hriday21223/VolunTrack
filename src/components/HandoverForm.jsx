@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CheckCircle2, UserCog } from 'lucide-react'
 import { startHandover } from '@/lib/handover.js'
+import { tr } from '@/lib/i18n.js'
 
 // "Hand over to a new person" (#550): name + email (or a preset co-admin),
 // plus the caller's password when `needsPassword`. The new person accepts
@@ -33,12 +34,12 @@ export default function HandoverForm({ path, needsPassword = true, preset = null
     return (
       <div className="text-sm space-y-1">
         <p className="flex items-center gap-2 font-medium text-brand-600 dark:text-brand-400">
-          <CheckCircle2 className="w-4 h-4" /> Invite sent to {sent.to}
+          <CheckCircle2 className="w-4 h-4" />{' '}{tr('Invite sent to {email}', { email: sent.to })}
         </p>
         <p className="text-xs text-earth-500 dark:text-earth-400">
           {sent.emailSent
-            ? 'They have 7 days to accept. Nothing changes until they do.'
-            : 'The email couldn’t be sent from here. Nothing changes until they accept.'}
+            ? tr('They have 7 days to accept. Nothing changes until they do.')
+            : tr('The email couldn’t be sent from here. Nothing changes until they accept.')}
         </p>
       </div>
     )
@@ -48,23 +49,25 @@ export default function HandoverForm({ path, needsPassword = true, preset = null
     <form onSubmit={submit} className="space-y-3">
       {preset ? (
         <p className="text-sm">
-          Make <strong>{preset.name}</strong> ({preset.email}) the main admin{place ? ` of ${place}` : ''}? They’ll get an email to accept. You’ll stay on as a co-admin.
+          {place
+            ? tr('Make {name} ({email}) the main admin of {place}? They’ll get an email to accept. You’ll stay on as a co-admin.', { name: preset.name, email: preset.email, place })
+            : tr('Make {name} ({email}) the main admin? They’ll get an email to accept. You’ll stay on as a co-admin.', { name: preset.name, email: preset.email })}
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           <input className="input" placeholder={`New ${role}’s name`} value={form.name} maxLength={100} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <input className="input" type="email" placeholder="Their email" value={form.email} maxLength={254} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+          <input className="input" type="email" placeholder={tr('Their email')} value={form.email} maxLength={254} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
         </div>
       )}
       {needsPassword && (
-        <input className="input" type="password" autoComplete="current-password" placeholder="Your password, to confirm" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+        <input className="input" type="password" autoComplete="current-password" placeholder={tr('Your password, to confirm')} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
       <div className="flex flex-wrap gap-2">
         <button type="submit" className="btn-primary btn-sm" disabled={busy}>
-          <UserCog className="w-3.5 h-3.5 mr-1" /> {busy ? 'Sending…' : 'Send handover invite'}
+          <UserCog className="w-3.5 h-3.5 mr-1" /> {busy ? tr('Sending…') : tr('Send handover invite')}
         </button>
-        {onCancel && <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>Cancel</button>}
+        {onCancel && <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>{tr('Cancel')}</button>}
       </div>
     </form>
   )

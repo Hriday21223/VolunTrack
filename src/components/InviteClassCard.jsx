@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Users, Upload } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { readRoster, mergeRoster } from '@/lib/rosterCsv.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const PREVIEW_ROWS = 5
@@ -72,9 +73,9 @@ export default function InviteClassCard({ onDone }) {
 
   return (
     <Card>
-      <h3 className="font-semibold mb-1 flex items-center gap-2"><Users className="w-4 h-4 text-brand-600" /> Invite a whole class</h3>
-      <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">Paste your students&apos; emails, or pick a CSV file from your roster. Students with an account accept in their Settings; everyone else gets an email with your join link. Up to 200 at a time.</p>
-      <p className="text-xs text-earth-500 dark:text-earth-400 mb-3">A CSV with a header row can include <strong>Name</strong> (or First and Last name) and <strong>Grade</strong> columns. Each student&apos;s grade is then set for them when they join.</p>
+      <h3 className="font-semibold mb-1 flex items-center gap-2"><Users className="w-4 h-4 text-brand-600" />{' '}{tr('Invite a whole class')}</h3>
+      <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">{tr('Paste your students\' emails, or pick a CSV file from your roster. Students with an account accept in their Settings; everyone else gets an email with your join link. Up to 200 at a time.')}</p>
+      <p className="text-xs text-earth-500 dark:text-earth-400 mb-3">{tr('A CSV with a header row can include Name (or First and Last name) and Grade columns. Each student’s grade is then set for them when they join.')}</p>
       <textarea
         className="input min-h-[120px] font-mono text-sm"
         placeholder={'maya@school.edu\njordan@school.edu, sam@school.edu'}
@@ -83,13 +84,13 @@ export default function InviteClassCard({ onDone }) {
       />
       <div className="flex flex-wrap items-center gap-2 mt-3">
         <button type="button" className="btn-primary" onClick={send} disabled={busy || emails.length === 0 || emails.length > 200}>
-          {busy ? 'Sending…' : emails.length ? `Invite ${emails.length} student${emails.length === 1 ? '' : 's'}` : 'Invite'}
+          {busy ? tr('Sending…') : emails.length ? `Invite ${emails.length} student${emails.length === 1 ? '' : 's'}` : tr('Invite')}
         </button>
         <button type="button" className="btn-ghost" onClick={() => file.current?.click()}>
-          <Upload className="w-4 h-4" /> Pick a CSV file
+          <Upload className="w-4 h-4" />{' '}{tr('Pick a CSV file')}
         </button>
         <input ref={file} type="file" accept=".csv,text/csv,text/plain" className="hidden" onChange={onFile} />
-        {emails.length > 200 && <span className="text-sm text-red-500">That's {emails.length}; send up to 200 at a time.</span>}
+        {emails.length > 200 && <span className="text-sm text-red-500">{tr('That’s {n}; send up to 200 at a time.', { n: emails.length })}</span>}
       </div>
       {fromFile.students.length > 0 && (
         <div className="mt-3 rounded-xl border border-earth-200 dark:border-white/10 p-3 text-sm">
@@ -98,13 +99,13 @@ export default function InviteClassCard({ onDone }) {
               <span className="font-medium">{fromFile.name}</span>
               <span className="block text-xs text-earth-500 dark:text-earth-400">{fromFile.students.length} student{fromFile.students.length === 1 ? '' : 's'}{fromFile.columns ? ` · ${withName} with names · ${withGrade} with grades` : ''}</span>
             </span>
-            <button type="button" className="btn-ghost text-xs" onClick={() => setFromFile({ students: [], columns: null, name: '' })}>Remove</button>
+            <button type="button" className="btn-ghost text-xs" onClick={() => setFromFile({ students: [], columns: null, name: '' })}>{tr('Remove')}</button>
           </div>
-          {!fromFile.columns && <p className="text-xs text-earth-500 dark:text-earth-400 mb-2">No header row found, so only the email addresses were read.</p>}
+          {!fromFile.columns && <p className="text-xs text-earth-500 dark:text-earth-400 mb-2">{tr('No header row found, so only the email addresses were read.')}</p>}
           {fromFile.columns && (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead><tr className="text-left text-earth-500 dark:text-earth-400"><th className="pr-3 font-medium">Email</th><th className="pr-3 font-medium">Name</th><th className="font-medium">Grade</th></tr></thead>
+                <thead><tr className="text-left text-earth-500 dark:text-earth-400"><th className="pr-3 font-medium">{tr('Email')}</th><th className="pr-3 font-medium">{tr('Name')}</th><th className="font-medium">{tr('Grade')}</th></tr></thead>
                 <tbody>
                   {fromFile.students.slice(0, PREVIEW_ROWS).map((st) => (
                     <tr key={st.email}><td className="pr-3 py-0.5 break-all">{st.email}</td><td className="pr-3">{st.name || '—'}</td><td>{st.grade || '—'}</td></tr>
