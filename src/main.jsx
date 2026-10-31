@@ -6,6 +6,7 @@ import './index.css'
 import { applyStoredTheme } from './hooks/useTheme.js'
 import { applyStoredDisplay } from './hooks/useDisplayPrefs.js'
 import { applyNativeAppChrome, startNativeApp } from './lib/platform.js'
+import { startNativePush } from './lib/nativePush.js'
 import { installApiFetchGuard } from './lib/apiFetch.js'
 
 // Offline support for the website (the native apps don't use a service
@@ -63,3 +64,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 )
 
 startNativeApp()
+// Phone push (#603): route notification taps; refresh the token if it was on.
+startNativePush()

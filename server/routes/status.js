@@ -34,6 +34,7 @@ import shiftsRouter from './shifts.js'
 import taskPhotosRouter from './taskPhotos.js'
 import organizerProfileRouter from './organizerProfile.js'
 import weatherRouter from './weather.js'
+import pushRouter from './push.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -288,6 +289,7 @@ const MOUNTED_ROUTERS = [
   ['task-photos', '/api/task-photos', taskPhotosRouter],
   ['organizer-profiles', '/api/school/organizers', organizerProfileRouter],
   ['weather', '/api/weather', weatherRouter],
+  ['push', '/api/push', pushRouter],
   ['status', '/api/status', router],
 ]
 

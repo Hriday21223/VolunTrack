@@ -2109,6 +2109,26 @@ export async function initSchema() {
   } catch {}
 
   try { await query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)`) } catch {}
+  // Phone push (#603, server/pushNotify.js): one row per app install that
+  // turned notifications on. `token` is an FCM token (android) or an APNs
+  // device token (ios); deleted when the push service says it's gone, on sign
+  // out from that device, and with the account.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS push_devices (
+        id           TEXT PRIMARY KEY,
+        user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        platform     TEXT NOT NULL CHECK (platform IN ('android', 'ios')),
+        token        TEXT NOT NULL UNIQUE,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_sent_at TIMESTAMPTZ
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_push_devices_user ON push_devices(user_id)')
+  } catch (error) { console.error('push devices table migration failed:', error) }
+  // Which kinds of notification a person wants pushed (#603); {} = all on.
+  try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS push_prefs JSONB NOT NULL DEFAULT '{}'::jsonb`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id)`) } catch {}
 
 

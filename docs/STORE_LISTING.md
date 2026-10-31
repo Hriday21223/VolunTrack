@@ -136,6 +136,7 @@ cost of the app running letterboxed on iPads.
 | Files and docs | Yes | No | Optional | App functionality |
 | App activity → Other user-generated content (hours, descriptions, supervisor contacts, app reviews, contact-form messages, optional first names of guests brought to a task, references the student asks for (the writer's name, email and text), names typed to agree to an event's waiver and, for minors, a parent's name and email; for students in a school, the notes their school writes: private adviser notes, and the reason a submitted report or an hours entry was sent back) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
+| Device or other IDs (a push notification token, only if notifications are turned on in Settings → Notifications; deleted on sign-out or when turned off) | Yes | No | Optional | App functionality |
 | App info and performance → Crash logs (error message, technical details, page and app version, with no account, name or email attached) | Yes | No | Required | App functionality |
 
 Not collected: financial info (school invoices are paid by bank transfer outside
