@@ -2736,4 +2736,8 @@ export default {
   "Could not turn on notifications.": "No se pudieron activar las notificaciones.",
   "Notifications are blocked. Allow them in your browser settings, then try again.": "Las notificaciones están bloqueadas. Permítelas en los ajustes del navegador y vuelve a intentarlo.",
   "This browser does not support push notifications.": "Este navegador no admite notificaciones.",
+  // Supervisor texts (#609)
+  "Supervisor mobile (optional)": "Móvil del supervisor (opcional)",
+  "(555) 123-4567": "(555) 123-4567",
+  "We also text them the link. Good for supervisors who don’t check email. The number is deleted after 30 days.": "También le enviamos el enlace por mensaje de texto. Útil para supervisores que no revisan el correo. El número se borra a los 30 días.",
 }

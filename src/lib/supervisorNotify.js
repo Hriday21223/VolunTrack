@@ -8,7 +8,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // the student's name and email from the session and requires one, so a
 // signed-out (localStorage-only) user gets a silent no-op rather than a
 // request. Returns the response body, or null on any failure.
-async function requestVerification(path, { supervisorEmail, supervisorName, hours, activity, logId }) {
+async function requestVerification(path, { supervisorEmail, supervisorName, supervisorPhone, hours, activity, logId }) {
   if (!supervisorEmail) return null
   const authToken = localStorage.getItem('voluntrack:auth_token')
   if (!authToken) return null
@@ -17,7 +17,7 @@ async function requestVerification(path, { supervisorEmail, supervisorName, hour
     const response = await fetch(`${apiUrl}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-      body: JSON.stringify({ supervisorEmail, supervisorName, hours, activity, signupUrl, logId: logId || null }),
+      body: JSON.stringify({ supervisorEmail, supervisorName, hours, activity, signupUrl, logId: logId || null, ...(supervisorPhone ? { supervisorPhone } : {}) }),
     })
     if (!response.ok) return null
     return await response.json().catch(() => ({}))
@@ -30,7 +30,17 @@ async function requestVerification(path, { supervisorEmail, supervisorName, hour
 // back — the token that can approve or reject lives in their inbox alone.
 export async function notifySupervisor(details) {
   const body = await requestVerification('/notify-supervisor', details)
-  return body ? { ok: true, statusToken: body.statusToken || null } : { ok: false }
+  return body ? { ok: true, statusToken: body.statusToken || null, texted: Boolean(body.texted) } : { ok: false }
+}
+
+/** Whether VolunTrack can also text the supervisor (#609). */
+export async function smsAvailable() {
+  try {
+    const res = await fetch(`${apiUrl}/notify-supervisor/sms`)
+    return res.ok ? Boolean((await res.json()).available) : false
+  } catch {
+    return false
+  }
 }
 
 // The student sends the signing link themselves (to the supervisor, or the

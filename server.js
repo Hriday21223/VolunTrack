@@ -1,4 +1,5 @@
 import express from 'express'
+import { smsConfigured, normalizePhone, sendSms, verificationText } from './server/sms.js'
 import { translateErrors } from './server/errorStrings.js'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -475,6 +476,11 @@ function parseVerificationRequest({ supervisorEmail, supervisorName, hours, acti
 
 // Who the request is from is read off the session, so the body can't dress a
 // message up as anything ("Your account will be suspended").
+// Text-message limits (#609): a student can text at most this many supervisors a
+// day, and one number gets at most this many requests a day.
+const SMS_PER_STUDENT_PER_DAY = 10
+const SMS_PER_NUMBER_PER_DAY = 5
+
 async function requestingStudent(req) {
   let name = req.auth.email || 'A VolunTrack student'
   let email = req.auth.email || null
@@ -558,10 +564,31 @@ async function createSupervisorVerification(req, { student, supervisorEmail, sup
 // is an open relay that lends our sender reputation to anyone's phishing.
 // The sender's identity comes from the session, never the body, and the
 // links in the message may only point at origins we serve.
+// Whether Log Hours should offer a supervisor's mobile number (#609).
+app.get('/api/notify-supervisor/sms', (_req, res) => res.json({ available: smsConfigured() }))
+
 app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res) => {
   const { supervisorEmail, supervisorName, signupUrl, logId } = req.body
   const parsed = parseVerificationRequest(req.body)
   if (parsed.error) return res.status(400).json({ error: parsed.error })
+  // Optional mobile number (#609): the same link also goes by text.
+  let supervisorPhone = null
+  if (req.body.supervisorPhone) {
+    supervisorPhone = normalizePhone(req.body.supervisorPhone)
+    if (!supervisorPhone) return res.status(400).json({ error: 'Enter the mobile number with its area code, like (555) 123-4567, or +44… for outside the US.' })
+    if (hasDatabase() && smsConfigured()) {
+      const { rows: [limits] } = await query(
+        `SELECT COUNT(*) FILTER (WHERE student_user_id = $1)::int AS mine,
+                COUNT(*) FILTER (WHERE supervisor_phone = $2)::int AS to_number
+           FROM supervisor_verifications
+          WHERE supervisor_phone IS NOT NULL AND created_at > now() - interval '1 day'
+            AND (student_user_id = $1 OR supervisor_phone = $2)`,
+        [req.auth.sub, supervisorPhone],
+      )
+      if (limits.mine >= SMS_PER_STUDENT_PER_DAY) return res.status(429).json({ error: 'That is enough texts for today. Try again tomorrow, or send it by email only.' })
+      if (limits.to_number >= SMS_PER_NUMBER_PER_DAY) return res.status(429).json({ error: 'That number already got several requests today. Try again tomorrow.' })
+    }
+  }
 
   const { transport, missing } = transporter()
   if (!transport) {
@@ -616,9 +643,24 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
       text,
       html,
     })
+    // The text (#609): same link, after the email went. Stored on the request
+    // so the reminders can text too, and cleared after 30 days.
+    let texted = false
+    if (supervisorPhone && verification.token && smsConfigured()) {
+      await query('UPDATE supervisor_verifications SET supervisor_phone = $1 WHERE token = $2', [supervisorPhone, verification.token])
+      const sms = await sendSms(supervisorPhone, verificationText({ studentName, hours: hoursNum, activity, verifyUrl }))
+      if (sms.ok) {
+        texted = true
+        await query('UPDATE supervisor_verifications SET texts_sent = texts_sent + 1 WHERE token = $1', [verification.token])
+      } else if (sms.optedOut) {
+        await query('UPDATE supervisor_verifications SET supervisor_phone = NULL WHERE token = $1', [verification.token])
+      } else if (sms.error) {
+        console.error('Supervisor text failed:', sms.error)
+      }
+    }
     // Only the read-only handle goes back to the student's browser. The
     // approve/reject token exists in the supervisor's inbox and nowhere else.
-    return res.status(200).json({ ok: true, statusToken })
+    return res.status(200).json({ ok: true, statusToken, texted })
   } catch (error) {
     console.error('Supervisor notification email failed:', error)
     return res.status(500).json({ error: 'Failed to send notification.' })

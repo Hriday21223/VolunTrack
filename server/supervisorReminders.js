@@ -14,6 +14,12 @@
 import { query } from './db.js'
 import { sendEmail, emailFooterHtml, hasEmail } from './email.js'
 import { escapeHtml } from './html.js'
+import { smsConfigured, sendSms, reminderText } from './sms.js'
+
+// At most this many texts per request (#609): the first one plus two reminders.
+export const MAX_TEXTS = 3
+// A supervisor's mobile number is kept this long after the request.
+export const PHONE_KEEP_DAYS = 30
 
 export const MAX_REMINDERS = 2
 export const FIRST_AFTER_DAYS = 3
@@ -38,8 +44,17 @@ export function reminderHtml({ supervisorName, studentName, hours, activity, log
 }
 
 export async function runSupervisorReminders({ dryRun = false } = {}) {
+  // Mobile numbers (#609) are only kept while a request can still be
+  // answered: 30 days from when it was made, answered or not.
+  if (!dryRun) {
+    await query(
+      `UPDATE supervisor_verifications SET supervisor_phone = NULL
+        WHERE supervisor_phone IS NOT NULL AND created_at < now() - ($1 || ' days')::interval`,
+      [String(PHONE_KEEP_DAYS)],
+    ).catch((error) => console.error('supervisor phone cleanup failed:', error.message))
+  }
   const { rows } = await query(
-    `SELECT id, token, supervisor_name, supervisor_email, student_name, activity, hours, reminders_sent,
+    `SELECT id, token, supervisor_name, supervisor_email, supervisor_phone, texts_sent, student_name, activity, hours, reminders_sent,
             to_char(created_at, 'Mon FMDD, YYYY') AS logged_on
        FROM supervisor_verifications
       WHERE status = 'pending'
@@ -86,6 +101,17 @@ export async function runSupervisorReminders({ dryRun = false } = {}) {
       })
       if (ok) sent += 1
       else skipped += 1
+      // And by text, if the student gave a mobile number (#609).
+      if (r.supervisor_phone && r.texts_sent < MAX_TEXTS && smsConfigured()) {
+        const sms = await sendSms(r.supervisor_phone, reminderText({
+          studentName: r.student_name,
+          hours: Number(r.hours),
+          verifyUrl: `${frontendUrl()}/verify-hours?token=${encodeURIComponent(r.token)}`,
+          last,
+        }))
+        if (sms.ok) await query('UPDATE supervisor_verifications SET texts_sent = texts_sent + 1 WHERE id = $1', [r.id])
+        else if (sms.optedOut) await query('UPDATE supervisor_verifications SET supervisor_phone = NULL WHERE id = $1', [r.id])
+      }
     } catch (error) {
       console.error('supervisor reminder email failed:', error.message)
       skipped += 1

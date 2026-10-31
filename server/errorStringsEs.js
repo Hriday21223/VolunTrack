@@ -311,4 +311,7 @@ export const ERRORS_ES = {
   "Your password is required to turn this off.": "Hace falta tu contraseña para desactivarlo.",
   "Your school manages sign-in for this account.": "Tu escuela gestiona el inicio de sesión de esta cuenta.",
   "Your school stores documents in its own storage. Please retry the upload.": "Tu escuela guarda los documentos en su propio almacenamiento. Vuelve a intentar subirlo.",
+  "Enter the mobile number with its area code, like (555) 123-4567, or +44… for outside the US.": "Escribe el móvil con su código de área, como (555) 123-4567, o +44… fuera de EE. UU.",
+  "That is enough texts for today. Try again tomorrow, or send it by email only.": "Ya son suficientes mensajes de texto por hoy. Vuelve a intentarlo mañana o envíalo solo por correo.",
+  "That number already got several requests today. Try again tomorrow.": "Ese número ya recibió varias solicitudes hoy. Vuelve a intentarlo mañana.",
 }

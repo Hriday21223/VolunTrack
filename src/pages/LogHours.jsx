@@ -15,7 +15,7 @@ import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds, isLockedDate, lockedMessage, placeApproved } from '@/lib/requirements.js'
 import { listShifts } from '@/lib/shifts.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
-import { notifySupervisor, createVerificationLink } from '@/lib/supervisorNotify.js'
+import { notifySupervisor, createVerificationLink, smsAvailable } from '@/lib/supervisorNotify.js'
 import ScanPaperLog from '@/components/ScanPaperLog.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { addDays, format, parseISO } from 'date-fns'
@@ -76,6 +76,8 @@ const blank = () => ({
   orgPhone: '',
   supervisorName: '',
   supervisorEmail: '',
+  // Only sent with the sign-off request (#609); never synced with the entry.
+  supervisorPhone: '',
   supervisorSignature: '',
   proof: null,
   // The school's signatures rule. The image stays on this device; the server
@@ -99,6 +101,9 @@ export default function LogHours({ editId, onCloseEdit }) {
   const { user } = useAuth()
   const nav = useNavigate()
   const [form, setForm] = useState(blank())
+  // Can VolunTrack text the supervisor too (#609)?
+  const [canText, setCanText] = useState(false)
+  useEffect(() => { smsAvailable().then(setCanText) }, [])
   const [toast, setToast] = useState(false)
   const [error, setError] = useState('')
   // A second tap on Save while the first is still working saved the entry
@@ -401,6 +406,7 @@ export default function LogHours({ editId, onCloseEdit }) {
             setEmailDraft(buildSigningEmail({
               to: payload.supervisorEmail,
               supervisorName: payload.supervisorName,
+              supervisorPhone: canText ? payload.supervisorPhone : '',
               studentName: result.studentName || user?.name || '',
               hours: payload.hours,
               activity: payload.activity,
@@ -420,6 +426,7 @@ export default function LogHours({ editId, onCloseEdit }) {
           notifySupervisor({
             supervisorEmail: payload.supervisorEmail,
             supervisorName: payload.supervisorName,
+            supervisorPhone: canText ? payload.supervisorPhone : '',
             hours: payload.hours,
             activity: payload.activity,
             logId: serverId,
@@ -455,6 +462,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                 const result = await notifySupervisor({
                   supervisorEmail: emailDraft.to,
                   supervisorName: emailDraft.supervisorName,
+                  supervisorPhone: emailDraft.supervisorPhone,
                   hours: emailDraft.hours,
                   activity: emailDraft.activity,
                   logId: emailDraft.serverId,
@@ -625,6 +633,12 @@ export default function LogHours({ editId, onCloseEdit }) {
             <div className="grid sm:grid-cols-2 gap-4">
               <Field icon={User}        label={`${tr('Supervisor name')} ${required.supervisorNameRequired ? '*' : ''}`}  value={form.supervisorName} onChange={onChange('supervisorName')} placeholder={tr('Mr. Johnson')} required={required.supervisorNameRequired} />
               <Field icon={Mail}        label={`${tr('Supervisor email')} ${required.supervisorEmailRequired ? '*' : ''}`} value={form.supervisorEmail} onChange={onChange('supervisorEmail')} placeholder={tr('johnson@school.edu')} type="email" required={required.supervisorEmailRequired} />
+              {canText && form.supervisorEmail?.trim() && !organizerOnFile && (!form.verificationStatus || form.verificationStatus === 'none') && (
+                <div className="sm:col-span-2">
+                  <Field icon={Phone} label={tr('Supervisor mobile (optional)')} value={form.supervisorPhone || ''} onChange={onChange('supervisorPhone')} placeholder={tr('(555) 123-4567')} type="tel" />
+                  <p className="text-xs text-earth-400 mt-1">{tr('We also text them the link. Good for supervisors who don’t check email. The number is deleted after 30 days.')}</p>
+                </div>
+              )}
               {form.supervisorEmail?.trim() ? (
                 <div className="sm:col-span-2">
                   <VerificationBadge status={form.verificationStatus} bySchool={form.reviewedBySchool} note={form.reviewNote} />
@@ -973,7 +987,7 @@ function Field({ icon: Icon, label, ...rest }) {
 // The email a student sends their supervisor — or the task's organizer — when
 // they weren't there to sign. Plain text, so it reads the same pasted into any
 // mail app.
-function buildSigningEmail({ to, supervisorName, studentName, hours, activity, date, taskTitle, link, logId, serverId }) {
+function buildSigningEmail({ to, supervisorName, supervisorPhone = '', studentName, hours, activity, date, taskTitle, link, logId, serverId }) {
   const when = fmtDateLong(date)
   const subject = `Please confirm my volunteer hours: ${activity}, ${when}`
   const body = [
@@ -989,7 +1003,7 @@ function buildSigningEmail({ to, supervisorName, studentName, hours, activity, d
     'Thank you!',
     studentName || '',
   ].join('\n').trim()
-  return { to, supervisorName, hours, activity, subject, body, logId, serverId }
+  return { to, supervisorName, supervisorPhone, hours, activity, subject, body, logId, serverId }
 }
 
 function SigningEmailCard({ draft, onChange, onClose, onSendForMe }) {

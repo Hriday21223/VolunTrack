@@ -2253,6 +2253,11 @@ export async function initSchema() {
   // Supervisor reminders (#555, server/supervisorReminders.js): how many were
   // sent, and when the last one went, so a run never repeats one.
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS reminders_sent INTEGER NOT NULL DEFAULT 0`) } catch {}
+  // Text-message sign-off (#609, server/sms.js): the supervisor's mobile in
+  // E.164, cleared 30 days after the request (answered or not), and how many
+  // texts went to it (at most 3 per request).
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS supervisor_phone TEXT`) } catch {}
+  try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS texts_sent SMALLINT NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ`) } catch {}
 
   return true
