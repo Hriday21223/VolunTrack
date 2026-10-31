@@ -118,7 +118,7 @@ export default function ParentDashboard() {
   }
 
   return (
-    <AppLayout title="Family dashboard" subtitle="Your children's volunteer hours">
+    <AppLayout title={tr('Family dashboard')} subtitle={tr('Your children\'s volunteer hours')}>
       {!loading && !error && (
         <SpotlightTour
           storageKey="voluntrack:tour-seen:parent"
@@ -131,15 +131,15 @@ export default function ParentDashboard() {
       <TaskApprovals onDecided={loadData} />
 
       {loading ? (
-        <Card><p className="text-center text-earth-400 py-8">Loading…</p></Card>
+        <Card><p className="text-center text-earth-400 py-8">{tr('Loading…')}</p></Card>
       ) : error ? (
         <Card>
           <div className="text-center py-10">
             <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-amber-500" />
-            <p className="font-medium text-earth-900 dark:text-earth-100">Could not load your children&apos;s hours</p>
-            <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">The server did not answer. Your child&apos;s hours are safe — this page just could not fetch them.</p>
+            <p className="font-medium text-earth-900 dark:text-earth-100">{tr('Could not load your children\'s hours')}</p>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{tr('The server did not answer. Your child\'s hours are safe — this page just could not fetch them.')}</p>
             <button onClick={loadData} className="btn-primary inline-flex items-center gap-2 mt-4">
-              <RefreshCw className="w-4 h-4" /> Try again
+              <RefreshCw className="w-4 h-4" />{' '}{tr('Try again')}
             </button>
           </div>
         </Card>
@@ -147,11 +147,11 @@ export default function ParentDashboard() {
         <Card data-tour="family-link">
           <div className="text-center py-10">
             <Users className="w-10 h-10 mx-auto mb-3 text-earth-400" />
-            <h3 className="font-display font-semibold mb-2">Get started</h3>
+            <h3 className="font-display font-semibold mb-2">{tr('Get started')}</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 max-w-md mx-auto">
-              Ask your child for their link code — they&apos;ll find it in Settings → Family — then enter it to follow their hours.
+              {tr('Ask your child for their link code — they\'ll find it in Settings → Family — then enter it to follow their hours.')}
             </p>
-            <Link to="/settings" className="btn-primary inline-flex mt-4">Enter a link code</Link>
+            <Link to="/settings" className="btn-primary inline-flex mt-4">{tr('Enter a link code')}</Link>
           </div>
         </Card>
       ) : (
@@ -166,12 +166,12 @@ export default function ParentDashboard() {
                 <div className="flex items-start gap-3">
                   <Mail className="w-4 h-4 mt-1 text-brand-600 shrink-0" />
                   <div>
-                    <h3 className="font-display font-semibold text-sm">Weekly progress email</h3>
+                    <h3 className="font-display font-semibold text-sm">{tr('Weekly progress email')}</h3>
                     <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
                       {digest.enabled
-                        ? 'Every Monday, a summary of what your children logged last week.'
-                        : 'Turned off. You can switch it back on at any time.'}
-                      {digest.emailConfigured === false && ' Email is not configured on this server right now.'}
+                        ? tr('Every Monday, a summary of what your children logged last week.')
+                        : tr('Turned off. You can switch it back on at any time.')}
+                      {digest.emailConfigured === false && <>{' '}{tr('Email is not configured on this server right now.')}</>}
                     </p>
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export default function ParentDashboard() {
                   disabled={digestBusy}
                   className={`btn-sm shrink-0 ${digest.enabled ? 'btn-ghost' : 'btn-primary'} disabled:opacity-50`}
                 >
-                  {digestBusy ? 'Saving…' : digest.enabled ? 'Turn off' : 'Turn on'}
+                  {digestBusy ? tr('Saving…') : digest.enabled ? tr('Turn off') : tr('Turn on')}
                 </button>
               </div>
             </Card>
@@ -272,12 +272,12 @@ function ChildCard({ child }) {
         <div className="mb-4 p-3 rounded-xl border border-earth-100 dark:border-[#1f2e25]">
           <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
             <p className="text-sm font-medium">
-              {requirement.schoolName ? `${requirement.schoolName} requires` : 'School requirement'} {fmtHours(requirement.goalHours)}
+              {requirement.schoolName ? `${requirement.schoolName} requires` : tr('School requirement')} {fmtHours(requirement.goalHours)}
               {requirement.deadline && <span className="text-earth-500 dark:text-earth-400"> by {fmtDate(requirement.deadline)}</span>}
             </p>
             <p className="text-sm font-medium">
               {stats.total >= requirement.goalHours
-                ? <span className="text-brand-600">Requirement met</span>
+                ? <span className="text-brand-600">{tr('Requirement met')}</span>
                 : `${fmtHours(requirement.goalHours - stats.total)} to go`}
             </p>
           </div>
@@ -293,11 +293,11 @@ function ChildCard({ child }) {
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-        <Stat label="This month" value={fmtHours(stats.thisMonth)} />
-        <Stat label="Last logged" value={stats.lastDate ? dayFromNow(stats.lastDate) : 'Never'} />
-        <Stat label="Approved" value={fmtHours(stats.approved)} />
+        <Stat label={tr('This month')} value={fmtHours(stats.thisMonth)} />
+        <Stat label={tr('Last logged')} value={stats.lastDate ? dayFromNow(stats.lastDate) : 'Never'} />
+        <Stat label={tr('Approved')} value={fmtHours(stats.approved)} />
         <Stat
-          label="Awaiting review"
+          label={tr('Awaiting review')}
           value={fmtHours(stats.pending)}
           tone={stats.pending > 0 ? 'amber' : undefined}
         />
@@ -306,38 +306,40 @@ function ChildCard({ child }) {
       {stats.rejected > 0 && (
         <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          {stats.rejected} {stats.rejected === 1 ? 'entry was' : 'entries were'} rejected — your child can edit and resubmit {stats.rejected === 1 ? 'it' : 'them'}.
+          {stats.rejected === 1
+            ? tr('1 entry was rejected — your child can edit and resubmit it.')
+            : tr('{n} entries were rejected — your child can edit and resubmit them.', { n: stats.rejected })}
         </p>
       )}
 
       <ChildTasks tasks={child.tasks} />
 
       {logs.length === 0 ? (
-        <p className="text-sm text-earth-500 dark:text-earth-400">No hours logged yet.</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400">{tr('No hours logged yet.')}</p>
       ) : (
         <>
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <div>
-              <label htmlFor={`from-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">From</label>
+              <label htmlFor={`from-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">{tr('From')}</label>
               <input id={`from-${child.id}`} type="date" className="input w-[145px]" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div>
-              <label htmlFor={`to-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">To</label>
+              <label htmlFor={`to-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">{tr('To')}</label>
               <input id={`to-${child.id}`} type="date" className="input w-[145px]" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
             <div>
-              <label htmlFor={`cat-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">Category</label>
+              <label htmlFor={`cat-${child.id}`} className="block text-[0.6875rem] text-earth-400 mb-1">{tr('Category')}</label>
               <select id={`cat-${child.id}`} className="input w-[170px]" value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="">All categories</option>
+                <option value="">{tr('All categories')}</option>
                 {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
               </select>
             </div>
             {filtering && (
-              <button onClick={() => { setFrom(''); setTo(''); setCategory('') }} className="btn-sm btn-ghost">Clear</button>
+              <button onClick={() => { setFrom(''); setTo(''); setCategory('') }} className="btn-sm btn-ghost">{tr('Clear')}</button>
             )}
             <div className="flex-1" />
             <button onClick={exportPdf} disabled={exporting || filtered.length === 0} className="btn-sm btn-ghost disabled:opacity-40">
-              <Download className="w-3.5 h-3.5 mr-1" /> {exporting ? 'Preparing…' : 'PDF'}
+              <Download className="w-3.5 h-3.5 mr-1" /> {exporting ? tr('Preparing…') : 'PDF'}
             </button>
             <button onClick={exportCsv} disabled={filtered.length === 0} className="btn-sm btn-ghost disabled:opacity-40">
               <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> CSV
@@ -352,18 +354,18 @@ function ChildCard({ child }) {
           </p>
 
           {filtered.length === 0 ? (
-            <p className="text-sm text-earth-500 dark:text-earth-400">No sessions match those filters.</p>
+            <p className="text-sm text-earth-500 dark:text-earth-400">{tr('No sessions match those filters.')}</p>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="text-earth-500 dark:text-earth-400">
                     <tr>
-                      <th className="text-left py-2">Date</th>
-                      <th className="text-left py-2">Activity</th>
-                      <th className="text-left py-2">Status</th>
-                      <th className="text-right py-2">Hours</th>
-                      <th className="py-2"><span className="sr-only">Cheer</span></th>
+                      <th className="text-left py-2">{tr('Date')}</th>
+                      <th className="text-left py-2">{tr('Activity')}</th>
+                      <th className="text-left py-2">{tr('Status')}</th>
+                      <th className="text-right py-2">{tr('Hours')}</th>
+                      <th className="py-2"><span className="sr-only">{tr('Cheer')}</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -381,7 +383,7 @@ function ChildCard({ child }) {
               </div>
               {filtered.length > ROWS_BEFORE_FOLD && (
                 <button onClick={() => setShowAll((v) => !v)} className="mt-3 text-xs text-brand-600 hover:underline">
-                  {showAll ? 'Show fewer' : `Show all ${filtered.length} sessions`}
+                  {showAll ? tr('Show fewer') : tr('Show all {n} sessions', { n: filtered.length })}
                 </button>
               )}
             </>
@@ -408,7 +410,7 @@ function CheerButton({ log, childName }) {
     }
   }
   if (state === 'done') {
-    return <span className="text-xs text-brand-600 dark:text-brand-400 whitespace-nowrap" title={`${first} got your cheer`}>🎉 Sent</span>
+    return <span className="text-xs text-brand-600 dark:text-brand-400 whitespace-nowrap" title={`${first} got your cheer`}>{tr('🎉 Sent')}</span>
   }
   return (
     <button
@@ -418,7 +420,7 @@ function CheerButton({ log, childName }) {
       className="text-xs font-medium px-2 py-1 rounded-full border border-earth-200 dark:border-earth-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 whitespace-nowrap"
       title={`Tell ${first} you're proud of them`}
     >
-      🎉 Proud of you
+      {tr('🎉 Proud of you')}
     </button>
   )
 }
@@ -466,12 +468,12 @@ function ChildTasks({ tasks }) {
   return (
     <div className="mb-4 p-3 rounded-xl border border-earth-100 dark:border-[#1f2e25]">
       <h4 className="text-sm font-medium flex items-center gap-1.5 mb-2">
-        <CalendarClock className="w-4 h-4 text-brand-600 shrink-0" /> Upcoming tasks
+        <CalendarClock className="w-4 h-4 text-brand-600 shrink-0" />{' '}{tr('Upcoming tasks')}
       </h4>
       {tasks == null ? (
-        <p className="text-sm text-earth-500 dark:text-earth-400">Could not load their volunteer tasks right now.</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400">{tr('Could not load their volunteer tasks right now.')}</p>
       ) : upcoming.length === 0 ? (
-        <p className="text-sm text-earth-500 dark:text-earth-400">No upcoming tasks.</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400">{tr('No upcoming tasks.')}</p>
       ) : (
         <ul className="divide-y divide-earth-100 dark:divide-[#1f2e25]">
           {(showAll ? upcoming : upcoming.slice(0, TASKS_BEFORE_FOLD)).map((t) => <TaskRow key={t.signupId} task={t} />)}
@@ -479,12 +481,12 @@ function ChildTasks({ tasks }) {
       )}
       {upcoming.length > TASKS_BEFORE_FOLD && (
         <button onClick={() => setShowAll((v) => !v)} className="mt-2 text-xs text-brand-600 hover:underline">
-          {showAll ? 'Show fewer' : `Show all ${upcoming.length} upcoming tasks`}
+          {showAll ? tr('Show fewer') : tr('Show all {n} upcoming tasks', { n: upcoming.length })}
         </button>
       )}
       {recent.length > 0 && (
         <>
-          <p className="text-[0.6875rem] text-earth-400 mt-3 mb-1">Recently</p>
+          <p className="text-[0.6875rem] text-earth-400 mt-3 mb-1">{tr('Recently')}</p>
           <ul className="divide-y divide-earth-100 dark:divide-[#1f2e25] opacity-80">
             {recent.map((t) => <TaskRow key={t.signupId} task={t} />)}
           </ul>
@@ -501,14 +503,14 @@ function TaskRow({ task }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium break-words">{task.title}</p>
         <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
-          {task.date === localToday() ? 'Today' : fmtDate(task.date)}
+          {task.date === localToday() ? tr('Today') : fmtDate(task.date)}
           {task.time && <> · {task.time}</>}
         </p>
         <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5 flex items-start gap-1">
           <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
           <span className="break-words">
             {task.location}
-            {task.organizerName && <> · Organized by {task.organizerName}</>}
+            {task.organizerName && <>{' '}{tr('· Organized by')}{' '}{task.organizerName}</>}
           </span>
         </p>
       </div>
@@ -577,10 +579,10 @@ function TaskApprovals({ onDecided }) {
   return (
     <Card className="mb-5">
       <h3 className="font-display font-semibold text-sm flex items-center gap-1.5">
-        <CalendarClock className="w-4 h-4 text-amber-600 shrink-0" /> Waiting for your OK
+        <CalendarClock className="w-4 h-4 text-amber-600 shrink-0" />{' '}{tr('Waiting for your OK')}
       </h3>
       <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
-        Your child is under 13, so these sign-ups reach the organizer only after you approve them.
+        {tr('Your child is under 13, so these sign-ups reach the organizer only after you approve them.')}
       </p>
       {message && <p className="text-sm mt-2 text-brand-700 dark:text-brand-300" role="status">{message}</p>}
       {items.length > 0 && (
@@ -596,23 +598,23 @@ function TaskApprovals({ onDecided }) {
                   <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
                   <span className="break-words">
                     {item.location}
-                    {item.organizerName && <> · Organized by {item.organizerName}</>}
+                    {item.organizerName && <>{' '}{tr('· Organized by')}{' '}{item.organizerName}</>}
                   </span>
                 </p>
                 {item.description && <p className="text-xs text-earth-500 dark:text-earth-400 mt-1 break-words">{item.description}</p>}
                 {item.waiverText && (
                   <details className="mt-2 text-xs">
-                    <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-300">The organizer&apos;s waiver: approving also agrees to it for your child</summary>
+                    <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-300">{tr('The organizer\'s waiver: approving also agrees to it for your child')}</summary>
                     <p className="mt-1 whitespace-pre-line rounded-lg border border-earth-200 dark:border-white/10 p-2 max-h-48 overflow-auto">{item.waiverText}</p>
                   </details>
                 )}
               </div>
               <div className="flex gap-2 shrink-0">
                 <button onClick={() => decide(item, true)} disabled={busy === item.signupId} className="btn-primary btn-sm disabled:opacity-50">
-                  {busy === item.signupId ? 'Saving…' : 'Approve'}
+                  {busy === item.signupId ? tr('Saving…') : tr('Approve')}
                 </button>
                 <button onClick={() => decide(item, false)} disabled={busy === item.signupId} className="btn-ghost btn-sm disabled:opacity-50">
-                  Decline
+                  {tr('Decline')}
                 </button>
               </div>
             </li>
