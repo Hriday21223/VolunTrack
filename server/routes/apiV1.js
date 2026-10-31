@@ -7,6 +7,8 @@ import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { authenticateApiKey, apiError, requireScope } from '../apiKeys.js'
 import { recordAudit, AUDIT } from '../audit.js'
+import { openApiSpec } from '../openapi.js'
+import { backendUrl } from '../email.js'
 import { rangeFromQuery, PERIODS } from '../impact.js'
 import {
   schoolIdsFor, pageSize, isDate, listStudents, getStudent, listHours, progress, progressSummary,
@@ -20,6 +22,8 @@ router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store')
   next()
 })
+// The spec needs no key, so tools can read it (#622 part 4).
+router.get('/openapi.json', (_req, res) => { res.set('Cache-Control', 'public, max-age=3600'); res.json(openApiSpec(backendUrl())) })
 router.use(express.json({ limit: '256kb' }))
 // Per address, before the key check, so guessing keys is slow.
 router.use(rateLimit({

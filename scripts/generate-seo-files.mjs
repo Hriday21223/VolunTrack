@@ -69,6 +69,7 @@ const SITEMAP_ENTRIES = [
   { path: '/', changefreq: 'weekly', priority: '1.0' },
   { path: '/register', changefreq: 'monthly', priority: '0.8' },
   { path: '/for-schools', changefreq: 'monthly', priority: '0.8' },
+  { path: '/developers', changefreq: 'monthly', priority: '0.5' },
   { path: '/school/register', changefreq: 'monthly', priority: '0.7' },
   { path: '/organization/register', changefreq: 'monthly', priority: '0.7' },
   { path: '/contact', changefreq: 'monthly', priority: '0.6' },

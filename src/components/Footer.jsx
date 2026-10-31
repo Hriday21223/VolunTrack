@@ -8,6 +8,7 @@ const LINKS = [
   { to: '/help', label: 'Help' },
   { to: '/guides', label: 'Guides' },
   { to: '/for-schools', label: 'For schools' },
+  { to: '/developers', label: 'Developers' },
   { to: '/terms', label: 'Terms' },
   { to: '/privacy', label: 'Privacy' },
 ]
