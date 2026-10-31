@@ -59,7 +59,8 @@ router.get('/me', async (req, res) => {
 const isTest = (req) => req.apiKey.mode === 'test'
 const wrap = (fn) => async (req, res) => {
   try { await fn(req, res) } catch (error) {
-    console.error(`api v1 ${req.method} ${req.path} failed:`, error)
+    // The route pattern, not req.path: the path is the caller's text.
+    console.error('api v1 request failed:', req.method, req.route?.path || 'unknown route', error)
     apiError(res, 500, 'server_error', 'Something went wrong.')
   }
 }
