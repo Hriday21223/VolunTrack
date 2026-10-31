@@ -1284,6 +1284,42 @@ export async function initSchema() {
   // Requirement templates (#577): an organization's named rule sets
   // ("Middle schools"), each school assigned to at most one. A school's rules
   // resolve own section → template → org default → VolunTrack default.
+  // Webhooks (#622, server/webhooks.js). The signing secret is encrypted.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS webhook_endpoints (
+        id            TEXT PRIMARY KEY,
+        owner_type    TEXT NOT NULL CHECK (owner_type IN ('school', 'organization', 'organizer')),
+        owner_id      TEXT NOT NULL,
+        url           TEXT NOT NULL,
+        events        TEXT[] NOT NULL,
+        secret_enc    TEXT NOT NULL,
+        active        BOOLEAN NOT NULL DEFAULT true,
+        created_by    TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+        disabled_at   TIMESTAMPTZ,
+        failing_since TIMESTAMPTZ
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_webhook_endpoints_owner ON webhook_endpoints(owner_type, owner_id)')
+    await query(`
+      CREATE TABLE IF NOT EXISTS webhook_deliveries (
+        id               TEXT PRIMARY KEY,
+        endpoint_id      TEXT NOT NULL REFERENCES webhook_endpoints(id) ON DELETE CASCADE,
+        event            TEXT NOT NULL,
+        payload          JSONB NOT NULL,
+        status           TEXT NOT NULL CHECK (status IN ('pending', 'delivered', 'failed')),
+        attempts         INTEGER NOT NULL DEFAULT 0,
+        last_status_code INTEGER,
+        last_error       TEXT,
+        next_attempt_at  TIMESTAMPTZ,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+        delivered_at     TIMESTAMPTZ
+      )
+    `)
+    await query("CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_due ON webhook_deliveries(next_attempt_at) WHERE status = 'pending'")
+    await query('CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_endpoint ON webhook_deliveries(endpoint_id, created_at)')
+  } catch (error) { console.error('webhook tables migration failed:', error) }
   // Public API keys (#622, server/apiKeys.js). Only a hash of the key is kept.
   // owner_id is a school id, an organization id, or an organizer's user id.
   try {

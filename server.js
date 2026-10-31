@@ -1,6 +1,7 @@
 import express from 'express'
 import { smsConfigured, normalizePhone, sendSms, verificationText } from './server/sms.js'
 import { translateErrors } from './server/errorStrings.js'
+import { emitHours, startWebhookWorker } from './server/webhooks.js'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
@@ -28,6 +29,7 @@ import remindersRoutes from './server/routes/reminders.js'
 import pushRoutes from './server/routes/push.js'
 import rosterSyncRoutes from './server/routes/rosterSync.js'
 import apiKeysRoutes from './server/routes/apiKeys.js'
+import webhooksRoutes from './server/routes/webhooks.js'
 import apiV1Routes from './server/routes/apiV1.js'
 import goalsRoutes from './server/routes/goals.js'
 import reportsRoutes from './server/routes/reports.js'
@@ -177,6 +179,7 @@ app.use('/api/reminders', remindersRoutes)
 app.use('/api/push', pushRoutes)
 app.use('/api/roster-sync', rosterSyncRoutes)
 app.use('/api/api-keys', apiKeysRoutes)
+app.use('/api/webhooks', webhooksRoutes)
 app.use('/api/goals', goalsRoutes)
 app.use('/api/reports', reportsRoutes)
 app.use('/api/client-errors', clientErrorsRoutes)
@@ -770,10 +773,12 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
     // the decision is mirrored onto the log: the signature image stays on
     // supervisor_verifications, which the student's device reads back through
     // GET /api/verify-hours/:token (#186).
-    await query(
-      'UPDATE logs SET verification_status = $1 WHERE verification_token = $2',
+    const { rows: decided } = await query(
+      'UPDATE logs SET verification_status = $1 WHERE verification_token = $2 RETURNING id',
       [newStatus, token],
     )
+    // Webhooks (#622): the school's systems hear about the supervisor's answer.
+    for (const l of decided) emitHours(newStatus === 'approved' ? 'hours.approved' : 'hours.rejected', l.id)
 
     // Best-effort: let the student know the outcome. Never fails the response.
     const row = rows[0]
@@ -854,6 +859,8 @@ async function start() {
     console.log(`Backend server listening at http://localhost:${port}`)
     // After listen(), so the first self-ping can't arrive before we can answer it.
     startKeepAwake()
+    // Webhook retries (#622), every minute.
+    startWebhookWorker()
   })
 }
 

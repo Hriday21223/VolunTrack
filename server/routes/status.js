@@ -37,6 +37,7 @@ import weatherRouter from './weather.js'
 import pushRouter from './push.js'
 import rosterSyncRouter from './rosterSync.js'
 import apiKeysRouter from './apiKeys.js'
+import webhooksRouter from './webhooks.js'
 import apiV1Router from './apiV1.js'
 
 function frontendUrl() {
@@ -295,6 +296,7 @@ const MOUNTED_ROUTERS = [
   ['push', '/api/push', pushRouter],
   ['roster-sync', '/api/roster-sync', rosterSyncRouter],
   ['api-keys', '/api/api-keys', apiKeysRouter],
+  ['webhooks', '/api/webhooks', webhooksRouter],
   ['api-v1', '/api/v1', apiV1Router],
   ['status', '/api/status', router],
 ]

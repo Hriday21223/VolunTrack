@@ -14,6 +14,7 @@ import { notify } from './notifications.js'
 import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
 import { escapeHtml } from './html.js'
 import { et, emailLang } from './emailStrings.js'
+import { emitWebhook, schoolOwners } from './webhooks.js'
 
 const round = (n) => Math.round((Number(n) || 0) * 100) / 100
 const fmt = (n) => String(round(n)).replace(/\.0+$/, '')
@@ -99,6 +100,8 @@ export async function recordRequirementMet(userId) {
     [userId, status.schoolId, status.target, status.hours],
   )
   const first = rowCount > 0
+  // Webhooks (#622): requirement.met, once per student per school.
+  if (first) emitStudentRequirement(userId, status)
   let parents = 0
   if (first) {
     const { rows } = await query('SELECT COUNT(*)::int AS n FROM parent_child_links WHERE child_id = $1', [userId])
@@ -116,4 +119,21 @@ export async function completionsThisWeek(schoolId) {
     [schoolId],
   )
   return rows[0]?.n || 0
+}
+
+async function emitStudentRequirement(userId, status) {
+  try {
+    const { rows } = await query(
+      `SELECT name, email FROM users WHERE id = $1 AND email NOT ILIKE '%@test.com'
+          AND (parental_consent_status IS NULL OR parental_consent_status <> 'pending')`,
+      [userId],
+    )
+    if (!rows[0]) return
+    emitWebhook(await schoolOwners(status.schoolId), 'requirement.met', {
+      student: { id: userId, name: rows[0].name, email: rows[0].email, schoolId: status.schoolId },
+      requirement: { target: status.target, hours: status.hours },
+    })
+  } catch (error) {
+    console.error('webhook requirement event failed:', error.message)
+  }
 }
