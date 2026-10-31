@@ -323,4 +323,10 @@ export const ERRORS_ES = {
   "Could not reach the roster service. Try again in a minute.": "No se pudo conectar con el servicio de listas. Vuelve a intentarlo en un minuto.",
   "That section isn’t one of yours in Clever.": "Esa sección no es tuya en Clever.",
   "Your account is not linked to a school.": "Tu cuenta no está vinculada a una escuela.",
+  "This account can’t make API keys.": "Esta cuenta no puede crear claves de API.",
+  "Could not update your API keys.": "No se pudieron actualizar tus claves de API.",
+  "Give the key a name, like \"PowerSchool sync\".": "Ponle nombre a la clave, como \"Sincronización con PowerSchool\".",
+  "Pick at least one permission.": "Elige al menos un permiso.",
+  "You can have up to 10 active keys. Revoke one first.": "Puedes tener hasta 10 claves activas. Revoca una primero.",
+  "Key not found, or already revoked.": "No se encontró la clave, o ya está revocada.",
 }

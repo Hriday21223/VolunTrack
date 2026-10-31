@@ -27,6 +27,8 @@ import tenantRoutes from './server/routes/tenant.js'
 import remindersRoutes from './server/routes/reminders.js'
 import pushRoutes from './server/routes/push.js'
 import rosterSyncRoutes from './server/routes/rosterSync.js'
+import apiKeysRoutes from './server/routes/apiKeys.js'
+import apiV1Routes from './server/routes/apiV1.js'
 import goalsRoutes from './server/routes/goals.js'
 import reportsRoutes from './server/routes/reports.js'
 import clientErrorsRoutes from './server/routes/clientErrors.js'
@@ -103,6 +105,10 @@ const webhookLimiter = rateLimit({
 
 app.set('trust proxy', 1)
 app.use(helmet())
+// The public API (#622): server-to-server, so mounted ahead of CORS (no
+// browser page can use a key) and of the app's session auth and limiter; it
+// has its own key check and per-key limit.
+app.use('/api/v1', apiV1Routes)
 // Static allowlist plus any active tenant hostname (a school on its own
 // domain calls this API cross-origin). isAllowedTenantOrigin checks a cached
 // set of known hostnames — it never reflects the incoming Origin back, which
@@ -170,6 +176,7 @@ app.use('/api/tenant', tenantRoutes)
 app.use('/api/reminders', remindersRoutes)
 app.use('/api/push', pushRoutes)
 app.use('/api/roster-sync', rosterSyncRoutes)
+app.use('/api/api-keys', apiKeysRoutes)
 app.use('/api/goals', goalsRoutes)
 app.use('/api/reports', reportsRoutes)
 app.use('/api/client-errors', clientErrorsRoutes)

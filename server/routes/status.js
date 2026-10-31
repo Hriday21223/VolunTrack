@@ -36,6 +36,8 @@ import organizerProfileRouter from './organizerProfile.js'
 import weatherRouter from './weather.js'
 import pushRouter from './push.js'
 import rosterSyncRouter from './rosterSync.js'
+import apiKeysRouter from './apiKeys.js'
+import apiV1Router from './apiV1.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -292,6 +294,8 @@ const MOUNTED_ROUTERS = [
   ['weather', '/api/weather', weatherRouter],
   ['push', '/api/push', pushRouter],
   ['roster-sync', '/api/roster-sync', rosterSyncRouter],
+  ['api-keys', '/api/api-keys', apiKeysRouter],
+  ['api-v1', '/api/v1', apiV1Router],
   ['status', '/api/status', router],
 ]
 

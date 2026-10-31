@@ -69,6 +69,9 @@ export const AUDIT = {
   // Clever (#608): students' names and emails came in from outside.
   ROSTER_CONNECTED: 'roster.connected',
   ROSTER_SYNCED: 'roster.synced',
+  // A public API key was made or revoked (#622). Never the key itself.
+  API_KEY_CREATED: 'api_key.created',
+  API_KEY_REVOKED: 'api_key.revoked',
   // An admin replaced or cleared an email provider key. Which keys, never the
   // values: whoever holds a key can send mail as VolunTrack.
   EMAIL_PROVIDER_CHANGED: 'email.provider_changed',
