@@ -1284,6 +1284,28 @@ export async function initSchema() {
   // Requirement templates (#577): an organization's named rule sets
   // ("Middle schools"), each school assigned to at most one. A school's rules
   // resolve own section → template → org default → VolunTrack default.
+  // Organization partner list (#611, server/partners.js).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS org_partners (
+        id              TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        name            TEXT NOT NULL,
+        address         TEXT,
+        causes          TEXT[] NOT NULL DEFAULT '{}',
+        contact_name    TEXT,
+        contact_email   TEXT,
+        website         TEXT,
+        notes           TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_org_partners_org ON org_partners(organization_id)')
+    await query('CREATE INDEX IF NOT EXISTS idx_org_partners_email ON org_partners(contact_email) WHERE contact_email IS NOT NULL')
+  } catch (error) { console.error('org partners table migration failed:', error) }
+  // Whether the partner names count as approved places at all its schools.
+  try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS partners_as_places BOOLEAN NOT NULL DEFAULT false') } catch {}
   try {
     await query(`
       CREATE TABLE IF NOT EXISTS requirement_templates (

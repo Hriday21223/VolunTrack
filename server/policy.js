@@ -5,6 +5,7 @@
 
 import { query } from './db.js'
 import { resolvePolicy, normalizePolicy } from './requirements.js'
+import { withPartnerPlaces } from './partners.js'
 
 /**
  * The effective policy for one user, and the tenant it came from.
@@ -34,6 +35,8 @@ export async function policyForUser(userId) {
     orgName: row.organization_name,
     templateName: row.template_name,
   })
+  // The org's partner list counts as approved places when it says so (#611).
+  if (row.organization_id) resolved.policy = await withPartnerPlaces(resolved.policy, row.organization_id)
   return {
     ...resolved,
     schoolId: row.school_id || null,

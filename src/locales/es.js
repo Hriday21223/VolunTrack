@@ -1493,4 +1493,10 @@ export default {
   "The start date must be on or before the end date.": "La fecha de inicio debe ser igual o anterior a la de fin.",
   "Download CSV": "Descargar CSV",
   "{from} to {to}, compared with the same dates last year.": "Del {from} al {to}, comparado con las mismas fechas del año pasado.",
+  // Partner list (#611)
+  "Partners ({n})": "Organizaciones aliadas ({n})",
+  "Places {org} works with. Hours you serve at them count toward your goals.": "Lugares con los que trabaja {org}. Las horas que sirvas ahí cuentan para tus metas.",
+  "Places your school works with. Hours you serve at them count toward your goals.": "Lugares con los que trabaja tu escuela. Las horas que sirvas ahí cuentan para tus metas.",
+  "Website": "Sitio web",
+  "District partner": "Aliado del distrito",
 }

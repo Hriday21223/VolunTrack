@@ -1,4 +1,5 @@
 import express from 'express'
+import { withPartnerPlaces, listPartners, PARTNER_TASK_SQL } from '../partners.js'
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
@@ -1252,6 +1253,26 @@ router.post('/students/remind', limiter, requireDb, requireAuth('school', 'schoo
 
 const REVIEW_LIST_MAX = 200
 const REVIEW_NOTE_MAX_LOG = 500
+// GET /api/school/partners (#611): the partner list of the organization that
+// owns the caller's school. Students see names, places, causes and websites;
+// advisers also see the contact person and notes.
+router.get('/partners', limiter, requireDb, requireAuth('student', 'school', 'school_staff'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT s.organization_id, o.name, o.partners_as_places FROM users u
+         JOIN schools s ON s.id = u.school_id JOIN organizations o ON o.id = s.organization_id
+        WHERE u.id = $1`,
+      [req.auth.sub],
+    )
+    if (!rows[0]) return res.json({ partners: [], organizationName: null })
+    const partners = await listPartners(rows[0].organization_id, { withContact: req.auth.role !== 'student' })
+    return res.json({ partners, organizationName: rows[0].name, asPlaces: rows[0].partners_as_places })
+  } catch (error) {
+    console.error('school partners failed:', error)
+    return res.status(500).json({ error: 'Could not load the partner list.' })
+  }
+})
+
 const REVIEW_BULK_MAX = 100
 
 router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
@@ -1261,6 +1282,7 @@ router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_st
     const schoolId = me[0]?.school_id
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
     const target = await policyForSchool(schoolId)
+    if (target) target.policy = await withPartnerPlaces(target.policy, target.organizationId)
     const places = target?.policy?.logRules?.approvedPlaces || []
     const { rows } = await query(
       `SELECT l.id, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours::float8 AS hours, l.notes, l.org_name,
@@ -2535,6 +2557,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                ${userId ? `COALESCE(t.organization_id IS NOT NULL AND t.organization_id = (SELECT s.organization_id FROM users mu JOIN schools s ON s.id = mu.school_id WHERE mu.id = $1), false)` : 'false'} AS for_my_schools,
+               ${userId ? PARTNER_TASK_SQL : 'false'} AS by_partner,
                ${SPOTS_USED_SQL('t.id')} AS slots_filled,
                ${SHIFTS_JSON_SQL('t.id')} AS shifts,
                ${userId ? '(SELECT shift_id FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_shift_id' : 'NULL AS my_shift_id'},
