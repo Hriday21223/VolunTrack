@@ -72,6 +72,9 @@ export const AUDIT = {
   // A public API key was made or revoked (#622). Never the key itself.
   INTEGRATION_ACCESS_GRANTED: 'api_key.created',
   INTEGRATION_ACCESS_REVOKED: 'api_key.revoked',
+  // Students' records read through an API key (#622): actor = who made the key.
+  API_STUDENTS_READ: 'api.students_read',
+  API_HOURS_READ: 'api.hours_read',
   // An admin replaced or cleared an email provider key. Which keys, never the
   // values: whoever holds a key can send mail as VolunTrack.
   EMAIL_PROVIDER_CHANGED: 'email.provider_changed',

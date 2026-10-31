@@ -144,6 +144,9 @@ export async function authenticateApiKey(req, res, next) {
       if (!schoolIsActive(s[0])) return apiError(res, 402, 'payment_required', 'This school’s account isn’t active, so its API keys are paused until payment is verified.')
     }
     req.apiKey = { id: row.id, ownerType: row.owner_type, ownerId: row.owner_id, scopes: row.scopes, mode: row.mode, name: row.name }
+    // For the audit trail: reads through a key are recorded against the person
+    // who made it, with the role 'api_key' (the key id goes in meta).
+    req.auth = { sub: row.created_by || null, role: 'api_key' }
     // At most one write a minute per key, so a busy integration doesn't hammer the row.
     query(`UPDATE api_keys SET last_used_at = now() WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '1 minute')`, [row.id])
       .catch(() => {})
