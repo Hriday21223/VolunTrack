@@ -65,6 +65,10 @@ export const AUDIT = {
   // changes every student's record, so who did it and when is kept (#481).
   GRADES_ADVANCED: 'roster.grades_advanced',
   GRADES_ADVANCE_UNDONE: 'roster.grades_advance_undone',
+  // An adviser connected Google Classroom, or imported classes from it or
+  // Clever (#608): students' names and emails came in from outside.
+  ROSTER_CONNECTED: 'roster.connected',
+  ROSTER_SYNCED: 'roster.synced',
   // An admin replaced or cleared an email provider key. Which keys, never the
   // values: whoever holds a key can send mail as VolunTrack.
   EMAIL_PROVIDER_CHANGED: 'email.provider_changed',

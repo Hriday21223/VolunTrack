@@ -1284,6 +1284,49 @@ export async function initSchema() {
   // Requirement templates (#577): an organization's named rule sets
   // ("Middle schools"), each school assigned to at most one. A school's rules
   // resolve own section → template → org default → VolunTrack default.
+  // Roster sync (#608, server/rosterSync.js). A connection holds an adviser's
+  // encrypted Google refresh token; sections are the classes a school imported,
+  // and members the emails seen last time, to tell who left.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS roster_oauth_states (
+        state      TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS roster_connections (
+        user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider     TEXT NOT NULL CHECK (provider IN ('google')),
+        school_id    TEXT REFERENCES schools(id) ON DELETE CASCADE,
+        secret_enc   TEXT NOT NULL,
+        connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, provider)
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS roster_sync_sections (
+        school_id      TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        provider       TEXT NOT NULL CHECK (provider IN ('google', 'clever')),
+        section_id     TEXT NOT NULL,
+        name           TEXT,
+        user_id        TEXT REFERENCES users(id) ON DELETE SET NULL,
+        student_count  INTEGER NOT NULL DEFAULT 0,
+        last_synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (school_id, provider, section_id)
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS roster_sync_members (
+        school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        provider   TEXT NOT NULL,
+        section_id TEXT NOT NULL,
+        email      TEXT NOT NULL,
+        PRIMARY KEY (school_id, provider, section_id, email)
+      )
+    `)
+  } catch (error) { console.error('roster sync tables migration failed:', error) }
   // Organization partner list (#611, server/partners.js).
   try {
     await query(`

@@ -35,6 +35,7 @@ import taskPhotosRouter from './taskPhotos.js'
 import organizerProfileRouter from './organizerProfile.js'
 import weatherRouter from './weather.js'
 import pushRouter from './push.js'
+import rosterSyncRouter from './rosterSync.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -290,6 +291,7 @@ const MOUNTED_ROUTERS = [
   ['organizer-profiles', '/api/school/organizers', organizerProfileRouter],
   ['weather', '/api/weather', weatherRouter],
   ['push', '/api/push', pushRouter],
+  ['roster-sync', '/api/roster-sync', rosterSyncRouter],
   ['status', '/api/status', router],
 ]
 
