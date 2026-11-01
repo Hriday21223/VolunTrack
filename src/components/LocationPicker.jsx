@@ -2,17 +2,20 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import markerIconUrl from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import { Navigation, MapPin } from 'lucide-react'
 import { searchPlaces, reverseGeocode } from '@/lib/geocode.js'
 import { isNativeApp } from '@/lib/platform.js'
 import { tr } from '@/lib/i18n.js'
 
-// Bundlers break Leaflet's default marker icon URLs — point them at the CDN
-// copies that ship in the same package version instead of asset-resolving.
+// Bundlers break Leaflet's default marker icon URLs, so import the images and
+// let Vite bundle them. Served from our own site: a CDN would see every visitor.
 const markerIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl: markerIconUrl,
+  iconRetinaUrl: markerIcon2xUrl,
+  shadowUrl: markerShadowUrl,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],

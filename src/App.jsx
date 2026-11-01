@@ -18,6 +18,7 @@ import { readWelcomePending } from '@/lib/welcome.js'
 import About from '@/pages/About.jsx'
 import AppLock from '@/components/AppLock.jsx'
 import SlowServerNotice from '@/components/SlowServerNotice.jsx'
+import { tr } from '@/lib/i18n.js'
 const AppWelcome = lazy(() => import('@/pages/AppWelcome.jsx'))
 const Login = lazy(() => import('@/pages/Login.jsx'))
 const Register = lazy(() => import('@/pages/Register.jsx'))
@@ -121,6 +122,7 @@ function Shell() {
   const { pendingBadges, dismissBadges } = useData()
   return (
     <>
+      <SkipToContent />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login"           element={<PublicOnly><Login /></PublicOnly>} />
@@ -214,3 +216,22 @@ export default function App() {
     </ErrorBoundary>
   )
 }
+
+// Keyboard users: the first Tab shows "Skip to content", which jumps past the
+// header and sidebar to the page's <main>.
+function SkipToContent() {
+  const skip = (e) => {
+    const main = document.querySelector('main')
+    if (!main) return
+    e.preventDefault()
+    if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1')
+    main.focus()
+    main.scrollIntoView()
+  }
+  return (
+    <a href="#main" onClick={skip} className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg">
+      {tr('Skip to content')}
+    </a>
+  )
+}
+
