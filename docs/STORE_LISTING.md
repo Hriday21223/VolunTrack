@@ -87,14 +87,15 @@ icon label stays *VolunTrack*:
 > • We never sell your data
 > • In English and Spanish
 
-**Release notes / What's new** (Play 500 max) — 0.10.0:
+**Release notes / What's new** (Play 500 max) — 0.11.0:
 
-> New in 0.10.0:
-> • Pick a shift when an event has more than one
-> • Agree to an event's waiver right in the app; parents can sign from an email
-> • A volunteer badge to show staff on the day of an event
-> • Ask a supervisor for a written reference and add it to your portfolio
-> • Hear back when your school checks your hours, with the reason if it sends one back
+> New in 0.11.0:
+> • A celebration when you reach your hours goal
+> • Tag the skills you used, and see them on Reports
+> • Rate events you volunteered at
+> • Notifications on your phone (turn them on in Settings)
+> • More of the app in Spanish
+> • Schools: impact reports for any dates, partner lists, class imports
 
 ## Graphics
 
