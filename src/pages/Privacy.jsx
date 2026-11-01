@@ -121,6 +121,18 @@ export default function Privacy() {
             <p>We use privacy-friendly, anonymous page-view analytics (Vercel Analytics) to understand overall usage. It does not use cookies and does not track you individually across sites. The iOS and Android apps don&apos;t load it.</p>
           </Section>
 
+          <Section id="cookies" title="Cookies and Storage on Your Device">
+            <p>VolunTrack doesn&apos;t use advertising or tracking cookies, and our analytics don&apos;t use cookies at all, so there is no cookie banner.</p>
+            <p className="mt-2">The app does keep some things in your browser&apos;s storage (or the app&apos;s storage on a phone), because it needs them to work:</p>
+            <ul className="list-disc pl-5 space-y-1.5 mt-2">
+              <li><strong>Your sign-in</strong>, so you stay signed in.</li>
+              <li><strong>Your hours, goals and badges</strong>, so the app works offline and shows them quickly.</li>
+              <li><strong>Your settings</strong>, such as language, theme, text size and contrast, and which banners you closed.</li>
+              <li><strong>A few short-lived notes</strong>, such as an invite code you opened or a draft you were writing.</li>
+            </ul>
+            <p className="mt-2">Signing out clears your account data from that device. You can also clear it at any time in your browser&apos;s settings.</p>
+          </Section>
+
           <Section title="Data Retention">
             <p>We keep your data for as long as your account exists.</p>
             <p className="mt-2">Some things outlive an account on purpose, or are beyond our reach:</p>
@@ -144,8 +156,32 @@ export default function Privacy() {
             <p className="mt-2">For outdoor tasks happening in the next week, our server asks Open-Meteo (open-meteo.com), a free weather service, for the forecast at the task&apos;s location. It receives only the task&apos;s map coordinates, rounded to about a kilometre, and the date — never your name, account, or location, and your browser does not contact it.</p>
           </Section>
 
-          <Section title="Service Providers">
-            <p>We use trusted cloud infrastructure providers — for database hosting, backend hosting, email delivery, bot protection on public forms, place search (the text you type and an approximate position, only when you search for a place), and analytics — strictly to run the service. They process your data on our behalf and do not use it for their own purposes.</p>
+          <Section id="service-providers" title="Service Providers">
+            <p>These companies process data on our behalf, only to run VolunTrack. They don&apos;t use it for their own purposes, and we don&apos;t sell or share it with anyone else. Some only come into play if a school or you turn a feature on.</p>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead><tr className="border-b border-earth-200 dark:border-white/10"><th className="py-2 pr-3">Service</th><th className="py-2 pr-3">What it receives</th><th className="py-2">Why</th></tr></thead>
+                <tbody className="align-top">
+                  {[
+                    ['Vercel', 'Website visits; anonymous page-view counts', 'Hosting the website; analytics'],
+                    ['Render', 'Requests to our server', 'Hosting our server'],
+                    ['Neon', 'Account and hours data', 'Our database'],
+                    ['Brevo', 'Email address and the email we send', 'Sending email'],
+                    ['Cloudflare Turnstile', 'Technical signals from your browser on sign-in and public forms', 'Stopping bots'],
+                    ['OpenStreetMap and Photon (komoot)', 'Map tiles your browser loads; the text you type in a place search and an approximate position', 'Maps and place search'],
+                    ['Open-Meteo', 'A task’s rounded map position and date, from our server', 'Weather on outdoor tasks'],
+                    ['Google Forms', 'What you enter in your school’s form, if it uses one', 'Your school’s own sign-off form'],
+                    ['Anthropic or OpenRouter', 'A photo of a paper hours log, only if the AI reader is turned on; not stored', 'Reading handwriting'],
+                    ['Twilio', 'A supervisor’s mobile number and the sign-off link, if you add a number', 'Text messages to supervisors'],
+                    ['Google Firebase and Apple', 'A device token and the notification text, if you turn notifications on', 'Phone notifications'],
+                    ['Google Classroom and Clever', 'Read access to an adviser’s class lists, if they connect one', 'Importing a class'],
+                  ].map(([name, what, why]) => (
+                    <tr key={name} className="border-b border-earth-100 dark:border-white/5"><td className="py-2 pr-3 font-medium">{name}</td><td className="py-2 pr-3">{what}</td><td className="py-2">{why}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2">A school can also connect its own sign-in (Google, Microsoft or another provider), its own file storage, and its own systems through API keys and webhooks. Data that goes there is governed by the school.</p>
           </Section>
 
           <Section title="Children's Privacy">

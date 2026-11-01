@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check, Users, Cake } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
@@ -472,13 +472,16 @@ export default function Register() {
   )
 }
 
-function Field({ icon: Icon, label, type = 'text', ...rest }) {
+function Field({ icon: Icon, label, type = 'text', id, ...rest }) {
+  // Tie the label to its input so screen readers announce it.
+  const autoId = useId()
+  const inputId = id || autoId
   return (
     <div>
-      <label className="label">{label}</label>
+      <label className="label" htmlFor={inputId}>{label}</label>
       <div className="relative">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-        <input type={type} className="input pl-9" {...rest} />
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" aria-hidden="true" />
+        <input id={inputId} type={type} className="input pl-9" {...rest} />
       </div>
     </div>
   )

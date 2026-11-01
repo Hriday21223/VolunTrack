@@ -85,13 +85,13 @@ const SHEETS = `function importApprovedHours() {
 }`
 
 function Code({ children }) {
-  return <pre className="mt-2 overflow-x-auto rounded-xl bg-slate-950 p-4 text-xs leading-relaxed text-slate-100"><code>{children}</code></pre>
+  return <pre tabIndex={0} className="mt-2 overflow-x-auto focus-visible:ring-2 focus-visible:ring-brand-500 rounded-xl bg-slate-950 p-4 text-xs leading-relaxed text-slate-100"><code>{children}</code></pre>
 }
 
 function Section({ icon: Icon, title, children, id }) {
   return (
     <section id={id} className="mt-10 scroll-mt-24">
-      <h2 className="font-display text-xl font-semibold flex items-center gap-2"><Icon className="w-5 h-5 text-brand-600" /> {title}</h2>
+      <h2 className="font-display text-xl font-semibold flex items-center gap-2"><Icon className="w-5 h-5 text-brand-700 dark:text-brand-300" aria-hidden="true" /> {title}</h2>
       <div className="mt-3 space-y-3 text-sm text-earth-600 dark:text-earth-300 leading-relaxed">{children}</div>
     </section>
   )
@@ -107,7 +107,7 @@ export default function Developers() {
     <div className="min-h-screen bg-white text-earth-900 dark:bg-[#0b1410] dark:text-earth-100">
       <PublicHeader />
       <main className="mx-auto max-w-4xl px-4 py-12">
-        <p className="text-sm font-medium text-brand-600">For developers</p>
+        <p className="text-sm font-medium text-brand-700 dark:text-brand-300">For developers</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold mt-1">The VolunTrack API</h1>
         <p className="mt-4 text-earth-600 dark:text-earth-300 max-w-2xl">
           Schools, districts and event organizers can connect VolunTrack to the systems they already use: a student information system,
@@ -127,7 +127,7 @@ export default function Developers() {
         </Section>
 
         <Section id="endpoints" icon={ListChecks} title="Endpoints">
-          <p>Base address: <code>{API}/api/v1</code>. The full description is at <a className="text-brand-600 underline" href={`${API}/api/v1/openapi.json`}>/api/v1/openapi.json</a> (OpenAPI 3.1), which Postman and code generators can import.</p>
+          <p>Base address: <code>{API}/api/v1</code>. The full description is at <a className="text-brand-700 dark:text-brand-300 underline" href={`${API}/api/v1/openapi.json`}>/api/v1/openapi.json</a> (OpenAPI 3.1), which Postman and code generators can import.</p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead><tr className="border-b border-earth-200 dark:border-white/10"><th className="py-2 pr-3">Endpoint</th><th className="py-2 pr-3">Permission</th><th className="py-2">What it returns</th></tr></thead>
@@ -172,13 +172,13 @@ export default function Developers() {
             <li>Event volunteers appear as first name and last initial.</li>
             <li>Every read of students&apos; records is in the school&apos;s audit trail, against the person who made the key.</li>
           </ul>
-          <p>The school decides where it sends its students&apos; data. See the <Link to="/privacy" className="text-brand-600 underline">privacy policy</Link>.</p>
+          <p>The school decides where it sends its students&apos; data. See the <Link to="/privacy" className="text-brand-700 dark:text-brand-300 underline">privacy policy</Link>.</p>
         </Section>
 
         <Section id="examples" icon={FileJson} title="Example: approved hours into Google Sheets">
           <p>In a Google Sheet, open Extensions → Apps Script, paste this, save your key as a script property named <code>VOLUNTRACK_KEY</code>, and run it (or put it on a daily trigger).</p>
           <Code>{SHEETS}</Code>
-          <p>Questions, or need a permission that isn&apos;t here yet? <Link to="/contact" className="text-brand-600 underline">Get in touch</Link>.</p>
+          <p>Questions, or need a permission that isn&apos;t here yet? <Link to="/contact" className="text-brand-700 dark:text-brand-300 underline">Get in touch</Link>.</p>
         </Section>
       </main>
       <Footer />

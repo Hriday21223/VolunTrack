@@ -2791,4 +2791,5 @@ export default {
   "Sent again.": "Enviado de nuevo.",
   "Still failing: {error}": "Sigue fallando: {error}",
   "Delete the webhook to {url}?": "¿Eliminar el webhook a {url}?",
+  "Skip to content": "Ir al contenido",
 }
