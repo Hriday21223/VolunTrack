@@ -6,7 +6,7 @@ import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { tr } from '@/lib/i18n.js'
-import { OPERATOR_NAME, OPERATOR_LOCATION, MAILING_ADDRESS } from '@/lib/business.js'
+import { OPERATOR_NAME, OPERATOR_LOCATION } from '@/lib/business.js'
 
 export default function Privacy() {
   useSeo({
@@ -194,7 +194,7 @@ export default function Privacy() {
           </Section>
 
           <Section title="Contact">
-            <p>VolunTrack is run by {OPERATOR_NAME}, {MAILING_ADDRESS || OPERATOR_LOCATION}, who is responsible for the personal data described in this policy.</p>
+            <p>VolunTrack is run by {OPERATOR_NAME}{OPERATOR_LOCATION ? `, ${OPERATOR_LOCATION}` : ''}, who is responsible for the personal data described in this policy.</p>
             <p className="mt-2">If you have questions about this policy, or want the data held on our servers deleted, please contact us at{' '}
               <a href="mailto:volunteertrackinfo@gmail.com" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">volunteertrackinfo@gmail.com</a>.
             </p>

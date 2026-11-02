@@ -8,7 +8,7 @@ import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
-import { OPERATOR_NAME, OPERATOR_LOCATION, MAILING_ADDRESS } from '@/lib/business.js'
+import { OPERATOR_NAME, OPERATOR_LOCATION } from '@/lib/business.js'
 
 export default function Contact() {
   useSeo({
@@ -272,7 +272,7 @@ export default function Contact() {
                 <Building2 className="w-4 h-4 text-brand-600" /> Who runs VolunTrack
               </h3>
               <p className="text-sm">{OPERATOR_NAME}</p>
-              <p className="text-sm text-earth-500 dark:text-earth-400">{MAILING_ADDRESS || OPERATOR_LOCATION}</p>
+              {OPERATOR_LOCATION && <p className="text-sm text-earth-500 dark:text-earth-400">{OPERATOR_LOCATION}</p>}
             </Card>
 
             <Card>
