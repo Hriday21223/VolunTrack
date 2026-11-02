@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, XCircle, Loader2, Instagram } from 'lucide-react'
+import { ArrowLeft, Mail, MessageSquare, Send, CheckCircle2, XCircle, Loader2, Instagram, Building2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
@@ -8,6 +8,7 @@ import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
+import { OPERATOR_NAME, OPERATOR_LOCATION } from '@/lib/business.js'
 
 export default function Contact() {
   useSeo({
@@ -264,6 +265,14 @@ export default function Contact() {
                 volunteertrackinfo@gmail.com
               </a>
               <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">For general questions and support.</p>
+            </Card>
+
+            <Card>
+              <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
+                <Building2 className="w-4 h-4 text-brand-600" /> Who runs VolunTrack
+              </h3>
+              <p className="text-sm">{OPERATOR_NAME}</p>
+              {OPERATOR_LOCATION && <p className="text-sm text-earth-500 dark:text-earth-400">{OPERATOR_LOCATION}</p>}
             </Card>
 
             <Card>

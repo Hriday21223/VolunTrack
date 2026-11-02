@@ -4,6 +4,7 @@ import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { tr } from '@/lib/i18n.js'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
+import { OPERATOR_NAME } from '@/lib/business.js'
 
 const ROLE_ITEMS = {
   student: [
@@ -130,7 +131,7 @@ export default function Sidebar() {
           <Link to="/contact" className="text-earth-300 hover:text-white">{tr('Contact')}</Link>
           <Link to="/status" className="text-earth-300 hover:text-white">{tr('System Status')}</Link>
         </div>
-        <div className="mt-4 text-earth-500">© {new Date().getFullYear()}{' '}{tr('VolunTrack. All rights reserved.')}</div>
+        <div className="mt-4 text-earth-500">© {new Date().getFullYear()} VolunTrack · {OPERATOR_NAME}.{' '}{tr('All rights reserved.')}</div>
       </div>
     </aside>
   )
