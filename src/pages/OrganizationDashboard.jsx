@@ -14,6 +14,7 @@ import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
+import YearEndPacketCard from '@/components/YearEndPacketCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
@@ -195,6 +196,7 @@ export default function OrganizationDashboard() {
         </Card>
       )}
       {tab === 'hours' && <ImpactReportCard scope="organization" className="mt-4" />}
+      {tab === 'hours' && <div className="mt-4"><YearEndPacketCard kind="organization" /></div>}
 
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />

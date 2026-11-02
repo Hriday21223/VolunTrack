@@ -21,6 +21,7 @@ import { useMyRequirements } from '@/lib/requirements.js'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
+import YearEndPacketCard from '@/components/YearEndPacketCard.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
@@ -982,6 +983,7 @@ export default function SchoolDashboard() {
           </Card>
         )}
         {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && <ImpactReportCard scope="school" className="mt-4" />}
+        {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><YearEndPacketCard kind="school" /></div>}
 
         {tab === 'setup' && setupTab === 'requirements' && user?.role === 'school' && (
           <RequirementsSettings scope="school" />

@@ -766,3 +766,56 @@ function drawSignInSheet({ task, names, waitlisted, organizerName, logo, blankRo
   doc.setTextColor(0)
   return doc
 }
+
+/* ---------- End-of-year packet (#640) ---------- */
+
+/**
+ * The certificates from printSchoolCertificates, as one PDF (a page per
+ * student) so they can go in a ZIP. Same wording; drawn signatures included.
+ */
+export async function schoolCertificatesPDF({ schoolName, students, certificate }) {
+  const doc = new jsPDF({ unit: 'pt', orientation: 'landscape', format: 'letter' })
+  const logo = await getLogoDataUrl()
+  const W = doc.internal.pageSize.getWidth()
+  const H = doc.internal.pageSize.getHeight()
+  const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const heading = certificate?.title?.trim() || schoolName || 'VolunTrack'
+  const signerName = certificate?.signerName?.trim() || schoolName || ''
+  const signerTitle = certificate?.signerTitle?.trim() || 'Adviser'
+  const note = certificate?.note?.trim() || 'Thank you for serving your community.'
+  const style = certificate?.signStyle || 'typed'
+  const drawn = style === 'drawn' && /^data:image\/png;base64,/.test(certificate?.signatureImage || '') ? certificate.signatureImage : null
+  students.forEach((s, i) => {
+    if (i > 0) doc.addPage()
+    doc.setDrawColor(63, 131, 68).setLineWidth(4).rect(30, 30, W - 60, H - 60)
+    doc.setLineWidth(1).rect(40, 40, W - 80, H - 80)
+    if (logo) { try { doc.addImage(logo, 'PNG', W / 2 - 24, 60, 48, 42) } catch { /* optional */ } }
+    doc.setFont('helvetica', 'normal').setFontSize(12).setTextColor(108, 80, 45)
+    doc.text('CERTIFICATE OF SERVICE', W / 2, 125, { align: 'center' })
+    doc.setFont('helvetica', 'bold').setFontSize(26).setTextColor(39, 84, 45)
+    doc.text(heading, W / 2, 160, { align: 'center', maxWidth: W - 140 })
+    doc.setFont('helvetica', 'normal').setFontSize(13).setTextColor(58, 48, 36)
+    doc.text('This certifies that', W / 2, 200, { align: 'center' })
+    doc.setFont('helvetica', 'bold').setFontSize(32).setTextColor(33, 67, 39)
+    doc.text(s.name || 'Student', W / 2, 242, { align: 'center', maxWidth: W - 140 })
+    doc.setFont('helvetica', 'normal').setFontSize(13).setTextColor(58, 48, 36)
+    doc.text('has completed', W / 2, 272, { align: 'center' })
+    doc.setFont('helvetica', 'bold').setFontSize(22).setTextColor(63, 131, 68)
+    doc.text(`${hoursWords(s.hours)} of volunteer service`, W / 2, 306, { align: 'center' })
+    doc.setFont('helvetica', 'normal').setFontSize(12).setTextColor(58, 48, 36)
+    const line = `meeting the ${s.target}-hour service requirement${s.award ? ` and reaching the ${s.award} award level` : ''}. ${note}`
+    doc.text(line, W / 2, 336, { align: 'center', maxWidth: W - 180 })
+    const y = H - 110
+    doc.setFontSize(11).setTextColor(108, 80, 45)
+    doc.text(issuedDate, 170, y - 8, { align: 'center' })
+    doc.setDrawColor(108, 80, 45).setLineWidth(0.8).line(80, y, 260, y)
+    doc.text('Date', 170, y + 16, { align: 'center' })
+    const sx = W - 170
+    if (drawn) { try { doc.addImage(drawn, 'PNG', sx - 64, y - 52, 128, 48) } catch { /* skip */ } }
+    else if (style === 'typed') { doc.setFont('times', 'italic').setFontSize(18).setTextColor(33, 67, 39).text(signerName, sx, y - 8, { align: 'center' }) }
+    doc.setFont('helvetica', 'normal').setFontSize(11).setTextColor(108, 80, 45)
+    doc.line(sx - 90, y, sx + 90, y)
+    doc.text([style === 'typed' ? '' : signerName, signerTitle].filter(Boolean).join(', '), sx, y + 16, { align: 'center' })
+  })
+  return doc.output('blob')
+}
