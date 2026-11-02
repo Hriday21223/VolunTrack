@@ -11,6 +11,7 @@ import { emailHash } from '../transcript.js'
 import { validateLogAgainstPolicy, sanitizeCustomFieldValues, isLockedDate, lockedMessage } from '../requirements.js'
 import { policyForUser, hoursLoggedOn } from '../policy.js'
 import { paperScanAvailable, scanPaperLog } from '../paperScan.js'
+import { recordLogEvent } from '../logHistory.js'
 
 const router = express.Router()
 
@@ -198,7 +199,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       `SELECT user_id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes,
               location, org_name, supervisor_name, supervisor_email_hash,
               (proof_key IS NOT NULL) AS has_proof, custom_fields, student_signed, form_submitted,
-              supervisor_signed_in_person, task_id
+              supervisor_signed_in_person, task_id, verification_status
          FROM logs WHERE id = $1`,
       [req.params.id],
     )
@@ -301,7 +302,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     // edit, even one (like the place) that wouldn't undo a supervisor's answer:
     // the student was asked to fix it, and this is them fixing it.
     const SCHOOL_SENT_BACK = `(verification_status = 'rejected' AND review_note IS NOT NULL)`
-    await query(
+    const { rows: updated } = await query(
       `UPDATE logs SET
          date = COALESCE($1, date),
          activity = COALESCE($2, activity),
@@ -328,9 +329,14 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          organizer_signature = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE organizer_signature END,
          -- An imported log's signed attestation described the old facts too.
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
-       WHERE id = $11`,
+       WHERE id = $11
+       RETURNING verification_status`,
       [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared, String(reflection || '').trim() || null, Object.hasOwn(req.body, 'skills'), patchSkills.length ? patchSkills : null],
     )
+    // An edit that undid an approval or a send-back goes in the history (#638).
+    if (['approved', 'rejected'].includes(existing.verification_status) && updated[0]?.verification_status === 'none') {
+      recordLogEvent({ logId: req.params.id, event: 'reset', byKind: 'student', byUserId: req.auth.sub })
+    }
     return res.json({ ok: true })
   } catch (error) {
     console.error('log update failed:', error)
@@ -348,6 +354,8 @@ router.delete('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       return res.status(403).json({ error: lockedMessage(resolved.policy), locked: true })
     }
 
+    // Before the delete: the history row copies the entry's details from it.
+    await recordLogEvent({ logId: req.params.id, event: 'deleted', byKind: 'student', byUserId: req.auth.sub })
     await query('DELETE FROM logs WHERE id = $1', [req.params.id])
     return res.json({ ok: true })
   } catch (error) {
