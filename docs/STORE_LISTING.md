@@ -15,6 +15,8 @@ policy strike after release). Tracking issue: #228.
 | Category | Education (Play: *Education*; Apple: primary *Education*, secondary *Productivity*) |
 | Website | https://volunteer-track-two.vercel.app |
 | Support email | volunteertrackinfo@gmail.com |
+| Developer / seller name | Hriday Karnatam (individual; switch to the business name if one is registered) |
+| Location | Dallas, Texas (add a PO box or virtual mailbox address when the stores ask for a postal address; never a home address) |
 | Privacy policy | https://volunteer-track-two.vercel.app/privacy |
 | Account deletion URL (Play) | https://volunteer-track-two.vercel.app/privacy#account-deletion |
 | Terms | https://volunteer-track-two.vercel.app/terms |

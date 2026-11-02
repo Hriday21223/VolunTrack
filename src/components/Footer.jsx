@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Instagram } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
+import { OPERATOR_NAME, OPERATOR_LOCATION } from '@/lib/business.js'
 
 const LINKS = [
   { to: '/contact', label: 'Contact' },
@@ -29,7 +30,7 @@ export default function Footer({ tone = 'auto', className }) {
       )}
     >
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 flex flex-wrap items-center justify-between gap-4">
-        <span>&copy; {new Date().getFullYear()} VolunTrack. All rights reserved.</span>
+        <span>&copy; {new Date().getFullYear()} VolunTrack · {OPERATOR_NAME}, {OPERATOR_LOCATION}. All rights reserved.</span>
         <div className="flex flex-wrap items-center gap-4">
           {LINKS.map((l) => (
             <Link
