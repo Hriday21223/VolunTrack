@@ -18,6 +18,8 @@ import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink, smsAvailable } from '@/lib/supervisorNotify.js'
 import ScanPaperLog from '@/components/ScanPaperLog.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
+import UnsentBanner from '@/components/UnsentBanner.jsx'
+import { listLogs } from '@/api/index.js'
 import { addDays, format, parseISO } from 'date-fns'
 import { hapticSuccess } from '@/lib/platform.js'
 import { tr } from '@/lib/i18n.js'
@@ -105,6 +107,8 @@ export default function LogHours({ editId, onCloseEdit }) {
   const [canText, setCanText] = useState(false)
   useEffect(() => { smsAvailable().then(setCanText) }, [])
   const [toast, setToast] = useState(false)
+  // Saved with no connection: the toast says it's waiting on this device (#635).
+  const [savedOffline, setSavedOffline] = useState(false)
   const [error, setError] = useState('')
   // A second tap on Save while the first is still working saved the entry
   // twice. The ref blocks it at once (state only updates on the next render).
@@ -380,12 +384,14 @@ export default function LogHours({ editId, onCloseEdit }) {
 
       if (editId) {
         editLog(editId, payload)
+        setSavedOffline(false)
         setToast(true)
         onCloseEdit?.()
       } else {
         const created = addLog(payload)
         setForm(blank())
         setRepeatedFrom(null)
+        setSavedOffline(typeof navigator !== 'undefined' && navigator.onLine === false)
         setToast(true)
         hapticSuccess()
         if (signoffRoute === 'inPerson' || signoffRoute === 'organizer') {
@@ -423,6 +429,12 @@ export default function LogHours({ editId, onCloseEdit }) {
           // No signature rule: the named supervisor is emailed to verify —
           // unless it's the linked task's organizer, who reviews it on My Tasks.
           const serverId = await created.whenSynced.catch(() => null)
+          // Saved offline: the email needs the entry's server id, so hold it
+          // until the entry sends (useData sends it then).
+          if (!serverId && localStorage.getItem('voluntrack:auth_token') && listLogs().find((l) => l.id === created.id)?.syncPending) {
+            editLog(created.id, { notifySupervisorLater: true, textSupervisor: canText })
+            return
+          }
           notifySupervisor({
             supervisorEmail: payload.supervisorEmail,
             supervisorName: payload.supervisorName,
@@ -450,6 +462,7 @@ export default function LogHours({ editId, onCloseEdit }) {
       title={editId ? tr('Edit volunteer hours') : tr('Log volunteer hours')}
       subtitle={tr('Capture the who, what, when, and where of your service.')}
     >
+      <UnsentBanner />
       <form onSubmit={onSubmit} className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           {!editId && <ScanPaperLog onAdd={(entry) => { addLog({ ...blank(), ...entry }); setToast(true) }} />}
@@ -867,7 +880,11 @@ export default function LogHours({ editId, onCloseEdit }) {
       </form>
 
       <Toast open={toast} onClose={() => setToast(false)}>
-        {editId ? tr('Entry updated') : tr('Hours saved — nice work!')}
+        {editId
+          ? tr('Entry updated')
+          : savedOffline
+            ? tr('Saved on this device. It sends when you’re back online.')
+            : tr('Hours saved — nice work!')}
       </Toast>
     </AppLayout>
   )
