@@ -38,6 +38,7 @@ import { schoolIsActive, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_S
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
 import { readWaiverText, readWaiverAgreement, saveWaiverAgreement, hashWaiverToken, WAIVER_STATUS_SQL } from '../taskWaivers.js'
 import { readShifts, saveShifts, chooseShift, capacityFor, taskShifts, SHIFTS_JSON_SQL, shiftText } from '../taskShifts.js'
+import { emergencyContactsFor } from '../emergencyContacts.js'
 
 const router = express.Router()
 
@@ -5937,7 +5938,12 @@ const checkinLimiter = rateLimit({
 // GET: the organizer's current code and who has scanned (polled by the QR screen).
 router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows } = await query('SELECT id, created_by, status, checkin_secret FROM public_tasks WHERE id = $1', [req.params.id])
+    const { rows } = await query(
+      `SELECT id, created_by, status, checkin_secret,
+              (date BETWEEN current_date - 1 AND current_date + 1) AS around_today
+         FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
     const task = rows[0]
     if (!task) return res.status(404).json({ error: 'Task not found.' })
     if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can show the check-in code.")) return
@@ -5950,15 +5956,22 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
     }
     const windowIndex = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
     const { rows: people } = await query(
-      `SELECT u.name, s.checked_in_at, s.checked_out_at FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
       [task.id],
     )
+    // Students' emergency contacts (#639), only around the day of the event.
+    const contacts = task.around_today
+      ? await emergencyContactsFor(people.filter((p) => p.role === 'student').map((p) => p.id)).catch(() => new Map())
+      : new Map()
+    if (contacts.size > 0) {
+      recordAudit(req, { action: AUDIT.EMERGENCY_CONTACTS_READ, objectType: 'public_task', objectId: task.id, meta: { shown: contacts.size } })
+    }
     return res.json({
       code: checkinCode(secret, task.id, windowIndex),
       // Seconds until the code changes, so the screen refreshes on time.
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
-      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at })),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null })),
     })
   } catch (error) {
     console.error('checkin code failed:', error)
