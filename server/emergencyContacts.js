@@ -12,7 +12,7 @@ const ENC = 'enc:'
 /** A cleaned phone number, or null if it doesn't look like one. */
 export function cleanPhone(value) {
   const raw = String(value ?? '').trim()
-  if (!/^[+\d][\d\s().-]{5,24}$/.test(raw)) return null
+  if (!/^[+(\d][\d\s().-]{5,24}$/.test(raw)) return null
   const digits = raw.replace(/\D/g, '')
   if (digits.length < 7 || digits.length > 15) return null
   return raw.replace(/\s+/g, ' ')
