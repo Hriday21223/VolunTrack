@@ -1,4 +1,6 @@
 import es from '@/locales/es.js'
+import vi from '@/locales/vi.js'
+import zh from '@/locales/zh.js'
 
 // Translations. English is the source: the English text is the key, so any
 // string without a translation simply shows in English. Wrap text in tr():
@@ -13,8 +15,12 @@ import es from '@/locales/es.js'
 export const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'es', label: 'Español' },
+  // Vietnamese and Simplified Chinese (#637). Screens not translated yet show
+  // in English.
+  { code: 'vi', label: 'Tiếng Việt' },
+  { code: 'zh', label: '中文（简体）' },
 ]
-const DICTIONARIES = { es }
+const DICTIONARIES = { es, vi, zh }
 const STORAGE_KEY = 'voluntrack:language'
 
 function detect() {
@@ -23,7 +29,12 @@ function detect() {
     if (saved && LANGUAGES.some((l) => l.code === saved)) return saved
   } catch { /* storage blocked: fall back to the browser's language */ }
   const browser = typeof navigator !== 'undefined' ? String(navigator.language || '') : ''
-  return browser.toLowerCase().startsWith('es') ? 'es' : 'en'
+  const lower = browser.toLowerCase()
+  if (lower.startsWith('es')) return 'es'
+  if (lower.startsWith('vi')) return 'vi'
+  // Simplified only: a browser set to Traditional Chinese keeps English.
+  if (lower === 'zh' || lower.startsWith('zh-cn') || lower.startsWith('zh-sg') || lower.startsWith('zh-hans')) return 'zh'
+  return 'en'
 }
 
 export const language = detect()

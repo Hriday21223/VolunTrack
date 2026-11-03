@@ -10,6 +10,15 @@
 // activity descriptions are the user's own words and stay as they are.
 
 export const EMAIL_LANGUAGES = ['en', 'es']
+// Languages the app can be set to (#637). An account set to one without email
+// translations yet (Vietnamese, Chinese) gets its emails in English.
+export const APP_LANGUAGES = ['en', 'es', 'vi', 'zh']
+
+/** The app language a request asked for: 'en' | 'es' | 'vi' | 'zh'. */
+export function requestAppLang(req) {
+  const h = String(req?.headers?.['accept-language'] || '').trim().toLowerCase()
+  return APP_LANGUAGES.find((l) => h.startsWith(l)) || 'en'
+}
 
 /**
  * The language a request asked for (#604). The app sets Accept-Language to

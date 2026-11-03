@@ -694,6 +694,11 @@ export async function initSchema() {
   // it. NULL = never told us, which gets English.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT`) } catch {}
   try { await query(`ALTER TABLE users ADD CONSTRAINT users_language_check CHECK (language IS NULL OR language IN ('en','es'))`) } catch {}
+  // Vietnamese and Chinese (#637): widen the check.
+  try {
+    await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_language_check`)
+    await query(`ALTER TABLE users ADD CONSTRAINT users_language_check CHECK (language IS NULL OR language IN ('en','es','vi','zh'))`)
+  } catch (error) { console.error('language check migration failed:', error.message) }
 
   // A student's chosen causes (activity categories) for the "For you" row on
   // Opportunities (server/routes/interests.js).
