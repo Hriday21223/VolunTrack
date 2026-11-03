@@ -2189,6 +2189,39 @@ export async function initSchema() {
   try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_school ON log_events(school_id, created_at DESC)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_student ON log_events(student_id, created_at DESC)`) } catch {}
 
+  // Sign in with Google or Apple (#661).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_social_logins (
+        provider    TEXT NOT NULL CHECK (provider IN ('google', 'apple')),
+        subject     TEXT NOT NULL,
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (provider, subject)
+      )
+    `)
+    await query(`CREATE INDEX IF NOT EXISTS idx_user_social_logins_user ON user_social_logins(user_id)`)
+    await query(`
+      CREATE TABLE IF NOT EXISTS social_login_states (
+        state          TEXT PRIMARY KEY,
+        provider       TEXT NOT NULL,
+        code_verifier  TEXT NOT NULL,
+        nonce          TEXT NOT NULL,
+        return_to      TEXT,
+        expires_at     TIMESTAMPTZ NOT NULL
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS social_signup_tickets (
+        ticket_hash  TEXT PRIMARY KEY,
+        provider     TEXT NOT NULL,
+        subject      TEXT NOT NULL,
+        email        TEXT NOT NULL,
+        expires_at   TIMESTAMPTZ NOT NULL
+      )
+    `)
+  } catch (error) { console.error('social sign-in migration failed:', error.message) }
+
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
