@@ -6189,6 +6189,22 @@ const checkinLimiter = rateLimit({
 // emailed: once to check in, once to check out. Five wrong PINs lock that
 // name until the organizer clears it.
 
+// Checks a volunteer's PIN, counting wrong tries; 5 lock it until the
+// organizer unlocks. → { ok: true } or { ok: false, status, body }.
+async function checkKioskPin(signup, pin) {
+  if (signup.kiosk_pin_fails >= KIOSK_MAX_FAILS) return { ok: false, status: 423, body: { error: 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: true } }
+  const value = String(pin || '')
+  if (!value) return { ok: false, status: 400, body: { error: 'Enter your check-in PIN from your approval email.', pinRequired: true } }
+  const ok = /^\d{6}$/.test(value) && timingSafeEqual(Buffer.from(kioskPinHash(signup.id, value)), Buffer.from(signup.kiosk_pin_hash))
+  if (!ok) {
+    const { rows: f } = await query('UPDATE public_task_signups SET kiosk_pin_fails = kiosk_pin_fails + 1 WHERE id = $1 RETURNING kiosk_pin_fails', [signup.id])
+    const left = KIOSK_MAX_FAILS - f[0].kiosk_pin_fails
+    return { ok: false, status: 401, body: { error: left > 0 ? `That PIN isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: left <= 0, pinRequired: left > 0 } }
+  }
+  await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
+  return { ok: true }
+}
+
 const kioskName = (name) => {
   const parts = String(name || '').trim().split(/\s+/)
   return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || 'Volunteer'
@@ -6248,15 +6264,9 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
       await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
       return res.json({ state: 'unlocked' })
     }
-    if (signup.kiosk_pin_fails >= KIOSK_MAX_FAILS) return res.status(423).json({ error: 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: true })
-    const ok = signup.kiosk_pin_hash && /^\d{6}$/.test(pin)
-      && timingSafeEqual(Buffer.from(kioskPinHash(signup.id, pin)), Buffer.from(signup.kiosk_pin_hash))
-    if (!ok) {
-      const { rows: f } = await query('UPDATE public_task_signups SET kiosk_pin_fails = kiosk_pin_fails + 1 WHERE id = $1 RETURNING kiosk_pin_fails', [signup.id])
-      const left = KIOSK_MAX_FAILS - f[0].kiosk_pin_fails
-      return res.status(401).json({ error: left > 0 ? `That PIN isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: left <= 0 })
-    }
-    await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
+    if (!signup.kiosk_pin_hash) return res.status(400).json({ error: 'This volunteer has no check-in PIN. Mark them present on My Tasks.' })
+    const pinCheck = await checkKioskPin(signup, pin)
+    if (!pinCheck.ok) return res.status(pinCheck.status).json(pinCheck.body)
     if (!signup.checked_in_at) {
       const { rows: done } = await query(
         `UPDATE public_task_signups SET checked_in_at = now(), checkin_method = 'kiosk', attendance_status = 'present', attendance_marked_at = now()
@@ -6341,11 +6351,17 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
     }
     if (!task.today) return res.status(400).json({ error: 'Check-in only works on the day of the task.' })
     const { rows: signupRows } = await query(
-      "SELECT id, checked_in_at, checked_out_at FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+      "SELECT id, checked_in_at, checked_out_at, kiosk_pin_hash, kiosk_pin_fails FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
       [task.id, req.auth.sub],
     )
     const signup = signupRows[0]
     if (!signup) return res.status(403).json({ error: "You aren't an approved volunteer for this task. Ask the organizer." })
+    // A volunteer with a check-in PIN (#668) types it after scanning too, so a
+    // photo of the code or someone else's phone isn't enough.
+    if (signup.kiosk_pin_hash) {
+      const pinCheck = await checkKioskPin(signup, req.body?.pin)
+      if (!pinCheck.ok) return res.status(pinCheck.status).json(pinCheck.body)
+    }
 
     if (!signup.checked_in_at) {
       const { rows: done } = await query(

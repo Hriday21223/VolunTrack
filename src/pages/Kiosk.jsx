@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import QRCode from 'qrcode'
+import { isNativeApp } from '@/lib/platform.js'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Lock, LogIn, LogOut, CheckCircle, Delete } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
@@ -6,6 +8,39 @@ import { tr } from '@/lib/i18n.js'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
 const CODE_KEY = 'voluntrack:kiosk-exit-code'
+const SITE = (isNativeApp && import.meta.env.VITE_SITE_URL) || window.location.origin
+
+// The same changing code as Check-in QR: a volunteer signed in on their phone
+// scans it, then still types their PIN there (#668).
+function KioskQr({ taskId }) {
+  const canvas = useRef(null)
+  const [code, setCode] = useState(null)
+  useEffect(() => {
+    let live = true
+    let timer
+    const load = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/checkin`, { headers: headers() })
+        const d = await res.json()
+        if (!live || !res.ok) return
+        setCode(d.code)
+        timer = setTimeout(load, Math.max(5, d.refreshIn || 60) * 1000)
+      } catch { timer = setTimeout(load, 15000) }
+    }
+    load()
+    return () => { live = false; clearTimeout(timer) }
+  }, [taskId])
+  useEffect(() => {
+    if (code && canvas.current) QRCode.toCanvas(canvas.current, `${SITE}/checkin/${taskId}?c=${encodeURIComponent(code)}`, { width: 220, margin: 2 }, () => {})
+  }, [code, taskId])
+  return (
+    <div className="rounded-2xl bg-white/5 p-4 text-center">
+      <p className="font-semibold mb-2">{tr('Or scan with your phone')}</p>
+      <canvas ref={canvas} className="mx-auto rounded-lg bg-white" aria-label={tr('Check-in QR code')} />
+      <p className="text-xs text-white/60 mt-2">{tr('Sign in on your phone, scan, then enter your PIN.')}</p>
+    </div>
+  )
+}
 
 function Keypad({ length, value, onChange, onDone }) {
   const press = (d) => { if (value.length < length) { const v = value + d; onChange(v); if (v.length === length) onDone?.(v) } }
@@ -94,7 +129,8 @@ export default function Kiosk() {
       </div>
       {error && <p role="alert" className="text-red-300 mb-4">{error}</p>}
       <p className="text-white/70 mb-4">{tr('Tap your name, then enter the 6-digit PIN from your approval email.')}</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid lg:grid-cols-[1fr_260px] gap-6 items-start">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {(data?.people || []).map((p) => (
           <button key={p.signupId} type="button" disabled={!p.hasPin}
             onClick={() => (p.locked ? setOrganizer({ action: 'unlock', person: p }) : setWho(p))}
@@ -105,6 +141,8 @@ export default function Kiosk() {
             </span>
           </button>
         ))}
+      </div>
+      <KioskQr taskId={taskId} />
       </div>
 
       {who && (
