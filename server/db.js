@@ -2147,6 +2147,19 @@ export async function initSchema() {
   // The retention prune scans by age alone.
   try { await query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_events(created_at)`) } catch {}
 
+  // Emergency contact for a student at events (#639), set by a linked parent.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS emergency_contacts (
+        child_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        parent_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        name        TEXT,
+        phone       TEXT NOT NULL,
+        updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+
   // Approval history (#638): one row each time an entry is approved, sent
   // back, reset by an edit, added by the school, or deleted. Kept after the
   // entry is deleted (log_id has no foreign key); gone with the student.

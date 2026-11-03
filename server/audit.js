@@ -78,6 +78,9 @@ export const AUDIT = {
   // An admin replaced or cleared an email provider key. Which keys, never the
   // values: whoever holds a key can send mail as VolunTrack.
   EMAIL_PROVIDER_CHANGED: 'email.provider_changed',
+  // Students' emergency phone numbers shown to an event organizer (#639).
+  EMERGENCY_CONTACTS_READ: 'emergency_contact.read',
+  EMERGENCY_CONTACT_CHANGED: 'emergency_contact.changed',
   // A linked parent looked at which volunteer tasks their child signed up
   // for — where a minor will be, and when.
   CHILD_TASKS_READ: 'child.tasks_read',

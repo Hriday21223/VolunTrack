@@ -554,10 +554,10 @@ const GRADE_WORDS = {
   college: 'College', university: 'College', uni: 'College',
 }
 
-// 5th grade through 12th, plus College, for the sign-up and profile pickers.
-// The matcher below still understands other years, so a school's own older
-// data keeps resolving.
-export const SCHOOL_GRADES = ['5', '6', '7', '8', '9', '10', '11', '12', 'College']
+// Kindergarten through 12th, plus College, for the sign-up and profile
+// pickers. K–5 (#641) gets the kid-friendly Helper Card. The matcher below
+// still understands other labels, so a school's own older data keeps resolving.
+export const SCHOOL_GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'College']
 
 // What a student in each year is called. Middle school goes by the ordinal,
 // high school by the class name a US transcript or reference letter uses —
