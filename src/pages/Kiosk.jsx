@@ -155,7 +155,9 @@ export default function Kiosk() {
                     {result.state === 'checked_out' ? <LogOut className="w-12 h-12 mx-auto text-emerald-400" /> : <CheckCircle className="w-12 h-12 mx-auto text-emerald-400" />}
                     <p className="text-xl font-semibold mt-3">
                       {result.state === 'checked_in' ? (result.tooSoon ? tr('You’re checked in. Come back when you leave.') : tr('Welcome, {name}! You’re checked in.', { name: who.name }))
-                        : result.state === 'checked_out' ? tr('Thanks, {name}! {n} hours logged.', { name: who.name, n: result.hours })
+                        : result.state === 'checked_out' ? (result.leftEarly
+                          ? tr('Thanks, {name}! You stayed {stayed} of {minimum} minutes, so the organizer will review your hours.', { name: who.name, stayed: result.leftEarly.stayed, minimum: result.leftEarly.minimum })
+                          : tr('Thanks, {name}! {n} hours logged.', { name: who.name, n: result.hours }))
                           : tr('You’re all done for today.')}
                     </p>
                   </>

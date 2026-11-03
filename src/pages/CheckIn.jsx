@@ -91,7 +91,8 @@ export default function CheckIn() {
     heading = result.state === 'done' ? tr('Already checked out') : tr('Checked out — thank you!')
     lines = [
       `${result.title} · ${time(result.checkedInAt)}–${time(result.checkedOutAt)}`,
-      result.hours != null ? tr(result.logged === false
+      result.leftEarly ? tr('You stayed {stayed} of the {minimum} minutes this event asks for, so the organizer will review your hours.', { stayed: result.leftEarly.stayed, minimum: result.leftEarly.minimum }) : '',
+      !result.leftEarly && result.hours != null ? tr(result.logged === false
         ? (result.hours === 1 ? '1 hour was already logged for today.' : '{n} hours were already logged for today.')
         : (result.hours === 1 ? '1 hour logged and approved.' : '{n} hours logged and approved.'), { n: result.hours }) : '',
     ].filter(Boolean)

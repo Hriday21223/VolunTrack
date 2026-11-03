@@ -41,6 +41,13 @@ import { readShifts, saveShifts, chooseShift, capacityFor, taskShifts, SHIFTS_JS
 import { emergencyContactsFor } from '../emergencyContacts.js'
 import { recordLogEvent } from '../logHistory.js'
 
+// Minimum stay for hours to be approved automatically (#668): null, or 15–480 minutes.
+function taskMinStay(v) {
+  if (v === null || v === undefined || v === '') return { ok: true, value: null }
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 15 && n <= 480 ? { ok: true, value: n } : { ok: false, error: 'Minimum stay must be between 15 minutes and 8 hours.' }
+}
+
 const router = express.Router()
 
 // Shared across every route in this file, including reads (a single
@@ -2602,6 +2609,8 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     return res.status(400).json({ error: 'Parent must come must be true or false.' })
   }
   const youngNeedParent = req.body.youngNeedParent === true
+  const minStay = taskMinStay(req.body.minStayMinutes)
+  if (!minStay.ok) return res.status(400).json({ error: minStay.error })
   // A waiver volunteers agree to (#595), in the organizer's own words.
   const waiver = readWaiverText(req.body.waiverText)
   if (!waiver.ok) return res.status(400).json({ error: waiver.error })
@@ -2685,10 +2694,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value],
         )
         // Each week of a series gets its own copy of the shifts.
         if (shiftsIn.shifts) {
@@ -2761,7 +2770,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
-               t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
+               t.min_age, t.young_need_parent, t.min_stay_minutes, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                ${userId ? `COALESCE(t.organization_id IS NOT NULL AND t.organization_id = (SELECT s.organization_id FROM users mu JOIN schools s ON s.id = mu.school_id WHERE mu.id = $1), false)` : 'false'} AS for_my_schools,
                ${userId ? PARTNER_TASK_SQL : 'false'} AS by_partner,
@@ -3106,7 +3115,7 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
-              t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
+              t.min_age, t.young_need_parent, t.min_stay_minutes, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -4985,7 +4994,7 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText', 'youngNeedParent']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText', 'youngNeedParent', 'minStayMinutes']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
   const detailReaders = {
@@ -4994,6 +5003,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     // Turning guests off later keeps the guests already signed up.
     allowGuests: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Allow guests must be true or false.' }),
     youngNeedParent: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Parent must come must be true or false.' }),
+    minStayMinutes: taskMinStay,
     // Changing it keeps earlier agreements, shown as "an earlier version" (#595).
     waiverText: readWaiverText,
   }
@@ -5029,7 +5039,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
         wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', isOutdoor: 'is_outdoor',
-        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text', youngNeedParent: 'young_need_parent',
+        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text', youngNeedParent: 'young_need_parent', minStayMinutes: 'min_stay_minutes',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -5652,7 +5662,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
+              t.min_age, t.young_need_parent, t.min_stay_minutes, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
               t.waiver_text,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               ${SHIFTS_JSON_SQL('t.id')} AS shifts,
@@ -6161,18 +6171,34 @@ function scannedHours(inAt, outAt) {
 
 // Logs a checked-out volunteer's hours as approved by the organizer, unless
 // they already have an entry for this task that day. Returns whether it logged.
+// → { logged, leftEarly }. With a minimum stay (#668), someone who left sooner
+// still gets an entry, but unconfirmed, for the organizer to approve or not.
 async function logCheckout(task, userId, inAt, outAt, note) {
   const day = dayString(task.date)
-  if (await alreadyLogged(task.id, userId, day)) return false
+  if (await alreadyLogged(task.id, userId, day)) return { logged: false, leftEarly: null }
+  const stayed = Math.round((new Date(outAt) - new Date(inAt)) / 60000)
+  const minStay = Number(task.min_stay_minutes) || 0
+  const early = minStay > 0 && stayed < minStay ? { stayed, minimum: minStay } : null
   const logId = uid('log')
   await query(
     `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
-    [logId, userId, day, task.title, ORGANIZER_LOG_CATEGORY, scannedHours(inAt, outAt), note, task.created_by, task.id],
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [logId, userId, day, task.title, ORGANIZER_LOG_CATEGORY, scannedHours(inAt, outAt),
+      early ? `${note}. Left early: stayed ${stayed} of the ${minStay} minutes asked.` : note,
+      early ? null : task.created_by, task.id, early ? 'none' : 'approved'],
   )
   emitHours('hours.created', logId)
   emitSignupFor('event.attendance', task.id, userId)
-  return true
+  if (early) {
+    const { rows } = await query('SELECT name FROM users WHERE id = $1', [userId]).catch(() => ({ rows: [] }))
+    notify(task.created_by, {
+      kind: 'attendance_nudge',
+      title: `${rows[0]?.name || 'A volunteer'} left early: ${task.title}`,
+      body: `Stayed ${stayed} of ${minStay} minutes. Approve or reject their hours on My Tasks.`,
+      link: '/my-tasks',
+    })
+  }
+  return { logged: true, leftEarly: early }
 }
 
 const checkinLimiter = rateLimit({
@@ -6244,7 +6270,7 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
   const pin = String(req.body?.pin || '')
   try {
     const { rows } = await query(
-      `SELECT id, title, created_by, status, date, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
+      `SELECT id, title, created_by, status, date, min_stay_minutes, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
       [req.params.id],
     )
     const task = rows[0]
@@ -6282,8 +6308,8 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
       [signup.id],
     )
     if (out.length === 0) return res.json({ state: 'done' })
-    const logged = await logCheckout(task, signup.user_id, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out at the event kiosk with their PIN')
-    return res.json({ state: 'checked_out', hours: scannedHours(out[0].checked_in_at, out[0].checked_out_at), logged })
+    const { logged, leftEarly } = await logCheckout(task, signup.user_id, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out at the event kiosk with their PIN')
+    return res.json({ state: 'checked_out', hours: scannedHours(out[0].checked_in_at, out[0].checked_out_at), logged, leftEarly })
   } catch (error) {
     console.error('kiosk check-in failed:', error)
     return res.status(500).json({ error: 'Could not check you in.' })
@@ -6338,7 +6364,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
 router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, title, created_by, status, checkin_secret, date,
+      `SELECT id, title, created_by, status, checkin_secret, date, min_stay_minutes,
               date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
          FROM public_tasks WHERE id = $1`,
       [req.params.id],
@@ -6384,8 +6410,8 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
     )
     if (out.length === 0) return res.json({ state: 'done', title: task.title })
     const hours = scannedHours(out[0].checked_in_at, out[0].checked_out_at)
-    const logged = await logCheckout(task, req.auth.sub, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out with the task\'s QR code')
-    return res.json({ state: 'checked_out', title: task.title, checkedInAt: out[0].checked_in_at, checkedOutAt: out[0].checked_out_at, hours, logged })
+    const { logged, leftEarly } = await logCheckout(task, req.auth.sub, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out with the task\'s QR code')
+    return res.json({ state: 'checked_out', title: task.title, checkedInAt: out[0].checked_in_at, checkedOutAt: out[0].checked_out_at, hours, logged, leftEarly })
   } catch (error) {
     console.error('checkin failed:', error)
     return res.status(500).json({ error: 'Could not check you in.' })
@@ -6398,7 +6424,7 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
 router.post('/public-tasks/:id/checkin/close', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, title, created_by, status, date, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
+      `SELECT id, title, created_by, status, date, min_stay_minutes, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
          FROM public_tasks WHERE id = $1`,
       [req.params.id],
     )
@@ -6414,7 +6440,7 @@ router.post('/public-tasks/:id/checkin/close', limiter, requireDb, requireAuth()
     )
     let logged = 0
     for (const r of out) {
-      if (await logCheckout(task, r.user_id, r.checked_in_at, r.checked_out_at, 'Checked in with the task\'s QR code; checked out by the organizer')) logged++
+      if ((await logCheckout(task, r.user_id, r.checked_in_at, r.checked_out_at, 'Checked in with the task\'s QR code; checked out by the organizer')).logged) logged++
     }
     return res.json({ checkedOut: out.length, logged })
   } catch (error) {

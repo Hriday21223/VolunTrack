@@ -22,7 +22,9 @@ export function taskDetailsFromRow(t) {
     allowGuests: Boolean(t?.allow_guests),
     // A parent must come with K–5 volunteers (#649).
     youngNeedParent: Boolean(t?.young_need_parent),
+    // Minimum stay for automatic approval (#668), in minutes, or ''.
+    minStayMinutes: t?.min_stay_minutes != null ? String(t.min_stay_minutes) : '',
   }
 }
 
-export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '', isOutdoor: false, meetingPoint: '', dayOfContact: '', allowGuests: false, youngNeedParent: false }
+export const EMPTY_TASK_DETAILS = { minAge: '', isOnline: false, wheelchairAccessible: 'unknown', accessibilityNote: '', isOutdoor: false, meetingPoint: '', dayOfContact: '', allowGuests: false, youngNeedParent: false, minStayMinutes: '' }
