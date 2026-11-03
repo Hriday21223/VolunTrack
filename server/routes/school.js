@@ -24,7 +24,7 @@ import { emailLang, et, emailDate, requestLang } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
 import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade, currentTerm } from '../requirements.js'
-import { decryptSecret, hasEncryptionKey } from '../secrets.js'
+import { decryptSecret, encryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
@@ -4904,8 +4904,16 @@ async function issueKioskPin(taskId, userId) {
     [taskId, userId],
   )
   if (!rows[0]) return null
-  await query('UPDATE public_task_signups SET kiosk_pin_hash = $2 WHERE id = $1', [rows[0].id, kioskPinHash(rows[0].id, pin)])
+  await query('UPDATE public_task_signups SET kiosk_pin_hash = $2, kiosk_pin_enc = $3 WHERE id = $1', [rows[0].id, kioskPinHash(rows[0].id, pin), sealPin(pin)])
   return pin
+}
+
+// The readable copy of a PIN, for its volunteer's own Dashboard and Attendance.
+const sealPin = (pin) => (hasEncryptionKey() ? `enc:${encryptSecret(pin)}` : pin)
+function openPin(stored) {
+  if (!stored) return null
+  if (!stored.startsWith('enc:')) return stored
+  try { return decryptSecret(stored.slice(4)) } catch { return null }
 }
 
 // Under-13s: the PIN also goes to linked parents, who usually bring them.
@@ -6077,6 +6085,8 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               -- Day-of details (#438), approved volunteers only.
               CASE WHEN s.status = 'approved' THEN t.meeting_point END AS meeting_point,
+              -- The volunteer's own check-in PIN (#668), until the day after.
+              CASE WHEN s.status = 'approved' AND t.date >= CURRENT_DATE - 1 AND t.is_online = false THEN s.kiosk_pin_enc END AS kiosk_pin_enc,
               CASE WHEN s.status = 'approved' THEN t.day_of_contact END AS day_of_contact,
               s.late_eta_minutes, s.late_at, s.checked_in_at,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
@@ -6098,7 +6108,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
        ORDER BY t.date DESC, s.signed_up_at DESC`,
       [req.auth.sub],
     )
-    return res.json({ signups: rows })
+    return res.json({ signups: rows.map(({ kiosk_pin_enc: enc, ...r }) => ({ ...r, kiosk_pin: openPin(enc) })) })
   } catch (error) {
     console.error('my signups failed:', error)
     return res.status(500).json({ error: 'Could not fetch your signups.' })

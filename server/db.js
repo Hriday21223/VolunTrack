@@ -713,6 +713,8 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_hash TEXT`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_fails SMALLINT NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checkin_method TEXT`) } catch {}
+  // The PIN itself, shown only to its volunteer in the app (encrypted when APP_ENCRYPTION_KEY is set).
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_enc TEXT`) } catch {}
   // Minimum stay (#668): leaving earlier sends the hours to the organizer to decide.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_stay_minutes SMALLINT`) } catch {}
   // A parent must come with volunteers in 5th grade or younger (#649), and

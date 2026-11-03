@@ -36,6 +36,7 @@ import GoalCelebration from '@/components/GoalCelebration.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import { nextCelebration, markCelebrated } from '@/lib/celebrations.js'
 import { printCertificate } from '@/lib/export.js'
+import KioskPinChip from '@/components/KioskPinChip.jsx'
 import { askParentComing } from '@/lib/parentComing.js'
 import KidHelperCard from '@/components/KidHelperCard.jsx'
 import { isYoungStudent, KID_DEFAULT_GOAL } from '@/lib/kidMode.js'
@@ -296,6 +297,7 @@ export default function Dashboard() {
         title: s.title,
         detail: [s.location, s.creator_name].filter(Boolean).join(' · '),
         pending: s.signup_status !== 'approved',
+        pin: s.signup_status === 'approved' ? s.kiosk_pin : null,
       }))
     const nudges = listReminders()
       .filter((r) => r.enabled !== false && r.nextAt)
@@ -800,6 +802,7 @@ export default function Dashboard() {
                       {item.pending && <span className="ml-2 text-[0.625rem] uppercase tracking-wide text-amber-400">{tr('awaiting approval')}</span>}
                     </p>
                     {item.detail && <p className="text-xs text-earth-400 truncate">{item.detail}</p>}
+                    {item.pin && <KioskPinChip pin={item.pin} className="mt-1" />}
                   </div>
                   <div className="text-xs text-earth-400 whitespace-nowrap text-right">
                     {fmtDate(item.date)}
