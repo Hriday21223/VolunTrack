@@ -396,7 +396,43 @@ function GoalsEditor({ value, onChange }) {
         <AddGrade existing={value.byGrade || {}} onAdd={(grade) => setGrade(grade, value.totalHours || 0)} />
       </div>
       <CategoryMinimums value={value.byCategory || {}} onChange={(byCategory) => onChange({ byCategory })} />
+      <TermGoals value={value.terms || []} onChange={(terms) => onChange({ terms })} />
     </>
+  )
+}
+
+// Term goals (#658): the year split into terms, each with its own hours, so a
+// student who falls behind in the fall shows up before spring.
+function TermGoals({ value, onChange }) {
+  const set = (i, patch) => onChange(value.map((t, j) => (j === i ? { ...t, ...patch } : t)))
+  const add = () => {
+    const last = value[value.length - 1]
+    const start = last?.end ? new Date(new Date(`${last.end}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10) : ''
+    onChange([...value, { name: value.length === 0 ? tr('Fall') : value.length === 1 ? tr('Spring') : '', hours: 10, start, end: '' }])
+  }
+  return (
+    <div>
+      <label className="label">{tr('Term goals')}</label>
+      <p className="text-xs text-earth-400 mb-2">
+        {tr('Split the year into terms, each with its own hours. Students see this term’s progress, and you see who is behind this term. Hours count toward the term they were logged in.')}
+      </p>
+      <div className="space-y-2">
+        {value.map((t, i) => (
+          <div key={i} className="grid grid-cols-2 sm:grid-cols-[1fr_6rem_9rem_9rem_auto] gap-2 items-center">
+            <input className="input" value={t.name} maxLength={40} placeholder={tr('Term name')} aria-label={tr('Term name')} onChange={(e) => set(i, { name: e.target.value })} />
+            <input className="input" type="number" min="0.5" step="0.5" value={t.hours ?? ''} aria-label={tr('Hours')} onChange={(e) => set(i, { hours: e.target.value === '' ? null : Number(e.target.value) })} />
+            <input className="input" type="date" value={t.start || ''} aria-label={tr('Starts')} onChange={(e) => set(i, { start: e.target.value })} />
+            <input className="input" type="date" value={t.end || ''} aria-label={tr('Ends')} onChange={(e) => set(i, { end: e.target.value })} />
+            <button type="button" onClick={() => onChange(value.filter((_, j) => j !== i))} className="btn-sm btn-ghost text-red-500" aria-label={tr('Remove')}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      {value.length < 6 && (
+        <button type="button" className="btn-sm btn-ghost mt-2" onClick={add}>{tr('+ Add a term')}</button>
+      )}
+    </div>
   )
 }
 

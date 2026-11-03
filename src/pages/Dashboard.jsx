@@ -10,7 +10,7 @@ import ProgressRing from '@/components/ProgressRing.jsx'
 import ProgressBar from '@/components/ProgressBar.jsx'
 import SchoolVsSchoolCard from '@/components/SchoolVsSchoolCard.jsx'
 import RegularShiftsCard from '@/components/RegularShiftsCard.jsx'
-import { useMyRequirements, awardFor, requirementShortfall } from '@/lib/requirements.js'
+import { useMyRequirements, awardFor, requirementShortfall, currentTerm } from '@/lib/requirements.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { weekStreak } from '@/lib/streak.js'
 import { BADGES, nextBadgeProgress, countedLogs, visibleBadges } from '@/lib/achievements.js'
@@ -153,6 +153,13 @@ export default function Dashboard() {
   }, [requirements.policy, requirements.grade, total, counted])
   // Award levels the school set (#559), counted like the requirement.
   const award = useMemo(() => awardFor(requirements.policy, total), [requirements.policy, total])
+  // Term goals (#658): hours logged within the current term.
+  const termGoal = useMemo(() => {
+    const term = currentTerm(requirements.policy)
+    if (!term) return null
+    const hours = counted.filter((l) => l.date >= term.start && l.date <= term.end).reduce((s, l) => s + (Number(l.hours) || 0), 0)
+    return { term, hours }
+  }, [requirements.policy, counted])
 
   const requirementPace = useMemo(() => goalPace({
     target: requirements.goalHours,
@@ -627,6 +634,21 @@ export default function Dashboard() {
 
       {dashTab === 'home' && isYoungStudent(user) && (
         <KidHelperCard name={user?.name} hours={total} goal={Number(requirements.goalHours) || target || KID_DEFAULT_GOAL} />
+      )}
+
+      {dashTab === 'home' && termGoal && (
+        <Card className="p-4 mb-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div>
+              <div className="text-xs text-earth-400">{tr('This term: {name}', { name: termGoal.term.name })}</div>
+              <div className="text-lg font-bold">{tr('{done} of {target} hours', { done: fmtHours(termGoal.hours), target: termGoal.term.hours })}</div>
+            </div>
+            <div className="text-xs text-earth-400 text-right">
+              {termGoal.hours >= termGoal.term.hours ? tr('Term goal met 🎉') : tr('Ends {date}', { date: fmtDate(termGoal.term.end) })}
+            </div>
+          </div>
+          <ProgressBar value={termGoal.hours} target={termGoal.term.hours} />
+        </Card>
       )}
 
       {dashTab === 'home' && reviewYear && reviewSeason && (

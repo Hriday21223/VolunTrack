@@ -55,6 +55,9 @@ export const DEFAULT_GOALS = {
   grades: [],
   deadline: null,
   note: '',
+  // Term goals (#658): [{ name, hours, start, end }], up to 6, in date order.
+  // Hours logged between start and end count toward that term.
+  terms: [],
 }
 
 export const DEFAULT_SIGN_IN = {
@@ -285,7 +288,28 @@ function normalizeGoals(input) {
     grades,
     deadline: isoDate(raw.deadline),
     note: text(raw.note, 300),
+    terms: normalizeTerms(raw.terms),
   }
+}
+
+function normalizeTerms(input) {
+  if (!Array.isArray(input)) return []
+  const out = []
+  for (const t of input.slice(0, 6)) {
+    const name = text(t?.name, 40)
+    const hours = posNumber(t?.hours, { max: 10000 })
+    const start = isoDate(t?.start)
+    const end = isoDate(t?.end)
+    if (!name || hours === null || !start || !end || end < start) continue
+    out.push({ name, hours, start, end })
+  }
+  return out.sort((a, b) => a.start.localeCompare(b.start))
+}
+
+/** The term `today` (YYYY-MM-DD) falls in, else the next one coming, else null (#658). */
+export function currentTerm(policy, today = new Date().toISOString().slice(0, 10)) {
+  const terms = policy?.goals?.terms || []
+  return terms.find((t) => t.start <= today && today <= t.end) || terms.find((t) => t.start > today) || null
 }
 
 function normalizeSignIn(input) {
