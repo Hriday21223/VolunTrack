@@ -2147,6 +2147,31 @@ export async function initSchema() {
   // The retention prune scans by age alone.
   try { await query(`CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_events(created_at)`) } catch {}
 
+  // Approval history (#638): one row each time an entry is approved, sent
+  // back, reset by an edit, added by the school, or deleted. Kept after the
+  // entry is deleted (log_id has no foreign key); gone with the student.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS log_events (
+        id          TEXT PRIMARY KEY,
+        log_id      TEXT NOT NULL,
+        student_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        school_id   TEXT REFERENCES schools(id) ON DELETE SET NULL,
+        event       TEXT NOT NULL CHECK (event IN ('approved', 'rejected', 'reset', 'added_by_school', 'deleted')),
+        by_kind     TEXT NOT NULL CHECK (by_kind IN ('school', 'supervisor', 'organizer', 'student')),
+        by_user_id  TEXT REFERENCES users(id) ON DELETE SET NULL,
+        by_name     TEXT,
+        activity    TEXT,
+        hours       NUMERIC,
+        log_date    DATE,
+        note        TEXT,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_school ON log_events(school_id, created_at DESC)`) } catch {}
+  try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_student ON log_events(student_id, created_at DESC)`) } catch {}
+
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}

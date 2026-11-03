@@ -36,6 +36,7 @@ import GoalCelebration from '@/components/GoalCelebration.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import { nextCelebration, markCelebrated } from '@/lib/celebrations.js'
 import { printCertificate } from '@/lib/export.js'
+import UnsentBanner from '@/components/UnsentBanner.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -397,6 +398,7 @@ export default function Dashboard() {
         </div>
       }
     >
+      <UnsentBanner />
       {dashTab === 'home' && (
         <SpotlightTour storageKey="voluntrack:tour-seen:student" steps={STUDENT_TOUR_STEPS} />
       )}
@@ -1007,7 +1009,7 @@ export default function Dashboard() {
                       <span>{fromNow(l.createdAt)}</span>
                     </div>
                   </div>
-                  <VerificationBadge status={l.verificationStatus} bySchool={l.reviewedBySchool} note={l.reviewNote} />
+                  <VerificationBadge status={l.verificationStatus} bySchool={l.reviewedBySchool} note={l.reviewNote} unsent={Boolean(l.syncPending && !l.serverId)} />
                   {l.category && (
                     <span className={`chip ${categoryColor(l.category)}`}>{tr(l.category)}</span>
                   )}
