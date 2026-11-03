@@ -13,7 +13,7 @@
 // and its unsubscribe link turns both off.
 import { query } from './db.js'
 import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
-import { et, emailLang } from './emailStrings.js'
+import { et, emailLang, DATE_LOCALES } from './emailStrings.js'
 import { escapeHtml } from './html.js'
 import { ensureDigestUnsubToken } from './digest.js'
 import { notify } from './notifications.js'
@@ -43,7 +43,7 @@ const fmt = (n) => String(Math.round(n * 10) / 10)
 export function renderDeadlineEmail({ name, schoolName, remaining, target, days, deadline, unsubToken, language = null }) {
   const lang = emailLang(language)
   const t = (text, vars) => et(lang, text, vars)
-  const due = new Date(`${String(deadline).slice(0, 10)}T00:00:00Z`).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+  const due = new Date(`${String(deadline).slice(0, 10)}T00:00:00Z`).toLocaleDateString(DATE_LOCALES[lang] || 'en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
   const subject = t('{n} hours to go: due {date}', { n: fmt(remaining), date: due })
   const site = frontendUrl()
   const when = days === 1 ? t('tomorrow') : t('in {n} days', { n: days })

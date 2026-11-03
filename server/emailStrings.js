@@ -9,10 +9,14 @@
 // and gets English. Only text we write is translated — task titles, names and
 // activity descriptions are the user's own words and stay as they are.
 
-export const EMAIL_LANGUAGES = ['en', 'es']
-// Languages the app can be set to (#637). An account set to one without email
-// translations yet (Vietnamese, Chinese) gets its emails in English.
-export const APP_LANGUAGES = ['en', 'es', 'vi', 'zh']
+import { EMAIL_VI, EMAIL_ZH } from './emailStringsViZh.js'
+
+export const EMAIL_LANGUAGES = ['en', 'es', 'vi', 'zh']
+// Languages the app can be set to (#637). Emails are translated for all of them.
+export const APP_LANGUAGES = EMAIL_LANGUAGES
+
+// toLocaleDateString locale for each language.
+export const DATE_LOCALES = { en: 'en-US', es: 'es-ES', vi: 'vi-VN', zh: 'zh-CN' }
 
 /** The app language a request asked for: 'en' | 'es' | 'vi' | 'zh'. */
 export function requestAppLang(req) {
@@ -27,7 +31,7 @@ export function requestAppLang(req) {
  */
 export function requestLang(req) {
   const h = String(req?.headers?.['accept-language'] || '').trim().toLowerCase()
-  return h.startsWith('es') ? 'es' : 'en'
+  return EMAIL_LANGUAGES.find((l) => l !== 'en' && h.startsWith(l)) || 'en'
 }
 
 /** Any stored/requested value → a language we can render ('en' fallback). */
@@ -292,7 +296,7 @@ const ES = {
   "These hours don't count for now. Fix the entry in VolunTrack (editing it sends it for review again), or talk with your adviser.": 'Estas horas no cuentan por ahora. Corrige el registro en VolunTrack (al editarlo se vuelve a revisar) o habla con tu asesor.',
 }
 
-const DICTIONARIES = { es: ES }
+const DICTIONARIES = { es: ES, vi: EMAIL_VI, zh: EMAIL_ZH }
 
 /**
  * Translate one email string. `lang` is 'en' | 'es' (anything else → English).
@@ -307,7 +311,7 @@ export function et(lang, text, vars) {
 
 /** Short date ("Oct 13" / "13 oct") for a UTC Date, optionally with the year. */
 export function emailDate(lang, date, withYear = false) {
-  return date.toLocaleDateString(emailLang(lang) === 'es' ? 'es-ES' : 'en-US', {
+  return date.toLocaleDateString(DATE_LOCALES[emailLang(lang)], {
     month: 'short', day: 'numeric', timeZone: 'UTC', ...(withYear ? { year: 'numeric' } : {}),
   }).replace(/\.$/, '').replace(/\. /, ' ')
 }
