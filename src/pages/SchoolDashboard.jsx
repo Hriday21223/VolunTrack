@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useParams, useLocation } from 'react-router-dom'
 import { schoolTabsFromPath, schoolPathFor } from '@/lib/dashboardTabs.js'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog } from 'lucide-react'
+import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog, History } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -21,6 +21,7 @@ import { useMyRequirements } from '@/lib/requirements.js'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
+import YearEndPacketCard from '@/components/YearEndPacketCard.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
@@ -37,6 +38,7 @@ import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
 import RosterSyncCard from '@/components/RosterSyncCard.jsx'
 import HoursReviewPanel from '@/components/HoursReviewPanel.jsx'
+import ApprovalHistoryPanel from '@/components/ApprovalHistoryPanel.jsx'
 import GroupHoursCard from '@/components/GroupHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
@@ -866,6 +868,9 @@ export default function SchoolDashboard() {
               <button onClick={() => setSubTab('review')} className={`btn-sm ${subTab === 'review' ? 'btn-primary' : 'btn-ghost'}`}>
                 <CheckCircle className="w-3.5 h-3.5 mr-1" />{' '}{tr('Hours to check')}
               </button>
+              <button onClick={() => setSubTab('history')} className={`btn-sm ${subTab === 'history' ? 'btn-primary' : 'btn-ghost'}`}>
+                <History className="w-3.5 h-3.5 mr-1" />{' '}{tr('Approval history')}
+              </button>
               <button onClick={() => setSubTab('progress')} className={`btn-sm ${subTab === 'progress' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Clock className="w-3.5 h-3.5 mr-1" />{' '}{tr('Hours progress')}
               </button>
@@ -880,6 +885,8 @@ export default function SchoolDashboard() {
             {subTab === 'review' && (
               <HoursReviewPanel onSetPlaces={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
             )}
+
+            {subTab === 'history' && <ApprovalHistoryPanel students={students} />}
 
             {subTab === 'progress' && (
               <StudentProgressPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
@@ -982,6 +989,7 @@ export default function SchoolDashboard() {
           </Card>
         )}
         {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && <ImpactReportCard scope="school" className="mt-4" />}
+        {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><YearEndPacketCard kind="school" /></div>}
 
         {tab === 'setup' && setupTab === 'requirements' && user?.role === 'school' && (
           <RequirementsSettings scope="school" />

@@ -6,6 +6,7 @@ import { listLogs, createLog, updateLog, deleteLog,
 import { evaluateAchievements, countedLogs } from '@/lib/achievements.js'
 import { getVerificationStatus } from '@/lib/supervisorNotify.js'
 import { createLogOnServer, syncUpdateLog, syncDeleteLog, syncPullLogs, flushLogOutbox } from '@/lib/logSync.js'
+import { notifySupervisor } from '@/lib/supervisorNotify.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { updateWidget } from '@/lib/widget.js'
 import { hoursForGoal } from '@/lib/goalProgress.js'
@@ -26,6 +27,37 @@ function changesVerifiedFacts(before, patch) {
     if (k === 'hours') return Number(patch[k]) !== Number(before[k])
     return (patch[k] ?? '') !== (before[k] ?? '')
   })
+}
+
+// Supervisor emails held back because the entry was saved offline (#635):
+// the email needs the entry's server id, so it goes once the entry has one.
+// Returns how many local logs changed.
+async function notifyQueuedSupervisors() {
+  let changed = 0
+  for (const l of listLogs().filter((x) => x.notifySupervisorLater && x.serverId)) {
+    const result = await notifySupervisor({
+      supervisorEmail: l.supervisorEmail,
+      supervisorName: l.supervisorName,
+      supervisorPhone: l.textSupervisor ? l.supervisorPhone : '',
+      hours: l.hours,
+      activity: l.activity,
+      logId: l.serverId,
+    })
+    if (!result.ok) break // still unreachable, or refused; try again next time
+    updateLog(l.id, {
+      notifySupervisorLater: false,
+      ...(result.statusToken ? { verificationStatus: 'pending', verificationToken: result.statusToken } : {}),
+    })
+    changed++
+  }
+  return changed
+}
+
+/** Send everything saved offline: entries, edits, deletes, then held supervisor emails. */
+async function sendQueued() {
+  const sent = await flushLogOutbox()
+  const notified = await notifyQueuedSupervisors()
+  return sent + notified
 }
 
 export function DataProvider({ children }) {
@@ -217,7 +249,7 @@ export function DataProvider({ children }) {
     // that follows already knows their server ids.
     if (account && localStorage.getItem('voluntrack:auth_token')) {
       syncGoals(account).then((changed) => { if (changed) setGoals(listGoals()) })
-      flushLogOutbox()
+      sendQueued()
         .then((sent) => syncPullLogs(account).then((pulled) => sent + pulled))
         .then((n) => { if (n > 0) setLogs(listLogs()) })
     }
@@ -240,7 +272,7 @@ export function DataProvider({ children }) {
     if (!account) return
     const onOnline = () => {
       if (!localStorage.getItem('voluntrack:auth_token')) return
-      flushLogOutbox().then((n) => { if (n > 0) setLogs(listLogs()) })
+      sendQueued().then((n) => { if (n > 0) setLogs(listLogs()) })
     }
     window.addEventListener('online', onOnline)
     return () => window.removeEventListener('online', onOnline)
@@ -266,6 +298,14 @@ export function DataProvider({ children }) {
   }, [])
 
   const refreshLogs = useCallback(() => setLogs(listLogs()), [])
+  // The "Send now" button on the waiting-to-send banner. Resolves to how many
+  // entries are still waiting afterwards.
+  const sendPendingNow = useCallback(async () => {
+    if (localStorage.getItem('voluntrack:auth_token')) await sendQueued()
+    const fresh = listLogs()
+    setLogs(fresh)
+    return fresh.filter((l) => l.syncPending && !l.serverId).length
+  }, [])
   const dismissBadges = useCallback(() => setPendingBadges([]), [])
 
   const dismissReview = useCallback(() => {
@@ -312,7 +352,7 @@ export function DataProvider({ children }) {
     <DataContext.Provider
       value={{
         logs, goals, earned, pendingBadges, dismissBadges, invite, friendsInvited, loadInvite,
-        addLog, editLog, removeLog, refreshLogs,
+        addLog, editLog, removeLog, refreshLogs, sendPendingNow,
         saveGoal, removeGoal,
         showReview, reviewSubmitted, submitReview, dismissReview, totalHours,
       }}
