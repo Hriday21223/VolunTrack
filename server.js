@@ -63,6 +63,7 @@ import { isLocalDatabaseUrl } from './server/localDb.js'
 import { seedMonitor } from './server/monitor.js'
 import { startKeepAwake } from './server/keepAwake.js'
 import { isSignatureImage } from './server/signature.js'
+import { recordLogEvent } from './server/logHistory.js'
 
 dotenv.config()
 
@@ -778,7 +779,10 @@ app.post('/api/verify-hours/:token/:action', async (req, res) => {
       [newStatus, token],
     )
     // Webhooks (#622): the school's systems hear about the supervisor's answer.
-    for (const l of decided) emitHours(newStatus === 'approved' ? 'hours.approved' : 'hours.rejected', l.id)
+    for (const l of decided) {
+      emitHours(newStatus === 'approved' ? 'hours.approved' : 'hours.rejected', l.id)
+      recordLogEvent({ logId: l.id, event: newStatus, byKind: 'supervisor', byName: rows[0].supervisor_name || null })
+    }
 
     // Best-effort: let the student know the outcome. Never fails the response.
     const row = rows[0]
