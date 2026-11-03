@@ -8,7 +8,7 @@ import { resolvePolicy, validateLogAgainstPolicy, goalHoursFor, signatureNeeds, 
 
 export { validateLogAgainstPolicy, goalHoursFor, signatureNeeds, awardFor, requirementShortfall, isLockedDate, lockedMessage, placeApproved, placeKey }
 export { SIGNATURE_MODES, SIGNERS, classifyFormUrl } from '@policy'
-export { SCHOOL_GRADES, gradeKey, gradeLabel, gradeName, gradeOptionLabel } from '@policy'
+export { SCHOOL_GRADES, gradeKey, gradeLabel, gradeName, gradeOptionLabel, currentTerm } from '@policy'
 export { CUSTOM_FIELD_TYPES, SECTIONS, DEFAULTS, normalizePolicy } from '@policy'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'

@@ -23,7 +23,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et, emailDate, requestLang } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade } from '../requirements.js'
+import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade, currentTerm } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -511,6 +511,20 @@ export async function schoolProgress(schoolId) {
     )
     for (const c of cats) (byCategory[c.user_id] ||= {})[c.category] = c.hours
   }
+  // Term goals (#658): each student's hours in the current term.
+  const term = currentTerm(policy)
+  const termHours = {}
+  if (term) {
+    const { rows: th } = await query(
+      `SELECT l.user_id, SUM(l.hours)::float AS hours
+         FROM logs l JOIN users u ON u.id = l.user_id
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IS DISTINCT FROM 'rejected'
+          AND l.date BETWEEN $2::date AND $3::date
+        GROUP BY l.user_id`,
+      [schoolId, term.start, term.end],
+    )
+    for (const t of th) termHours[t.user_id] = Math.round(t.hours * 100) / 100
+  }
   const students = rows.map((r) => {
     const hours = Math.round(r.hours * 100) / 100
     // `remaining` counts any type still short, so everything built on it
@@ -525,9 +539,10 @@ export async function schoolProgress(schoolId) {
       consentPending: r.parental_consent_status === 'pending',
       // The highest award level reached (#559), or null.
       award: awardFor(policy, hours).current?.name || null,
+      termHours: term ? (termHours[r.id] || 0) : null,
     }
   })
-  return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, students }
+  return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, term, students }
 }
 
 // GET /api/school/impact?period=year|all or ?from=&to= (#610) — the school's
@@ -598,7 +613,7 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
     const progress = await schoolProgress(schoolId)
     recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: progress.students.length } })
-    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, certificate: progress.certificate, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
+    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, term: progress.term, certificate: progress.certificate, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })
