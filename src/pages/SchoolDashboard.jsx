@@ -42,6 +42,7 @@ import RosterSyncCard from '@/components/RosterSyncCard.jsx'
 import HoursReviewPanel from '@/components/HoursReviewPanel.jsx'
 import ApprovalHistoryPanel from '@/components/ApprovalHistoryPanel.jsx'
 import GroupHoursCard from '@/components/GroupHoursCard.jsx'
+import ImportHoursCard from '@/components/ImportHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
 
@@ -814,6 +815,7 @@ export default function SchoolDashboard() {
             )}
 
             <GroupHoursCard students={students} onDone={loadData} />
+            <ImportHoursCard onDone={loadData} />
 
             <ChallengeCard manage />
             <SchoolVsSchoolCard />
