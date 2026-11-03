@@ -13,7 +13,7 @@ import { fmtDate, fmtHours } from '@/utils/date.js'
 import { tr, language } from '@/lib/i18n.js'
 
 const monthName = (m, style = 'long') =>
-  new Date(2000, m, 1).toLocaleString(language === 'es' ? 'es' : 'en', { month: style })
+  new Date(2000, m, 1).toLocaleString({ es: 'es', vi: 'vi', zh: 'zh-CN' }[language] || 'en', { month: style })
 
 // One decimal at most: "11.5 hours", not "11.50h".
 const hoursText = (n) => {
