@@ -18,6 +18,7 @@ import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink, smsAvailable } from '@/lib/supervisorNotify.js'
 import ScanPaperLog from '@/components/ScanPaperLog.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
+import { findLikelyDuplicate } from '@/lib/duplicateLog.js'
 import UnsentBanner from '@/components/UnsentBanner.jsx'
 import { listLogs } from '@/api/index.js'
 import { addDays, format, parseISO } from 'date-fns'
@@ -110,6 +111,10 @@ export default function LogHours({ editId, onCloseEdit }) {
   // Saved with no connection: the toast says it's waiting on this device (#635).
   const [savedOffline, setSavedOffline] = useState(false)
   const [error, setError] = useState('')
+  // An earlier entry this one looks like (#636). Set when Save is pressed;
+  // pressing Save again with the same details saves anyway.
+  const [dupe, setDupe] = useState(null)
+  const dupeOkRef = useRef('')
   // A second tap on Save while the first is still working saved the entry
   // twice. The ref blocks it at once (state only updates on the next render).
   const savingRef = useRef(false)
@@ -347,6 +352,19 @@ export default function LogHours({ editId, onCloseEdit }) {
       sameDayHours,
     })
     if (violations.length > 0) { setError(violations[0].message); return }
+
+    // Already logged? Ask once; the same details saved again go through.
+    if (!editId) {
+      const match = findLikelyDuplicate(logs, { ...form, hours })
+      const sig = `${form.date}|${hours}|${form.activity}|${form.location}|${form.orgName}`
+      if (match && dupeOkRef.current !== sig) {
+        dupeOkRef.current = sig
+        setDupe(match)
+        return
+      }
+    }
+    setDupe(null)
+    dupeOkRef.current = ''
 
     savingRef.current = true
     setSaving(true)
@@ -853,6 +871,22 @@ export default function LogHours({ editId, onCloseEdit }) {
 
           <Card>
             {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg mb-3">{error}</div>}
+            {dupe && (
+              <div role="alert" className="text-sm text-amber-800 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-200 px-3 py-2 rounded-lg mb-3">
+                <p className="font-medium">{tr('Did you already log this?')}</p>
+                <p>
+                  {tr('You have {hours} for “{activity}” on {date}.', {
+                    hours: fmtHours(Number(dupe.hours) || 0),
+                    activity: dupe.activity || tr('Volunteer activity'),
+                    date: fmtDate(dupe.date),
+                  })}{' '}
+                  {tr('Press Save again if this is a different shift.')}
+                </p>
+                <button type="button" className="underline mt-1" onClick={() => { setDupe(null); dupeOkRef.current = ''; setForm(blank()); setRepeatedFrom(null) }}>
+                  {tr('Don’t save it')}
+                </button>
+              </div>
+            )}
             {editingLocked && (
               <div className="text-sm text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-300 px-3 py-2 rounded-lg mb-3">{tr(lockedMessage(requirements.policy))}</div>
             )}
