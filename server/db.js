@@ -708,6 +708,11 @@ export async function initSchema() {
   // no map, never dropped by the distance radius), and wheelchair access
   // ('yes' | 'no' | 'unknown') with a short note. Validated in routes/school.js.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_age SMALLINT`) } catch {}
+  // Event kiosk (#668): a one-time 6-digit PIN per approved sign-up (hashed),
+  // wrong tries, and how the volunteer checked in.
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_fails SMALLINT NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checkin_method TEXT`) } catch {}
   // A parent must come with volunteers in 5th grade or younger (#649), and
   // who that parent is, from the sign-up.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS young_need_parent BOOLEAN NOT NULL DEFAULT false`) } catch {}

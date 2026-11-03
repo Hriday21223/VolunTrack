@@ -22,6 +22,7 @@ export const ROUTE_ROLES = {
   // Students run events too (Dashboard → Your events), and organizations post
   // events for all their schools (#565).
   '/my-tasks': [...PERSONAL, 'org'],
+  '/kiosk': [...PERSONAL, 'org'],
   '/attendance': [...PERSONAL, 'org'],
   '/profile': ['student', 'volunteer', 'school', 'school_staff', 'org'],
   '/settings': ['student', 'volunteer', 'school', 'school_staff', 'org', 'parent'],

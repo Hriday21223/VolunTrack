@@ -4,7 +4,7 @@ import { withPartnerPlaces, listPartners, PARTNER_TASK_SQL } from '../partners.j
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
-import { createHash, createHmac, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, timingSafeEqual, randomInt } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { impactFor, PERIODS, rangeFromQuery } from '../impact.js'
 import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge.js'
@@ -4882,12 +4882,56 @@ function emailHi(lang, name) {
   return name ? et(lang, 'Hi {name},', { name }) : et(lang, 'Hi there,')
 }
 
+// Event kiosk PINs (#668). Hashed with the sign-up id, so a PIN is only good
+// for that one sign-up; a new approval makes a new PIN and clears wrong tries.
+const kioskPinHash = (signupId, pin) => createHash('sha256').update(`voluntrack-kiosk:${signupId}:${pin}`).digest('hex')
+const KIOSK_MAX_FAILS = 5
+
+async function issueKioskPin(taskId, userId) {
+  const pin = String(randomInt(0, 1000000)).padStart(6, '0')
+  const { rows } = await query(
+    `UPDATE public_task_signups SET kiosk_pin_hash = NULL, kiosk_pin_fails = 0
+      WHERE task_id = $1 AND user_id = $2 AND status = 'approved' RETURNING id`,
+    [taskId, userId],
+  )
+  if (!rows[0]) return null
+  await query('UPDATE public_task_signups SET kiosk_pin_hash = $2 WHERE id = $1', [rows[0].id, kioskPinHash(rows[0].id, pin)])
+  return pin
+}
+
+// Under-13s: the PIN also goes to linked parents, who usually bring them.
+async function emailKioskPinToParents(userId, task, pin) {
+  try {
+    if (!task.under_13) return
+    const { rows } = await query(
+      `SELECT p.email, p.name, p.language FROM parent_child_links l JOIN users p ON p.id = l.parent_id WHERE l.child_id = $1`,
+      [userId],
+    )
+    for (const p of rows) {
+      if (!p.email || /@test\.com$/i.test(p.email)) continue
+      const lang = emailLang(p.language)
+      await sendEmail({
+        to: p.email,
+        subject: et(lang, 'Check-in PIN for {name}: {title}', { name: String(task.name || '').split(' ')[0], title: task.title }),
+        html: taskEmailHtml({
+          lang,
+          heading: et(lang, 'Check-in PIN for {name}', { name: String(task.name || '').split(' ')[0] }),
+          lines: [et(lang, 'Your child’s check-in PIN for this event: {pin}', { pin }), et(lang, 'At the event, tap their name on the organizer’s kiosk and enter it on arrival and when leaving. Don’t share this code with anyone.')],
+          task,
+        }),
+      })
+    }
+  } catch (error) {
+    console.error('kiosk pin parent email failed:', error.message)
+  }
+}
+
 // Fire-and-forget, like recordAudit: a mail server having a bad day must not
 // turn a successful approval into a 500 for the organizer.
 async function notifySignupDecision(taskId, userId, decision) {
   try {
     const { rows } = await query(
-      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info, u.email, u.name, u.language
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info, t.is_online, u.email, u.name, u.language, u.under_13
          FROM public_tasks t, users u
         WHERE t.id = $1 AND u.id = $2`,
       [taskId, userId],
@@ -4903,6 +4947,9 @@ async function notifySignupDecision(taskId, userId, decision) {
         : 'The organizer could not take your sign-up for this one.',
       link: approved ? '/attendance' : '/opportunities',
     })
+    // Event kiosk (#668): a fresh 6-digit PIN for checking in at the door.
+    const pin = approved && !row.is_online ? await issueKioskPin(taskId, userId) : null
+    if (pin) emailKioskPinToParents(userId, row, pin)
     if (!row.email) return
     const lang = emailLang(row.language)
     await sendEmail({
@@ -4915,6 +4962,7 @@ async function notifySignupDecision(taskId, userId, decision) {
           ? [
             emailHi(lang, row.name),
             et(lang, 'The organizer approved your signup.'),
+            ...(pin ? [et(lang, 'Your check-in PIN for this event: {pin}', { pin }), et(lang, 'Enter it on the organizer’s kiosk when you arrive and again when you leave. Don’t share this code with anyone: it checks you in and logs your hours.')] : []),
             ...(row.important_info ? [row.important_info] : []),
           ]
           : [emailHi(lang, row.name), et(lang, 'The organizer could not take your signup for this one. Other opportunities are listed in VolunTrack.')],
@@ -6133,6 +6181,103 @@ const checkinLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many check-in attempts. Please wait a few minutes.' },
+})
+
+// --- Event kiosk (#668) -------------------------------------------------------
+// The organizer (or a co-host) opens a kiosk on their own signed-in device on
+// the event day; approved volunteers tap their name and type the PIN they were
+// emailed: once to check in, once to check out. Five wrong PINs lock that
+// name until the organizer clears it.
+
+const kioskName = (name) => {
+  const parts = String(name || '').trim().split(/\s+/)
+  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || 'Volunteer'
+}
+
+router.get('/public-tasks/:id/kiosk', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, title, status, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can open the kiosk.")) return
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.today) return res.status(400).json({ error: 'The kiosk only works on the day of the task.' })
+    const { rows: people } = await query(
+      `SELECT s.id, u.name, s.checked_in_at, s.checked_out_at, s.kiosk_pin_fails, s.kiosk_pin_hash IS NOT NULL AS has_pin
+         FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
+      [task.id],
+    )
+    return res.json({
+      title: task.title,
+      people: people.map((p) => ({
+        signupId: p.id, name: kioskName(p.name), hasPin: p.has_pin,
+        checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, locked: p.kiosk_pin_fails >= KIOSK_MAX_FAILS,
+      })),
+    })
+  } catch (error) {
+    console.error('kiosk list failed:', error)
+    return res.status(500).json({ error: 'Could not open the kiosk.' })
+  }
+})
+
+router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth(), async (req, res) => {
+  const pin = String(req.body?.pin || '')
+  try {
+    const { rows } = await query(
+      `SELECT id, title, created_by, status, date, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can open the kiosk.")) return
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.today) return res.status(400).json({ error: 'The kiosk only works on the day of the task.' })
+    const { rows: sr } = await query(
+      `SELECT id, user_id, checked_in_at, checked_out_at, kiosk_pin_hash, kiosk_pin_fails FROM public_task_signups
+        WHERE id = $1 AND task_id = $2 AND status = 'approved'`,
+      [req.params.signupId, task.id],
+    )
+    const signup = sr[0]
+    if (!signup) return res.status(404).json({ error: 'Signup not found.' })
+    // The organizer clears a lock by sending { unlock: true } instead of a PIN.
+    if (req.body?.unlock === true) {
+      await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
+      return res.json({ state: 'unlocked' })
+    }
+    if (signup.kiosk_pin_fails >= KIOSK_MAX_FAILS) return res.status(423).json({ error: 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: true })
+    const ok = signup.kiosk_pin_hash && /^\d{6}$/.test(pin)
+      && timingSafeEqual(Buffer.from(kioskPinHash(signup.id, pin)), Buffer.from(signup.kiosk_pin_hash))
+    if (!ok) {
+      const { rows: f } = await query('UPDATE public_task_signups SET kiosk_pin_fails = kiosk_pin_fails + 1 WHERE id = $1 RETURNING kiosk_pin_fails', [signup.id])
+      const left = KIOSK_MAX_FAILS - f[0].kiosk_pin_fails
+      return res.status(401).json({ error: left > 0 ? `That PIN isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: left <= 0 })
+    }
+    await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
+    if (!signup.checked_in_at) {
+      const { rows: done } = await query(
+        `UPDATE public_task_signups SET checked_in_at = now(), checkin_method = 'kiosk', attendance_status = 'present', attendance_marked_at = now()
+          WHERE id = $1 AND checked_in_at IS NULL RETURNING checked_in_at`,
+        [signup.id],
+      )
+      return res.json({ state: 'checked_in', checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
+    }
+    if (signup.checked_out_at) return res.json({ state: 'done', hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
+    if (Date.now() - new Date(signup.checked_in_at).getTime() < CHECKOUT_AFTER_MS) return res.json({ state: 'checked_in', tooSoon: true, checkedInAt: signup.checked_in_at })
+    const { rows: out } = await query(
+      'UPDATE public_task_signups SET checked_out_at = now() WHERE id = $1 AND checked_out_at IS NULL RETURNING checked_in_at, checked_out_at',
+      [signup.id],
+    )
+    if (out.length === 0) return res.json({ state: 'done' })
+    const logged = await logCheckout(task, signup.user_id, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out at the event kiosk with their PIN')
+    return res.json({ state: 'checked_out', hours: scannedHours(out[0].checked_in_at, out[0].checked_out_at), logged })
+  } catch (error) {
+    console.error('kiosk check-in failed:', error)
+    return res.status(500).json({ error: 'Could not check you in.' })
+  }
 })
 
 // GET: the organizer's current code and who has scanned (polled by the QR screen).
