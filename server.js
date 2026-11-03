@@ -52,6 +52,7 @@ import adviserDigestRoutes from './server/routes/adviserDigest.js'
 import inviteRoutes from './server/routes/invites.js'
 import handoverRoutes from './server/routes/handover.js'
 import referenceRoutes from './server/routes/references.js'
+import clubRoutes from './server/routes/clubs.js'
 import shiftRoutes from './server/routes/shifts.js'
 import interestsRoutes from './server/routes/interests.js'
 import taskPhotoRoutes from './server/routes/taskPhotos.js'
@@ -202,6 +203,7 @@ app.use('/api/adviser-digest', adviserDigestRoutes)
 app.use('/api/invites', inviteRoutes)
 app.use('/api/handover', handoverRoutes)
 app.use('/api/references', referenceRoutes)
+app.use('/api/clubs', clubRoutes)
 app.use('/api/shifts', shiftRoutes)
 app.use('/api/interests', interestsRoutes)
 app.use('/api/task-photos', taskPhotoRoutes)

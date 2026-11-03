@@ -146,6 +146,11 @@ export default function StudentProgressPanel({ onSetRequirement }) {
                     </div>
                   ) : null}
                   <p className="text-xs text-earth-500 mt-1">
+                    {data?.term && s.termHours != null && (
+                      <span className={s.termHours >= data.term.hours ? 'text-emerald-400' : 'text-amber-300'}>
+                        {tr('{term}: {done} of {target} h', { term: data.term.name, done: s.termHours, target: data.term.hours })}{' · '}
+                      </span>
+                    )}
                     {s.lastLogDate ? `Last logged ${fmtDate(s.lastLogDate)}` : tr('Nothing logged yet')}
                     {weeksLeft && s.remaining > 0 ? ` · needs ${Math.ceil((s.remaining / weeksLeft) * 4) / 4} h/week` : ''}
                     {s.categoryShort?.length > 0 && <span className="text-amber-300">{` · ${tr('still needs')} `}{s.categoryShort.map((c) => `${c.remaining} h ${c.category}`).join(', ')}</span>}

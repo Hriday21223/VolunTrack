@@ -23,7 +23,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et, emailDate, requestLang } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade } from '../requirements.js'
+import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade, currentTerm } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -511,6 +511,20 @@ export async function schoolProgress(schoolId) {
     )
     for (const c of cats) (byCategory[c.user_id] ||= {})[c.category] = c.hours
   }
+  // Term goals (#658): each student's hours in the current term.
+  const term = currentTerm(policy)
+  const termHours = {}
+  if (term) {
+    const { rows: th } = await query(
+      `SELECT l.user_id, SUM(l.hours)::float AS hours
+         FROM logs l JOIN users u ON u.id = l.user_id
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IS DISTINCT FROM 'rejected'
+          AND l.date BETWEEN $2::date AND $3::date
+        GROUP BY l.user_id`,
+      [schoolId, term.start, term.end],
+    )
+    for (const t of th) termHours[t.user_id] = Math.round(t.hours * 100) / 100
+  }
   const students = rows.map((r) => {
     const hours = Math.round(r.hours * 100) / 100
     // `remaining` counts any type still short, so everything built on it
@@ -525,9 +539,10 @@ export async function schoolProgress(schoolId) {
       consentPending: r.parental_consent_status === 'pending',
       // The highest award level reached (#559), or null.
       award: awardFor(policy, hours).current?.name || null,
+      termHours: term ? (termHours[r.id] || 0) : null,
     }
   })
-  return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, students }
+  return { schoolName: resolved?.schoolName || '', deadline: policy?.goals?.deadline || null, certificate: policy?.certificates || null, term, students }
 }
 
 // GET /api/school/impact?period=year|all or ?from=&to= (#610) — the school's
@@ -598,7 +613,7 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
     const progress = await schoolProgress(schoolId)
     recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: progress.students.length } })
-    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, certificate: progress.certificate, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
+    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, term: progress.term, certificate: progress.certificate, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })
@@ -740,6 +755,96 @@ router.delete('/challenge/:id', limiter, requireDb, requireAuth('school', 'schoo
   } catch (error) {
     console.error('challenge end failed:', error)
     return res.status(500).json({ error: 'Could not end the challenge.' })
+  }
+})
+
+// POST /api/school/import-hours (#657): past hours from another tracker
+// (x2VOL, MobileServe, a spreadsheet). Body { rows: [{ email, date, activity,
+// hours, orgName?, category?, notes? }], dryRun }. Each row is checked; with
+// dryRun nothing is written and the per-row result comes back for a preview.
+// Imported rows land approved, verified by the staff member importing them,
+// for students already linked to this school. A row matching an existing
+// entry (same student, date and activity) is skipped.
+const IMPORT_MAX_ROWS = 2000
+router.post('/import-hours', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : []
+  const dryRun = req.body?.dryRun !== false
+  if (rows.length === 0) return res.status(400).json({ error: 'The file has no rows to import.' })
+  if (rows.length > IMPORT_MAX_ROWS) return res.status(400).json({ error: `Import up to ${IMPORT_MAX_ROWS} rows at a time.` })
+  try {
+    const { rows: me } = await query('SELECT u.school_id, s.name AS school_name FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1', [req.auth.sub])
+    const school = me[0]
+    if (!school) return res.status(404).json({ error: 'School not found.' })
+    const emails = [...new Set(rows.map((r) => String(r?.email || '').trim().toLowerCase()).filter(Boolean))]
+    const { rows: studs } = await query(
+      `SELECT id, LOWER(email) AS email FROM users WHERE school_id = $1 AND role = 'student' AND LOWER(email) = ANY($2::text[])`,
+      [school.school_id, emails],
+    )
+    const byEmail = new Map(studs.map((u) => [u.email, u.id]))
+    const today = new Date().toISOString().slice(0, 10)
+    const seen = new Set()
+    const results = rows.map((r, i) => {
+      const email = String(r?.email || '').trim().toLowerCase()
+      const date = String(r?.date || '').trim()
+      const activity = String(r?.activity || '').trim().slice(0, 200)
+      const hours = Number(r?.hours)
+      const out = { row: i + 1, email, date, activity, hours }
+      if (!email) return { ...out, status: 'error', error: 'No email.' }
+      const userId = byEmail.get(email)
+      if (!userId) return { ...out, status: 'error', error: 'No student with this email at your school.' }
+      if (!isValidDateString(date) || date > today) return { ...out, status: 'error', error: 'Date must be YYYY-MM-DD and not in the future.' }
+      if (!activity) return { ...out, status: 'error', error: 'No activity.' }
+      if (!Number.isFinite(hours) || hours <= 0 || hours > MAX_HOURS_PER_ENTRY) return { ...out, status: 'error', error: `Hours must be more than 0 and at most ${MAX_HOURS_PER_ENTRY}.` }
+      const key = `${userId}|${date}|${activity.toLowerCase()}`
+      if (seen.has(key)) return { ...out, status: 'duplicate', error: 'Same as an earlier row.' }
+      seen.add(key)
+      return {
+        ...out, status: 'ok', userId,
+        orgName: String(r?.orgName || '').trim().slice(0, 200) || null,
+        category: String(r?.category || '').trim().slice(0, 100) || 'Community Service',
+        notes: String(r?.notes || '').trim().slice(0, 500) || null,
+      }
+    })
+    // Already in VolunTrack?
+    const ok = results.filter((r) => r.status === 'ok')
+    if (ok.length) {
+      const { rows: existing } = await query(
+        `SELECT user_id || '|' || to_char(date, 'YYYY-MM-DD') || '|' || LOWER(activity) AS k FROM logs WHERE user_id = ANY($1::text[])`,
+        [[...new Set(ok.map((r) => r.userId))]],
+      )
+      const have = new Set(existing.map((e) => e.k))
+      for (const r of ok) if (have.has(`${r.userId}|${r.date}|${r.activity.toLowerCase()}`)) { r.status = 'duplicate'; r.error = 'Already in VolunTrack.' }
+    }
+    const toAdd = results.filter((r) => r.status === 'ok')
+    let added = 0
+    if (!dryRun) {
+      const note = `Imported by ${school.school_name}`
+      for (const r of toAdd) {
+        const id = uid('log')
+        const { rowCount } = await query(
+          `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, org_name, verified_by, verification_status)
+           SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved'
+            WHERE NOT EXISTS (SELECT 1 FROM logs WHERE user_id = $2 AND date = $3 AND LOWER(activity) = LOWER($4))`,
+          [id, r.userId, r.date, r.activity, r.category, r.hours, r.notes ? `${r.notes} (${note})` : note, r.orgName, req.auth.sub],
+        )
+        if (rowCount) {
+          added += 1
+          emitHours('hours.created', id)
+          recordLogEvent({ logId: id, event: 'added_by_school', byKind: 'school', byUserId: req.auth.sub, note: 'Imported from a file' })
+        }
+      }
+      recordAudit(req, { action: AUDIT.HOURS_ADDED_FOR_GROUP, schoolId: school.school_id, objectType: 'logs', meta: { imported: added, rows: rows.length } })
+    }
+    const count = (st) => results.filter((r) => r.status === st).length
+    return res.json({
+      dryRun,
+      added,
+      counts: { ok: toAdd.length, duplicate: count('duplicate'), error: count('error') },
+      problems: results.filter((r) => r.status !== 'ok').slice(0, 200).map(({ row, email, status, error }) => ({ row, email, status, error })),
+    })
+  } catch (error) {
+    console.error('hours import failed:', error)
+    return res.status(500).json({ error: 'Could not import the hours.' })
   }
 })
 
@@ -7392,6 +7497,58 @@ async function reportScope(auth, body) {
 
   return null
 }
+
+// GET /api/school/impact-places?from=&to= (#659): where students volunteered,
+// for the impact map. Counts per place only (hours, entries, how many
+// students), never who. A place is the entry's organization, else its
+// location, else its event's; the event's map position comes along when the
+// entry was linked to one. Rejected hours are left out.
+router.get('/impact-places', limiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+  const from = validDate(req.query.from)
+  const to = validDate(req.query.to)
+  if (!from || !to || from > to) return res.status(400).json({ error: 'Enter the dates as YYYY-MM-DD.' })
+  try {
+    const scope = await reportScope(req.auth, req.query)
+    if (!scope) return res.status(403).json({ error: 'Your account is not linked to a school or organization.' })
+    if (scope.unpaid) return res.status(402).json({ error: 'This school has not completed payment yet. Reports are paused until payment is verified.' })
+    if (scope.schoolIds.length === 0) return res.json({ places: [], range: { from, to } })
+    const { rows } = await query(
+      `SELECT place, MIN(lat) AS lat, MIN(lng) AS lng,
+              SUM(hours)::float AS hours, COUNT(*)::int AS entries, COUNT(DISTINCT user_id)::int AS students
+         FROM (
+           SELECT l.user_id, l.hours,
+                  TRIM(COALESCE(NULLIF(TRIM(l.org_name), ''), NULLIF(TRIM(l.location), ''), t.location)) AS place,
+                  t.latitude AS lat, t.longitude AS lng
+             FROM logs l
+             JOIN users u ON u.id = l.user_id
+             LEFT JOIN public_tasks t ON t.id = l.task_id AND t.is_online = false
+            WHERE u.school_id = ANY($1::text[]) AND u.role = 'student'
+              AND l.verification_status IS DISTINCT FROM 'rejected'
+              AND l.date BETWEEN $2::date AND $3::date
+         ) x
+        WHERE place IS NOT NULL AND place <> ''
+        GROUP BY LOWER(place), place
+        ORDER BY SUM(hours) DESC
+        LIMIT 200`,
+      [scope.schoolIds, from, to],
+    )
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, objectType: 'impact_places', meta: { places: rows.length } })
+    return res.json({
+      range: { from, to },
+      places: rows.map((r) => ({
+        place: r.place,
+        lat: r.lat != null ? Number(r.lat) : null,
+        lng: r.lng != null ? Number(r.lng) : null,
+        hours: Math.round(r.hours * 10) / 10,
+        entries: r.entries,
+        students: r.students,
+      })),
+    })
+  } catch (error) {
+    console.error('impact places failed:', error)
+    return res.status(500).json({ error: 'Could not load the impact map.' })
+  }
+})
 
 // GET /api/school/reports/hours?from=&to=&approvedOnly=
 // Every student in scope with their logs in the range. Students with no logs

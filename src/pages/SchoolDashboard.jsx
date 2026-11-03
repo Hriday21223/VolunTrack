@@ -21,8 +21,10 @@ import { useMyRequirements } from '@/lib/requirements.js'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
+import ClubsPanel from '@/components/ClubsPanel.jsx'
 import { askParentComing } from '@/lib/parentComing.js'
 import YearEndPacketCard from '@/components/YearEndPacketCard.jsx'
+import ImpactMapCard from '@/components/ImpactMapCard.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
@@ -41,6 +43,7 @@ import RosterSyncCard from '@/components/RosterSyncCard.jsx'
 import HoursReviewPanel from '@/components/HoursReviewPanel.jsx'
 import ApprovalHistoryPanel from '@/components/ApprovalHistoryPanel.jsx'
 import GroupHoursCard from '@/components/GroupHoursCard.jsx'
+import ImportHoursCard from '@/components/ImportHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
 
@@ -813,6 +816,7 @@ export default function SchoolDashboard() {
             )}
 
             <GroupHoursCard students={students} onDone={loadData} />
+            <ImportHoursCard onDone={loadData} />
 
             <ChallengeCard manage />
             <SchoolVsSchoolCard />
@@ -872,6 +876,9 @@ export default function SchoolDashboard() {
               <button onClick={() => setSubTab('history')} className={`btn-sm ${subTab === 'history' ? 'btn-primary' : 'btn-ghost'}`}>
                 <History className="w-3.5 h-3.5 mr-1" />{' '}{tr('Approval history')}
               </button>
+              <button onClick={() => setSubTab('clubs')} className={`btn-sm ${subTab === 'clubs' ? 'btn-primary' : 'btn-ghost'}`}>
+                <Users className="w-3.5 h-3.5 mr-1" />{' '}{tr('Clubs')}
+              </button>
               <button onClick={() => setSubTab('progress')} className={`btn-sm ${subTab === 'progress' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Clock className="w-3.5 h-3.5 mr-1" />{' '}{tr('Hours progress')}
               </button>
@@ -888,6 +895,8 @@ export default function SchoolDashboard() {
             )}
 
             {subTab === 'history' && <ApprovalHistoryPanel students={students} />}
+
+            {subTab === 'clubs' && <ClubsPanel students={students} />}
 
             {subTab === 'progress' && (
               <StudentProgressPanel onSetRequirement={user?.role === 'school' ? () => { setTab('setup'); setSetupTab('requirements') } : null} />
@@ -991,6 +1000,7 @@ export default function SchoolDashboard() {
         )}
         {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && <ImpactReportCard scope="school" className="mt-4" />}
         {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><YearEndPacketCard kind="school" /></div>}
+        {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><ImpactMapCard /></div>}
 
         {tab === 'setup' && setupTab === 'requirements' && user?.role === 'school' && (
           <RequirementsSettings scope="school" />
