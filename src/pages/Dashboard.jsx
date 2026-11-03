@@ -36,6 +36,8 @@ import GoalCelebration from '@/components/GoalCelebration.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import { nextCelebration, markCelebrated } from '@/lib/celebrations.js'
 import { printCertificate } from '@/lib/export.js'
+import KidHelperCard from '@/components/KidHelperCard.jsx'
+import { isYoungStudent, KID_DEFAULT_GOAL } from '@/lib/kidMode.js'
 import UnsentBanner from '@/components/UnsentBanner.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -617,6 +619,10 @@ export default function Dashboard() {
             </Card>
           )}
         </>
+      )}
+
+      {dashTab === 'home' && isYoungStudent(user) && (
+        <KidHelperCard name={user?.name} hours={total} goal={Number(requirements.goalHours) || target || KID_DEFAULT_GOAL} />
       )}
 
       {dashTab === 'home' && reviewYear && reviewSeason && (
