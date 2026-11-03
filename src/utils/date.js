@@ -1,16 +1,24 @@
 import { format as dfFormat, formatDistanceToNow as dfDistance, parseISO, differenceInMinutes } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { es, vi, zhCN } from 'date-fns/locale'
 import { language } from '@/lib/i18n.js'
 
 // Month and day names follow the app's language (src/lib/i18n.js).
-const locale = language === 'es' ? es : undefined
+const locale = { es, vi, zh: zhCN }[language]
 const format = (d, f) => dfFormat(d, f, { locale })
 const formatDistanceToNow = (d, o) => dfDistance(d, { ...o, locale })
 
-export const fmtDate = (iso) => (iso ? format(parseISO(iso), language === 'es' ? 'd MMM yyyy' : 'MMM d, yyyy') : '—')
-export const fmtDateLong = (iso) => (iso ? format(parseISO(iso), language === 'es' ? "d 'de' MMMM 'de' yyyy" : 'MMMM d, yyyy') : '')
+// Date patterns per language; English is the fallback.
+const PATTERNS = {
+  es: { short: 'd MMM yyyy', long: "d 'de' MMMM 'de' yyyy", time: "d MMM yyyy 'a las' h:mm a" },
+  vi: { short: 'd MMM, yyyy', long: "d MMMM, yyyy", time: "HH:mm, d MMM, yyyy" },
+  zh: { short: 'yyyy年M月d日', long: 'yyyy年M月d日', time: 'yyyy年M月d日 HH:mm' },
+}
+const pattern = PATTERNS[language] || { short: 'MMM d, yyyy', long: 'MMMM d, yyyy', time: "MMM d, yyyy 'at' h:mm a" }
+
+export const fmtDate = (iso) => (iso ? format(parseISO(iso), pattern.short) : '—')
+export const fmtDateLong = (iso) => (iso ? format(parseISO(iso), pattern.long) : '')
 export const fmtTime = (iso) => (iso ? format(parseISO(iso), 'h:mm a') : '—')
-export const fmtDateTime = (iso) => (iso ? format(parseISO(iso), language === 'es' ? "d MMM yyyy 'a las' h:mm a" : "MMM d, yyyy 'at' h:mm a") : '—')
+export const fmtDateTime = (iso) => (iso ? format(parseISO(iso), pattern.time) : '—')
 export const fromNow = (iso) => (iso ? formatDistanceToNow(parseISO(iso), { addSuffix: true }) : '')
 
 export function hoursBetween(start, end) {

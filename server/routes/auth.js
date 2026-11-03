@@ -20,7 +20,7 @@ import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, sendAcco
          sendEmailChangeCodeEmail, sendEmailChangedNotice, sendEmailOtpEmail, hasEmail, forLog } from '../email.js'
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
-import { EMAIL_LANGUAGES, requestLang } from '../emailStrings.js'
+import { APP_LANGUAGES, requestAppLang, requestLang } from '../emailStrings.js'
 import { upcomingEventsFor, notifyEventsCancelledByDeletion } from './school.js'
 
 const router = express.Router()
@@ -314,7 +314,7 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       // The app's language at sign-up (#604), so the first emails already use it.
-      [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req), requestLang(req) === 'es' ? 'es' : null],
+      [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req), requestAppLang(req) !== 'en' ? requestAppLang(req) : null],
     )
     const user = publicUser(rows[0])
     // Signed up through a friend's invite link (#493): remember who, so the
@@ -641,8 +641,8 @@ router.get('/me', requireDb, requireAuth(), async (req, res) => {
 // sends it fire-and-forget; nothing else reads it.
 router.put('/me/language', requireDb, requireAuth(), async (req, res) => {
   const language = req.body?.language
-  if (!EMAIL_LANGUAGES.includes(language)) {
-    return res.status(400).json({ error: 'Language must be "en" or "es".' })
+  if (!APP_LANGUAGES.includes(language)) {
+    return res.status(400).json({ error: 'Language must be "en", "es", "vi" or "zh".' })
   }
   try {
     const { rowCount } = await query('UPDATE users SET language = $1 WHERE id = $2', [language, req.auth.sub])
