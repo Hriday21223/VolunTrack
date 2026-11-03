@@ -38,6 +38,8 @@ import { schoolIsActive, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_S
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
 import { readWaiverText, readWaiverAgreement, saveWaiverAgreement, hashWaiverToken, WAIVER_STATUS_SQL } from '../taskWaivers.js'
 import { readShifts, saveShifts, chooseShift, capacityFor, taskShifts, SHIFTS_JSON_SQL, shiftText } from '../taskShifts.js'
+import { emergencyContactsFor } from '../emergencyContacts.js'
+import { recordLogEvent } from '../logHistory.js'
 
 const router = express.Router()
 
@@ -783,6 +785,7 @@ router.post('/group-hours', limiter, requireDb, requireAuth('school', 'school_st
       )
       if (rowCount) {
         emitHours('hours.created', newLogId)
+        recordLogEvent({ logId: newLogId, event: 'added_by_school', byKind: 'school', byUserId: req.auth.sub })
         added += 1
         notify(id, { kind: 'hours_approved', title: `${hours} hours added: ${activity}`, body: `${school.school_name} added these for you.`, link: '/' })
       } else {
@@ -1318,6 +1321,71 @@ router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_st
   }
 })
 
+// Approval history (#638): who approved, sent back, reset, added or deleted
+// each entry at this school, newest first. Filters: studentId, from, to
+// (YYYY-MM-DD, by when it happened), before (ISO cursor), limit.
+router.get('/approval-history', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const schoolId = me[0]?.school_id
+    if (!schoolId) return res.status(403).json({ error: 'Join a school first.' })
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200)
+    const params = [schoolId]
+    const where = ['e.school_id = $1']
+    const day = /^\d{4}-\d{2}-\d{2}$/
+    if (req.query.studentId) { params.push(String(req.query.studentId)); where.push(`e.student_id = $${params.length}`) }
+    if (req.query.from) {
+      if (!day.test(String(req.query.from))) return res.status(400).json({ error: 'Use a YYYY-MM-DD date.' })
+      params.push(String(req.query.from)); where.push(`e.created_at >= $${params.length}::date`)
+    }
+    if (req.query.to) {
+      if (!day.test(String(req.query.to))) return res.status(400).json({ error: 'Use a YYYY-MM-DD date.' })
+      params.push(String(req.query.to)); where.push(`e.created_at < $${params.length}::date + 1`)
+    }
+    if (req.query.before) {
+      const before = new Date(String(req.query.before))
+      if (Number.isNaN(before.getTime())) return res.status(400).json({ error: 'Invalid cursor.' })
+      params.push(before.toISOString()); where.push(`e.created_at < $${params.length}`)
+    }
+    params.push(limit + 1)
+    const { rows } = await query(
+      `SELECT e.id, e.log_id, e.event, e.by_kind, e.note, e.activity, e.hours::float8 AS hours,
+              to_char(e.log_date, 'YYYY-MM-DD') AS log_date, e.created_at,
+              e.student_id, s.name AS student_name,
+              COALESCE(b.name, e.by_name) AS by_name
+         FROM log_events e
+         JOIN users s ON s.id = e.student_id
+         LEFT JOIN users b ON b.id = e.by_user_id
+        WHERE ${where.join(' AND ')}
+        ORDER BY e.created_at DESC
+        LIMIT $${params.length}`,
+      params,
+    )
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'approval_history', meta: { shown: Math.min(rows.length, limit) } })
+    const page = rows.slice(0, limit)
+    return res.json({
+      events: page.map((r) => ({
+        id: r.id,
+        logId: r.log_id,
+        event: r.event,
+        byKind: r.by_kind,
+        byName: r.by_name || null,
+        note: r.note,
+        activity: r.activity,
+        hours: r.hours,
+        logDate: r.log_date,
+        at: r.created_at,
+        studentId: r.student_id,
+        studentName: r.student_name,
+      })),
+      next: rows.length > limit ? page[page.length - 1].created_at : null,
+    })
+  } catch (error) {
+    console.error('approval history failed:', error)
+    return res.status(500).json({ error: 'Could not load the approval history.' })
+  }
+})
+
 // Approve or send back one entry: { decision: 'approve' | 'reject', note }.
 router.post('/hours-review/:logId', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
   const decision = req.body?.decision
@@ -1338,7 +1406,10 @@ router.post('/hours-review/:logId', limiter, requireDb, requireAuth('school', 's
         RETURNING l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
       [req.params.logId, schoolId, decision === 'approve' ? 'approved' : 'rejected', req.auth.sub, note],
     )
-    if (rows.length) emitHours(decision === 'approve' ? 'hours.approved' : 'hours.rejected', req.params.logId)
+    if (rows.length) {
+      emitHours(decision === 'approve' ? 'hours.approved' : 'hours.rejected', req.params.logId)
+      recordLogEvent({ logId: req.params.logId, event: decision === 'approve' ? 'approved' : 'rejected', byKind: 'school', byUserId: req.auth.sub, note })
+    }
     if (rows.length === 0) {
       const { rows: found } = await query(
         'SELECT l.verification_status FROM logs l JOIN users u ON u.id = l.user_id WHERE l.id = $1 AND u.school_id = $2',
@@ -1379,7 +1450,10 @@ router.post('/hours-review-approve', limiter, requireDb, requireAuth('school', '
         RETURNING l.id, l.user_id, l.activity, l.hours::float8 AS hours, to_char(l.date, 'YYYY-MM-DD') AS date`,
       [ids, schoolId, req.auth.sub],
     )
-    for (const r of rows) emitHours('hours.approved', r.id)
+    for (const r of rows) {
+      emitHours('hours.approved', r.id)
+      recordLogEvent({ logId: r.id, event: 'approved', byKind: 'school', byUserId: req.auth.sub })
+    }
     const byStudent = new Map()
     for (const r of rows) byStudent.set(r.user_id, [...(byStudent.get(r.user_id) || []), r])
     for (const [userId, entries] of byStudent) {
@@ -5959,7 +6033,12 @@ const checkinLimiter = rateLimit({
 // GET: the organizer's current code and who has scanned (polled by the QR screen).
 router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows } = await query('SELECT id, created_by, status, checkin_secret FROM public_tasks WHERE id = $1', [req.params.id])
+    const { rows } = await query(
+      `SELECT id, created_by, status, checkin_secret,
+              (date BETWEEN current_date - 1 AND current_date + 1) AS around_today
+         FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
     const task = rows[0]
     if (!task) return res.status(404).json({ error: 'Task not found.' })
     if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can show the check-in code.")) return
@@ -5972,15 +6051,22 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
     }
     const windowIndex = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
     const { rows: people } = await query(
-      `SELECT u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
       [task.id],
     )
+    // Students' emergency contacts (#639), only around the day of the event.
+    const contacts = task.around_today
+      ? await emergencyContactsFor(people.filter((p) => p.role === 'student').map((p) => p.id)).catch(() => new Map())
+      : new Map()
+    if (contacts.size > 0) {
+      recordAudit(req, { action: AUDIT.EMERGENCY_CONTACTS_READ, objectType: 'public_task', objectId: task.id, meta: { shown: contacts.size } })
+    }
     return res.json({
       code: checkinCode(secret, task.id, windowIndex),
       // Seconds until the code changes, so the screen refreshes on time.
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
-      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, parentComing: p.parent_coming_name || null })),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null })),
     })
   } catch (error) {
     console.error('checkin code failed:', error)
@@ -6339,6 +6425,7 @@ async function verifyStudentLog({ organizerId, studentId, logId, status, signatu
   )
   if (status !== previousStatus) {
     notifyHoursDecision(studentId, logId, status)
+    recordLogEvent({ logId, event: status === 'approved' || status === 'rejected' ? status : 'reset', byKind: 'organizer', byUserId: organizerId })
     if (status === 'approved' || status === 'rejected') emitHours(`hours.${status}`, logId)
   }
 

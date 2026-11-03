@@ -37,6 +37,9 @@ import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import { nextCelebration, markCelebrated } from '@/lib/celebrations.js'
 import { printCertificate } from '@/lib/export.js'
 import { askParentComing } from '@/lib/parentComing.js'
+import KidHelperCard from '@/components/KidHelperCard.jsx'
+import { isYoungStudent, KID_DEFAULT_GOAL } from '@/lib/kidMode.js'
+import UnsentBanner from '@/components/UnsentBanner.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -398,6 +401,7 @@ export default function Dashboard() {
         </div>
       }
     >
+      <UnsentBanner />
       {dashTab === 'home' && (
         <SpotlightTour storageKey="voluntrack:tour-seen:student" steps={STUDENT_TOUR_STEPS} />
       )}
@@ -619,6 +623,10 @@ export default function Dashboard() {
             </Card>
           )}
         </>
+      )}
+
+      {dashTab === 'home' && isYoungStudent(user) && (
+        <KidHelperCard name={user?.name} hours={total} goal={Number(requirements.goalHours) || target || KID_DEFAULT_GOAL} />
       )}
 
       {dashTab === 'home' && reviewYear && reviewSeason && (
@@ -1011,7 +1019,7 @@ export default function Dashboard() {
                       <span>{fromNow(l.createdAt)}</span>
                     </div>
                   </div>
-                  <VerificationBadge status={l.verificationStatus} bySchool={l.reviewedBySchool} note={l.reviewNote} />
+                  <VerificationBadge status={l.verificationStatus} bySchool={l.reviewedBySchool} note={l.reviewNote} unsent={Boolean(l.syncPending && !l.serverId)} />
                   {l.category && (
                     <span className={`chip ${categoryColor(l.category)}`}>{tr(l.category)}</span>
                   )}

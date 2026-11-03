@@ -7,6 +7,7 @@ import ProgressBar from '@/components/ProgressBar.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
+import EmergencyContactCard from '@/components/EmergencyContactCard.jsx'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { gradeOptionLabel } from '@policy'
@@ -157,7 +158,10 @@ export default function ParentDashboard() {
       ) : (
         <div className="space-y-5">
           {children.map((child) => (
-            <ChildCard key={child.id} child={child} />
+            <div key={child.id} className="space-y-3">
+              <ChildCard child={child} />
+              <EmergencyContactCard child={child} />
+            </div>
           ))}
 
           {digest && (

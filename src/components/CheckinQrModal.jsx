@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
-import { X, QrCode, CheckCircle, LogIn } from 'lucide-react'
+import { X, QrCode, CheckCircle, LogIn, Phone } from 'lucide-react'
 import { isNativeApp } from '@/lib/platform.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -116,8 +116,17 @@ export default function CheckinQrModal({ task, onClose }) {
           ) : (
             <ul className="space-y-1">
               {people.map((p) => (
-                <li key={p.name} className="flex items-center justify-between text-sm">
-                  <span>{p.name}{p.parentComing && <span className="block text-xs text-amber-300">Parent coming: {p.parentComing}</span>}</span>
+                <li key={p.name} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="min-w-0">
+                    {p.name}
+                    {p.parentComing && <span className="block text-xs text-amber-300">Parent coming: {p.parentComing}</span>}
+                    {p.emergencyContact && (
+                      <a href={`tel:${p.emergencyContact.phone.replace(/[^\d+]/g, '')}`} className="block text-xs text-sky-300 hover:underline">
+                        <Phone className="w-3 h-3 inline mr-1" aria-hidden="true" />
+                        Emergency: {p.emergencyContact.name ? `${p.emergencyContact.name}, ` : ''}{p.emergencyContact.phone}
+                      </a>
+                    )}
+                  </span>
                   <span className={`text-xs flex items-center gap-1 ${p.checkedOutAt ? 'text-emerald-400' : p.checkedInAt ? 'text-amber-300' : 'text-earth-500'}`}>
                     {p.checkedOutAt ? <><CheckCircle className="w-3.5 h-3.5" /> Done</> : p.checkedInAt ? <><LogIn className="w-3.5 h-3.5" /> Here</> : 'Not yet'}
                   </span>

@@ -13,6 +13,7 @@ import { goalHoursFor } from '../requirements.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { WAITLIST_POSITION_SQL, decideParentOk } from './school.js'
 import { notify } from '../notifications.js'
+import { cleanPhone, saveEmergencyContact, deleteEmergencyContact, emergencyContactsFor } from '../emergencyContacts.js'
 
 const router = express.Router()
 
@@ -207,10 +208,45 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
       }
     }))
 
-    return res.json({ children })
+    const contacts = await emergencyContactsFor(children.map((c) => c.id)).catch(() => new Map())
+    return res.json({ children: children.map((c) => ({ ...c, emergencyContact: contacts.get(c.id) || null })) })
   } catch (error) {
     console.error('parent children fetch failed:', error)
     return res.status(500).json({ error: 'Could not fetch children.' })
+  }
+})
+
+// Emergency contact for events (#639): { name, phone }. Any linked parent can
+// set or remove it; organizers see it only on the event's check-in list.
+async function isLinkedParent(parentId, childId) {
+  const { rows } = await query('SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2', [parentId, childId])
+  return rows.length > 0
+}
+
+router.put('/children/:childId/emergency-contact', limiter, requireDb, requireAuth('parent'), async (req, res) => {
+  try {
+    if (!(await isLinkedParent(req.auth.sub, req.params.childId))) return res.status(404).json({ error: 'That child isn’t linked to your account.' })
+    const phone = cleanPhone(req.body?.phone)
+    if (!phone) return res.status(400).json({ error: 'Enter a phone number, like (214) 555-0123.' })
+    const name = String(req.body?.name || '').replace(/\s+/g, ' ').trim().slice(0, 80) || null
+    await saveEmergencyContact(req.params.childId, req.auth.sub, { name, phone })
+    recordAudit(req, { action: AUDIT.EMERGENCY_CONTACT_CHANGED, subjectUserId: req.params.childId, objectType: 'emergency_contact', meta: { change: 'set' } })
+    return res.json({ ok: true, emergencyContact: { name, phone } })
+  } catch (error) {
+    console.error('emergency contact save failed:', error)
+    return res.status(500).json({ error: 'Could not save the emergency contact.' })
+  }
+})
+
+router.delete('/children/:childId/emergency-contact', limiter, requireDb, requireAuth('parent'), async (req, res) => {
+  try {
+    if (!(await isLinkedParent(req.auth.sub, req.params.childId))) return res.status(404).json({ error: 'That child isn’t linked to your account.' })
+    await deleteEmergencyContact(req.params.childId)
+    recordAudit(req, { action: AUDIT.EMERGENCY_CONTACT_CHANGED, subjectUserId: req.params.childId, objectType: 'emergency_contact', meta: { change: 'removed' } })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('emergency contact delete failed:', error)
+    return res.status(500).json({ error: 'Could not remove the emergency contact.' })
   }
 })
 
