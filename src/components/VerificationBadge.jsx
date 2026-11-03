@@ -1,4 +1,4 @@
-import { Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, CloudOff } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
 
 const VARIANTS = {
@@ -23,7 +23,21 @@ const VARIANTS = {
 
 // `bySchool`: the student's school decided, not a supervisor (#591). `note`:
 // what the school said, shown under the badge when it sent the entry back.
-export default function VerificationBadge({ status, bySchool = false, note = '' }) {
+/** An entry saved on this device that hasn't reached the server yet (#635). */
+export function UnsentBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+      title={tr('Saved on this device. It sends by itself when you’re back online.')}
+    >
+      <CloudOff className="w-3.5 h-3.5" aria-hidden="true" /> {tr('Waiting to send')}
+    </span>
+  )
+}
+
+// `unsent`: saved here but not on the server yet; shown instead of the status.
+export default function VerificationBadge({ status, bySchool = false, note = '', unsent = false }) {
+  if (unsent) return <UnsentBadge />
   const variant = VARIANTS[status]
   if (!variant) return null
   const Icon = variant.icon
