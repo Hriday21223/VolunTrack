@@ -7483,6 +7483,58 @@ async function reportScope(auth, body) {
   return null
 }
 
+// GET /api/school/impact-places?from=&to= (#659): where students volunteered,
+// for the impact map. Counts per place only (hours, entries, how many
+// students), never who. A place is the entry's organization, else its
+// location, else its event's; the event's map position comes along when the
+// entry was linked to one. Rejected hours are left out.
+router.get('/impact-places', limiter, requireDb, requireAuth('school', 'school_staff', 'org', 'admin'), async (req, res) => {
+  const from = validDate(req.query.from)
+  const to = validDate(req.query.to)
+  if (!from || !to || from > to) return res.status(400).json({ error: 'Enter the dates as YYYY-MM-DD.' })
+  try {
+    const scope = await reportScope(req.auth, req.query)
+    if (!scope) return res.status(403).json({ error: 'Your account is not linked to a school or organization.' })
+    if (scope.unpaid) return res.status(402).json({ error: 'This school has not completed payment yet. Reports are paused until payment is verified.' })
+    if (scope.schoolIds.length === 0) return res.json({ places: [], range: { from, to } })
+    const { rows } = await query(
+      `SELECT place, MIN(lat) AS lat, MIN(lng) AS lng,
+              SUM(hours)::float AS hours, COUNT(*)::int AS entries, COUNT(DISTINCT user_id)::int AS students
+         FROM (
+           SELECT l.user_id, l.hours,
+                  TRIM(COALESCE(NULLIF(TRIM(l.org_name), ''), NULLIF(TRIM(l.location), ''), t.location)) AS place,
+                  t.latitude AS lat, t.longitude AS lng
+             FROM logs l
+             JOIN users u ON u.id = l.user_id
+             LEFT JOIN public_tasks t ON t.id = l.task_id AND t.is_online = false
+            WHERE u.school_id = ANY($1::text[]) AND u.role = 'student'
+              AND l.verification_status IS DISTINCT FROM 'rejected'
+              AND l.date BETWEEN $2::date AND $3::date
+         ) x
+        WHERE place IS NOT NULL AND place <> ''
+        GROUP BY LOWER(place), place
+        ORDER BY SUM(hours) DESC
+        LIMIT 200`,
+      [scope.schoolIds, from, to],
+    )
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, objectType: 'impact_places', meta: { places: rows.length } })
+    return res.json({
+      range: { from, to },
+      places: rows.map((r) => ({
+        place: r.place,
+        lat: r.lat != null ? Number(r.lat) : null,
+        lng: r.lng != null ? Number(r.lng) : null,
+        hours: Math.round(r.hours * 10) / 10,
+        entries: r.entries,
+        students: r.students,
+      })),
+    })
+  } catch (error) {
+    console.error('impact places failed:', error)
+    return res.status(500).json({ error: 'Could not load the impact map.' })
+  }
+})
+
 // GET /api/school/reports/hours?from=&to=&approvedOnly=
 // Every student in scope with their logs in the range. Students with no logs
 // are included deliberately — "who has logged nothing yet" is one of the

@@ -23,6 +23,7 @@ import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import { askParentComing } from '@/lib/parentComing.js'
 import YearEndPacketCard from '@/components/YearEndPacketCard.jsx'
+import ImpactMapCard from '@/components/ImpactMapCard.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
@@ -993,6 +994,7 @@ export default function SchoolDashboard() {
         )}
         {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && <ImpactReportCard scope="school" className="mt-4" />}
         {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><YearEndPacketCard kind="school" /></div>}
+        {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><ImpactMapCard /></div>}
 
         {tab === 'setup' && setupTab === 'requirements' && user?.role === 'school' && (
           <RequirementsSettings scope="school" />
