@@ -2189,6 +2189,37 @@ export async function initSchema() {
   try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_school ON log_events(school_id, created_at DESC)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_student ON log_events(student_id, created_at DESC)`) } catch {}
 
+  // Clubs and groups inside a school (#660).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_clubs (
+        id          TEXT PRIMARY KEY,
+        school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        name        TEXT NOT NULL,
+        goal_hours  NUMERIC,
+        created_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_school_clubs_name ON school_clubs(school_id, LOWER(name))`)
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_members (
+        club_id   TEXT NOT NULL REFERENCES school_clubs(id) ON DELETE CASCADE,
+        user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        added_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (club_id, user_id)
+      )
+    `)
+    await query(`CREATE INDEX IF NOT EXISTS idx_club_members_user ON club_members(user_id)`)
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_advisers (
+        club_id   TEXT NOT NULL REFERENCES school_clubs(id) ON DELETE CASCADE,
+        user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        PRIMARY KEY (club_id, user_id)
+      )
+    `)
+  } catch (error) { console.error('clubs migration failed:', error.message) }
+
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_color TEXT`) } catch {}
