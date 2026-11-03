@@ -1,8 +1,8 @@
 import { gradeKey } from '@policy'
 
-// Students under 10 (#641), going by grade: Kindergarten to 4th grade is
-// about ages 5–9. No birthday is stored, so grade is what decides.
-export const YOUNG_GRADES = ['K', '1', '2', '3', '4']
+// Young students (#641), going by grade: Kindergarten to 5th grade, about
+// ages 5–11. No birthday is stored, so grade is what decides.
+export const YOUNG_GRADES = ['K', '1', '2', '3', '4', '5']
 
 /** Whether this account gets the kid-friendly Helper Card. */
 export function isYoungStudent(user) {

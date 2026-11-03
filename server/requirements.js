@@ -555,7 +555,7 @@ const GRADE_WORDS = {
 }
 
 // Kindergarten through 12th, plus College, for the sign-up and profile
-// pickers. K–4 (#641) gets the kid-friendly Helper Card. The matcher below
+// pickers. K–5 (#641) gets the kid-friendly Helper Card. The matcher below
 // still understands other labels, so a school's own older data keeps resolving.
 export const SCHOOL_GRADES = ['K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'College']
 
