@@ -36,6 +36,7 @@ import GoalCelebration from '@/components/GoalCelebration.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import { nextCelebration, markCelebrated } from '@/lib/celebrations.js'
 import { printCertificate } from '@/lib/export.js'
+import { askParentComing } from '@/lib/parentComing.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -472,12 +473,15 @@ export default function Dashboard() {
                       <button onClick={async () => {
                         // Minimum age (#426): confirmed by the student, as on Opportunities.
                         if (t.min_age != null && !window.confirm(tr('This task is for volunteers {n} or older. Are you {n} or older?', { n: t.min_age }))) return
+                        // A parent must come with K–5 volunteers (#649).
+                        const parentPart = askParentComing(t, user)
+                        if (parentPart === null) return
                         try {
                           const token = localStorage.getItem('voluntrack:auth_token')
                           const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                            body: JSON.stringify(t.min_age != null ? { ageConfirmed: true } : {}),
+                            body: JSON.stringify({ ...(t.min_age != null ? { ageConfirmed: true } : {}), ...parentPart }),
                           })
                           if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
                           setToastMsg(tr('Signed up — awaiting organizer approval')); setToast(true); loadPublicTasks()

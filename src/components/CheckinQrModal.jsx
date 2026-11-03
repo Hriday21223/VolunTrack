@@ -117,7 +117,7 @@ export default function CheckinQrModal({ task, onClose }) {
             <ul className="space-y-1">
               {people.map((p) => (
                 <li key={p.name} className="flex items-center justify-between text-sm">
-                  <span>{p.name}</span>
+                  <span>{p.name}{p.parentComing && <span className="block text-xs text-amber-300">Parent coming: {p.parentComing}</span>}</span>
                   <span className={`text-xs flex items-center gap-1 ${p.checkedOutAt ? 'text-emerald-400' : p.checkedInAt ? 'text-amber-300' : 'text-earth-500'}`}>
                     {p.checkedOutAt ? <><CheckCircle className="w-3.5 h-3.5" /> Done</> : p.checkedInAt ? <><LogIn className="w-3.5 h-3.5" /> Here</> : 'Not yet'}
                   </span>

@@ -25,6 +25,7 @@ import TaskQuestions from '@/components/TaskQuestions.jsx'
 import WeatherChip from '@/components/WeatherChip.jsx'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
 import { tr } from '@/lib/i18n.js'
+import { askParentComing } from '@/lib/parentComing.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { MAX_SEARCH_LENGTH, cleanSearch, taskMatchesSearch, taskShareUrl } from '@/lib/taskSearch.js'
 import { organizerPath } from '@/lib/organizerProfile.js'
@@ -237,6 +238,9 @@ export default function Opportunities() {
   const doSignUp = async (t, full, extra = {}) => {
     // Minimum age (#426): no birth date is kept, so the student confirms it.
     if (t.min_age != null && !window.confirm(tr("This task is for volunteers {n} or older. Are you {n} or older?", { n: t.min_age }))) return
+    // A parent must come with K–5 volunteers (#649).
+    const parentPart = askParentComing(t, user)
+    if (parentPart === null) return
     const token = localStorage.getItem('voluntrack:auth_token')
     const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
       method: 'POST',
@@ -244,6 +248,7 @@ export default function Opportunities() {
       body: JSON.stringify({
         ...(full ? { waitlist: true } : {}),
         ...(t.min_age != null ? { ageConfirmed: true } : {}),
+        ...parentPart,
         ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
         ...extra,
       }),

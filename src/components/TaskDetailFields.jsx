@@ -53,6 +53,14 @@ export default function TaskDetailFields({ value, onChange, idPrefix = 'task' })
           <span className="block text-xs text-earth-500">{tr("Each guest takes a spot. Guests' hours aren't recorded in VolunTrack.")}</span>
         </span>
       </label>
+      {/* A parent must come with young volunteers (#649). */}
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={Boolean(value.youngNeedParent)} onChange={(e) => onChange({ youngNeedParent: e.target.checked })} />
+        <span>
+          {tr('A parent must come with volunteers in 5th grade or younger')}
+          <span className="block text-xs text-earth-500">{tr('They’ll tell you which parent or guardian is coming when they sign up.')}</span>
+        </span>
+      </label>
     </div>
   )
 }

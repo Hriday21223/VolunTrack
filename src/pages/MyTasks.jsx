@@ -983,6 +983,7 @@ export default function MyTasks() {
                               {s.came_with && <p className="text-xs text-brand-400 truncate">came with {s.came_with}</p>}
                               <LateBadge signup={s} />
                               {s.guest_count > 0 && <p className="text-xs text-brand-400 truncate">{guestSummary(s.guest_count, s.guest_names)}</p>}
+                              {s.parent_coming_name && <p className="text-xs text-amber-400 truncate">{tr('Parent coming: {name}', { name: s.parent_coming_name })}</p>}
                               <WaiverStatus signup={s} />
                               {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
