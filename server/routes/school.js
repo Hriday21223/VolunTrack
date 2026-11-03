@@ -758,6 +758,96 @@ router.delete('/challenge/:id', limiter, requireDb, requireAuth('school', 'schoo
   }
 })
 
+// POST /api/school/import-hours (#657): past hours from another tracker
+// (x2VOL, MobileServe, a spreadsheet). Body { rows: [{ email, date, activity,
+// hours, orgName?, category?, notes? }], dryRun }. Each row is checked; with
+// dryRun nothing is written and the per-row result comes back for a preview.
+// Imported rows land approved, verified by the staff member importing them,
+// for students already linked to this school. A row matching an existing
+// entry (same student, date and activity) is skipped.
+const IMPORT_MAX_ROWS = 2000
+router.post('/import-hours', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const rows = Array.isArray(req.body?.rows) ? req.body.rows : []
+  const dryRun = req.body?.dryRun !== false
+  if (rows.length === 0) return res.status(400).json({ error: 'The file has no rows to import.' })
+  if (rows.length > IMPORT_MAX_ROWS) return res.status(400).json({ error: `Import up to ${IMPORT_MAX_ROWS} rows at a time.` })
+  try {
+    const { rows: me } = await query('SELECT u.school_id, s.name AS school_name FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1', [req.auth.sub])
+    const school = me[0]
+    if (!school) return res.status(404).json({ error: 'School not found.' })
+    const emails = [...new Set(rows.map((r) => String(r?.email || '').trim().toLowerCase()).filter(Boolean))]
+    const { rows: studs } = await query(
+      `SELECT id, LOWER(email) AS email FROM users WHERE school_id = $1 AND role = 'student' AND LOWER(email) = ANY($2::text[])`,
+      [school.school_id, emails],
+    )
+    const byEmail = new Map(studs.map((u) => [u.email, u.id]))
+    const today = new Date().toISOString().slice(0, 10)
+    const seen = new Set()
+    const results = rows.map((r, i) => {
+      const email = String(r?.email || '').trim().toLowerCase()
+      const date = String(r?.date || '').trim()
+      const activity = String(r?.activity || '').trim().slice(0, 200)
+      const hours = Number(r?.hours)
+      const out = { row: i + 1, email, date, activity, hours }
+      if (!email) return { ...out, status: 'error', error: 'No email.' }
+      const userId = byEmail.get(email)
+      if (!userId) return { ...out, status: 'error', error: 'No student with this email at your school.' }
+      if (!isValidDateString(date) || date > today) return { ...out, status: 'error', error: 'Date must be YYYY-MM-DD and not in the future.' }
+      if (!activity) return { ...out, status: 'error', error: 'No activity.' }
+      if (!Number.isFinite(hours) || hours <= 0 || hours > MAX_HOURS_PER_ENTRY) return { ...out, status: 'error', error: `Hours must be more than 0 and at most ${MAX_HOURS_PER_ENTRY}.` }
+      const key = `${userId}|${date}|${activity.toLowerCase()}`
+      if (seen.has(key)) return { ...out, status: 'duplicate', error: 'Same as an earlier row.' }
+      seen.add(key)
+      return {
+        ...out, status: 'ok', userId,
+        orgName: String(r?.orgName || '').trim().slice(0, 200) || null,
+        category: String(r?.category || '').trim().slice(0, 100) || 'Community Service',
+        notes: String(r?.notes || '').trim().slice(0, 500) || null,
+      }
+    })
+    // Already in VolunTrack?
+    const ok = results.filter((r) => r.status === 'ok')
+    if (ok.length) {
+      const { rows: existing } = await query(
+        `SELECT user_id || '|' || to_char(date, 'YYYY-MM-DD') || '|' || LOWER(activity) AS k FROM logs WHERE user_id = ANY($1::text[])`,
+        [[...new Set(ok.map((r) => r.userId))]],
+      )
+      const have = new Set(existing.map((e) => e.k))
+      for (const r of ok) if (have.has(`${r.userId}|${r.date}|${r.activity.toLowerCase()}`)) { r.status = 'duplicate'; r.error = 'Already in VolunTrack.' }
+    }
+    const toAdd = results.filter((r) => r.status === 'ok')
+    let added = 0
+    if (!dryRun) {
+      const note = `Imported by ${school.school_name}`
+      for (const r of toAdd) {
+        const id = uid('log')
+        const { rowCount } = await query(
+          `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, org_name, verified_by, verification_status)
+           SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved'
+            WHERE NOT EXISTS (SELECT 1 FROM logs WHERE user_id = $2 AND date = $3 AND LOWER(activity) = LOWER($4))`,
+          [id, r.userId, r.date, r.activity, r.category, r.hours, r.notes ? `${r.notes} (${note})` : note, r.orgName, req.auth.sub],
+        )
+        if (rowCount) {
+          added += 1
+          emitHours('hours.created', id)
+          recordLogEvent({ logId: id, event: 'added_by_school', byKind: 'school', byUserId: req.auth.sub, note: 'Imported from a file' })
+        }
+      }
+      recordAudit(req, { action: AUDIT.HOURS_ADDED_FOR_GROUP, schoolId: school.school_id, objectType: 'logs', meta: { imported: added, rows: rows.length } })
+    }
+    const count = (st) => results.filter((r) => r.status === st).length
+    return res.json({
+      dryRun,
+      added,
+      counts: { ok: toAdd.length, duplicate: count('duplicate'), error: count('error') },
+      problems: results.filter((r) => r.status !== 'ok').slice(0, 200).map(({ row, email, status, error }) => ({ row, email, status, error })),
+    })
+  } catch (error) {
+    console.error('hours import failed:', error)
+    return res.status(500).json({ error: 'Could not import the hours.' })
+  }
+})
+
 // POST /api/school/group-hours (#539): after a club meeting or event, the
 // adviser adds the same hours for every student who was there, already
 // approved — the adviser is the verifying authority, as a task organizer is.
