@@ -89,15 +89,15 @@ icon label stays *VolunTrack*:
 > • We never sell your data
 > • In English and Spanish
 
-**Release notes / What's new** (Play 500 max) — 0.11.0:
+**Release notes / What's new** (Play 500 max) — 0.12.0:
 
-> New in 0.11.0:
-> • A celebration when you reach your hours goal
-> • Tag the skills you used, and see them on Reports
-> • Rate events you volunteered at
-> • Notifications on your phone (turn them on in Settings)
-> • More of the app in Spanish
-> • Schools: impact reports for any dates, partner lists, class imports
+> New in 0.12.0:
+> • Log hours with no signal; they send when you're back online
+> • A check before saving hours you already logged
+> • A Helper Card with stars for kids in K–5th grade
+> • Parents can add an emergency phone for event days
+> • The app in Vietnamese and Chinese
+> • Schools: approval history and an end-of-year packet
 
 ## Graphics
 
@@ -133,6 +133,7 @@ cost of the app running letterboxed on iPads.
 | Personal info → Email address | Yes | No | Required for an account | App functionality, Account management |
 | Personal info → User IDs (account ID; the student ID number, if entered) | Yes | No | Required for an account | App functionality, Account management |
 | Personal info → Other info (school grade, which the student or their school sets, and which a school's class roster can fill in; date of birth at sign-up, *processed ephemerally*: used for the age rules, never stored) | Yes | No | Required for an account (date of birth); grade optional | App functionality |
+| Personal info → Phone number (an emergency phone a linked parent adds for their child's events; encrypted; shown only to that event's organizer around the day of the event, never exported) | Yes | No | Optional | App functionality |
 | Location → Approximate location | Yes | No | Optional | App functionality |
 | Location → Precise location | Yes | No | Optional | App functionality |
 | Photos and videos → Photos (proof of service; an organizer's task cover photo; a photo of a paper hours log — read on the device and not collected; only if the optional AI reader is switched on is it sent to our AI provider, processed ephemerally and not stored) | Yes | No | Optional | App functionality |
