@@ -19,7 +19,7 @@ import { query } from './db.js'
 import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
 import { escapeHtml } from './html.js'
 import { ensureDigestUnsubToken } from './digest.js'
-import { emailLang, et } from './emailStrings.js'
+import { emailLang, et, DATE_LOCALES } from './emailStrings.js'
 import { policyForUser } from './policy.js'
 import { goalHoursFor } from './requirements.js'
 
@@ -49,14 +49,14 @@ function monthBounds(month) {
 
 function monthName(month, lang) {
   const { y, m } = monthBounds(month)
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'long', timeZone: 'UTC' })
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(DATE_LOCALES[lang] || 'en-US', { month: 'long', timeZone: 'UTC' })
 }
 
 function deadlineLabel(iso, lang) {
   if (!iso) return ''
   const d = new Date(`${String(iso).slice(0, 10)}T00:00:00Z`)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  return d.toLocaleDateString(DATE_LOCALES[lang] || 'en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 }
 
 /** Students who logged counted hours in `month`, not yet sent for it. */

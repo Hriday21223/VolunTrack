@@ -85,7 +85,7 @@ const FAQ_ITEMS = [
   { q: tr('Can I undo a deleted log entry?'), a: tr('No — once a log entry is deleted, it cannot be recovered. Make sure you really want to delete it before confirming.') },
   { q: tr('Can I make the text bigger or easier to see?'), a: tr('Yes. In Settings → Accessibility, pick a Text size (Default, Large or Extra large) and turn on High contrast for brighter text, stronger borders and focus outlines, and underlined links. Both change straight away and are saved on this device only, so set them on each phone or computer you use. You can also change them before signing in, from the bottom of the sign-in screen.') },
   { q: tr("What is Year in review?"), a: tr("A summary of one year of your volunteering: total hours, sessions, your top cause, how many different places you helped, your busiest month, your longest run of weeks in a row, the badges you earned that year, and your first and most recent activity. Open it from the card on your Dashboard (it moves to the top in December and January) and pick a year at the top. Rejected hours are left out; pending ones count, and it tells you how many hours are approved. It's worked out on your device from your own logs. Share sends just your totals, never names, places or notes, and on the website you can also download it as an image.") },
-  { q: tr('Can I get VolunTrack emails in Spanish?'), a: tr('Yes. Pick Español from the language menu while you’re signed in and we save it with your account, so the weekly summary for parents and the “We miss you” email arrive in Spanish. Task names, activities and anything else people typed stay as they were written. Other emails are still in English for now.') },
+  { q: tr('Can I get VolunTrack emails in my language?'), a: tr('Yes. Pick Español, Tiếng Việt or 中文 from the language menu while you’re signed in and we save it with your account, so the weekly summary for parents, the “We miss you” email and other emails arrive in that language. Task names, activities and anything else people typed stay as they were written.') },
   { q: tr('How do I change my password?'), a: tr('Go to Settings → Change password. Enter your current password and a new one (at least 8 characters). Click \'Update password.\'') },
   { q: tr('What categories can I use when logging hours?'), a: tr('Community Service, Environmental, Education & Tutoring, Health & Wellness, Animal Welfare, Arts & Culture, Sports & Coaching, Religious & Faith, Political & Advocacy, Disaster Relief, and Other. Pick the one that best fits your activity.') },
   { q: tr('Who can see a task\'s meeting point and day-of contact?'), a: tr('Only the organizer and volunteers whose sign-up was approved. When you post or edit a task on My Tasks, you can add a meeting point (like "side door by the parking lot") and a day-of contact (a name and phone number). Approved volunteers see them on Attendance, in the reminder email the day before and in their calendar feed. Nobody else browsing Opportunities sees them. Post again copies them to the new task.') },
@@ -308,7 +308,7 @@ function StudentHandbook() {
       </Section>
 
       <Section title={tr('Calendar Feed, Language and Display')}>
-        <p>{tr('In Settings you can turn on a calendar feed so your tasks show up in Apple or Google Calendar, switch the app to Spanish (emails follow your choice), and make text bigger or turn on high contrast. Text size and contrast are saved on that device only.')}</p>
+        <p>{tr('In Settings you can turn on a calendar feed so your tasks show up in Apple or Google Calendar, switch the app to Spanish, Vietnamese or Chinese (emails follow your choice), and make text bigger or turn on high contrast. Text size and contrast are saved on that device only.')}</p>
       </Section>
 
       <Section title={tr('Profile & Settings')}>
@@ -348,7 +348,7 @@ function ParentHandbook() {
       </Section>
 
       <Section title={tr('Weekly Summary and Notifications')}>
-        <p>{tr('Each week we email you a short summary of your children\'s volunteering. It comes in the language you use in the app (English or Spanish), and you can stop it from the link at the bottom of the email. The bell at the top of the app lists updates for you, such as a task waiting for your OK.')}</p>
+        <p>{tr('Each week we email you a short summary of your children\'s volunteering. It comes in the language you use in the app (English, Spanish, Vietnamese or Chinese), and you can stop it from the link at the bottom of the email. The bell at the top of the app lists updates for you, such as a task waiting for your OK.')}</p>
       </Section>
 
       <Section title={tr('What you can\'t do')}>

@@ -2,8 +2,11 @@
 // "vie, 30 oct · 10:00" (24-hour, as Spanish speakers write it). The year
 // shows only when it isn't this one. A time that isn't HH:MM (free text) is shown as typed;
 // ./ics.js reads times the same way.
+// Date locale per language; everyone but English uses a 24-hour clock.
+const LOCALES = { es: 'es-ES', vi: 'vi-VN', zh: 'zh-CN' }
+
 export function friendlyWhen(date, time, lang = 'en') {
-  const es = lang === 'es'
+  const es = Boolean(LOCALES[lang])
   // A raw DATE column comes back from pg as a Date at local midnight.
   if (date instanceof Date && !Number.isNaN(date.getTime())) {
     const pad = (n) => String(n).padStart(2, '0')
@@ -13,7 +16,7 @@ export function friendlyWhen(date, time, lang = 'en') {
   let day = date || ''
   if (m) {
     const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
-    day = d.toLocaleDateString(es ? 'es-ES' : 'en-US', {
+    day = d.toLocaleDateString(LOCALES[lang] || 'en-US', {
       timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric',
       ...(+m[1] !== new Date().getFullYear() ? { year: 'numeric' } : {}),
     })

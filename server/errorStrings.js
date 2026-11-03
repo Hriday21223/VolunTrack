@@ -9,6 +9,7 @@
 // stays in English, so a new route never shows a blank or wrong message.
 import { requestLang } from './emailStrings.js'
 import { ERRORS_ES } from './errorStringsEs.js'
+import { ERRORS_VI, ERRORS_ZH } from './errorStringsViZh.js'
 
 const PATTERNS_ES = [
   [/^Too many .*(code|attempt)/i, 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.'],
@@ -22,11 +23,21 @@ const PATTERNS_ES = [
   [/ not found\.?$/i, 'No se encontró.'],
 ]
 
-/** One message in `lang` ('en' | 'es'). */
+// The same fallbacks in Vietnamese and Chinese (#637), in PATTERNS_ES order.
+const FALLBACKS = {
+  vi: ['Thử quá nhiều lần. Hãy chờ vài phút rồi thử lại.', 'Quá nhiều yêu cầu. Vui lòng thử lại sau.', 'Không tải được. Hãy thử lại.', 'Không lưu được. Hãy thử lại.', 'Không gửi được. Hãy thử lại.', 'Không gỡ được. Hãy thử lại.', 'Không hoàn tất được. Hãy thử lại.', 'Không hoàn tất được. Hãy thử lại.', 'Không tìm thấy.'],
+  zh: ['尝试次数过多，请等几分钟再试。', '请求过多，请稍后再试。', '加载失败，请重试。', '保存失败，请重试。', '发送失败，请重试。', '移除失败，请重试。', '操作未完成，请重试。', '操作未完成，请重试。', '未找到。'],
+}
+const EXACT = { es: ERRORS_ES, vi: ERRORS_VI, zh: ERRORS_ZH }
+
+/** One message in `lang` ('en' | 'es' | 'vi' | 'zh'). */
 export function translateError(lang, message) {
-  if (lang !== 'es' || typeof message !== 'string' || !message) return message
-  if (Object.hasOwn(ERRORS_ES, message)) return ERRORS_ES[message]
-  for (const [re, es] of PATTERNS_ES) if (re.test(message)) return es
+  const exact = EXACT[lang]
+  if (!exact || typeof message !== 'string' || !message) return message
+  if (Object.hasOwn(exact, message)) return exact[message]
+  for (let i = 0; i < PATTERNS_ES.length; i++) {
+    if (PATTERNS_ES[i][0].test(message)) return lang === 'es' ? PATTERNS_ES[i][1] : FALLBACKS[lang][i]
+  }
   return message
 }
 
