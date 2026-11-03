@@ -21,6 +21,7 @@ import { sendWelcomeEmail, sendParentConsentEmail, sendSignupCodeEmail, sendAcco
 import { hasPasskeys } from '../passkeys.js'
 import { checkSignupAge } from '../ageRules.js'
 import { APP_LANGUAGES, requestAppLang, requestLang } from '../emailStrings.js'
+import { useSocialTicket, linkSocialLogin, randomPassword } from './authSocial.js'
 import { upcomingEventsFor, notifyEventsCancelledByDeletion } from './school.js'
 
 const router = express.Router()
@@ -295,6 +296,11 @@ async function useSignupCode(email, code) {
 }
 
 router.post('/register', authLimiter, requireDb, async (req, res) => {
+  // Coming from Google or Apple (#661): the provider already verified the
+  // email, so the ticket stands in for the emailed code, and the account gets
+  // a random password (they sign in with the provider, or reset it later).
+  const viaSocial = typeof req.body?.socialTicket === 'string' && req.body.socialTicket.length > 0
+  if (viaSocial) req.body = { ...req.body, password: randomPassword() }
   const signup = readSignup(req.body)
   if (signup.error) return res.status(signup.status || 400).json({ error: signup.error })
   const { name, email, password, grade, studentIdNumber, role, under13, parentEmail } = signup
@@ -305,8 +311,14 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: 'An account with that email already exists.' })
     }
-    const codeProblem = await useSignupCode(email, req.body.emailCode)
-    if (codeProblem) return res.status(codeProblem.status).json({ error: codeProblem.error })
+    let social = null
+    if (viaSocial) {
+      social = await useSocialTicket(req.body.socialTicket, email)
+      if (!social) return res.status(400).json({ error: 'That sign-up link expired. Try Google or Apple again.' })
+    } else {
+      const codeProblem = await useSignupCode(email, req.body.emailCode)
+      if (codeProblem) return res.status(codeProblem.status).json({ error: codeProblem.error })
+    }
     const hash = await hashPassword(password)
     const id = uid('usr')
     const { rows } = await query(
@@ -316,6 +328,7 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
       // The app's language at sign-up (#604), so the first emails already use it.
       [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req), requestAppLang(req) !== 'en' ? requestAppLang(req) : null],
     )
+    if (social) await linkSocialLogin(rows[0].id, social)
     const user = publicUser(rows[0])
     // Signed up through a friend's invite link (#493): remember who, so the
     // friend's count goes up. A bad or stale code is ignored — it must never

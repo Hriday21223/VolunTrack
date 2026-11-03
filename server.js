@@ -13,6 +13,7 @@ import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from './server/validate.js'
 import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import authSsoRoutes from './server/routes/authSso.js'
+import authSocialRoutes from './server/routes/authSocial.js'
 import passkeyRoutes from './server/routes/passkeys.js'
 import parentConsentRoutes from './server/routes/parentConsent.js'
 import schoolRoutes from './server/routes/school.js'
@@ -162,6 +163,7 @@ app.use(authenticate)
 // Mounted ahead of /api/auth so the SSO sub-routes are matched by their own
 // router rather than falling through the password-auth one.
 app.use('/api/auth/sso', authSsoRoutes)
+app.use('/api/auth/social', authSocialRoutes)
 app.use('/api/auth/passkey', passkeyRoutes)
 app.use('/api/auth/parent-consent', parentConsentRoutes)
 app.use('/api/auth', authRoutes)
