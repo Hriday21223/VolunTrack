@@ -24,6 +24,7 @@ import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import ClubsPanel from '@/components/ClubsPanel.jsx'
 import { askParentComing } from '@/lib/parentComing.js'
 import YearEndPacketCard from '@/components/YearEndPacketCard.jsx'
+import ImpactMapCard from '@/components/ImpactMapCard.jsx'
 import StudentProgressPanel from '@/components/StudentProgressPanel.jsx'
 import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
@@ -42,6 +43,7 @@ import RosterSyncCard from '@/components/RosterSyncCard.jsx'
 import HoursReviewPanel from '@/components/HoursReviewPanel.jsx'
 import ApprovalHistoryPanel from '@/components/ApprovalHistoryPanel.jsx'
 import GroupHoursCard from '@/components/GroupHoursCard.jsx'
+import ImportHoursCard from '@/components/ImportHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
 
@@ -814,6 +816,7 @@ export default function SchoolDashboard() {
             )}
 
             <GroupHoursCard students={students} onDone={loadData} />
+            <ImportHoursCard onDone={loadData} />
 
             <ChallengeCard manage />
             <SchoolVsSchoolCard />
@@ -997,6 +1000,7 @@ export default function SchoolDashboard() {
         )}
         {tab === 'pdfs' && reportTab === 'hours' && isSchoolAdmin && <ImpactReportCard scope="school" className="mt-4" />}
         {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><YearEndPacketCard kind="school" /></div>}
+        {tab === 'pdfs' && reportTab === 'hours' && <div className="mt-4"><ImpactMapCard /></div>}
 
         {tab === 'setup' && setupTab === 'requirements' && user?.role === 'school' && (
           <RequirementsSettings scope="school" />
