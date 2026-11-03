@@ -119,6 +119,7 @@ export default function CheckinQrModal({ task, onClose }) {
                 <li key={p.name} className="flex items-center justify-between gap-2 text-sm">
                   <span className="min-w-0">
                     {p.name}
+                    {p.parentComing && <span className="block text-xs text-amber-300">Parent coming: {p.parentComing}</span>}
                     {p.emergencyContact && (
                       <a href={`tel:${p.emergencyContact.phone.replace(/[^\d+]/g, '')}`} className="block text-xs text-sky-300 hover:underline">
                         <Phone className="w-3 h-3 inline mr-1" aria-hidden="true" />

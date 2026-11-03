@@ -23,7 +23,7 @@ import { ensureDigestUnsubToken } from '../digest.js'
 import { emailLang, et, emailDate, requestLang } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
-import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed } from '../requirements.js'
+import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
@@ -2492,6 +2492,11 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     return res.status(400).json({ error: 'Allow guests must be true or false.' })
   }
   const allowGuests = req.body.allowGuests === true
+  // A parent must come with K–5 volunteers (#649): off unless ticked.
+  if (req.body.youngNeedParent != null && typeof req.body.youngNeedParent !== 'boolean') {
+    return res.status(400).json({ error: 'Parent must come must be true or false.' })
+  }
+  const youngNeedParent = req.body.youngNeedParent === true
   // A waiver volunteers agree to (#595), in the organizer's own words.
   const waiver = readWaiverText(req.body.waiverText)
   if (!waiver.ok) return res.status(400).json({ error: waiver.error })
@@ -2575,10 +2580,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent],
         )
         // Each week of a series gets its own copy of the shifts.
         if (shiftsIn.shifts) {
@@ -2651,7 +2656,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
-               t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
+               t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                ${userId ? `COALESCE(t.organization_id IS NOT NULL AND t.organization_id = (SELECT s.organization_id FROM users mu JOIN schools s ON s.id = mu.school_id WHERE mu.id = $1), false)` : 'false'} AS for_my_schools,
                ${userId ? PARTNER_TASK_SQL : 'false'} AS by_partner,
@@ -2996,7 +3001,7 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
+              t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -3418,7 +3423,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
   try {
     await client.query('BEGIN')
     const { rows } = await client.query(
-      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age, t.allow_guests, t.waiver_text, t.title,
+      `SELECT t.status, t.slots_total, t.created_by, t.date < CURRENT_DATE - 1 AS past, t.min_age, t.allow_guests, t.waiver_text, t.title, t.young_need_parent,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$2')} AS too_young,
               (SELECT posting_suspended_at IS NOT NULL FROM users WHERE id = t.created_by) AS host_suspended,
               EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = $2 AND b.blocked_id = t.created_by) AS host_blocked
@@ -3468,6 +3473,19 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       }
     }
 
+    // A parent must come (#649): a K–5 student names who's coming with them.
+    let parentComing = null
+    if (rows[0].young_need_parent) {
+      const { rows: kid } = await client.query('SELECT role, grade FROM users WHERE id = $1', [req.auth.sub])
+      if (kid[0]?.role === 'student' && isYoungGrade(kid[0].grade)) {
+        parentComing = String(req.body?.parentComing || '').replace(/\s+/g, ' ').trim().slice(0, 80)
+        if (!parentComing) {
+          await client.query('ROLLBACK')
+          return res.status(400).json({ error: 'A parent or guardian must come with you to this event. Say who’s coming.', parentComingRequired: true })
+        }
+      }
+    }
+
     if (guests.count > 0 && !rows[0].allow_guests) {
       await client.query('ROLLBACK')
       return res.status(400).json({ error: "This task doesn't take guests. Sign up on your own, or ask the organizer." })
@@ -3487,6 +3505,7 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
     }
     let waiverToken = null
     const agreeTo = async (signupId) => {
+      if (parentComing) await client.query('UPDATE public_task_signups SET parent_coming_name = $2 WHERE id = $1', [signupId, parentComing])
       if (waiverAgreement) waiverToken = await saveWaiverAgreement(client, signupId, rows[0].waiver_text, waiverAgreement, { under13: who[0]?.under_13 === true })
     }
     const askParent = () => {
@@ -4813,7 +4832,7 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText', 'youngNeedParent']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
   const detailReaders = {
@@ -4821,6 +4840,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     meetingPoint: taskMeetingPoint, dayOfContact: taskDayOfContact,
     // Turning guests off later keeps the guests already signed up.
     allowGuests: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Allow guests must be true or false.' }),
+    youngNeedParent: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Parent must come must be true or false.' }),
     // Changing it keeps earlier agreements, shown as "an earlier version" (#595).
     waiverText: readWaiverText,
   }
@@ -4856,7 +4876,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
         wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', isOutdoor: 'is_outdoor',
-        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text',
+        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text', youngNeedParent: 'young_need_parent',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -5479,7 +5499,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
+              t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
               t.waiver_text,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               ${SHIFTS_JSON_SQL('t.id')} AS shifts,
@@ -5492,6 +5512,8 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'late_at', CASE WHEN t.date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 THEN s.late_at END,
                 -- Group sign-ups (#439): guests coming with them.
                 'guest_count', s.guest_count, 'guest_names', COALESCE(s.guest_names, '{}'),
+                -- The parent coming with a K–5 volunteer (#649).
+                'parent_coming_name', s.parent_coming_name,
                 -- Waiver (#595): who agreed, when, and whether a parent still has to.
                 'waiver_status', ${WAIVER_STATUS_SQL('s', 't')}, 'waiver_name', s.waiver_name, 'waiver_at', s.waiver_at,
                 'waiver_parent_name', s.waiver_parent_name, 'waiver_parent_at', s.waiver_parent_at,
@@ -6029,7 +6051,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
     }
     const windowIndex = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
     const { rows: people } = await query(
-      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
       [task.id],
     )
@@ -6044,7 +6066,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
       code: checkinCode(secret, task.id, windowIndex),
       // Seconds until the code changes, so the screen refreshes on time.
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
-      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null })),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null })),
     })
   } catch (error) {
     console.error('checkin code failed:', error)

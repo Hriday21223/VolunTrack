@@ -1,4 +1,4 @@
-import { Globe, Accessibility, UserCheck } from 'lucide-react'
+import { Globe, Accessibility, UserCheck, Users } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
 
 // The optional details an organizer sets on a task (#426): minimum age,
@@ -9,7 +9,7 @@ export default function TaskDetailBadges({ task, className = '' }) {
   const minAge = task.min_age != null ? Number(task.min_age) : null
   const wheelchair = task.wheelchair_accessible
   const note = String(task.accessibility_note || '').trim()
-  if (!task.is_online && minAge == null && wheelchair !== 'yes' && wheelchair !== 'no' && !note) return null
+  if (!task.is_online && minAge == null && !task.young_need_parent && wheelchair !== 'yes' && wheelchair !== 'no' && !note) return null
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
       {task.is_online && (
@@ -18,6 +18,11 @@ export default function TaskDetailBadges({ task, className = '' }) {
       {minAge != null && (
         <span className="chip-amber" title={tr('For volunteers {n} or older', { n: minAge })}>
           <UserCheck className="w-3 h-3" aria-hidden="true" />{tr('{n}+', { n: minAge })}
+        </span>
+      )}
+      {task.young_need_parent && (
+        <span className="chip-amber" title={tr('A parent must come with volunteers in 5th grade or younger')}>
+          <Users className="w-3 h-3" aria-hidden="true" />{tr('K–5th grade: parent comes too')}
         </span>
       )}
       {wheelchair === 'yes' && (

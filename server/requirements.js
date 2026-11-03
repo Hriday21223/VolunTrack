@@ -621,6 +621,13 @@ export function gradeOptionLabel(input) {
   return name ? `${label} — ${name}` : label
 }
 
+// Kindergarten to 5th grade (#649): an organizer can ask that a parent comes
+// with these volunteers.
+export const YOUNG_GRADES = ['K', '1', '2', '3', '4', '5']
+export function isYoungGrade(grade) {
+  return YOUNG_GRADES.includes(gradeKey(grade))
+}
+
 /** The hour target that applies to one student, grade override first. */
 export function goalHoursFor(policy, grade) {
   const goals = policy?.goals || DEFAULT_GOALS
