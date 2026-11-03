@@ -16,6 +16,7 @@ import ReferencesCard from '@/components/ReferencesCard.jsx'
 import SentReportsCard from '@/components/SentReportsCard.jsx'
 import { fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
+import { downloadResume } from '@/lib/resume.js'
 import { categoryColor } from '@/lib/categories.js'
 import { deriveAchievementState, countedLogs } from '@/lib/achievements.js'
 import { downloadSignedTranscript, hasAccountSession, importTranscript, readTranscriptFile } from '@/lib/transcript.js'
@@ -31,7 +32,7 @@ export default function Reports() {
   // The school's (or its org's) chosen certificate signer, if it set one.
   const requirements = useMyRequirements()
   const certificate = requirements.sources?.certificates === 'default' ? null : requirements.policy?.certificates
-  const { logs, goals } = useData()
+  const { logs, goals, earned } = useData()
   const [submitting, setSubmitting] = useState(false)
   const [sentCount, setSentCount] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
@@ -140,6 +141,9 @@ export default function Reports() {
             <div className="pt-2 space-y-2">
               <button className="btn-primary w-full" onClick={() => exportLogsPDF({ user, logs: filtered })}>
                 <FileDown className="w-4 h-4" />{' '}{tr('Download PDF')}
+              </button>
+              <button className="btn-secondary w-full" onClick={async () => { if (!(await downloadResume({ user, logs, earned }))) window.alert(tr('Log some hours first, then make your résumé.')) }}>
+                <FileText className="w-4 h-4" />{' '}{tr('Download résumé')}
               </button>
               <button className="btn-secondary w-full" onClick={onCSV}>
                 <Download className="w-4 h-4" />{' '}{tr('Export CSV')}
