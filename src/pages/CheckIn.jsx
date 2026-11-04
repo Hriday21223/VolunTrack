@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Clock, LogIn, AlertTriangle } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -24,6 +24,30 @@ export default function CheckIn() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const sent = useRef(null)
+  // The volunteer's check-in PIN (#668), asked for after the scan.
+  const [pinNeeded, setPinNeeded] = useState(false)
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const send = useCallback(async (pinValue) => {
+    const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(taskId)}/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+      body: JSON.stringify(pinValue ? { screenCode: pinValue } : { code }),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (body.screenCodeRequired) { setPinNeeded(true); if (pinValue) setError(body.error || ''); return }
+    setPinNeeded(false)
+    if (!res.ok) throw new Error(body.error || 'Could not check you in.')
+    setError('')
+    setResult(body)
+  }, [code, taskId])
+
+  const submitPin = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    try { await send(pin) } catch (err) { setError(err.message) } finally { setBusy(false); setPin('') }
+  }
 
   useEffect(() => {
     // Once per visit: React's development double-run must not scan twice, but
@@ -33,21 +57,9 @@ export default function CheckIn() {
     setResult(null)
     setError('')
     if (!code) { setError(tr("This link has no check-in code. Scan the QR code on the organizer's screen.")); return }
-    ;(async () => {
-      try {
-        const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(taskId)}/checkin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
-          body: JSON.stringify({ code }),
-        })
-        const body = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(body.error || 'Could not check you in.')
-        setResult(body)
-      } catch (e) {
-        setError(e.message)
-      }
-    })()
-  }, [code, taskId, visit])
+    setPinNeeded(false)
+    send('').catch((e) => setError(e.message))
+  }, [code, taskId, visit, send])
 
   // The new entry is on the server; bring it to this device.
   useEffect(() => {
@@ -62,7 +74,11 @@ export default function CheckIn() {
   let icon = <Clock className="w-10 h-10 text-earth-400" />
   let heading = tr('Checking you in…')
   let lines = []
-  if (error) {
+  if (pinNeeded) {
+    icon = <LogIn className="w-10 h-10 text-brand-400" />
+    heading = tr('Look at the organizer’s screen')
+    lines = [tr('A 4-digit code is showing under your name. Type it here within 2 minutes.')]
+  } else if (error) {
     icon = <AlertTriangle className="w-10 h-10 text-amber-400" />
     heading = tr("Couldn't check you in")
     lines = [error]
@@ -75,7 +91,8 @@ export default function CheckIn() {
     heading = result.state === 'done' ? tr('Already checked out') : tr('Checked out — thank you!')
     lines = [
       `${result.title} · ${time(result.checkedInAt)}–${time(result.checkedOutAt)}`,
-      result.hours != null ? tr(result.logged === false
+      result.leftEarly ? tr('You stayed {stayed} of the {minimum} minutes this event asks for, so the organizer will review your hours.', { stayed: result.leftEarly.stayed, minimum: result.leftEarly.minimum }) : '',
+      !result.leftEarly && result.hours != null ? tr(result.logged === false
         ? (result.hours === 1 ? '1 hour was already logged for today.' : '{n} hours were already logged for today.')
         : (result.hours === 1 ? '1 hour logged and approved.' : '{n} hours logged and approved.'), { n: result.hours }) : '',
     ].filter(Boolean)
@@ -88,7 +105,19 @@ export default function CheckIn() {
           <div className="grid place-items-center">{icon}</div>
           <h1 className="text-xl font-bold mt-3">{heading}</h1>
           {lines.map((l) => <p key={l} className="text-sm text-earth-400 mt-2">{l}</p>)}
-          {(result?.state === 'checked_in' || error) && (
+          {pinNeeded && (
+            <form onSubmit={submitPin} className="mt-4 flex flex-col items-center gap-3">
+              <input
+                className="input text-center text-2xl tracking-[0.4em] w-48"
+                inputMode="numeric" autoComplete="one-time-code" maxLength={4} pattern="\d{4}" required autoFocus
+                value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                aria-label={tr('Code from the organizer’s screen')}
+              />
+              {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+              <button type="submit" className="btn-primary" disabled={busy || pin.length !== 4}>{busy ? tr('Checking…') : tr('Check in')}</button>
+            </form>
+          )}
+          {!pinNeeded && (result?.state === 'checked_in' || error) && (
             <div className="mt-5 flex justify-center">
               <ScanCheckinButton label={result?.state === 'checked_in' ? tr('Scan to check out') : tr('Scan again')} />
             </div>

@@ -708,6 +708,19 @@ export async function initSchema() {
   // no map, never dropped by the distance radius), and wheelchair access
   // ('yes' | 'no' | 'unknown') with a short note. Validated in routes/school.js.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_age SMALLINT`) } catch {}
+  // Event kiosk (#668): a one-time 6-digit PIN per approved sign-up (hashed),
+  // wrong tries, and how the volunteer checked in.
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_fails SMALLINT NOT NULL DEFAULT 0`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS checkin_method TEXT`) } catch {}
+  // The PIN itself, shown only to its volunteer in the app (encrypted when APP_ENCRYPTION_KEY is set).
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS kiosk_pin_enc TEXT`) } catch {}
+  // Phone check-in (#668): a 4-digit code shown on the organizer's screen under
+  // the volunteer's name for 2 minutes, typed back on the phone.
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS screen_code TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS screen_code_expires_at TIMESTAMPTZ`) } catch {}
+  // Minimum stay (#668): leaving earlier sends the hours to the organizer to decide.
+  try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_stay_minutes SMALLINT`) } catch {}
   // A parent must come with volunteers in 5th grade or younger (#649), and
   // who that parent is, from the sign-up.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS young_need_parent BOOLEAN NOT NULL DEFAULT false`) } catch {}

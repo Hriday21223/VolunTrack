@@ -4,7 +4,7 @@ import { withPartnerPlaces, listPartners, PARTNER_TASK_SQL } from '../partners.j
 import rateLimit from 'express-rate-limit'
 import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
-import { createHash, createHmac, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, timingSafeEqual, randomInt } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { impactFor, PERIODS, rangeFromQuery } from '../impact.js'
 import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge.js'
@@ -40,6 +40,13 @@ import { readWaiverText, readWaiverAgreement, saveWaiverAgreement, hashWaiverTok
 import { readShifts, saveShifts, chooseShift, capacityFor, taskShifts, SHIFTS_JSON_SQL, shiftText } from '../taskShifts.js'
 import { emergencyContactsFor } from '../emergencyContacts.js'
 import { recordLogEvent } from '../logHistory.js'
+
+// Minimum stay for hours to be approved automatically (#668): null, or 15–480 minutes.
+function taskMinStay(v) {
+  if (v === null || v === undefined || v === '') return { ok: true, value: null }
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 15 && n <= 480 ? { ok: true, value: n } : { ok: false, error: 'Minimum stay must be between 15 minutes and 8 hours.' }
+}
 
 const router = express.Router()
 
@@ -2602,6 +2609,8 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     return res.status(400).json({ error: 'Parent must come must be true or false.' })
   }
   const youngNeedParent = req.body.youngNeedParent === true
+  const minStay = taskMinStay(req.body.minStayMinutes)
+  if (!minStay.ok) return res.status(400).json({ error: minStay.error })
   // A waiver volunteers agree to (#595), in the organizer's own words.
   const waiver = readWaiverText(req.body.waiverText)
   if (!waiver.ok) return res.status(400).json({ error: waiver.error })
@@ -2685,10 +2694,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value],
         )
         // Each week of a series gets its own copy of the shifts.
         if (shiftsIn.shifts) {
@@ -2761,7 +2770,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
       `SELECT * FROM (
         SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
                t.creator_name, t.latitude, t.longitude, ${distExpr}, t.created_at,
-               t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
+               t.min_age, t.young_need_parent, t.min_stay_minutes, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                ${userId ? `COALESCE(t.organization_id IS NOT NULL AND t.organization_id = (SELECT s.organization_id FROM users mu JOIN schools s ON s.id = mu.school_id WHERE mu.id = $1), false)` : 'false'} AS for_my_schools,
                ${userId ? PARTNER_TASK_SQL : 'false'} AS by_partner,
@@ -3106,7 +3115,7 @@ router.get('/public-tasks/saved', limiter, requireDb, requireAuth('student'), as
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category,
               t.creator_name, t.latitude, t.longitude, NULL AS distance, t.created_at,
-              t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
+              t.min_age, t.young_need_parent, t.min_stay_minutes, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
               ${PROVABLY_TOO_YOUNG_SQL('t', '$1')} AS my_too_young,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
@@ -4882,12 +4891,57 @@ function emailHi(lang, name) {
   return name ? et(lang, 'Hi {name},', { name }) : et(lang, 'Hi there,')
 }
 
+// Event kiosk PINs (#668). Hashed with the sign-up id, so a PIN is only good
+// for that one sign-up; a new approval makes a new PIN and clears wrong tries.
+const kioskPinHash = (signupId, pin) => createHash('sha256').update(`voluntrack-kiosk:${signupId}:${pin}`).digest('hex')
+const KIOSK_MAX_FAILS = 5
+
+async function issueKioskPin(taskId, userId) {
+  const pin = String(randomInt(0, 1000000)).padStart(6, '0')
+  const { rows } = await query(
+    `UPDATE public_task_signups SET kiosk_pin_hash = NULL, kiosk_pin_fails = 0
+      WHERE task_id = $1 AND user_id = $2 AND status = 'approved' RETURNING id`,
+    [taskId, userId],
+  )
+  if (!rows[0]) return null
+  await query('UPDATE public_task_signups SET kiosk_pin_hash = $2 WHERE id = $1', [rows[0].id, kioskPinHash(rows[0].id, pin)])
+  return pin
+}
+
+
+// Under-13s: the PIN also goes to linked parents, who usually bring them.
+async function emailKioskPinToParents(userId, task, pin) {
+  try {
+    if (!task.under_13) return
+    const { rows } = await query(
+      `SELECT p.email, p.name, p.language FROM parent_child_links l JOIN users p ON p.id = l.parent_id WHERE l.child_id = $1`,
+      [userId],
+    )
+    for (const p of rows) {
+      if (!p.email || /@test\.com$/i.test(p.email)) continue
+      const lang = emailLang(p.language)
+      await sendEmail({
+        to: p.email,
+        subject: et(lang, 'Check-in PIN for {name}: {title}', { name: String(task.name || '').split(' ')[0], title: task.title }),
+        html: taskEmailHtml({
+          lang,
+          heading: et(lang, 'Check-in PIN for {name}', { name: String(task.name || '').split(' ')[0] }),
+          lines: [et(lang, 'Your child’s check-in PIN for this event: {pin}', { pin }), et(lang, 'At the event, tap their name on the organizer’s kiosk and enter it on arrival and when leaving. Don’t share this code with anyone.')],
+          task,
+        }),
+      })
+    }
+  } catch (error) {
+    console.error('kiosk pin parent email failed:', error.message)
+  }
+}
+
 // Fire-and-forget, like recordAudit: a mail server having a bad day must not
 // turn a successful approval into a 500 for the organizer.
 async function notifySignupDecision(taskId, userId, decision) {
   try {
     const { rows } = await query(
-      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info, u.email, u.name, u.language
+      `SELECT t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info, t.is_online, u.email, u.name, u.language, u.under_13
          FROM public_tasks t, users u
         WHERE t.id = $1 AND u.id = $2`,
       [taskId, userId],
@@ -4903,6 +4957,9 @@ async function notifySignupDecision(taskId, userId, decision) {
         : 'The organizer could not take your sign-up for this one.',
       link: approved ? '/attendance' : '/opportunities',
     })
+    // Event kiosk (#668): a fresh 6-digit PIN for checking in at the door.
+    const pin = approved && !row.is_online ? await issueKioskPin(taskId, userId) : null
+    if (pin) emailKioskPinToParents(userId, row, pin)
     if (!row.email) return
     const lang = emailLang(row.language)
     await sendEmail({
@@ -4915,6 +4972,7 @@ async function notifySignupDecision(taskId, userId, decision) {
           ? [
             emailHi(lang, row.name),
             et(lang, 'The organizer approved your signup.'),
+            ...(pin ? [et(lang, 'Your check-in PIN for this event: {pin}', { pin }), et(lang, 'Enter it on the organizer’s kiosk when you arrive and again when you leave. Don’t share this code with anyone: it checks you in and logs your hours.')] : []),
             ...(row.important_info ? [row.important_info] : []),
           ]
           : [emailHi(lang, row.name), et(lang, 'The organizer could not take your signup for this one. Other opportunities are listed in VolunTrack.')],
@@ -4937,7 +4995,7 @@ async function notifySignupDecision(taskId, userId, decision) {
 // approved: the app would have to un-approve somebody to make that true.
 router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   const editable = ['title', 'description', 'location', 'date', 'time', 'phone', 'importantInfo', 'slotsTotal', 'latitude', 'longitude', 'category',
-    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText', 'youngNeedParent']
+    'minAge', 'isOnline', 'wheelchairAccessible', 'accessibilityNote', 'isOutdoor', 'meetingPoint', 'dayOfContact', 'allowGuests', 'waiverText', 'youngNeedParent', 'minStayMinutes']
   const limits = { title: 200, description: 5000, location: 300, phone: 30, importantInfo: 2000 }
   // Task details (#426): same readers as create.
   const detailReaders = {
@@ -4946,6 +5004,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
     // Turning guests off later keeps the guests already signed up.
     allowGuests: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Allow guests must be true or false.' }),
     youngNeedParent: (v) => (typeof v === 'boolean' ? { ok: true, value: v } : { ok: false, error: 'Parent must come must be true or false.' }),
+    minStayMinutes: taskMinStay,
     // Changing it keeps earlier agreements, shown as "an earlier version" (#595).
     waiverText: readWaiverText,
   }
@@ -4981,7 +5040,7 @@ router.patch('/public-tasks/:id', limiter, requireDb, requireAuth(), async (req,
       const column = {
         importantInfo: 'important_info', slotsTotal: 'slots_total', minAge: 'min_age', isOnline: 'is_online',
         wheelchairAccessible: 'wheelchair_accessible', accessibilityNote: 'accessibility_note', isOutdoor: 'is_outdoor',
-        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text', youngNeedParent: 'young_need_parent',
+        meetingPoint: 'meeting_point', dayOfContact: 'day_of_contact', allowGuests: 'allow_guests', waiverText: 'waiver_text', youngNeedParent: 'young_need_parent', minStayMinutes: 'min_stay_minutes',
       }[field] || field
 
       if (detailReaders[field]) {
@@ -5604,7 +5663,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
   try {
     const { rows } = await query(
       `SELECT t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.slots_total, t.status, t.category, t.phone, t.important_info, t.latitude, t.longitude, t.created_at,
-              t.min_age, t.young_need_parent, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
+              t.min_age, t.young_need_parent, t.min_stay_minutes, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.meeting_point, t.day_of_contact, t.cover_photo_id, t.allow_guests,
               t.waiver_text,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               ${SHIFTS_JSON_SQL('t.id')} AS shifts,
@@ -6113,18 +6172,34 @@ function scannedHours(inAt, outAt) {
 
 // Logs a checked-out volunteer's hours as approved by the organizer, unless
 // they already have an entry for this task that day. Returns whether it logged.
+// → { logged, leftEarly }. With a minimum stay (#668), someone who left sooner
+// still gets an entry, but unconfirmed, for the organizer to approve or not.
 async function logCheckout(task, userId, inAt, outAt, note) {
   const day = dayString(task.date)
-  if (await alreadyLogged(task.id, userId, day)) return false
+  if (await alreadyLogged(task.id, userId, day)) return { logged: false, leftEarly: null }
+  const stayed = Math.round((new Date(outAt) - new Date(inAt)) / 60000)
+  const minStay = Number(task.min_stay_minutes) || 0
+  const early = minStay > 0 && stayed < minStay ? { stayed, minimum: minStay } : null
   const logId = uid('log')
   await query(
     `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, verified_by, task_id, verification_status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved')`,
-    [logId, userId, day, task.title, ORGANIZER_LOG_CATEGORY, scannedHours(inAt, outAt), note, task.created_by, task.id],
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [logId, userId, day, task.title, ORGANIZER_LOG_CATEGORY, scannedHours(inAt, outAt),
+      early ? `${note}. Left early: stayed ${stayed} of the ${minStay} minutes asked.` : note,
+      early ? null : task.created_by, task.id, early ? 'none' : 'approved'],
   )
   emitHours('hours.created', logId)
   emitSignupFor('event.attendance', task.id, userId)
-  return true
+  if (early) {
+    const { rows } = await query('SELECT name FROM users WHERE id = $1', [userId]).catch(() => ({ rows: [] }))
+    notify(task.created_by, {
+      kind: 'attendance_nudge',
+      title: `${rows[0]?.name || 'A volunteer'} left early: ${task.title}`,
+      body: `Stayed ${stayed} of ${minStay} minutes. Approve or reject their hours on My Tasks.`,
+      link: '/my-tasks',
+    })
+  }
+  return { logged: true, leftEarly: early }
 }
 
 const checkinLimiter = rateLimit({
@@ -6133,6 +6208,115 @@ const checkinLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many check-in attempts. Please wait a few minutes.' },
+})
+
+// --- Event kiosk (#668) -------------------------------------------------------
+// The organizer (or a co-host) opens a kiosk on their own signed-in device on
+// the event day; approved volunteers tap their name and type the PIN they were
+// emailed: once to check in, once to check out. Five wrong PINs lock that
+// name until the organizer clears it.
+
+// Checks a volunteer's PIN, counting wrong tries; 5 lock it until the
+// organizer unlocks. → { ok: true } or { ok: false, status, body }.
+async function checkKioskPin(signup, pin) {
+  if (signup.kiosk_pin_fails >= KIOSK_MAX_FAILS) return { ok: false, status: 423, body: { error: 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: true } }
+  const value = String(pin || '')
+  if (!value) return { ok: false, status: 400, body: { error: 'Enter your check-in PIN from your approval email.', pinRequired: true } }
+  const ok = /^\d{6}$/.test(value) && timingSafeEqual(Buffer.from(kioskPinHash(signup.id, value)), Buffer.from(signup.kiosk_pin_hash))
+  if (!ok) {
+    const { rows: f } = await query('UPDATE public_task_signups SET kiosk_pin_fails = kiosk_pin_fails + 1 WHERE id = $1 RETURNING kiosk_pin_fails', [signup.id])
+    const left = KIOSK_MAX_FAILS - f[0].kiosk_pin_fails
+    return { ok: false, status: 401, body: { error: left > 0 ? `That PIN isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong PINs. Ask the organizer to unlock your name.', locked: left <= 0, pinRequired: left > 0 } }
+  }
+  await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
+  return { ok: true }
+}
+
+const kioskName = (name) => {
+  const parts = String(name || '').trim().split(/\s+/)
+  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] || 'Volunteer'
+}
+
+router.get('/public-tasks/:id/kiosk', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, title, status, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can open the kiosk.")) return
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.today) return res.status(400).json({ error: 'The kiosk only works on the day of the task.' })
+    const { rows: people } = await query(
+      `SELECT s.id, u.name, s.checked_in_at, s.checked_out_at, s.kiosk_pin_fails, s.kiosk_pin_hash IS NOT NULL AS has_pin,
+              CASE WHEN s.screen_code_expires_at > now() THEN s.screen_code END AS screen_code
+         FROM public_task_signups s JOIN users u ON u.id = s.user_id
+        WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
+      [task.id],
+    )
+    return res.json({
+      title: task.title,
+      people: people.map((p) => ({
+        signupId: p.id, name: kioskName(p.name), hasPin: p.has_pin,
+        checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, locked: p.kiosk_pin_fails >= KIOSK_MAX_FAILS,
+        screenCode: p.screen_code || null,
+      })),
+    })
+  } catch (error) {
+    console.error('kiosk list failed:', error)
+    return res.status(500).json({ error: 'Could not open the kiosk.' })
+  }
+})
+
+router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth(), async (req, res) => {
+  const pin = String(req.body?.pin || '')
+  try {
+    const { rows } = await query(
+      `SELECT id, title, created_by, status, date, min_stay_minutes, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can open the kiosk.")) return
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.today) return res.status(400).json({ error: 'The kiosk only works on the day of the task.' })
+    const { rows: sr } = await query(
+      `SELECT id, user_id, checked_in_at, checked_out_at, kiosk_pin_hash, kiosk_pin_fails FROM public_task_signups
+        WHERE id = $1 AND task_id = $2 AND status = 'approved'`,
+      [req.params.signupId, task.id],
+    )
+    const signup = sr[0]
+    if (!signup) return res.status(404).json({ error: 'Signup not found.' })
+    // The organizer clears a lock by sending { unlock: true } instead of a PIN.
+    if (req.body?.unlock === true) {
+      await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
+      return res.json({ state: 'unlocked' })
+    }
+    if (!signup.kiosk_pin_hash) return res.status(400).json({ error: 'This volunteer has no check-in PIN. Mark them present on My Tasks.' })
+    const pinCheck = await checkKioskPin(signup, pin)
+    if (!pinCheck.ok) return res.status(pinCheck.status).json(pinCheck.body)
+    if (!signup.checked_in_at) {
+      const { rows: done } = await query(
+        `UPDATE public_task_signups SET checked_in_at = now(), checkin_method = 'kiosk', attendance_status = 'present', attendance_marked_at = now()
+          WHERE id = $1 AND checked_in_at IS NULL RETURNING checked_in_at`,
+        [signup.id],
+      )
+      return res.json({ state: 'checked_in', checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
+    }
+    if (signup.checked_out_at) return res.json({ state: 'done', hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
+    if (Date.now() - new Date(signup.checked_in_at).getTime() < CHECKOUT_AFTER_MS) return res.json({ state: 'checked_in', tooSoon: true, checkedInAt: signup.checked_in_at })
+    const { rows: out } = await query(
+      'UPDATE public_task_signups SET checked_out_at = now() WHERE id = $1 AND checked_out_at IS NULL RETURNING checked_in_at, checked_out_at',
+      [signup.id],
+    )
+    if (out.length === 0) return res.json({ state: 'done' })
+    const { logged, leftEarly } = await logCheckout(task, signup.user_id, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out at the event kiosk with their PIN')
+    return res.json({ state: 'checked_out', hours: scannedHours(out[0].checked_in_at, out[0].checked_out_at), logged, leftEarly })
+  } catch (error) {
+    console.error('kiosk check-in failed:', error)
+    return res.status(500).json({ error: 'Could not check you in.' })
+  }
 })
 
 // GET: the organizer's current code and who has scanned (polled by the QR screen).
@@ -6156,7 +6340,8 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
     }
     const windowIndex = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
     const { rows: people } = await query(
-      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name,
+              CASE WHEN s.screen_code_expires_at > now() THEN s.screen_code END AS screen_code FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
       [task.id],
     )
@@ -6171,7 +6356,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
       code: checkinCode(secret, task.id, windowIndex),
       // Seconds until the code changes, so the screen refreshes on time.
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
-      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null })),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null, screenCode: p.screen_code || null })),
     })
   } catch (error) {
     console.error('checkin code failed:', error)
@@ -6183,7 +6368,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
 router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, title, created_by, status, checkin_secret, date,
+      `SELECT id, title, created_by, status, checkin_secret, date, min_stay_minutes,
               date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
          FROM public_tasks WHERE id = $1`,
       [req.params.id],
@@ -6191,16 +6376,37 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
     const task = rows[0]
     if (!task) return res.status(404).json({ error: 'Task not found.' })
     if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
-    if (!task.checkin_secret || !checkinCodeValid(task.checkin_secret, task.id, req.body?.code)) {
+    // Step 2 of a phone check-in (#668): the code read off the organizer's
+    // screen stands in for the QR code, which may have changed meanwhile.
+    const screenCode = String(req.body?.screenCode || '')
+    if (!screenCode && (!task.checkin_secret || !checkinCodeValid(task.checkin_secret, task.id, req.body?.code))) {
       return res.status(400).json({ error: 'This check-in code has expired. Scan the QR code on the organizer\'s screen again.' })
     }
     if (!task.today) return res.status(400).json({ error: 'Check-in only works on the day of the task.' })
     const { rows: signupRows } = await query(
-      "SELECT id, checked_in_at, checked_out_at FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+      "SELECT id, checked_in_at, checked_out_at, kiosk_pin_fails, screen_code, screen_code_expires_at > now() AS screen_live FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
       [task.id, req.auth.sub],
     )
     const signup = signupRows[0]
     if (!signup) return res.status(403).json({ error: "You aren't an approved volunteer for this task. Ask the organizer." })
+    // After the scan, a 4-digit code shows under the volunteer's name on the
+    // organizer's screen (kiosk or Check-in QR) and they type it on the phone,
+    // which proves they're standing there (#668).
+    if (signup.kiosk_pin_fails >= KIOSK_MAX_FAILS) return res.status(423).json({ error: 'Too many wrong codes. Ask the organizer to unlock your name.', locked: true })
+    if (!screenCode) {
+      const fresh = String(randomInt(0, 10000)).padStart(4, '0')
+      await query("UPDATE public_task_signups SET screen_code = $2, screen_code_expires_at = now() + interval '2 minutes' WHERE id = $1", [signup.id, fresh])
+      return res.json({ screenCodeRequired: true, title: task.title })
+    }
+    const goodCode = signup.screen_live && signup.screen_code && screenCode.length === 4
+      && timingSafeEqual(Buffer.from(screenCode), Buffer.from(signup.screen_code))
+    if (!goodCode) {
+      if (!signup.screen_live) return res.status(400).json({ error: 'That code expired. Scan the QR code again.' })
+      const { rows: f } = await query('UPDATE public_task_signups SET kiosk_pin_fails = kiosk_pin_fails + 1 WHERE id = $1 RETURNING kiosk_pin_fails', [signup.id])
+      const left = KIOSK_MAX_FAILS - f[0].kiosk_pin_fails
+      return res.status(401).json({ error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask the organizer to unlock your name.', screenCodeRequired: left > 0, locked: left <= 0 })
+    }
+    await query('UPDATE public_task_signups SET screen_code = NULL, screen_code_expires_at = NULL, kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
 
     if (!signup.checked_in_at) {
       const { rows: done } = await query(
@@ -6223,8 +6429,8 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
     )
     if (out.length === 0) return res.json({ state: 'done', title: task.title })
     const hours = scannedHours(out[0].checked_in_at, out[0].checked_out_at)
-    const logged = await logCheckout(task, req.auth.sub, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out with the task\'s QR code')
-    return res.json({ state: 'checked_out', title: task.title, checkedInAt: out[0].checked_in_at, checkedOutAt: out[0].checked_out_at, hours, logged })
+    const { logged, leftEarly } = await logCheckout(task, req.auth.sub, out[0].checked_in_at, out[0].checked_out_at, 'Checked in and out with the task\'s QR code')
+    return res.json({ state: 'checked_out', title: task.title, checkedInAt: out[0].checked_in_at, checkedOutAt: out[0].checked_out_at, hours, logged, leftEarly })
   } catch (error) {
     console.error('checkin failed:', error)
     return res.status(500).json({ error: 'Could not check you in.' })
@@ -6237,7 +6443,7 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
 router.post('/public-tasks/:id/checkin/close', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, title, created_by, status, date, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
+      `SELECT id, title, created_by, status, date, min_stay_minutes, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
          FROM public_tasks WHERE id = $1`,
       [req.params.id],
     )
@@ -6253,7 +6459,7 @@ router.post('/public-tasks/:id/checkin/close', limiter, requireDb, requireAuth()
     )
     let logged = 0
     for (const r of out) {
-      if (await logCheckout(task, r.user_id, r.checked_in_at, r.checked_out_at, 'Checked in with the task\'s QR code; checked out by the organizer')) logged++
+      if ((await logCheckout(task, r.user_id, r.checked_in_at, r.checked_out_at, 'Checked in with the task\'s QR code; checked out by the organizer')).logged) logged++
     }
     return res.json({ checkedOut: out.length, logged })
   } catch (error) {

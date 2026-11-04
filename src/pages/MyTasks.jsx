@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer, FileSignature } from 'lucide-react'
+import { Tablet, ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer, FileSignature } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -38,6 +39,7 @@ const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', m
 const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1, shifts: null, waiverText: '', ...EMPTY_TASK_DETAILS }
 
 export default function MyTasks() {
+  const nav = useNavigate()
   const { refreshLogs } = useData()
   const { user } = useAuth()
   const [tasks, setTasks] = useState([])
@@ -805,6 +807,11 @@ export default function MyTasks() {
                         <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
                           <QrCode className="w-3.5 h-3.5 mr-1" /> Check-in QR
                         </button>
+                        {!t.is_online && (
+                          <button onClick={() => nav(`/kiosk/${t.id}`)} className="btn-sm btn-ghost" disabled={actionBusy} title={tr('A tablet at the door: volunteers tap their name and enter the PIN from their approval email.')}>
+                            <Tablet className="w-3.5 h-3.5 mr-1" /> {tr('Kiosk')}
+                          </button>
+                        )}
                         <button onClick={() => signInSheet(t)} className="btn-sm btn-ghost" disabled={actionBusy || sheetBusyId === t.id}>
                           <Printer className="w-3.5 h-3.5 mr-1" /> {sheetBusyId === t.id ? 'Preparing…' : 'Sign-in sheet (PDF)'}
                         </button>

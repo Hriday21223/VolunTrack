@@ -53,6 +53,15 @@ export default function TaskDetailFields({ value, onChange, idPrefix = 'task' })
           <span className="block text-xs text-earth-500">{tr("Each guest takes a spot. Guests' hours aren't recorded in VolunTrack.")}</span>
         </span>
       </label>
+      {/* Minimum stay (#668): checking out sooner sends the hours to the organizer. */}
+      <label className="text-sm block">
+        <span className="block mb-1">{tr('Minimum stay for hours to count')}</span>
+        <select className="input" value={value.minStayMinutes ?? ''} onChange={(e) => onChange({ minStayMinutes: e.target.value })}>
+          <option value="">{tr('No minimum')}</option>
+          {[30, 60, 90, 120, 180, 240].map((m) => <option key={m} value={String(m)}>{m < 60 ? tr('{n} minutes', { n: m }) : tr('{n} hours', { n: m / 60 })}</option>)}
+        </select>
+        <span className="block text-xs text-earth-500 mt-1">{tr('Someone who checks out sooner still gets an entry, but you approve or reject it on My Tasks.')}</span>
+      </label>
       {/* A parent must come with young volunteers (#649). */}
       <label className="flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-1" checked={Boolean(value.youngNeedParent)} onChange={(e) => onChange({ youngNeedParent: e.target.checked })} />
