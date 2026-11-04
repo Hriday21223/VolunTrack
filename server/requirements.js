@@ -42,6 +42,11 @@ export const DEFAULT_LOG_RULES = {
   // Places whose hours count without a second look (#591). Empty = any place.
   // An entry elsewhere isn't refused: it's flagged for the adviser to check.
   approvedPlaces: [],
+  // Auto-approve rules (#706): off unless the school turns them on.
+  // An entry a supervisor signed in person on the student's device…
+  autoApproveSignedInPerson: false,
+  // …or one from an approved place of at most this many hours.
+  autoApproveMaxHours: null,
 }
 
 export const DEFAULT_GOALS = {
@@ -188,7 +193,22 @@ function normalizeLogRules(input) {
     approvedPlaces: Array.isArray(raw.approvedPlaces)
       ? uniqueBy(raw.approvedPlaces.map((p) => text(p, 120)).filter(Boolean), placeKey).slice(0, MAX_APPROVED_PLACES)
       : [],
+    autoApproveSignedInPerson: bool(raw.autoApproveSignedInPerson),
+    autoApproveMaxHours: posNumber(raw.autoApproveMaxHours, { max: 24 }),
   }
+}
+
+// Which auto-approve rule (#706) an unconfirmed entry meets, or null:
+// 'signed_in_person' or 'approved_place'. `entry` is { supervisorSignedInPerson,
+// orgName, hours }. The approved-place rule needs a place list to mean anything.
+export function autoApproveReason(policy, entry = {}) {
+  const r = policy?.logRules
+  if (!r) return null
+  if (r.autoApproveSignedInPerson && entry.supervisorSignedInPerson) return 'signed_in_person'
+  const max = Number(r.autoApproveMaxHours)
+  if (max > 0 && (r.approvedPlaces || []).length > 0 && entry.orgName && placeApproved(policy, entry.orgName)
+    && Number(entry.hours) > 0 && Number(entry.hours) <= max) return 'approved_place'
+  return null
 }
 
 export const MAX_APPROVED_PLACES = 200
