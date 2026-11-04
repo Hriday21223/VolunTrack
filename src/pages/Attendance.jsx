@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3, ClipboardList, Heart, IdCard } from 'lucide-react'
+import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3, ClipboardList, Heart, IdCard, LogOut } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { format } from 'date-fns'
@@ -38,6 +38,53 @@ const ATTENDANCE_META = {
   present: { label: tr('Present'), icon: CheckCircle, className: 'text-emerald-400' },
   absent: { label: tr('Absent'), icon: XCircle, className: 'text-red-400' },
   excused: { label: tr('Excused'), icon: MinusCircle, className: 'text-amber-400' },
+}
+
+// Check out on the phone with the PIN the organizer made (#681), for a
+// volunteer who checked in today and hasn't checked out yet.
+function PhoneCheckout({ s, onChanged }) {
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null) // { text, ok }
+  const submit = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setMsg(null)
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${s.id}/checkout-pin/use`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+        body: JSON.stringify({ pin }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || tr('Could not check you out.'))
+      const text = body.leftEarly
+        ? tr('You stayed {stayed} of the {minimum} minutes this event asks for, so the organizer will review your hours.', { stayed: body.leftEarly.stayed, minimum: body.leftEarly.minimum })
+        : tr(body.hours === 1 ? '1 hour sent to the organizer to sign.' : '{n} hours sent to the organizer to sign.', { n: body.hours })
+      setPin('')
+      onChanged?.(`${tr('Checked out.')} ${text}`)
+    } catch (err) {
+      setMsg({ text: err.message, ok: false })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <form onSubmit={submit} className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+      <p className="text-sm font-medium flex items-center gap-1"><LogOut className="w-4 h-4" aria-hidden="true" />{' '}{tr('Leaving? Check out')}</p>
+      <p className="text-xs text-earth-400 mt-0.5">{tr('Checked in at {time}. Type the check-out PIN the organizer gives you.', { time: format(new Date(s.checked_in_at), 'h:mm a') })}</p>
+      <div className="flex flex-wrap items-center gap-2 mt-2">
+        <input
+          inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="\d{6}"
+          value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          aria-label={tr('Check-out PIN')} placeholder="••••••"
+          className="input w-32 text-center tracking-[0.3em] text-lg"
+        />
+        <button type="submit" className="btn-primary btn-sm" disabled={busy || pin.length !== 6}>{busy ? tr('Checking out…') : tr('Check out')}</button>
+      </div>
+      {msg && <p role="alert" className={`text-sm mt-2 ${msg.ok ? 'text-emerald-300' : 'text-red-400'}`}>{msg.text}</p>}
+    </form>
+  )
 }
 
 function SignupRow({ s, onChanged, canRate }) {
@@ -98,6 +145,9 @@ function SignupRow({ s, onChanged, canRate }) {
       </div>
       {/* Meeting point, day-of contact, and on the day "Running late" / "Can't make it" (#438). */}
       {!isPast && <DayOfPanel task={s} onDone={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />}
+      {!cancelled && s.signup_status === 'approved' && dayOf(s.date) === todayDay() && s.checked_in_at && !s.checked_out_at && (
+        <PhoneCheckout s={s} onChanged={onChanged} />
+      )}
       {/* The organizer's thank-you note — the server sends it only to those it went to. */}
       {s.thanks?.message && (
         <div className="mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">

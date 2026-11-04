@@ -726,6 +726,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS screen_code_expires_at TIMESTAMPTZ`) } catch {}
   // Minimum stay (#668): leaving earlier sends the hours to the organizer to decide.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_stay_minutes SMALLINT`) } catch {}
+  // A check-out PIN the organizer makes for phones (#681): hashed, short-lived.
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkout_pin_hash TEXT') } catch {}
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkout_pin_expires_at TIMESTAMPTZ') } catch {}
   // A parent must come with volunteers in 5th grade or younger (#649), and
   // who that parent is, from the sign-up.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS young_need_parent BOOLEAN NOT NULL DEFAULT false`) } catch {}
