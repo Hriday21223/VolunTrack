@@ -5685,6 +5685,10 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'shift_id', s.shift_id,
                 -- Who invited them, when they signed up from a friend's link.
                 'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
+                -- Their entry for this task (check-out or logged hours), so the
+                -- roster shows the hours and whether they're signed (#681).
+                'task_log', (SELECT json_build_object('id', l.id, 'hours', l.hours, 'status', l.verification_status)
+                               FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id ORDER BY l.created_at DESC LIMIT 1),
                 -- Checked in, never out, the day is over and no hours yet.
                 'missed_checkout', s.checked_in_at IS NOT NULL AND s.checked_out_at IS NULL AND t.date < CURRENT_DATE - 1
                   AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id)
