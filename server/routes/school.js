@@ -49,6 +49,7 @@ function taskMinStay(v) {
 }
 
 import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
+import { LEGAL_VERSION } from '../legal.js'
 const router = express.Router()
 
 // Shared across every route in this file, including reads (a single
@@ -161,10 +162,10 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     const hash = await hashPassword(password)
     const userId = uid('usr')
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, school_id, signup_platform)
-       VALUES ($1, 'school', $2, $3, $4, $5, $6)
+      `INSERT INTO users (id, role, name, email, password_hash, school_id, signup_platform, legal_version, legal_accepted_at)
+       VALUES ($1, 'school', $2, $3, $4, $5, $6, $7, now())
        RETURNING *`,
-      [userId, name, email, hash, schoolId, signupPlatform(req)],
+      [userId, name, email, hash, schoolId, signupPlatform(req), LEGAL_VERSION],
     )
     await markCodeUser(claimedCodeId, userId)
 

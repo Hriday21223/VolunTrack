@@ -2296,6 +2296,9 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('clubs migration failed:', error.message) }
+  // Which Terms / Privacy version the account accepted, and when (#689).
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_version TEXT') } catch {}
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}
   // Club assignments (#675): a teacher asks a club for hours by a date; students

@@ -2,6 +2,8 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "Please reload the page to see the latest Terms and Privacy Policy.": "Recarga la página para ver los Términos y la Política de privacidad más recientes.",
+  "Could not save that. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
   "This student isn’t in one of your clubs.": "Este estudiante no está en ninguno de tus clubes.",
   "Could not load when you are free.": "No se pudo cargar cuándo estás libre.",
   "Could not save when you are free.": "No se pudo guardar cuándo estás libre.",

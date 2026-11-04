@@ -19,6 +19,7 @@ import About from '@/pages/About.jsx'
 import AppLock from '@/components/AppLock.jsx'
 import SlowServerNotice from '@/components/SlowServerNotice.jsx'
 import { tr } from '@/lib/i18n.js'
+import LegalUpdateGate from '@/components/LegalUpdateGate.jsx'
 const AppWelcome = lazy(() => import('@/pages/AppWelcome.jsx'))
 const Login = lazy(() => import('@/pages/Login.jsx'))
 const Register = lazy(() => import('@/pages/Register.jsx'))
@@ -195,6 +196,7 @@ function Shell() {
       </Suspense>
       <MobileTabBar />
       <BadgeToasts badgeIds={pendingBadges} onDone={dismissBadges} />
+      <LegalUpdateGate />
       <ReminderToasts />
     </>
   )

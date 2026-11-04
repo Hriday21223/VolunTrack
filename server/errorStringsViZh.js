@@ -1,6 +1,8 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Please reload the page to see the latest Terms and Privacy Policy.": "Vui lòng tải lại trang để xem Điều khoản và Chính sách quyền riêng tư mới nhất.",
+  "Could not save that. Please try again.": "Không thể lưu. Vui lòng thử lại.",
   "This student isn’t in one of your clubs.": "Học sinh này không thuộc câu lạc bộ nào của bạn.",
   "Co-admin not found.": "Không tìm thấy đồng quản trị.",
   "Could not load when you are free.": "Không thể tải thời gian bạn rảnh.",
@@ -352,6 +354,8 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Please reload the page to see the latest Terms and Privacy Policy.": "请刷新页面以查看最新的条款和隐私政策。",
+  "Could not save that. Please try again.": "无法保存，请重试。",
   "This student isn’t in one of your clubs.": "该学生不在你的任何社团中。",
   "Co-admin not found.": "未找到协同管理员。",
   "Could not load when you are free.": "无法加载你的空闲时间。",

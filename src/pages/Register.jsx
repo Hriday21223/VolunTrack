@@ -19,6 +19,7 @@ import { tr } from '@/lib/i18n.js'
 // age rules (FTC COPPA guidance on neutral age screens). Never sent to the
 // server. Expires after a day so a family sharing one device isn't locked
 // out for good — e.g. a parent signing up after their child tried.
+import LegalSummary from '@/components/LegalSummary.jsx'
 const AGE_GATE_KEY = 'voluntrack:age_gate'
 const AGE_GATE_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -444,6 +445,8 @@ export default function Register() {
               </>
             )}
 
+            <LegalSummary />
+
             <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
               <input
                 type="checkbox"
@@ -452,7 +455,7 @@ export default function Register() {
                 onChange={(e) => setAgreed(e.target.checked)}
               />
               <span>
-                {tr('I agree to the')}{' '}
+                {tr("I've read the short version and agree to the")}{' '}
                 <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Terms of Service')}</Link>
                 {' '}{tr('and')}{' '}
                 <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Privacy Policy')}</Link>.
