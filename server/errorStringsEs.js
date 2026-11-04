@@ -2,6 +2,10 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "Only the task's organizer can invite their past volunteers.": "Solo el organizador de la tarea puede invitar a sus voluntarios anteriores.",
+  "Invite people to an open, upcoming event.": "Invita a personas a un evento abierto y próximo.",
+  "You already invited your past volunteers to this event.": "Ya invitaste a tus voluntarios anteriores a este evento.",
+  "Could not send the invitations.": "No se pudieron enviar las invitaciones.",
   "Please reload the page to see the latest Terms and Privacy Policy.": "Recarga la página para ver los Términos y la Política de privacidad más recientes.",
   "Could not save that. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
   "This student isn’t in one of your clubs.": "Este estudiante no está en ninguno de tus clubes.",

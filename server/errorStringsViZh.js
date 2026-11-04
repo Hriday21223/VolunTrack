@@ -1,6 +1,10 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Only the task's organizer can invite their past volunteers.": "Chỉ người tổ chức nhiệm vụ mới có thể mời tình nguyện viên cũ.",
+  "Invite people to an open, upcoming event.": "Hãy mời mọi người đến một sự kiện đang mở và sắp diễn ra.",
+  "You already invited your past volunteers to this event.": "Bạn đã mời tình nguyện viên cũ đến sự kiện này rồi.",
+  "Could not send the invitations.": "Không thể gửi lời mời.",
   "Please reload the page to see the latest Terms and Privacy Policy.": "Vui lòng tải lại trang để xem Điều khoản và Chính sách quyền riêng tư mới nhất.",
   "Could not save that. Please try again.": "Không thể lưu. Vui lòng thử lại.",
   "This student isn’t in one of your clubs.": "Học sinh này không thuộc câu lạc bộ nào của bạn.",
@@ -354,6 +358,10 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Only the task's organizer can invite their past volunteers.": "只有任务组织者可以邀请以往的志愿者。",
+  "Invite people to an open, upcoming event.": "请邀请人们参加一个开放且即将举行的活动。",
+  "You already invited your past volunteers to this event.": "你已经邀请过以往的志愿者参加这个活动。",
+  "Could not send the invitations.": "无法发送邀请。",
   "Please reload the page to see the latest Terms and Privacy Policy.": "请刷新页面以查看最新的条款和隐私政策。",
   "Could not save that. Please try again.": "无法保存，请重试。",
   "This student isn’t in one of your clubs.": "该学生不在你的任何社团中。",
