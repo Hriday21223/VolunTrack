@@ -1409,7 +1409,7 @@ router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_st
     const { rows } = await query(
       `SELECT l.id, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours::float8 AS hours, l.notes, l.org_name,
               l.location, l.supervisor_name, l.verification_status, (l.proof_key IS NOT NULL) AS has_proof,
-              u.id AS student_id, u.name AS student_name, u.grade
+              u.id AS student_id, u.name AS student_name, u.grade, l.parent_confirmed_name, l.parent_confirmed_at
          FROM logs l JOIN users u ON u.id = l.user_id
         WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')
         ORDER BY l.date DESC, l.created_at DESC
@@ -5732,6 +5732,10 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'shift_id', s.shift_id,
                 -- Who invited them, when they signed up from a friend's link.
                 'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
+                -- Their entry for this task (check-out or logged hours), so the
+                -- roster shows the hours and whether they're signed (#681).
+                'task_log', (SELECT json_build_object('id', l.id, 'hours', l.hours, 'status', l.verification_status)
+                               FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id ORDER BY l.created_at DESC LIMIT 1),
                 -- Checked in, never out, the day is over and no hours yet.
                 'missed_checkout', s.checked_in_at IS NOT NULL AND s.checked_out_at IS NULL AND t.date < CURRENT_DATE - 1
                   AND NOT EXISTS (SELECT 1 FROM logs l WHERE l.task_id = t.id AND l.user_id = u.id)
@@ -6126,7 +6130,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
               -- Day-of details (#438), approved volunteers only.
               CASE WHEN s.status = 'approved' THEN t.meeting_point END AS meeting_point,
               CASE WHEN s.status = 'approved' THEN t.day_of_contact END AS day_of_contact,
-              s.late_eta_minutes, s.late_at, s.checked_in_at,
+              s.late_eta_minutes, s.late_at, s.checked_in_at, s.checked_out_at,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
               -- Shifts (#589): theirs, and all of them so they can switch.
               s.shift_id, ${SHIFTS_JSON_SQL('t.id')} AS shifts,
@@ -6417,6 +6421,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
       people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, hours: stayHours(p), emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null, screenCode: p.screen_code || null })),
       totalHours: totalStayHours(people),
+      checkoutPinUntil: await checkoutPinUntil(task.id),
     })
   } catch (error) {
     console.error('checkin code failed:', error)
@@ -6494,6 +6499,118 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
   } catch (error) {
     console.error('checkin failed:', error)
     return res.status(500).json({ error: 'Could not check you in.' })
+  }
+})
+
+// --- Check-out PIN (#681) -----------------------------------------------------
+// Besides a second QR scan or the kiosk, the organizer can make a 6-digit
+// check-out PIN and say it aloud or show it; a checked-in volunteer types it on
+// their phone (Attendance) to check out. Only a hash is kept, it lasts
+// CHECKOUT_PIN_MINUTES, and wrong tries count toward the same lock as the
+// kiosk, so it can't be guessed. A new PIN replaces the old one.
+const CHECKOUT_PIN_MINUTES = 30
+
+function checkoutPinHash(taskId, pin) {
+  return createHash('sha256').update(`voluntrack-checkout:${taskId}:${pin}`).digest('hex')
+}
+
+async function checkoutPinUntil(taskId) {
+  const { rows } = await query(
+    'SELECT checkout_pin_expires_at FROM public_tasks WHERE id = $1 AND checkout_pin_expires_at > now()',
+    [taskId],
+  )
+  return rows[0]?.checkout_pin_expires_at || null
+}
+
+// POST: the organizer (or a co-host) makes a new check-out PIN. Shown once.
+router.post('/public-tasks/:id/checkout-pin', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      'SELECT id, status, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1',
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can make a check-out PIN.")) return
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.today) return res.status(400).json({ error: 'A check-out PIN only works on the day of the task.' })
+    const pin = String(randomInt(0, 1000000)).padStart(6, '0')
+    const { rows: saved } = await query(
+      `UPDATE public_tasks SET checkout_pin_hash = $2, checkout_pin_expires_at = now() + make_interval(mins => $3)
+        WHERE id = $1 RETURNING checkout_pin_expires_at`,
+      [task.id, checkoutPinHash(task.id, pin), CHECKOUT_PIN_MINUTES],
+    )
+    return res.json({ pin, until: saved[0].checkout_pin_expires_at })
+  } catch (error) {
+    console.error('checkout pin failed:', error)
+    return res.status(500).json({ error: 'Could not make a check-out PIN.' })
+  }
+})
+
+// DELETE: the organizer turns the PIN off early.
+router.delete('/public-tasks/:id/checkout-pin', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    if (refuseTaskAccess(res, await canManageTask(req.params.id, req.auth.sub), "Only the task's organizer or a co-host can turn off the check-out PIN.")) return
+    await query('UPDATE public_tasks SET checkout_pin_hash = NULL, checkout_pin_expires_at = NULL WHERE id = $1', [req.params.id])
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('checkout pin off failed:', error)
+    return res.status(500).json({ error: 'Could not turn off the check-out PIN.' })
+  }
+})
+
+// POST { pin }: a checked-in volunteer checks out on their phone.
+router.post('/public-tasks/:id/checkout-pin/use', checkinLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, title, created_by, status, date, min_stay_minutes, checkout_pin_hash,
+              checkout_pin_expires_at > now() AS pin_live,
+              date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today
+         FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.today) return res.status(400).json({ error: 'Check-out only works on the day of the task.' })
+    const { rows: signupRows } = await query(
+      "SELECT id, checked_in_at, checked_out_at, kiosk_pin_fails FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+      [task.id, req.auth.sub],
+    )
+    const signup = signupRows[0]
+    if (!signup) return res.status(403).json({ error: "You aren't an approved volunteer for this task. Ask the organizer." })
+    if (!signup.checked_in_at) return res.status(400).json({ error: "You haven't checked in yet. Check in when you arrive first." })
+    if (signup.checked_out_at) {
+      return res.json({ state: 'done', title: task.title, checkedInAt: signup.checked_in_at, checkedOutAt: signup.checked_out_at, hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
+    }
+    if (signup.kiosk_pin_fails >= KIOSK_MAX_FAILS) return res.status(423).json({ error: 'Too many wrong codes. Ask the organizer to unlock your name.', locked: true })
+    if (!task.pin_live || !task.checkout_pin_hash) {
+      return res.status(400).json({ error: "There's no check-out PIN right now. Ask the organizer to make one." })
+    }
+    const pin = String(req.body?.pin || '').trim()
+    const ok = /^\d{6}$/.test(pin)
+      && timingSafeEqual(Buffer.from(checkoutPinHash(task.id, pin)), Buffer.from(task.checkout_pin_hash))
+    if (!ok) {
+      const { rows: f } = await query('UPDATE public_task_signups SET kiosk_pin_fails = kiosk_pin_fails + 1 WHERE id = $1 RETURNING kiosk_pin_fails', [signup.id])
+      const left = KIOSK_MAX_FAILS - f[0].kiosk_pin_fails
+      return res.status(401).json({ error: left > 0 ? `That PIN isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask the organizer to unlock your name.', locked: left <= 0 })
+    }
+    await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
+    if (Date.now() - new Date(signup.checked_in_at).getTime() < CHECKOUT_AFTER_MS) {
+      return res.status(400).json({ error: 'You only just checked in. Check out when you leave.', tooSoon: true })
+    }
+    // The UPDATE is the atomic step: two taps racing can't both log hours.
+    const { rows: out } = await query(
+      'UPDATE public_task_signups SET checked_out_at = now() WHERE id = $1 AND checked_out_at IS NULL RETURNING checked_in_at, checked_out_at',
+      [signup.id],
+    )
+    if (out.length === 0) return res.json({ state: 'done', title: task.title })
+    const hours = scannedHours(out[0].checked_in_at, out[0].checked_out_at)
+    const { logged, leftEarly } = await logCheckout(task, req.auth.sub, out[0].checked_in_at, out[0].checked_out_at, "Checked out on their phone with the organizer's check-out PIN")
+    return res.json({ state: 'checked_out', title: task.title, checkedInAt: out[0].checked_in_at, checkedOutAt: out[0].checked_out_at, hours, logged, leftEarly })
+  } catch (error) {
+    console.error('checkout by pin failed:', error)
+    return res.status(500).json({ error: 'Could not check you out.' })
   }
 })
 

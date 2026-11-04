@@ -38,6 +38,36 @@ const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', m
 
 const EMPTY_TASK_FORM = { title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '', latitude: null, longitude: null, category: '', repeatWeeks: 1, shifts: null, waiverText: '', ...EMPTY_TASK_DETAILS }
 
+// Hours between QR check-in and check-out, in quarter hours like the entry
+// the server makes (scannedHours), or null if they haven't checked out.
+function qrHours(s) {
+  if (!s.checked_in_at || !s.checked_out_at) return null
+  const quarters = Math.round((new Date(s.checked_out_at) - new Date(s.checked_in_at)) / (15 * 60 * 1000))
+  return Math.min(24, Math.max(1, quarters) / 4)
+}
+
+function hoursLabel(n) {
+  return n === 1 ? '1 hour' : `${n} hours`
+}
+
+// A volunteer's entry for this task on the roster (#681): the hours from
+// check-out (or logged), whether they're signed, and a Sign button.
+function TaskLogHours({ log, canSign, onSign }) {
+  const hours = Math.round(Number(log.hours) * 100) / 100
+  if (log.status === 'approved') {
+    return <span className="text-xs px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 whitespace-nowrap" title="Signed">{hours} h ✓</span>
+  }
+  if (log.status === 'rejected') {
+    return <span className="text-xs px-2 py-1 rounded-lg bg-red-500/10 text-red-400 whitespace-nowrap" title="Rejected">{hours} h ✕</span>
+  }
+  return (
+    <span className="flex items-center gap-1">
+      <span className="text-xs px-2 py-1 rounded-lg bg-amber-500/10 text-amber-300 whitespace-nowrap" title="Waiting for your signature">{hours} h</span>
+      {canSign && <button type="button" onClick={onSign} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">Sign</button>}
+    </span>
+  )
+}
+
 export default function MyTasks() {
   const nav = useNavigate()
   const { refreshLogs } = useData()
@@ -334,6 +364,15 @@ export default function MyTasks() {
   const toggleAllPending = () => setSelectedLogs(
     allPendingSelected ? {} : Object.fromEntries(pendingLogs.map((p) => [p.logId, p.studentId])),
   )
+
+  // "Sign" on a roster row (#681): pick just that entry and open the
+  // sign-once panel under My Students.
+  const signOne = (studentId, logId) => {
+    setSelectedLogs({ [logId]: studentId })
+    setSigning(null)
+    setBulk({ status: 'approved', signature: '' })
+    setTimeout(() => document.getElementById('sign-pending')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50)
+  }
 
   const handleBulkVerify = async () => {
     if (!bulk || selectedPending.length === 0) return
@@ -1012,7 +1051,7 @@ export default function MyTasks() {
                                 </p>
                               ) : isApproved && s.checked_in_at && (
                                 <p className="text-xs text-earth-400 mt-0.5">
-                                  QR: in {clock(s.checked_in_at)}{s.checked_out_at ? ` · out ${clock(s.checked_out_at)}` : ' · still here'}
+                                  QR: in {clock(s.checked_in_at)}{s.checked_out_at ? ` · out ${clock(s.checked_out_at)} · ${hoursLabel(qrHours(s))}` : ' · still here'}
                                 </p>
                               )}
                             </div>
@@ -1029,17 +1068,25 @@ export default function MyTasks() {
                                     <MinusCircle className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
+                                {s.task_log ? (
+                                  <TaskLogHours
+                                    log={s.task_log}
+                                    canSign={pendingLogs.some((p) => p.logId === s.task_log.id)}
+                                    onSign={() => signOne(s.id, s.task_log.id)}
+                                  />
+                                ) : (
                                 <input
                                   type="number"
                                   step="0.5"
                                   min="0.5"
                                   className="input w-16 text-center text-xs py-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                                  placeholder={isAbsent ? 'absent' : (shiftHours(shiftById.get(s.shift_id)) ? String(shiftHours(shiftById.get(s.shift_id))) : 'hrs')}
+                                  placeholder={isAbsent ? 'absent' : qrHours(s) ? String(qrHours(s)) : (shiftHours(shiftById.get(s.shift_id)) ? String(shiftHours(shiftById.get(s.shift_id))) : 'hrs')}
                                   value={batchHours[s.id] || ''}
                                   onChange={(e) => setBatchHours((h) => ({ ...h, [s.id]: e.target.value }))}
                                   disabled={isAbsent}
                                   title={isAbsent ? 'Cannot log hours for a volunteer marked absent' : undefined}
                                 />
+                                )}
                                 <button
                                   onClick={() => openLogForm(t.id, s.id, t.date)}
                                   className="text-xs text-earth-400 hover:text-white px-1.5 py-1 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -1105,7 +1152,7 @@ export default function MyTasks() {
           ) : (
             <div className="space-y-3">
               {pendingLogs.length > 0 && (
-                <Card padded={false} className="p-3">
+                <Card padded={false} className="p-3" id="sign-pending">
                   <div className="flex flex-wrap items-center gap-2">
                     <label className="flex items-center gap-2 text-xs mr-auto cursor-pointer">
                       <input

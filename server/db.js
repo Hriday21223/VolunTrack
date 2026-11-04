@@ -702,6 +702,11 @@ export async function initSchema() {
 
   // A student's chosen causes (activity categories) for the "For you" row on
   // Opportunities (server/routes/interests.js).
+  // A parent confirmed a K–5 child's entry (#677): recorded beside it, never
+  // in place of a school or supervisor approval.
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_name TEXT') } catch {}
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_at TIMESTAMPTZ') } catch {}
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_by TEXT') } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[]`) } catch {}
 
   // Task details (#426): an optional minimum age, online tasks (no address,
@@ -721,6 +726,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS screen_code_expires_at TIMESTAMPTZ`) } catch {}
   // Minimum stay (#668): leaving earlier sends the hours to the organizer to decide.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_stay_minutes SMALLINT`) } catch {}
+  // A check-out PIN the organizer makes for phones (#681): hashed, short-lived.
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkout_pin_hash TEXT') } catch {}
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkout_pin_expires_at TIMESTAMPTZ') } catch {}
   // A parent must come with volunteers in 5th grade or younger (#649), and
   // who that parent is, from the sign-up.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS young_need_parent BOOLEAN NOT NULL DEFAULT false`) } catch {}
@@ -2286,6 +2294,33 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('clubs migration failed:', error.message) }
+  // Club assignments (#675): a teacher asks a club for hours by a date; students
+  // attach their entries to it.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_assignments (
+        id               TEXT PRIMARY KEY,
+        club_id          TEXT NOT NULL REFERENCES school_clubs(id) ON DELETE CASCADE,
+        title            TEXT NOT NULL,
+        details          TEXT,
+        hours            NUMERIC NOT NULL,
+        needs_reflection BOOLEAN NOT NULL DEFAULT false,
+        due_date         DATE,
+        created_by       TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_assignment_entries (
+        assignment_id TEXT NOT NULL REFERENCES club_assignments(id) ON DELETE CASCADE,
+        log_id        TEXT NOT NULL REFERENCES logs(id) ON DELETE CASCADE,
+        user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        attached_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (assignment_id, log_id)
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_club_assignment_entries_user ON club_assignment_entries(user_id)')
+  } catch (error) { console.error('club assignments migration failed:', error.message) }
 
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
