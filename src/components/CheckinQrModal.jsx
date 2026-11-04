@@ -8,10 +8,6 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // volunteer's camera can't open, so the app uses the public site instead.
 const SITE = (isNativeApp && import.meta.env.VITE_SITE_URL) || window.location.origin
 
-// The organizer's check-in screen: a QR code volunteers scan on arrival and
-// again when they leave (server/routes/school.js, "QR check-in"). The code in
-// it changes every minute, so this refreshes on the server's schedule, and
-// polls who has scanned.
 // "9:05 AM" in the viewer's own clock.
 function clock(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -23,6 +19,59 @@ function hoursText(n) {
   return v === 1 ? '1 hour' : `${v} hours`
 }
 
+// A 6-digit check-out PIN for phones (#681): the organizer makes one, says it
+// aloud or shows it, and checked-in volunteers type it under Attendance to
+// check out. The server keeps only a hash, so the PIN shows just once here;
+// it lasts 30 minutes and a new one replaces it.
+function CheckoutPinSection({ taskId, until, onChange }) {
+  const [pin, setPin] = useState(null) // { pin, until }
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const call = async (method) => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/checkout-pin`, {
+        method,
+        headers: { Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Could not change the check-out PIN.')
+      setPin(method === 'POST' ? body : null)
+      onChange?.()
+    } catch (e) {
+      setMsg(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const live = pin && new Date(pin.until) > new Date() ? pin : null
+  return (
+    <div className="mt-3 border-t border-white/10 pt-3">
+      <p className="text-sm font-medium">Check-out PIN for phones</p>
+      {live ? (
+        <>
+          <p className="text-4xl font-bold tracking-[0.3em] text-yellow-300 my-2" aria-label={`Check-out PIN ${live.pin.split('').join(' ')}`}>{live.pin}</p>
+          <p className="text-xs text-earth-400">Volunteers who checked in open <strong>Attendance</strong> on their phone and type this to check out. It works until {clock(live.until)}.</p>
+        </>
+      ) : until ? (
+        <p className="text-xs text-earth-400 mt-1">A check-out PIN is on until {clock(until)}. It's shown only when it's made, so make a new one if you need to see it.</p>
+      ) : (
+        <p className="text-xs text-earth-400 mt-1">Instead of scanning again, volunteers can check out on their phone with a PIN you make. It lasts 30 minutes.</p>
+      )}
+      <div className="flex flex-wrap gap-2 mt-2">
+        <button type="button" onClick={() => call('POST')} disabled={busy} className="btn-secondary btn-sm">{live || until ? 'Make a new PIN' : 'Make a check-out PIN'}</button>
+        {(live || until) && <button type="button" onClick={() => call('DELETE')} disabled={busy} className="btn-ghost btn-sm">Turn off</button>}
+      </div>
+      {msg && <p className="text-sm text-red-400 mt-1" role="alert">{msg}</p>}
+    </div>
+  )
+}
+
+// The organizer's check-in screen: a QR code volunteers scan on arrival and
+// again when they leave (server/routes/school.js, "QR check-in"). The code in
+// it changes every minute, so this refreshes on the server's schedule, and
+// polls who has scanned.
 export default function CheckinQrModal({ task, onClose }) {
   const canvasRef = useRef(null)
   const [data, setData] = useState(null)
@@ -171,6 +220,7 @@ export default function CheckinQrModal({ task, onClose }) {
             </div>
           )}
           {closeMsg && <p className={`text-sm mt-2 ${closeMsg.ok ? 'text-emerald-300' : 'text-red-400'}`} role="status">{closeMsg.text}</p>}
+          {inCount > 0 && <CheckoutPinSection taskId={task.id} until={data?.checkoutPinUntil} onChange={load} />}
         </div>
       </div>
     </div>
