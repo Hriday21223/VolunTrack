@@ -24,7 +24,7 @@ import { emailLang, et, emailDate, requestLang } from '../emailStrings.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { policyForSchool } from '../policy.js'
 import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade, currentTerm } from '../requirements.js'
-import { decryptSecret, encryptSecret, hasEncryptionKey } from '../secrets.js'
+import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
@@ -4904,17 +4904,10 @@ async function issueKioskPin(taskId, userId) {
     [taskId, userId],
   )
   if (!rows[0]) return null
-  await query('UPDATE public_task_signups SET kiosk_pin_hash = $2, kiosk_pin_enc = $3 WHERE id = $1', [rows[0].id, kioskPinHash(rows[0].id, pin), sealPin(pin)])
+  await query('UPDATE public_task_signups SET kiosk_pin_hash = $2 WHERE id = $1', [rows[0].id, kioskPinHash(rows[0].id, pin)])
   return pin
 }
 
-// The readable copy of a PIN, for its volunteer's own Dashboard and Attendance.
-const sealPin = (pin) => (hasEncryptionKey() ? `enc:${encryptSecret(pin)}` : pin)
-function openPin(stored) {
-  if (!stored) return null
-  if (!stored.startsWith('enc:')) return stored
-  try { return decryptSecret(stored.slice(4)) } catch { return null }
-}
 
 // Under-13s: the PIN also goes to linked parents, who usually bring them.
 async function emailKioskPinToParents(userId, task, pin) {
@@ -6085,8 +6078,6 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
               CASE WHEN s.status = 'approved' THEN t.creator_email END AS creator_email,
               -- Day-of details (#438), approved volunteers only.
               CASE WHEN s.status = 'approved' THEN t.meeting_point END AS meeting_point,
-              -- The volunteer's own check-in PIN (#668), until the day after.
-              CASE WHEN s.status = 'approved' AND t.date >= CURRENT_DATE - 1 AND t.is_online = false THEN s.kiosk_pin_enc END AS kiosk_pin_enc,
               CASE WHEN s.status = 'approved' THEN t.day_of_contact END AS day_of_contact,
               s.late_eta_minutes, s.late_at, s.checked_in_at,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
@@ -6108,7 +6099,7 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
        ORDER BY t.date DESC, s.signed_up_at DESC`,
       [req.auth.sub],
     )
-    return res.json({ signups: rows.map(({ kiosk_pin_enc: enc, ...r }) => ({ ...r, kiosk_pin: openPin(enc) })) })
+    return res.json({ signups: rows })
   } catch (error) {
     console.error('my signups failed:', error)
     return res.status(500).json({ error: 'Could not fetch your signups.' })
@@ -6258,7 +6249,8 @@ router.get('/public-tasks/:id/kiosk', limiter, requireDb, requireAuth(), async (
     if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
     if (!task.today) return res.status(400).json({ error: 'The kiosk only works on the day of the task.' })
     const { rows: people } = await query(
-      `SELECT s.id, u.name, s.checked_in_at, s.checked_out_at, s.kiosk_pin_fails, s.kiosk_pin_hash IS NOT NULL AS has_pin
+      `SELECT s.id, u.name, s.checked_in_at, s.checked_out_at, s.kiosk_pin_fails, s.kiosk_pin_hash IS NOT NULL AS has_pin,
+              CASE WHEN s.screen_code_expires_at > now() THEN s.screen_code END AS screen_code
          FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
       [task.id],
@@ -6268,6 +6260,7 @@ router.get('/public-tasks/:id/kiosk', limiter, requireDb, requireAuth(), async (
       people: people.map((p) => ({
         signupId: p.id, name: kioskName(p.name), hasPin: p.has_pin,
         checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, locked: p.kiosk_pin_fails >= KIOSK_MAX_FAILS,
+        screenCode: p.screen_code || null,
       })),
     })
   } catch (error) {
@@ -6347,7 +6340,8 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
     }
     const windowIndex = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
     const { rows: people } = await query(
-      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name,
+              CASE WHEN s.screen_code_expires_at > now() THEN s.screen_code END AS screen_code FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
       [task.id],
     )
@@ -6362,7 +6356,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
       code: checkinCode(secret, task.id, windowIndex),
       // Seconds until the code changes, so the screen refreshes on time.
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
-      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null })),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null, screenCode: p.screen_code || null })),
     })
   } catch (error) {
     console.error('checkin code failed:', error)
@@ -6382,22 +6376,37 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
     const task = rows[0]
     if (!task) return res.status(404).json({ error: 'Task not found.' })
     if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
-    if (!task.checkin_secret || !checkinCodeValid(task.checkin_secret, task.id, req.body?.code)) {
+    // Step 2 of a phone check-in (#668): the code read off the organizer's
+    // screen stands in for the QR code, which may have changed meanwhile.
+    const screenCode = String(req.body?.screenCode || '')
+    if (!screenCode && (!task.checkin_secret || !checkinCodeValid(task.checkin_secret, task.id, req.body?.code))) {
       return res.status(400).json({ error: 'This check-in code has expired. Scan the QR code on the organizer\'s screen again.' })
     }
     if (!task.today) return res.status(400).json({ error: 'Check-in only works on the day of the task.' })
     const { rows: signupRows } = await query(
-      "SELECT id, checked_in_at, checked_out_at, kiosk_pin_hash, kiosk_pin_fails FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+      "SELECT id, checked_in_at, checked_out_at, kiosk_pin_fails, screen_code, screen_code_expires_at > now() AS screen_live FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
       [task.id, req.auth.sub],
     )
     const signup = signupRows[0]
     if (!signup) return res.status(403).json({ error: "You aren't an approved volunteer for this task. Ask the organizer." })
-    // A volunteer with a check-in PIN (#668) types it after scanning too, so a
-    // photo of the code or someone else's phone isn't enough.
-    if (signup.kiosk_pin_hash) {
-      const pinCheck = await checkKioskPin(signup, req.body?.pin)
-      if (!pinCheck.ok) return res.status(pinCheck.status).json(pinCheck.body)
+    // After the scan, a 4-digit code shows under the volunteer's name on the
+    // organizer's screen (kiosk or Check-in QR) and they type it on the phone,
+    // which proves they're standing there (#668).
+    if (signup.kiosk_pin_fails >= KIOSK_MAX_FAILS) return res.status(423).json({ error: 'Too many wrong codes. Ask the organizer to unlock your name.', locked: true })
+    if (!screenCode) {
+      const fresh = String(randomInt(0, 10000)).padStart(4, '0')
+      await query("UPDATE public_task_signups SET screen_code = $2, screen_code_expires_at = now() + interval '2 minutes' WHERE id = $1", [signup.id, fresh])
+      return res.json({ screenCodeRequired: true, title: task.title })
     }
+    const goodCode = signup.screen_live && signup.screen_code && screenCode.length === 4
+      && timingSafeEqual(Buffer.from(screenCode), Buffer.from(signup.screen_code))
+    if (!goodCode) {
+      if (!signup.screen_live) return res.status(400).json({ error: 'That code expired. Scan the QR code again.' })
+      const { rows: f } = await query('UPDATE public_task_signups SET kiosk_pin_fails = kiosk_pin_fails + 1 WHERE id = $1 RETURNING kiosk_pin_fails', [signup.id])
+      const left = KIOSK_MAX_FAILS - f[0].kiosk_pin_fails
+      return res.status(401).json({ error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask the organizer to unlock your name.', screenCodeRequired: left > 0, locked: left <= 0 })
+    }
+    await query('UPDATE public_task_signups SET screen_code = NULL, screen_code_expires_at = NULL, kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
 
     if (!signup.checked_in_at) {
       const { rows: done } = await query(

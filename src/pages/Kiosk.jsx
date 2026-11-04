@@ -37,7 +37,7 @@ function KioskQr({ taskId }) {
     <div className="rounded-2xl bg-white/5 p-4 text-center">
       <p className="font-semibold mb-2">{tr('Or scan with your phone')}</p>
       <canvas ref={canvas} className="mx-auto rounded-lg bg-white" aria-label={tr('Check-in QR code')} />
-      <p className="text-xs text-white/60 mt-2">{tr('Sign in on your phone, scan, then enter your PIN.')}</p>
+      <p className="text-xs text-white/60 mt-2">{tr('Sign in on your phone and scan. A code appears under your name here: type it on your phone.')}</p>
     </div>
   )
 }
@@ -83,7 +83,7 @@ export default function Kiosk() {
       setData(body); setError('')
     } catch (e) { setError(e.message) }
   }, [taskId])
-  useEffect(() => { if (exitCode) { load(); const t = setInterval(load, 30000); return () => clearInterval(t) } return undefined }, [exitCode, load])
+  useEffect(() => { if (exitCode) { load(); const t = setInterval(load, 3000); return () => clearInterval(t) } return undefined }, [exitCode, load])
 
   const submit = async (value) => {
     try {
@@ -136,6 +136,7 @@ export default function Kiosk() {
             onClick={() => (p.locked ? setOrganizer({ action: 'unlock', person: p }) : setWho(p))}
             className={`rounded-2xl p-4 text-left min-h-[84px] ${p.checkedOutAt ? 'bg-emerald-900/40' : p.checkedInAt ? 'bg-amber-900/30' : 'bg-white/10'} ${p.locked ? 'opacity-60' : ''}`}>
             <span className="block text-lg font-semibold">{p.name}</span>
+            {p.screenCode && <span className="block text-3xl font-bold tracking-[0.3em] text-yellow-300 my-1" aria-label={tr('Code for {name}', { name: p.name })}>{p.screenCode}</span>}
             <span className="text-sm text-white/70 flex items-center gap-1">
               {p.locked ? <><Lock className="w-4 h-4" />{tr('Locked')}</> : p.checkedOutAt ? <><CheckCircle className="w-4 h-4" />{tr('Done')}</> : p.checkedInAt ? <><LogIn className="w-4 h-4" />{tr('Here')}</> : !p.hasPin ? tr('No PIN') : tr('Not yet')}
             </span>

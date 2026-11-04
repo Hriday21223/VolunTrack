@@ -43,7 +43,7 @@ export default function CheckinQrModal({ task, onClose }) {
     const tick = async () => {
       const body = await load()
       if (stopped) return
-      timer = setTimeout(tick, Math.min(10, body?.refreshIn ?? 10) * 1000 + 300)
+      timer = setTimeout(tick, Math.min(3, body?.refreshIn ?? 3) * 1000 + 300)
     }
     tick()
     return () => { stopped = true; clearTimeout(timer) }
@@ -120,6 +120,7 @@ export default function CheckinQrModal({ task, onClose }) {
                   <span className="min-w-0">
                     {p.name}
                     {p.parentComing && <span className="block text-xs text-amber-300">Parent coming: {p.parentComing}</span>}
+                    {p.screenCode && <span className="block text-2xl font-bold tracking-[0.3em] text-yellow-300">{p.screenCode}</span>}
                     {p.emergencyContact && (
                       <a href={`tel:${p.emergencyContact.phone.replace(/[^\d+]/g, '')}`} className="block text-xs text-sky-300 hover:underline">
                         <Phone className="w-3 h-3 inline mr-1" aria-hidden="true" />

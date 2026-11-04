@@ -33,10 +33,10 @@ export default function CheckIn() {
     const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(taskId)}/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
-      body: JSON.stringify(pinValue ? { code, pin: pinValue } : { code }),
+      body: JSON.stringify(pinValue ? { screenCode: pinValue } : { code }),
     })
     const body = await res.json().catch(() => ({}))
-    if (body.pinRequired) { setPinNeeded(true); if (pinValue) setError(body.error || ''); return }
+    if (body.screenCodeRequired) { setPinNeeded(true); if (pinValue) setError(body.error || ''); return }
     setPinNeeded(false)
     if (!res.ok) throw new Error(body.error || 'Could not check you in.')
     setError('')
@@ -76,8 +76,8 @@ export default function CheckIn() {
   let lines = []
   if (pinNeeded) {
     icon = <LogIn className="w-10 h-10 text-brand-400" />
-    heading = tr('Enter your check-in PIN')
-    lines = [tr('It’s the 6-digit code in your approval email. Don’t share it with anyone.')]
+    heading = tr('Look at the organizer’s screen')
+    lines = [tr('A 4-digit code is showing under your name. Type it here within 2 minutes.')]
   } else if (error) {
     icon = <AlertTriangle className="w-10 h-10 text-amber-400" />
     heading = tr("Couldn't check you in")
@@ -109,12 +109,12 @@ export default function CheckIn() {
             <form onSubmit={submitPin} className="mt-4 flex flex-col items-center gap-3">
               <input
                 className="input text-center text-2xl tracking-[0.4em] w-48"
-                inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="\d{6}" required autoFocus
-                value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                aria-label={tr('Check-in PIN')}
+                inputMode="numeric" autoComplete="one-time-code" maxLength={4} pattern="\d{4}" required autoFocus
+                value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                aria-label={tr('Code from the organizer’s screen')}
               />
               {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
-              <button type="submit" className="btn-primary" disabled={busy || pin.length !== 6}>{busy ? tr('Checking…') : tr('Check in')}</button>
+              <button type="submit" className="btn-primary" disabled={busy || pin.length !== 4}>{busy ? tr('Checking…') : tr('Check in')}</button>
             </form>
           )}
           {!pinNeeded && (result?.state === 'checked_in' || error) && (
