@@ -89,15 +89,16 @@ icon label stays *VolunTrack*:
 > • We never sell your data
 > • In English and Spanish
 
-**Release notes / What's new** (Play 500 max) — 0.12.0:
+**Release notes / What's new** (Play 500 max) — 0.13.0:
 
-> New in 0.12.0:
-> • Log hours with no signal; they send when you're back online
-> • A check before saving hours you already logged
-> • A Helper Card with stars for kids in K–5th grade
-> • Parents can add an emergency phone for event days
-> • The app in Vietnamese and Chinese
-> • Schools: approval history and an end-of-year packet
+> New in 0.13.0:
+> • Check in and out of events with a QR code, kiosk PIN or check-out PIN
+> • "When I'm free" shows events that fit your week
+> • A plan to reach your hours goal on time
+> • Sign up for every date of a weekly event at once
+> • Parents: check-in notices and a family calendar
+> • Schools: clubs, assignments and auto-approve rules
+> • A "What's new" page
 
 ## Graphics
 
@@ -105,8 +106,8 @@ icon label stays *VolunTrack*:
 | --- | --- | --- |
 | Play app icon | 512×512 PNG | `store-assets/play/icon-512.png` |
 | Play feature graphic | 1024×500 PNG/JPG, no alpha | `store-assets/play/feature-graphic.png` |
-| Play phone screenshots | 2–8, 16:9 or 9:16, 320–3840 px sides | *to capture* |
-| Apple iPhone 6.9" screenshots | 1–10 at 1320×2868 (or 1290×2796) | *to capture* |
+| Play phone screenshots | 2–8, 16:9 or 9:16, 320–3840 px sides | `store-assets/screenshots/play/` (6 at 1080×1920) |
+| Apple iPhone 6.9" screenshots | 1–10 at 1320×2868 (or 1290×2796) | `store-assets/screenshots/iphone/` (6 at 1320×2868) |
 | Apple iPad 13" screenshots | 1–10 at 2064×2752 | *to capture — only while the app ships for iPad* |
 | Apple app icon | from the binary (`resources/icon-only.png`, 1024×1024) | — |
 
