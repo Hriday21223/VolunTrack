@@ -2961,6 +2961,7 @@ export default {
   "When the place is on your approved list and the entry is at most": "当地点在你的已批准列表中且记录不超过",
   "Maximum hours to approve automatically": "自动批准的最长时长",
   "Add approved places above for this rule to work.": "请在上方添加已批准的地点，此规则才会生效。",
+  "Subscribe once and your children's volunteer events show up in your phone or computer calendar, and stay up to date.": "订阅一次，孩子们的志愿活动就会出现在你手机或电脑的日历中，并保持更新。",
   "What's new": "新功能",
   "Recent changes to VolunTrack": "VolunTrack 最近的更新",
   "New": "新",

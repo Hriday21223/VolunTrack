@@ -2990,6 +2990,7 @@ export default {
   "When the place is on your approved list and the entry is at most": "Cuando el lugar está en tu lista aprobada y el registro es de como máximo",
   "Maximum hours to approve automatically": "Máximo de horas para aprobar automáticamente",
   "Add approved places above for this rule to work.": "Agrega lugares aprobados arriba para que esta regla funcione.",
+  "Subscribe once and your children's volunteer events show up in your phone or computer calendar, and stay up to date.": "Suscríbete una vez y los eventos de voluntariado de tus hijos aparecerán en el calendario de tu teléfono o computadora, siempre actualizados.",
   "What's new": "Novedades",
   "Recent changes to VolunTrack": "Cambios recientes en VolunTrack",
   "New": "Nuevo",

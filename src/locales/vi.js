@@ -2961,6 +2961,7 @@ export default {
   "When the place is on your approved list and the entry is at most": "Khi địa điểm có trong danh sách đã duyệt và mục có tối đa",
   "Maximum hours to approve automatically": "Số giờ tối đa để tự động duyệt",
   "Add approved places above for this rule to work.": "Hãy thêm địa điểm đã duyệt ở trên để quy tắc này hoạt động.",
+  "Subscribe once and your children's volunteer events show up in your phone or computer calendar, and stay up to date.": "Đăng ký một lần là các sự kiện tình nguyện của con bạn sẽ hiện trong lịch trên điện thoại hoặc máy tính và luôn được cập nhật.",
   "What's new": "Có gì mới",
   "Recent changes to VolunTrack": "Những thay đổi gần đây của VolunTrack",
   "New": "Mới",
