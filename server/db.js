@@ -703,6 +703,8 @@ export async function initSchema() {
   // A student's chosen causes (activity categories) for the "For you" row on
   // Opportunities (server/routes/interests.js).
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[]`) } catch {}
+  // When a student or volunteer is usually free (#672), for Opportunities' filter.
+  try { await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_times JSONB NOT NULL DEFAULT '{}'::jsonb") } catch {}
 
   // Task details (#426): an optional minimum age, online tasks (no address,
   // no map, never dropped by the distance radius), and wheelchair access

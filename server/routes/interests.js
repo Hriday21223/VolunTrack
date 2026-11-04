@@ -8,6 +8,7 @@ import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { hasEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 import { runTaskAlerts } from '../taskAlerts.js'
+import { cleanFreeTimes } from '../freeTimes.js'
 
 // A student's interests: the causes they care about, picked from the same
 // activity categories tasks and logs use. They drive the "For you" row at the
@@ -30,6 +31,30 @@ function requireDb(_req, res, next) {
   if (!hasDatabase()) return res.status(503).json({ error: 'Server database is not configured.' })
   next()
 }
+
+// GET|PUT /api/interests/free-times (#672): when the caller is usually free,
+// { mon: ['morning'], ... }. Only they see it; it filters Opportunities.
+router.get('/free-times', limiter, requireDb, requireAuth('student', 'volunteer'), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT free_times FROM users WHERE id = $1', [req.auth.sub])
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ freeTimes: cleanFreeTimes(rows[0].free_times) })
+  } catch (error) {
+    console.error('free times read failed:', error)
+    return res.status(500).json({ error: 'Could not load when you are free.' })
+  }
+})
+
+router.put('/free-times', limiter, requireDb, requireAuth('student', 'volunteer'), async (req, res) => {
+  try {
+    const freeTimes = cleanFreeTimes(req.body?.freeTimes)
+    await query('UPDATE users SET free_times = $2 WHERE id = $1', [req.auth.sub, JSON.stringify(freeTimes)])
+    return res.json({ freeTimes })
+  } catch (error) {
+    console.error('free times save failed:', error)
+    return res.status(500).json({ error: 'Could not save when you are free.' })
+  }
+})
 
 // GET /api/interests — the caller's chosen causes ([] when none yet).
 router.get('/', limiter, requireDb, requireAuth('student'), async (req, res) => {

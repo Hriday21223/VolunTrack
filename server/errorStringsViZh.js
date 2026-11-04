@@ -1,6 +1,8 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Could not load when you are free.": "Không thể tải thời gian bạn rảnh.",
+  "Could not save when you are free.": "Không thể lưu thời gian bạn rảnh.",
   "2FA is already enabled.": "Xác thực hai yếu tố đã được bật.",
   "2FA is already enabled. Disable it first.": "Xác thực hai yếu tố đã được bật. Hãy tắt trước.",
   "2FA is not enabled on this account.": "Tài khoản này chưa bật xác thực hai yếu tố.",
@@ -331,6 +333,8 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Could not load when you are free.": "无法加载你的空闲时间。",
+  "Could not save when you are free.": "无法保存你的空闲时间。",
   "2FA is already enabled.": "双重验证已开启。",
   "2FA is already enabled. Disable it first.": "双重验证已开启，请先关闭。",
   "2FA is not enabled on this account.": "此账户未开启双重验证。",
