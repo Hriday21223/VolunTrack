@@ -2955,4 +2955,7 @@ export default {
   "I don't agree — sign out": "No acepto — cerrar sesión",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "Si no aceptas, puedes cerrar sesión y pedirnos que eliminemos tu cuenta desde la página de la Política de privacidad.",
   "Could not save that. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
+  "Hours by partner": "Horas por socio",
+  "{from} to {to} \u00b7 {hours} hours from your students \u00b7 counts only, no names": "{from} a {to} · {hours} horas de tus estudiantes · solo totales, sin nombres",
+  "Partner": "Socio",
 }

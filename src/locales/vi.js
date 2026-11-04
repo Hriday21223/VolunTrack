@@ -2926,4 +2926,7 @@ export default {
   "I don't agree — sign out": "Tôi không đồng ý — đăng xuất",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "Nếu bạn không đồng ý, bạn có thể đăng xuất và yêu cầu chúng tôi xóa tài khoản từ trang Chính sách quyền riêng tư.",
   "Could not save that. Please try again.": "Không thể lưu. Vui lòng thử lại.",
+  "Hours by partner": "Giờ theo đối tác",
+  "{from} to {to} \u00b7 {hours} hours from your students \u00b7 counts only, no names": "{from} đến {to} · {hours} giờ từ học sinh của bạn · chỉ số liệu, không có tên",
+  "Partner": "Đối tác",
 }
