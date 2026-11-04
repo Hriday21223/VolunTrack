@@ -730,6 +730,8 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_stay_minutes SMALLINT`) } catch {}
   // The weeks of one weekly series share an id (#692), so a volunteer can join them all.
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS series_id TEXT') } catch {}
+  // When the organizer invited their past volunteers to this event (#705); once per event.
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS past_invited_at TIMESTAMPTZ') } catch {}
   try { await query('CREATE INDEX IF NOT EXISTS idx_public_tasks_series ON public_tasks(series_id) WHERE series_id IS NOT NULL') } catch {}
   // A check-out PIN the organizer makes for phones (#681): hashed, short-lived.
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkout_pin_hash TEXT') } catch {}
