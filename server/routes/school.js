@@ -6172,8 +6172,9 @@ function scannedHours(inAt, outAt) {
 
 // Logs a checked-out volunteer's hours as approved by the organizer, unless
 // they already have an entry for this task that day. Returns whether it logged.
-// → { logged, leftEarly }. With a minimum stay (#668), someone who left sooner
-// still gets an entry, but unconfirmed, for the organizer to approve or not.
+// → { logged, leftEarly }. The hours are worked out and submitted, unconfirmed:
+// the organizer signs and approves them later on My Tasks (#670). With a
+// minimum stay (#668), an early leaver's entry also says so.
 async function logCheckout(task, userId, inAt, outAt, note) {
   const day = dayString(task.date)
   if (await alreadyLogged(task.id, userId, day)) return { logged: false, leftEarly: null }
@@ -6186,7 +6187,7 @@ async function logCheckout(task, userId, inAt, outAt, note) {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [logId, userId, day, task.title, ORGANIZER_LOG_CATEGORY, scannedHours(inAt, outAt),
       early ? `${note}. Left early: stayed ${stayed} of the ${minStay} minutes asked.` : note,
-      early ? null : task.created_by, task.id, early ? 'none' : 'approved'],
+      null, task.id, 'none'],
   )
   emitHours('hours.created', logId)
   emitSignupFor('event.attendance', task.id, userId)

@@ -85,7 +85,7 @@ export default function CheckIn() {
   } else if (result?.state === 'checked_in') {
     icon = <LogIn className="w-10 h-10 text-brand-400" />
     heading = result.tooSoon ? tr("You're already checked in") : tr("You're checked in")
-    lines = [`${result.title} · ${tr('since {time}', { time: time(result.checkedInAt) })}`, tr('Scan the same QR code again when you leave, and your hours will be logged and approved.')]
+    lines = [`${result.title} · ${tr('since {time}', { time: time(result.checkedInAt) })}`, tr('Scan the same QR code again when you leave. Your hours are then sent to the organizer to sign.')]
   } else if (result?.state === 'checked_out' || result?.state === 'done') {
     icon = <CheckCircle className="w-10 h-10 text-emerald-400" />
     heading = result.state === 'done' ? tr('Already checked out') : tr('Checked out — thank you!')
@@ -94,7 +94,7 @@ export default function CheckIn() {
       result.leftEarly ? tr('You stayed {stayed} of the {minimum} minutes this event asks for, so the organizer will review your hours.', { stayed: result.leftEarly.stayed, minimum: result.leftEarly.minimum }) : '',
       !result.leftEarly && result.hours != null ? tr(result.logged === false
         ? (result.hours === 1 ? '1 hour was already logged for today.' : '{n} hours were already logged for today.')
-        : (result.hours === 1 ? '1 hour logged and approved.' : '{n} hours logged and approved.'), { n: result.hours }) : '',
+        : (result.hours === 1 ? '1 hour sent to the organizer to sign.' : '{n} hours sent to the organizer to sign.'), { n: result.hours }) : '',
     ].filter(Boolean)
   }
 
