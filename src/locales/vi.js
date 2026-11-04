@@ -2926,4 +2926,7 @@ export default {
   "I don't agree — sign out": "Tôi không đồng ý — đăng xuất",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "Nếu bạn không đồng ý, bạn có thể đăng xuất và yêu cầu chúng tôi xóa tài khoản từ trang Chính sách quyền riêng tư.",
   "Could not save that. Please try again.": "Không thể lưu. Vui lòng thử lại.",
+  "Event check-in notices": "Thông báo điểm danh sự kiện",
+  "A notification when your child checks in or out of a volunteer event, with their hours.": "Thông báo khi con bạn điểm danh vào hoặc ra khỏi một sự kiện tình nguyện, kèm số giờ.",
+  "Checked out": "Đã điểm danh ra",
 }

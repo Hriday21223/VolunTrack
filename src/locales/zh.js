@@ -2926,4 +2926,7 @@ export default {
   "I don't agree — sign out": "我不同意——退出登录",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "如果你不同意，可以退出登录，并在隐私政策页面请求我们删除你的账户。",
   "Could not save that. Please try again.": "无法保存，请重试。",
+  "Event check-in notices": "活动签到通知",
+  "A notification when your child checks in or out of a volunteer event, with their hours.": "孩子在志愿活动签到或签退时通知你，并附上时长。",
+  "Checked out": "已签退",
 }
