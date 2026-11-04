@@ -23,6 +23,8 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // children linked yet vs. at least one linked) — only one is ever on the
 // page at a time, so the tour must show whichever one currently applies.
 const PARENT_TOUR_STEP_NO_CHILDREN = { selector: '[data-tour="family-link"]', title: 'Link a child', description: 'Ask your child for a link code from their Settings → Family section, then enter it here to see their hours.' }
+const PARENT_TOUR_STEP_NOTICES = { selector: '[data-tour="parent-notices"]', title: tr('Event check-in notices'), description: tr('Get a notice when your child checks in and out of a volunteer event, with their hours. Turn it off here any time.') }
+const PARENT_TOUR_STEP_WHATS_NEW = { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') }
 const PARENT_TOUR_STEP_HAS_CHILDREN = { selector: '[data-tour="child-card"]', title: "Your child's hours", description: 'Each linked child gets a card showing progress toward their school’s requirement, plus every session they’ve logged.' }
 
 // How many entries a card shows before asking to be expanded. A year of
@@ -124,7 +126,7 @@ export default function ParentDashboard() {
       {!loading && !error && (
         <SpotlightTour
           storageKey="voluntrack:tour-seen:parent"
-          steps={[children.length === 0 ? PARENT_TOUR_STEP_NO_CHILDREN : PARENT_TOUR_STEP_HAS_CHILDREN]}
+          steps={[children.length === 0 ? PARENT_TOUR_STEP_NO_CHILDREN : PARENT_TOUR_STEP_HAS_CHILDREN, PARENT_TOUR_STEP_NOTICES, PARENT_TOUR_STEP_WHATS_NEW]}
         />
       )}
 
@@ -188,7 +190,7 @@ export default function ParentDashboard() {
                   {digestBusy ? tr('Saving…') : digest.enabled ? tr('Turn off') : tr('Turn on')}
                 </button>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-earth-100 dark:border-white/10">
+              <div data-tour="parent-notices" className="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-earth-100 dark:border-white/10">
                 <div className="flex items-start gap-3">
                   <Bell className="w-4 h-4 mt-1 text-brand-600 shrink-0" />
                   <div>
