@@ -35,7 +35,7 @@ export default function SpotlightTour({ storageKey, steps }) {
     setReady(false)
     let attempts = 0
     const tryFind = () => {
-      const el = document.querySelector(step.selector)
+      const el = [...document.querySelectorAll(step.selector)].find((e) => e.getClientRects().length > 0)
       if (el) {
         // Instant, not smooth: the highlight box's position is measured
         // right after this call, and a smooth scroll wouldn't have settled
@@ -70,7 +70,7 @@ export default function SpotlightTour({ storageKey, steps }) {
   useEffect(() => {
     if (dismissed || !ready || !step) return undefined
     const update = () => {
-      const el = document.querySelector(step.selector)
+      const el = [...document.querySelectorAll(step.selector)].find((e) => e.getClientRects().length > 0)
       if (!el) return
       const r = el.getBoundingClientRect()
       setRect({ top: r.top, left: r.left, width: r.width, height: r.height })
