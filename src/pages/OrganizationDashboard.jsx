@@ -42,6 +42,8 @@ const ORG_TOUR_STEPS = [
   { selector: '[data-tour="org-schools-tab"]', title: tr('Your schools'), description: tr('Every school you’ve added lives here, along with their payment status and student counts.') },
   { selector: '[data-tour="org-add-school"]', title: tr('Add a school'), description: tr('Add a school and they get an email invite to set their own password and school code.') },
   { selector: '[data-tour="org-invites-tab"]', title: tr('Invites'), description: tr('Track invites you’ve sent — pending, set up, or expired.') },
+  { selector: '[data-tour="org-partners-tab"]', title: tr('Partners'), description: tr('Your partner nonprofits: send them a link to confirm students\' hours, see the hours each one received, and put your events on your website.') },
+  { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
 ]
 
 // Minimal by design: an organization's dashboard only adds schools and shows
@@ -171,7 +173,7 @@ export default function OrganizationDashboard() {
           <button onClick={() => setTab('requirements')} className={`btn-sm ${tab === 'requirements' ? 'btn-primary' : 'btn-ghost'}`}>
             <ClipboardList className="w-3.5 h-3.5 mr-1" />{' '}{tr('Requirements')}
           </button>
-          <button onClick={() => setTab('partners')} className={`btn-sm ${tab === 'partners' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="org-partners-tab" onClick={() => setTab('partners')} className={`btn-sm ${tab === 'partners' ? 'btn-primary' : 'btn-ghost'}`}>
             <Handshake className="w-3.5 h-3.5 mr-1" />{' '}{tr('Partners')}
           </button>
           <button onClick={() => setTab('announcements')} className={`btn-sm ${tab === 'announcements' ? 'btn-primary' : 'btn-ghost'}`}>
