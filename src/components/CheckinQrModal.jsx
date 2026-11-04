@@ -12,6 +12,17 @@ const SITE = (isNativeApp && import.meta.env.VITE_SITE_URL) || window.location.o
 // again when they leave (server/routes/school.js, "QR check-in"). The code in
 // it changes every minute, so this refreshes on the server's schedule, and
 // polls who has scanned.
+// "9:05 AM" in the viewer's own clock.
+function clock(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+// "2.25 hours", "1 hour".
+function hoursText(n) {
+  const v = Math.round((Number(n) || 0) * 100) / 100
+  return v === 1 ? '1 hour' : `${v} hours`
+}
+
 export default function CheckinQrModal({ task, onClose }) {
   const canvasRef = useRef(null)
   const [data, setData] = useState(null)
@@ -64,6 +75,7 @@ export default function CheckinQrModal({ task, onClose }) {
   const inCount = people.filter((p) => p.checkedInAt).length
   const outCount = people.filter((p) => p.checkedOutAt).length
   const stillHere = inCount - outCount
+  const totalHours = data?.totalHours || 0
 
   // Everyone still checked in leaves now: for volunteers who forget the
   // second scan. Their hours are logged as approved by you.
@@ -104,13 +116,17 @@ export default function CheckinQrModal({ task, onClose }) {
             <div className="rounded-2xl bg-white p-3"><canvas ref={canvasRef} aria-label="Check-in QR code" /></div>
           )}
           <p className="text-sm text-earth-300 mt-3 text-center">
-            Volunteers scan this with their phone's camera when they <strong>arrive</strong>, and again when they <strong>leave</strong> — their hours are then logged and approved for you.
+            Volunteers scan this with their phone's camera when they <strong>arrive</strong>, and again when they <strong>leave</strong> — their hours are worked out from the two scans and sent to you to sign.
           </p>
           <p className="text-xs text-earth-500 mt-1 text-center">The code changes every minute, so a photo of it stops working.</p>
         </div>
 
         <div className="mt-4 border-t border-white/10 pt-3">
-          <p className="text-sm font-medium mb-2">{inCount} of {people.length} checked in · {outCount} checked out</p>
+          <p className="text-sm font-medium">{inCount} of {people.length} checked in · {outCount} checked out</p>
+          {outCount > 0 && (
+            <p className="text-sm text-emerald-300">Total: {hoursText(totalHours)} from {outCount === 1 ? '1 volunteer' : `${outCount} volunteers`}</p>
+          )}
+          <div className="mb-2" />
           {people.length === 0 ? (
             <p className="text-sm text-earth-500">No approved volunteers yet.</p>
           ) : (
@@ -130,6 +146,9 @@ export default function CheckinQrModal({ task, onClose }) {
                   </span>
                   <span className={`text-xs flex items-center gap-1 ${p.checkedOutAt ? 'text-emerald-400' : p.checkedInAt ? 'text-amber-300' : 'text-earth-500'}`}>
                     {p.checkedOutAt ? <><CheckCircle className="w-3.5 h-3.5" /> Done</> : p.checkedInAt ? <><LogIn className="w-3.5 h-3.5" /> Here</> : 'Not yet'}
+                    {p.checkedOutAt
+                      ? <span className="text-earth-300 whitespace-nowrap">· {clock(p.checkedInAt)}–{clock(p.checkedOutAt)} · {hoursText(p.hours)}</span>
+                      : p.checkedInAt && <span className="text-earth-300 whitespace-nowrap">· since {clock(p.checkedInAt)}</span>}
                   </span>
                 </li>
               ))}

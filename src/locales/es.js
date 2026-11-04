@@ -2861,4 +2861,5 @@ export default {
   "Don’t save it": "No guardarlo",
   "Saved on this device. It sends when you’re back online.": "Guardado en este dispositivo. Se envía cuando vuelvas a tener conexión.",
   "Parent coming: {name}": "Viene con su padre o madre: {name}",
+  "Total so far: {n} hours": "Total hasta ahora: {n} horas",
 }

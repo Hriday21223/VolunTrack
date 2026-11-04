@@ -2832,4 +2832,5 @@ export default {
   "Still failing: {error}": "Vẫn lỗi: {error}",
   "Delete the webhook to {url}?": "Xóa webhook đến {url}?",
   "Skip to content": "Chuyển đến nội dung",
+  "Total so far: {n} hours": "Tổng đến giờ: {n} giờ",
 }
