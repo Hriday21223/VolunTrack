@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Zap, Menu, X, FileSignature, UserPlus, Link2, Mail, ClipboardList } from 'lucide-react'
+import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, QrCode, CalendarClock, ClipboardCheck, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Zap, Menu, X, FileSignature, UserPlus, Link2, Mail, ClipboardList } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
@@ -25,6 +25,9 @@ const DETAILED_FEATURES = [
   { icon: Bell, title: 'Reminders', body: 'Set recurring reminders so you never forget to log a session. Turn on notifications and they reach you even when VolunTrack isn\'t open.' },
   { icon: Smartphone, title: 'Works on any device', body: 'Log hours from your phone, tablet, or laptop. Add it to your home screen for an app-like experience that keeps working offline.' },
   { icon: TrendingUp, title: 'Visual progress tracking', body: 'Monitor your monthly trends with bar charts, watch goal rings fill up, and see your all-time stats at a glance on a single dashboard.' },
+  { icon: QrCode, title: 'Event check-in and check-out', body: 'Volunteers check in and out at events with a QR code, a kiosk and their own private PIN, or a check-out PIN from the organizer. Their hours are worked out from the times and sent to the organizer to sign.' },
+  { icon: CalendarClock, title: 'Find events when you\'re free', body: 'Tell VolunTrack the days and times you\'re usually free, and Opportunities shows only the events that fit.' },
+  { icon: ClipboardCheck, title: 'Clubs and assignments', body: 'Advisers group students into clubs, give a club an hours assignment with a due date, and see who has finished. Students attach their entries to it.' },
 ]
 
 // "How it works" (and the line under Categories) for whichever account the
@@ -62,7 +65,7 @@ const HOW_IT_WORKS = {
       { icon: Users, title: 'Create your account', body: 'Sign up free and choose “I’m a Volunteer Task Maker.”' },
       { icon: ClipboardList, title: 'Post a task', body: 'Add what, where, when, and how many volunteers you need. Students find it on their Opportunities page.' },
       { icon: CheckCircle, title: 'Approve sign-ups', body: 'Approve or decline each volunteer who signs up, and message them all at once.' },
-      { icon: FileSignature, title: 'Sign off their hours', body: 'Log everyone’s hours in one go and see the impact your events add up to.' },
+      { icon: FileSignature, title: 'Sign off their hours', body: 'Volunteers check in and out, and their hours come to you to sign in one go. See the impact your events add up to.' },
     ],
   },
 }
@@ -89,7 +92,7 @@ const AUDIENCES = [
   {
     icon: School, title: 'School clubs & organizations',
     body: 'Manage group service requirements, monitor member participation, and generate reports for advisors and administrators.',
-    perks: ['Member oversight', 'Progress monitoring', 'Bulk reporting'],
+    perks: ['Member oversight', 'Club assignments', 'Bulk reporting'],
   },
   {
     icon: Building, title: 'Schools & districts',
@@ -99,7 +102,7 @@ const AUDIENCES = [
   {
     icon: Globe, title: 'Nonprofits & community groups',
     body: 'Post volunteer tasks, approve sign-ups, sign off volunteers\' hours right in VolunTrack, and generate impact reports for grants, boards, and stakeholders.',
-    perks: ['Task management', 'Sign off hours in-app', 'Impact reporting'],
+    perks: ['Check-in and check-out', 'Sign off hours in-app', 'Impact reporting'],
   },
 ]
 
