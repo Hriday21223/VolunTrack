@@ -2984,4 +2984,10 @@ export default {
   "Event check-in notices": "Avisos de llegada a eventos",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Un aviso cuando tu hijo o hija registra su llegada o salida de un evento de voluntariado, con sus horas.",
   "Checked out": "Salida registrada",
+  "Approve automatically": "Aprobar automáticamente",
+  "Entries that meet a rule are approved as soon as they are saved, so advisers only check the rest. Each one is marked as automatic in the approval history.": "Los registros que cumplen una regla se aprueban al guardarse, así los asesores solo revisan el resto. Cada uno queda marcado como automático en el historial de aprobaciones.",
+  "When a supervisor signed in person on the student’s device": "Cuando un supervisor firmó en persona en el dispositivo del estudiante",
+  "When the place is on your approved list and the entry is at most": "Cuando el lugar está en tu lista aprobada y el registro es de como máximo",
+  "Maximum hours to approve automatically": "Máximo de horas para aprobar automáticamente",
+  "Add approved places above for this rule to work.": "Agrega lugares aprobados arriba para que esta regla funcione.",
 }

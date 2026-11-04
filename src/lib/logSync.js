@@ -91,7 +91,8 @@ export async function createLogOnServer(log) {
   } catch { /* unreachable */ }
   if (!res || !res.ok) return { id: null, retry: unreachable(res) }
   const body = await res.json().catch(() => ({}))
-  return { id: body.id || null, retry: false }
+  // The school's auto-approve rules (#706) may have approved it already.
+  return { id: body.id || null, retry: false, verificationStatus: body.verificationStatus || null }
 }
 
 export async function syncCreateLog(log) {

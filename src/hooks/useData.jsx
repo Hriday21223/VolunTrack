@@ -177,7 +177,7 @@ export function DataProvider({ children }) {
     // before this synced never gets a serverId, and that's fine (no
     // backfill of history predating this feature).
     creatingLogsRef.current.add(log.id)
-    const whenSynced = createLogOnServer(log).then(({ id: serverId, retry }) => {
+    const whenSynced = createLogOnServer(log).then(({ id: serverId, retry, verificationStatus }) => {
       creatingLogsRef.current.delete(log.id)
       // Couldn't reach the server: flushLogOutbox() sends it later, with any
       // edits made meanwhile (they're already on the local copy).
@@ -194,8 +194,9 @@ export function DataProvider({ children }) {
         return null
       }
       if (serverId) {
-        updateLog(log.id, { serverId }) // raw local write, doesn't re-trigger sync
-        setLogs((prev) => prev.map((l) => (l.id === log.id ? { ...l, serverId } : l)))
+        const extra = verificationStatus ? { serverId, verificationStatus } : { serverId }
+        updateLog(log.id, extra) // raw local write, doesn't re-trigger sync
+        setLogs((prev) => prev.map((l) => (l.id === log.id ? { ...l, ...extra } : l)))
       }
       if (serverId && queued) syncUpdateLog(serverId, queued)
       return serverId

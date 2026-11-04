@@ -2955,4 +2955,10 @@ export default {
   "Event check-in notices": "Thông báo điểm danh sự kiện",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Thông báo khi con bạn điểm danh vào hoặc ra khỏi một sự kiện tình nguyện, kèm số giờ.",
   "Checked out": "Đã điểm danh ra",
+  "Approve automatically": "Tự động duyệt",
+  "Entries that meet a rule are approved as soon as they are saved, so advisers only check the rest. Each one is marked as automatic in the approval history.": "Các mục đáp ứng quy tắc sẽ được duyệt ngay khi lưu, nên cố vấn chỉ cần kiểm tra phần còn lại. Mỗi mục được ghi là tự động trong lịch sử duyệt.",
+  "When a supervisor signed in person on the student’s device": "Khi người giám sát ký trực tiếp trên thiết bị của học sinh",
+  "When the place is on your approved list and the entry is at most": "Khi địa điểm có trong danh sách đã duyệt và mục có tối đa",
+  "Maximum hours to approve automatically": "Số giờ tối đa để tự động duyệt",
+  "Add approved places above for this rule to work.": "Hãy thêm địa điểm đã duyệt ở trên để quy tắc này hoạt động.",
 }

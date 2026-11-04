@@ -278,6 +278,24 @@ function LogRulesEditor({ value, onChange }) {
         </div>
       </div>
       <ApprovedPlacesEditor value={value.approvedPlaces || []} onChange={(approvedPlaces) => onChange({ approvedPlaces })} />
+      {/* Auto-approve rules (#706). */}
+      <div className="rounded-xl border border-earth-200 dark:border-white/10 p-3 space-y-2">
+        <p className="label mb-0">{tr('Approve automatically')}</p>
+        <p className="text-xs text-earth-400">{tr('Entries that meet a rule are approved as soon as they are saved, so advisers only check the rest. Each one is marked as automatic in the approval history.')}</p>
+        <label className="flex items-start gap-2 text-sm cursor-pointer">
+          <input type="checkbox" className="mt-1" checked={Boolean(value.autoApproveSignedInPerson)} onChange={(e) => onChange({ autoApproveSignedInPerson: e.target.checked })} />
+          <span>{tr('When a supervisor signed in person on the student’s device')}</span>
+        </label>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span>{tr('When the place is on your approved list and the entry is at most')}</span>
+          <input className="input w-20 py-1" type="number" min="0.25" max="24" step="0.25" value={value.autoApproveMaxHours ?? ''} placeholder={tr('Off')}
+            onChange={(e) => onChange({ autoApproveMaxHours: e.target.value === '' ? null : Number(e.target.value) })} aria-label={tr('Maximum hours to approve automatically')} />
+          <span>{tr('hours')}</span>
+        </div>
+        {value.autoApproveMaxHours > 0 && !(value.approvedPlaces || []).length && (
+          <p className="text-xs text-amber-500">{tr('Add approved places above for this rule to work.')}</p>
+        )}
+      </div>
       <div>
         <label className="label">{tr('Allowed categories')}</label>
         <p className="text-xs text-earth-400 mb-2">{tr('Leave all unchecked to accept every category.')}</p>

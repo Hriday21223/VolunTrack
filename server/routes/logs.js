@@ -8,7 +8,7 @@ import { isValidDateString, logTextError, MAX_HOURS_PER_ENTRY } from '../validat
 import { uid } from '../ids.js'
 import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
-import { validateLogAgainstPolicy, sanitizeCustomFieldValues, isLockedDate, lockedMessage } from '../requirements.js'
+import { validateLogAgainstPolicy, sanitizeCustomFieldValues, isLockedDate, lockedMessage, autoApproveReason } from '../requirements.js'
 import { policyForUser, hoursLoggedOn } from '../policy.js'
 import { paperScanAvailable, scanPaperLog } from '../paperScan.js'
 import { recordLogEvent } from '../logHistory.js'
@@ -59,6 +59,33 @@ async function checkPolicy(req, entry, { excludeLogId = null } = {}) {
 
   const errors = validateLogAgainstPolicy(policy, { ...entry, sameDayHours })
   return { ok: errors.length === 0, errors, policy }
+}
+
+// Auto-approve rules (#706): when the school's rules cover a still-unconfirmed
+// entry, approve it now and say so in the approval history. Returns whether
+// it did. `policy` is the student's resolved policy (or null for none).
+const AUTO_REASON_TEXT = {
+  signed_in_person: 'Automatic: a supervisor signed in person',
+  approved_place: 'Automatic: an approved place, within the hour limit',
+}
+async function applyAutoApprove(policy, logId) {
+  if (!policy) return false
+  const { rows } = await query(
+    'SELECT supervisor_signed_in_person, org_name, hours::float8 AS hours, verification_status FROM logs WHERE id = $1',
+    [logId],
+  )
+  const log = rows[0]
+  if (!log || log.verification_status !== 'none') return false
+  const reason = autoApproveReason(policy, { supervisorSignedInPerson: log.supervisor_signed_in_person, orgName: log.org_name, hours: log.hours })
+  if (!reason) return false
+  const { rowCount } = await query(
+    "UPDATE logs SET verification_status = 'approved', verified_by = NULL, review_note = NULL WHERE id = $1 AND verification_status = 'none'",
+    [logId],
+  )
+  if (rowCount === 0) return false
+  emitHours('hours.approved', logId)
+  recordLogEvent({ logId, event: 'approved', byKind: 'school', byName: AUTO_REASON_TEXT[reason] })
+  return true
 }
 
 // --- Scan a paper log (#516) -------------------------------------------------
@@ -174,7 +201,8 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
       [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, String(reflection || '').trim() || null, skills.length ? skills : null],
     )
     emitHours('hours.created', id)
-    return res.status(201).json({ id })
+    const autoApproved = await applyAutoApprove(policyCheck.policy, id).catch(() => false)
+    return res.status(201).json({ id, ...(autoApproved ? { autoApproved: true, verificationStatus: 'approved' } : {}) })
   } catch (error) {
     console.error('log create failed:', error)
     return res.status(500).json({ error: 'Could not save log.' })
@@ -337,7 +365,13 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (['approved', 'rejected'].includes(existing.verification_status) && updated[0]?.verification_status === 'none') {
       recordLogEvent({ logId: req.params.id, event: 'reset', byKind: 'student', byUserId: req.auth.sub })
     }
-    return res.json({ ok: true })
+    // An edit can bring an entry under an auto-approve rule too (#706).
+    let autoApproved = false
+    if (updated[0]?.verification_status === 'none') {
+      const resolved = await policyForUser(req.auth.sub).catch(() => null)
+      autoApproved = await applyAutoApprove(resolved?.policy || null, req.params.id).catch(() => false)
+    }
+    return res.json({ ok: true, ...(autoApproved ? { autoApproved: true, verificationStatus: 'approved' } : {}) })
   } catch (error) {
     console.error('log update failed:', error)
     return res.status(500).json({ error: 'Could not update log.' })

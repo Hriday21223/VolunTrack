@@ -2955,4 +2955,10 @@ export default {
   "Event check-in notices": "活动签到通知",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "孩子在志愿活动签到或签退时通知你，并附上时长。",
   "Checked out": "已签退",
+  "Approve automatically": "自动批准",
+  "Entries that meet a rule are approved as soon as they are saved, so advisers only check the rest. Each one is marked as automatic in the approval history.": "符合规则的记录在保存时即被批准，指导老师只需检查其余的。每条都会在审批记录中标为自动。",
+  "When a supervisor signed in person on the student’s device": "当主管在学生的设备上当面签名时",
+  "When the place is on your approved list and the entry is at most": "当地点在你的已批准列表中且记录不超过",
+  "Maximum hours to approve automatically": "自动批准的最长时长",
+  "Add approved places above for this rule to work.": "请在上方添加已批准的地点，此规则才会生效。",
 }
