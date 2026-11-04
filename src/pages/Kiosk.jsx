@@ -12,6 +12,15 @@ const SITE = (isNativeApp && import.meta.env.VITE_SITE_URL) || window.location.o
 
 // The same changing code as Check-in QR: a volunteer signed in on their phone
 // scans it, then still types their PIN there (#668).
+// "9:05 AM" in the kiosk's own clock.
+function clock(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+function roundHours(n) {
+  return Math.round((Number(n) || 0) * 100) / 100
+}
+
 function KioskQr({ taskId }) {
   const canvas = useRef(null)
   const [code, setCode] = useState(null)
@@ -124,6 +133,7 @@ export default function Kiosk() {
         <div>
           <p className="text-sm text-white/60">{tr('Check in and out')}</p>
           <h1 className="text-2xl sm:text-3xl font-bold">{data?.title || tr('Loading…')}</h1>
+          {data?.totalHours > 0 && <p className="text-emerald-300 mt-1">{tr('Total so far: {n} hours', { n: roundHours(data.totalHours) })}</p>}
         </div>
         <button type="button" className="text-sm text-white/60 underline" onClick={() => setOrganizer({ action: 'exit' })}>{tr('Organizer: exit kiosk')}</button>
       </div>
@@ -140,6 +150,9 @@ export default function Kiosk() {
             <span className="text-sm text-white/70 flex items-center gap-1">
               {p.locked ? <><Lock className="w-4 h-4" />{tr('Locked')}</> : p.checkedOutAt ? <><CheckCircle className="w-4 h-4" />{tr('Done')}</> : p.checkedInAt ? <><LogIn className="w-4 h-4" />{tr('Here')}</> : !p.hasPin ? tr('No PIN') : tr('Not yet')}
             </span>
+            {p.checkedOutAt
+              ? <span className="block text-xs text-white/60 mt-1">{clock(p.checkedInAt)}–{clock(p.checkedOutAt)} · {tr(p.hours === 1 ? '1 hour' : '{n} hours', { n: roundHours(p.hours) })}</span>
+              : p.checkedInAt && !p.locked && <span className="block text-xs text-white/60 mt-1">{tr('since {time}', { time: clock(p.checkedInAt) })}</span>}
           </button>
         ))}
       </div>

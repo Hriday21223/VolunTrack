@@ -2833,4 +2833,5 @@ export default {
   "Still failing: {error}": "仍然失败：{error}",
   "Delete the webhook to {url}?": "删除指向 {url} 的 Webhook？",
   "Skip to content": "跳到主要内容",
+  "Total so far: {n} hours": "目前共计：{n} 小时",
 }
