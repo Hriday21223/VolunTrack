@@ -2873,4 +2873,6 @@ export default {
   "Check-out PIN": "PIN de salida",
   "Checking out\u2026": "Registrando salida…",
   "Check out": "Registrar salida",
+  "Only their clubs": "Solo sus clubes",
+  "They see only students in the clubs they advise: student list, hours to check, progress and reports.": "Solo ven a los estudiantes de los clubes que asesoran: lista de estudiantes, horas por revisar, progreso e informes.",
 }

@@ -2,6 +2,7 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "This student isn’t in one of your clubs.": "Este estudiante no está en ninguno de tus clubes.",
   "2FA is already enabled.": "La verificación en dos pasos ya está activada.",
   "2FA is already enabled. Disable it first.": "La verificación en dos pasos ya está activada. Desactívala primero.",
   "2FA is not enabled on this account.": "La verificación en dos pasos no está activada en esta cuenta.",

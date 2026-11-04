@@ -2270,6 +2270,8 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('clubs migration failed:', error.message) }
+  // A co-admin limited to their clubs' students (#674).
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}
 
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}

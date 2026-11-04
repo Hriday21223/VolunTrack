@@ -1,6 +1,8 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "This student isn’t in one of your clubs.": "Học sinh này không thuộc câu lạc bộ nào của bạn.",
+  "Co-admin not found.": "Không tìm thấy đồng quản trị.",
   "2FA is already enabled.": "Xác thực hai yếu tố đã được bật.",
   "2FA is already enabled. Disable it first.": "Xác thực hai yếu tố đã được bật. Hãy tắt trước.",
   "2FA is not enabled on this account.": "Tài khoản này chưa bật xác thực hai yếu tố.",
@@ -342,6 +344,8 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "This student isn’t in one of your clubs.": "该学生不在你的任何社团中。",
+  "Co-admin not found.": "未找到协同管理员。",
   "2FA is already enabled.": "双重验证已开启。",
   "2FA is already enabled. Disable it first.": "双重验证已开启，请先关闭。",
   "2FA is not enabled on this account.": "此账户未开启双重验证。",

@@ -48,6 +48,7 @@ function taskMinStay(v) {
   return Number.isInteger(n) && n >= 15 && n <= 480 ? { ok: true, value: n } : { ok: false, error: 'Minimum stay must be between 15 minutes and 8 hours.' }
 }
 
+import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
 const router = express.Router()
 
 // Shared across every route in this file, including reads (a single
@@ -470,13 +471,15 @@ router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'
        ORDER BY created_at DESC`,
       [userRows[0].school_id],
     )
+    const scope = await clubScope(req.auth.sub)
+    const students = rows.filter((r) => inScope(scope, r.id))
     recordAudit(req, {
       action: AUDIT.STUDENT_LIST_READ,
       schoolId: userRows[0].school_id,
       objectType: 'student_list',
-      meta: { count: rows.length },
+      meta: { count: students.length },
     })
-    return res.json({ students: rows })
+    return res.json({ students, clubScoped: Boolean(scope) })
   } catch (error) {
     console.error('school students failed:', error)
     return res.status(500).json({ error: 'Could not fetch students.' })
@@ -619,8 +622,10 @@ router.get('/students/progress', limiter, requireDb, requireAuth('school', 'scho
     const schoolId = userRows[0]?.school_id
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
     const progress = await schoolProgress(schoolId)
-    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: progress.students.length } })
-    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, term: progress.term, certificate: progress.certificate, reminderGapDays: REMINDER_GAP_DAYS, students: progress.students })
+    const scope = await clubScope(req.auth.sub)
+    const students = progress.students.filter((st) => inScope(scope, st.id))
+    recordAudit(req, { action: AUDIT.STUDENT_LIST_READ, schoolId, objectType: 'student_progress', meta: { count: students.length } })
+    return res.json({ schoolName: progress.schoolName, deadline: progress.deadline, term: progress.term, certificate: progress.certificate, reminderGapDays: REMINDER_GAP_DAYS, students, clubScoped: Boolean(scope) })
   } catch (error) {
     console.error('student progress failed:', error)
     return res.status(500).json({ error: 'Could not load student progress.' })
@@ -874,6 +879,8 @@ router.post('/group-hours', limiter, requireDb, requireAuth('school', 'school_st
   if (!activity || activity.length > 200) return res.status(400).json({ error: 'Say what the students did (up to 200 characters).' })
   if (!Number.isFinite(hours) || hours <= 0 || hours > MAX_HOURS_PER_ENTRY) return res.status(400).json({ error: `Hours must be more than 0 and at most ${MAX_HOURS_PER_ENTRY}.` })
   try {
+    const scope = await clubScope(req.auth.sub)
+    if (scope && ids.some((id) => !scope.has(id))) return res.status(403).json({ error: OUT_OF_SCOPE })
     const { rows: me } = await query(
       `SELECT u.school_id, u.name, s.name AS school_name FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
       [req.auth.sub],
@@ -1321,6 +1328,8 @@ router.post('/students/remind', limiter, requireDb, requireAuth('school', 'schoo
   if (ids.length === 0) return res.status(400).json({ error: 'Choose at least one student.' })
   if (ids.length > MAX_REMIND_AT_ONCE) return res.status(400).json({ error: `Remind at most ${MAX_REMIND_AT_ONCE} students at once.` })
   try {
+    const scope = await clubScope(req.auth.sub)
+    if (scope && ids.some((id) => !scope.has(id))) return res.status(403).json({ error: OUT_OF_SCOPE })
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const schoolId = userRows[0]?.school_id
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
@@ -1416,7 +1425,8 @@ router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_st
         LIMIT 2000`,
       [schoolId],
     )
-    const all = rows.map((r) => ({ ...r, offList: places.length > 0 && !placeApproved(target.policy, r.org_name) }))
+    const scope = await clubScope(req.auth.sub)
+    const all = rows.filter((r) => inScope(scope, r.student_id)).map((r) => ({ ...r, offList: places.length > 0 && !placeApproved(target.policy, r.org_name) }))
     const offList = all.filter((r) => r.offList).length
     const shown = (onlyOffList ? all.filter((r) => r.offList) : all)
       .sort((a, b) => Number(b.offList) - Number(a.offList))
@@ -1459,6 +1469,8 @@ router.get('/approval-history', limiter, requireDb, requireAuth('school', 'schoo
       if (Number.isNaN(before.getTime())) return res.status(400).json({ error: 'Invalid cursor.' })
       params.push(before.toISOString()); where.push(`e.created_at < $${params.length}`)
     }
+    const scope = await clubScope(req.auth.sub)
+    if (scope) { params.push([...scope]); where.push(`e.student_id = ANY($${params.length}::text[])`) }
     params.push(limit + 1)
     const { rows } = await query(
       `SELECT e.id, e.log_id, e.event, e.by_kind, e.note, e.activity, e.hours::float8 AS hours,
@@ -1508,6 +1520,11 @@ router.post('/hours-review/:logId', limiter, requireDb, requireAuth('school', 's
   try {
     const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const schoolId = me[0]?.school_id
+    const scope = await clubScope(req.auth.sub)
+    if (scope) {
+      const { rows: owner } = await query('SELECT user_id FROM logs WHERE id = $1', [req.params.logId])
+      if (owner[0] && !inScope(scope, owner[0].user_id)) return res.status(403).json({ error: OUT_OF_SCOPE })
+    }
     // Decided only while still unconfirmed, and only for a student at this
     // school: the WHERE does both, so a race or another school gets nothing.
     const { rows } = await query(
@@ -1554,6 +1571,13 @@ router.post('/hours-review-approve', limiter, requireDb, requireAuth('school', '
   try {
     const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const schoolId = me[0]?.school_id
+    const requested = ids.length
+    const scope = await clubScope(req.auth.sub)
+    if (scope) {
+      const { rows: owners } = await query('SELECT id, user_id FROM logs WHERE id = ANY($1::text[])', [ids])
+      const allowed = new Set(owners.filter((o) => inScope(scope, o.user_id)).map((o) => o.id))
+      ids.splice(0, ids.length, ...ids.filter((id) => allowed.has(id)))
+    }
     const { rows } = await query(
       `UPDATE logs l SET verification_status = 'approved', verified_by = $3, review_note = NULL, verification_token = NULL
          FROM users u
@@ -1572,7 +1596,7 @@ router.post('/hours-review-approve', limiter, requireDb, requireAuth('school', '
       recordAudit(req, { action: AUDIT.HOURS_REVIEWED, subjectUserId: userId, schoolId, objectType: 'log', meta: { decision: 'approve', by: 'school', count: entries.length } })
       tellStudentHoursReviewed({ userId, schoolId, approved: true, entries })
     }
-    return res.json({ ok: true, approved: rows.length, skipped: ids.length - rows.length })
+    return res.json({ ok: true, approved: rows.length, skipped: requested - rows.length })
   } catch (error) {
     console.error('hours bulk approve failed:', error)
     return res.status(500).json({ error: 'Could not approve those entries.' })
@@ -1858,7 +1882,7 @@ router.get('/staff', limiter, requireDb, requireAuth('school', 'school_staff'), 
     if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
 
     const { rows } = await query(
-      `SELECT id, name, email, created_at FROM users
+      `SELECT id, name, email, created_at, club_scoped FROM users
        WHERE school_id = $1 AND role = 'school_staff'
        ORDER BY created_at DESC`,
       [userRows[0].school_id],
@@ -1867,6 +1891,25 @@ router.get('/staff', limiter, requireDb, requireAuth('school', 'school_staff'), 
   } catch (error) {
     console.error('school staff list failed:', error)
     return res.status(500).json({ error: 'Could not fetch staff.' })
+  }
+})
+
+// PUT /staff/:id/club-scope { clubScoped } — the main admin limits a co-admin
+// to the students in the clubs they advise (#674), or lifts it.
+router.put('/staff/:id/club-scope', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
+  if (typeof req.body?.clubScoped !== 'boolean') return res.status(400).json({ error: 'clubScoped must be true or false.' })
+  try {
+    const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
+    const { rowCount } = await query(
+      "UPDATE users SET club_scoped = $3 WHERE id = $1 AND school_id = $2 AND role = 'school_staff'",
+      [req.params.id, me[0]?.school_id, req.body.clubScoped],
+    )
+    if (rowCount === 0) return res.status(404).json({ error: 'Co-admin not found.' })
+    recordAudit(req, { action: AUDIT.STAFF_SCOPE_CHANGED, schoolId: me[0]?.school_id, objectType: 'user', objectId: req.params.id, meta: { clubScoped: req.body.clubScoped } })
+    return res.json({ ok: true, clubScoped: req.body.clubScoped })
+  } catch (error) {
+    console.error('staff club scope failed:', error)
+    return res.status(500).json({ error: 'Could not change that.' })
   }
 })
 
@@ -1979,6 +2022,7 @@ router.get('/student-notes/counts', limiter, requireDb, requireAuth('school', 's
 
 router.get('/students/:id/notes', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
   try {
+    if (!inScope(await clubScope(req.auth.sub), req.params.id)) return res.status(403).json({ error: OUT_OF_SCOPE })
     const me = await noteAuthor(req)
     if (!me?.school_id) return res.status(404).json({ error: 'School not found.' })
     const { rows: st } = await query(`SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'`, [req.params.id, me.school_id])
@@ -2006,6 +2050,7 @@ router.post('/students/:id/notes', limiter, requireDb, requireAuth('school', 'sc
   if (!body) return res.status(400).json({ error: 'Write a note first.' })
   if (body.length > NOTE_MAX) return res.status(400).json({ error: `Notes can be up to ${NOTE_MAX} characters.` })
   try {
+    if (!inScope(await clubScope(req.auth.sub), req.params.id)) return res.status(403).json({ error: OUT_OF_SCOPE })
     const me = await noteAuthor(req)
     if (!me?.school_id) return res.status(404).json({ error: 'School not found.' })
     const { rows: st } = await query(`SELECT 1 FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'`, [req.params.id, me.school_id])
@@ -2047,6 +2092,7 @@ router.delete('/student-notes/:noteId', limiter, requireDb, requireAuth('school'
 // corrects a student's grade (#581), from the school's own grades if it set any.
 router.patch('/students/:id/grade', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
   try {
+    if (!inScope(await clubScope(req.auth.sub), req.params.id)) return res.status(403).json({ error: OUT_OF_SCOPE })
     const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const schoolId = me[0]?.school_id
     if (!schoolId) return res.status(404).json({ error: 'School not found.' })
@@ -2243,7 +2289,8 @@ router.get('/pdfs', limiter, requireDb, requireAuth(), async (req, res) => {
          ORDER BY p.created_at DESC`,
         [userRows[0].school_id],
       )
-      return res.json({ pdfs: rows })
+      const scope = await clubScope(req.auth.sub)
+      return res.json({ pdfs: rows.filter((r) => inScope(scope, r.user_id)) })
     }
     const { rows } = await query(
       `SELECT id, filename, file_type, status, notes, created_at
@@ -2262,6 +2309,7 @@ router.get('/pdfs', limiter, requireDb, requireAuth(), async (req, res) => {
 router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query('SELECT * FROM pdf_uploads WHERE id = $1', [req.params.id])
+    if (rows[0] && ['school', 'school_staff'].includes(req.auth.role) && !inScope(await clubScope(req.auth.sub), rows[0].user_id)) return res.status(403).json({ error: OUT_OF_SCOPE })
     if (rows.length === 0) return res.status(404).json({ error: 'PDF not found.' })
 
     const pdf = rows[0]
@@ -2391,6 +2439,7 @@ router.patch('/pdf/:id/review', limiter, requireDb, requireAuth('school', 'schoo
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const { rows } = await query('SELECT * FROM pdf_uploads WHERE id = $1', [req.params.id])
+    if (rows[0] && ['school', 'school_staff'].includes(req.auth.role) && !inScope(await clubScope(req.auth.sub), rows[0].user_id)) return res.status(403).json({ error: OUT_OF_SCOPE })
     if (rows.length === 0) return res.status(404).json({ error: 'PDF not found.' })
     if (rows[0].school_id !== userRows[0]?.school_id) return res.status(403).json({ error: 'Not your school.' })
     const { rows: studentRows } = await query('SELECT school_id FROM users WHERE id = $1', [rows[0].user_id])
