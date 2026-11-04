@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Tablet, ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer, FileSignature } from 'lucide-react'
+import { Tablet, ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer, FileSignature, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -26,6 +26,7 @@ import ShiftsEditor from '@/components/ShiftsEditor.jsx'
 import { shiftText, shiftHours, starterShifts, shiftsFromRow, shiftsPayload } from '@/lib/taskShifts.js'
 import { uploadTaskPhoto, fetchTaskPhoto } from '@/lib/taskPhoto.js'
 
+import PaperAttendance from '@/components/PaperAttendance.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // The device's own date, as YYYY-MM-DD: a task is "past" once its day is.
 const localToday = () => {
@@ -100,6 +101,7 @@ export default function MyTasks() {
   const [editForm, setEditForm] = useState(null)
   const [cancellingId, setCancellingId] = useState(null)
   const [checkinTask, setCheckinTask] = useState(null)
+  const [paperFor, setPaperFor] = useState(null)
   const [cancelReason, setCancelReason] = useState('')
   const [messagingId, setMessagingId] = useState(null)
   const [messageDraft, setMessageDraft] = useState('')
@@ -854,6 +856,9 @@ export default function MyTasks() {
                         <button onClick={() => signInSheet(t)} className="btn-sm btn-ghost" disabled={actionBusy || sheetBusyId === t.id}>
                           <Printer className="w-3.5 h-3.5 mr-1" /> {sheetBusyId === t.id ? 'Preparing…' : 'Sign-in sheet (PDF)'}
                         </button>
+                        <button onClick={() => setPaperFor(paperFor === t.id ? null : t.id)} className="btn-sm btn-ghost" disabled={actionBusy}>
+                          <FileText className="w-3.5 h-3.5 mr-1" /> {tr('Enter paper sheet')}
+                        </button>
                         {!t.is_cohost && (
                           <>
                             <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
@@ -892,6 +897,9 @@ export default function MyTasks() {
                       </button>
                     )}
                   </div>
+                  {paperFor === t.id && (
+                    <PaperAttendance task={t} onClose={() => setPaperFor(null)} onSaved={(m) => { setPaperFor(null); setToastMsg(m); setToast(true); loadTasks() }} />
+                  )}
 
                   <TaskCohosts
                     task={t}

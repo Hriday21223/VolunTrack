@@ -91,6 +91,65 @@ function SignoffLink({ partner }) {
   )
 }
 
+// Hours each partner received from the organization's students (#696):
+// this school year by default, or a date range. Counts only, with a CSV.
+function PartnerReport() {
+  const [range, setRange] = useState({ from: '', to: '' })
+  const [data, setData] = useState(null)
+  const [error, setError] = useState('')
+  const load = async (r = range) => {
+    setError('')
+    try {
+      const q = r.from && r.to ? `?from=${r.from}&to=${r.to}` : ''
+      setData(await call(`/report${q}`))
+    } catch (e) { setError(e.message) }
+  }
+  useEffect(() => { load({ from: '', to: '' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const download = () => {
+    const rows = [['Partner', 'Hours', 'Approved hours', 'Entries', 'Students'], ...data.partners.map((p) => [p.name, p.hours, p.approvedHours, p.entries, p.students])]
+    const blob = new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n')], { type: 'text/csv' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `partner-hours-${data.from}-to-${data.to}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+  return (
+    <Card className="mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-display font-semibold">{tr('Hours by partner')}</h3>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <input type="date" className="input py-1 w-auto" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} aria-label={tr('From')} />
+          <span>–</span>
+          <input type="date" className="input py-1 w-auto" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} aria-label={tr('To')} />
+          <button type="button" className="btn-ghost btn-sm" onClick={() => load()} disabled={!range.from || !range.to}>{tr('Show')}</button>
+          {data && <button type="button" className="btn-ghost btn-sm" onClick={download}><Download className="w-4 h-4 mr-1" />CSV</button>}
+        </div>
+      </div>
+      {error && <p role="alert" className="text-sm text-red-500 mt-2">{error}</p>}
+      {data && (
+        <>
+          <p className="text-xs text-earth-500 mt-1">{tr('{from} to {to} · {hours} hours from your students · counts only, no names', { from: data.from, to: data.to, hours: data.totals.hours })}</p>
+          <div className="overflow-x-auto mt-2">
+            <table className="w-full text-sm">
+              <thead className="text-earth-500 text-left">
+                <tr><th className="py-1">{tr('Partner')}</th><th className="py-1 text-right">{tr('Hours')}</th><th className="py-1 text-right">{tr('Approved')}</th><th className="py-1 text-right">{tr('Entries')}</th><th className="py-1 text-right">{tr('Students')}</th></tr>
+              </thead>
+              <tbody>
+                {data.partners.map((p) => (
+                  <tr key={p.id} className="border-t border-earth-100 dark:border-white/10">
+                    <td className="py-1.5">{p.name}</td><td className="py-1.5 text-right font-medium">{p.hours}</td><td className="py-1.5 text-right">{p.approvedHours}</td><td className="py-1.5 text-right">{p.entries}</td><td className="py-1.5 text-right">{p.students}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
+  )
+}
+
 export default function OrgPartners() {
   const [state, setState] = useState(null)
   const [form, setForm] = useState(EMPTY)
@@ -217,6 +276,8 @@ export default function OrgPartners() {
           </form>
         </Card>
       )}
+
+      {state.partners.length > 0 && <PartnerReport />}
 
       <Card padded={false}>
         {state.partners.length === 0 ? (

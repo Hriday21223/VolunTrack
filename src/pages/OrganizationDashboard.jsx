@@ -26,6 +26,7 @@ import CompareSchoolsCard from '@/components/CompareSchoolsCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import { tr } from '@/lib/i18n.js'
 
+import EmbedWidgetCard from '@/components/EmbedWidgetCard.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 const TAB_TITLES = {
@@ -187,7 +188,7 @@ export default function OrganizationDashboard() {
       <AnnouncementBanner />
       {tab === 'requirements' && <OrgRequirements schools={schools} onSchoolsChange={loadSchools} />}
       {tab === 'announcements' && <OrgAnnouncementsCard />}
-      {tab === 'partners' && <OrgPartners />}
+      {tab === 'partners' && <><EmbedWidgetCard /><OrgPartners /></>}
 
       {tab === 'hours' && (
         <Card>

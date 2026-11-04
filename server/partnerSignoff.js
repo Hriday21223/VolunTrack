@@ -69,3 +69,36 @@ export function shortName(name) {
   if (parts.length === 0) return 'Student'
   return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`
 }
+
+// Hours each partner received from the organization's students (#696), in
+// [from, to) (YYYY-MM-DD; to is exclusive). Counts only: no names. Entries
+// are matched to partners like approved places; rejected ones are left out.
+export async function partnerReport(orgId, from, to) {
+  const { rows: partners } = await query('SELECT id, name FROM org_partners WHERE organization_id = $1 ORDER BY name', [orgId])
+  const byKey = new Map(partners.map((p) => [placeKey(p.name), { id: p.id, name: p.name, hours: 0, approvedHours: 0, entries: 0, students: new Set() }]))
+  const { rows } = await query(
+    `SELECT l.org_name, l.hours::float8 AS hours, l.verification_status, l.user_id
+       FROM logs l
+       JOIN users u ON u.id = l.user_id AND u.role = 'student'
+       JOIN schools s ON s.id = u.school_id AND s.organization_id = $1
+      WHERE l.org_name IS NOT NULL AND l.verification_status IS DISTINCT FROM 'rejected'
+        AND l.date >= $2::date AND l.date < $3::date
+        AND u.email NOT LIKE '%@test.com'`,
+    [orgId, from, to],
+  )
+  for (const r of rows) {
+    const p = byKey.get(placeKey(r.org_name))
+    if (!p) continue
+    p.hours += Number(r.hours) || 0
+    if (r.verification_status === 'approved') p.approvedHours += Number(r.hours) || 0
+    p.entries += 1
+    p.students.add(r.user_id)
+  }
+  const round = (n) => Math.round(n * 100) / 100
+  const list = [...byKey.values()].map((p) => ({ id: p.id, name: p.name, hours: round(p.hours), approvedHours: round(p.approvedHours), entries: p.entries, students: p.students.size }))
+    .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name))
+  return {
+    partners: list,
+    totals: { hours: round(list.reduce((n, p) => n + p.hours, 0)), approvedHours: round(list.reduce((n, p) => n + p.approvedHours, 0)), entries: list.reduce((n, p) => n + p.entries, 0) },
+  }
+}
