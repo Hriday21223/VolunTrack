@@ -2960,4 +2960,10 @@ export default {
   "Couldn't sign up for: {list}": "No se pudo inscribir en: {list}",
   "Signing up\u2026": "Inscribiendo…",
   "Sign up for all {n} dates": "Inscribirse en las {n} fechas",
+  "Hours by partner": "Horas por socio",
+  "{from} to {to} \u00b7 {hours} hours from your students \u00b7 counts only, no names": "{from} a {to} · {hours} horas de tus estudiantes · solo totales, sin nombres",
+  "Partner": "Socio",
+  "Event check-in notices": "Avisos de llegada a eventos",
+  "A notification when your child checks in or out of a volunteer event, with their hours.": "Un aviso cuando tu hijo o hija registra su llegada o salida de un evento de voluntariado, con sus horas.",
+  "Checked out": "Salida registrada",
 }

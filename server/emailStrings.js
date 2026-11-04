@@ -255,6 +255,10 @@ const ES = {
     'Funciona una sola vez y caduca en {minutes} minutos. Si no acabas de intentar iniciar sesión, alguien podría conocer tu contraseña: cámbiala en Ajustes.',
   // After-event nudges (server/routes/school.js run-attendance-nudges)
   'Who came to {title}?': '¿Quién vino a {title}?',
+  "{name} checked in": "{name} registró su llegada",
+  "{name} checked out": "{name} registró su salida",
+  "{event} \u00b7 {n} hours": "{event} · {n} horas",
+  "Your child": "Tu hijo o hija",
   "{place} confirmed your hours: {what}": "{place} confirmó tus horas: {what}",
   "{place} sent back: {what}": "{place} devolvió: {what}",
   "1 entry from this event is waiting for your signature.": "1 registro de este evento espera tu firma.",

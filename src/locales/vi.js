@@ -2931,4 +2931,10 @@ export default {
   "Couldn't sign up for: {list}": "Không thể đăng ký cho: {list}",
   "Signing up\u2026": "Đang đăng ký…",
   "Sign up for all {n} dates": "Đăng ký tất cả {n} ngày",
+  "Hours by partner": "Giờ theo đối tác",
+  "{from} to {to} \u00b7 {hours} hours from your students \u00b7 counts only, no names": "{from} đến {to} · {hours} giờ từ học sinh của bạn · chỉ số liệu, không có tên",
+  "Partner": "Đối tác",
+  "Event check-in notices": "Thông báo điểm danh sự kiện",
+  "A notification when your child checks in or out of a volunteer event, with their hours.": "Thông báo khi con bạn điểm danh vào hoặc ra khỏi một sự kiện tình nguyện, kèm số giờ.",
+  "Checked out": "Đã điểm danh ra",
 }
