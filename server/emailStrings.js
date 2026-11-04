@@ -255,6 +255,11 @@ const ES = {
     'Funciona una sola vez y caduca en {minutes} minutos. Si no acabas de intentar iniciar sesión, alguien podría conocer tu contraseña: cámbiala en Ajustes.',
   // After-event nudges (server/routes/school.js run-attendance-nudges)
   'Who came to {title}?': '¿Quién vino a {title}?',
+  "1 entry from this event is waiting for your signature.": "1 registro de este evento espera tu firma.",
+  "{n} entries from this event are waiting for your signature.": "{n} registros de este evento esperan tu firma.",
+  "Sign the hours for {title}": "Firma las horas de {title}",
+  "Open My Tasks, tick the volunteers and press Approve selected to sign them all at once. Their hours count once you sign.": "Abre Mis tareas, marca a los voluntarios y pulsa Aprobar seleccionados para firmarlos todos a la vez. Sus horas cuentan cuando firmas.",
+  "Sign the hours": "Firmar las horas",
   '1 volunteer who signed up has no hours logged for this event yet.': '1 voluntario inscrito todavía no tiene horas registradas para este evento.',
   '{n} volunteers who signed up have no hours logged for this event yet.': '{n} voluntarios inscritos todavía no tienen horas registradas para este evento.',
   'Mark who came and log their hours on My Tasks, so their time counts toward their goals.': 'Marca quién vino y registra sus horas en Mis tareas, para que su tiempo cuente para sus metas.',

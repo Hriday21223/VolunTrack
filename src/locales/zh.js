@@ -1661,6 +1661,7 @@ export default {
   "On My Tasks, tick \"Volunteers can bring up to 3 guests\" when you post or edit a task (Post again copies it). Each guest takes one of the task's spots, so a volunteer with 2 guests uses 3. Their sign-up shows \"+2 guests\" with any first names they gave, and the printable sign-in sheet adds a line for each guest under the volunteer who brought them. Guests have no accounts, so their hours aren't recorded and they aren't counted in attendance or hours in your stats.": "在“我的任务”中发布或编辑任务时勾选“志愿者最多可带 3 位同伴”（“再次发布”会复制）。每位同伴占用任务的一个名额，带 2 位同伴的志愿者共占 3 个。他们的报名会显示“+2 位同伴”及填写的名字，打印的签到表会在带人的志愿者下方为每位同伴加一行。同伴没有账户，所以不记录时长，也不计入你统计中的出勤或时长。",
   "Checking…": "正在检查…",
   "Mark attendance": "记录出勤",
+  "Sign the hours": "签名确认时长",
   "has volunteered": "已完成志愿服务",
   "I have volunteered": "我已完成志愿服务",
   "hour of service": "小时服务",
