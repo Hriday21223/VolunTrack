@@ -2850,4 +2850,5 @@ export default {
   "Morning is before noon, afternoon noon to 5 PM, evening after 5 PM.": "上午指中午之前，下午指中午至下午 5 点，晚上指下午 5 点以后。",
   "Could not save when you are free.": "无法保存你的空闲时间。",
   "Saving\u2026": "正在保存…",
+  "Total so far: {n} hours": "目前共计：{n} 小时",
 }

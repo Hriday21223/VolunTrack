@@ -6217,6 +6217,16 @@ function scannedHours(inAt, outAt) {
   return Math.min(MAX_HOURS_PER_ENTRY, Math.max(1, quarters) / 4)
 }
 
+// A checked-out volunteer's hours, worked out the same way their entry is (#679).
+function stayHours(p) {
+  return p.checked_in_at && p.checked_out_at ? scannedHours(p.checked_in_at, p.checked_out_at) : null
+}
+
+// Everyone's checked-out hours added up, for the event's total (#679).
+function totalStayHours(people) {
+  return people.reduce((sum, p) => sum + (stayHours(p) || 0), 0)
+}
+
 // Logs a checked-out volunteer's hours as approved by the organizer, unless
 // they already have an entry for this task that day. Returns whether it logged.
 // → { logged, leftEarly }. The hours are worked out and submitted, unconfirmed:
@@ -6308,8 +6318,9 @@ router.get('/public-tasks/:id/kiosk', limiter, requireDb, requireAuth(), async (
       people: people.map((p) => ({
         signupId: p.id, name: kioskName(p.name), hasPin: p.has_pin,
         checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, locked: p.kiosk_pin_fails >= KIOSK_MAX_FAILS,
-        screenCode: p.screen_code || null,
+        screenCode: p.screen_code || null, hours: stayHours(p),
       })),
+      totalHours: totalStayHours(people),
     })
   } catch (error) {
     console.error('kiosk list failed:', error)
@@ -6404,7 +6415,8 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
       code: checkinCode(secret, task.id, windowIndex),
       // Seconds until the code changes, so the screen refreshes on time.
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
-      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null, screenCode: p.screen_code || null })),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, hours: stayHours(p), emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null, screenCode: p.screen_code || null })),
+      totalHours: totalStayHours(people),
     })
   } catch (error) {
     console.error('checkin code failed:', error)

@@ -2879,4 +2879,5 @@ export default {
   "Morning is before noon, afternoon noon to 5 PM, evening after 5 PM.": "La mañana es antes del mediodía, la tarde del mediodía a las 5 PM y la noche después de las 5 PM.",
   "Could not save when you are free.": "No se pudo guardar cuándo estás libre.",
   "Saving\u2026": "Guardando…",
+  "Total so far: {n} hours": "Total hasta ahora: {n} horas",
 }

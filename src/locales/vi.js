@@ -2850,4 +2850,5 @@ export default {
   "Morning is before noon, afternoon noon to 5 PM, evening after 5 PM.": "Buổi sáng là trước 12 giờ trưa, buổi chiều từ 12 giờ đến 5 giờ chiều, buổi tối sau 5 giờ chiều.",
   "Could not save when you are free.": "Không thể lưu thời gian bạn rảnh.",
   "Saving\u2026": "Đang lưu…",
+  "Total so far: {n} hours": "Tổng đến giờ: {n} giờ",
 }
