@@ -6286,7 +6286,31 @@ function totalStayHours(people) {
 // → { logged, leftEarly }. The hours are worked out and submitted, unconfirmed:
 // the organizer signs and approves them later on My Tasks (#670). With a
 // minimum stay (#668), an early leaver's entry also says so.
+// A linked parent hears when their child checks in or out of an event
+// (#691): a bell (and push, if on), never an email. Fire-and-forget, so a
+// failure here can't undo the check-in. The bell's own time says when.
+function tellParentsOfAttendance(userId, task, event, hours = null) {
+  ;(async () => {
+    const { rows } = await query(
+      `SELECT p.id, p.language, c.name AS child_name
+         FROM parent_child_links k
+         JOIN users p ON p.id = k.parent_id AND NOT p.attendance_alerts_opt_out
+         JOIN users c ON c.id = k.child_id
+        WHERE k.child_id = $1`,
+      [userId],
+    )
+    for (const p of rows) {
+      const lang = emailLang(p.language)
+      const name = String(p.child_name || '').trim().split(/\s+/)[0] || et(lang, 'Your child')
+      await notify(p.id, event === 'in'
+        ? { kind: 'child_checked_in', title: et(lang, '{name} checked in', { name }), body: task.title, link: '/parent' }
+        : { kind: 'child_checked_out', title: et(lang, '{name} checked out', { name }), body: et(lang, '{event} · {n} hours', { event: task.title, n: hours }), link: '/parent' })
+    }
+  })().catch((error) => console.error('parent attendance notice failed:', error.message))
+}
+
 async function logCheckout(task, userId, inAt, outAt, note) {
+  tellParentsOfAttendance(userId, task, 'out', scannedHours(inAt, outAt))
   const day = dayString(task.date)
   if (await alreadyLogged(task.id, userId, day)) return { logged: false, leftEarly: null }
   const stayed = Math.round((new Date(outAt) - new Date(inAt)) / 60000)
@@ -6415,6 +6439,7 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
           WHERE id = $1 AND checked_in_at IS NULL RETURNING checked_in_at`,
         [signup.id],
       )
+      if (done.length > 0) tellParentsOfAttendance(signup.user_id, task, 'in')
       return res.json({ state: 'checked_in', checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
     }
     if (signup.checked_out_at) return res.json({ state: 'done', hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
@@ -6529,6 +6554,7 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
           WHERE id = $1 AND checked_in_at IS NULL RETURNING checked_in_at`,
         [signup.id],
       )
+      if (done.length > 0) tellParentsOfAttendance(req.auth.sub, task, 'in')
       return res.json({ state: 'checked_in', title: task.title, checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
     }
     if (signup.checked_out_at) {

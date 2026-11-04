@@ -2955,4 +2955,7 @@ export default {
   "I don't agree — sign out": "No acepto — cerrar sesión",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "Si no aceptas, puedes cerrar sesión y pedirnos que eliminemos tu cuenta desde la página de la Política de privacidad.",
   "Could not save that. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
+  "Event check-in notices": "Avisos de llegada a eventos",
+  "A notification when your child checks in or out of a volunteer event, with their hours.": "Un aviso cuando tu hijo o hija registra su llegada o salida de un evento de voluntariado, con sus horas.",
+  "Checked out": "Salida registrada",
 }
