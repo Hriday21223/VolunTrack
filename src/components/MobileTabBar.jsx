@@ -238,6 +238,7 @@ export default function MobileTabBar() {
 
   const moreButton = (
     <button
+      data-tour="nav-more"
       onClick={() => setMoreOpen(true)}
       className={cn(
         'flex w-full flex-col items-center justify-center gap-1 py-2 text-[0.6875rem] font-medium',
@@ -261,6 +262,7 @@ export default function MobileTabBar() {
         <li key={to} className="min-w-0">
           <NavLink
             to={to}
+            data-tour={`nav${to.replace(/\//g, '-')}`}
             end={to === '/'}
             className={cn(
               'flex flex-col items-center justify-center gap-1 py-2 text-[0.6875rem] font-medium',
@@ -316,6 +318,7 @@ export default function MobileTabBar() {
                 <li key={to} className="min-w-0">
                   <NavLink
                     to={to}
+                    data-tour={`nav${to.replace(/\//g, '-')}`}
                     end={to === '/'}
                     className={cn(
                       'flex flex-col items-center justify-center gap-0.5 py-2 text-[0.625rem] font-medium relative transition-all duration-200',
@@ -335,6 +338,7 @@ export default function MobileTabBar() {
             })}
             <li className="min-w-0">
               <button
+                data-tour="nav-more"
                 onClick={() => setMoreOpen(true)}
                 className={cn(
                   'flex flex-col items-center justify-center gap-0.5 py-2 text-[0.625rem] font-medium relative transition-all duration-200 w-full',

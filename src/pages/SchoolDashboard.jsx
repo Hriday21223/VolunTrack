@@ -53,6 +53,8 @@ const SCHOOL_TOUR_STEPS = [
   { selector: '[data-tour="tab-students"]', title: tr('Students'), description: tr('See everyone linked to your school, and invite students by email.') },
   { selector: '[data-tour="tab-reports"]', title: tr('Reports'), description: tr('Review the PDF proof documents students upload and approve or reject each one — and export every student\'s hours for a date range.') },
   { selector: '[data-tour="tab-chat"]', title: tr('Announcements'), description: tr('Send a message to every student linked to your school at once.') },
+  { selector: '[data-tour="tab-students"]', title: tr('Clubs, assignments and hours to check'), description: tr('Under Students: put students in clubs and give assignments, check hours no one confirmed (or let rules approve them), and copy a widget that shows your events on your website.') },
+  { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
 ]
 
 // School setup is only rendered for the primary school-admin role, not

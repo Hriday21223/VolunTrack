@@ -114,6 +114,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            data-tour={`nav${to.replace(/\//g, '-')}`}
             end={to === '/'}
             className={({ isActive }) =>
               cn(
