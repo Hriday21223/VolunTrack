@@ -1,10 +1,11 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, Sparkles, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { tr } from '@/lib/i18n.js'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import { OPERATOR_NAME } from '@/lib/business.js'
+import { useWhatsNewDot } from '@/hooks/useWhatsNewDot.js'
 
 const ROLE_ITEMS = {
   student: [
@@ -18,6 +19,7 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',        icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status',      icon: Activity },
   ],
   // An account that runs events, not one that tracks its own volunteering:
@@ -30,6 +32,7 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   // A school account never logs its own hours, so the personal Dashboard /
@@ -40,6 +43,7 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',          icon: User },
     { to: '/settings',     label: 'Settings',         icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   admin: [
@@ -51,12 +55,14 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   parent: [
     { to: '/parent',       label: 'Dashboard',  icon: Home },
     { to: '/settings',     label: 'Settings',   icon: Settings },
     { to: '/help',         label: 'Help',       icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
   ],
   org: [
     { to: '/organization/dashboard', label: 'Dashboard', icon: Home },
@@ -64,6 +70,7 @@ const ROLE_ITEMS = {
     { to: '/profile',      label: 'Profile',          icon: User },
     { to: '/settings',     label: 'Settings',         icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
 }
@@ -86,6 +93,7 @@ const DEVICE_STORAGE_NOTE = tr('This account and its hours are stored only on th
 
 export default function Sidebar() {
   const { user } = useAuth()
+  const unseen = useWhatsNewDot()
   const role = user?.role || 'student'
   const items = ROLE_ITEMS[role] || ROLE_ITEMS.student
 
@@ -118,6 +126,7 @@ export default function Sidebar() {
           >
             <Icon className="w-4 h-4" />
             {tr(label)}
+            {to === '/whats-new' && unseen && <span className="ml-auto w-2 h-2 rounded-full bg-brand-400" aria-label={tr('New')} />}
           </NavLink>
         ))}
       </nav>
