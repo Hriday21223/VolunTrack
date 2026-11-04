@@ -728,6 +728,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS screen_code_expires_at TIMESTAMPTZ`) } catch {}
   // Minimum stay (#668): leaving earlier sends the hours to the organizer to decide.
   try { await query(`ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS min_stay_minutes SMALLINT`) } catch {}
+  // The weeks of one weekly series share an id (#692), so a volunteer can join them all.
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS series_id TEXT') } catch {}
+  try { await query('CREATE INDEX IF NOT EXISTS idx_public_tasks_series ON public_tasks(series_id) WHERE series_id IS NOT NULL') } catch {}
   // A check-out PIN the organizer makes for phones (#681): hashed, short-lived.
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkout_pin_hash TEXT') } catch {}
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS checkout_pin_expires_at TIMESTAMPTZ') } catch {}
@@ -1437,6 +1440,18 @@ export async function initSchema() {
     await query('CREATE INDEX IF NOT EXISTS idx_org_partners_org ON org_partners(organization_id)')
     await query('CREATE INDEX IF NOT EXISTS idx_org_partners_email ON org_partners(contact_email) WHERE contact_email IS NOT NULL')
   } catch (error) { console.error('org partners table migration failed:', error) }
+  // Supervisor inbox links (#694): one email's waiting requests, hashed, 30 days.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS supervisor_inbox_links (
+        token_hash  TEXT PRIMARY KEY,
+        email       TEXT NOT NULL,
+        expires_at  TIMESTAMPTZ NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query('DELETE FROM supervisor_inbox_links WHERE expires_at < now()')
+  } catch (error) { console.error('supervisor inbox migration failed:', error.message) }
   // Partner sign-off links (#676): hashed, one per partner, 30 days.
   try {
     await query(`
@@ -1775,6 +1790,8 @@ export async function initSchema() {
   // token (lazily filled the first time a digest is sent for that parent),
   // mirroring the status_subscribers opt-out pattern. See server/digest.js.
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_digest_opt_out BOOLEAN NOT NULL DEFAULT false`) } catch {}
+  // A parent who turned off check-in / check-out notices (#691).
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS attendance_alerts_opt_out BOOLEAN NOT NULL DEFAULT false') } catch {}
   // Under-13 self sign-up: the account stays locked ('pending') until the
   // parent or guardian named at sign-up approves it from an emailed link.
   // NULL status means no consent step applies (13+, or an account a school

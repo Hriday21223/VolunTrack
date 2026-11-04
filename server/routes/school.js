@@ -2737,6 +2737,8 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     // Every week of a repeat goes in together or not at all, so a failure
     // can't leave the organizer with half a series to find and fix.
     const created = []
+    // One id for every week of a series (#692); a single date has none.
+    const seriesId = dates.length > 1 ? uid('ser') : null
     const client = await getPool().connect()
     try {
       await client.query('BEGIN')
@@ -2744,10 +2746,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes, series_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value, seriesId],
         )
         // Each week of a series gets its own copy of the shifts.
         if (shiftsIn.shifts) {
@@ -2830,7 +2832,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
                ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
-               t.allow_guests,
+               t.allow_guests, t.series_id,
                -- Waiver (#595): public, so it can be read before signing up.
                t.waiver_text,
                ${userId ? `(SELECT waiver_at FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_waiver_at` : 'NULL AS my_waiver_at'},
@@ -6286,7 +6288,31 @@ function totalStayHours(people) {
 // → { logged, leftEarly }. The hours are worked out and submitted, unconfirmed:
 // the organizer signs and approves them later on My Tasks (#670). With a
 // minimum stay (#668), an early leaver's entry also says so.
+// A linked parent hears when their child checks in or out of an event
+// (#691): a bell (and push, if on), never an email. Fire-and-forget, so a
+// failure here can't undo the check-in. The bell's own time says when.
+function tellParentsOfAttendance(userId, task, event, hours = null) {
+  ;(async () => {
+    const { rows } = await query(
+      `SELECT p.id, p.language, c.name AS child_name
+         FROM parent_child_links k
+         JOIN users p ON p.id = k.parent_id AND NOT p.attendance_alerts_opt_out
+         JOIN users c ON c.id = k.child_id
+        WHERE k.child_id = $1`,
+      [userId],
+    )
+    for (const p of rows) {
+      const lang = emailLang(p.language)
+      const name = String(p.child_name || '').trim().split(/\s+/)[0] || et(lang, 'Your child')
+      await notify(p.id, event === 'in'
+        ? { kind: 'child_checked_in', title: et(lang, '{name} checked in', { name }), body: task.title, link: '/parent' }
+        : { kind: 'child_checked_out', title: et(lang, '{name} checked out', { name }), body: et(lang, '{event} · {n} hours', { event: task.title, n: hours }), link: '/parent' })
+    }
+  })().catch((error) => console.error('parent attendance notice failed:', error.message))
+}
+
 async function logCheckout(task, userId, inAt, outAt, note) {
+  tellParentsOfAttendance(userId, task, 'out', scannedHours(inAt, outAt))
   const day = dayString(task.date)
   if (await alreadyLogged(task.id, userId, day)) return { logged: false, leftEarly: null }
   const stayed = Math.round((new Date(outAt) - new Date(inAt)) / 60000)
@@ -6415,6 +6441,7 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
           WHERE id = $1 AND checked_in_at IS NULL RETURNING checked_in_at`,
         [signup.id],
       )
+      if (done.length > 0) tellParentsOfAttendance(signup.user_id, task, 'in')
       return res.json({ state: 'checked_in', checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
     }
     if (signup.checked_out_at) return res.json({ state: 'done', hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
@@ -6529,6 +6556,7 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
           WHERE id = $1 AND checked_in_at IS NULL RETURNING checked_in_at`,
         [signup.id],
       )
+      if (done.length > 0) tellParentsOfAttendance(req.auth.sub, task, 'in')
       return res.json({ state: 'checked_in', title: task.title, checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
     }
     if (signup.checked_out_at) {

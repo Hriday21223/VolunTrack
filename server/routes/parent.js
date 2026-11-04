@@ -451,9 +451,9 @@ router.post('/task-approvals/:signupId/decline', limiter, requireDb, requireAuth
 // the link cannot do at all.
 router.get('/digest-preference', limiter, requireDb, requireAuth('parent'), async (req, res) => {
   try {
-    const { rows } = await query('SELECT weekly_digest_opt_out FROM users WHERE id = $1', [req.auth.sub])
+    const { rows } = await query('SELECT weekly_digest_opt_out, attendance_alerts_opt_out FROM users WHERE id = $1', [req.auth.sub])
     if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
-    return res.json({ enabled: !rows[0].weekly_digest_opt_out, emailConfigured: hasEmail() })
+    return res.json({ enabled: !rows[0].weekly_digest_opt_out, attendanceAlerts: !rows[0].attendance_alerts_opt_out, emailConfigured: hasEmail() })
   } catch (error) {
     console.error('digest preference read failed:', error)
     return res.status(500).json({ error: 'Could not read your email preference.' })
@@ -461,12 +461,18 @@ router.get('/digest-preference', limiter, requireDb, requireAuth('parent'), asyn
 })
 
 router.patch('/digest-preference', limiter, requireDb, requireAuth('parent'), async (req, res) => {
-  if (typeof req.body.enabled !== 'boolean') {
+  // { enabled } is the weekly email; { attendanceAlerts } the check-in notices (#691).
+  const { enabled, attendanceAlerts } = req.body || {}
+  if ((enabled !== undefined && typeof enabled !== 'boolean') || (attendanceAlerts !== undefined && typeof attendanceAlerts !== 'boolean') || (enabled === undefined && attendanceAlerts === undefined)) {
     return res.status(400).json({ error: 'enabled must be true or false.' })
   }
   try {
-    await query('UPDATE users SET weekly_digest_opt_out = $1 WHERE id = $2', [!req.body.enabled, req.auth.sub])
-    return res.json({ enabled: req.body.enabled, emailConfigured: hasEmail() })
+    const { rows } = await query(
+      `UPDATE users SET weekly_digest_opt_out = COALESCE($1, weekly_digest_opt_out), attendance_alerts_opt_out = COALESCE($2, attendance_alerts_opt_out)
+        WHERE id = $3 RETURNING weekly_digest_opt_out, attendance_alerts_opt_out`,
+      [enabled === undefined ? null : !enabled, attendanceAlerts === undefined ? null : !attendanceAlerts, req.auth.sub],
+    )
+    return res.json({ enabled: !rows[0].weekly_digest_opt_out, attendanceAlerts: !rows[0].attendance_alerts_opt_out, emailConfigured: hasEmail() })
   } catch (error) {
     console.error('digest preference update failed:', error)
     return res.status(500).json({ error: 'Could not save your email preference.' })

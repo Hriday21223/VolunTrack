@@ -47,6 +47,7 @@ import ImportHoursCard from '@/components/ImportHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
 
+import EmbedWidgetCard from '@/components/EmbedWidgetCard.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 const SCHOOL_TOUR_STEPS = [
@@ -815,6 +816,7 @@ export default function SchoolDashboard() {
               />
             )}
 
+            <EmbedWidgetCard />
             <GroupHoursCard students={students} onDone={loadData} />
             <ImportHoursCard onDone={loadData} />
 
