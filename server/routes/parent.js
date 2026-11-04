@@ -9,7 +9,7 @@ import { friendlyWhen } from '../when.js'
 import { runWeeklyDigest, previousWeekWindow, weekWindowFromStart } from '../digest.js'
 import { checkCronKey } from '../cronAuth.js'
 import { policyForUser } from '../policy.js'
-import { goalHoursFor } from '../requirements.js'
+import { goalHoursFor, isYoungGrade } from '../requirements.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { WAITLIST_POSITION_SQL, decideParentOk } from './school.js'
 import { notify } from '../notifications.js'
@@ -84,6 +84,41 @@ router.post('/cheer/:logId', cheerLimiter, requireDb, requireAuth('parent'), asy
   } catch (error) {
     console.error('cheer failed:', error)
     return res.status(500).json({ error: 'Could not send that.' })
+  }
+})
+
+// A parent confirms a K–5 child's unconfirmed entry (#677) with their typed
+// name. It's recorded beside the entry (parent_confirmed_*) for the school to
+// see; it doesn't approve it, since a parent isn't a neutral witness. Only
+// entries the parent may read (the cheer rule), so a 404 hides the rest.
+router.post('/confirm/:logId', cheerLimiter, requireDb, requireAuth('parent'), async (req, res) => {
+  try {
+    const name = String(req.body?.name || '').trim().replace(/\s+/g, ' ')
+    if (name.length < 2 || name.length > 100) return res.status(400).json({ error: 'Type your full name to confirm.' })
+    const { rows } = await query(
+      `SELECT l.id, l.user_id, l.activity, l.verification_status, l.parent_confirmed_at, c.grade
+         FROM logs l
+         JOIN parent_child_links k ON k.child_id = l.user_id AND k.parent_id = $2 AND l.created_at >= k.created_at
+         JOIN users c ON c.id = l.user_id
+        WHERE l.id = $1`,
+      [req.params.logId, req.auth.sub],
+    )
+    const log = rows[0]
+    if (!log) return res.status(404).json({ error: 'Entry not found.' })
+    if (!isYoungGrade(log.grade)) return res.status(403).json({ error: 'Parents can confirm hours only for children in kindergarten to 5th grade.' })
+    if (!['none', 'pending'].includes(log.verification_status)) return res.status(400).json({ error: 'This entry was already decided.' })
+    const { rows: done } = await query(
+      `UPDATE logs SET parent_confirmed_name = $2, parent_confirmed_at = now(), parent_confirmed_by = $3
+        WHERE id = $1 AND parent_confirmed_at IS NULL RETURNING parent_confirmed_at`,
+      [log.id, name, req.auth.sub],
+    )
+    if (done.length > 0) {
+      await notify(log.user_id, { kind: 'parent_cheer', title: 'Your parent confirmed your hours', body: `For: ${log.activity}.`, link: '/' })
+    }
+    return res.json({ ok: true, parentConfirmedName: done.length > 0 ? name : undefined, parentConfirmedAt: done[0]?.parent_confirmed_at || log.parent_confirmed_at })
+  } catch (error) {
+    console.error('parent confirm failed:', error)
+    return res.status(500).json({ error: 'Could not confirm that entry.' })
   }
 })
 
