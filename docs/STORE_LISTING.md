@@ -143,6 +143,16 @@ cost of the app running letterboxed on iPads.
 | Device or other IDs (a push notification token, only if notifications are turned on in Settings → Notifications; deleted on sign-out or when turned off) | Yes | No | Optional | App functionality |
 | App info and performance → Crash logs (error message, technical details, page and app version, with no account, name or email attached) | Yes | No | Required | App functionality |
 
+Also under *Other user-generated content* (#669–#687): event check-in and
+check-out times and method, a hashed kiosk / check-out PIN, the days and times a
+student says they're usually free (filter only, never shown to anyone else), a
+parent's typed confirmation name on a K–5 child's entry, club memberships and
+which entries a student attaches to a club assignment. Partner sign-off shows a
+partner nonprofit (chosen by the student's school organization, not by us) the
+student's first name + last initial, school, activity, date and hours for
+entries naming that partner; like a supervisor link, it's part of the
+verification the school runs, so *Shared* stays No.
+
 Not collected: financial info (school invoices are paid by bank transfer outside
 the app), contacts, messages, health, audio, web history, device IDs,
 diagnostics, and no analytics beyond the one sign-up fact in the table

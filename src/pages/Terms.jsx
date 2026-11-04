@@ -25,7 +25,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 1, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 3, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -43,12 +43,13 @@ export default function Terms() {
           </Section>
 
           <Section title="Accurate Logging">
-            <p>Volunteer hours, activities, and proof you submit must be truthful and your own. Schools and organizations reviewing submitted hours rely on this accuracy for verification decisions. A signature on an entry must be drawn by the person it belongs to: never sign for a supervisor, task organizer, or anyone else. Supervisors and organizers who sign are confirming that the work happened as described. Submitting false or misleading logs, or signatures, may result in account suspension.</p>
+            <p>Volunteer hours, activities, and proof you submit must be truthful and your own. Schools and organizations reviewing submitted hours rely on this accuracy for verification decisions. A signature on an entry must be drawn by the person it belongs to: never sign for a supervisor, task organizer, or anyone else. Supervisors and organizers who sign are confirming that the work happened as described. The same goes for a parent who confirms a child&apos;s hours and a partner organization that signs off hours from a link: confirm only what you know happened. Checking in or out for someone else, or sharing a check-in or check-out PIN, is not allowed. Submitting false or misleading logs, or signatures, may result in account suspension.</p>
           </Section>
 
           <Section title="School and Organization Accounts">
             <p>Schools and organizations may access student-submitted logs, proof uploads, and hour totals for the purpose of review and verification. Parents may link to a student account, in read-only form, with the student's consent via a link code.</p>
             <p className="mt-2">A school or organization may set its own rules for how its students log hours — for example, required fields, signatures or its own forms, or allowed sign-in methods — and may connect its own file storage, in which case files uploaded there are held and governed by that school. A student can move to another school; their record transfers only once the receiving school accepts.</p>
+            <p className="mt-2">An organization may send a partner on its partner list a link to confirm students&apos; hours logged at that partner. It must send links only to the partner&apos;s real contact, and the partner may use the link only to confirm or send back those hours. A school may limit a co-admin to the students in the clubs they advise.</p>
           </Section>
 
           <Section title="Fees and Payment">
@@ -72,7 +73,7 @@ export default function Terms() {
 
           <Section title="Posting Volunteer Tasks">
             <p>If you post a task, you are its organizer and are responsible for it: the task must happen as described, and the details you give must be accurate and kept up to date — including the date, place or whether it&apos;s online, any minimum age, wheelchair access and accessibility notes, whether guests may come, the meeting point and the day-of contact. Volunteers and their parents rely on these to decide whether to take part. VolunTrack does not organize, supervise or inspect tasks; keeping volunteers safe on the day is the organizer&apos;s job.</p>
-            <p className="mt-2">You may add up to three co-hosts. Add only people you trust to help run the task: they can see its volunteers&apos; names, contact details and attendance and can sign off hours, and you remain responsible for the task. A day-of contact must be someone who has agreed to be listed. A cover photo must be one you have the right to use, and must not show volunteers — especially children — in a way that identifies them without their permission. Answers to questions, messages and thank-you notes you send must be appropriate for young people.</p>
+            <p className="mt-2">You may add up to three co-hosts. Add only people you trust to help run the task: they can see its volunteers&apos; names, contact details and attendance and can sign off hours, and you remain responsible for the task. Check-in and check-out PINs and codes are for volunteers who are actually there: show or say them only at the event, and sign hours from check-outs only when you believe they&apos;re right. A day-of contact must be someone who has agreed to be listed. A cover photo must be one you have the right to use, and must not show volunteers — especially children — in a way that identifies them without their permission. Answers to questions, messages and thank-you notes you send must be appropriate for young people.</p>
           </Section>
 
           <Section title="Taking Part in Volunteer Tasks">
