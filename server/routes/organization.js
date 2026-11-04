@@ -13,11 +13,12 @@ import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
 import { impactFor, impactBySchool, PERIODS, rangeFromQuery } from '../impact.js'
+import { schoolYearRange } from './clubs.js'
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
 import { activeOrgChallenge, scoreboard, METRICS } from '../orgChallenge.js'
 import { schoolProgress } from './school.js'
 import { listPartners, addPartners, updatePartner, removePartner, PartnerError, MAX_PARTNERS } from '../partners.js'
-import { createSignoffLink, partnerForToken, entriesForPartner, shortName, LINK_DAYS } from '../partnerSignoff.js'
+import { createSignoffLink, partnerForToken, entriesForPartner, shortName, LINK_DAYS, partnerReport } from '../partnerSignoff.js'
 import { recordLogEvent } from '../logHistory.js'
 import { emitHours } from '../webhooks.js'
 import { notify } from '../notifications.js'
@@ -523,6 +524,25 @@ router.get('/partners', limiter, requireDb, requireAuth('org'), async (req, res)
     if (!org) return res.status(404).json({ error: 'Organization not found.' })
     return res.json(await partnersResponse(org))
   } catch (error) { return partnerError(res, error, 'list') }
+})
+
+// GET /api/organization/partners/report?from=&to= (#696): hours each partner
+// received from the org's students; this school year by default. Counts only.
+router.get('/partners/report', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const org = await myOrg(req)
+    if (!org) return res.status(404).json({ error: 'Organization not found.' })
+    const range = rangeFromQuery(req.query)
+    if (range?.error) return res.status(400).json({ error: range.error })
+    const year = schoolYearRange()
+    const from = range ? range.from : year.from
+    const to = range ? range.to : new Date(new Date(`${year.to}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10)
+    const lastDay = range ? range.lastDay : year.to
+    return res.json({ from, to: lastDay, ...(await partnerReport(org.id, from, to)) })
+  } catch (error) {
+    console.error('partner report failed:', error)
+    return res.status(500).json({ error: 'Could not build the partner report.' })
+  }
 })
 
 router.post('/partners', limiter, requireDb, requireAuth('org'), async (req, res) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Users, AlertTriangle, RefreshCw, Mail, Download, FileSpreadsheet, Calendar as CalIcon, CalendarClock, MapPin } from 'lucide-react'
+import { Bell, Users, AlertTriangle, RefreshCw, Mail, Download, FileSpreadsheet, Calendar as CalIcon, CalendarClock, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
@@ -103,14 +103,15 @@ export default function ParentDashboard() {
 
   useEffect(() => { loadData(); loadDigest() }, [loadData, loadDigest])
 
-  const setDigestEnabled = async (enabled) => {
+  // body: { enabled } (weekly email) or { attendanceAlerts } (#691).
+  const setDigestEnabled = async (body) => {
     setDigestBusy(true)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/parent/digest-preference`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ enabled }),
+        body: JSON.stringify(typeof body === 'boolean' ? { enabled: body } : body),
       })
       if (res.ok) setDigest(await res.json())
     } catch {
@@ -185,6 +186,26 @@ export default function ParentDashboard() {
                   className={`btn-sm shrink-0 ${digest.enabled ? 'btn-ghost' : 'btn-primary'} disabled:opacity-50`}
                 >
                   {digestBusy ? tr('Saving…') : digest.enabled ? tr('Turn off') : tr('Turn on')}
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 mt-3 pt-3 border-t border-earth-100 dark:border-white/10">
+                <div className="flex items-start gap-3">
+                  <Bell className="w-4 h-4 mt-1 text-brand-600 shrink-0" />
+                  <div>
+                    <h3 className="font-display font-semibold text-sm">{tr('Event check-in notices')}</h3>
+                    <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
+                      {digest.attendanceAlerts !== false
+                        ? tr('A notification when your child checks in or out of a volunteer event, with their hours.')
+                        : tr('Turned off. You can switch it back on at any time.')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDigestEnabled({ attendanceAlerts: digest.attendanceAlerts === false })}
+                  disabled={digestBusy}
+                  className={`btn-sm shrink-0 ${digest.attendanceAlerts !== false ? 'btn-ghost' : 'btn-primary'} disabled:opacity-50`}
+                >
+                  {digestBusy ? tr('Saving…') : digest.attendanceAlerts !== false ? tr('Turn off') : tr('Turn on')}
                 </button>
               </div>
             </Card>

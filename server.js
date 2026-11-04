@@ -1,4 +1,5 @@
 import express from 'express'
+import { createHash } from 'crypto'
 import { smsConfigured, normalizePhone, sendSms, verificationText } from './server/sms.js'
 import { translateErrors } from './server/errorStrings.js'
 import { emitHours, startWebhookWorker } from './server/webhooks.js'
@@ -628,6 +629,9 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
   const activity = verification.activity
   const hoursNum = verification.hours
 
+  // Several requests waiting for this supervisor (#694): one link for all.
+  const inbox = await supervisorInboxUrl(supervisorEmail, appUrl).catch(() => null)
+  const safeInboxUrl = inbox ? escapeHtml(inbox.url) : null
   const safeStudent = escapeHtml(studentName)
   const safeActivity = escapeHtml(activity)
   const safeSupervisorName = supervisorName ? escapeHtml(supervisorName) : ''
@@ -640,6 +644,7 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
     + (verifyUrl
       ? `Please review and approve or reject these hours: ${verifyUrl}\n\n`
       : '')
+    + (inbox ? `You have ${inbox.count} requests waiting from students. Review them all at once: ${inbox.url}\n\n` : '')
     + `Sign up for a free VolunTrack account: ${appUrl}\n\n${emailFooterText()}`
 
   const html = `
@@ -648,6 +653,11 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
     ${safeVerifyUrl ? `
     <p style="margin-top:24px">
       <a href="${safeVerifyUrl}" style="display:inline-block;padding:10px 20px;background:#3f8344;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Review these hours</a>
+    </p>` : ''}
+    ${safeInboxUrl ? `
+    <p style="margin-top:16px;padding:12px;background:#f1f7f1;border-radius:8px">
+      You have <strong>${inbox.count}</strong> requests waiting from students.
+      <a href="${safeInboxUrl}" style="color:#3f8344;font-weight:600">Review them all at once</a> and sign just once.
     </p>` : ''}
     <p style="margin-top:16px">
       <a href="${safeSignupUrl}" style="color:#3f8344;font-weight:600">Or sign up for your own VolunTrack account</a>
@@ -734,84 +744,166 @@ app.get('/api/verify-hours/:token', async (req, res) => {
   }
 })
 
+// Approve or reject one supervisor request by its approval token. Shared by
+// the single link and the supervisor inbox (#694). → { status } or
+// { error, code }.
+async function decideVerification(token, action, signature, actorSub = null) {
+  if (action !== 'approve' && action !== 'reject') return { error: 'Invalid action.', code: 400 }
+  // A rejection needs no signature — only an approval vouches for the work.
+  if (action === 'approve' && !isSignatureImage(signature)) return { error: 'A signature is required to approve these hours.', code: 400 }
+  // Deliberately matches on `token` alone: the student's status token is
+  // read-only and must not reach this write path.
+  const { rows } = await query(
+    'SELECT status, student_user_id, student_email, student_name, supervisor_name, activity, hours FROM supervisor_verifications WHERE token = $1',
+    [token],
+  )
+  if (rows.length === 0) return { error: 'Verification link not found.', code: 404 }
+  // A student cannot vouch for their own hours, however they came by the
+  // link. Defence in depth behind the token split above.
+  if (actorSub && rows[0].student_user_id && actorSub === rows[0].student_user_id) {
+    return { error: 'You cannot approve your own hours.', code: 403 }
+  }
+  // Idempotent: the first response wins, further clicks/reopens don't change
+  // it. 'superseded' lands here too — the task organizer resolved this log
+  // while this link was still outstanding, or a newer link replaced it — so
+  // the link is spent and must not overwrite that.
+  if (rows[0].status !== 'pending') return { status: rows[0].status }
+
+  const newStatus = action === 'approve' ? 'approved' : 'rejected'
+  const sig = action === 'approve' ? signature : null
+  await query(
+    'UPDATE supervisor_verifications SET status = $1, responded_at = now(), supervisor_signature = $2 WHERE token = $3',
+    [newStatus, sig, token],
+  )
+  // No-op if this token was never linked to a synced log (e.g. the
+  // student wasn't signed into a server-backed account when they logged
+  // the hours) — a parent simply won't see the status for that log. Only
+  // the decision is mirrored onto the log: the signature image stays on
+  // supervisor_verifications, which the student's device reads back through
+  // GET /api/verify-hours/:token (#186).
+  const { rows: decided } = await query(
+    'UPDATE logs SET verification_status = $1 WHERE verification_token = $2 RETURNING id',
+    [newStatus, token],
+  )
+  // Webhooks (#622): the school's systems hear about the supervisor's answer.
+  for (const l of decided) {
+    emitHours(newStatus === 'approved' ? 'hours.approved' : 'hours.rejected', l.id)
+    recordLogEvent({ logId: l.id, event: newStatus, byKind: 'supervisor', byName: rows[0].supervisor_name || null })
+  }
+
+  // Best-effort: let the student know the outcome. Never fails the response.
+  const row = rows[0]
+  if (row.student_email) {
+    const { transport } = transporter()
+    if (transport) {
+      const verb = newStatus === 'approved' ? 'approved' : 'rejected'
+      const who = row.supervisor_name ? escapeHtml(row.supervisor_name) : 'Your supervisor'
+      const safeActivity = escapeHtml(row.activity)
+      transport.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to: row.student_email,
+        subject: `Your supervisor ${verb} your VolunTrack hours`,
+        text: `${row.supervisor_name || 'Your supervisor'} ${verb} the ${row.hours} hour(s) you logged for "${row.activity}".\n\n${emailFooterText()}`,
+        html: `<p><strong>${who}</strong> ${verb} the <strong>${row.hours}</strong> hour(s) you logged for "${safeActivity}".</p>${emailFooterHtml()}`,
+      }).catch((error) => console.error('Student outcome email failed:', error))
+    }
+  }
+  return { status: newStatus }
+}
+
 app.post('/api/verify-hours/:token/:action', async (req, res) => {
   if (!hasDatabase()) return res.status(404).json({ error: 'Not available.' })
-  const { token, action } = req.params
-  const { signature } = req.body || {}
-  if (action !== 'approve' && action !== 'reject') {
-    return res.status(400).json({ error: 'Invalid action.' })
-  }
-  // A rejection needs no signature — only an approval vouches for the work.
-  if (action === 'approve' && !isSignatureImage(signature)) {
-    return res.status(400).json({ error: 'A signature is required to approve these hours.' })
-  }
   try {
-    // Deliberately matches on `token` alone: the student's status token is
-    // read-only and must not reach this write path.
-    const { rows } = await query(
-      'SELECT status, student_user_id, student_email, student_name, supervisor_name, activity, hours FROM supervisor_verifications WHERE token = $1',
-      [token],
-    )
-    if (rows.length === 0) return res.status(404).json({ error: 'Verification link not found.' })
-
-    // A student cannot vouch for their own hours, however they came by the
-    // link. Defence in depth behind the token split above.
-    if (req.auth && rows[0].student_user_id && req.auth.sub === rows[0].student_user_id) {
-      return res.status(403).json({ error: 'You cannot approve your own hours.' })
-    }
-
-    // Idempotent: the first response wins, further clicks/reopens don't change
-    // it. 'superseded' lands here too — the task organizer resolved this log
-    // while this link was still outstanding, or a newer link replaced it — so
-    // the link is spent and must not overwrite that.
-    if (rows[0].status !== 'pending') {
-      return res.json({ status: rows[0].status })
-    }
-
-    const newStatus = action === 'approve' ? 'approved' : 'rejected'
-    const sig = action === 'approve' ? signature : null
-    await query(
-      'UPDATE supervisor_verifications SET status = $1, responded_at = now(), supervisor_signature = $2 WHERE token = $3',
-      [newStatus, sig, token],
-    )
-    // No-op if this token was never linked to a synced log (e.g. the
-    // student wasn't signed into a server-backed account when they logged
-    // the hours) — a parent simply won't see the status for that log. Only
-    // the decision is mirrored onto the log: the signature image stays on
-    // supervisor_verifications, which the student's device reads back through
-    // GET /api/verify-hours/:token (#186).
-    const { rows: decided } = await query(
-      'UPDATE logs SET verification_status = $1 WHERE verification_token = $2 RETURNING id',
-      [newStatus, token],
-    )
-    // Webhooks (#622): the school's systems hear about the supervisor's answer.
-    for (const l of decided) {
-      emitHours(newStatus === 'approved' ? 'hours.approved' : 'hours.rejected', l.id)
-      recordLogEvent({ logId: l.id, event: newStatus, byKind: 'supervisor', byName: rows[0].supervisor_name || null })
-    }
-
-    // Best-effort: let the student know the outcome. Never fails the response.
-    const row = rows[0]
-    if (row.student_email) {
-      const { transport } = transporter()
-      if (transport) {
-        const verb = newStatus === 'approved' ? 'approved' : 'rejected'
-        const who = row.supervisor_name ? escapeHtml(row.supervisor_name) : 'Your supervisor'
-        const safeActivity = escapeHtml(row.activity)
-        transport.sendMail({
-          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-          to: row.student_email,
-          subject: `Your supervisor ${verb} your VolunTrack hours`,
-          text: `${row.supervisor_name || 'Your supervisor'} ${verb} the ${row.hours} hour(s) you logged for "${row.activity}".\n\n${emailFooterText()}`,
-          html: `<p><strong>${who}</strong> ${verb} the <strong>${row.hours}</strong> hour(s) you logged for "${safeActivity}".</p>${emailFooterHtml()}`,
-        }).catch((error) => console.error('Student outcome email failed:', error))
-      }
-    }
-
-    return res.json({ status: newStatus })
+    const out = await decideVerification(req.params.token, req.params.action, req.body?.signature, req.auth?.sub || null)
+    if (out.error) return res.status(out.code).json({ error: out.error })
+    return res.json({ status: out.status })
   } catch (error) {
     console.error('Update verification failed:', error)
     return res.status(500).json({ error: 'Could not update verification.' })
+  }
+})
+
+// --- Supervisor inbox (#694) --------------------------------------------------
+// One link per supervisor email listing every request still waiting for them
+// (last 30 days), so they can approve them all with one signature. Made when
+// a request is emailed and they have 2+ waiting. Only a hash of the link is
+// kept; it lasts 30 days.
+const INBOX_DAYS = 30
+const inboxHash = (token) => createHash('sha256').update(`voluntrack-supervisor-inbox:${token}`).digest('hex')
+const inboxLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } })
+
+async function pendingForSupervisor(email) {
+  const { rows } = await query(
+    `SELECT id, token, student_name, activity, hours::float8 AS hours, created_at
+       FROM supervisor_verifications
+      WHERE lower(supervisor_email) = lower($1) AND status = 'pending' AND created_at > now() - interval '30 days'
+      ORDER BY created_at`,
+    [email],
+  )
+  return rows
+}
+
+// A new inbox link for this supervisor when 2+ requests wait, else null.
+async function supervisorInboxUrl(email, appUrl) {
+  if (!hasDatabase() || !email) return null
+  const waiting = await pendingForSupervisor(email)
+  if (waiting.length < 2) return null
+  const token = generateToken()
+  await query(
+    `INSERT INTO supervisor_inbox_links (token_hash, email, expires_at) VALUES ($1, lower($2), now() + make_interval(days => $3))`,
+    [inboxHash(token), email, INBOX_DAYS],
+  )
+  return { url: `${new URL(appUrl).origin}/supervisor-inbox/${token}`, count: waiting.length }
+}
+
+async function inboxEmail(token) {
+  if (!/^[A-Za-z0-9_-]{20,200}$/.test(String(token || ''))) return null
+  const { rows } = await query('SELECT email FROM supervisor_inbox_links WHERE token_hash = $1 AND expires_at > now()', [inboxHash(token)])
+  return rows[0]?.email || null
+}
+
+app.get('/api/supervisor-inbox/:token', inboxLimiter, async (req, res) => {
+  if (!hasDatabase()) return res.status(404).json({ error: 'Not available.' })
+  res.set('Cache-Control', 'no-store')
+  try {
+    const email = await inboxEmail(req.params.token)
+    if (!email) return res.status(404).json({ error: 'This link has expired. Use the link in your newest email.' })
+    const rows = await pendingForSupervisor(email)
+    return res.json({ requests: rows.map((r) => ({ id: r.id, studentName: r.student_name, activity: r.activity, hours: r.hours, createdAt: r.created_at })) })
+  } catch (error) {
+    console.error('supervisor inbox read failed:', error)
+    return res.status(500).json({ error: 'Could not load the requests.' })
+  }
+})
+
+// POST { signature, approve: [ids], reject: [ids] } — one signature covers
+// every approval; each request is decided exactly like its own link.
+app.post('/api/supervisor-inbox/:token', inboxLimiter, async (req, res) => {
+  if (!hasDatabase()) return res.status(404).json({ error: 'Not available.' })
+  try {
+    const email = await inboxEmail(req.params.token)
+    if (!email) return res.status(404).json({ error: 'This link has expired. Use the link in your newest email.' })
+    const approve = Array.isArray(req.body?.approve) ? req.body.approve.map(String) : []
+    const reject = Array.isArray(req.body?.reject) ? req.body.reject.map(String) : []
+    if (approve.length + reject.length === 0) return res.status(400).json({ error: 'Choose at least one request.' })
+    if (approve.length > 0 && !isSignatureImage(req.body?.signature)) return res.status(400).json({ error: 'A signature is required to approve these hours.' })
+    const mine = new Map((await pendingForSupervisor(email)).map((r) => [r.id, r.token]))
+    let approved = 0
+    let rejected = 0
+    for (const id of approve) {
+      if (!mine.has(id)) continue
+      const out = await decideVerification(mine.get(id), 'approve', req.body.signature, req.auth?.sub || null)
+      if (out.status === 'approved') approved += 1
+    }
+    for (const id of reject) {
+      if (!mine.has(id) || approve.includes(id)) continue
+      const out = await decideVerification(mine.get(id), 'reject', null, req.auth?.sub || null)
+      if (out.status === 'rejected') rejected += 1
+    }
+    return res.json({ ok: true, approved, rejected })
+  } catch (error) {
+    console.error('supervisor inbox decide failed:', error)
+    return res.status(500).json({ error: 'Could not save your decisions.' })
   }
 })
 
