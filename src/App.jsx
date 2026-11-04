@@ -63,6 +63,7 @@ const Kiosk = lazy(() => import('@/pages/Kiosk.jsx'))
 const Attendance = lazy(() => import('@/pages/Attendance.jsx'))
 const Status = lazy(() => import('@/pages/Status.jsx'))
 const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
+const SupervisorInbox = lazy(() => import('@/pages/SupervisorInbox.jsx'))
 const SignCertificate = lazy(() => import('@/pages/SignCertificate.jsx'))
 const PartnerSignoff = lazy(() => import('@/pages/PartnerSignoff.jsx'))
 const BadgeCheck = lazy(() => import('@/pages/BadgeCheck.jsx'))
@@ -156,6 +157,7 @@ function Shell() {
               anything unrecognised back to /status. */}
           <Route path="/status/:tab"    element={<Status />} />
           <Route path="/verify-hours"   element={<VerifyHours />} />
+          <Route path="/supervisor-inbox/:token" element={<SupervisorInbox />} />
           <Route path="/sign-certificate/:token" element={<SignCertificate />} />
           <Route path="/partner-signoff/:token" element={<PartnerSignoff />} />
           <Route path="/badge/:code" element={<BadgeCheck />} />
