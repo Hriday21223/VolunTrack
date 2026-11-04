@@ -13,6 +13,7 @@ import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from './server/validate.js'
 import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
 import authSsoRoutes from './server/routes/authSso.js'
+import authSocialRoutes from './server/routes/authSocial.js'
 import passkeyRoutes from './server/routes/passkeys.js'
 import parentConsentRoutes from './server/routes/parentConsent.js'
 import schoolRoutes from './server/routes/school.js'
@@ -51,6 +52,7 @@ import adviserDigestRoutes from './server/routes/adviserDigest.js'
 import inviteRoutes from './server/routes/invites.js'
 import handoverRoutes from './server/routes/handover.js'
 import referenceRoutes from './server/routes/references.js'
+import clubRoutes from './server/routes/clubs.js'
 import shiftRoutes from './server/routes/shifts.js'
 import interestsRoutes from './server/routes/interests.js'
 import taskPhotoRoutes from './server/routes/taskPhotos.js'
@@ -161,6 +163,7 @@ app.use(authenticate)
 // Mounted ahead of /api/auth so the SSO sub-routes are matched by their own
 // router rather than falling through the password-auth one.
 app.use('/api/auth/sso', authSsoRoutes)
+app.use('/api/auth/social', authSocialRoutes)
 app.use('/api/auth/passkey', passkeyRoutes)
 app.use('/api/auth/parent-consent', parentConsentRoutes)
 app.use('/api/auth', authRoutes)
@@ -200,6 +203,7 @@ app.use('/api/adviser-digest', adviserDigestRoutes)
 app.use('/api/invites', inviteRoutes)
 app.use('/api/handover', handoverRoutes)
 app.use('/api/references', referenceRoutes)
+app.use('/api/clubs', clubRoutes)
 app.use('/api/shifts', shiftRoutes)
 app.use('/api/interests', interestsRoutes)
 app.use('/api/task-photos', taskPhotoRoutes)

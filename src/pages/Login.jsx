@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import SocialSignIn from '@/components/SocialSignIn.jsx'
 import { useState, useEffect, useRef } from 'react'
 import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff, Building2, KeyRound } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -586,6 +587,7 @@ export default function Login() {
                 )
               ) : (
               <form onSubmit={onSubmit} className="space-y-5">
+                <SocialSignIn />
                 <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
                   <label className="label text-slate-300" htmlFor="email">Email</label>
                   <div className="relative">

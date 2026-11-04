@@ -36,6 +36,7 @@ import GoalCelebration from '@/components/GoalCelebration.jsx'
 import ShareHoursModal from '@/components/ShareHoursModal.jsx'
 import { nextCelebration, markCelebrated } from '@/lib/celebrations.js'
 import { printCertificate } from '@/lib/export.js'
+import MyClubsCard from '@/components/MyClubsCard.jsx'
 import { askParentComing } from '@/lib/parentComing.js'
 import KidHelperCard from '@/components/KidHelperCard.jsx'
 import { isYoungStudent, KID_DEFAULT_GOAL } from '@/lib/kidMode.js'
@@ -635,6 +636,8 @@ export default function Dashboard() {
       {dashTab === 'home' && isYoungStudent(user) && (
         <KidHelperCard name={user?.name} hours={total} goal={Number(requirements.goalHours) || target || KID_DEFAULT_GOAL} />
       )}
+
+      {dashTab === 'home' && user?.role === 'student' && user?.schoolId && <MyClubsCard />}
 
       {dashTab === 'home' && termGoal && (
         <Card className="p-4 mb-4">

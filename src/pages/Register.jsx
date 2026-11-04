@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import SocialSignIn from '@/components/SocialSignIn.jsx'
 import { useState, useEffect, useId } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check, Users, Cake } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -90,7 +91,10 @@ export default function Register() {
     if (fromUrl) rememberInvite(fromUrl)
     return fromUrl || readInvite()
   })
-  const [form, setForm] = useState(() => ({ name: '', email: '', password: '', school: '', grade: '', studentIdNumber: '', schoolCode: String(params.get('school') || '').trim().slice(0, 40), dateOfBirth: '', parentEmail: '' }))
+  // Coming back from Google or Apple (#661): the email is verified, so there is
+  // no password and no emailed code, just the rest of the form.
+  const socialTicket = params.get('social') || ''
+  const [form, setForm] = useState(() => ({ name: '', email: socialTicket ? String(params.get('email') || '') : '', password: '', school: '', grade: '', studentIdNumber: '', schoolCode: String(params.get('school') || '').trim().slice(0, 40), dateOfBirth: '', parentEmail: '' }))
   // The grades the school behind the code has (#581), so the picker offers
   // only those. Looked up once the code looks complete.
   const [codeGrades, setCodeGrades] = useState([])
@@ -164,7 +168,7 @@ export default function Register() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
-    if (form.password.length < 8) { setErr(tr('Password must be at least 8 characters.')); return }
+    if (!socialTicket && form.password.length < 8) { setErr(tr('Password must be at least 8 characters.')); return }
     if (ageCheck.error) {
       if (ageCheck.tooYoung) recordAgeGate(role)
       setErr(ageCheck.error)
@@ -174,9 +178,13 @@ export default function Register() {
     if (under13) recordAgeGate('student')
     if (under13 && !form.parentEmail.trim()) { setErr(tr("Enter your parent or guardian's email address.")); return }
     if (!agreed) { setErr(tr('Please agree to the Terms of Service and Privacy Policy.')); return }
-    if (turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
+    if (!socialTicket && turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
     const signup = { ...form, role, under13, parentEmail: under13 ? form.parentEmail.trim() : '', inviteCode: inviteCode || undefined }
     setBusy(true)
+    if (socialTicket) {
+      try { await createAccount({ ...signup, socialTicket }, '') } catch (e2) { setErr(e2.message) } finally { setBusy(false) }
+      return
+    }
     try {
       const sent = await sendSignupCode({ ...signup, turnstileToken: captchaToken })
       // No backend: register() makes a local demo account, which needs no code.
@@ -374,15 +382,20 @@ export default function Register() {
             ))}
           </div>
 
+          {socialTicket ? (
+            <p className="text-sm rounded-lg bg-brand-500/10 text-brand-800 dark:text-brand-200 px-3 py-2 mb-3">{tr('Almost done. Pick your account type and fill in the rest. You won’t need a password: sign in with the same button next time.')}</p>
+          ) : (
+            <div className="mb-4"><SocialSignIn /></div>
+          )}
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="animate-fade-in-up" style={{ animationDelay: '450ms' }}>
               <Field icon={UserIcon}  label={tr('Full name')} value={form.name} onChange={onChange('name')} placeholder={tr('Jane Doe')} required />
             </div>
             <div className="animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-              <Field icon={Mail}      label="Email" type="email" value={form.email} onChange={onChange('email')} placeholder={tr('you@email.com')} autoComplete="email" required />
+              <Field icon={Mail}      label="Email" type="email" value={form.email} onChange={onChange('email')} placeholder={tr('you@email.com')} autoComplete="email" required readOnly={Boolean(socialTicket)} />
             </div>
             <div className="animate-fade-in-up" style={{ animationDelay: '550ms' }}>
-              <Field icon={Lock}      label={tr('Password')} type="password" value={form.password} onChange={onChange('password')} placeholder={tr('8+ characters')} autoComplete="new-password" required />
+              {!socialTicket && <Field icon={Lock}      label={tr('Password')} type="password" value={form.password} onChange={onChange('password')} placeholder={tr('8+ characters')} autoComplete="new-password" required />}
             </div>
 
             <div className="animate-fade-in-up" style={{ animationDelay: '625ms' }}>
