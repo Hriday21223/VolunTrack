@@ -72,6 +72,17 @@ function CheckoutPinSection({ taskId, until, onChange }) {
 // again when they leave (server/routes/school.js, "QR check-in"). The code in
 // it changes every minute, so this refreshes on the server's schedule, and
 // polls who has scanned.
+// "9:05 AM" in the viewer's own clock.
+function clock(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+// "2.25 hours", "1 hour".
+function hoursText(n) {
+  const v = Math.round((Number(n) || 0) * 100) / 100
+  return v === 1 ? '1 hour' : `${v} hours`
+}
+
 export default function CheckinQrModal({ task, onClose }) {
   const canvasRef = useRef(null)
   const [data, setData] = useState(null)

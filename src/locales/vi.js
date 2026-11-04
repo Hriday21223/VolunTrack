@@ -1661,6 +1661,7 @@ export default {
   "On My Tasks, tick \"Volunteers can bring up to 3 guests\" when you post or edit a task (Post again copies it). Each guest takes one of the task's spots, so a volunteer with 2 guests uses 3. Their sign-up shows \"+2 guests\" with any first names they gave, and the printable sign-in sheet adds a line for each guest under the volunteer who brought them. Guests have no accounts, so their hours aren't recorded and they aren't counted in attendance or hours in your stats.": "Trên Nhiệm vụ của tôi, tích \"Tình nguyện viên có thể dẫn theo tối đa 3 khách\" khi đăng hoặc sửa nhiệm vụ (Đăng lại sẽ sao chép). Mỗi khách chiếm một chỗ của nhiệm vụ, nên tình nguyện viên dẫn 2 khách dùng 3 chỗ. Đăng ký của họ hiện \"+2 khách\" kèm tên nếu có, và bảng điểm danh in thêm một dòng cho mỗi khách dưới tên người dẫn. Khách không có tài khoản nên giờ của họ không được ghi và không được tính vào điểm danh hay giờ trong thống kê.",
   "Checking…": "Đang kiểm tra…",
   "Mark attendance": "Đánh dấu điểm danh",
+  "Sign the hours": "Ký giờ",
   "has volunteered": "đã tình nguyện",
   "I have volunteered": "Tôi đã tình nguyện",
   "hour of service": "giờ phục vụ",

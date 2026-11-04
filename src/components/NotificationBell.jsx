@@ -37,6 +37,7 @@ const KIND_LABELS = {
   task_question: tr('New question'),
   task_answer: tr('Your question was answered'),
   attendance_nudge: tr('Mark attendance'),
+  sign_reminder: tr('Sign the hours'),
   log_hours_nudge: tr('Log your hours'),
   account_handover: tr('New main admin'),
   reference_received: tr('New reference'),

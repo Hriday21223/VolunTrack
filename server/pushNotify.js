@@ -14,7 +14,7 @@ import { sendPush, pushConfigured } from './push.js'
 // (admin notices and the like) are bell-only.
 export const PUSH_GROUPS = {
   hours: ['hours_approved', 'hours_rejected', 'report_approved', 'report_rejected', 'goal_reached', 'reference_received', 'reference_declined'],
-  tasks: ['signup_approved', 'signup_rejected', 'waitlist_spot', 'new_task', 'task_alert', 'saved_task_reminder', 'task_thanks', 'task_answer', 'task_question', 'cohost_added', 'volunteer_late', 'volunteer_cancelled_day_of', 'attendance_nudge', 'log_hours_nudge', 'rate_task', 'friend_joined'],
+  tasks: ['signup_approved', 'signup_rejected', 'waitlist_spot', 'new_task', 'task_alert', 'saved_task_reminder', 'task_thanks', 'task_answer', 'task_question', 'cohost_added', 'volunteer_late', 'volunteer_cancelled_day_of', 'attendance_nudge', 'sign_reminder', 'log_hours_nudge', 'rate_task', 'friend_joined'],
   family: ['parent_cheer', 'parent_ok_request', 'parent_ok_given', 'parent_ok_declined'],
   reminders: ['hours_reminder', 'deadline_reminder', 'comeback_nudge'],
 }
