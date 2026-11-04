@@ -2955,4 +2955,9 @@ export default {
   "I don't agree — sign out": "No acepto — cerrar sesión",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "Si no aceptas, puedes cerrar sesión y pedirnos que eliminemos tu cuenta desde la página de la Política de privacidad.",
   "Could not save that. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
+  "Signed up for {n} dates.": "Inscrito en {n} fechas.",
+  "On the waitlist for {n}.": "En lista de espera para {n}.",
+  "Couldn't sign up for: {list}": "No se pudo inscribir en: {list}",
+  "Signing up\u2026": "Inscribiendo…",
+  "Sign up for all {n} dates": "Inscribirse en las {n} fechas",
 }

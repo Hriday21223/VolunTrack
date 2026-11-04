@@ -269,6 +269,48 @@ export default function Opportunities() {
     setToast(true)
     reload()
   }
+  // A weekly series (#692): the other upcoming dates this volunteer could
+  // still join. Each one goes through the normal sign-up, so approval,
+  // waitlists, age, parent OK and waivers all apply per date.
+  const seriesOpen = (t) => (t.series_id && !(t.shifts?.length)
+    ? nearbyTasks.filter((x) => x.series_id === t.series_id && !x.my_signup_status && x.status !== 'cancelled' && String(x.date).slice(0, 10) >= format(new Date(), 'yyyy-MM-dd') && !x.my_too_young)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    : [])
+  const [seriesBusy, setSeriesBusy] = useState(null)
+  const signUpSeries = async (t, extra = {}) => {
+    const dates = seriesOpen(t)
+    if (dates.length === 0) return
+    if (t.waiver_text && !extra.waiver) { setWaiverFor({ t, full: false, extra: { ...extra, series: true } }); return }
+    if (t.min_age != null && !window.confirm(tr("This task is for volunteers {n} or older. Are you {n} or older?", { n: t.min_age }))) return
+    const parentPart = askParentComing(t, user)
+    if (parentPart === null) return
+    setSeriesBusy(t.series_id)
+    const token = localStorage.getItem('voluntrack:auth_token')
+    let ok = 0
+    let waitlisted = 0
+    const failed = []
+    for (const x of dates) {
+      const full = x.slots_total && Number(x.slots_filled) >= Number(x.slots_total)
+      try {
+        const res = await fetch(`${apiUrl}/school/public-tasks/${x.id}/signup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ ...(full ? { waitlist: true } : {}), ...(x.min_age != null ? { ageConfirmed: true } : {}), ...parentPart, ...(extra.waiver ? { waiver: extra.waiver } : {}) }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(d.error || 'Failed')
+        if (d.waitlisted) waitlisted += 1; else ok += 1
+      } catch (e) { failed.push(`${fmtDate(String(x.date).slice(0, 10))}: ${e.message}`) }
+    }
+    setSeriesBusy(null)
+    setToastMsg([
+      tr('Signed up for {n} dates.', { n: ok }),
+      waitlisted ? tr('On the waitlist for {n}.', { n: waitlisted }) : '',
+      failed.length ? tr("Couldn't sign up for: {list}", { list: failed.join('; ') }) : '',
+    ].filter(Boolean).join(' '))
+    setToast(true)
+    reload()
+  }
   // Filters run on the list already loaded; distance is the server's radius.
   const [category, setCategory] = useState('')
   const [when, setWhen] = useState('')
@@ -709,6 +751,11 @@ export default function Opportunities() {
                       {full ? tr('Join waitlist') : tr('Sign up')}
                     </button>
                   )}
+                  {seriesOpen(t).length > 1 && seriesOpen(t)[0].id === t.id && (
+                    <button type="button" onClick={() => signUpSeries(t)} disabled={seriesBusy === t.series_id} className="btn-ghost btn-sm text-xs">
+                      {seriesBusy === t.series_id ? tr('Signing up…') : tr('Sign up for all {n} dates', { n: seriesOpen(t).length })}
+                    </button>
+                  )}
                   {full && !t.my_signup_status && (
                     <span className="text-xs text-earth-500">{tr('Full')}{Number(t.waitlist_count) > 0 ? ` · ${tr('{n} waiting', { n: t.waitlist_count })}` : ''}</span>
                   )}
@@ -742,6 +789,7 @@ export default function Opportunities() {
           user={user}
           onClose={() => setWaiverFor(null)}
           onAgree={async (waiver) => {
+            if (waiverFor.extra?.series) { setWaiverFor(null); await signUpSeries(waiverFor.t, { waiver }); return }
             await doSignUp(waiverFor.t, waiverFor.full, { ...waiverFor.extra, waiver })
             setWaiverFor(null)
           }}

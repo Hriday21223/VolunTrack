@@ -2926,4 +2926,9 @@ export default {
   "I don't agree — sign out": "我不同意——退出登录",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "如果你不同意，可以退出登录，并在隐私政策页面请求我们删除你的账户。",
   "Could not save that. Please try again.": "无法保存，请重试。",
+  "Signed up for {n} dates.": "已报名 {n} 个日期。",
+  "On the waitlist for {n}.": "{n} 个日期在候补名单中。",
+  "Couldn't sign up for: {list}": "无法报名：{list}",
+  "Signing up\u2026": "正在报名…",
+  "Sign up for all {n} dates": "报名全部 {n} 个日期",
 }

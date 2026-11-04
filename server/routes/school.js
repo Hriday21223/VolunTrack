@@ -2737,6 +2737,8 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     // Every week of a repeat goes in together or not at all, so a failure
     // can't leave the organizer with half a series to find and fix.
     const created = []
+    // One id for every week of a series (#692); a single date has none.
+    const seriesId = dates.length > 1 ? uid('ser') : null
     const client = await getPool().connect()
     try {
       await client.query('BEGIN')
@@ -2744,10 +2746,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes, series_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value, seriesId],
         )
         // Each week of a series gets its own copy of the shifts.
         if (shiftsIn.shifts) {
@@ -2830,7 +2832,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                (SELECT COUNT(*) FROM public_task_signups WHERE task_id = t.id AND status = 'waitlisted') AS waitlist_count,
                ${userId ? `(SELECT status FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_signup_status` : 'NULL AS my_signup_status'},
                ${userId ? `${WAITLIST_POSITION_SQL('t.id', '$1')} AS my_waitlist_position` : 'NULL AS my_waitlist_position'},
-               t.allow_guests,
+               t.allow_guests, t.series_id,
                -- Waiver (#595): public, so it can be read before signing up.
                t.waiver_text,
                ${userId ? `(SELECT waiver_at FROM public_task_signups WHERE task_id = t.id AND user_id = $1) AS my_waiver_at` : 'NULL AS my_waiver_at'},
