@@ -10,6 +10,7 @@ import { escapeHtml } from '../html.js'
 import { hasIssueFiling, createIncidentIssue, closeIncidentIssue, parseIncidentMarker } from '../github.js'
 import authRouter from './auth.js'
 import schoolRouter from './school.js'
+import embedRouter from './embed.js'
 import organizationRouter from './organization.js'
 import logsRouter from './logs.js'
 import parentRouter from './parent.js'
@@ -269,6 +270,7 @@ router.get('/health', pollLimiter, async (_req, res) => {
 const MOUNTED_ROUTERS = [
   ['auth', '/api/auth', authRouter],
   ['school', '/api/school', schoolRouter],
+  ['embed', '/api/embed', embedRouter],
   ['organization', '/api/organization', organizationRouter],
   ['logs', '/api/logs', logsRouter],
   ['parent', '/api/parent', parentRouter],

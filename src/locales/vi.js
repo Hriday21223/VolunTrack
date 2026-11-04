@@ -2926,4 +2926,8 @@ export default {
   "I don't agree — sign out": "Tôi không đồng ý — đăng xuất",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "Nếu bạn không đồng ý, bạn có thể đăng xuất và yêu cầu chúng tôi xóa tài khoản từ trang Chính sách quyền riêng tư.",
   "Could not save that. Please try again.": "Không thể lưu. Vui lòng thử lại.",
+  "Show your events on your website": "Hiển thị sự kiện trên trang web của bạn",
+  "Paste this code into your school or district website. It lists your upcoming volunteer events with a \"Sign up on VolunTrack\" button, and updates by itself.": "Dán mã này vào trang web của trường hoặc học khu. Mã sẽ hiển thị các sự kiện tình nguyện sắp tới kèm nút \"Đăng ký trên VolunTrack\" và tự cập nhật.",
+  "Website code": "Mã cho trang web",
+  "Copy code": "Sao chép mã",
 }

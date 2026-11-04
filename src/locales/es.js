@@ -2955,4 +2955,8 @@ export default {
   "I don't agree — sign out": "No acepto — cerrar sesión",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "Si no aceptas, puedes cerrar sesión y pedirnos que eliminemos tu cuenta desde la página de la Política de privacidad.",
   "Could not save that. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
+  "Show your events on your website": "Muestra tus eventos en tu sitio web",
+  "Paste this code into your school or district website. It lists your upcoming volunteer events with a \"Sign up on VolunTrack\" button, and updates by itself.": "Pega este código en el sitio web de tu escuela o distrito. Muestra tus próximos eventos de voluntariado con un botón \"Inscríbete en VolunTrack\" y se actualiza solo.",
+  "Website code": "Código para el sitio web",
+  "Copy code": "Copiar código",
 }

@@ -2926,4 +2926,8 @@ export default {
   "I don't agree — sign out": "我不同意——退出登录",
   "If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.": "如果你不同意，可以退出登录，并在隐私政策页面请求我们删除你的账户。",
   "Could not save that. Please try again.": "无法保存，请重试。",
+  "Show your events on your website": "在你的网站上展示活动",
+  "Paste this code into your school or district website. It lists your upcoming volunteer events with a \"Sign up on VolunTrack\" button, and updates by itself.": "把这段代码粘贴到学校或学区网站上。它会列出即将举行的志愿活动，并附有\"在 VolunTrack 报名\"按钮，会自动更新。",
+  "Website code": "网站代码",
+  "Copy code": "复制代码",
 }
