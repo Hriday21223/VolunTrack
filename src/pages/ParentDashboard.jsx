@@ -10,7 +10,7 @@ import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import EmergencyContactCard from '@/components/EmergencyContactCard.jsx'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
-import { gradeOptionLabel } from '@policy'
+import { gradeOptionLabel, isYoungGrade } from '@policy'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { exportLogsPDF, exportLogsCSV } from '@/lib/export.js'
 import { countedLogs } from '@/lib/achievements.js'
@@ -377,7 +377,10 @@ function ChildCard({ child }) {
                       <tr key={l.id} className="border-t border-earth-100 dark:border-[#1f2e25]">
                         <td className="py-2 whitespace-nowrap">{fmtDate(l.date)}</td>
                         <td className="py-2">{l.activity || '—'}</td>
-                        <td className="py-2"><VerificationBadge status={l.verification_status} bySchool={l.reviewedBySchool} /></td>
+                        <td className="py-2">
+                          <VerificationBadge status={l.verification_status} bySchool={l.reviewedBySchool} />
+                          {isYoungGrade(child.grade) && <ParentConfirm log={l} />}
+                        </td>
                         <td className="py-2 text-right font-medium">{fmtHours(Number(l.hours) || 0)}</td>
                         <td className="py-2 pl-3 text-right"><CheerButton log={l} childName={child.name} /></td>
                       </tr>
@@ -395,6 +398,50 @@ function ChildCard({ child }) {
         </>
       )}
     </Card>
+  )
+}
+
+// K–5 (#677): a parent confirms an unconfirmed entry with their typed name.
+// It shows beside the entry for the school; it isn't an approval.
+function ParentConfirm({ log }) {
+  const [done, setDone] = useState(log.parentConfirmedName || '')
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  if (done) return <p className="text-xs text-sky-600 dark:text-sky-300 mt-1">{tr('You confirmed: {name}', { name: done })}</p>
+  if (!['none', 'pending'].includes(log.verification_status)) return null
+  const submit = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch(`${apiUrl}/parent/confirm/${encodeURIComponent(log.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+        body: JSON.stringify({ name }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || tr('Could not confirm that entry.'))
+      setDone(d.parentConfirmedName || name)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (!open) {
+    return <button type="button" onClick={() => setOpen(true)} className="block text-xs text-brand-600 dark:text-brand-400 hover:underline mt-1">{tr('Confirm these hours')}</button>
+  }
+  return (
+    <form onSubmit={submit} className="mt-1 space-y-1">
+      <p className="text-xs text-earth-500">{tr('I was there or know my child did this. Type your full name:')}</p>
+      <div className="flex gap-1">
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} className="input py-1 px-2 text-xs w-36" aria-label={tr('Your full name')} placeholder={tr('Your full name')} />
+        <button type="submit" disabled={busy || name.trim().length < 2} className="btn-primary btn-sm text-xs">{tr('Confirm')}</button>
+      </div>
+      {error && <p role="alert" className="text-xs text-red-500">{error}</p>}
+    </form>
   )
 }
 

@@ -2863,4 +2863,11 @@ export default {
   "Saved on this device. It sends when you’re back online.": "Guardado en este dispositivo. Se envía cuando vuelvas a tener conexión.",
   "Parent coming: {name}": "Viene con su padre o madre: {name}",
   "Total so far: {n} hours": "Total hasta ahora: {n} horas",
+  "Confirmed by a parent: {name}": "Confirmado por un padre o madre: {name}",
+  "You confirmed: {name}": "Confirmaste: {name}",
+  "Confirm these hours": "Confirmar estas horas",
+  "I was there or know my child did this. Type your full name:": "Estuve ahí o sé que mi hijo o hija lo hizo. Escribe tu nombre completo:",
+  "Your full name": "Tu nombre completo",
+  "Confirm": "Confirmar",
+  "Could not confirm that entry.": "No se pudo confirmar ese registro.",
 }

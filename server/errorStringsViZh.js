@@ -1,6 +1,10 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Type your full name to confirm.": "Nhập họ tên đầy đủ để xác nhận.",
+  "Parents can confirm hours only for children in kindergarten to 5th grade.": "Phụ huynh chỉ có thể xác nhận giờ cho trẻ từ mẫu giáo đến lớp 5.",
+  "This entry was already decided.": "Mục này đã được quyết định.",
+  "Could not confirm that entry.": "Không thể xác nhận mục này.",
   "2FA is already enabled.": "Xác thực hai yếu tố đã được bật.",
   "2FA is already enabled. Disable it first.": "Xác thực hai yếu tố đã được bật. Hãy tắt trước.",
   "2FA is not enabled on this account.": "Tài khoản này chưa bật xác thực hai yếu tố.",
@@ -331,6 +335,10 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Type your full name to confirm.": "请输入全名以确认。",
+  "Parents can confirm hours only for children in kindergarten to 5th grade.": "家长只能为幼儿园至五年级的孩子确认时长。",
+  "This entry was already decided.": "该记录已有决定。",
+  "Could not confirm that entry.": "无法确认该记录。",
   "2FA is already enabled.": "双重验证已开启。",
   "2FA is already enabled. Disable it first.": "双重验证已开启，请先关闭。",
   "2FA is not enabled on this account.": "此账户未开启双重验证。",

@@ -2834,4 +2834,11 @@ export default {
   "Delete the webhook to {url}?": "删除指向 {url} 的 Webhook？",
   "Skip to content": "跳到主要内容",
   "Total so far: {n} hours": "目前共计：{n} 小时",
+  "Confirmed by a parent: {name}": "已由家长确认：{name}",
+  "You confirmed: {name}": "你已确认：{name}",
+  "Confirm these hours": "确认这些时长",
+  "I was there or know my child did this. Type your full name:": "我在场或知道孩子做了这件事。请输入你的全名：",
+  "Your full name": "你的全名",
+  "Confirm": "确认",
+  "Could not confirm that entry.": "无法确认该记录。",
 }

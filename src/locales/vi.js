@@ -2834,4 +2834,11 @@ export default {
   "Delete the webhook to {url}?": "Xóa webhook đến {url}?",
   "Skip to content": "Chuyển đến nội dung",
   "Total so far: {n} hours": "Tổng đến giờ: {n} giờ",
+  "Confirmed by a parent: {name}": "Phụ huynh đã xác nhận: {name}",
+  "You confirmed: {name}": "Bạn đã xác nhận: {name}",
+  "Confirm these hours": "Xác nhận số giờ này",
+  "I was there or know my child did this. Type your full name:": "Tôi đã có mặt hoặc biết con tôi đã làm việc này. Nhập họ tên đầy đủ của bạn:",
+  "Your full name": "Họ tên đầy đủ của bạn",
+  "Confirm": "Xác nhận",
+  "Could not confirm that entry.": "Không thể xác nhận mục này.",
 }
