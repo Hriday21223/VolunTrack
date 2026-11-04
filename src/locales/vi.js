@@ -2834,4 +2834,10 @@ export default {
   "Delete the webhook to {url}?": "Xóa webhook đến {url}?",
   "Skip to content": "Chuyển đến nội dung",
   "Total so far: {n} hours": "Tổng đến giờ: {n} giờ",
+  "Making\u2026": "Đang tạo…",
+  "Ask them to confirm hours": "Nhờ họ xác nhận giờ",
+  "Emailed to {email}.": "Đã gửi email tới {email}.",
+  "Copy this link to them:": "Gửi liên kết này cho họ:",
+  "{n} entries waiting. Works for {days} days; a new link replaces this one.": "{n} mục đang chờ. Dùng được trong {days} ngày; liên kết mới sẽ thay thế liên kết này.",
+  "Sign-off link": "Liên kết xác nhận",
 }

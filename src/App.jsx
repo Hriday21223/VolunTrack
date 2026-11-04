@@ -63,6 +63,7 @@ const Attendance = lazy(() => import('@/pages/Attendance.jsx'))
 const Status = lazy(() => import('@/pages/Status.jsx'))
 const VerifyHours = lazy(() => import('@/pages/VerifyHours.jsx'))
 const SignCertificate = lazy(() => import('@/pages/SignCertificate.jsx'))
+const PartnerSignoff = lazy(() => import('@/pages/PartnerSignoff.jsx'))
 const BadgeCheck = lazy(() => import('@/pages/BadgeCheck.jsx'))
 const ParentWaiver = lazy(() => import('@/pages/ParentWaiver.jsx'))
 const WriteReference = lazy(() => import('@/pages/WriteReference.jsx'))
@@ -155,6 +156,7 @@ function Shell() {
           <Route path="/status/:tab"    element={<Status />} />
           <Route path="/verify-hours"   element={<VerifyHours />} />
           <Route path="/sign-certificate/:token" element={<SignCertificate />} />
+          <Route path="/partner-signoff/:token" element={<PartnerSignoff />} />
           <Route path="/badge/:code" element={<BadgeCheck />} />
           <Route path="/waiver/:token" element={<ParentWaiver />} />
           <Route path="/reference/:token" element={<WriteReference />} />

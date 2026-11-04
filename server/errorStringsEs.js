@@ -2,6 +2,8 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "Could not make a sign-off link.": "No se pudo crear el enlace de confirmación.",
+  "Partner not found.": "No se encontró el socio.",
   "2FA is already enabled.": "La verificación en dos pasos ya está activada.",
   "2FA is already enabled. Disable it first.": "La verificación en dos pasos ya está activada. Desactívala primero.",
   "2FA is not enabled on this account.": "La verificación en dos pasos no está activada en esta cuenta.",

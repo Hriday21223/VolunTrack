@@ -17,6 +17,11 @@ import { listRecipients, addRecipient, removeRecipient, RecipientError } from '.
 import { activeOrgChallenge, scoreboard, METRICS } from '../orgChallenge.js'
 import { schoolProgress } from './school.js'
 import { listPartners, addPartners, updatePartner, removePartner, PartnerError, MAX_PARTNERS } from '../partners.js'
+import { createSignoffLink, partnerForToken, entriesForPartner, shortName, LINK_DAYS } from '../partnerSignoff.js'
+import { recordLogEvent } from '../logHistory.js'
+import { emitHours } from '../webhooks.js'
+import { notify } from '../notifications.js'
+import { emailLang, et } from '../emailStrings.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 
 const router = express.Router()
@@ -547,6 +552,133 @@ router.delete('/partners/:id', limiter, requireDb, requireAuth('org'), async (re
     await removePartner(org.id, req.params.id)
     return res.json(await partnersResponse(org))
   } catch (error) { return partnerError(res, error, 'remove') }
+})
+
+// --- Partner sign-off (#676) ------------------------------------------------
+// The org sends a partner a link; the partner confirms entries naming their
+// place with one typed signature. See server/partnerSignoff.js.
+const signoffLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } })
+const SIGNOFF_MAX_REASON = 500
+
+function siteBase() {
+  const first = (process.env.FRONTEND_URL || '').split(',').map((x) => x.trim()).find(Boolean)
+  return (first || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
+}
+
+// POST: make a new link (replacing the old) and email it to the partner's
+// contact when there is one. The link is returned so the org can copy it.
+router.post('/partners/:id/signoff-link', limiter, requireDb, requireAuth('org'), async (req, res) => {
+  try {
+    const { rows: me } = await query('SELECT organization_id FROM users WHERE id = $1', [req.auth.sub])
+    const orgId = me[0]?.organization_id
+    if (!orgId) return res.status(403).json({ error: 'Not allowed.' })
+    const made = await createSignoffLink(orgId, req.params.id, req.auth.sub)
+    if (!made) return res.status(404).json({ error: 'Partner not found.' })
+    const url = `${siteBase()}/partner-signoff/${made.token}`
+    const count = (await entriesForPartner({ name: made.partner.name, organization_id: orgId })).length
+    let emailed = false
+    const to = made.partner.contact_email
+    if (to && validator.isEmail(to) && !/@test\.com$/i.test(to)) {
+      const { rows: org } = await query('SELECT name FROM organizations WHERE id = $1', [orgId])
+      const orgName = org[0]?.name || 'A school district'
+      await sendEmail({
+        to,
+        subject: `${orgName}: please confirm student volunteer hours at ${made.partner.name}`,
+        html: `
+          <h2>Confirm student volunteer hours</h2>
+          <p>Hi${made.partner.contact_name ? ` ${escapeHtml(made.partner.contact_name)}` : ''},</p>
+          <p>${escapeHtml(orgName)} lists ${escapeHtml(made.partner.name)} as a partner. Students logged hours there in VolunTrack${count ? ` (${count} ${count === 1 ? 'entry' : 'entries'} waiting)` : ''}. You can confirm them all with one signature, or send any back with a reason. No account needed.</p>
+          <p><a href="${escapeHtml(url)}">Review the hours</a></p>
+          <p style="color:#666;font-size:13px">The link works for ${LINK_DAYS} days. Please don't forward it.</p>
+          ${emailFooterHtml()}`,
+      }).then(() => { emailed = true }).catch((error) => console.error('partner signoff email failed:', error))
+    }
+    return res.json({ url, emailed, entries: count, expiresInDays: LINK_DAYS })
+  } catch (error) {
+    console.error('partner signoff link failed:', error)
+    return res.status(500).json({ error: 'Could not make a sign-off link.' })
+  }
+})
+
+// GET (public): the entries waiting at the link's partner.
+router.get('/partner-signoff/:token', signoffLimiter, requireDb, async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  try {
+    const partner = await partnerForToken(req.params.token)
+    if (!partner) return res.status(404).json({ error: 'This link has expired or was replaced. Ask the district for a new one.' })
+    const entries = await entriesForPartner(partner)
+    return res.json({
+      partner: partner.name,
+      organization: partner.org_name,
+      expiresAt: partner.expires_at,
+      entries: entries.map((e) => ({ id: e.id, date: e.date, activity: e.activity, hours: e.hours, student: shortName(e.student_name), school: e.school_name })),
+    })
+  } catch (error) {
+    console.error('partner signoff read failed:', error)
+    return res.status(500).json({ error: 'Could not load the hours.' })
+  }
+})
+
+// POST (public) { signerName, signerTitle?, confirm: true, approve: [ids],
+// reject: [{ id, reason }] }: one signature covers every decision. Only
+// entries still waiting at this partner are changed.
+router.post('/partner-signoff/:token', signoffLimiter, requireDb, async (req, res) => {
+  try {
+    const partner = await partnerForToken(req.params.token)
+    if (!partner) return res.status(404).json({ error: 'This link has expired or was replaced. Ask the district for a new one.' })
+    const signerName = String(req.body?.signerName || '').trim().replace(/\s+/g, ' ').slice(0, 100)
+    const signerTitle = String(req.body?.signerTitle || '').trim().replace(/\s+/g, ' ').slice(0, 100)
+    if (signerName.length < 2) return res.status(400).json({ error: 'Type your full name to sign.' })
+    if (req.body?.confirm !== true) return res.status(400).json({ error: 'Tick the box to confirm.' })
+    const approveIds = Array.isArray(req.body?.approve) ? [...new Set(req.body.approve.map(String))] : []
+    const rejects = Array.isArray(req.body?.reject) ? req.body.reject : []
+    for (const r of rejects) {
+      if (!r || !String(r.reason || '').trim()) return res.status(400).json({ error: 'Give a reason for each entry you send back.' })
+    }
+    if (approveIds.length + rejects.length === 0) return res.status(400).json({ error: 'Choose at least one entry.' })
+    const waiting = new Map((await entriesForPartner(partner)).map((e) => [e.id, e]))
+    const signedBy = `${signerName}${signerTitle ? `, ${signerTitle}` : ''} (${partner.name})`
+    let approved = 0
+    let rejected = 0
+    for (const id of approveIds) {
+      if (!waiting.has(id)) continue
+      const { rowCount } = await query(
+        `UPDATE logs SET verification_status = 'approved', verified_by = NULL, review_note = NULL, verification_token = NULL
+          WHERE id = $1 AND verification_status IN ('none', 'pending')`,
+        [id],
+      )
+      if (rowCount === 0) continue
+      approved += 1
+      const e = waiting.get(id)
+      emitHours('hours.approved', id)
+      recordLogEvent({ logId: id, event: 'approved', byKind: 'partner', byName: signedBy })
+      const { rows: u } = await query('SELECT language FROM users WHERE id = $1', [e.student_id])
+      const lang = emailLang(u[0]?.language)
+      notify(e.student_id, { kind: 'hours_approved', title: et(lang, '{place} confirmed your hours: {what}', { place: partner.name, what: `${e.activity || ''} (${e.hours}h)` }), link: '/reports' })
+    }
+    for (const r of rejects) {
+      const id = String(r.id)
+      const reason = String(r.reason).trim().slice(0, SIGNOFF_MAX_REASON)
+      if (!waiting.has(id) || approveIds.includes(id)) continue
+      const { rowCount } = await query(
+        `UPDATE logs SET verification_status = 'rejected', verified_by = NULL, review_note = $2, verification_token = NULL
+          WHERE id = $1 AND verification_status IN ('none', 'pending')`,
+        [id, reason],
+      )
+      if (rowCount === 0) continue
+      rejected += 1
+      const e = waiting.get(id)
+      emitHours('hours.rejected', id)
+      recordLogEvent({ logId: id, event: 'rejected', byKind: 'partner', byName: signedBy, note: reason })
+      const { rows: u } = await query('SELECT language FROM users WHERE id = $1', [e.student_id])
+      const lang = emailLang(u[0]?.language)
+      notify(e.student_id, { kind: 'hours_rejected', title: et(lang, '{place} sent back: {what}', { place: partner.name, what: `${e.activity || ''} (${e.hours}h)` }), body: et(lang, 'Reason: {reason}', { reason }), link: '/reports' })
+    }
+    return res.json({ ok: true, approved, rejected })
+  } catch (error) {
+    console.error('partner signoff failed:', error)
+    return res.status(500).json({ error: 'Could not save your decisions.' })
+  }
 })
 
 // PUT { asPlaces }: whether partner names count as approved places at every school.

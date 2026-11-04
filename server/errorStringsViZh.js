@@ -1,6 +1,8 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Could not make a sign-off link.": "Không thể tạo liên kết xác nhận.",
+  "Partner not found.": "Không tìm thấy đối tác.",
   "2FA is already enabled.": "Xác thực hai yếu tố đã được bật.",
   "2FA is already enabled. Disable it first.": "Xác thực hai yếu tố đã được bật. Hãy tắt trước.",
   "2FA is not enabled on this account.": "Tài khoản này chưa bật xác thực hai yếu tố.",
@@ -331,6 +333,8 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Could not make a sign-off link.": "无法生成确认链接。",
+  "Partner not found.": "未找到合作伙伴。",
   "2FA is already enabled.": "双重验证已开启。",
   "2FA is already enabled. Disable it first.": "双重验证已开启，请先关闭。",
   "2FA is not enabled on this account.": "此账户未开启双重验证。",
