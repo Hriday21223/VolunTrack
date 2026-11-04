@@ -2955,4 +2955,13 @@ export default {
   "Event check-in notices": "活动签到通知",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "孩子在志愿活动签到或签退时通知你，并附上时长。",
   "Checked out": "已签退",
+  "Your plan": "你的计划",
+  "About {n} hours a week gets you to {goal} by {date}.": "每周大约 {n} 小时，就能在 {date} 前完成{goal}。",
+  "About {n} hours a day for the next {d} days gets you to {goal}.": "接下来 {d} 天每天大约 {n} 小时，就能完成{goal}。",
+  "{h} hours to go.": "还差 {h} 小时。",
+  "Events in the next 3 weeks that fit when you are free": "未来 3 周内适合你空闲时间的活动",
+  "Events in the next 3 weeks": "未来 3 周内的活动",
+  "Nothing fits right now. Look on Opportunities for more.": "目前没有合适的活动。去\"机会\"看看更多。",
+  "Tell us when you're free to see events that fit →": "告诉我们你何时有空，看看适合的活动 →",
+  "your school requirement": "学校的要求",
 }

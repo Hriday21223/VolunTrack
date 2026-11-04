@@ -42,6 +42,7 @@ import KidHelperCard from '@/components/KidHelperCard.jsx'
 import { isYoungStudent, KID_DEFAULT_GOAL } from '@/lib/kidMode.js'
 import UnsentBanner from '@/components/UnsentBanner.jsx'
 
+import GoalPlannerCard from '@/components/GoalPlannerCard.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 // Standing reads at a glance: behind and overdue earn colour, on-track and
@@ -972,6 +973,13 @@ export default function Dashboard() {
               <div className="mt-2 text-xs text-earth-400">{tr('Earned badges appear as you log more hours.')}</div>
             )}
           </Card>
+        </div>
+
+        {/* Goal planner (#703): the school requirement first, else the personal goal. */}
+        <div className="lg:col-span-3">
+          {requirementPace.hasDeadline && !requirementPace.met && requirementPace.status !== 'overdue'
+            ? <GoalPlannerCard pace={requirementPace} label={tr('your school requirement')} />
+            : <GoalPlannerCard pace={goalPaceInfo} label={tr('your goal')} />}
         </div>
 
         <Card className="lg:col-span-2 p-4" data-tour="weekly-chart">
