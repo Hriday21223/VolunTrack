@@ -2955,4 +2955,6 @@ export default {
   "Event check-in notices": "活动签到通知",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "孩子在志愿活动签到或签退时通知你，并附上时长。",
   "Checked out": "已签退",
+  "Weekly district email": "每周学区邮件",
+  "On. Every Monday we email you each school's hours that week, how many students are behind and how many entries wait for review. Counts only.": "已开启。每周一我们会发邮件告诉你各学校当周的时长、落后的学生人数和待审核的记录数。仅统计数字。",
 }

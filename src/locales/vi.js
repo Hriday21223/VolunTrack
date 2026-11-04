@@ -2955,4 +2955,6 @@ export default {
   "Event check-in notices": "Thông báo điểm danh sự kiện",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Thông báo khi con bạn điểm danh vào hoặc ra khỏi một sự kiện tình nguyện, kèm số giờ.",
   "Checked out": "Đã điểm danh ra",
+  "Weekly district email": "Email hằng tuần của học khu",
+  "On. Every Monday we email you each school's hours that week, how many students are behind and how many entries wait for review. Counts only.": "Đang bật. Mỗi thứ Hai chúng tôi gửi email cho bạn số giờ của từng trường trong tuần, số học sinh đang chậm và số mục đang chờ duyệt. Chỉ có số liệu.",
 }

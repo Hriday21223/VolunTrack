@@ -2984,4 +2984,6 @@ export default {
   "Event check-in notices": "Avisos de llegada a eventos",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Un aviso cuando tu hijo o hija registra su llegada o salida de un evento de voluntariado, con sus horas.",
   "Checked out": "Salida registrada",
+  "Weekly district email": "Correo semanal del distrito",
+  "On. Every Monday we email you each school's hours that week, how many students are behind and how many entries wait for review. Counts only.": "Activado. Cada lunes te enviamos las horas de cada escuela esa semana, cuántos estudiantes van atrasados y cuántos registros esperan revisión. Solo totales.",
 }
