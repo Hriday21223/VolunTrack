@@ -3093,6 +3093,53 @@ router.post('/public-tasks/internal/run-attendance-nudges', cronLimiter(), requi
         })
       }
     }
+    // 4. Hours waiting for the organizer's signature (#673): once per task,
+    //    2–7 days after, when entries linked to it are still unconfirmed
+    //    (check-out sends them unsigned, #671).
+    results.signReminders = []
+    const { rows: forSigning } = await query(
+      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
+              u.id AS organizer_id, u.email AS organizer_email, u.name AS organizer_name, u.language AS organizer_language,
+              (SELECT COUNT(*)::int FROM logs l WHERE l.task_id = t.id AND l.verification_status IN ('none', 'pending')) AS unsigned
+         FROM public_tasks t JOIN users u ON u.id = t.created_by
+        WHERE t.status <> 'cancelled'
+          AND t.date BETWEEN current_date - 7 AND current_date - 2
+          AND NOT EXISTS (SELECT 1 FROM public_task_attendance_nudges n WHERE n.task_id = t.id AND n.sign_reminder_sent_at IS NOT NULL)`,
+    )
+    for (const t of forSigning) {
+      if (t.unsigned === 0) continue
+      results.signReminders.push({ task: t.title, unsigned: t.unsigned })
+      if (dryRun) continue
+      const claim = await query(
+        `INSERT INTO public_task_attendance_nudges (task_id, sign_reminder_sent_at) VALUES ($1, now())
+         ON CONFLICT (task_id) DO UPDATE SET sign_reminder_sent_at = now()
+           WHERE public_task_attendance_nudges.sign_reminder_sent_at IS NULL`,
+        [t.id],
+      )
+      if (claim.rowCount === 0) continue
+      const lang = emailLang(t.organizer_language)
+      const countLine = et(lang, t.unsigned === 1
+        ? '1 entry from this event is waiting for your signature.'
+        : '{n} entries from this event are waiting for your signature.', { n: t.unsigned })
+      notify(t.organizer_id, { kind: 'sign_reminder', title: t.title, body: countLine, link: '/my-tasks' })
+      if (!t.organizer_email || t.organizer_email.endsWith('@test.com')) continue
+      await sendEmail({
+        to: t.organizer_email,
+        subject: et(lang, 'Sign the hours for {title}', { title: t.title }),
+        html: taskEmailHtml({
+          lang,
+          heading: et(lang, 'Sign the hours for {title}', { title: t.title }),
+          lines: [
+            emailHi(lang, t.organizer_name),
+            countLine,
+            et(lang, 'Open My Tasks, tick the volunteers and press Approve selected to sign them all at once. Their hours count once you sign.'),
+          ],
+          task: t,
+          link: `${frontendBase()}/my-tasks`,
+          linkLabel: et(lang, 'Sign the hours'),
+        }),
+      }).catch((error) => console.error('sign reminder email failed:', error))
+    }
     return res.json({ ok: true, ...results })
   } catch (error) {
     console.error('attendance nudges failed:', error)
