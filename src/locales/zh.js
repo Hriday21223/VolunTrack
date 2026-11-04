@@ -2929,4 +2929,7 @@ export default {
   "Hours by partner": "按合作伙伴统计的时长",
   "{from} to {to} \u00b7 {hours} hours from your students \u00b7 counts only, no names": "{from} 至 {to} · 你的学生共 {hours} 小时 · 仅统计数字，不含姓名",
   "Partner": "合作伙伴",
+  "Event check-in notices": "活动签到通知",
+  "A notification when your child checks in or out of a volunteer event, with their hours.": "孩子在志愿活动签到或签退时通知你，并附上时长。",
+  "Checked out": "已签退",
 }
