@@ -54,7 +54,7 @@ router.post('/internal/run', cronLimiter(), requireCronKey, requireDb, async (re
   }
 })
 
-router.get('/preference', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+router.get('/preference', limiter, requireDb, requireAuth('school', 'school_staff', 'org'), async (req, res) => {
   try {
     const { rows } = await query('SELECT adviser_digest_opt_out FROM users WHERE id = $1', [req.auth.sub])
     if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
@@ -65,7 +65,7 @@ router.get('/preference', limiter, requireDb, requireAuth('school', 'school_staf
   }
 })
 
-router.patch('/preference', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+router.patch('/preference', limiter, requireDb, requireAuth('school', 'school_staff', 'org'), async (req, res) => {
   if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false.' })
   try {
     await query('UPDATE users SET adviser_digest_opt_out = $1 WHERE id = $2', [!req.body.enabled, req.auth.sub])
@@ -96,7 +96,7 @@ router.get('/unsubscribe/:token', unsubLimiter, requireDb, async (req, res) => {
   if (!TOKEN_RE.test(token)) return res.status(400).type('html').send(page('This link is not valid.'))
   try {
     const { rows } = await query(
-      `SELECT adviser_digest_opt_out FROM users WHERE digest_unsub_token = $1 AND role IN ('school', 'school_staff')`,
+      `SELECT adviser_digest_opt_out FROM users WHERE digest_unsub_token = $1 AND role IN ('school', 'school_staff', 'org')`,
       [token],
     )
     if (rows.length === 0) return res.status(404).type('html').send(page('This unsubscribe link is invalid or expired.'))
@@ -113,7 +113,7 @@ router.post('/unsubscribe/:token', unsubLimiter, requireDb, async (req, res) => 
   if (!TOKEN_RE.test(token)) return res.status(400).type('html').send(page('This link is not valid.'))
   try {
     const { rowCount } = await query(
-      `UPDATE users SET adviser_digest_opt_out = true WHERE digest_unsub_token = $1 AND role IN ('school', 'school_staff')`,
+      `UPDATE users SET adviser_digest_opt_out = true WHERE digest_unsub_token = $1 AND role IN ('school', 'school_staff', 'org')`,
       [token],
     )
     if (rowCount === 0) return res.status(404).type('html').send(page('This unsubscribe link is invalid or expired.'))

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Mail } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { tr } from '@/lib/i18n.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -18,6 +19,8 @@ function authHeaders() {
 // #527). Same shape as MonthlyProgressEmailCard; the email's own unsubscribe
 // link can only turn it off, this turns it back on.
 export default function AdviserDigestEmailCard() {
+  // Organizations get the district version of this email (#707).
+  const isOrg = useAuth().user?.role === 'org'
   const [enabled, setEnabled] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -59,11 +62,13 @@ export default function AdviserDigestEmailCard() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-display font-semibold mb-1 flex items-center gap-2">
-            <Mail className="w-4 h-4 text-brand-600" /> {tr('Weekly adviser email')}
+            <Mail className="w-4 h-4 text-brand-600" /> {isOrg ? tr('Weekly district email') : tr('Weekly adviser email')}
           </h3>
           <p className="text-sm text-earth-500 dark:text-earth-400">
             {enabled
-              ? tr('On. Every Monday we email you what needs your review, who is behind on hours and what students logged that week.')
+              ? (isOrg
+                ? tr('On. Every Monday we email you each school\'s hours that week, how many students are behind and how many entries wait for review. Counts only.')
+                : tr('On. Every Monday we email you what needs your review, who is behind on hours and what students logged that week.'))
               : tr("Off. We won't email you a weekly summary.")}
           </p>
         </div>

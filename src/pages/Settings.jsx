@@ -1671,7 +1671,7 @@ export default function Settings() {
 
           {user?.role === 'student' && <ComebackEmailCard />}
           {user?.role === 'student' && <MonthlyProgressEmailCard />}
-          {(user?.role === 'school' || user?.role === 'school_staff') && <AdviserDigestEmailCard />}
+          {['school', 'school_staff', 'org'].includes(user?.role) && <AdviserDigestEmailCard />}
 
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-brand-600" />{' '}{tr('Privacy')}</h3>
