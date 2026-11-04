@@ -3500,7 +3500,8 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
 // — calendar apps can't send a sign-in — so it is made on first request and a
 // reset replaces it, which kills the old link. The URL points at this backend,
 // since that is what the calendar app fetches.
-const FEED_ROLES = ['student', 'volunteer']
+// Parents (#704) get their linked children's events.
+const FEED_ROLES = ['student', 'volunteer', 'parent']
 const dayOfLines = (t) => [t.meeting_point && `Meeting point: ${t.meeting_point}`, t.day_of_contact && `Day-of contact: ${t.day_of_contact}`].filter(Boolean)
 const FEED_TOKEN_RE = /^[0-9a-f]{64}$/
 
@@ -3566,6 +3567,40 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
     if (!user) return notFound()
     const cols = `t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
                   t.creator_name, t.latitude, t.longitude, t.is_online, t.meeting_point, t.day_of_contact`
+    const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
+    const now = new Date()
+    const send = (events, name) => {
+      res.set('Content-Type', 'text/calendar; charset=utf-8')
+      res.set('Content-Disposition', 'inline; filename="voluntrack.ics"')
+      res.set('Cache-Control', 'no-store')
+      return res.send(icsCalendar(events, [`X-WR-CALNAME:${name}`, 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H']))
+    }
+    // A parent's family calendar (#704): each linked child's sign-ups, titled
+    // with the child's first name. No day-of contact or meeting point: the
+    // parent page doesn't show those either.
+    if (user.role === 'parent') {
+      const { rows } = await query(
+        `SELECT ${cols}, s.status AS signup_status, c.name AS child_name, s.user_id AS child_id
+           FROM parent_child_links k
+           JOIN public_task_signups s ON s.user_id = k.child_id
+           JOIN public_tasks t ON t.id = s.task_id
+           JOIN users c ON c.id = k.child_id
+          WHERE k.parent_id = $1 AND s.status IN ('pending','approved','waitlisted','parent_pending')
+            AND t.status <> 'cancelled' AND t.date >= CURRENT_DATE - 30
+            AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
+          ORDER BY t.date, t.id
+          LIMIT 500`,
+        [user.id],
+      )
+      const events = rows.map((t) => {
+        const first = String(t.child_name || '').trim().split(/\s+/)[0] || 'Your child'
+        // "Maya: Park cleanup", or "Maya (waitlist): Park cleanup".
+        const status = { waitlisted: 'waitlist', pending: 'pending', parent_pending: 'needs your OK' }[t.signup_status]
+        // A child-specific UID, so two siblings at one event are two entries.
+        return icsEvent({ ...t, id: `${t.id}-${t.child_id}` }, { link: site && `${site}/parent`, summaryPrefix: status ? `${first} (${status}): ` : `${first}: `, now, details: [] })
+      })
+      return send(events, 'VolunTrack family')
+    }
     const [signups, posted] = await Promise.all([
       query(
         `SELECT ${cols}, s.status AS signup_status
@@ -3587,8 +3622,6 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
         [user.id],
       ),
     ])
-    const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
-    const now = new Date()
     const seen = new Set()
     const events = []
     for (const t of signups.rows) {
@@ -3602,14 +3635,7 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
       if (seen.has(t.id)) continue
       events.push(icsEvent(t, { link: site && `${site}/my-tasks`, now, details: dayOfLines(t) }))
     }
-    res.set('Content-Type', 'text/calendar; charset=utf-8')
-    res.set('Content-Disposition', 'inline; filename="voluntrack.ics"')
-    res.set('Cache-Control', 'no-store')
-    return res.send(icsCalendar(events, [
-      'X-WR-CALNAME:VolunTrack',
-      'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
-      'X-PUBLISHED-TTL:PT1H',
-    ]))
+    return send(events, 'VolunTrack')
   } catch (error) {
     console.error('calendar feed failed:', error)
     return res.status(500).type('text/plain').send('Could not make the calendar.')

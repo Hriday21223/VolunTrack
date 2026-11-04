@@ -2941,4 +2941,5 @@ export default {
   "Event check-in notices": "活动签到通知",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "孩子在志愿活动签到或签退时通知你，并附上时长。",
   "Checked out": "已签退",
+  "Subscribe once and your children's volunteer events show up in your phone or computer calendar, and stay up to date.": "订阅一次，孩子们的志愿活动就会出现在你手机或电脑的日历中，并保持更新。",
 }

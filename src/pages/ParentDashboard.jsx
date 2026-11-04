@@ -17,6 +17,7 @@ import { countedLogs } from '@/lib/achievements.js'
 import { format } from 'date-fns'
 import { tr } from '@/lib/i18n.js'
 
+import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 // family-link and child-card render in mutually exclusive branches (no
@@ -165,6 +166,7 @@ export default function ParentDashboard() {
             </div>
           ))}
 
+          <CalendarFeedCard parent />
           {digest && (
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-3">

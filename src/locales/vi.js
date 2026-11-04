@@ -2941,4 +2941,5 @@ export default {
   "Event check-in notices": "Thông báo điểm danh sự kiện",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Thông báo khi con bạn điểm danh vào hoặc ra khỏi một sự kiện tình nguyện, kèm số giờ.",
   "Checked out": "Đã điểm danh ra",
+  "Subscribe once and your children's volunteer events show up in your phone or computer calendar, and stay up to date.": "Đăng ký một lần là các sự kiện tình nguyện của con bạn sẽ hiện trong lịch trên điện thoại hoặc máy tính và luôn được cập nhật.",
 }
