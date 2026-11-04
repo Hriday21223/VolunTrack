@@ -2270,6 +2270,33 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('clubs migration failed:', error.message) }
+  // Club assignments (#675): a teacher asks a club for hours by a date; students
+  // attach their entries to it.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_assignments (
+        id               TEXT PRIMARY KEY,
+        club_id          TEXT NOT NULL REFERENCES school_clubs(id) ON DELETE CASCADE,
+        title            TEXT NOT NULL,
+        details          TEXT,
+        hours            NUMERIC NOT NULL,
+        needs_reflection BOOLEAN NOT NULL DEFAULT false,
+        due_date         DATE,
+        created_by       TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_assignment_entries (
+        assignment_id TEXT NOT NULL REFERENCES club_assignments(id) ON DELETE CASCADE,
+        log_id        TEXT NOT NULL REFERENCES logs(id) ON DELETE CASCADE,
+        user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        attached_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (assignment_id, log_id)
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_club_assignment_entries_user ON club_assignment_entries(user_id)')
+  } catch (error) { console.error('club assignments migration failed:', error.message) }
 
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}
