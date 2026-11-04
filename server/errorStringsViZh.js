@@ -1,6 +1,8 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Could not load when you are free.": "Không thể tải thời gian bạn rảnh.",
+  "Could not save when you are free.": "Không thể lưu thời gian bạn rảnh.",
   "Could not make a sign-off link.": "Không thể tạo liên kết xác nhận.",
   "Partner not found.": "Không tìm thấy đối tác.",
   "Type your full name to confirm.": "Nhập họ tên đầy đủ để xác nhận.",
@@ -348,6 +350,8 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Could not load when you are free.": "无法加载你的空闲时间。",
+  "Could not save when you are free.": "无法保存你的空闲时间。",
   "Could not make a sign-off link.": "无法生成确认链接。",
   "Partner not found.": "未找到合作伙伴。",
   "Type your full name to confirm.": "请输入全名以确认。",

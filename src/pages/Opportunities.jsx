@@ -30,6 +30,8 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import { MAX_SEARCH_LENGTH, cleanSearch, taskMatchesSearch, taskShareUrl } from '@/lib/taskSearch.js'
 import { organizerPath } from '@/lib/organizerProfile.js'
 
+import FreeTimesFilter, { useFreeTimes } from '@/components/FreeTimesFilter.jsx'
+import { taskFitsFreeTimes } from '@/lib/freeTimes.js'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 // The map (#496) pulls in Leaflet, so it loads only when someone opens it.
@@ -272,16 +274,19 @@ export default function Opportunities() {
   const [when, setWhen] = useState('')
   const [onlineOnly, setOnlineOnly] = useState(false)
   const [wheelchairOnly, setWheelchairOnly] = useState(false)
+  const [freeOnly, setFreeOnly] = useState(false)
+  const { freeTimes, save: saveFreeTimes } = useFreeTimes()
   const range = whenRange(when)
   const baseTasks = showSaved ? (savedTasks || []) : nearbyTasks
   const shownTasks = baseTasks.filter((t) =>
     (!category || t.category === category)
     && (!onlineOnly || t.is_online)
     && (!wheelchairOnly || t.wheelchair_accessible === 'yes')
+    && (!freeOnly || taskFitsFreeTimes(t, freeTimes))
     && (!range || (String(t.date).slice(0, 10) >= range[0] && String(t.date).slice(0, 10) <= range[1]))
     && taskMatchesSearch(t, search, t.category ? [tr(t.category)] : []))
-  const filtering = Boolean(category || when || onlineOnly || wheelchairOnly)
-  const clearFilters = () => { setCategory(''); setWhen(''); setOnlineOnly(false); setWheelchairOnly(false) }
+  const filtering = Boolean(category || when || onlineOnly || wheelchairOnly || freeOnly)
+  const clearFilters = () => { setCategory(''); setWhen(''); setOnlineOnly(false); setWheelchairOnly(false); setFreeOnly(false) }
 
   const loadNearbyTasks = useCallback(async (lat, lng, radius) => {
     try {
@@ -414,6 +419,7 @@ export default function Opportunities() {
           {[[onlineOnly, setOnlineOnly, tr('Online only')], [wheelchairOnly, setWheelchairOnly, tr('Wheelchair accessible')]].map(([on, set, label]) => (
             <button key={label} type="button" onClick={() => set((v) => !v)} aria-pressed={on} className={`btn-sm ${on ? 'btn-primary' : 'btn-ghost'}`}>{label}</button>
           ))}
+          <FreeTimesFilter on={freeOnly} onToggle={setFreeOnly} freeTimes={freeTimes} save={saveFreeTimes} />
           {canFollow && (savedTasks?.length > 0 || showSaved) && (
             <button
               type="button"

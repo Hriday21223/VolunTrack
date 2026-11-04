@@ -2,6 +2,8 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "Could not load when you are free.": "No se pudo cargar cuándo estás libre.",
+  "Could not save when you are free.": "No se pudo guardar cuándo estás libre.",
   "Could not make a sign-off link.": "No se pudo crear el enlace de confirmación.",
   "Partner not found.": "No se encontró el socio.",
   "Type your full name to confirm.": "Escribe tu nombre completo para confirmar.",
