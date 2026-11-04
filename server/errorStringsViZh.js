@@ -1,6 +1,8 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Could not make a sign-off link.": "Không thể tạo liên kết xác nhận.",
+  "Partner not found.": "Không tìm thấy đối tác.",
   "Type your full name to confirm.": "Nhập họ tên đầy đủ để xác nhận.",
   "Parents can confirm hours only for children in kindergarten to 5th grade.": "Phụ huynh chỉ có thể xác nhận giờ cho trẻ từ mẫu giáo đến lớp 5.",
   "This entry was already decided.": "Mục này đã được quyết định.",
@@ -346,6 +348,8 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Could not make a sign-off link.": "无法生成确认链接。",
+  "Partner not found.": "未找到合作伙伴。",
   "Type your full name to confirm.": "请输入全名以确认。",
   "Parents can confirm hours only for children in kindergarten to 5th grade.": "家长只能为幼儿园至五年级的孩子确认时长。",
   "This entry was already decided.": "该记录已有决定。",

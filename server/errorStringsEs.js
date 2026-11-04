@@ -2,6 +2,8 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "Could not make a sign-off link.": "No se pudo crear el enlace de confirmación.",
+  "Partner not found.": "No se encontró el socio.",
   "Type your full name to confirm.": "Escribe tu nombre completo para confirmar.",
   "Parents can confirm hours only for children in kindergarten to 5th grade.": "Los padres solo pueden confirmar horas de niños de kínder a 5.º grado.",
   "This entry was already decided.": "Ya se decidió sobre este registro.",
