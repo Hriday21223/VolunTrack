@@ -2984,6 +2984,7 @@ export default {
   "Event check-in notices": "Avisos de llegada a eventos",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Un aviso cuando tu hijo o hija registra su llegada o salida de un evento de voluntariado, con sus horas.",
   "Checked out": "Salida registrada",
+  "Subscribe once and your children's volunteer events show up in your phone or computer calendar, and stay up to date.": "Suscríbete una vez y los eventos de voluntariado de tus hijos aparecerán en el calendario de tu teléfono o computadora, siempre actualizados.",
   "What's new": "Novedades",
   "Recent changes to VolunTrack": "Cambios recientes en VolunTrack",
   "New": "Nuevo",

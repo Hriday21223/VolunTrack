@@ -13,7 +13,7 @@ function authHeaders() {
 // A subscribable calendar of the tasks you signed up for or posted
 // (GET /api/school/calendar/:token.ics). The link is the only key to it, so
 // it's made only when asked for, and Reset replaces it, killing the old one.
-export default function CalendarFeedCard() {
+export default function CalendarFeedCard({ parent = false }) {
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -61,7 +61,9 @@ export default function CalendarFeedCard() {
         <CalendarDays className="w-4 h-4 text-brand-600" /> {tr('Calendar feed')}
       </h3>
       <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-        {tr('Subscribe once and the tasks you signed up for or posted show up in your phone or computer calendar, and stay up to date.')}
+        {parent
+          ? tr("Subscribe once and your children's volunteer events show up in your phone or computer calendar, and stay up to date.")
+          : tr('Subscribe once and the tasks you signed up for or posted show up in your phone or computer calendar, and stay up to date.')}
       </p>
       {!url ? (
         <button onClick={() => load(false)} disabled={busy} className="btn-primary inline-flex items-center gap-2">
