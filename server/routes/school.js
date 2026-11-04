@@ -5503,6 +5503,69 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
 const SHOWED_UP_SQL = `(s.status = 'approved' AND (s.attendance_status = 'present'
   OR (s.checked_in_at IS NOT NULL AND s.attendance_status IS NULL)))`
 
+// Invite past volunteers (#705): people who showed up at this organizer's
+// earlier events (SHOWED_UP_SQL) and aren't signed up for this one get one
+// bell each, once per event. Never someone who blocked the organizer, a
+// pending-consent under-13, or the organizer.
+const PAST_VOLUNTEERS_SQL = `
+  SELECT DISTINCT s.user_id, u.language
+    FROM public_task_signups s
+    JOIN public_tasks pt ON pt.id = s.task_id
+    JOIN users u ON u.id = s.user_id
+   WHERE pt.created_by = $1 AND pt.id <> $2 AND pt.date < CURRENT_DATE + 1 AND ${SHOWED_UP_SQL}
+     AND s.user_id <> $1
+     AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+     AND NOT EXISTS (SELECT 1 FROM public_task_signups x WHERE x.task_id = $2 AND x.user_id = s.user_id)
+     AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $1)`
+
+async function pastInviteTask(req, res) {
+  const { rows } = await query(
+    `SELECT id, title, created_by, creator_name, status, past_invited_at, date >= CURRENT_DATE AS upcoming FROM public_tasks WHERE id = $1`,
+    [req.params.id],
+  )
+  const task = rows[0]
+  if (!task) { res.status(404).json({ error: 'Task not found.' }); return null }
+  if (task.created_by !== req.auth.sub) { res.status(403).json({ error: 'Only the task\'s organizer can invite their past volunteers.' }); return null }
+  return task
+}
+
+// GET: how many would be invited, and whether it was already done.
+router.get('/public-tasks/:id/invite-past', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await pastInviteTask(req, res)
+    if (!task) return
+    const { rows } = await query(PAST_VOLUNTEERS_SQL, [req.auth.sub, task.id])
+    return res.json({ count: rows.length, invitedAt: task.past_invited_at })
+  } catch (error) {
+    console.error('past volunteers count failed:', error)
+    return res.status(500).json({ error: 'Could not count your past volunteers.' })
+  }
+})
+
+router.post('/public-tasks/:id/invite-past', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await pastInviteTask(req, res)
+    if (!task) return
+    if (task.status !== 'open' || !task.upcoming) return res.status(400).json({ error: 'Invite people to an open, upcoming event.' })
+    const { rowCount } = await query('UPDATE public_tasks SET past_invited_at = now() WHERE id = $1 AND past_invited_at IS NULL', [task.id])
+    if (rowCount === 0) return res.status(409).json({ error: 'You already invited your past volunteers to this event.' })
+    const { rows } = await query(PAST_VOLUNTEERS_SQL, [req.auth.sub, task.id])
+    for (const r of rows) {
+      const lang = emailLang(r.language)
+      notify(r.user_id, {
+        kind: 'past_volunteer_invite',
+        title: et(lang, '{name} invites you: {title}', { name: task.creator_name || et(lang, 'An organizer you volunteered with'), title: task.title }),
+        body: et(lang, 'You helped at one of their events before. Want to come again?'),
+        link: `/opportunities?task=${encodeURIComponent(task.id)}`,
+      })
+    }
+    return res.json({ ok: true, invited: rows.length })
+  } catch (error) {
+    console.error('invite past volunteers failed:', error)
+    return res.status(500).json({ error: 'Could not send the invitations.' })
+  }
+})
+
 // One row per task the organizer posted in [from, to] (either end optional),
 // with its signup, attendance, hours and rating counts. Shared by the impact
 // report and the stats view so the two can't drift apart. Signups, logs and

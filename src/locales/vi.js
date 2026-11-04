@@ -2955,4 +2955,10 @@ export default {
   "Event check-in notices": "Thông báo điểm danh sự kiện",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Thông báo khi con bạn điểm danh vào hoặc ra khỏi một sự kiện tình nguyện, kèm số giờ.",
   "Checked out": "Đã điểm danh ra",
+  "Invitation": "Lời mời",
+  "Past volunteers invited": "Đã mời tình nguyện viên cũ",
+  "Send a notice about this event to {n} people who came to your earlier events?": "Gửi thông báo về sự kiện này cho {n} người đã đến các sự kiện trước của bạn?",
+  "Could not send the invitations.": "Không thể gửi lời mời.",
+  "Invited {n} past volunteers.": "Đã mời {n} tình nguyện viên cũ.",
+  "Invite past volunteers ({n})": "Mời tình nguyện viên cũ ({n})",
 }

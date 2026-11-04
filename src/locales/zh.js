@@ -2955,4 +2955,10 @@ export default {
   "Event check-in notices": "活动签到通知",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "孩子在志愿活动签到或签退时通知你，并附上时长。",
   "Checked out": "已签退",
+  "Invitation": "邀请",
+  "Past volunteers invited": "已邀请以往的志愿者",
+  "Send a notice about this event to {n} people who came to your earlier events?": "要向参加过你以往活动的 {n} 人发送这个活动的通知吗？",
+  "Could not send the invitations.": "无法发送邀请。",
+  "Invited {n} past volunteers.": "已邀请 {n} 位以往的志愿者。",
+  "Invite past volunteers ({n})": "邀请以往的志愿者（{n}）",
 }

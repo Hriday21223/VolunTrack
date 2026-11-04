@@ -22,6 +22,7 @@ export const NOTIFICATION_KINDS = new Set([
   'signup_rejected',
   'waitlist_spot',
   'new_task',
+  'past_volunteer_invite',
   'hours_approved',
   'hours_rejected',
   'hours_reminder',
