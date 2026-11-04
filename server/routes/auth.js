@@ -24,6 +24,7 @@ import { APP_LANGUAGES, requestAppLang, requestLang } from '../emailStrings.js'
 import { useSocialTicket, linkSocialLogin, randomPassword } from './authSocial.js'
 import { upcomingEventsFor, notifyEventsCancelledByDeletion } from './school.js'
 
+import { LEGAL_VERSION } from '../legal.js'
 const router = express.Router()
 
 // Consecutive wrong TOTP codes before an account is briefly locked.
@@ -147,6 +148,9 @@ export function publicUser(row) {
     // App language last sent by PUT /me/language (null = never), so the app
     // can tell when this device's choice still needs sending.
     language: row.language ?? null,
+    // The Terms / Privacy version they accepted (#689). The live-check robot
+    // counts as current so the notice never blocks its checks.
+    legalVersion: row.email && process.env.MONITOR_EMAIL && row.email.toLowerCase() === process.env.MONITOR_EMAIL.toLowerCase() ? LEGAL_VERSION : (row.legal_version ?? null),
     createdAt: row.created_at,
   }
 }
@@ -322,11 +326,12 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
     const hash = await hashPassword(password)
     const id = uid('usr')
     const { rows } = await query(
-      `INSERT INTO users (id, role, name, email, password_hash, grade, student_id_number, signup_platform, language)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO users (id, role, name, email, password_hash, grade, student_id_number, signup_platform, language, legal_version, legal_accepted_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
        RETURNING *`,
       // The app's language at sign-up (#604), so the first emails already use it.
-      [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req), requestAppLang(req) !== 'en' ? requestAppLang(req) : null],
+      // The sign-up form's "I agree" box covers the current Terms / Privacy (#689).
+      [id, role, name, email, hash, grade || null, studentIdNumber || null, signupPlatform(req), requestAppLang(req) !== 'en' ? requestAppLang(req) : null, LEGAL_VERSION],
     )
     if (social) await linkSocialLogin(rows[0].id, social)
     const user = publicUser(rows[0])
@@ -635,6 +640,25 @@ router.post('/login', authLimiter, requireDb, turnstileUnlessMonitor(), async (r
   } catch (error) {
     console.error('login failed:', error)
     return res.status(500).json({ error: 'Could not sign in.' })
+  }
+})
+
+// PUT /api/auth/me/legal { version } — the signed-in account accepts the
+// current Terms of Service and Privacy Policy (#689). Only the current
+// version can be accepted, so a stale tab can't accept an old one.
+router.put('/me/legal', requireDb, requireAuth(), async (req, res) => {
+  if (req.body?.version !== LEGAL_VERSION) return res.status(400).json({ error: 'Please reload the page to see the latest Terms and Privacy Policy.' })
+  try {
+    const { rows } = await query(
+      `UPDATE users SET legal_version = $2, legal_accepted_at = now() WHERE id = $1 RETURNING id`,
+      [req.auth.sub, LEGAL_VERSION],
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
+    const { rows: me } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [req.auth.sub])
+    return res.json({ ok: true, user: publicUser(me[0]) })
+  } catch (error) {
+    console.error('legal accept failed:', error)
+    return res.status(500).json({ error: 'Could not save that. Please try again.' })
   }
 })
 

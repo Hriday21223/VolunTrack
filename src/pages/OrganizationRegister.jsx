@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import RegistrationCodeField from '@/components/RegistrationCodeField.jsx'
 import { isCompleteRegistrationCode } from '@/lib/registrationCode.js'
 
+import LegalSummary from '@/components/LegalSummary.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function OrganizationRegister() {
@@ -124,6 +125,9 @@ export default function OrganizationRegister() {
               </div>
             </div>
 
+            <LegalSummary audience="school" />
+
+
             <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300">
               <input
                 type="checkbox"
@@ -132,7 +136,7 @@ export default function OrganizationRegister() {
                 onChange={(e) => setAgreed(e.target.checked)}
               />
               <span>
-                I agree to the{' '}
+                I&apos;ve read the short version and agree to the{' '}
                 <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Terms of Service</Link>
                 {' '}and{' '}
                 <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Privacy Policy</Link>.
