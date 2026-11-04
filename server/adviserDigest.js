@@ -146,11 +146,123 @@ async function claim(userId, week) {
   return rowCount === 1
 }
 
+// --- Weekly district email (#707) -------------------------------------------
+// The organization account gets one Monday summary across its schools:
+// hours in the past 7 days, students behind per school, and entries still
+// waiting for review. Counts only, never names. Same claim table, opt-out and
+// unsubscribe link as the adviser email.
+
+export async function orgSummary(orgId) {
+  const { rows: schools } = await query(
+    `SELECT s.id, s.name FROM schools s
+      WHERE s.organization_id = $1 AND (s.plan = 'club' OR s.payment_status = 'paid')
+        AND EXISTS (SELECT 1 FROM users st WHERE st.school_id = s.id AND st.role = 'student')
+      ORDER BY s.name`,
+    [orgId],
+  )
+  const per = []
+  for (const sch of schools) {
+    const [{ rows: week }, { rows: waiting }, progress] = await Promise.all([
+      query(
+        `SELECT COALESCE(SUM(l.hours), 0)::float AS hours FROM logs l JOIN users u ON u.id = l.user_id
+          WHERE u.school_id = $1 AND u.role = 'student' AND COALESCE(l.verification_status, 'none') <> 'rejected'
+            AND l.created_at >= now() - interval '7 days'`,
+        [sch.id],
+      ),
+      query(
+        `SELECT COUNT(*)::int AS n FROM logs l JOIN users u ON u.id = l.user_id
+          WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')`,
+        [sch.id],
+      ),
+      schoolProgress(sch.id),
+    ])
+    const withGoal = progress.students.filter((st) => st.target)
+    per.push({
+      name: sch.name,
+      weekHours: round(week[0].hours),
+      waiting: waiting[0].n,
+      withGoal: withGoal.length,
+      behind: withGoal.filter((st) => st.remaining > 0).length,
+    })
+  }
+  return {
+    schools: per,
+    weekHours: round(per.reduce((n, s) => n + s.weekHours, 0)),
+    waiting: per.reduce((n, s) => n + s.waiting, 0),
+    behind: per.reduce((n, s) => n + s.behind, 0),
+  }
+}
+
+export function renderOrgEmail({ name, orgName, summary: s, unsubToken }) {
+  const site = frontendUrl()
+  const subject = `${orgName}: ${s.weekHours} hours logged across your schools this week`
+  const rows = s.schools.map((sch) => `<tr>
+      <td style="padding:6px 8px;border-top:1px solid #eee">${escapeHtml(sch.name)}</td>
+      <td style="padding:6px 8px;border-top:1px solid #eee;text-align:right">${sch.weekHours}</td>
+      <td style="padding:6px 8px;border-top:1px solid #eee;text-align:right">${sch.withGoal ? `${sch.behind} of ${sch.withGoal}` : '—'}</td>
+      <td style="padding:6px 8px;border-top:1px solid #eee;text-align:right">${sch.waiting}</td>
+    </tr>`).join('')
+  const html = [
+    `<p>${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}</p>`,
+    `<p>Here's ${escapeHtml(orgName)} this week: <strong>${s.weekHours} hours</strong> logged in the past 7 days, <strong>${s.behind}</strong> student${s.behind === 1 ? '' : 's'} still short of their requirement, and <strong>${s.waiting}</strong> entr${s.waiting === 1 ? 'y' : 'ies'} waiting for review.</p>`,
+    `<table style="border-collapse:collapse;font-size:14px;width:100%;max-width:560px">
+      <tr style="text-align:left;color:#555"><th style="padding:6px 8px">School</th><th style="padding:6px 8px;text-align:right">Hours this week</th><th style="padding:6px 8px;text-align:right">Behind</th><th style="padding:6px 8px;text-align:right">Waiting for review</th></tr>
+      ${rows}
+    </table>`,
+    '<p style="font-size:12px;color:#888">Counts only: no student names are in this email. "Behind" counts students short of their school\'s hour requirement.</p>',
+    `<p><a href="${site}/organization/dashboard/hours" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">Open your dashboard</a></p>`,
+    `<p style="font-size:12px;color:#888">You get this every Monday for ${escapeHtml(orgName)}. <a href="${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}">Stop these emails</a> or turn them off in Settings.</p>`,
+    emailFooterHtml('en'),
+  ].join('')
+  return { subject, html }
+}
+
+export async function findOrgAccounts(week, { only = null } = {}) {
+  const params = [week]
+  let onlyClause = ''
+  if (only) { params.push(only); onlyClause = `AND u.id = ANY($${params.length})` }
+  const { rows } = await query(
+    `SELECT u.id, u.email, u.name, o.id AS org_id, o.name AS org_name
+       FROM users u JOIN organizations o ON o.id = u.organization_id
+      WHERE u.role = 'org' AND u.email IS NOT NULL AND NOT u.adviser_digest_opt_out
+        AND LOWER(u.email) NOT LIKE '%@test.com'
+        AND EXISTS (SELECT 1 FROM schools s WHERE s.organization_id = o.id)
+        AND NOT EXISTS (SELECT 1 FROM adviser_digest_sends d WHERE d.user_id = u.id AND d.week_start = $1)
+        ${onlyClause}
+      ORDER BY o.id, u.id`,
+    params,
+  )
+  return rows
+}
+
+async function runOrgDigest(week, { dryRun, only }) {
+  const orgs = await findOrgAccounts(week, { only })
+  if (dryRun) return { wouldSend: orgs.length, orgs: orgs.map((o) => o.id) }
+  let sent = 0
+  let emailed = 0
+  for (const o of orgs) {
+    try {
+      if (!(await claim(o.id, week))) continue
+      const summary = await orgSummary(o.org_id)
+      if (summary.schools.length === 0) continue
+      const unsubToken = await ensureDigestUnsubToken(o.id)
+      const { subject, html } = renderOrgEmail({ name: o.name, orgName: o.org_name, summary, unsubToken })
+      const result = await sendEmail({ to: o.email, subject, html, unsubscribeUrl: `${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}` }).catch(() => ({ sent: false }))
+      sent += 1
+      if (result.sent === true) emailed += 1
+    } catch (error) {
+      console.error('district digest failed:', error.message)
+    }
+  }
+  return { eligible: orgs.length, sent, emailed }
+}
+
 /** One run for this week. dryRun reports counts and ids only (it lands in an Actions log). */
 export async function runAdviserDigest({ dryRun = false, only = null, now = new Date() } = {}) {
   const week = weekStart(now)
   const advisers = await findAdvisers(week, { only })
-  if (dryRun) return { week, wouldSend: advisers.length, advisers: advisers.map((a) => a.id) }
+  const districts = await runOrgDigest(week, { dryRun, only })
+  if (dryRun) return { week, wouldSend: advisers.length, advisers: advisers.map((a) => a.id), districts }
   const summaries = new Map()
   let sent = 0
   let emailed = 0
@@ -176,5 +288,5 @@ export async function runAdviserDigest({ dryRun = false, only = null, now = new 
       if (r.status === 'sent') { sent += 1; if (r.emailed) emailed += 1 } else skipped += 1
     }
   }
-  return { week, eligible: advisers.length, sent, emailed, skipped }
+  return { week, eligible: advisers.length, sent, emailed, skipped, districts }
 }
