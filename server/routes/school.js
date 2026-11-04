@@ -6664,6 +6664,53 @@ router.post('/public-tasks/:id/checkout-pin/use', checkinLimiter, requireDb, req
   }
 })
 
+// POST { entries: [{ userId, inAt, outAt }] } (#693): the organizer types in
+// (or reads off a photo) the times from the paper sign-in sheet. Each becomes
+// a check-in and check-out like a scan, and its hours go to the organizer to
+// sign (logCheckout). Approved volunteers only, not already checked out; the
+// times must be on the event's day (±1 for time zones), out after in.
+router.post('/public-tasks/:id/paper-attendance', limiter, requireDb, requireAuth(), async (req, res) => {
+  const entries = Array.isArray(req.body?.entries) ? req.body.entries.slice(0, 200) : []
+  if (entries.length === 0) return res.status(400).json({ error: 'Enter times for at least one volunteer.' })
+  try {
+    const { rows } = await query(
+      `SELECT id, title, created_by, status, date, min_stay_minutes, date <= CURRENT_DATE + 1 AS started, date >= CURRENT_DATE - 60 AS recent
+         FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can enter attendance.")) return
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.started) return res.status(400).json({ error: "You can enter the sheet once the event has started." })
+    if (!task.recent) return res.status(400).json({ error: 'This event was too long ago. Log their hours instead.' })
+    const day = new Date(`${dayString(task.date)}T12:00:00Z`).getTime()
+    let logged = 0
+    const skipped = []
+    for (const e of entries) {
+      const inAt = new Date(e?.inAt)
+      const outAt = new Date(e?.outAt)
+      const ok = !Number.isNaN(inAt.getTime()) && !Number.isNaN(outAt.getTime()) && outAt > inAt
+        && outAt - inAt <= 24 * 3600 * 1000 && Math.abs(inAt.getTime() - day) <= 36 * 3600 * 1000
+      if (!ok) { skipped.push({ userId: e?.userId, reason: 'times' }); continue }
+      const { rows: out } = await query(
+        `UPDATE public_task_signups SET checked_in_at = $3, checked_out_at = $4, checkin_method = 'paper',
+                attendance_status = 'present', attendance_marked_at = now()
+          WHERE task_id = $1 AND user_id = $2 AND status = 'approved' AND checked_out_at IS NULL
+          RETURNING user_id`,
+        [task.id, String(e.userId), inAt.toISOString(), outAt.toISOString()],
+      )
+      if (out.length === 0) { skipped.push({ userId: e.userId, reason: 'not_waiting' }); continue }
+      if ((await logCheckout(task, out[0].user_id, inAt, outAt, 'From the paper sign-in sheet')).logged) logged += 1
+      else skipped.push({ userId: e.userId, reason: 'already_logged' })
+    }
+    return res.json({ ok: true, logged, skipped })
+  } catch (error) {
+    console.error('paper attendance failed:', error)
+    return res.status(500).json({ error: 'Could not save the sheet.' })
+  }
+})
+
 // POST: the organizer checks out everyone still checked in (volunteers who
 // left without scanning). Only on the task's day — afterwards nobody knows
 // when they left, so My Tasks flags them for Log hours instead (missed_checkout).
