@@ -1074,6 +1074,26 @@ export default function SchoolDashboard() {
                           <p className="text-xs text-earth-400">{m.email}</p>
                         </div>
                         <div className="flex items-center gap-1">
+                          {user?.role === 'school' && (
+                            <label className="text-xs flex items-center gap-1.5 mr-2 cursor-pointer" title={tr('They see only students in the clubs they advise: student list, hours to check, progress and reports.')}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(m.club_scoped)}
+                                onChange={async (e) => {
+                                  const on = e.target.checked
+                                  try {
+                                    const res = await fetch(`${apiUrl}/school/staff/${m.id}/club-scope`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+                                      body: JSON.stringify({ clubScoped: on }),
+                                    })
+                                    if (res.ok) setStaff((list) => list.map((x) => (x.id === m.id ? { ...x, club_scoped: on } : x)))
+                                  } catch { /* stays as it was */ }
+                                }}
+                              />
+                              {tr('Only their clubs')}
+                            </label>
+                          )}
                           <button onClick={() => setHandoverStaffId(handoverStaffId === m.id ? null : m.id)} className="btn-ghost btn-sm">
                             {tr('Make main admin')}
                           </button>

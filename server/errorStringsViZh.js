@@ -1,6 +1,8 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "This student isn’t in one of your clubs.": "Học sinh này không thuộc câu lạc bộ nào của bạn.",
+  "Co-admin not found.": "Không tìm thấy đồng quản trị.",
   "Could not load when you are free.": "Không thể tải thời gian bạn rảnh.",
   "Could not save when you are free.": "Không thể lưu thời gian bạn rảnh.",
   "Could not make a sign-off link.": "Không thể tạo liên kết xác nhận.",
@@ -350,6 +352,8 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "This student isn’t in one of your clubs.": "该学生不在你的任何社团中。",
+  "Co-admin not found.": "未找到协同管理员。",
   "Could not load when you are free.": "无法加载你的空闲时间。",
   "Could not save when you are free.": "无法保存你的空闲时间。",
   "Could not make a sign-off link.": "无法生成确认链接。",

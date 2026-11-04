@@ -30,6 +30,7 @@ export const AUDIT = {
   STUDENT_NOTE_DELETED: 'student.note_deleted',
   STAFF_ADDED: 'staff.added',
   STAFF_REMOVED: 'staff.removed',
+  STAFF_SCOPE_CHANGED: 'staff.scope_changed',
   // The main account of a school or organization was offered to, or taken
   // over by, a new person (#550).
   HANDOVER_INVITED: 'account.handover_invited',

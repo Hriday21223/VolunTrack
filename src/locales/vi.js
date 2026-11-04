@@ -2874,6 +2874,8 @@ export default {
   "Check-out PIN": "Mã PIN ra về",
   "Checking out\u2026": "Đang ra về…",
   "Check out": "Ra về",
+  "Only their clubs": "Chỉ câu lạc bộ của họ",
+  "They see only students in the clubs they advise: student list, hours to check, progress and reports.": "Họ chỉ thấy học sinh trong các câu lạc bộ họ phụ trách: danh sách học sinh, giờ cần duyệt, tiến độ và báo cáo.",
   "Assignments": "Bài tập",
   "New assignment": "Bài tập mới",
   "Title, like \"Fall service project\"": "Tiêu đề, ví dụ \"Dự án phục vụ mùa thu\"",

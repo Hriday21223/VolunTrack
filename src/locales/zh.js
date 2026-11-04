@@ -2874,6 +2874,8 @@ export default {
   "Check-out PIN": "签退 PIN",
   "Checking out\u2026": "正在签退…",
   "Check out": "签退",
+  "Only their clubs": "仅限其社团",
+  "They see only students in the clubs they advise: student list, hours to check, progress and reports.": "他们只能看到自己指导的社团中的学生：学生名单、待审核时长、进度和报告。",
   "Assignments": "任务",
   "New assignment": "新任务",
   "Title, like \"Fall service project\"": "标题，例如\"秋季服务项目\"",
