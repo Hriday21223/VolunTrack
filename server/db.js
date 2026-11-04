@@ -702,6 +702,11 @@ export async function initSchema() {
 
   // A student's chosen causes (activity categories) for the "For you" row on
   // Opportunities (server/routes/interests.js).
+  // A parent confirmed a K–5 child's entry (#677): recorded beside it, never
+  // in place of a school or supervisor approval.
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_name TEXT') } catch {}
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_at TIMESTAMPTZ') } catch {}
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_by TEXT') } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[]`) } catch {}
 
   // Task details (#426): an optional minimum age, online tasks (no address,
