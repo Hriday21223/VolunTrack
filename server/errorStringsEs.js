@@ -4,6 +4,12 @@
 export const ERRORS_ES = {
   "Could not load when you are free.": "No se pudo cargar cuándo estás libre.",
   "Could not save when you are free.": "No se pudo guardar cuándo estás libre.",
+  "Could not make a sign-off link.": "No se pudo crear el enlace de confirmación.",
+  "Partner not found.": "No se encontró el socio.",
+  "Type your full name to confirm.": "Escribe tu nombre completo para confirmar.",
+  "Parents can confirm hours only for children in kindergarten to 5th grade.": "Los padres solo pueden confirmar horas de niños de kínder a 5.º grado.",
+  "This entry was already decided.": "Ya se decidió sobre este registro.",
+  "Could not confirm that entry.": "No se pudo confirmar ese registro.",
   "2FA is already enabled.": "La verificación en dos pasos ya está activada.",
   "2FA is already enabled. Disable it first.": "La verificación en dos pasos ya está activada. Desactívala primero.",
   "2FA is not enabled on this account.": "La verificación en dos pasos no está activada en esta cuenta.",

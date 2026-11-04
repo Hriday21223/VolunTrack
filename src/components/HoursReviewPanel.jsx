@@ -130,6 +130,7 @@ export default function HoursReviewPanel({ onSetPlaces }) {
                       <MapPin className="w-3 h-3" /> {e.org_name || tr('No place given')}{e.offList ? ` · ${tr('not on your approved list')}` : ''}
                     </p>
                     {e.notes && <p className="text-xs text-earth-500 dark:text-earth-400 mt-1 line-clamp-3">{e.notes}</p>}
+                    {e.parent_confirmed_name && <p className="text-xs text-sky-600 dark:text-sky-300 mt-1">{tr('Confirmed by a parent: {name}', { name: e.parent_confirmed_name })}</p>}
                     <p className="text-xs text-earth-400 mt-1">
                       {e.verification_status === 'pending' ? `Waiting on supervisor${e.supervisor_name ? ` ${e.supervisor_name}` : ''}` : e.supervisor_name ? `Supervisor: ${e.supervisor_name} (not asked to confirm)` : tr('No supervisor given')}
                       {e.has_proof ? ` · ${tr('proof attached')}` : ''}

@@ -702,6 +702,11 @@ export async function initSchema() {
 
   // A student's chosen causes (activity categories) for the "For you" row on
   // Opportunities (server/routes/interests.js).
+  // A parent confirmed a K–5 child's entry (#677): recorded beside it, never
+  // in place of a school or supervisor approval.
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_name TEXT') } catch {}
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_at TIMESTAMPTZ') } catch {}
+  try { await query('ALTER TABLE logs ADD COLUMN IF NOT EXISTS parent_confirmed_by TEXT') } catch {}
   try { await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS interests TEXT[]`) } catch {}
   // When a student or volunteer is usually free (#672), for Opportunities' filter.
   try { await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_times JSONB NOT NULL DEFAULT '{}'::jsonb") } catch {}
@@ -1432,6 +1437,20 @@ export async function initSchema() {
     await query('CREATE INDEX IF NOT EXISTS idx_org_partners_org ON org_partners(organization_id)')
     await query('CREATE INDEX IF NOT EXISTS idx_org_partners_email ON org_partners(contact_email) WHERE contact_email IS NOT NULL')
   } catch (error) { console.error('org partners table migration failed:', error) }
+  // Partner sign-off links (#676): hashed, one per partner, 30 days.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS partner_signoff_links (
+        id              TEXT PRIMARY KEY,
+        partner_id      TEXT NOT NULL REFERENCES org_partners(id) ON DELETE CASCADE,
+        organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        token_hash      TEXT NOT NULL UNIQUE,
+        expires_at      TIMESTAMPTZ NOT NULL,
+        created_by      TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch (error) { console.error('partner signoff table migration failed:', error) }
   // Whether the partner names count as approved places at all its schools.
   try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS partners_as_places BOOLEAN NOT NULL DEFAULT false') } catch {}
   try {
@@ -2195,7 +2214,7 @@ export async function initSchema() {
         student_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         school_id   TEXT REFERENCES schools(id) ON DELETE SET NULL,
         event       TEXT NOT NULL CHECK (event IN ('approved', 'rejected', 'reset', 'added_by_school', 'deleted')),
-        by_kind     TEXT NOT NULL CHECK (by_kind IN ('school', 'supervisor', 'organizer', 'student')),
+        by_kind     TEXT NOT NULL CHECK (by_kind IN ('school', 'supervisor', 'organizer', 'student', 'partner')),
         by_user_id  TEXT REFERENCES users(id) ON DELETE SET NULL,
         by_name     TEXT,
         activity    TEXT,
@@ -2206,6 +2225,11 @@ export async function initSchema() {
       )
     `)
   } catch {}
+  // A partner can decide too (#676).
+  try {
+    await query('ALTER TABLE log_events DROP CONSTRAINT IF EXISTS log_events_by_kind_check')
+    await query("ALTER TABLE log_events ADD CONSTRAINT log_events_by_kind_check CHECK (by_kind IN ('school', 'supervisor', 'organizer', 'student', 'partner'))")
+  } catch (error) { console.error('log_events by_kind migration failed:', error.message) }
   try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_school ON log_events(school_id, created_at DESC)`) } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_log_events_student ON log_events(student_id, created_at DESC)`) } catch {}
 
@@ -2272,6 +2296,33 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('clubs migration failed:', error.message) }
+  // Club assignments (#675): a teacher asks a club for hours by a date; students
+  // attach their entries to it.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_assignments (
+        id               TEXT PRIMARY KEY,
+        club_id          TEXT NOT NULL REFERENCES school_clubs(id) ON DELETE CASCADE,
+        title            TEXT NOT NULL,
+        details          TEXT,
+        hours            NUMERIC NOT NULL,
+        needs_reflection BOOLEAN NOT NULL DEFAULT false,
+        due_date         DATE,
+        created_by       TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS club_assignment_entries (
+        assignment_id TEXT NOT NULL REFERENCES club_assignments(id) ON DELETE CASCADE,
+        log_id        TEXT NOT NULL REFERENCES logs(id) ON DELETE CASCADE,
+        user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        attached_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (assignment_id, log_id)
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_club_assignment_entries_user ON club_assignment_entries(user_id)')
+  } catch (error) { console.error('club assignments migration failed:', error.message) }
 
   // Light white-label branding shown on a tenant's login page.
   try { await query(`ALTER TABLE schools ADD COLUMN IF NOT EXISTS brand_logo_url TEXT`) } catch {}

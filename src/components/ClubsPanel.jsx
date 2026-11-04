@@ -182,6 +182,93 @@ function ClubDetail({ club, staff, students, onChanged, onDeleted }) {
           ))}
         </ul>
       )}
+      <ClubAssignments clubId={club.id} />
     </Card>
+  )
+}
+
+// Assignments (#675): hours (and maybe a reflection) asked of the club by a
+// date, and who has done each. Only whether a reflection exists is shown.
+function ClubAssignments({ clubId }) {
+  const [list, setList] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState({ title: '', hours: '', dueDate: '', details: '', needsReflection: false })
+  const [open, setOpen] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const load = useCallback(async () => {
+    try { setList((await call(`/${clubId}/assignments`)).assignments) } catch (e) { setError(e.message) }
+  }, [clubId])
+  useEffect(() => { load() }, [load])
+  const add = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      await call(`/${clubId}/assignments`, { method: 'POST', body: JSON.stringify({ ...form, hours: Number(form.hours) }) })
+      setForm({ title: '', hours: '', dueDate: '', details: '', needsReflection: false })
+      setAdding(false)
+      await load()
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+  const remove = async (a) => {
+    if (!window.confirm(tr('Remove "{title}"? Students keep their entries.', { title: a.title }))) return
+    try { await call(`/assignments/${a.id}`, { method: 'DELETE' }); await load() } catch (err) { setError(err.message) }
+  }
+  return (
+    <div className="mt-4 border-t border-earth-100 dark:border-white/10 pt-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-sm font-semibold">{tr('Assignments')}</p>
+        {!adding && <button type="button" className="btn-ghost btn-sm" onClick={() => setAdding(true)}><Plus className="w-4 h-4 mr-1" />{' '}{tr('New assignment')}</button>}
+      </div>
+      {adding && (
+        <form onSubmit={add} className="space-y-2 mb-3">
+          <input className="input" placeholder={tr('Title, like "Fall service project"')} value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label={tr('Title')} />
+          <div className="flex flex-wrap gap-2">
+            <input className="input w-28" type="number" min="0.25" step="0.25" placeholder={tr('Hours')} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} aria-label={tr('Hours')} />
+            <label className="text-sm flex items-center gap-2">{tr('Due')} <input className="input w-auto" type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></label>
+          </div>
+          <textarea className="input" rows={2} maxLength={1000} placeholder={tr('Details (optional)')} value={form.details} onChange={(e) => setForm({ ...form, details: e.target.value })} aria-label={tr('Details')} />
+          <label className="text-sm flex items-center gap-2"><input type="checkbox" checked={form.needsReflection} onChange={(e) => setForm({ ...form, needsReflection: e.target.checked })} />{tr('Students must write a reflection on one entry')}</label>
+          <div className="flex gap-2">
+            <button type="submit" className="btn-primary btn-sm" disabled={busy || !form.title.trim() || !(Number(form.hours) > 0)}>{busy ? tr('Saving…') : tr('Add assignment')}</button>
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setAdding(false)}>{tr('Cancel')}</button>
+          </div>
+        </form>
+      )}
+      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
+      {list && list.length === 0 && !adding && <p className="text-sm text-earth-500">{tr('No assignments yet.')}</p>}
+      <ul className="space-y-2">
+        {(list || []).map((a) => {
+          const done = a.members.filter((m) => m.done).length
+          return (
+            <li key={a.id} className="rounded-lg border border-earth-100 dark:border-white/10 p-2 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <button type="button" className="text-left flex-1" onClick={() => setOpen(open === a.id ? null : a.id)} aria-expanded={open === a.id}>
+                  <span className="font-medium">{a.title}</span>
+                  <span className="block text-xs text-earth-500">
+                    {tr('{n} hours', { n: a.hours })}{a.dueDate ? ` · ${tr('due {date}', { date: a.dueDate })}` : ''}{a.needsReflection ? ` · ${tr('reflection')}` : ''} · {tr('{done} of {total} done', { done, total: a.members.length })}
+                  </span>
+                </button>
+                <button type="button" className="p-1 text-red-400" onClick={() => remove(a)} aria-label={tr('Remove {title}', { title: a.title })}><Trash2 className="w-4 h-4" /></button>
+              </div>
+              {a.members.length > 0 && <ProgressBar value={done} target={a.members.length} />}
+              {open === a.id && (
+                <ul className="mt-2 space-y-1">
+                  {a.members.map((m) => (
+                    <li key={m.id} className="flex justify-between gap-2 text-xs">
+                      <span>{m.name}</span>
+                      <span className={m.done ? 'text-emerald-500' : 'text-earth-500'}>
+                        {m.done ? `✓ ${tr('Done')}` : `${m.hours} / ${a.hours} h${a.needsReflection && !m.reflected ? ` · ${tr('no reflection yet')}` : ''}`}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }

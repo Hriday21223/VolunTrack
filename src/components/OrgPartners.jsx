@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Handshake, Pencil, Trash2, Upload, Download, Plus, ExternalLink } from 'lucide-react'
+import { Handshake, Pencil, Trash2, Upload, Download, Plus, ExternalLink, Send } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { parseCsv } from '@/lib/rosterCsv.js'
 import { tr } from '@/lib/i18n.js'
@@ -55,6 +55,42 @@ const csvCell = (v) => {
 // Organization dashboard → Partners (#611): the nonprofits the organization
 // approved, shared with all its schools. Optionally counted as approved places
 // at every school; partners who post events get a "District partner" label.
+// Partner sign-off (#676): a link for the partner to confirm the hours
+// students logged at their place, emailed to the contact when there is one.
+function SignoffLink({ partner }) {
+  const [busy, setBusy] = useState(false)
+  const [made, setMade] = useState(null)
+  const [error, setError] = useState('')
+  const make = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      setMade(await call(`/${encodeURIComponent(partner.id)}/signoff-link`, { method: 'POST' }))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="mt-2 text-xs">
+      <button type="button" className="btn-ghost btn-sm text-xs" onClick={make} disabled={busy}>
+        <Send className="w-3.5 h-3.5 mr-1" />{' '}{busy ? tr('Making…') : tr('Ask them to confirm hours')}
+      </button>
+      {made && (
+        <div className="mt-1 space-y-1">
+          <p className="text-earth-500 dark:text-earth-400">
+            {made.emailed ? tr('Emailed to {email}.', { email: partner.contactEmail }) : tr('Copy this link to them:')}{' '}
+            {tr('{n} entries waiting. Works for {days} days; a new link replaces this one.', { n: made.entries, days: made.expiresInDays })}
+          </p>
+          <input readOnly value={made.url} onFocus={(e) => e.target.select()} className="input text-xs py-1" aria-label={tr('Sign-off link')} />
+        </div>
+      )}
+      {error && <p role="alert" className="text-red-500">{error}</p>}
+    </div>
+  )
+}
+
 export default function OrgPartners() {
   const [state, setState] = useState(null)
   const [form, setForm] = useState(EMPTY)
@@ -201,6 +237,7 @@ export default function OrgPartners() {
                   {(p.contactName || p.contactEmail) && (
                     <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">{[p.contactName, p.contactEmail].filter(Boolean).join(' · ')}</p>
                   )}
+                  <SignoffLink partner={p} />
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button type="button" className="p-1.5 rounded hover:bg-white/10" onClick={() => edit(p)} aria-label={`Edit ${p.name}`}><Pencil className="w-4 h-4" /></button>

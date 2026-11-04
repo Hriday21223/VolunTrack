@@ -1409,7 +1409,7 @@ router.get('/hours-review', limiter, requireDb, requireAuth('school', 'school_st
     const { rows } = await query(
       `SELECT l.id, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours::float8 AS hours, l.notes, l.org_name,
               l.location, l.supervisor_name, l.verification_status, (l.proof_key IS NOT NULL) AS has_proof,
-              u.id AS student_id, u.name AS student_name, u.grade
+              u.id AS student_id, u.name AS student_name, u.grade, l.parent_confirmed_name, l.parent_confirmed_at
          FROM logs l JOIN users u ON u.id = l.user_id
         WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')
         ORDER BY l.date DESC, l.created_at DESC
