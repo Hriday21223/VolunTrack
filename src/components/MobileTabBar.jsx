@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, ClipboardList, ClipboardCheck, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, Sparkles, ClipboardList, ClipboardCheck, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { isNativeApp, APP_BACK_EVENT } from '@/lib/platform.js'
@@ -11,6 +11,7 @@ import { canOpen } from '@/lib/roleAccess.js'
 // nav doesn't appear to rename itself between desktop and mobile. "Log"
 // also lives in the floating FAB below for quick access, but still gets a
 // labeled entry here since the FAB alone has no room for text.
+import { useWhatsNewDot } from '@/hooks/useWhatsNewDot.js'
 const CORE_ITEMS = {
   student: [
     { to: '/',             label: 'Dashboard',     icon: Home },
@@ -54,6 +55,7 @@ const MORE_ITEMS = {
     { to: '/achievements', label: 'Achievements',  icon: Trophy },
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   volunteer: [
@@ -62,23 +64,28 @@ const MORE_ITEMS = {
     { to: '/profile',      label: 'Profile',       icon: User },
     { to: '/settings',     label: 'Settings',      icon: Settings },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   school: [
     { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   admin: [
     { to: '/calendar',     label: 'Calendar',      icon: Calendar },
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   parent: [
     { to: '/help',         label: 'Help',     icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
   ],
   org: [
     { to: '/help',         label: 'Help',          icon: HelpCircle },
+    { to: '/whats-new',    label: "What's new", icon: Sparkles },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
 }
@@ -108,6 +115,7 @@ export default function MobileTabBar() {
   const { pathname } = useLocation()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
+  const unseen = useWhatsNewDot()
   const [moreOpen, setMoreOpen] = useState(false)
   const sheetRef = useRef(null)
   const role = user?.role || 'student'
@@ -213,6 +221,7 @@ export default function MobileTabBar() {
                   >
                     <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
                     <span className="font-medium text-sm flex-1">{tr(label)}</span>
+                    {to === '/whats-new' && unseen && <span className="w-2 h-2 rounded-full bg-brand-400" aria-label={tr('New')} />}
                     <ChevronRight className="w-4 h-4 opacity-40" />
                   </NavLink>
                 )
@@ -229,6 +238,7 @@ export default function MobileTabBar() {
 
   const moreButton = (
     <button
+      data-tour="nav-more"
       onClick={() => setMoreOpen(true)}
       className={cn(
         'flex w-full flex-col items-center justify-center gap-1 py-2 text-[0.6875rem] font-medium',
@@ -252,6 +262,7 @@ export default function MobileTabBar() {
         <li key={to} className="min-w-0">
           <NavLink
             to={to}
+            data-tour={`nav${to.replace(/\//g, '-')}`}
             end={to === '/'}
             className={cn(
               'flex flex-col items-center justify-center gap-1 py-2 text-[0.6875rem] font-medium',
@@ -307,6 +318,7 @@ export default function MobileTabBar() {
                 <li key={to} className="min-w-0">
                   <NavLink
                     to={to}
+                    data-tour={`nav${to.replace(/\//g, '-')}`}
                     end={to === '/'}
                     className={cn(
                       'flex flex-col items-center justify-center gap-0.5 py-2 text-[0.625rem] font-medium relative transition-all duration-200',
@@ -326,6 +338,7 @@ export default function MobileTabBar() {
             })}
             <li className="min-w-0">
               <button
+                data-tour="nav-more"
                 onClick={() => setMoreOpen(true)}
                 className={cn(
                   'flex flex-col items-center justify-center gap-0.5 py-2 text-[0.625rem] font-medium relative transition-all duration-200 w-full',

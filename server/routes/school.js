@@ -3500,7 +3500,8 @@ router.get('/public-tasks/:id/calendar.ics', limiter, requireDb, async (req, res
 // — calendar apps can't send a sign-in — so it is made on first request and a
 // reset replaces it, which kills the old link. The URL points at this backend,
 // since that is what the calendar app fetches.
-const FEED_ROLES = ['student', 'volunteer']
+// Parents (#704) get their linked children's events.
+const FEED_ROLES = ['student', 'volunteer', 'parent']
 const dayOfLines = (t) => [t.meeting_point && `Meeting point: ${t.meeting_point}`, t.day_of_contact && `Day-of contact: ${t.day_of_contact}`].filter(Boolean)
 const FEED_TOKEN_RE = /^[0-9a-f]{64}$/
 
@@ -3566,6 +3567,40 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
     if (!user) return notFound()
     const cols = `t.id, t.title, t.description, t.location, to_char(t.date, 'YYYY-MM-DD') AS date, t.time,
                   t.creator_name, t.latitude, t.longitude, t.is_online, t.meeting_point, t.day_of_contact`
+    const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
+    const now = new Date()
+    const send = (events, name) => {
+      res.set('Content-Type', 'text/calendar; charset=utf-8')
+      res.set('Content-Disposition', 'inline; filename="voluntrack.ics"')
+      res.set('Cache-Control', 'no-store')
+      return res.send(icsCalendar(events, [`X-WR-CALNAME:${name}`, 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H']))
+    }
+    // A parent's family calendar (#704): each linked child's sign-ups, titled
+    // with the child's first name. No day-of contact or meeting point: the
+    // parent page doesn't show those either.
+    if (user.role === 'parent') {
+      const { rows } = await query(
+        `SELECT ${cols}, s.status AS signup_status, c.name AS child_name, s.user_id AS child_id
+           FROM parent_child_links k
+           JOIN public_task_signups s ON s.user_id = k.child_id
+           JOIN public_tasks t ON t.id = s.task_id
+           JOIN users c ON c.id = k.child_id
+          WHERE k.parent_id = $1 AND s.status IN ('pending','approved','waitlisted','parent_pending')
+            AND t.status <> 'cancelled' AND t.date >= CURRENT_DATE - 30
+            AND NOT EXISTS (SELECT 1 FROM users cu WHERE cu.id = t.created_by AND cu.posting_suspended_at IS NOT NULL)
+          ORDER BY t.date, t.id
+          LIMIT 500`,
+        [user.id],
+      )
+      const events = rows.map((t) => {
+        const first = String(t.child_name || '').trim().split(/\s+/)[0] || 'Your child'
+        // "Maya: Park cleanup", or "Maya (waitlist): Park cleanup".
+        const status = { waitlisted: 'waitlist', pending: 'pending', parent_pending: 'needs your OK' }[t.signup_status]
+        // A child-specific UID, so two siblings at one event are two entries.
+        return icsEvent({ ...t, id: `${t.id}-${t.child_id}` }, { link: site && `${site}/parent`, summaryPrefix: status ? `${first} (${status}): ` : `${first}: `, now, details: [] })
+      })
+      return send(events, 'VolunTrack family')
+    }
     const [signups, posted] = await Promise.all([
       query(
         `SELECT ${cols}, s.status AS signup_status
@@ -3587,8 +3622,6 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
         [user.id],
       ),
     ])
-    const site = String(process.env.FRONTEND_URL || '').replace(/\/$/, '')
-    const now = new Date()
     const seen = new Set()
     const events = []
     for (const t of signups.rows) {
@@ -3602,14 +3635,7 @@ router.get('/calendar/:token.ics', calendarFeedLimiter, requireDb, async (req, r
       if (seen.has(t.id)) continue
       events.push(icsEvent(t, { link: site && `${site}/my-tasks`, now, details: dayOfLines(t) }))
     }
-    res.set('Content-Type', 'text/calendar; charset=utf-8')
-    res.set('Content-Disposition', 'inline; filename="voluntrack.ics"')
-    res.set('Cache-Control', 'no-store')
-    return res.send(icsCalendar(events, [
-      'X-WR-CALNAME:VolunTrack',
-      'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
-      'X-PUBLISHED-TTL:PT1H',
-    ]))
+    return send(events, 'VolunTrack')
   } catch (error) {
     console.error('calendar feed failed:', error)
     return res.status(500).type('text/plain').send('Could not make the calendar.')
@@ -5502,6 +5528,69 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
 // reading RATING_OPEN_SQL uses for who may rate.
 const SHOWED_UP_SQL = `(s.status = 'approved' AND (s.attendance_status = 'present'
   OR (s.checked_in_at IS NOT NULL AND s.attendance_status IS NULL)))`
+
+// Invite past volunteers (#705): people who showed up at this organizer's
+// earlier events (SHOWED_UP_SQL) and aren't signed up for this one get one
+// bell each, once per event. Never someone who blocked the organizer, a
+// pending-consent under-13, or the organizer.
+const PAST_VOLUNTEERS_SQL = `
+  SELECT DISTINCT s.user_id, u.language
+    FROM public_task_signups s
+    JOIN public_tasks pt ON pt.id = s.task_id
+    JOIN users u ON u.id = s.user_id
+   WHERE pt.created_by = $1 AND pt.id <> $2 AND pt.date < CURRENT_DATE + 1 AND ${SHOWED_UP_SQL}
+     AND s.user_id <> $1
+     AND (u.parental_consent_status IS NULL OR u.parental_consent_status <> 'pending')
+     AND NOT EXISTS (SELECT 1 FROM public_task_signups x WHERE x.task_id = $2 AND x.user_id = s.user_id)
+     AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id = $1)`
+
+async function pastInviteTask(req, res) {
+  const { rows } = await query(
+    `SELECT id, title, created_by, creator_name, status, past_invited_at, date >= CURRENT_DATE AS upcoming FROM public_tasks WHERE id = $1`,
+    [req.params.id],
+  )
+  const task = rows[0]
+  if (!task) { res.status(404).json({ error: 'Task not found.' }); return null }
+  if (task.created_by !== req.auth.sub) { res.status(403).json({ error: 'Only the task\'s organizer can invite their past volunteers.' }); return null }
+  return task
+}
+
+// GET: how many would be invited, and whether it was already done.
+router.get('/public-tasks/:id/invite-past', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await pastInviteTask(req, res)
+    if (!task) return
+    const { rows } = await query(PAST_VOLUNTEERS_SQL, [req.auth.sub, task.id])
+    return res.json({ count: rows.length, invitedAt: task.past_invited_at })
+  } catch (error) {
+    console.error('past volunteers count failed:', error)
+    return res.status(500).json({ error: 'Could not count your past volunteers.' })
+  }
+})
+
+router.post('/public-tasks/:id/invite-past', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const task = await pastInviteTask(req, res)
+    if (!task) return
+    if (task.status !== 'open' || !task.upcoming) return res.status(400).json({ error: 'Invite people to an open, upcoming event.' })
+    const { rowCount } = await query('UPDATE public_tasks SET past_invited_at = now() WHERE id = $1 AND past_invited_at IS NULL', [task.id])
+    if (rowCount === 0) return res.status(409).json({ error: 'You already invited your past volunteers to this event.' })
+    const { rows } = await query(PAST_VOLUNTEERS_SQL, [req.auth.sub, task.id])
+    for (const r of rows) {
+      const lang = emailLang(r.language)
+      notify(r.user_id, {
+        kind: 'past_volunteer_invite',
+        title: et(lang, '{name} invites you: {title}', { name: task.creator_name || et(lang, 'An organizer you volunteered with'), title: task.title }),
+        body: et(lang, 'You helped at one of their events before. Want to come again?'),
+        link: `/opportunities?task=${encodeURIComponent(task.id)}`,
+      })
+    }
+    return res.json({ ok: true, invited: rows.length })
+  } catch (error) {
+    console.error('invite past volunteers failed:', error)
+    return res.status(500).json({ error: 'Could not send the invitations.' })
+  }
+})
 
 // One row per task the organizer posted in [from, to] (either end optional),
 // with its signup, attendance, hours and rating counts. Shared by the impact

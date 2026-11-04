@@ -74,6 +74,16 @@ const STUDENT_TOUR_STEPS = [
   { selector: '[data-tour="goal-progress"]', title: tr('Goal progress'), description: tr('Track how close you are to your primary volunteering goal, and how many hours are left.') },
   { selector: '[data-tour="weekly-chart"]', title: tr('Weekly chart'), description: tr('See your hours for the current week broken down by day, so you can keep momentum going.') },
   { selector: '[data-tour="recent-activity"]', title: tr('Recent activity'), description: tr('Your most recently logged sessions show up here — jump back in any time to log more.') },
+  { selector: '[data-tour="nav-opportunities"], [data-tour="nav-more"]', title: tr('Find volunteer events'), description: tr('Opportunities lists events near you. Tap When I\'m free to see only the ones that fit your week, and sign up for every date of a weekly event at once.') },
+  { selector: '[data-tour="nav-attendance"], [data-tour="nav-more"]', title: tr('Check in at events'), description: tr('On the day, check in with the event\'s QR code or kiosk PIN, and check out with the organizer\'s PIN. Your hours are worked out for you.') },
+  { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
+]
+
+// A Volunteer Task Maker runs events (#708), so their tour points there.
+const ORGANIZER_TOUR_STEPS = [
+  { selector: '[data-tour="nav-my-tasks"], [data-tour="nav-more"]', title: tr('Run your events'), description: tr('Post events on My Tasks. On the day, use the check-in QR code, the kiosk, a check-out PIN or the paper sheet. Everyone\'s hours come to you to sign at once.') },
+  { selector: '[data-tour="nav-attendance"], [data-tour="nav-more"]', title: tr('Events you joined'), description: tr('Events you signed up for yourself, with check-in on the day.') },
+  { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
 ]
 
 // Students and Task Makers share this page; a Task Maker can't open the
@@ -412,7 +422,7 @@ export default function Dashboard() {
     >
       <UnsentBanner />
       {dashTab === 'home' && (
-        <SpotlightTour storageKey="voluntrack:tour-seen:student" steps={STUDENT_TOUR_STEPS} />
+        <SpotlightTour storageKey={user?.role === 'volunteer' ? 'voluntrack:tour-seen:organizer' : 'voluntrack:tour-seen:student'} steps={user?.role === 'volunteer' ? ORGANIZER_TOUR_STEPS : STUDENT_TOUR_STEPS} />
       )}
 
       {/* Admin announcements (#290); renders nothing for a local-only account. */}

@@ -27,6 +27,7 @@ import { shiftText, shiftHours, starterShifts, shiftsFromRow, shiftsPayload } fr
 import { uploadTaskPhoto, fetchTaskPhoto } from '@/lib/taskPhoto.js'
 
 import PaperAttendance from '@/components/PaperAttendance.jsx'
+import InvitePastVolunteers from '@/components/InvitePastVolunteers.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // The device's own date, as YYYY-MM-DD: a task is "past" once its day is.
 const localToday = () => {
@@ -872,6 +873,7 @@ export default function MyTasks() {
                         <button onClick={() => { setMessagingId(messagingId === t.id ? null : t.id); setEditingId(null); setCancellingId(null) }} className="btn-sm btn-ghost" disabled={actionBusy}>
                           <Mail className="w-3.5 h-3.5 mr-1" /> Message volunteers
                         </button>
+                        {!t.is_cohost && t.status === 'open' && <InvitePastVolunteers task={t} onDone={(m) => { setToastMsg(m); setToast(true) }} />}
                         {!t.is_cohost && (
                           <button onClick={() => { setCancellingId(cancellingId === t.id ? null : t.id); setEditingId(null); setMessagingId(null) }} className="btn-sm btn-ghost text-red-400" disabled={actionBusy}>
                             <Ban className="w-3.5 h-3.5 mr-1" /> Cancel event

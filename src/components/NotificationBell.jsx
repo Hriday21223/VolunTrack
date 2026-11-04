@@ -18,6 +18,7 @@ const KIND_LABELS = {
   signup_rejected: tr('Sign-up not accepted'),
   waitlist_spot: tr("You're off the waitlist"),
   new_task: tr('New task'),
+  past_volunteer_invite: tr('Invitation'),
   hours_approved: tr('Hours approved'),
   hours_rejected: tr('Hours not approved'),
   hours_reminder: tr('Hours reminder'),
