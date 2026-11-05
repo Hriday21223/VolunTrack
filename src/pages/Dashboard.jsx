@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, PartyPopper, MapPin, School, Users, Hand, FileText, MessageSquare, Bell, Calendar, AlertTriangle, Globe } from 'lucide-react'
+import { Clock, Calendar as CalIcon, TrendingUp, Plus, Trophy, ChevronRight, PartyPopper, MapPin, School, Users, Hand, FileText, MessageSquare, Calendar, AlertTriangle, Globe } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
@@ -106,7 +106,6 @@ export default function Dashboard() {
   const [publicTasks, setPublicTasks] = useState([])
   const [dashTab, setDashTab] = useState('home')
   const [schoolMessages, setSchoolMessages] = useState([])
-  const [adminNotifs, setAdminNotifs] = useState([])
   const [toast, setToast] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
 
@@ -215,10 +214,6 @@ export default function Dashboard() {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (msgRes.ok) { const d = await msgRes.json(); setSchoolMessages(d.messages || []) }
-        const notifRes = await fetch(`${apiUrl}/school/admin/notifications?schoolId=${user.schoolId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (notifRes.ok) { const d = await notifRes.json(); setAdminNotifs(d.notifications || []) }
       } catch {}
     })()
   }, [user?.schoolId])
@@ -577,22 +572,6 @@ export default function Dashboard() {
             return null
           })()}
 
-          {adminNotifs.length > 0 && (
-            <Card className="mb-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Bell className="w-4 h-4 text-brand-600" />
-                <h3 className="font-display font-semibold">{tr('Payment notices')}</h3>
-              </div>
-              <div className="space-y-2">
-                {adminNotifs.map((n) => (
-                  <div key={n.id} className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
-                    <p className="text-sm">{n.message}</p>
-                    <p className="text-xs text-earth-500 mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
 
           {schoolMessages.length > 0 && (
             <Card className="mb-5">

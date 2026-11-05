@@ -7979,7 +7979,9 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
 // (school_id IS NULL). The school is derived from the authenticated user —
 // a client-supplied schoolId is ignored so one tenant can't read another's
 // notifications (see /messages below for the same pattern).
-router.get('/admin/notifications', limiter, requireDb, requireAuth(), async (req, res) => {
+// Payment notices are for the people who run the school, not its students
+// (security checklist, #723).
+router.get('/admin/notifications', limiter, requireDb, requireAuth('school', 'school_staff', 'admin'), async (req, res) => {
   try {
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const schoolId = userRows[0]?.school_id || null
