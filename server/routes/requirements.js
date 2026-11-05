@@ -5,6 +5,7 @@
 import express from 'express'
 import { createHash, randomBytes } from 'node:crypto'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { uid } from '../ids.js'
@@ -15,6 +16,7 @@ import { policyForUser, policyForSchool } from '../policy.js'
 const router = express.Router()
 
 const limiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,

@@ -4,6 +4,7 @@
 // student sees the clubs they're in and their progress toward each goal.
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { uid } from '../ids.js'
@@ -11,7 +12,7 @@ import { recordAudit, AUDIT } from '../audit.js'
 import { notify } from '../notifications.js'
 
 const router = express.Router()
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } })
+const limiter = rateLimit({ keyGenerator: perPersonKey, windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } })
 const requireDb = (_req, res, next) => (hasDatabase() ? next() : res.status(503).json({ error: 'Server database is not configured.' }))
 
 export const MAX_CLUBS = 30

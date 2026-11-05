@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Trophy, X } from 'lucide-react'
 import { BADGES } from '@/lib/achievements.js'
 import { cn } from '@/utils/cn.js'
 import { tr } from '@/lib/i18n.js'
 
-/** Slides a list of newly-earned badges in from the bottom. */
+/**
+ * Slides newly-earned badges in from the bottom. At most two at a time, plus a
+ * "+N more" line, so earning many at once (an import, a first sync) doesn't
+ * cover the screen.
+ */
+const SHOW = 2
 export default function BadgeToasts({ badgeIds, onDone }) {
   const [visible, setVisible] = useState(badgeIds)
 
@@ -23,7 +29,7 @@ export default function BadgeToasts({ badgeIds, onDone }) {
 
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 space-y-2 animate-slide-up">
-      {visible.map((id) => {
+      {visible.slice(0, SHOW).map((id) => {
         const b = BADGES.find((x) => x.id === id)
         if (!b) return null
         return (
@@ -52,6 +58,15 @@ export default function BadgeToasts({ badgeIds, onDone }) {
           </div>
         )
       })}
+      {visible.length > SHOW && (
+        <Link
+          to="/achievements"
+          onClick={() => { setVisible([]); onDone?.() }}
+          className="block text-center text-sm font-semibold rounded-2xl px-3 py-2 shadow-soft bg-amber-100 text-amber-900 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-100 dark:border-amber-700/40"
+        >
+          {tr('+{n} more achievements', { n: visible.length - SHOW })}
+        </Link>
+      )}
     </div>
   )
 }

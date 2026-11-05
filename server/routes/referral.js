@@ -1,5 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
@@ -11,6 +12,7 @@ import { isPromoLive, promoLabel } from '../promo.js'
 const router = express.Router()
 
 const limiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 120,
   standardHeaders: true,
