@@ -1,4 +1,3 @@
-/* eslint-env serviceworker */
 /* global self, clients */
 
 // Imported into the Workbox-generated service worker via
