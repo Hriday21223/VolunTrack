@@ -3063,4 +3063,11 @@ export default {
   "Which languages does VolunTrack support?": "VolunTrack hỗ trợ những ngôn ngữ nào?",
   "English, Spanish (Español), Vietnamese (Tiếng Việt) and Simplified Chinese (中文). Pick one from the language menu on the sign-in page, in the side menu, or in Settings. Every screen is translated, and emails to students and parents and error messages come in your language too. Emails to supervisors, principals and admins stay in English. Names, activities and anything people typed stay as they were written.": "Tiếng Anh, tiếng Tây Ban Nha (Español), tiếng Việt và tiếng Trung giản thể (中文). Chọn trong menu ngôn ngữ ở trang đăng nhập, ở menu bên hoặc trong Cài đặt. Mọi màn hình đều được dịch, email gửi học sinh và phụ huynh cùng các thông báo lỗi cũng theo ngôn ngữ của bạn. Email gửi người giám sát, hiệu trưởng và quản trị viên vẫn bằng tiếng Anh. Tên, hoạt động và mọi thứ người dùng nhập giữ nguyên như khi viết.",
   "+{n} more achievements": "+{n} thành tích khác",
+  "Your plan on the Dashboard: how many hours a week you need to reach your goal on time, with events that fit.": "Kế hoạch của bạn trên Bảng điều khiển: mỗi tuần cần bao nhiêu giờ để đạt mục tiêu đúng hạn, kèm các sự kiện phù hợp.",
+  "A family calendar link with your children's events, for your phone's calendar.": "Liên kết lịch gia đình với các sự kiện của con bạn, dùng cho lịch trên điện thoại.",
+  "Invite your past volunteers to a new event.": "Mời những tình nguyện viên trước đây tham gia sự kiện mới.",
+  "Approve hours automatically: when a student signed in at your event, or served at an approved place.": "Tự động duyệt giờ: khi học sinh đã điểm danh tại sự kiện của bạn, hoặc phục vụ tại nơi đã được duyệt.",
+  "A weekly email with each school's numbers.": "Email hằng tuần với số liệu của từng trường.",
+  "\"Other language…\" in the language menu uses your browser's translation for more languages.": "\"Ngôn ngữ khác…\" trong menu ngôn ngữ dùng tính năng dịch của trình duyệt cho nhiều ngôn ngữ hơn.",
+  "Links you share to an event, a school or your invite show a preview with its name.": "Liên kết bạn chia sẻ tới sự kiện, trường hoặc lời mời sẽ hiện bản xem trước kèm tên.",
 }

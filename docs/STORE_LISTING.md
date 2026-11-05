@@ -87,7 +87,7 @@ icon label stays *VolunTrack*:
 > PRIVATE BY DESIGN
 > • Free for students, volunteers and parents
 > • We never sell your data
-> • In English and Spanish
+> • In English, Spanish, Vietnamese and Chinese
 
 **Release notes / What's new** (Play 500 max) — 0.13.0:
 

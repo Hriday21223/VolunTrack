@@ -3063,4 +3063,11 @@ export default {
   "Which languages does VolunTrack support?": "VolunTrack 支持哪些语言？",
   "English, Spanish (Español), Vietnamese (Tiếng Việt) and Simplified Chinese (中文). Pick one from the language menu on the sign-in page, in the side menu, or in Settings. Every screen is translated, and emails to students and parents and error messages come in your language too. Emails to supervisors, principals and admins stay in English. Names, activities and anything people typed stay as they were written.": "英语、西班牙语（Español）、越南语（Tiếng Việt）和简体中文。可在登录页、侧边菜单或设置中的语言菜单里选择。所有界面都已翻译，发给学生和家长的邮件以及错误提示也会使用你的语言。发给主管、校长和管理员的邮件仍为英文。姓名、活动以及用户输入的内容保持原样。",
   "+{n} more achievements": "另外 {n} 项成就",
+  "Your plan on the Dashboard: how many hours a week you need to reach your goal on time, with events that fit.": "仪表板上的你的计划：每周需要多少小时才能按时达成目标，并附上合适的活动。",
+  "A family calendar link with your children's events, for your phone's calendar.": "家庭日历链接，包含孩子的活动，可加到手机日历。",
+  "Invite your past volunteers to a new event.": "邀请以前的志愿者参加新活动。",
+  "Approve hours automatically: when a student signed in at your event, or served at an approved place.": "自动批准时数：学生在你的活动中签到，或在已批准的地点服务时。",
+  "A weekly email with each school's numbers.": "每周一封邮件，列出每所学校的数据。",
+  "\"Other language…\" in the language menu uses your browser's translation for more languages.": "语言菜单中的\"其他语言…\"会使用浏览器的翻译功能支持更多语言。",
+  "Links you share to an event, a school or your invite show a preview with its name.": "你分享的活动、学校或邀请链接会显示带名称的预览。",
 }
