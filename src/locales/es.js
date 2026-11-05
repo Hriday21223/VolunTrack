@@ -3099,4 +3099,6 @@ export default {
   "A weekly email with each school's numbers.": "Un correo semanal con los números de cada escuela.",
   "\"Other language…\" in the language menu uses your browser's translation for more languages.": "\"Otro idioma…\" en el menú de idioma usa la traducción de tu navegador para más idiomas.",
   "Links you share to an event, a school or your invite show a preview with its name.": "Los enlaces que compartes a un evento, una escuela o tu invitación muestran una vista previa con su nombre.",
+  "Welcome tours": "Recorridos de bienvenida",
+  "which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.": "qué recorridos de bienvenida terminaste u omitiste, para que cada uno aparezca solo una vez en cualquier dispositivo. Se borra con tu cuenta.",
 }

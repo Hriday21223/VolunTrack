@@ -3070,4 +3070,6 @@ export default {
   "A weekly email with each school's numbers.": "Email hằng tuần với số liệu của từng trường.",
   "\"Other language…\" in the language menu uses your browser's translation for more languages.": "\"Ngôn ngữ khác…\" trong menu ngôn ngữ dùng tính năng dịch của trình duyệt cho nhiều ngôn ngữ hơn.",
   "Links you share to an event, a school or your invite show a preview with its name.": "Liên kết bạn chia sẻ tới sự kiện, trường hoặc lời mời sẽ hiện bản xem trước kèm tên.",
+  "Welcome tours": "Hướng dẫn chào mừng",
+  "which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.": "những hướng dẫn chào mừng bạn đã xem xong hoặc bỏ qua, để mỗi hướng dẫn chỉ hiện một lần trên mọi thiết bị. Bị xóa cùng tài khoản của bạn.",
 }

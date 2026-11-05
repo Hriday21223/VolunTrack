@@ -3070,4 +3070,6 @@ export default {
   "A weekly email with each school's numbers.": "每周一封邮件，列出每所学校的数据。",
   "\"Other language…\" in the language menu uses your browser's translation for more languages.": "语言菜单中的\"其他语言…\"会使用浏览器的翻译功能支持更多语言。",
   "Links you share to an event, a school or your invite show a preview with its name.": "你分享的活动、学校或邀请链接会显示带名称的预览。",
+  "Welcome tours": "欢迎导览",
+  "which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.": "你已看完或跳过的欢迎导览，这样每个导览在任何设备上只出现一次。随账户一起删除。",
 }

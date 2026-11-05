@@ -132,7 +132,7 @@ server.js      # Express server entry point
 
 ## License
 
-Copyright (c) 2026 Hriday Karnatam. **All rights reserved.**
+Copyright (c) 2026 Hriday K. **All rights reserved.**
 
 This project is proprietary. The source is visible here for reference only —
 it is **not** open source. You may not use, copy, modify, redistribute, host,
