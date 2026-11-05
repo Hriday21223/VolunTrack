@@ -3042,4 +3042,6 @@ export default {
   "Making your card…": "正在生成卡片…",
   "Add to Apple Wallet": "添加到 Apple 钱包",
   "Save to Google Wallet": "保存到 Google 钱包",
+  "Which languages does VolunTrack support?": "VolunTrack 支持哪些语言？",
+  "English, Spanish (Español), Vietnamese (Tiếng Việt) and Simplified Chinese (中文). Pick one from the language menu on the sign-in page, in the side menu, or in Settings. Every screen is translated, and emails to students and parents and error messages come in your language too. Emails to supervisors, principals and admins stay in English. Names, activities and anything people typed stay as they were written.": "英语、西班牙语（Español）、越南语（Tiếng Việt）和简体中文。可在登录页、侧边菜单或设置中的语言菜单里选择。所有界面都已翻译，发给学生和家长的邮件以及错误提示也会使用你的语言。发给主管、校长和管理员的邮件仍为英文。姓名、活动以及用户输入的内容保持原样。",
 }
