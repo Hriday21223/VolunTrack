@@ -2,6 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { read, write } from '@/lib/storage.js'
 import { tr } from '@/lib/i18n.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
+
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+// 'voluntrack:tour-seen:student' → 'student', the name the account stores.
+const tourName = (key) => String(key).split(':').pop()
+
+// Tells the server this account has seen the tour, so other devices skip it (#736).
+function rememberOnAccount(key) {
+  const token = localStorage.getItem('voluntrack:auth_token')
+  if (!token) return
+  fetch(`${apiUrl}/auth/me/tour`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ tour: tourName(key) }),
+  }).catch(() => {})
+}
 
 const PAD = 8
 
@@ -13,10 +29,15 @@ const PAD = 8
  *
  * `storageKey` gates whether the tour has already been seen — pass a
  * role-specific key (e.g. `voluntrack:tour-seen:student`) so each user type
- * gets its own tour and its own "seen" state.
+ * gets its own tour and its own "seen" state. With an account it's also
+ * remembered on the account (`user.toursSeen`), so each person sees each tour
+ * once, not once per device; a device that saw it before tells the account.
  */
 export default function SpotlightTour({ storageKey, steps }) {
-  const [dismissed, setDismissed] = useState(() => read(storageKey, false))
+  const { user } = useAuth()
+  const seenOnAccount = Boolean(user?.toursSeen?.includes(tourName(storageKey)))
+  const seenHere = read(storageKey, false)
+  const [dismissed, setDismissed] = useState(() => seenHere || seenOnAccount)
   const [stepIndex, setStepIndex] = useState(0)
   const [rect, setRect] = useState(null)
   const [ready, setReady] = useState(false)
@@ -26,8 +47,16 @@ export default function SpotlightTour({ storageKey, steps }) {
 
   const finish = () => {
     write(storageKey, true)
+    rememberOnAccount(storageKey)
     setDismissed(true)
   }
+
+  // Seen on another device: skip it here too. Seen on this device before the
+  // account kept track: tell the account, so new devices skip it.
+  useEffect(() => {
+    if (seenOnAccount) { write(storageKey, true); setDismissed(true) }
+    else if (seenHere && user?.toursSeen) rememberOnAccount(storageKey)
+  }, [seenOnAccount, seenHere, storageKey, user?.toursSeen])
 
   // Locate (and keep tracking) the current step's target element.
   useEffect(() => {
