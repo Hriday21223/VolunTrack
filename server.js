@@ -21,6 +21,7 @@ import schoolRoutes from './server/routes/school.js'
 import organizationRoutes from './server/routes/organization.js'
 import embedRoutes from './server/routes/embed.js'
 import walletRoutes from './server/routes/wallet.js'
+import { startWalletUpdates } from './server/walletUpdates.js'
 import ogRoutes from './server/routes/og.js'
 import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
@@ -977,6 +978,8 @@ async function start() {
     startKeepAwake()
     // Webhook retries (#622), every minute.
     startWebhookWorker()
+    // Wallet cards that update themselves (#730), every 15 minutes.
+    startWalletUpdates()
   })
 }
 

@@ -1,8 +1,9 @@
 // Wallet card (#716): a student's or volunteer's hours as a pass in Apple
 // Wallet or Google Wallet: hours, school, goal and award level. Both are off
-// until VolunTrack's own wallet credentials are set (see #228), and the pass
-// shows the numbers at the moment it was added; adding it again refreshes it
-// (Google's is updated in place).
+// until VolunTrack's own wallet credentials are set (see #228). Cards update
+// themselves (#730): server/walletUpdates.js notices changed numbers, updates
+// a Google card in place and tells phones holding an Apple card to fetch it
+// again through Apple's web service (routes in server/routes/wallet.js).
 //
 // Apple: APPLE_PASS_CERT (the pass certificate as a base64 .p12),
 // APPLE_PASS_CERT_PASSWORD, APPLE_PASS_TYPE_ID, APPLE_TEAM_ID, APPLE_WWDR_CERT
@@ -47,7 +48,7 @@ export function googleWalletConfigured() { return Boolean(googleAccount()) }
 const round = (n) => Math.round((Number(n) || 0) * 100) / 100
 const site = () => ((process.env.FRONTEND_URL || '').split(',').map((x) => x.trim()).find(Boolean) || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
 // A stable, non-guessable id for the pass: not the account id itself.
-const passId = (userId) => crypto.createHash('sha256').update(`voluntrack-wallet:${userId}`).digest('hex').slice(0, 32)
+export const passId = (userId) => crypto.createHash('sha256').update(`voluntrack-wallet:${userId}`).digest('hex').slice(0, 32)
 
 /** What the card shows: counted hours (rejected left out), school, goal, award. */
 export async function walletSummary(userId) {
@@ -62,6 +63,21 @@ export async function walletSummary(userId) {
   const goal = resolved ? goalHoursFor(resolved.policy, resolved.grade) : null
   const award = resolved ? awardFor(resolved.policy, hours).current : null
   return { name: rows[0].name || 'Volunteer', hours, school: resolved?.schoolName || null, goal: goal || null, award: award?.name || null }
+}
+
+/** What the card shows, minus the date, so a change can be noticed. */
+export const cardFingerprint = (s) => JSON.stringify([s.name, s.hours, s.school, s.goal, s.award])
+
+/** Remembers that this account holds a card in `wallet` ('apple' | 'google'). */
+export async function rememberCard(userId, wallet, s) {
+  const col = wallet === 'apple' ? 'apple' : 'google'
+  await query(
+    `INSERT INTO wallet_cards (user_id, serial, ${col}, shown, updated_at, checked_at) VALUES ($1, $2, true, $3, now(), now())
+     ON CONFLICT (user_id) DO UPDATE SET ${col} = true,
+       updated_at = CASE WHEN wallet_cards.shown IS DISTINCT FROM EXCLUDED.shown THEN now() ELSE wallet_cards.updated_at END,
+       shown = EXCLUDED.shown, checked_at = now()`,
+    [userId, passId(userId), cardFingerprint(s)],
+  )
 }
 
 // --- Google Wallet ------------------------------------------------------------
@@ -112,6 +128,11 @@ async function googleAccessToken(sa) {
 
 // A card already saved keeps its old numbers unless it's updated, so update
 // it in place when it exists. Best effort: the save link works either way.
+export async function updateGoogleCard(userId, s) {
+  const sa = googleAccount()
+  if (!sa) return false
+  return updateExistingGoogleObject(sa, googleObject(process.env.GOOGLE_WALLET_ISSUER_ID, userId, s))
+}
 async function updateExistingGoogleObject(sa, object) {
   try {
     const token = await googleAccessToken(sa)
@@ -133,6 +154,7 @@ export async function googleSaveUrl(userId) {
   const issuer = process.env.GOOGLE_WALLET_ISSUER_ID
   const object = googleObject(issuer, userId, s)
   await updateExistingGoogleObject(sa, object)
+  await rememberCard(userId, 'google', s).catch((e) => console.error('wallet card record failed:', e.message))
   const jwt = signRs256({
     iss: sa.client_email,
     aud: 'google',
@@ -179,9 +201,23 @@ function signManifest(manifest) {
   return Buffer.from(forge.asn1.toDer(p7.toAsn1()).getBytes(), 'binary')
 }
 
+// Apple's web service (#730): the phone calls webServiceURL with this token
+// to register for updates and fetch the newest pass. Apple requires https.
+const apiBase = () => (process.env.PUBLIC_API_URL || '').replace(/\/$/, '')
+export const appleWebServiceUrl = () => (apiBase().startsWith('https://') ? `${apiBase()}/api/wallet/apple-ws` : null)
+const wsKey = () => crypto.createHash('sha256').update(`voluntrack-wallet-ws:${process.env.JWT_SECRET || 'dev'}`).digest()
+export const appleAuthToken = (serial) => crypto.createHmac('sha256', wsKey()).update(String(serial)).digest('hex')
+export function appleAuthOk(serial, header) {
+  const got = String(header || '').replace(/^ApplePass\s+/i, '')
+  const want = appleAuthToken(serial)
+  return got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want))
+}
+
 export function applePassJson(userId, s) {
   const field = (key, label, value) => ({ key, label, value: String(value) })
+  const ws = appleWebServiceUrl()
   return {
+    ...(ws ? { webServiceURL: ws, authenticationToken: appleAuthToken(passId(userId)) } : {}),
     formatVersion: 1,
     passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID,
     teamIdentifier: process.env.APPLE_TEAM_ID,
@@ -201,7 +237,7 @@ export function applePassJson(userId, s) {
       ],
       backFields: [
         field('updated', 'Updated', new Date().toISOString().slice(0, 10)),
-        field('about', 'About', `Hours counted in VolunTrack (rejected entries left out). Add the card again from Reports to update it. ${site()}`),
+        field('about', 'About', `Hours counted in VolunTrack (rejected entries left out). ${ws ? 'The card updates by itself when your hours change.' : 'Add the card again from Reports to update it.'} ${site()}`),
       ],
     },
   }
@@ -217,7 +253,14 @@ export async function applePass(userId) {
   const manifest = JSON.stringify(Object.fromEntries(Object.entries(files).map(([n, b]) => [n, crypto.createHash('sha1').update(b).digest('hex')])))
   files['manifest.json'] = Buffer.from(manifest)
   files.signature = signManifest(manifest)
+  await rememberCard(userId, 'apple', s).catch((e) => console.error('wallet card record failed:', e.message))
   return Buffer.from(zipSync(Object.fromEntries(Object.entries(files).map(([n, b]) => [n, new Uint8Array(b)]))))
+}
+
+/** PEM certificate and key of the pass certificate, for pushes to Apple. */
+export function applePushCredentials() {
+  const { cert, key } = appleSigner()
+  return { cert: forge.pki.certificateToPem(cert), key: forge.pki.privateKeyToPem(key) }
 }
 
 // A short-lived link so the phone can open the pass without a sign-in header.

@@ -2567,5 +2567,31 @@ export async function initSchema() {
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS texts_sent SMALLINT NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ`) } catch {}
 
+  // Wallet cards that update themselves (#730, server/walletUpdates.js).
+  // One row per account that added a card: what the card last showed (so a
+  // change is noticed) and which wallets hold it. The phones that hold an
+  // Apple card register here through Apple's web service, to be told when
+  // the card changes.
+  await query(`
+    CREATE TABLE IF NOT EXISTS wallet_cards (
+      user_id     TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      serial      TEXT NOT NULL UNIQUE,
+      apple       BOOLEAN NOT NULL DEFAULT false,
+      google      BOOLEAN NOT NULL DEFAULT false,
+      shown       TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      checked_at  TIMESTAMPTZ
+    )
+  `)
+  await query(`
+    CREATE TABLE IF NOT EXISTS wallet_apple_devices (
+      device_id   TEXT NOT NULL,
+      serial      TEXT NOT NULL REFERENCES wallet_cards(serial) ON DELETE CASCADE,
+      push_token  TEXT NOT NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (device_id, serial)
+    )
+  `)
+
   return true
 }
