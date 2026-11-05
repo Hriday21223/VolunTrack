@@ -248,13 +248,105 @@ export async function applePass(userId) {
   if (!appleWalletConfigured()) return null
   const s = await walletSummary(userId)
   if (!s) return null
-  const files = { 'pass.json': Buffer.from(JSON.stringify(applePassJson(userId, s))) }
+  const file = buildPkpass(applePassJson(userId, s))
+  await rememberCard(userId, 'apple', s).catch((e) => console.error('wallet card record failed:', e.message))
+  return file
+}
+
+function buildPkpass(passJson) {
+  const files = { 'pass.json': Buffer.from(JSON.stringify(passJson)) }
   for (const f of fs.readdirSync(ASSETS)) if (f.endsWith('.png')) files[f] = fs.readFileSync(path.join(ASSETS, f))
   const manifest = JSON.stringify(Object.fromEntries(Object.entries(files).map(([n, b]) => [n, crypto.createHash('sha1').update(b).digest('hex')])))
   files['manifest.json'] = Buffer.from(manifest)
   files.signature = signManifest(manifest)
-  await rememberCard(userId, 'apple', s).catch((e) => console.error('wallet card record failed:', e.message))
   return Buffer.from(zipSync(Object.fromEntries(Object.entries(files).map(([n, b]) => [n, new Uint8Array(b)]))))
+}
+
+// --- Event badge as a wallet ticket (#732) -------------------------------------
+// The same QR code as the on-screen badge (staff open /badge/<code>, which
+// checks it live), so a cancelled sign-up stops working even on a saved ticket.
+const badgeSerial = (code) => crypto.createHash('sha256').update(`voluntrack-badge:${code}`).digest('hex').slice(0, 32)
+const badgeUrl = (code) => `${site()}/badge/${code}`
+const nextDay = (date) => { const d = new Date(`${date}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 2); return d.toISOString().replace(/\.\d{3}Z$/, 'Z') }
+
+// "Sat, Nov 14 · 2:00 PM" from the task's date and 24-hour time.
+export function badgeWhen(date, time) {
+  const day = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(time || ''))
+  if (!m) return day
+  const h = Number(m[1])
+  return `${day} · ${((h + 11) % 12) + 1}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`
+}
+
+export function appleBadgeJson(badge, place) {
+  const field = (key, label, value) => ({ key, label, value: String(value) })
+  const when = badgeWhen(badge.date, badge.time)
+  const qr = { format: 'PKBarcodeFormatQR', message: badgeUrl(badge.code), messageEncoding: 'iso-8859-1', altText: 'Staff: scan to check' }
+  return {
+    formatVersion: 1,
+    passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID,
+    teamIdentifier: process.env.APPLE_TEAM_ID,
+    serialNumber: badgeSerial(badge.code),
+    organizationName: 'VolunTrack',
+    description: `Volunteer badge: ${badge.title}`,
+    logoText: 'VolunTrack',
+    foregroundColor: 'rgb(255, 255, 255)',
+    backgroundColor: 'rgb(5, 150, 105)',
+    labelColor: 'rgb(209, 250, 229)',
+    expirationDate: nextDay(badge.date),
+    barcodes: [qr],
+    barcode: qr,
+    ...(place ? { locations: [{ ...place, relevantText: `Your volunteer badge for ${badge.title}` }] } : {}),
+    eventTicket: {
+      primaryFields: [field('event', 'VOLUNTEER', badge.title)],
+      secondaryFields: [field('name', 'NAME', badge.name)],
+      auxiliaryFields: [field('when', 'WHEN', when), ...(badge.location ? [field('where', 'WHERE', badge.location)] : [])],
+      backFields: [
+        ...(badge.organizer ? [field('organizer', 'Organized by', badge.organizer)] : []),
+        field('about', 'About', `Your approved volunteer badge. Staff scan the code to check it with VolunTrack. If the event or your sign-up is cancelled, the code stops working. ${site()}`),
+      ],
+    },
+  }
+}
+
+/** The badge's .pkpass, or null when Apple Wallet isn't set up. */
+export function appleBadgePass(badge, place) {
+  if (!appleWalletConfigured()) return null
+  return buildPkpass(appleBadgeJson(badge, place))
+}
+
+/** A "Save to Google Wallet" link for the badge, or null when not configured. */
+export function googleBadgeSaveUrl(badge) {
+  const sa = googleAccount()
+  if (!sa) return null
+  const issuer = process.env.GOOGLE_WALLET_ISSUER_ID
+  const text = (id, header, body) => ({ id, header, body: String(body) })
+  const lang = (value) => ({ defaultValue: { language: 'en-US', value } })
+  const object = {
+    id: `${issuer}.vtb_${badgeSerial(badge.code)}`,
+    classId: `${issuer}.voluntrack_badge`,
+    state: 'ACTIVE',
+    hexBackgroundColor: '#059669',
+    logo: { sourceUri: { uri: `${site()}/icons/icon-192.png` }, contentDescription: lang('VolunTrack') },
+    cardTitle: lang('VolunTrack volunteer'),
+    subheader: lang(badge.name),
+    header: lang(badge.title),
+    barcode: { type: 'QR_CODE', value: badgeUrl(badge.code), alternateText: 'Staff: scan to check' },
+    textModulesData: [
+      text('when', 'When', badgeWhen(badge.date, badge.time)),
+      ...(badge.location ? [text('where', 'Where', badge.location)] : []),
+      ...(badge.organizer ? [text('organizer', 'Organized by', badge.organizer)] : []),
+    ],
+  }
+  const jwt = signRs256({
+    iss: sa.client_email,
+    aud: 'google',
+    typ: 'savetowallet',
+    iat: Math.floor(Date.now() / 1000),
+    origins: [site()],
+    payload: { genericClasses: [{ id: object.classId }], genericObjects: [object] },
+  }, sa.private_key)
+  return `https://pay.google.com/gp/v/save/${jwt}`
 }
 
 /** PEM certificate and key of the pass certificate, for pushes to Apple. */
