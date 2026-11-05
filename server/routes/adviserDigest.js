@@ -4,6 +4,7 @@
 // and the route (plus the school roles) decides which list it leaves.
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { hasEmail } from '../email.js'
@@ -14,6 +15,7 @@ import { runAdviserDigest } from '../adviserDigest.js'
 const router = express.Router()
 
 const limiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 60,
   standardHeaders: true,
