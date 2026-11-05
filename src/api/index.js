@@ -8,7 +8,7 @@ export function getUsers() {
   if (users.length === 0) {
     const demoUser = {
       id: uid('usr'),
-      name: 'Hriday Karnatam',
+      name: 'Hriday K.',
       email: 'karnatamhriday@gmail.com',
       school: 'Demo School',
       grade: '12',

@@ -63,7 +63,7 @@ export default function Terms() {
           </Section>
 
           <Section title="Intellectual Property">
-            <p>VolunTrack, including its source code, design, branding, name, and logo, is owned by Hriday Karnatam and protected by copyright and other laws. All rights are reserved. You are granted a limited, personal, non-transferable right to use the app as offered. You may not copy, modify, reverse engineer, redistribute, host, resell, or create derivative works from any part of the app or its code without prior written permission.</p>
+            <p>VolunTrack, including its source code, design, branding, name, and logo, is owned by {OPERATOR_NAME} and protected by copyright and other laws. All rights are reserved. You are granted a limited, personal, non-transferable right to use the app as offered. You may not copy, modify, reverse engineer, redistribute, host, resell, or create derivative works from any part of the app or its code without prior written permission.</p>
           </Section>
 
           <Section title="Acceptable Use">
