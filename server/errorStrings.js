@@ -54,3 +54,35 @@ export function translateErrors(req, res, next) {
   }
   next()
 }
+
+// "Too many requests" says how long to wait (#734): the rate limiters set
+// Retry-After / RateLimit-Reset (seconds) on a 429, so the message names the
+// minutes left instead of "later". Mounted after translateErrors, so it sees
+// the English text first and writes the caller's language itself.
+const WAIT = {
+  en: (n) => `Please try again in ${n} ${n === 1 ? 'minute' : 'minutes'}.`,
+  es: (n) => `Demasiadas solicitudes. Inténtalo de nuevo en ${n} ${n === 1 ? 'minuto' : 'minutos'}.`,
+  vi: (n) => `Quá nhiều yêu cầu. Vui lòng thử lại sau ${n} phút.`,
+  zh: (n) => `请求过多，请在 ${n} 分钟后再试。`,
+}
+export function waitMinutes(res) {
+  const sec = Number(res.getHeader('Retry-After') ?? res.getHeader('RateLimit-Reset'))
+  return Number.isFinite(sec) && sec > 0 ? Math.max(1, Math.ceil(sec / 60)) : null
+}
+export function rateLimitWaitMessage(lang, message, minutes) {
+  if (lang !== 'en') return WAIT[lang]?.(minutes) || message
+  const base = String(message || 'Too many requests.').replace(/\s*(Please )?try again( later| in a few minutes)?\.?$/i, '').trim()
+  return `${base} ${WAIT.en(minutes)}`
+}
+export function rateLimitWait(req, res, next) {
+  const lang = requestLang(req)
+  const json = res.json.bind(res)
+  res.json = (body) => {
+    if (res.statusCode === 429 && body && typeof body === 'object' && typeof body.error === 'string') {
+      const n = waitMinutes(res)
+      if (n) return json({ ...body, error: rateLimitWaitMessage(lang, body.error, n), retryAfterMinutes: n })
+    }
+    return json(body)
+  }
+  next()
+}

@@ -2,6 +2,7 @@ import express from 'express'
 import { emitStudent, emitHours, emitSignupFor, emitEventSignup } from '../webhooks.js'
 import { withPartnerPlaces, listPartners, PARTNER_TASK_SQL } from '../partners.js'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { createHash, createHmac, timingSafeEqual, randomInt } from 'crypto'
@@ -58,9 +59,12 @@ const router = express.Router()
 // notifications, students, staff, invoices) — needs headroom above what a
 // write-focused limiter would use, or ordinary browsing exhausts the budget
 // before an admin gets to an action like sending a payment notice.
+// Per signed-in person (by address otherwise): a class on school Wi-Fi shares
+// one address.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 400,
+  keyGenerator: (req) => (req.auth?.sub ? `user:${req.auth.sub}` : `ip:${req.ip}`),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },

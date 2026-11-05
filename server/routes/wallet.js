@@ -1,6 +1,7 @@
 // Wallet card routes (#716): see server/wallet.js.
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { query } from '../db.js'
@@ -8,7 +9,7 @@ import { appleWalletConfigured, googleWalletConfigured, googleSaveUrl, applePass
 import { loadBadge } from '../badge.js'
 
 const router = express.Router()
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } })
+const limiter = rateLimit({ keyGenerator: perPersonKey, windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } })
 const requireDb = (_req, res, next) => (hasDatabase() ? next() : res.status(503).json({ error: 'Server database is not configured.' }))
 const ROLES = ['student', 'volunteer']
 const apiBase = (req) => (process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '')

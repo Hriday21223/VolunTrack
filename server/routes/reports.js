@@ -1,5 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
@@ -25,6 +26,7 @@ const reportLimiter = rateLimit({
   message: { error: 'Too many reports. Please try again later.' },
 })
 const limiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 120,
   standardHeaders: true,
