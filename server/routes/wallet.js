@@ -4,7 +4,8 @@ import rateLimit from 'express-rate-limit'
 import { hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { query } from '../db.js'
-import { appleWalletConfigured, googleWalletConfigured, googleSaveUrl, applePass, appleLinkToken, userFromLinkToken, appleAuthOk } from '../wallet.js'
+import { appleWalletConfigured, googleWalletConfigured, googleSaveUrl, applePass, appleLinkToken, userFromLinkToken, appleAuthOk, appleBadgePass, googleBadgeSaveUrl } from '../wallet.js'
+import { loadBadge } from '../badge.js'
 
 const router = express.Router()
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests. Please try again later.' } })
@@ -48,6 +49,55 @@ router.get('/apple/:token.pkpass', limiter, requireDb, async (req, res) => {
     return res.send(pass)
   } catch (error) {
     console.error('apple wallet failed:', error.message)
+    return res.status(500).type('text/plain').send('Could not make your wallet card.')
+  }
+})
+
+// --- Event badge as a wallet ticket (#732) -------------------------------------
+// GET /api/wallet/badge/:taskId/google — { url }.
+router.get('/badge/:taskId/google', limiter, requireDb, requireAuth(...ROLES), async (req, res) => {
+  try {
+    const r = await loadBadge(req.params.taskId, req.auth.sub)
+    if (r.error) return res.status(r.status).json({ error: r.error })
+    const url = googleBadgeSaveUrl(r.badge)
+    if (!url) return res.status(404).json({ error: 'Google Wallet isn\'t available yet.' })
+    return res.json({ url })
+  } catch (error) {
+    console.error('google badge failed:', error.message)
+    return res.status(500).json({ error: 'Could not make your wallet card.' })
+  }
+})
+
+// GET /api/wallet/badge/:taskId/apple-link — { url } valid for 5 minutes.
+router.get('/badge/:taskId/apple-link', limiter, requireDb, requireAuth(...ROLES), async (req, res) => {
+  if (!appleWalletConfigured()) return res.status(404).json({ error: 'Apple Wallet isn\'t available yet.' })
+  try {
+    const r = await loadBadge(req.params.taskId, req.auth.sub)
+    if (r.error) return res.status(r.status).json({ error: r.error })
+    const token = appleLinkToken(JSON.stringify([req.auth.sub, String(req.params.taskId)]))
+    return res.json({ url: `${apiBase(req)}/api/wallet/badge-apple/${token}.pkpass` })
+  } catch (error) {
+    console.error('apple badge link failed:', error.message)
+    return res.status(500).json({ error: 'Could not make your wallet card.' })
+  }
+})
+
+// GET /api/wallet/badge-apple/:token.pkpass — the signed ticket; the rules are checked again.
+router.get('/badge-apple/:token.pkpass', limiter, requireDb, async (req, res) => {
+  let ids = null
+  try { ids = JSON.parse(userFromLinkToken(req.params.token) || 'null') } catch { ids = null }
+  if (!Array.isArray(ids) || ids.length !== 2) return res.status(404).type('text/plain').send('This link has expired. Open your badge and tap Add to Apple Wallet again.')
+  try {
+    const r = await loadBadge(ids[1], ids[0])
+    if (r.error) return res.status(r.status).type('text/plain').send(r.error)
+    const pass = appleBadgePass(r.badge, r.place)
+    if (!pass) return res.status(404).type('text/plain').send('Apple Wallet isn\'t available yet.')
+    res.set('Content-Type', 'application/vnd.apple.pkpass')
+    res.set('Content-Disposition', 'attachment; filename="volunteer-badge.pkpass"')
+    res.set('Cache-Control', 'no-store')
+    return res.send(pass)
+  } catch (error) {
+    console.error('apple badge failed:', error.message)
     return res.status(500).type('text/plain').send('Could not make your wallet card.')
   }
 })

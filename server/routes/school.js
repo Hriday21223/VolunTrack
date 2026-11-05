@@ -6,6 +6,7 @@ import validator from 'validator'
 import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { createHash, createHmac, timingSafeEqual, randomInt } from 'crypto'
 import { uid, generateToken } from '../ids.js'
+import { loadBadge } from '../badge.js'
 import { impactFor, PERIODS, rangeFromQuery } from '../impact.js'
 import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge.js'
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
@@ -4128,45 +4129,13 @@ const badgeLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
 })
-const newBadgeCode = () => generateToken().replace(/[^A-Za-z0-9]/g, '').slice(0, 12)
 
 // The badge itself, for the signed-in volunteer.
 router.get('/public-tasks/:id/badge', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT s.id, s.status, s.badge_code, s.checked_in_at, u.name,
-              t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.is_online, t.creator_name, t.status AS task_status,
-              t.date < CURRENT_DATE - 1 AS past
-         FROM public_task_signups s JOIN users u ON u.id = s.user_id JOIN public_tasks t ON t.id = s.task_id
-        WHERE s.task_id = $1 AND s.user_id = $2`,
-      [req.params.id, req.auth.sub],
-    )
-    const b = rows[0]
-    if (!b) return res.status(404).json({ error: "You aren't signed up for this event." })
-    if (b.status !== 'approved') return res.status(400).json({ error: 'Your badge appears once the organizer approves your sign-up.' })
-    if (b.task_status === 'cancelled') return res.status(400).json({ error: 'This event was cancelled.' })
-    if (b.past) return res.status(400).json({ error: 'This event is over.' })
-    let code = b.badge_code
-    if (!code) {
-      code = newBadgeCode()
-      const { rows: set } = await query(
-        'UPDATE public_task_signups SET badge_code = COALESCE(badge_code, $2) WHERE id = $1 RETURNING badge_code',
-        [b.id, code],
-      )
-      code = set[0].badge_code
-    }
-    return res.json({
-      badge: {
-        code,
-        name: b.name,
-        title: b.title,
-        date: b.date,
-        time: b.time,
-        location: b.is_online ? null : b.location,
-        organizer: b.creator_name,
-        checkedIn: Boolean(b.checked_in_at),
-      },
-    })
+    const r = await loadBadge(req.params.id, req.auth.sub)
+    if (r.error) return res.status(r.status).json({ error: r.error })
+    return res.json({ badge: r.badge })
   } catch (error) {
     console.error('badge failed:', error)
     return res.status(500).json({ error: 'Could not load your badge.' })

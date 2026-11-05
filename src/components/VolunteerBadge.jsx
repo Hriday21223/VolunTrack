@@ -4,6 +4,7 @@ import { X, BadgeCheck, CalendarDays, MapPin, Loader2 } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
 import { fmtDate } from '@/utils/date.js'
 import { isNativeApp } from '@/lib/platform.js'
+import WalletButtons from '@/components/WalletButtons.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // Links staff open by scanning: the public site, never the app's own origin.
@@ -84,6 +85,11 @@ export default function VolunteerBadge({ taskId, onClose }) {
               </div>
               <canvas ref={canvas} className="rounded-xl bg-white p-1 shrink-0 w-36 h-36" width={168} height={168} aria-label={tr('Badge check code')} />
             </div>
+          </div>
+        )}
+        {b && (
+          <div className="mt-4 w-full max-w-sm space-y-2">
+            <WalletButtons badgeTaskId={taskId} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20 disabled:opacity-60" />
           </div>
         )}
       </div>
