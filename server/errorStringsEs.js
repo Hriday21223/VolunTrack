@@ -2,6 +2,7 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.": "VolunTrack se está actualizando. Inténtalo de nuevo en unos minutos. Las horas que registres ahora se guardan en tu dispositivo y se envían solas.",
   "Could not make your wallet card.": "No se pudo crear tu tarjeta para la billetera.",
   "Google Wallet isn't available yet.": "Google Wallet aún no está disponible.",
   "Apple Wallet isn't available yet.": "Apple Wallet aún no está disponible.",
