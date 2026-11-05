@@ -1,6 +1,9 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "Could not make your wallet card.": "Không thể tạo thẻ ví của bạn.",
+  "Google Wallet isn't available yet.": "Google Wallet chưa khả dụng.",
+  "Apple Wallet isn't available yet.": "Apple Wallet chưa khả dụng.",
   "Only the task's organizer can invite their past volunteers.": "Chỉ người tổ chức nhiệm vụ mới có thể mời tình nguyện viên cũ.",
   "Invite people to an open, upcoming event.": "Hãy mời mọi người đến một sự kiện đang mở và sắp diễn ra.",
   "You already invited your past volunteers to this event.": "Bạn đã mời tình nguyện viên cũ đến sự kiện này rồi.",
@@ -358,6 +361,9 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "Could not make your wallet card.": "无法生成你的钱包卡片。",
+  "Google Wallet isn't available yet.": "Google 钱包暂不可用。",
+  "Apple Wallet isn't available yet.": "Apple 钱包暂不可用。",
   "Only the task's organizer can invite their past volunteers.": "只有任务组织者可以邀请以往的志愿者。",
   "Invite people to an open, upcoming event.": "请邀请人们参加一个开放且即将举行的活动。",
   "You already invited your past volunteers to this event.": "你已经邀请过以往的志愿者参加这个活动。",

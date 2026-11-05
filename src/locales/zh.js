@@ -3038,4 +3038,8 @@ export default {
   "Clubs": "社团",
   "Your partner nonprofits: send them a link to confirm students' hours, see the hours each one received, and put your events on your website.": "你的合作非营利组织：发送链接让他们确认学生的时长，查看每个合作伙伴获得的时长，并把你的活动放到你的网站上。",
   "Get a notice when your child checks in and out of a volunteer event, with their hours. Turn it off here any time.": "孩子在志愿活动签到和签退时收到通知，并附上时长。可随时在这里关闭。",
+  "Could not make your wallet card.": "无法生成你的钱包卡片。",
+  "Making your card…": "正在生成卡片…",
+  "Add to Apple Wallet": "添加到 Apple 钱包",
+  "Save to Google Wallet": "保存到 Google 钱包",
 }
