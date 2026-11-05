@@ -8,6 +8,7 @@ import { applyStoredDisplay } from './hooks/useDisplayPrefs.js'
 import { applyNativeAppChrome, startNativeApp } from './lib/platform.js'
 import { startNativePush } from './lib/nativePush.js'
 import { installApiFetchGuard } from './lib/apiFetch.js'
+import { installTranslateGuard } from './lib/translateGuard.js'
 
 // Offline support for the website (the native apps don't use a service
 // worker; vite.config.js turns it off for `--mode app`). Registration can be
@@ -50,6 +51,7 @@ if (import.meta.env.PROD && import.meta.env.MODE !== 'app' && 'serviceWorker' in
 import { installErrorReporting } from './lib/errorReporting.js'
 
 installErrorReporting()
+installTranslateGuard()
 installApiFetchGuard()
 applyStoredTheme()
 applyStoredDisplay()
