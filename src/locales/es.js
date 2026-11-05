@@ -3092,6 +3092,13 @@ export default {
   "Which languages does VolunTrack support?": "¿En qué idiomas está VolunTrack?",
   "English, Spanish (Español), Vietnamese (Tiếng Việt) and Simplified Chinese (中文). Pick one from the language menu on the sign-in page, in the side menu, or in Settings. Every screen is translated, and emails to students and parents and error messages come in your language too. Emails to supervisors, principals and admins stay in English. Names, activities and anything people typed stay as they were written.": "Inglés, español, vietnamita (Tiếng Việt) y chino simplificado (中文). Elige uno en el menú de idioma de la página de inicio de sesión, en el menú lateral o en Configuración. Todas las pantallas están traducidas, y los correos para estudiantes y padres y los mensajes de error también llegan en tu idioma. Los correos para supervisores, directores y administradores siguen en inglés. Los nombres, las actividades y todo lo que la gente escribe se quedan como se escribieron.",
   "+{n} more achievements": "+{n} logros más",
+  "Your plan on the Dashboard: how many hours a week you need to reach your goal on time, with events that fit.": "Tu plan en el Panel: cuántas horas por semana necesitas para llegar a tu meta a tiempo, con eventos que encajan.",
+  "A family calendar link with your children's events, for your phone's calendar.": "Un enlace de calendario familiar con los eventos de tus hijos, para el calendario de tu teléfono.",
+  "Invite your past volunteers to a new event.": "Invita a tus voluntarios anteriores a un evento nuevo.",
+  "Approve hours automatically: when a student signed in at your event, or served at an approved place.": "Aprueba horas automáticamente: cuando un estudiante se registró en tu evento o sirvió en un lugar aprobado.",
+  "A weekly email with each school's numbers.": "Un correo semanal con los números de cada escuela.",
+  "\"Other language…\" in the language menu uses your browser's translation for more languages.": "\"Otro idioma…\" en el menú de idioma usa la traducción de tu navegador para más idiomas.",
+  "Links you share to an event, a school or your invite show a preview with its name.": "Los enlaces que compartes a un evento, una escuela o tu invitación muestran una vista previa con su nombre.",
   "Welcome tours": "Recorridos de bienvenida",
   "which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.": "qué recorridos de bienvenida terminaste u omitiste, para que cada uno aparezca solo una vez en cualquier dispositivo. Se borra con tu cuenta.",
 }

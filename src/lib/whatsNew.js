@@ -3,6 +3,19 @@
 // shows a dot until the viewer opens the page. `for` limits an item to roles.
 export const WHATS_NEW = [
   {
+    id: '2026-11-05',
+    date: '2026-11-05',
+    items: [
+      { text: 'Your plan on the Dashboard: how many hours a week you need to reach your goal on time, with events that fit.', for: ['student', 'volunteer'] },
+      { text: 'A family calendar link with your children\'s events, for your phone\'s calendar.', for: ['parent'] },
+      { text: 'Invite your past volunteers to a new event.', for: ['volunteer', 'org', 'school', 'school_staff'] },
+      { text: 'Approve hours automatically: when a student signed in at your event, or served at an approved place.', for: ['school', 'school_staff', 'org'] },
+      { text: 'A weekly email with each school\'s numbers.', for: ['org'] },
+      { text: '"Other language…" in the language menu uses your browser\'s translation for more languages.' },
+      { text: 'Links you share to an event, a school or your invite show a preview with its name.' },
+    ],
+  },
+  {
     id: '2026-11-04',
     date: '2026-11-04',
     items: [
