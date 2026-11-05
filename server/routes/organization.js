@@ -1,6 +1,7 @@
 import express from 'express'
 import { requestLang } from '../emailStrings.js'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import validator from 'validator'
 import { query, hasDatabase, nextAccountCode, assignReferralCode, settleSingleOpenInvoice } from '../db.js'
 import { uid, generateToken } from '../ids.js'
@@ -31,6 +32,7 @@ const router = express.Router()
 // Shared across every route in this file, including reads — see the same
 // note in school.js's `limiter`.
 const limiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,

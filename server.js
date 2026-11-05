@@ -1,7 +1,7 @@
 import express from 'express'
 import { createHash } from 'crypto'
 import { smsConfigured, normalizePhone, sendSms, verificationText } from './server/sms.js'
-import { translateErrors } from './server/errorStrings.js'
+import { translateErrors, rateLimitWait } from './server/errorStrings.js'
 import { emitHours, startWebhookWorker } from './server/webhooks.js'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -21,6 +21,7 @@ import schoolRoutes from './server/routes/school.js'
 import organizationRoutes from './server/routes/organization.js'
 import embedRoutes from './server/routes/embed.js'
 import walletRoutes from './server/routes/wallet.js'
+import { perPersonKey } from './server/rateKey.js'
 import { startWalletUpdates } from './server/walletUpdates.js'
 import ogRoutes from './server/routes/og.js'
 import logsRoutes from './server/routes/logs.js'
@@ -85,9 +86,13 @@ const port = process.env.PORT || 10000
 // several parallel fetches, so this needs real headroom above the per-feature
 // limiters (emailLimiter, and the per-router `limiter`s) to avoid throttling
 // normal interactive use, especially on a shared/NAT IP.
+// Signed-in people each get their own budget; everyone else is counted by
+// address. A whole class on school Wi-Fi shares one public address, so
+// counting by address alone would throttle a classroom using the app at once.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 600, // 600 requests per windowMs
+  keyGenerator: perPersonKey,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
@@ -160,6 +165,8 @@ app.use(express.json({ limit: '1mb' }))
 // Error messages in the app's language (#604): rewrites `error` in JSON
 // responses for callers whose Accept-Language is Spanish.
 app.use(translateErrors)
+// After translateErrors on purpose: "Too many requests" names the minutes to wait.
+app.use(rateLimitWait)
 // Maintenance switch (#725): MAINTENANCE_MODE=1 on Render makes every change
 // (anything but GET/HEAD/OPTIONS) answer 503, e.g. while the database is
 // copied to a new home. Reads keep working. The app treats 503 as "try again
@@ -170,8 +177,9 @@ app.use((req, res, next) => {
   res.set('Retry-After', '300')
   return res.status(503).json({ error: 'VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.', maintenance: true })
 })
-app.use(apiLimiter)
+// authenticate first, so apiLimiter can count signed-in people separately.
 app.use(authenticate)
+app.use(apiLimiter)
 
 // Server-backed accounts & (later) school dashboards.
 // apiLimiter is already applied globally above, ahead of every route.
