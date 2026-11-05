@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight, CheckCircle2, QrCode, ClipboardCheck, FileSpreadsheet, GraduationCap, Users,
-  ShieldCheck, Languages, Target, Mail, Printer,
+  ShieldCheck, Languages, Target, Mail, Printer, Layers, Zap,
 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
@@ -20,12 +20,14 @@ const START_CLUB = '/school/register'
 const FEATURES = [
   { icon: ClipboardCheck, title: 'Approve hours in one place', text: 'Students log hours with the details you need. You approve or send back each entry, and they see the result straight away.' },
   { icon: Target, title: 'Hour requirements and goals', text: 'Set the hours your club or school requires. Students see how close they are, and you see who is behind.' },
+  { icon: Zap, title: 'Less approving by hand', text: 'Approve entries automatically when a student signed in at your event, or served at a place on your approved list.' },
+  { icon: Layers, title: 'Clubs inside your school', text: 'NHS, Key Club and others each get their own members, advisers, hour goals and assignments.' },
   { icon: QrCode, title: 'QR check-in at events', text: 'Put a code on screen at your event. Students scan in and out, and their hours fill in on their own.' },
   { icon: FileSpreadsheet, title: 'Reports when they are due', text: 'Download hours as CSV, print a graduation report for your seniors, and hand out a verified report students can share.' },
   { icon: GraduationCap, title: 'A new school year in one click', text: 'Move every student up a grade at the start of the year, with an undo if you change your mind.' },
   { icon: Users, title: 'Co-advisers and parents', text: 'Add co-advisers to share the approving. Parents can follow their child’s hours with their own account.' },
   { icon: ShieldCheck, title: 'Built for student privacy', text: 'Parent approval for students under 13, school sign-in (SSO) if you use it, and two-step sign-in for staff.' },
-  { icon: Languages, title: 'English and Spanish', text: 'Students and families can use VolunTrack in Spanish, and the flyer and messages come in both languages.' },
+  { icon: Languages, title: 'Four languages', text: 'Students and families can use VolunTrack in English, Spanish, Vietnamese or Chinese. The flyer and messages to share come in English and Spanish.' },
 ]
 
 const STEPS = [

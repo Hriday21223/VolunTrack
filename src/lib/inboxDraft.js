@@ -47,7 +47,7 @@ function partnershipBody({ asksCost, severalSchools, club, saidRole }, site) {
     )
   } else {
     parts.push(
-      `With a school account, ${unit} gets:\n- A dashboard where you approve or send back students' hours\n- Hour requirements, so students see how close they are and you see who's behind\n- A join link, QR code and printable flyer to get students signed up\n- Reports and CSV downloads when hours are due\n- Co-adviser accounts if more than one person approves hours`
+      `With a school account, ${unit} gets:\n- A dashboard where you approve or send back students' hours, or approve them automatically by your own rules\n- Hour requirements, so students see how close they are and you see who's behind\n- QR check-in at events, so hours fill in on their own\n- Clubs inside your school (NHS, Key Club and others), each with its own advisers and goals\n- A join link, QR code and printable flyer to get students signed up\n- Reports and CSV downloads when hours are due\n- Co-adviser accounts if more than one person approves hours\n- English, Spanish, Vietnamese and Chinese for students and families`
     )
   }
 
