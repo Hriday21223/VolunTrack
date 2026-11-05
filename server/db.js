@@ -2317,6 +2317,9 @@ export async function initSchema() {
   } catch (error) { console.error('clubs migration failed:', error.message) }
   // Which Terms / Privacy version the account accepted, and when (#689).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_version TEXT') } catch {}
+  // Welcome tours this account has finished or skipped (#736), so each shows
+  // once per person, not once per device.
+  try { await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tours_seen TEXT[] NOT NULL DEFAULT '{}'") } catch {}
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}

@@ -150,6 +150,8 @@ export function publicUser(row) {
     language: row.language ?? null,
     // The Terms / Privacy version they accepted (#689). The live-check robot
     // counts as current so the notice never blocks its checks.
+    // Welcome tours already seen on any device (#736).
+    toursSeen: Array.isArray(row.tours_seen) ? row.tours_seen : [],
     legalVersion: row.email && process.env.MONITOR_EMAIL && row.email.toLowerCase() === process.env.MONITOR_EMAIL.toLowerCase() ? LEGAL_VERSION : (row.legal_version ?? null),
     createdAt: row.created_at,
   }
@@ -688,6 +690,25 @@ router.put('/me/language', requireDb, requireAuth(), async (req, res) => {
   } catch (error) {
     console.error('language update failed:', error)
     return res.status(500).json({ error: 'Could not save your language.' })
+  }
+})
+
+// PUT /api/auth/me/tour — remember that this account has seen a welcome tour (#736).
+const TOURS = ['student', 'organizer', 'school', 'parent', 'org', 'admin']
+router.put('/me/tour', requireDb, requireAuth(), async (req, res) => {
+  const tour = req.body?.tour
+  if (!TOURS.includes(tour)) return res.status(400).json({ error: 'Unknown tour.' })
+  try {
+    const { rows } = await query(
+      `UPDATE users SET tours_seen = CASE WHEN $1 = ANY(tours_seen) THEN tours_seen ELSE array_append(tours_seen, $1) END
+        WHERE id = $2 RETURNING tours_seen`,
+      [tour, req.auth.sub],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+    return res.json({ toursSeen: rows[0].tours_seen })
+  } catch (error) {
+    console.error('tour update failed:', error)
+    return res.status(500).json({ error: 'Could not save.' })
   }
 })
 
