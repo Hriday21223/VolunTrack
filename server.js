@@ -21,6 +21,7 @@ import schoolRoutes from './server/routes/school.js'
 import organizationRoutes from './server/routes/organization.js'
 import embedRoutes from './server/routes/embed.js'
 import walletRoutes from './server/routes/wallet.js'
+import ogRoutes from './server/routes/og.js'
 import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
 import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
@@ -186,6 +187,7 @@ app.use('/api/school', schoolRoutes)
 app.use('/api/organization', organizationRoutes)
 app.use('/api/embed', embedRoutes)
 app.use('/api/wallet', walletRoutes)
+app.use('/api/og', ogRoutes)
 app.use('/api/logs', logsRoutes)
 app.use('/api/parent', parentRoutes)
 app.use('/api/contact', contactRoutes)

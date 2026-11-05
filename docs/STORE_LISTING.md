@@ -108,7 +108,7 @@ icon label stays *VolunTrack*:
 | Play feature graphic | 1024×500 PNG/JPG, no alpha | `store-assets/play/feature-graphic.png` |
 | Play phone screenshots | 2–8, 16:9 or 9:16, 320–3840 px sides | `store-assets/screenshots/play/` (6 at 1080×1920) |
 | Apple iPhone 6.9" screenshots | 1–10 at 1320×2868 (or 1290×2796) | `store-assets/screenshots/iphone/` (6 at 1320×2868) |
-| Apple iPad 13" screenshots | 1–10 at 2064×2752 | *to capture — only while the app ships for iPad* |
+| Apple iPad 13" screenshots | 1–10 at 2064×2752 | `store-assets/screenshots/ipad/` (6 at 2064×2752; needed only while the app ships for iPad) |
 | Apple app icon | from the binary (`resources/icon-only.png`, 1024×1024) | — |
 
 The older files in `store-assets/` are the original branding at small sizes;
