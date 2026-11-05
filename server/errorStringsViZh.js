@@ -1,6 +1,7 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.": "VolunTrack đang được cập nhật. Vui lòng thử lại sau vài phút. Giờ bạn ghi lúc này được lưu trên thiết bị và tự động gửi đi.",
   "Could not make your wallet card.": "Không thể tạo thẻ ví của bạn.",
   "Google Wallet isn't available yet.": "Google Wallet chưa khả dụng.",
   "Apple Wallet isn't available yet.": "Apple Wallet chưa khả dụng.",
@@ -361,6 +362,7 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.": "VolunTrack 正在更新，请几分钟后再试。你现在记录的时长会保存在设备上并自动发送。",
   "Could not make your wallet card.": "无法生成你的钱包卡片。",
   "Google Wallet isn't available yet.": "Google 钱包暂不可用。",
   "Apple Wallet isn't available yet.": "Apple 钱包暂不可用。",

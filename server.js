@@ -158,6 +158,16 @@ app.use(express.json({ limit: '1mb' }))
 // Error messages in the app's language (#604): rewrites `error` in JSON
 // responses for callers whose Accept-Language is Spanish.
 app.use(translateErrors)
+// Maintenance switch (#725): MAINTENANCE_MODE=1 on Render makes every change
+// (anything but GET/HEAD/OPTIONS) answer 503, e.g. while the database is
+// copied to a new home. Reads keep working. The app treats 503 as "try again
+// later", so hours saved meanwhile wait on the device and send themselves
+// once it's off.
+app.use((req, res, next) => {
+  if (process.env.MAINTENANCE_MODE !== '1' || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
+  res.set('Retry-After', '300')
+  return res.status(503).json({ error: 'VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.', maintenance: true })
+})
 app.use(apiLimiter)
 app.use(authenticate)
 
