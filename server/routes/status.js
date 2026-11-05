@@ -12,6 +12,7 @@ import authRouter from './auth.js'
 import schoolRouter from './school.js'
 import embedRouter from './embed.js'
 import walletRouter from './wallet.js'
+import ogRouter from './og.js'
 import organizationRouter from './organization.js'
 import logsRouter from './logs.js'
 import parentRouter from './parent.js'
@@ -273,6 +274,7 @@ const MOUNTED_ROUTERS = [
   ['school', '/api/school', schoolRouter],
   ['embed', '/api/embed', embedRouter],
   ['wallet', '/api/wallet', walletRouter],
+  ['og', '/api/og', ogRouter],
   ['organization', '/api/organization', organizationRouter],
   ['logs', '/api/logs', logsRouter],
   ['parent', '/api/parent', parentRouter],
