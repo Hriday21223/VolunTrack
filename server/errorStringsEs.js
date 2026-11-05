@@ -2,6 +2,9 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "Could not make your wallet card.": "No se pudo crear tu tarjeta para la billetera.",
+  "Google Wallet isn't available yet.": "Google Wallet aún no está disponible.",
+  "Apple Wallet isn't available yet.": "Apple Wallet aún no está disponible.",
   "Only the task's organizer can invite their past volunteers.": "Solo el organizador de la tarea puede invitar a sus voluntarios anteriores.",
   "Invite people to an open, upcoming event.": "Invita a personas a un evento abierto y próximo.",
   "You already invited your past volunteers to this event.": "Ya invitaste a tus voluntarios anteriores a este evento.",

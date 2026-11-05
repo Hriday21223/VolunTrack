@@ -294,6 +294,13 @@ Paste into *App Review Information → Notes* (Apple) / *App access* (Play):
 > - Works offline: hours logged without a connection are saved on the device
 >   and sync when it's back.
 > - Native tab bar, haptics, status bar and splash screen.
+> - Push notifications through APNs / FCM for approvals, event check-ins and
+>   reminders (Settings → Notifications), asked for only on that tap.
+> - Camera at events: scan the organizer's check-in QR code; organizers can
+>   photograph a paper sign-in sheet, which is read on the device.
+> - Apple Wallet / Google Wallet card with the student's hours (Reports),
+>   once the wallet certificates are set.
+> - Android: a home-screen widget with hours toward the goal.
 >
 > **User-generated content (guideline 1.2):** volunteer tasks on the
 > Opportunities tab are posted by organizers. Every task has a **Report**
@@ -310,7 +317,24 @@ Paste into *App Review Information → Notes* (Apple) / *App access* (Play):
 **Guideline 4.2 (minimum functionality)** is the main rejection risk for an
 app that shares its UI with a website. The note above lists the native
 parts; keep it in step with the build (Face ID lock, passkeys, native
-notifications, camera, offline, tab bar, haptics, status bar, splash).
+notifications, push, camera QR check-in, Wallet card, offline, tab bar,
+haptics, status bar, splash). Before submitting iOS, turn on push (APNs
+keys) and the Wallet card (pass certificate) so the reviewer can see them,
+and mention them first in the notes. If Apple still cites 4.2, reply in
+Resolution Center pointing to these features rather than resubmitting
+unchanged.
+
+**Minors (both stores).** Keep the audience 13+ in Play (under-13 bands
+unticked, so the Families policy doesn't apply) and don't use Apple's Kids
+category. What both stores look for, and where VolunTrack stands: no ads
+and no third-party tracking or analytics SDKs in the apps (Vercel Analytics
+is web-only); a parent approves every under-13 account by email; under-13s
+can't join the leaderboard, get invite links or write event comments;
+nothing a student writes is public; a report-and-block flow for organizers'
+events (guideline 1.2); in-app account deletion; and the data-safety answers
+above match the Privacy Policy. Keep it that way: never add an ad or
+analytics SDK to the apps, and update Privacy, `PrivacyInfo.xcprivacy` and
+this file together when something new is collected.
 
 ## Signing
 

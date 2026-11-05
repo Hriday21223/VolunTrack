@@ -3038,4 +3038,8 @@ export default {
   "Clubs": "Câu lạc bộ",
   "Your partner nonprofits: send them a link to confirm students' hours, see the hours each one received, and put your events on your website.": "Các đối tác phi lợi nhuận của bạn: gửi liên kết để họ xác nhận giờ của học sinh, xem số giờ mỗi đối tác nhận được, và đưa sự kiện lên trang web của bạn.",
   "Get a notice when your child checks in and out of a volunteer event, with their hours. Turn it off here any time.": "Nhận thông báo khi con điểm danh vào và ra khỏi sự kiện tình nguyện, kèm số giờ. Tắt tại đây bất cứ lúc nào.",
+  "Could not make your wallet card.": "Không thể tạo thẻ ví của bạn.",
+  "Making your card…": "Đang tạo thẻ…",
+  "Add to Apple Wallet": "Thêm vào Apple Wallet",
+  "Save to Google Wallet": "Lưu vào Google Wallet",
 }

@@ -11,6 +11,7 @@ import { hasIssueFiling, createIncidentIssue, closeIncidentIssue, parseIncidentM
 import authRouter from './auth.js'
 import schoolRouter from './school.js'
 import embedRouter from './embed.js'
+import walletRouter from './wallet.js'
 import organizationRouter from './organization.js'
 import logsRouter from './logs.js'
 import parentRouter from './parent.js'
@@ -271,6 +272,7 @@ const MOUNTED_ROUTERS = [
   ['auth', '/api/auth', authRouter],
   ['school', '/api/school', schoolRouter],
   ['embed', '/api/embed', embedRouter],
+  ['wallet', '/api/wallet', walletRouter],
   ['organization', '/api/organization', organizationRouter],
   ['logs', '/api/logs', logsRouter],
   ['parent', '/api/parent', parentRouter],

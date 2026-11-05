@@ -53,6 +53,7 @@
     "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.451.0",
+    "node-forge": "^1.4.3",
     "nodemailer": "^10.0.12",
     "openid-client": "^6.8.7",
     "otpauth": "^9.5.1",

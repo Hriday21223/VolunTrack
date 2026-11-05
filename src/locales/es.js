@@ -3067,4 +3067,8 @@ export default {
   "Clubs": "Clubes",
   "Your partner nonprofits: send them a link to confirm students' hours, see the hours each one received, and put your events on your website.": "Tus organizaciones asociadas: envíales un enlace para confirmar horas de estudiantes, ve las horas que recibió cada una y pon tus eventos en tu sitio web.",
   "Get a notice when your child checks in and out of a volunteer event, with their hours. Turn it off here any time.": "Recibe un aviso cuando tu hijo o hija registre su llegada y salida de un evento de voluntariado, con sus horas. Desactívalo aquí cuando quieras.",
+  "Could not make your wallet card.": "No se pudo crear tu tarjeta para la billetera.",
+  "Making your card…": "Creando tu tarjeta…",
+  "Add to Apple Wallet": "Agregar a Apple Wallet",
+  "Save to Google Wallet": "Guardar en Google Wallet",
 }
