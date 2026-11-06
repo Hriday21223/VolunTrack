@@ -2599,5 +2599,21 @@ export async function initSchema() {
     )
   `)
 
+  // Jobs at an event (#759, server/taskJobs.js): the organizer's list, which
+  // approved volunteers claim from their badge or the organizer assigns; shown
+  // at check-in, never on the public task. Plus a note for everyone.
+  await query(`
+    CREATE TABLE IF NOT EXISTS public_task_jobs (
+      id         TEXT PRIMARY KEY,
+      task_id    TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+      title      TEXT NOT NULL,
+      spots      INTEGER NOT NULL CHECK (spots BETWEEN 1 AND 200),
+      position   SMALLINT NOT NULL DEFAULT 0
+    )
+  `)
+  await query('CREATE INDEX IF NOT EXISTS idx_public_task_jobs_task ON public_task_jobs(task_id)')
+  try { await query('ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS job_id TEXT REFERENCES public_task_jobs(id) ON DELETE SET NULL') } catch {}
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS everyone_job TEXT') } catch {}
+
   return true
 }

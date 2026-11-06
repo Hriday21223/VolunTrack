@@ -359,4 +359,10 @@ export const ERRORS_ES = {
   "Pick at least one permission.": "Elige al menos un permiso.",
   "You can have up to 10 active keys. Revoke one first.": "Puedes tener hasta 10 claves activas. Revoca una primero.",
   "Key not found, or already revoked.": "No se encontró la clave, o ya está revocada.",
+  "Jobs show once the organizer approves your sign-up.": "Los trabajos aparecen cuando el organizador aprueba tu inscripción.",
+  "That job is full. Pick another one.": "Ese trabajo está completo. Elige otro.",
+  "That job no longer exists.": "Ese trabajo ya no existe.",
+  "Each job needs 1 to 200 spots.": "Cada trabajo necesita de 1 a 200 lugares.",
+  "At most 20 jobs per event.": "Máximo 20 trabajos por evento.",
+  "That volunteer isn’t approved for this event.": "Ese voluntario no está aprobado para este evento.",
 }

@@ -8,6 +8,7 @@ import { query, hasDatabase, getPool, nextAccountCode, assignReferralCode, settl
 import { createHash, createHmac, timingSafeEqual, randomInt } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { loadBadge } from '../badge.js'
+import { registerTaskJobRoutes, checkinJobs } from '../taskJobs.js'
 import { impactFor, PERIODS, rangeFromQuery } from '../impact.js'
 import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge.js'
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
@@ -6245,6 +6246,10 @@ router.get('/public-tasks/signups/mine', limiter, requireDb, requireAuth(), asyn
               CASE WHEN s.status = 'approved' THEN t.meeting_point END AS meeting_point,
               CASE WHEN s.status = 'approved' THEN t.day_of_contact END AS day_of_contact,
               s.late_eta_minutes, s.late_at, s.checked_in_at, s.checked_out_at,
+              -- Jobs (#759): theirs and the note, approved volunteers only.
+              CASE WHEN s.status = 'approved' THEN (SELECT j.title FROM public_task_jobs j WHERE j.id = s.job_id) END AS my_job,
+              CASE WHEN s.status = 'approved' THEN t.everyone_job END AS everyone_job,
+              CASE WHEN s.status = 'approved' THEN EXISTS (SELECT 1 FROM public_task_jobs j WHERE j.task_id = t.id) END AS has_jobs,
               s.status AS signup_status, s.attendance_status, s.attendance_marked_at, s.signed_up_at,
               -- Shifts (#589): theirs, and all of them so they can switch.
               s.shift_id, ${SHIFTS_JSON_SQL('t.id')} AS shifts,
@@ -6504,10 +6509,10 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
         [signup.id],
       )
       if (done.length > 0) tellParentsOfAttendance(signup.user_id, task, 'in')
-      return res.json({ state: 'checked_in', checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
+      return res.json({ state: 'checked_in', checkedInAt: done[0]?.checked_in_at || signup.checked_in_at, jobs: await checkinJobs(task.id, signup.user_id) })
     }
     if (signup.checked_out_at) return res.json({ state: 'done', hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
-    if (Date.now() - new Date(signup.checked_in_at).getTime() < CHECKOUT_AFTER_MS) return res.json({ state: 'checked_in', tooSoon: true, checkedInAt: signup.checked_in_at })
+    if (Date.now() - new Date(signup.checked_in_at).getTime() < CHECKOUT_AFTER_MS) return res.json({ state: 'checked_in', tooSoon: true, checkedInAt: signup.checked_in_at, jobs: await checkinJobs(task.id, signup.user_id) })
     const { rows: out } = await query(
       'UPDATE public_task_signups SET checked_out_at = now() WHERE id = $1 AND checked_out_at IS NULL RETURNING checked_in_at, checked_out_at',
       [signup.id],
@@ -6619,13 +6624,13 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
         [signup.id],
       )
       if (done.length > 0) tellParentsOfAttendance(req.auth.sub, task, 'in')
-      return res.json({ state: 'checked_in', title: task.title, checkedInAt: done[0]?.checked_in_at || signup.checked_in_at })
+      return res.json({ state: 'checked_in', title: task.title, checkedInAt: done[0]?.checked_in_at || signup.checked_in_at, jobs: await checkinJobs(task.id, req.auth.sub) })
     }
     if (signup.checked_out_at) {
       return res.json({ state: 'done', title: task.title, checkedInAt: signup.checked_in_at, checkedOutAt: signup.checked_out_at, hours: scannedHours(signup.checked_in_at, signup.checked_out_at) })
     }
     if (Date.now() - new Date(signup.checked_in_at).getTime() < CHECKOUT_AFTER_MS) {
-      return res.json({ state: 'checked_in', title: task.title, checkedInAt: signup.checked_in_at, tooSoon: true })
+      return res.json({ state: 'checked_in', title: task.title, checkedInAt: signup.checked_in_at, tooSoon: true, jobs: await checkinJobs(task.id, req.auth.sub) })
     }
     // The UPDATE is the atomic step: two scans racing can't both log hours.
     const { rows: out } = await query(
@@ -8259,5 +8264,7 @@ function round2(o) {
   }
   return o
 }
+
+registerTaskJobRoutes(router, { limiter, requireDb })
 
 export default router
