@@ -131,7 +131,7 @@ export async function runTaskAlerts({ dryRun = false, only = null } = {}) {
       if (!u.email || /@test\.com$/i.test(u.email)) continue
       const unsubToken = await ensureDigestUnsubToken(u.id)
       const { subject, html } = renderAlertEmail({ name: u.name, tasks: u.tasks, unsubToken, language: u.language })
-      const r = await sendEmail({ to: u.email, subject, html, unsubscribeUrl: `${emailApiBase()}/api/interests/alerts/unsubscribe/${unsubToken}` }).catch(() => ({ sent: false }))
+      const r = await sendEmail({ priority: 'low', to: u.email, subject, html, unsubscribeUrl: `${emailApiBase()}/api/interests/alerts/unsubscribe/${unsubToken}` }).catch(() => ({ sent: false }))
       if (r.sent) emailed += 1
     } catch (error) {
       console.error('task alert failed:', error.message)
