@@ -17,7 +17,7 @@ const ROLES = [
     screens: [
       screen('dashboard', 'Dashboard', 'dashboard',
         'Students see their goal, this month’s hours, and badges at a glance.',
-        'The VolunTrack student dashboard: 30 hours logged this year, 75% of a 40-hour NHS service goal, 9 of 12 badges earned, and this week’s hours.'),
+        'The VolunTrack student dashboard: 30 hours logged this year, 75% of a 40-hour NHS service goal, 9 of 14 badges earned, and this week’s hours.'),
       screen('opportunities', 'Opportunities', 'student-opportunities',
         'Find volunteer tasks near you and sign up in a tap.',
         'The Opportunities page: upcoming volunteer tasks such as a park cleanup, dog walking and a kids’ reading hour, each with its date, place and spots left.'),
@@ -52,7 +52,7 @@ const ROLES = [
         'Organizers post volunteer tasks and see who has signed up.',
         'The task organizer view: three upcoming volunteer tasks with dates, locations, and how many students have signed up.'),
       screen('post', 'Post a task', 'volunteer-post',
-        'Posting an opportunity is one short form — no paperwork.',
+        'Posting an opportunity is one short form, no paperwork.',
         'The Post a volunteer opportunity form: title, description, location, important info, phone, date, time and volunteers needed.'),
       screen('signups', 'Sign-ups', 'volunteer-signups',
         'Approve volunteers, then sign off their hours right in VolunTrack.',
@@ -188,7 +188,7 @@ export default function DashboardGallery({ onRoleChange }) {
       </div>
       <figcaption className="mt-3 text-center text-sm text-earth-400" aria-live="polite">
         {current.caption}
-        {hasMenu && <span className="block text-xs text-earth-500 mt-1">Click the screens above to look around — this is a preview with sample data.</span>}
+        {hasMenu && <span className="block text-xs text-earth-500 mt-1">Click the screens above to look around. This is a preview with sample data.</span>}
       </figcaption>
     </figure>
   )
