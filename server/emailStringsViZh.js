@@ -234,6 +234,10 @@ export const EMAIL_VI = {
   "Open my reports": "Mở báo cáo của tôi",
   "1 hour": "1 giờ",
   "{n} hours": "{n} giờ",
+  "Get VolunTrack on your phone": "Cài VolunTrack trên điện thoại",
+  "Log your next hours in a minute, get your hours signed on the spot, and check in at events with a scan.": "Ghi giờ tiếp theo trong một phút, xin ký xác nhận ngay tại chỗ và điểm danh tại sự kiện chỉ với một lần quét.",
+  "Open {site} on your phone. On iPhone, tap Share, then Add to Home Screen. On Android, tap the menu, then Install app.": "Mở {site} trên điện thoại. Trên iPhone, chạm Chia sẻ rồi Thêm vào Màn hình chính. Trên Android, chạm menu rồi Cài đặt ứng dụng.",
+  "Open VolunTrack": "Mở VolunTrack",
 }
 
 export const EMAIL_ZH = {
@@ -470,4 +474,8 @@ export const EMAIL_ZH = {
   "Open my reports": "打开我的报告",
   "1 hour": "1 小时",
   "{n} hours": "{n} 小时",
+  "Get VolunTrack on your phone": "在手机上使用 VolunTrack",
+  "Log your next hours in a minute, get your hours signed on the spot, and check in at events with a scan.": "一分钟记录下一次时数，当场获得签字，扫码即可在活动签到。",
+  "Open {site} on your phone. On iPhone, tap Share, then Add to Home Screen. On Android, tap the menu, then Install app.": "在手机上打开 {site}。iPhone：点“分享”，再点“添加到主屏幕”。Android：点菜单，再点“安装应用”。",
+  "Open VolunTrack": "打开 VolunTrack",
 }

@@ -471,6 +471,12 @@ ${row(t('Event'), title)}${row(t('Date'), when)}${row(t('Place'), location)}${ro
 </table>
 <p>${t('It counts toward your goal, and it’s in your reports. You can download a PDF of all your hours any time.')}</p>
 <p><a href="${site}/reports" style="display:inline-block;background:#2f6b3a;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">${t('Open my reports')}</a></p>
+<div style="margin:20px 0;padding:14px 16px;border-radius:12px;background:#eef6ef">
+<p style="margin:0 0 6px"><strong>${t('Get VolunTrack on your phone')}</strong></p>
+<p style="margin:0 0 6px">${t('Log your next hours in a minute, get your hours signed on the spot, and check in at events with a scan.')}</p>
+<p style="margin:0 0 10px;color:#4b5563;font-size:13px">${t('Open {site} on your phone. On iPhone, tap Share, then Add to Home Screen. On Android, tap the menu, then Install app.', { site: `<a href="${site}">${site.replace(/^https?:\/\//, '')}</a>` })}</p>
+<a href="${site}/" style="display:inline-block;border:1px solid #2f6b3a;color:#2f6b3a;padding:8px 14px;border-radius:10px;text-decoration:none;font-weight:600">${t('Open VolunTrack')}</a>
+</div>
 ${emailFooterHtml(lang)}`,
   }
 }
