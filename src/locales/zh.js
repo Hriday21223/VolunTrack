@@ -3368,4 +3368,6 @@ export default {
   "School accounts need a one-time code from VolunTrack.": "学校账户需要 VolunTrack 提供的一次性代码。",
   "Don't have one?": "还没有？",
   "for a quote and your code.": "获取报价和你的代码。",
+  "Volunteer the same time every week?": "每周固定时间做志愿？",
+  "Add a regular shift": "添加固定班次",
 }

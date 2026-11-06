@@ -16,6 +16,7 @@ import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, des
 import { listShifts } from '@/lib/shifts.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink, smsAvailable } from '@/lib/supervisorNotify.js'
+import { hasAccount } from '@/lib/shifts.js'
 import ScanPaperLog from '@/components/ScanPaperLog.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { findLikelyDuplicate } from '@/lib/duplicateLog.js'
@@ -484,6 +485,15 @@ export default function LogHours({ editId, onCloseEdit }) {
       <form onSubmit={onSubmit} className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
           {!editId && <ScanPaperLog onAdd={(entry) => { addLog({ ...blank(), ...entry }); setToast(true) }} />}
+          {/* The way in to regular shifts (#763); the Dashboard card shows once one exists. */}
+          {!editId && !shiftFromLink && hasAccount() && (
+            <p className="text-sm text-earth-500 flex items-center gap-1.5">
+              <Repeat className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>{tr('Volunteer the same time every week?')}{' '}
+                <button type="button" className="font-medium text-brand-700 dark:text-brand-300 hover:underline" onClick={() => nav('/?addShift=1')}>{tr('Add a regular shift')}</button>
+              </span>
+            </p>
+          )}
           {emailDraft && (
             <SigningEmailCard
               draft={emailDraft}

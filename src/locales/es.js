@@ -3397,4 +3397,6 @@ export default {
   "School accounts need a one-time code from VolunTrack.": "Las cuentas de escuela necesitan un código de un solo uso de VolunTrack.",
   "Don't have one?": "¿No tienes uno?",
   "for a quote and your code.": "para pedir un presupuesto y tu código.",
+  "Volunteer the same time every week?": "¿Haces voluntariado a la misma hora cada semana?",
+  "Add a regular shift": "Agrega un turno fijo",
 }

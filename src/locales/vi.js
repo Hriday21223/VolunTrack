@@ -3368,4 +3368,6 @@ export default {
   "School accounts need a one-time code from VolunTrack.": "Tài khoản trường cần mã dùng một lần từ VolunTrack.",
   "Don't have one?": "Chưa có mã?",
   "for a quote and your code.": "để nhận báo giá và mã của bạn.",
+  "Volunteer the same time every week?": "Bạn tình nguyện vào cùng giờ mỗi tuần?",
+  "Add a regular shift": "Thêm ca cố định",
 }
