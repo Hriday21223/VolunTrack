@@ -126,3 +126,45 @@ export function FloatingStart({ heroRef, hideNearRef }) {
     </div>
   )
 }
+
+const PHONE_SCREENS = [
+  { file: 'dashboard-phone.webp', alt: 'The VolunTrack student dashboard on a phone: hours this year, progress toward a 40-hour goal, and badges.' },
+  { file: 'student-log-phone.webp', alt: 'Logging hours on a phone: activity, date and times, place and proof.' },
+  { file: 'student-opportunities-phone.webp', alt: 'Volunteer opportunities near you on a phone, each with its date, place and spots left.' },
+]
+
+/**
+ * A phone that rises in under the hero and shows the app, switching screens
+ * every few seconds. Tablets and computers only: on a phone the gallery right
+ * below already shows these screens full size. Sample data, never a real account.
+ */
+export function PhonePreview() {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    if (reducedMotion()) return undefined
+    const id = setInterval(() => setI((n) => (n + 1) % PHONE_SCREENS.length), 3500)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="hidden md:block home-rise relative mx-auto mt-14 w-[300px]" aria-label="A preview of the VolunTrack app on a phone" role="img">
+      <div className="relative rounded-[2.75rem] border-[10px] border-[#101a14] bg-[#101a14] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)] ring-1 ring-white/10 overflow-hidden h-[520px]">
+        <div className="absolute left-1/2 top-2 z-10 h-6 w-24 -translate-x-1/2 rounded-full bg-black" aria-hidden="true" />
+        {PHONE_SCREENS.map((sc, n) => (
+          <img
+            key={sc.file}
+            src={`${import.meta.env.BASE_URL}screenshots/${sc.file}`}
+            alt={n === i ? sc.alt : ''}
+            width="780"
+            height="1520"
+            loading={n === 0 ? 'eager' : 'lazy'}
+            className={`absolute inset-x-0 top-8 bottom-0 h-[calc(100%-2rem)] w-full object-cover object-top transition-opacity duration-700 ${n === i ? 'opacity-100' : 'opacity-0'}`}
+          />
+        ))}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#101a14] to-transparent" aria-hidden="true" />
+      </div>
+      <div className="mt-4 flex justify-center gap-1.5" aria-hidden="true">
+        {PHONE_SCREENS.map((sc, n) => <span key={sc.file} className={`h-1.5 rounded-full transition-all ${n === i ? 'w-5 bg-brand-400' : 'w-1.5 bg-white/25'}`} />)}
+      </div>
+    </div>
+  )
+}

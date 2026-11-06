@@ -5,7 +5,7 @@ import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
 import DashboardGallery from '@/components/DashboardGallery.jsx'
-import { HoursStory, FloatingStart } from '@/components/HomeMotion.jsx'
+import { HoursStory, FloatingStart, PhonePreview } from '@/components/HomeMotion.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { roleLabel, anonymousReviewerName } from '@/lib/reviewerLabel.js'
 
@@ -303,6 +303,7 @@ export default function About() {
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Private by design</span>
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Export anytime</span>
             </div>
+            <PhonePreview />
           </section>
 
           {/* The product itself, for every kind of account — see DashboardGallery. */}
