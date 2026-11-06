@@ -177,7 +177,7 @@ async function nudgeOne(student, picked) {
   const unsubToken = await ensureDigestUnsubToken(student.id)
   const { subject, html } = renderComebackEmail({ name: student.name, tasks, near, unsubToken, language: student.language })
   const unsubscribeUrl = `${emailApiBase()}/api/comeback/unsubscribe/${unsubToken}`
-  const result = await sendEmail({ to: student.email, subject, html, unsubscribeUrl }).catch(() => ({ sent: false }))
+  const result = await sendEmail({ priority: 'low', to: student.email, subject, html, unsubscribeUrl }).catch(() => ({ sent: false }))
   return { status: 'nudged', emailed: result.sent === true }
 }
 

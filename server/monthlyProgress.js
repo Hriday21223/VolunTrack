@@ -160,7 +160,7 @@ async function sendOne(s, month) {
     name: s.name, month, monthHours: s.month_hours, sessions: s.month_sessions, totalHours: s.total_hours, goal, unsubToken, language: s.language,
   })
   const unsubscribeUrl = `${emailApiBase()}/api/progress/unsubscribe/${unsubToken}`
-  const result = await sendEmail({ to: s.email, subject, html, unsubscribeUrl }).catch(() => ({ sent: false }))
+  const result = await sendEmail({ priority: 'low', to: s.email, subject, html, unsubscribeUrl }).catch(() => ({ sent: false }))
   return { status: 'sent', emailed: result.sent === true }
 }
 

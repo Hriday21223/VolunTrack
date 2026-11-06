@@ -5,6 +5,10 @@
 // password resets, a parent's approval). The admin gets one warning a day once
 // 80% is used.
 //
+// Three levels: 'low' is scheduled bulk mail (digests, nudges, alerts), which
+// stops at 60% so a busy sign-up day isn't spent on newsletters; 'normal'
+// stops at LIMIT - RESERVE; 'high' (codes, resets, consent) may use it all.
+//
 // EMAIL_DAILY_LIMIT (default 300) and EMAIL_DAILY_RESERVE (default 40) can be
 // raised on Render if the plan changes. With no database it never blocks.
 import { query, hasDatabase } from './db.js'
@@ -12,6 +16,14 @@ import { query, hasDatabase } from './db.js'
 const limit = () => Math.max(1, Number(process.env.EMAIL_DAILY_LIMIT) || 300)
 const reserve = () => Math.min(limit() - 1, Math.max(0, Number(process.env.EMAIL_DAILY_RESERVE ?? 40) || 0))
 export const warnAt = () => Math.floor(limit() * 0.8)
+const bulkCap = () => Math.max(1, Math.min(limit() - reserve(), Math.floor(limit() * 0.6)))
+
+/** The most sends allowed today for this priority. */
+export function capFor(priority) {
+  if (priority === 'high') return limit()
+  if (priority === 'low') return bulkCap()
+  return limit() - reserve()
+}
 
 let tableReady = false
 async function ensureTable() {
@@ -27,7 +39,8 @@ async function ensureTable() {
 }
 
 /**
- * Takes one send from today's budget. `priority: 'high'` may use the reserve.
+ * Takes one send from today's budget. `priority: 'high'` may use the reserve;
+ * `'low'` (bulk) stops at 60%.
  * Returns { ok, sent, warn } — `warn` is true exactly once per day, for the
  * send that crosses 80%. Fails open (ok: true) if the count can't be read, so
  * a database hiccup never stops a sign-in code.
@@ -36,7 +49,7 @@ export async function takeEmailBudget(priority = 'normal') {
   if (!hasDatabase()) return { ok: true, sent: null, warn: false }
   try {
     await ensureTable()
-    const cap = priority === 'high' ? limit() : limit() - reserve()
+    const cap = capFor(priority)
     const { rows } = await query(
       `INSERT INTO email_daily (day, sent) VALUES ((now() AT TIME ZONE 'UTC')::date, 1)
        ON CONFLICT (day) DO UPDATE SET sent = email_daily.sent + 1 WHERE email_daily.sent < $1
@@ -68,4 +81,4 @@ export async function emailBudgetToday() {
   } catch { return null }
 }
 
-export const emailBudgetLimits = () => ({ limit: limit(), reserve: reserve(), warnAt: warnAt() })
+export const emailBudgetLimits = () => ({ limit: limit(), reserve: reserve(), warnAt: warnAt(), bulkCap: bulkCap() })

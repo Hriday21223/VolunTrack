@@ -122,7 +122,7 @@ export async function runImpactEmails({ dryRun = false, month: monthKey = null, 
     )
     for (const r of recipients) {
       if (isTestAddress(r.email)) continue
-      const { sent } = await sendEmail({
+      const { sent } = await sendEmail({ priority: 'low',
         to: r.email,
         subject: `${t.name}: volunteer impact for ${month.label}`,
         html: impactEmailHtml({ name: t.name, kind: t.kind, month, monthData, yearData, link }),

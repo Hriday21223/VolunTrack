@@ -313,7 +313,7 @@ export async function deliverDigest({ digest, weekStart, startLabel, endLabel, f
   const unsubToken = await ensureDigestUnsubToken(digest.parent.id)
   const { subject, html } = renderDigestEmail({ ...digest, startLabel, endLabel, weekStart, unsubToken })
   const unsubscribeUrl = `${emailApiBase()}/api/parent/digest/unsubscribe/${unsubToken}`
-  const result = await sendEmail({ to: digest.parent.email, subject, html, unsubscribeUrl })
+  const result = await sendEmail({ priority: 'low', to: digest.parent.email, subject, html, unsubscribeUrl })
 
   await query(
     `UPDATE parent_digest_sends SET email_ok = $3, sent_at = now()

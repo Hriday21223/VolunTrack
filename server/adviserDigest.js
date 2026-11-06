@@ -247,7 +247,7 @@ async function runOrgDigest(week, { dryRun, only }) {
       if (summary.schools.length === 0) continue
       const unsubToken = await ensureDigestUnsubToken(o.id)
       const { subject, html } = renderOrgEmail({ name: o.name, orgName: o.org_name, summary, unsubToken })
-      const result = await sendEmail({ to: o.email, subject, html, unsubscribeUrl: `${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}` }).catch(() => ({ sent: false }))
+      const result = await sendEmail({ priority: 'low', to: o.email, subject, html, unsubscribeUrl: `${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}` }).catch(() => ({ sent: false }))
       sent += 1
       if (result.sent === true) emailed += 1
     } catch (error) {
@@ -277,7 +277,7 @@ export async function runAdviserDigest({ dryRun = false, only = null, now = new 
         const unsubToken = await ensureDigestUnsubToken(a.id)
         const { subject, html } = renderAdviserEmail({ name: a.name, schoolName: a.school_name, summary, unsubToken })
         const unsubscribeUrl = `${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}`
-        const result = await sendEmail({ to: a.email, subject, html, unsubscribeUrl }).catch(() => ({ sent: false }))
+        const result = await sendEmail({ priority: 'low', to: a.email, subject, html, unsubscribeUrl }).catch(() => ({ sent: false }))
         return { status: 'sent', emailed: result.sent === true }
       } catch (error) {
         console.error('adviser digest failed:', error.message)
