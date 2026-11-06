@@ -2569,6 +2569,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS supervisor_phone TEXT`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS texts_sent SMALLINT NOT NULL DEFAULT 0`) } catch {}
   try { await query(`ALTER TABLE supervisor_verifications ADD COLUMN IF NOT EXISTS last_reminded_at TIMESTAMPTZ`) } catch {}
+  // The site language a contact message was sent from (#757), so the admin
+  // inbox can reply in it. NULL for older messages and emailed replies.
+  try { await query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS language TEXT`) } catch {}
 
   // Wallet cards that update themselves (#730, server/walletUpdates.js).
   // One row per account that added a card: what the card last showed (so a
