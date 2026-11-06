@@ -365,6 +365,17 @@ export const ERRORS_VI = {
   "Each job needs 1 to 200 spots.": "Mỗi việc cần từ 1 đến 200 chỗ.",
   "At most 20 jobs per event.": "Tối đa 20 việc cho mỗi sự kiện.",
   "That volunteer isn’t approved for this event.": "Tình nguyện viên đó chưa được duyệt cho sự kiện này.",
+  "Ask the organizer to add you.": "Hãy nhờ người tổ chức thêm bạn.",
+  "This event isn’t taking walk-ins.": "Sự kiện này không nhận người đến trực tiếp.",
+  "You’re running this event, so you don’t check in to it.": "Bạn là người tổ chức sự kiện này nên không cần điểm danh.",
+  "This event doesn’t take walk-ins. Ask the organizer to add you.": "Sự kiện này không nhận người đến trực tiếp. Hãy nhờ người tổ chức thêm bạn.",
+  "This event needs a signed waiver first. Ask the organizer to add you.": "Sự kiện này cần ký bản miễn trừ trước. Hãy nhờ người tổ chức thêm bạn.",
+  "This event has shifts to pick from. Ask the organizer to add you.": "Sự kiện này có các ca để chọn. Hãy nhờ người tổ chức thêm bạn.",
+  "This event has an age limit. Ask the organizer to add you.": "Sự kiện này có giới hạn tuổi. Hãy nhờ người tổ chức thêm bạn.",
+  "Only students and volunteers can join as walk-ins.": "Chỉ học sinh và tình nguyện viên mới có thể tham gia trực tiếp.",
+  "A parent needs to approve your events first. Ask the organizer to add you.": "Phụ huynh cần duyệt sự kiện của bạn trước. Hãy nhờ người tổ chức thêm bạn.",
+  "A parent or guardian has to come with you to this event. Ask the organizer to add you.": "Cha mẹ hoặc người giám hộ phải đi cùng bạn đến sự kiện này. Hãy nhờ người tổ chức thêm bạn.",
+  "This event is full. Ask the organizer to add you.": "Sự kiện này đã đủ người. Hãy nhờ người tổ chức thêm bạn.",
 }
 
 export const ERRORS_ZH = {
@@ -732,4 +743,15 @@ export const ERRORS_ZH = {
   "Each job needs 1 to 200 spots.": "每项工作需要 1 到 200 个名额。",
   "At most 20 jobs per event.": "每个活动最多 20 项工作。",
   "That volunteer isn’t approved for this event.": "该志愿者未获批准参加此活动。",
+  "Ask the organizer to add you.": "请让组织者把你加进来。",
+  "This event isn’t taking walk-ins.": "此活动不接受现场加入。",
+  "You’re running this event, so you don’t check in to it.": "你在主办此活动，无需签到。",
+  "This event doesn’t take walk-ins. Ask the organizer to add you.": "此活动不接受现场加入。请让组织者把你加进来。",
+  "This event needs a signed waiver first. Ask the organizer to add you.": "此活动需要先签署免责声明。请让组织者把你加进来。",
+  "This event has shifts to pick from. Ask the organizer to add you.": "此活动需要选择班次。请让组织者把你加进来。",
+  "This event has an age limit. Ask the organizer to add you.": "此活动有年龄限制。请让组织者把你加进来。",
+  "Only students and volunteers can join as walk-ins.": "只有学生和志愿者可以现场加入。",
+  "A parent needs to approve your events first. Ask the organizer to add you.": "需要家长先批准你的活动。请让组织者把你加进来。",
+  "A parent or guardian has to come with you to this event. Ask the organizer to add you.": "此活动需要家长或监护人陪同。请让组织者把你加进来。",
+  "This event is full. Ask the organizer to add you.": "此活动已满。请让组织者把你加进来。",
 }

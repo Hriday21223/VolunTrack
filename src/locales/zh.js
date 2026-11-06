@@ -3385,4 +3385,10 @@ export default {
   "1 friend": "1 位朋友",
   "{n} friends": "{n} 位朋友",
   "{hours} in a month": "一个月内 {hours}",
+  "Walk-in": "现场加入",
+  "Allow walk-ins": "允许现场加入",
+  "People who didn’t sign up can scan this code to join and check in, while there are spots left.": "未报名的人可以扫描此码加入并签到，前提是还有名额。",
+  "Join as a walk-in?": "现场加入？",
+  "You didn’t sign up for {title}. Join now and check in, and your hours go to the organizer to sign.": "你没有报名 {title}。现在加入并签到，你的时数会发给组织者签字。",
+  "Join and check in": "加入并签到",
 }

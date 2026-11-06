@@ -73,6 +73,31 @@ function CheckoutPinSection({ taskId, until, onChange }) {
 // again when they leave (server/routes/school.js, "QR check-in"). The code in
 // it changes every minute, so this refreshes on the server's schedule, and
 // polls who has scanned.
+// Walk-ins (#765): whether people who didn't sign up can join by scanning.
+function WalkInToggle({ taskId, allow, onChange }) {
+  const [busy, setBusy] = useState(false)
+  const flip = async () => {
+    setBusy(true)
+    try {
+      await fetch(`${apiUrl}/school/public-tasks/${taskId}/walkins`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+        body: JSON.stringify({ allow: !allow }),
+      })
+      await onChange?.()
+    } finally { setBusy(false) }
+  }
+  return (
+    <label className="mt-3 flex items-start gap-2 text-sm cursor-pointer">
+      <input type="checkbox" className="mt-0.5 w-4 h-4 rounded" checked={allow} onChange={flip} disabled={busy} />
+      <span>
+        <span className="font-medium">{tr('Allow walk-ins')}</span>
+        <span className="block text-xs text-earth-400">{tr('People who didn’t sign up can scan this code to join and check in, while there are spots left.')}</span>
+      </span>
+    </label>
+  )
+}
+
 export default function CheckinQrModal({ task, onClose }) {
   const canvasRef = useRef(null)
   const [data, setData] = useState(null)
@@ -176,6 +201,7 @@ export default function CheckinQrModal({ task, onClose }) {
           {outCount > 0 && (
             <p className="text-sm text-emerald-300">Total: {hoursText(totalHours)} from {outCount === 1 ? '1 volunteer' : `${outCount} volunteers`}</p>
           )}
+          <WalkInToggle taskId={task.id} allow={data?.allowWalkins !== false} onChange={load} />
           <div className="mb-2" />
           {people.length === 0 ? (
             <p className="text-sm text-earth-500">{tr('No approved volunteers yet.')}</p>
@@ -185,6 +211,7 @@ export default function CheckinQrModal({ task, onClose }) {
                 <li key={p.name} className="flex items-center justify-between gap-2 text-sm">
                   <span className="min-w-0">
                     {p.name}
+                    {p.walkIn && <span className="ml-1.5 text-[0.6875rem] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-200">{tr('Walk-in')}</span>}
                     {p.parentComing && <span className="block text-xs text-amber-300">Parent coming: {p.parentComing}</span>}
                     {p.screenCode && <span className="block text-2xl font-bold tracking-[0.3em] text-yellow-300">{p.screenCode}</span>}
                     {p.emergencyContact && (

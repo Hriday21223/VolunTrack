@@ -1044,7 +1044,7 @@ export default function MyTasks() {
                               {s.guest_count > 0 && <p className="text-xs text-brand-400 truncate">{guestSummary(s.guest_count, s.guest_names)}</p>}
                               {s.parent_coming_name && <p className="text-xs text-amber-400 truncate">{tr('Parent coming: {name}', { name: s.parent_coming_name })}</p>}
                               <WaiverStatus signup={s} />
-                              {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">{tr('Approved')}</p>}
+                              {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">{tr('Approved')}{s.walk_in ? ` · ${tr('Walk-in')}` : ''}</p>}
                               {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">{tr('Rejected')}</p>}
                               {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">{tr('Pending approval')}</p>}
                               {s.status === 'waitlisted' && (

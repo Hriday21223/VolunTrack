@@ -3414,4 +3414,10 @@ export default {
   "1 friend": "1 amigo",
   "{n} friends": "{n} amigos",
   "{hours} in a month": "{hours} en un mes",
+  "Walk-in": "Sin inscripción",
+  "Allow walk-ins": "Permitir personas sin inscripción",
+  "People who didn’t sign up can scan this code to join and check in, while there are spots left.": "Quienes no se inscribieron pueden escanear este código para unirse y registrar su entrada, mientras queden lugares.",
+  "Join as a walk-in?": "¿Unirte sin inscripción?",
+  "You didn’t sign up for {title}. Join now and check in, and your hours go to the organizer to sign.": "No te inscribiste en {title}. Únete ahora y registra tu entrada; tus horas irán al organizador para que las firme.",
+  "Join and check in": "Unirme y registrar entrada",
 }
