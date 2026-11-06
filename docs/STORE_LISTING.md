@@ -89,16 +89,15 @@ icon label stays *VolunTrack*:
 > • We never sell your data
 > • In English, Spanish, Vietnamese and Chinese
 
-**Release notes / What's new** (Play 500 max) — 0.13.0:
+**Release notes / What's new** (Play 500 max) — 0.14.0:
 
-> New in 0.13.0:
-> • Check in and out of events with a QR code, kiosk PIN or check-out PIN
-> • "When I'm free" shows events that fit your week
-> • A plan to reach your hours goal on time
-> • Sign up for every date of a weekly event at once
-> • Parents: check-in notices and a family calendar
-> • Schools: clubs, assignments and auto-approve rules
-> • A "What's new" page
+> New in 0.14.0:
+> • Walk-ins: join an event at the door, on your phone or the kiosk
+> • Pick a job on your volunteer badge; see it when you check in
+> • Get your signed hours record by email
+> • Link previews when you share an event or invite
+> • More of the app in Spanish, Vietnamese and Chinese
+> • Fixes: password reset and supervisor emails
 
 ## Graphics
 
