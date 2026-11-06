@@ -3101,4 +3101,9 @@ export default {
   "Links you share to an event, a school or your invite show a preview with its name.": "Los enlaces que compartes a un evento, una escuela o tu invitación muestran una vista previa con su nombre.",
   "Welcome tours": "Recorridos de bienvenida",
   "which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.": "qué recorridos de bienvenida terminaste u omitiste, para que cada uno aparezca solo una vez en cualquier dispositivo. Se borra con tu cuenta.",
+  "Your hours": "Tus horas",
+  "You’ve logged {hours} this year.": "Llevas {hours} registradas este año.",
+  "Log your first hours": "Registra tus primeras horas",
+  "Add today’s session while you still remember the details.": "Agrega la sesión de hoy mientras recuerdas los detalles.",
+  "It takes about a minute: what you did, when, where, and who can sign it.": "Toma como un minuto: qué hiciste, cuándo, dónde y quién puede firmarlo.",
 }

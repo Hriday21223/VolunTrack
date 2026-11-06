@@ -3072,4 +3072,9 @@ export default {
   "Links you share to an event, a school or your invite show a preview with its name.": "Liên kết bạn chia sẻ tới sự kiện, trường hoặc lời mời sẽ hiện bản xem trước kèm tên.",
   "Welcome tours": "Hướng dẫn chào mừng",
   "which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.": "những hướng dẫn chào mừng bạn đã xem xong hoặc bỏ qua, để mỗi hướng dẫn chỉ hiện một lần trên mọi thiết bị. Bị xóa cùng tài khoản của bạn.",
+  "Your hours": "Giờ của bạn",
+  "You’ve logged {hours} this year.": "Năm nay bạn đã ghi {hours}.",
+  "Log your first hours": "Ghi những giờ đầu tiên",
+  "Add today’s session while you still remember the details.": "Hãy thêm buổi hôm nay khi bạn còn nhớ chi tiết.",
+  "It takes about a minute: what you did, when, where, and who can sign it.": "Chỉ mất khoảng một phút: bạn đã làm gì, khi nào, ở đâu và ai có thể ký xác nhận.",
 }

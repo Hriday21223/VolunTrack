@@ -40,7 +40,7 @@ const STEPS = [
 const FAQS = [
   { q: 'What does it cost?', a: 'VolunTrack is free for students, volunteers and parents. One club or class with up to 50 students is free too, with every feature. A whole school, or a club with more students, is paid: send us a message and we will reply with a quote. If another school referred you, you both get a discount.' },
   { q: 'Do students need to download an app?', a: 'No. VolunTrack works in any web browser on a phone or computer, so students can sign up the moment they scan your flyer.' },
-  { q: 'Can one club use it, not the whole school?', a: 'Yes, and it is free for up to 50 students. Many schools start with one adviser — NHS, Key Club, a service club or a class. The club gets its own account, code and roster, and can move to a school plan later without losing anything.' },
+  { q: 'Can one club use it, not the whole school?', a: 'Yes, and it is free for up to 50 students. Many schools start with one adviser: NHS, Key Club, a service club or a class. The club gets its own account, code and roster, and can move to a school plan later without losing anything.' },
   { q: 'How do students join?', a: 'They open your join link or scan the QR code on your flyer, then create an account or sign in. The code is filled in for them. Students can also type the school code in Settings.' },
   { q: 'What happens to student data?', a: 'Students’ hours belong to them and to your school. We never sell or trade personal data, and we share it only with the school or parent a student connects to. Read the privacy policy for the details schools and districts ask about.' },
   { q: 'How long does setup take?', a: 'About five minutes: create the account, set your requirement, and send the join link.' },

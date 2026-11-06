@@ -3072,4 +3072,9 @@ export default {
   "Links you share to an event, a school or your invite show a preview with its name.": "你分享的活动、学校或邀请链接会显示带名称的预览。",
   "Welcome tours": "欢迎导览",
   "which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.": "你已看完或跳过的欢迎导览，这样每个导览在任何设备上只出现一次。随账户一起删除。",
+  "Your hours": "你的时数",
+  "You’ve logged {hours} this year.": "今年你已记录 {hours}。",
+  "Log your first hours": "记录你的第一批时数",
+  "Add today’s session while you still remember the details.": "趁还记得细节，把今天的活动加上。",
+  "It takes about a minute: what you did, when, where, and who can sign it.": "大约一分钟：你做了什么、什么时候、在哪里，以及谁可以签字确认。",
 }

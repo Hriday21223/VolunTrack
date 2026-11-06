@@ -676,16 +676,20 @@ export default function Dashboard() {
           its content's min width, which pushed this card past the screen edge
           on phones. Desktop keeps the implicit columns its col-span-3 relies on. */}
       <div className="grid grid-cols-1 lg:grid-cols-none gap-5">
-        {/* A pitch ("A cleaner way to track hours…") — the apps' tiles above
-            already show these numbers, so it's left out there. */}
+        {/* Where the student stands this year; the apps' tiles above already
+            show these numbers, so it's left out there. */}
         {!isNativeApp && (
           <Card className="overflow-hidden lg:col-span-3">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr] bg-gradient-to-r from-brand-800 via-slate-950 to-slate-900 p-5">
               <div className="space-y-3 text-white">
-                <span className="text-xs uppercase tracking-[0.35em] text-brand-300">{tr('Volunteer snapshot')}</span>
-                <h2 className="text-xl font-bold leading-tight">{tr('A cleaner way to track hours, goals, and progress.')}</h2>
+                <span className="text-xs uppercase tracking-[0.35em] text-brand-300">{tr('Your hours')}</span>
+                <h2 className="text-xl font-bold leading-tight">
+                  {logs.length ? tr('You’ve logged {hours} this year.', { hours: fmtHours(total) }) : tr('Log your first hours')}
+                </h2>
                 <p className="max-w-xl text-sm text-slate-300 leading-6">
-                  {tr('Log sessions fast, keep your goals moving, and export polished records for school, club, or scholarship review.')}
+                  {logs.length
+                    ? tr('Add today’s session while you still remember the details.')
+                    : tr('It takes about a minute: what you did, when, where, and who can sign it.')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <RoleLink to="/log" className="btn-primary btn-sm">{tr('Log hours')}</RoleLink>
