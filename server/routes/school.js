@@ -19,7 +19,7 @@ import { saveRoster, rosterEntry, rosterGrade, applyRosterGrade } from '../roste
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail, emailApiBase } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail, emailApiBase, sendHoursSignedEmail } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { friendlyWhen } from '../when.js'
@@ -7242,8 +7242,11 @@ router.post('/logs/verify-bulk', limiter, bulkVerifyLimiter, requireDb, requireA
 async function notifyHoursDecision(studentId, logId, status) {
   try {
     const { rows } = await query(
-      `SELECT l.hours, to_char(l.date, 'YYYY-MM-DD') AS date, COALESCE(t.title, l.activity) AS title
-         FROM logs l LEFT JOIN public_tasks t ON t.id = l.task_id
+      `SELECT l.hours, to_char(l.date, 'YYYY-MM-DD') AS date, COALESCE(t.title, l.activity) AS title,
+              COALESCE(t.location, l.location) AS location,
+              (SELECT name FROM users WHERE id = l.verified_by) AS organizer,
+              u.email, u.name, u.language, u.parental_consent_status
+         FROM logs l LEFT JOIN public_tasks t ON t.id = l.task_id JOIN users u ON u.id = l.user_id
         WHERE l.id = $1 AND l.user_id = $2`,
       [logId, studentId],
     )
@@ -7256,6 +7259,12 @@ async function notifyHoursDecision(studentId, logId, status) {
       body: `${Number(row.hours) || 0} hours${row.date ? ` on ${row.date}` : ''} ${approved ? 'were approved by the organizer.' : 'were not approved by the organizer.'}`,
       link: '/reports',
     })
+    // Their record by email once it's signed (#769). Never to the test
+    // fixtures or an under-13 account still waiting for a parent.
+    if (approved && row.email && !row.email.endsWith('@test.com') && row.parental_consent_status !== 'pending') {
+      sendHoursSignedEmail({ to: row.email, name: row.name, title: row.title, date: row.date, location: row.location, hours: row.hours, organizer: row.organizer, language: row.language })
+        .catch((e) => console.error('hours signed email failed:', e.message))
+    }
   } catch (error) {
     console.error('hours decision notification failed:', error)
   }

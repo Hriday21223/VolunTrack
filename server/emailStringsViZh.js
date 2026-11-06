@@ -224,6 +224,16 @@ export const EMAIL_VI = {
   "{school} sent back: {what}": "{school} đã trả lại: {what}",
   "{school} sent back an entry": "{school} đã trả lại một mục ghi",
   "These hours don't count for now. Fix the entry in VolunTrack (editing it sends it for review again), or talk with your adviser.": "Số giờ này tạm thời chưa được tính. Hãy sửa mục ghi trong VolunTrack (sửa sẽ gửi lại để xem xét), hoặc trao đổi với giáo viên phụ trách.",
+  "Your volunteer hours are signed: {title}": "Giờ tình nguyện của bạn đã được ký: {title}",
+  "{organizer} signed your hours. Here is your record:": "{organizer} đã ký xác nhận giờ của bạn. Đây là hồ sơ của bạn:",
+  "Event": "Sự kiện",
+  "Place": "Địa điểm",
+  "Signed by": "Người ký",
+  "Signed on": "Ngày ký",
+  "It counts toward your goal, and it’s in your reports. You can download a PDF of all your hours any time.": "Số giờ này được tính vào mục tiêu của bạn và có trong báo cáo. Bạn có thể tải PDF tất cả giờ của mình bất cứ lúc nào.",
+  "Open my reports": "Mở báo cáo của tôi",
+  "1 hour": "1 giờ",
+  "{n} hours": "{n} giờ",
 }
 
 export const EMAIL_ZH = {
@@ -450,4 +460,14 @@ export const EMAIL_ZH = {
   "{school} sent back: {what}": "{school} 已退回：{what}",
   "{school} sent back an entry": "{school} 退回了一条记录",
   "These hours don't count for now. Fix the entry in VolunTrack (editing it sends it for review again), or talk with your adviser.": "这些时长暂不计入。请在 VolunTrack 中修改该记录（修改后会重新提交审核），或与指导老师沟通。",
+  "Your volunteer hours are signed: {title}": "你的志愿时数已签字确认：{title}",
+  "{organizer} signed your hours. Here is your record:": "{organizer} 已为你的时数签字。这是你的记录：",
+  "Event": "活动",
+  "Place": "地点",
+  "Signed by": "签字人",
+  "Signed on": "签字日期",
+  "It counts toward your goal, and it’s in your reports. You can download a PDF of all your hours any time.": "这些时数计入你的目标，也在你的报告中。你随时可以下载包含所有时数的 PDF。",
+  "Open my reports": "打开我的报告",
+  "1 hour": "1 小时",
+  "{n} hours": "{n} 小时",
 }

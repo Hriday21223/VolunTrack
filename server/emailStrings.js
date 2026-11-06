@@ -308,6 +308,18 @@ const ES = {
   '{school} sent back: {what}': '{school} devolvió: {what}',
   '{school} sent back an entry': '{school} te devolvió un registro',
   "These hours don't count for now. Fix the entry in VolunTrack (editing it sends it for review again), or talk with your adviser.": 'Estas horas no cuentan por ahora. Corrige el registro en VolunTrack (al editarlo se vuelve a revisar) o habla con tu asesor.',
+  "Your volunteer hours are signed: {title}": "Tus horas de voluntariado están firmadas: {title}",
+  "{organizer} signed your hours. Here is your record:": "{organizer} firmó tus horas. Este es tu registro:",
+  "Event": "Evento",
+  "Date": "Fecha",
+  "Place": "Lugar",
+  "Hours": "Horas",
+  "Signed by": "Firmado por",
+  "Signed on": "Fecha de firma",
+  "It counts toward your goal, and it’s in your reports. You can download a PDF of all your hours any time.": "Cuenta para tu meta y está en tus informes. Puedes descargar un PDF con todas tus horas cuando quieras.",
+  "Open my reports": "Abrir mis informes",
+  "1 hour": "1 hora",
+  "{n} hours": "{n} horas",
 }
 
 const DICTIONARIES = { es: ES, vi: EMAIL_VI, zh: EMAIL_ZH }
