@@ -101,7 +101,7 @@ export default function Terms() {
           </Section>
 
           <Section title="Contact">
-            <p>VolunTrack is run by {OPERATOR_NAME}{OPERATOR_LOCATION ? `, ${OPERATOR_LOCATION}` : ''}.</p>
+            <p>VolunTrack is run by {OPERATOR_LOCATION ? `${OPERATOR_NAME}, ${OPERATOR_LOCATION}.` : `${OPERATOR_NAME}${OPERATOR_NAME.endsWith('.') ? '' : '.'}`}</p>
             <p className="mt-2">Questions about these terms? Reach us at{' '}
               <a href="mailto:volunteertrackinfo@gmail.com" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">volunteertrackinfo@gmail.com</a>.
             </p>
