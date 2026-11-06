@@ -52,10 +52,10 @@ export default function SchoolStarterKit({ pin, schoolName, onOpenSetup }) {
   }
 
   const steps = [
-    onOpenSetup && { icon: ClipboardList, text: 'Set your hour requirement, so students see their goal.', action: () => onOpenSetup('requirements'), label: 'Set requirement' },
-    onOpenSetup && { icon: ShieldCheck, text: 'Add a co-adviser to help approve hours.', action: () => onOpenSetup('staff'), label: 'Add co-adviser' },
-    { icon: Link2, text: 'Share the join link or put the flyer up. Students who use it land on your roster.' },
-    { icon: Check, text: 'Approve hours as they come in, here on the Students tab.' },
+    onOpenSetup && { icon: ClipboardList, text: tr('Set your hour requirement, so students see their goal.'), action: () => onOpenSetup('requirements'), label: tr('Set requirement') },
+    onOpenSetup && { icon: ShieldCheck, text: tr('Add a co-adviser to help approve hours.'), action: () => onOpenSetup('staff'), label: tr('Add co-adviser') },
+    { icon: Link2, text: tr('Share the join link or put the flyer up. Students who use it land on your roster.') },
+    { icon: Check, text: tr('Approve hours as they come in, here on the Students tab.') },
   ].filter(Boolean)
 
   return (

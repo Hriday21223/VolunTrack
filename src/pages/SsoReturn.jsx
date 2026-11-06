@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Loader2, ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { tr } from '@/lib/i18n.js'
 
 // `returnTo` arrives in the query string, so it is attacker-controlled: a
 // sign-in link can be crafted to bounce the user off-site once authenticated.
@@ -55,17 +56,17 @@ export default function SsoReturn() {
         {err ? (
           <>
             <ShieldAlert className="mx-auto mb-4 h-10 w-10 text-red-400" />
-            <h1 className="text-xl font-semibold">Sign-in didn&apos;t complete</h1>
+            <h1 className="text-xl font-semibold">{tr("Sign-in didn't complete")}</h1>
             <p className="mt-3 text-sm leading-6 text-slate-300">{err}</p>
             <Link to="/login" className="btn-primary mt-6 inline-flex px-5 py-2.5 text-sm font-semibold">
-              Back to sign in
+              {tr('Back to sign in')}
             </Link>
           </>
         ) : (
           <>
             <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-brand-300" />
-            <h1 className="text-xl font-semibold">Signing you in…</h1>
-            <p className="mt-3 text-sm text-slate-400">Finishing up with your school&apos;s login.</p>
+            <h1 className="text-xl font-semibold">{tr('Signing you in…')}</h1>
+            <p className="mt-3 text-sm text-slate-400">{tr("Finishing up with your school's login.")}</p>
           </>
         )}
       </div>

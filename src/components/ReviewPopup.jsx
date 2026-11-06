@@ -3,6 +3,7 @@ import { Star, Heart, X } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { anonymousReviewerName } from '@/lib/reviewerLabel.js'
+import { tr } from '@/lib/i18n.js'
 
 const LABELS = ['', 'Needs work', 'Okay', 'Pretty good', 'Great', 'Amazing!']
 
@@ -49,14 +50,14 @@ export default function ReviewPopup() {
           <div className="w-14 h-14 rounded-full bg-brand-900/40 border border-brand-700/30 grid place-items-center mx-auto mb-4">
             <Heart className="w-7 h-7 text-brand-400" />
           </div>
-          <h2 className="text-2xl font-bold">Love VolunTrack?</h2>
+          <h2 className="text-2xl font-bold">{tr('Love VolunTrack?')}</h2>
           <p className="mt-2 text-sm text-earth-400 leading-6">
-            You&apos;ve logged your first volunteer session. We&apos;d love to hear how it&apos;s going for you!
+            {tr("You've logged your first volunteer session. We'd love to hear how it's going for you!")}
           </p>
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-sm font-medium text-earth-300 mb-3">Rate your experience</p>
+          <p className="text-sm font-medium text-earth-300 mb-3">{tr('Rate your experience')}</p>
           <div className="flex justify-center gap-1.5">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
@@ -86,7 +87,7 @@ export default function ReviewPopup() {
           <label className="text-sm text-earth-300 mb-2 block">Anything to add? (optional)</label>
           <textarea
             className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-white placeholder-earth-500 resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-brand-500/50"
-            placeholder="Tell us what you like or what could be better..."
+            placeholder={tr('Tell us what you like or what could be better...')}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
           />
@@ -100,7 +101,7 @@ export default function ReviewPopup() {
               onChange={(e) => setWantsName(e.target.checked)}
               className="w-4 h-4 rounded border-white/20 bg-slate-900/70 accent-brand-500"
             />
-            Add my name if this is shown in the app
+            {tr('Add my name if this is shown in the app')}
           </label>
           <p className="mt-1 text-xs text-earth-500">
             If you leave this unchecked (or don&apos;t sign your name), we&apos;ll show it as &quot;{anonymousReviewerName(user?.role)}&quot; instead — never your real name.
@@ -110,14 +111,14 @@ export default function ReviewPopup() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
+              placeholder={tr('Your name')}
               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2.5 text-sm text-white placeholder-earth-500 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
             />
           )}
         </div>
 
         <p className="mt-4 text-xs text-earth-500 text-center">
-          Reviews are checked by our team before they appear anywhere in the app.
+          {tr('Reviews are checked by our team before they appear anywhere in the app.')}
         </p>
 
         <button
