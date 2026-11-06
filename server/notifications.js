@@ -44,6 +44,8 @@ export const NOTIFICATION_KINDS = new Set([
   'task_question',
   'task_answer',
   'attendance_nudge', 'sign_reminder', 'club_assignment',
+  // The day before an event, jobs still have open spots (#773).
+  'jobs_unfilled',
   'log_hours_nudge',
   // To VolunTrack admins: a school or org has a new main admin (#550).
   'account_handover',
