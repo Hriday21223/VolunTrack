@@ -320,6 +320,10 @@ const ES = {
   "Open my reports": "Abrir mis informes",
   "1 hour": "1 hora",
   "{n} hours": "{n} horas",
+  "Get VolunTrack on your phone": "Ten VolunTrack en tu teléfono",
+  "Log your next hours in a minute, get your hours signed on the spot, and check in at events with a scan.": "Registra tus próximas horas en un minuto, consigue la firma al momento y registra tu entrada en eventos con un escaneo.",
+  "Open {site} on your phone. On iPhone, tap Share, then Add to Home Screen. On Android, tap the menu, then Install app.": "Abre {site} en tu teléfono. En iPhone, toca Compartir y luego Agregar a pantalla de inicio. En Android, toca el menú y luego Instalar app.",
+  "Open VolunTrack": "Abrir VolunTrack",
 }
 
 const DICTIONARIES = { es: ES, vi: EMAIL_VI, zh: EMAIL_ZH }
