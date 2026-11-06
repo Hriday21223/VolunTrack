@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer'
 import { escapeHtml } from './html.js'
-import { et, emailLang } from './emailStrings.js'
+import { et, emailLang, emailDate } from './emailStrings.js'
 import { csvCell } from '../src/lib/csv.js'
 
 // Two ways out, picked at send time by which env vars are set.
@@ -451,6 +451,33 @@ export async function sendEmailChangedNotice({ to, name, newEmail, language }) {
 <p>${t("If you didn't do this, contact us right away: {link}", { link: `<a href="${contactLink()}">${contactLink()}</a>` })}</p>
 ${emailFooterHtml(lang)}`,
   })
+}
+
+// The organizer signed a volunteer's hours for an event (#769): their record,
+// so they have it in writing. Rendered here, sent from notifyHoursDecision.
+export function hoursSignedEmailContent({ name, title, date, location, hours, organizer, language }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const site = emailApiBase()
+  const when = date ? emailDate(lang, new Date(`${date}T00:00:00Z`), true) : ''
+  const hoursText = Number(hours) === 1 ? t('1 hour') : t('{n} hours', { n: Number(hours) || 0 })
+  const row = (label, value) => (value ? `<tr><td style="padding:6px 12px 6px 0;color:#6b7280">${label}</td><td style="padding:6px 0"><strong>${escapeHtml(String(value))}</strong></td></tr>` : '')
+  return {
+    subject: t('Your volunteer hours are signed: {title}', { title }),
+    html: `<p>${name ? t('Hi {name},', { name: escapeHtml(name.split(/\s+/)[0]) }) : t('Hi there,')}</p>
+<p>${t('{organizer} signed your hours. Here is your record:', { organizer: escapeHtml(organizer || t('The organizer')) })}</p>
+<table style="border-collapse:collapse;margin:8px 0 16px">
+${row(t('Event'), title)}${row(t('Date'), when)}${row(t('Place'), location)}${row(t('Hours'), hoursText)}${row(t('Signed by'), organizer)}${row(t('Signed on'), emailDate(lang, new Date(), true))}
+</table>
+<p>${t('It counts toward your goal, and it’s in your reports. You can download a PDF of all your hours any time.')}</p>
+<p><a href="${site}/reports" style="display:inline-block;background:#2f6b3a;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:600">${t('Open my reports')}</a></p>
+${emailFooterHtml(lang)}`,
+  }
+}
+
+export async function sendHoursSignedEmail({ to, ...rest }) {
+  const { subject, html } = hoursSignedEmailContent(rest)
+  return sendEmail({ to, subject, html })
 }
 
 // Base for /api links in emails. The website (vercel.json) passes these paths
