@@ -116,6 +116,12 @@ function SignupRow({ s, onChanged, canRate }) {
               <IdCard className="w-4 h-4" />{' '}{tr('Show my volunteer badge')}
             </button>
           )}
+          {/* Jobs (#759): theirs, or a nudge to pick one on the badge. */}
+          {!cancelled && !isPast && s.signup_status === 'approved' && (s.my_job || s.has_jobs) && (
+            <p className="text-xs mt-2 text-earth-600 dark:text-earth-300">
+              {s.my_job ? <><span className="font-semibold">{tr('Your job:')}</span>{' '}{s.my_job}</> : tr('This event has jobs. Open your badge to pick one.')}
+            </p>
+          )}
           {showBadge && <VolunteerBadge taskId={s.id} onClose={() => setShowBadge(false)} />}
           {!cancelled && !isPast && s.signup_status === 'parent_pending' && (
             <p className="text-xs text-amber-400 mt-2">{tr('The organizer sees your sign-up once a parent approves it. No parent linked yet? Ask them to make a VolunTrack parent account and enter the link code from Settings → Family.')}</p>

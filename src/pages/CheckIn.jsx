@@ -6,6 +6,7 @@ import Card from '@/components/Card.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { tr } from '@/lib/i18n.js'
 import ScanCheckinButton from '@/components/ScanCheckinButton.jsx'
+import CheckinJob, { hasJobs } from '@/components/CheckinJob.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const time = (iso) => (iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')
@@ -22,6 +23,8 @@ export default function CheckIn() {
   const code = params.get('c') || ''
   const { refreshLogs } = useData()
   const [result, setResult] = useState(null)
+  // The job pop-up (#759), shown once per check-in result.
+  const [jobOpen, setJobOpen] = useState(false)
   const [error, setError] = useState('')
   const sent = useRef(null)
   // The volunteer's check-in PIN (#668), asked for after the scan.
@@ -41,6 +44,7 @@ export default function CheckIn() {
     if (!res.ok) throw new Error(body.error || 'Could not check you in.')
     setError('')
     setResult(body)
+    setJobOpen(body?.state === 'checked_in' && hasJobs(body.jobs))
   }, [code, taskId])
 
   const submitPin = async (e) => {
@@ -122,12 +126,23 @@ export default function CheckIn() {
               <ScanCheckinButton label={result?.state === 'checked_in' ? tr('Scan to check out') : tr('Scan again')} />
             </div>
           )}
+          {result?.state === 'checked_in' && <CheckinJob jobs={result.jobs} tone="light" />}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link to="/" className="btn-primary">{tr('Go to dashboard')}</Link>
             <Link to="/attendance" className="btn-ghost">{tr('My sign-ups')}</Link>
           </div>
         </Card>
       </div>
+      {jobOpen && (
+        <div className="fixed inset-0 z-[120] bg-black/70 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label={tr('Your job right now')}>
+          <div className="w-full max-w-sm rounded-2xl bg-[#14241b] p-6 text-center text-white shadow-2xl">
+            <CheckCircle className="w-10 h-10 mx-auto text-emerald-400" />
+            <p className="mt-2 text-xl font-bold">{tr("You're checked in")}</p>
+            <CheckinJob jobs={result.jobs} />
+            <button type="button" className="btn-primary mt-5 w-full justify-center" autoFocus onClick={() => setJobOpen(false)}>{tr('Got it')}</button>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

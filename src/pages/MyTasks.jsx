@@ -12,6 +12,7 @@ import { csvCell } from '@/lib/csv.js'
 import { fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
+import TaskJobsPanel from '@/components/TaskJobsPanel.jsx'
 import OrganizerStats from '@/components/OrganizerStats.jsx'
 import TaskDetailFields, { OnlineToggle } from '@/components/TaskDetailFields.jsx'
 import LateBadge from '@/components/LateBadge.jsx'
@@ -909,6 +910,8 @@ export default function MyTasks() {
                     onLeft={() => { setExpanded(null); loadTasks(); loadStudents() }}
                     onMessage={(msg) => { setToastMsg(msg); setToast(true) }}
                   />
+
+                  {t.status !== 'cancelled' && <TaskJobsPanel task={t} onMessage={(msg) => { setToastMsg(msg); setToast(true) }} />}
 
                   {t.thanks_sent_at && (
                     <p className="mb-4 text-xs text-rose-300 flex items-center gap-1">

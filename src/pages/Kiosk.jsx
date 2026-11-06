@@ -4,6 +4,7 @@ import { isNativeApp } from '@/lib/platform.js'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Lock, LogIn, LogOut, CheckCircle, Delete } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
+import CheckinJob, { hasJobs } from '@/components/CheckinJob.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
@@ -95,14 +96,17 @@ export default function Kiosk() {
   useEffect(() => { if (exitCode) { load(); const t = setInterval(load, 3000); return () => clearInterval(t) } return undefined }, [exitCode, load])
 
   const submit = async (value) => {
+    // A job to read (#759) keeps the message up longer.
+    let showJob = false
     try {
       const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/kiosk/${who.signupId}`, { method: 'POST', headers: headers(), body: JSON.stringify({ pin: value }) })
       const body = await res.json().catch(() => ({}))
+      showJob = res.ok && body.state === 'checked_in' && hasJobs(body.jobs)
       setResult(res.ok ? { ok: true, ...body } : { ok: false, message: body.error || tr('Something went wrong.') })
     } catch { setResult({ ok: false, message: tr('Couldn’t reach VolunTrack. Check the internet connection.') }) }
     setPin('')
     load()
-    setTimeout(() => { setResult(null); setWho(null) }, 3500)
+    setTimeout(() => { setResult(null); setWho(null) }, showJob ? 8000 : 3500)
   }
 
   const organizerDone = async (code) => {
@@ -174,6 +178,7 @@ export default function Kiosk() {
                           : tr('Thanks, {name}! {n} hours sent to the organizer to sign.', { name: who.name, n: result.hours }))
                           : tr('You’re all done for today.')}
                     </p>
+                    {result.state === 'checked_in' && <CheckinJob jobs={result.jobs} />}
                   </>
                 ) : <p className="text-lg text-red-300">{result.message}</p>}
               </div>

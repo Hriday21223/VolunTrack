@@ -359,6 +359,12 @@ export const ERRORS_VI = {
   "Pick at least one permission.": "Chọn ít nhất một quyền.",
   "You can have up to 10 active keys. Revoke one first.": "Bạn có tối đa 10 khóa đang hoạt động. Hãy thu hồi một khóa trước.",
   "Key not found, or already revoked.": "Không tìm thấy khóa, hoặc khóa đã bị thu hồi.",
+  "Jobs show once the organizer approves your sign-up.": "Công việc sẽ hiện khi người tổ chức duyệt đăng ký của bạn.",
+  "That job is full. Pick another one.": "Việc đó đã đủ người. Hãy chọn việc khác.",
+  "That job no longer exists.": "Việc đó không còn nữa.",
+  "Each job needs 1 to 200 spots.": "Mỗi việc cần từ 1 đến 200 chỗ.",
+  "At most 20 jobs per event.": "Tối đa 20 việc cho mỗi sự kiện.",
+  "That volunteer isn’t approved for this event.": "Tình nguyện viên đó chưa được duyệt cho sự kiện này.",
 }
 
 export const ERRORS_ZH = {
@@ -720,4 +726,10 @@ export const ERRORS_ZH = {
   "Pick at least one permission.": "请至少选择一项权限。",
   "You can have up to 10 active keys. Revoke one first.": "最多可有 10 个有效密钥，请先撤销一个。",
   "Key not found, or already revoked.": "未找到密钥，或已被撤销。",
+  "Jobs show once the organizer approves your sign-up.": "组织者批准你的报名后才会显示工作。",
+  "That job is full. Pick another one.": "该工作已满，请选择其他工作。",
+  "That job no longer exists.": "该工作已不存在。",
+  "Each job needs 1 to 200 spots.": "每项工作需要 1 到 200 个名额。",
+  "At most 20 jobs per event.": "每个活动最多 20 项工作。",
+  "That volunteer isn’t approved for this event.": "该志愿者未获批准参加此活动。",
 }
