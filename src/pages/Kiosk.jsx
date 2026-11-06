@@ -84,6 +84,12 @@ export default function Kiosk() {
   const [result, setResult] = useState(null)
   const [organizer, setOrganizer] = useState(null) // { action: 'exit' | 'unlock', person }
   const [orgCode, setOrgCode] = useState('')
+  // Walk-ins (#767): 'choose' (phone or organizer), then 'email' once the
+  // organizer typed their code; `walkInResult` is the welcome message.
+  const [walkIn, setWalkIn] = useState(null)
+  const [walkInEmail, setWalkInEmail] = useState('')
+  const [walkInBusy, setWalkInBusy] = useState(false)
+  const [walkInResult, setWalkInResult] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -95,11 +101,11 @@ export default function Kiosk() {
   }, [taskId])
   useEffect(() => { if (exitCode) { load(); const t = setInterval(load, 3000); return () => clearInterval(t) } return undefined }, [exitCode, load])
 
-  const submit = async (value) => {
+  const submit = async (value, extra = {}, person = who) => {
     // A job to read (#759) keeps the message up longer.
     let showJob = false
     try {
-      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/kiosk/${who.signupId}`, { method: 'POST', headers: headers(), body: JSON.stringify({ pin: value }) })
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/kiosk/${person.signupId}`, { method: 'POST', headers: headers(), body: JSON.stringify({ pin: value, ...extra }) })
       const body = await res.json().catch(() => ({}))
       showJob = res.ok && body.state === 'checked_in' && hasJobs(body.jobs)
       setResult(res.ok ? { ok: true, ...body } : { ok: false, message: body.error || tr('Something went wrong.') })
@@ -111,12 +117,39 @@ export default function Kiosk() {
 
   const organizerDone = async (code) => {
     if (code !== exitCode) { setOrgCode(''); return }
+    if (organizer.action === 'checkout') {
+      // No PIN (a walk-in added here): the organizer checks them out (#767).
+      const person = organizer.person
+      setOrganizer(null); setOrgCode('')
+      setWho(person)
+      await submit(null, { organizerCheckout: true }, person)
+      return
+    }
+    if (organizer.action === 'walkin') {
+      setOrganizer(null); setOrgCode(''); setWalkIn('email'); return
+    }
     if (organizer.action === 'exit') {
       try { sessionStorage.removeItem(`${CODE_KEY}:${taskId}`) } catch { /* ignore */ }
       nav('/my-tasks'); return
     }
     await fetch(`${apiUrl}/school/public-tasks/${taskId}/kiosk/${organizer.person.signupId}`, { method: 'POST', headers: headers(), body: JSON.stringify({ unlock: true }) })
     setOrganizer(null); setOrgCode(''); load()
+  }
+
+  const closeWalkIn = () => { setWalkIn(null); setWalkInEmail(''); setWalkInResult(null) }
+  const addWalkIn = async (e) => {
+    e.preventDefault()
+    setWalkInBusy(true)
+    let keepJob = false
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${taskId}/kiosk-walkin`, { method: 'POST', headers: headers(), body: JSON.stringify({ email: walkInEmail }) })
+      const body = await res.json().catch(() => ({}))
+      keepJob = res.ok && hasJobs(body.jobs)
+      setWalkInResult(res.ok ? { ok: true, ...body } : { ok: false, message: body.error || tr('Something went wrong.') })
+      if (res.ok) load()
+    } catch { setWalkInResult({ ok: false, message: tr('Couldn’t reach VolunTrack. Check the internet connection.') }) }
+    setWalkInBusy(false)
+    setTimeout(() => setWalkInResult((r) => (r?.ok && !r.pin ? (closeWalkIn(), null) : r)), keepJob ? 8000 : 4000)
   }
 
   const shell = (children) => <div className="min-h-screen bg-[#0d1712] text-white p-4 sm:p-8">{children}</div>
@@ -146,8 +179,8 @@ export default function Kiosk() {
       <div className="grid lg:grid-cols-[1fr_260px] gap-6 items-start">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {(data?.people || []).map((p) => (
-          <button key={p.signupId} type="button" disabled={!p.hasPin}
-            onClick={() => (p.locked ? setOrganizer({ action: 'unlock', person: p }) : setWho(p))}
+          <button key={p.signupId} type="button" disabled={!p.hasPin && !(p.checkedInAt && !p.checkedOutAt)}
+            onClick={() => (p.locked ? setOrganizer({ action: 'unlock', person: p }) : !p.hasPin ? setOrganizer({ action: 'checkout', person: p }) : setWho(p))}
             className={`rounded-2xl p-4 text-left min-h-[84px] ${p.checkedOutAt ? 'bg-emerald-900/40' : p.checkedInAt ? 'bg-amber-900/30' : 'bg-white/10'} ${p.locked ? 'opacity-60' : ''}`}>
             <span className="block text-lg font-semibold">{p.name}</span>
             {p.screenCode && <span className="block text-3xl font-bold tracking-[0.3em] text-yellow-300 my-1" aria-label={tr('Code for {name}', { name: p.name })}>{p.screenCode}</span>}
@@ -162,6 +195,69 @@ export default function Kiosk() {
       </div>
       <KioskQr taskId={taskId} />
       </div>
+      {data?.allowWalkins !== false && (
+        <button type="button" className="mt-6 rounded-2xl bg-white/10 px-5 py-3 text-lg font-semibold hover:bg-white/15" onClick={() => setWalkIn('choose')}>
+          {tr('I didn’t sign up')}
+        </button>
+      )}
+
+      {walkIn && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={tr('Join as a walk-in')}>
+          <div className="bg-[#14241b] rounded-2xl p-6 w-full max-w-sm text-center">
+            {walkInResult ? (
+              walkInResult.ok ? (
+                <div className="py-4">
+                  <CheckCircle className="w-12 h-12 mx-auto text-emerald-400" />
+                  <p className="text-xl font-semibold mt-3">{tr('Welcome, {name}! You’re checked in.', { name: walkInResult.name })}</p>
+                  {walkInResult.pin && (
+                    <div className="mt-4 rounded-xl bg-yellow-400/15 p-4 ring-1 ring-yellow-300/40">
+                      <p className="text-sm font-semibold uppercase tracking-wide text-yellow-200">{tr('Your check-out PIN')}</p>
+                      <p className="mt-1 font-mono text-4xl font-bold tracking-[0.3em] text-yellow-300" aria-live="polite">{walkInResult.pin}</p>
+                      <p className="mt-2 text-sm text-white/80">{tr('Remember it. When you leave, tap your name here and type this PIN to check out.')}</p>
+                    </div>
+                  )}
+                  <CheckinJob jobs={walkInResult.jobs} />
+                  {walkInResult.pin && (
+                    <button type="button" className="mt-5 w-full rounded-xl bg-emerald-600 py-3 text-lg font-semibold" onClick={closeWalkIn}>{tr('I’ll remember it')}</button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-lg text-red-300">{walkInResult.message}</p>
+                  <button type="button" className="mt-5 text-white/60 underline" onClick={() => setWalkInResult(null)}>{tr('Try again')}</button>
+                </>
+              )
+            ) : walkIn === 'choose' ? (
+              <>
+                <p className="text-xl font-semibold mb-1">{tr('Join as a walk-in')}</p>
+                <p className="text-sm text-white/70 mb-5">{tr('Pick one.')}</p>
+                <div className="space-y-3 text-left">
+                  <div className="rounded-xl bg-white/10 p-4">
+                    <p className="font-semibold">{tr('On my phone')}</p>
+                    <p className="text-sm text-white/70">{tr('Scan the code on this screen with your phone’s camera and tap Join and check in.')}</p>
+                  </div>
+                  <button type="button" className="w-full rounded-xl bg-white/10 p-4 text-left hover:bg-white/15" onClick={() => setOrganizer({ action: 'walkin' })}>
+                    <p className="font-semibold">{tr('Here, with the organizer')}</p>
+                    <p className="text-sm text-white/70">{tr('No phone? The organizer types your VolunTrack email and checks you in.')}</p>
+                  </button>
+                </div>
+                <button type="button" className="mt-5 text-white/60 underline" onClick={closeWalkIn}>{tr('Cancel')}</button>
+              </>
+            ) : (
+              <form onSubmit={addWalkIn}>
+                <p className="text-xl font-semibold mb-1">{tr('Add a walk-in')}</p>
+                <p className="text-sm text-white/70 mb-4">{tr('Type the email they use for VolunTrack.')}</p>
+                <input type="email" required autoFocus className="w-full rounded-xl bg-white/10 px-4 py-3 text-lg text-white placeholder:text-white/40" placeholder="name@example.com"
+                  aria-label={tr('Email')} value={walkInEmail} onChange={(e) => setWalkInEmail(e.target.value)} autoComplete="off" />
+                <button type="submit" className="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-lg font-semibold disabled:opacity-60" disabled={walkInBusy || !walkInEmail.includes('@')}>
+                  {walkInBusy ? tr('Checking in…') : tr('Check them in')}
+                </button>
+                <button type="button" className="mt-4 text-white/60 underline" onClick={closeWalkIn}>{tr('Cancel')}</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {who && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -196,7 +292,7 @@ export default function Kiosk() {
       {organizer && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="bg-[#14241b] rounded-2xl p-6 w-full max-w-sm text-center">
-            <p className="text-lg font-semibold mb-1">{organizer.action === 'exit' ? tr('Exit kiosk') : tr('Unlock {name}', { name: organizer.person.name })}</p>
+            <p className="text-lg font-semibold mb-1">{organizer.action === 'exit' ? tr('Exit kiosk') : organizer.action === 'walkin' ? tr('Add a walk-in') : organizer.action === 'checkout' ? tr('Check out {name}', { name: organizer.person.name }) : tr('Unlock {name}', { name: organizer.person.name })}</p>
             <p className="text-sm text-white/60 mb-4">{tr('Organizer: enter your 4-digit kiosk code.')}</p>
             <Keypad length={4} value={orgCode} onChange={setOrgCode} onDone={organizerDone} />
             <button type="button" className="mt-5 text-white/60 underline" onClick={() => { setOrganizer(null); setOrgCode('') }}>{tr('Cancel')}</button>

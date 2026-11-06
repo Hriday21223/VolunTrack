@@ -376,4 +376,6 @@ export const ERRORS_ES = {
   "A parent needs to approve your events first. Ask the organizer to add you.": "Primero un padre o madre debe aprobar tus eventos. Pide al organizador que te agregue.",
   "A parent or guardian has to come with you to this event. Ask the organizer to add you.": "Un padre, madre o tutor tiene que venir contigo a este evento. Pide al organizador que te agregue.",
   "This event is full. Ask the organizer to add you.": "Este evento está lleno. Pide al organizador que te agregue.",
+  "Enter the email they use for VolunTrack.": "Escribe el correo que usa en VolunTrack.",
+  "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "Ninguna cuenta de VolunTrack usa ese correo. Puede registrarse en su teléfono y escanear el código, o registrar las horas después.",
 }
