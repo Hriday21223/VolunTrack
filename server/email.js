@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 import { escapeHtml } from './html.js'
 import { et, emailLang, emailDate } from './emailStrings.js'
+import { takeEmailBudget, emailBudgetLimits } from './emailBudget.js'
 import { csvCell } from '../src/lib/csv.js'
 
 // Two ways out, picked at send time by which env vars are set.
@@ -272,9 +273,35 @@ export function announcementHtml({ recipientName, title, message, dashboardPath,
 // one-click "Unsubscribe" by the sender name. The URL must stop the emails on
 // a bare POST (RFC 8058) and only show a confirm page on GET.
 // `attachments` are { name, content } with content as a string or Buffer.
-export async function sendEmail({ to, subject, html, unsubscribeUrl, attachments }) {
+// One warning a day to the admin once 80% of the daily email budget is used.
+function warnAdminEmailBudget(sent) {
+  const to = process.env.ADMIN_EMAIL
+  if (!to) return
+  const { limit, reserve } = emailBudgetLimits()
+  sendEmail({
+    to,
+    priority: 'high',
+    subject: `VolunTrack has sent ${sent} of ${limit} emails today`,
+    html: `<p>VolunTrack has sent <strong>${sent}</strong> emails today (UTC). Brevo's daily limit is about <strong>${limit}</strong>.</p>
+<p>From ${limit - reserve}, routine emails (reminders, digests, announcements) wait until tomorrow, and the last ${reserve} are kept for sign-up and sign-in codes, password resets and parent approvals.</p>
+<p>If this keeps happening, raise the limit by moving to a paid Brevo plan and set <code>EMAIL_DAILY_LIMIT</code> on Render to match.</p>`,
+  }).catch(() => {})
+}
+
+export async function sendEmail({ to, subject, html, unsubscribeUrl, attachments, priority = 'normal' }) {
   const from = fromAddress()
   const key = brevoKey()
+  // Daily budget (#775, server/emailBudget.js): only for Brevo, whose free
+  // plan stops at ~300 a day. Routine mail waits for tomorrow near the limit;
+  // codes and resets (priority 'high') keep the reserve.
+  if (key && from) {
+    const budget = await takeEmailBudget(priority)
+    if (!budget.ok) {
+      console.warn(`Daily email limit reached — not sent today: ${forLog(subject)}`)
+      return { sent: false, deferred: true, error: 'Daily email limit reached' }
+    }
+    if (budget.warn) warnAdminEmailBudget(budget.sent)
+  }
   const headers = unsubscribeUrl
     ? { 'List-Unsubscribe': `<${unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
     : undefined
@@ -398,6 +425,7 @@ export async function sendSignupCodeEmail({ to, code, minutes, language = null }
   const lang = emailLang(language)
   const t = (text, vars) => et(lang, text, vars)
   return sendEmail({
+    priority: 'high',
     to,
     subject: t('{code} is your VolunTrack code', { code }),
     html: `<p>${t('Enter this code to finish creating your VolunTrack account:')}</p>
@@ -416,6 +444,7 @@ export async function sendEmailOtpEmail({ to, code, minutes, language, purpose =
     ? t('Enter this code in VolunTrack to turn on two-step sign-in by email:')
     : t('Enter this code to finish signing in to VolunTrack:')
   return sendEmail({
+    priority: 'high',
     to,
     subject: t('{code} is your VolunTrack code', { code }),
     html: `<p>${intro}</p>
@@ -430,6 +459,7 @@ export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) 
   const lang = emailLang(language)
   const t = (text, vars) => et(lang, text, vars)
   return sendEmail({
+    priority: 'high',
     to,
     subject: t('{code} is your VolunTrack code', { code }),
     html: `<p>${t('Enter this code in VolunTrack to use this address for your account:')}</p>
@@ -505,6 +535,7 @@ export async function sendParentConsentEmail({ to, childName, childEmail, token 
   const link = `${emailApiBase()}/api/auth/parent-consent/${token}`
   const privacy = `${process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app'}/privacy`
   return sendEmail({
+    priority: 'high',
     to,
     subject: `${childName} needs your permission to use VolunTrack`,
     html: `<p>Hello,</p>
