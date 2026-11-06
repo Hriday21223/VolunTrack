@@ -13,6 +13,7 @@ import { markWelcomePending, clearWelcomePending } from '@/lib/welcome.js'
 import { cleanInviteCode, readInvite, rememberInvite, clearInvite } from '@/lib/invite.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { tr } from '@/lib/i18n.js'
+import LanguagePicker from '@/components/LanguagePicker.jsx'
 
 // Remembers, on this device only, that a too-young date of birth was entered
 // for a role, so going back and picking an older year doesn't get around the
@@ -479,6 +480,9 @@ export default function Register() {
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-2">
             {isMobile ? tr('Syncing from laptop?') : tr('Syncing from mobile?')}{' '}
             <Link to="/sync-login" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Use sync PIN')}</Link>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <LanguagePicker compact />
           </div>
         </Card>
       </div>
