@@ -93,6 +93,22 @@ function RoleLink(props) {
   return canOpen(user?.role, props.to) ? <Link {...props} /> : null
 }
 
+// "2 categories" / "1 month" for the next badge, singular and translated.
+const BADGE_UNITS = {
+  ' days': ['1 day', '{n} days'],
+  ' categories': ['1 category', '{n} categories'],
+  ' months': ['1 month', '{n} months'],
+  ' friend': ['1 friend', '{n} friends'],
+  ' friends': ['1 friend', '{n} friends'],
+}
+function badgeLeft({ remaining, unit }) {
+  if (unit === 'h') return fmtHours(remaining)
+  if (unit === 'h in a month') return tr('{hours} in a month', { hours: fmtHours(remaining) })
+  const forms = BADGE_UNITS[unit]
+  if (!forms) return `${remaining}${unit}`
+  return remaining === 1 ? tr(forms[0]) : tr(forms[1], { n: remaining })
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   const { logs, goals, earned } = useData()
@@ -672,10 +688,11 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* grid-cols-1, not the implicit auto column: an auto column grows to
-          its content's min width, which pushed this card past the screen edge
-          on phones. Desktop keeps the implicit columns its col-span-3 relies on. */}
-      <div className="grid grid-cols-1 lg:grid-cols-none gap-5">
+      {/* grid-cols-1 on phones (an auto column grows to its content's min
+          width and pushed this card past the screen edge). On desktop, three
+          equal columns: implicit ones sized themselves to their content, so
+          the cards came out uneven and the stat row got squeezed to ~50px. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Where the student stands this year; the apps' tiles above already
             show these numbers, so it's left out there. */}
         {!isNativeApp && (
@@ -882,7 +899,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-3">
+        <div className="grid lg:grid-cols-3 gap-3 lg:col-span-3">
           <Card className="p-4" data-tour="goal-progress">
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -960,7 +977,7 @@ export default function Dashboard() {
             <div className="mt-2 text-2xl font-bold text-earth-100">{Math.min(earned.length, badgeTotal)}/{badgeTotal}</div>
             {nextBadge ? (
               <div className="mt-2 text-xs text-earth-400">
-                {nextBadge.unit === 'h' ? fmtHours(nextBadge.remaining) : `${nextBadge.remaining}${nextBadge.unit}`}{' '}{tr('to')}{' '}<span className="text-earth-200">{nextBadge.title}</span>
+                {badgeLeft(nextBadge)}{' '}{tr('to')}{' '}<span className="text-earth-200">{nextBadge.title}</span>
               </div>
             ) : (
               <div className="mt-2 text-xs text-earth-400">{tr('Earned badges appear as you log more hours.')}</div>
