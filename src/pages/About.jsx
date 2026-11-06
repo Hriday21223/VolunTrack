@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Target, Trophy, FileText, Calendar, Sparkles, ShieldCheck, Users, Clock, ChevronDown, Star, CheckCircle, QrCode, CalendarClock, ClipboardCheck, BarChart3, Building2, Heart, TreePine, BookOpen as Book, Stethoscope, PawPrint, Palette, Dumbbell, Church, Megaphone, Ambulance, Globe, School, GraduationCap, Building, TrendingUp, Smartphone, Download, Lock, Bell, Zap, Menu, X, FileSignature, UserPlus, Link2, Mail, ClipboardList } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
 import DashboardGallery from '@/components/DashboardGallery.jsx'
+import { HoursStory, FloatingStart, PhonePreview } from '@/components/HomeMotion.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { roleLabel, anonymousReviewerName } from '@/lib/reviewerLabel.js'
 
@@ -198,6 +199,10 @@ export default function About() {
     jsonLd: faqJsonLd,
   })
 
+  // The hero's buttons and the closing call to action, for the floating button.
+  const heroCtaRef = useRef(null)
+  const endCtaRef = useRef(null)
+
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
@@ -285,7 +290,7 @@ export default function About() {
             <p className="mt-5 text-lg md:text-xl text-earth-300 max-w-2xl mx-auto leading-8">
               VolunTrack gives students and organizations a clean, private way to log service work, measure progress toward goals, and export polished records for school, scholarship, or club requirements.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <div ref={heroCtaRef} className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/register" className="btn-primary inline-flex items-center gap-2 justify-center px-8 py-3.5 rounded-xl text-base font-semibold">
                 Create your free account <ArrowRight className="w-4 h-4" />
               </Link>
@@ -298,10 +303,13 @@ export default function About() {
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Private by design</span>
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Export anytime</span>
             </div>
+            <PhonePreview />
           </section>
 
           {/* The product itself, for every kind of account — see DashboardGallery. */}
           <DashboardGallery onRoleChange={setAudience} />
+
+          <HoursStory />
 
           <section data-animate className="mt-16 text-center" aria-live="polite">
             <p className="text-sm uppercase tracking-[0.35em] text-brand-600">How it works</p>
@@ -464,7 +472,7 @@ export default function About() {
             </div>
           </section>
 
-          <section data-animate className="mt-20 rounded-[2rem] bg-gradient-to-br from-brand-600 to-brand-700 p-10 md:p-16 text-center">
+          <section ref={endCtaRef} data-animate className="mt-20 rounded-[2rem] bg-gradient-to-br from-brand-600 to-brand-700 p-10 md:p-16 text-center">
             <Sparkles className="w-10 h-10 text-brand-200 mx-auto animate-float" />
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-white">Ready to start tracking your impact?</h2>
             <p className="mt-3 text-brand-100 max-w-lg mx-auto leading-7">
@@ -507,6 +515,7 @@ export default function About() {
         </main>
 
         <Footer tone="dark" className="mt-16" />
+        <FloatingStart heroRef={heroCtaRef} hideNearRef={endCtaRef} />
       </div>
     </div>
   )
