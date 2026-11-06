@@ -19,7 +19,10 @@ import { parseISO, format } from 'date-fns'
 import { csvCell } from '@/lib/csv.js'
 import ReportsPanel from '@/components/ReportsPanel.jsx'
 import AppErrorsCard from '@/components/AppErrorsCard.jsx'
-import { generateDraft } from '@/lib/inboxDraft.js'
+import { generateDraft, replyLanguage, topicIn, DRAFT_LANGUAGES } from '@/lib/inboxDraft.js'
+
+// Opens Google Translate in a new tab (free, no key). Only on the admin's click.
+const googleTranslateUrl = (text, to) => `https://translate.google.com/?sl=auto&tl=${to}&op=translate&text=${encodeURIComponent(String(text || '').slice(0, 4500))}`
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
@@ -174,6 +177,8 @@ export default function Admin() {
   const [schedulingId, setSchedulingId] = useState(null)
   const [scheduleDraft, setScheduleDraft] = useState({ publishAt: '', removeAfterDays: 30 })
   const [drafts, setDrafts] = useState({})
+  // The language each open draft is written in (#757): the sender's, unless switched.
+  const [draftLangs, setDraftLangs] = useState({})
   const [expandedThreadId, setExpandedThreadId] = useState(null)
   const [threadMessages, setThreadMessages] = useState({})
   const [copiedIdx, setCopiedIdx] = useState(null)
@@ -1270,7 +1275,9 @@ export default function Admin() {
         delete next[threadId]
       } else {
         const thread = threads.find((t) => t.thread_id === threadId)
-        next[threadId] = generateDraft(thread, SIGNUP_ORIGIN)
+        const lang = replyLanguage(thread)
+        setDraftLangs((l) => ({ ...l, [threadId]: lang }))
+        next[threadId] = generateDraft(thread, SIGNUP_ORIGIN, lang)
       }
       return next
     })
@@ -1339,6 +1346,8 @@ export default function Admin() {
   const sendDraft = async (threadId) => {
     const draft = drafts[threadId]
     if (!draft) return
+    const thread = threads.find((t) => t.thread_id === threadId)
+    const replySubject = topicIn(draftLangs[threadId] || 'en', thread?.subject || '')
     setSendingIds((prev) => new Set(prev).add(threadId))
     setSendErrors((prev) => { const next = { ...prev }; delete next[threadId]; return next })
     try {
@@ -1346,7 +1355,7 @@ export default function Admin() {
       const res = await fetch(`${apiUrl}/contact/admin/threads/${threadId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: draft }),
+        body: JSON.stringify({ message: draft, subject: replySubject || undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send')
@@ -2769,6 +2778,13 @@ export default function Admin() {
                   <div className="mt-1 text-xs font-medium uppercase tracking-wide text-earth-600 dark:text-earth-300">
                     {c.subject || 'General question'} {c.direction === 'outbound' && <span className="text-brand-500 normal-case">· awaiting their reply</span>}
                   </div>
+                  {replyLanguage(c) !== 'en' && (
+                    <div className="mt-1 text-xs text-earth-500">
+                      Written in {DRAFT_LANGUAGES[replyLanguage(c)]}
+                      {' · '}
+                      <a href={googleTranslateUrl(c.message, 'en')} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">Translate to English ↗</a>
+                    </div>
+                  )}
                   {c.account_code && (
                     <div className="mt-1 text-xs text-earth-500">
                       Customer ID: <span className="font-mono">{c.account_code}</span>
@@ -2804,7 +2820,21 @@ export default function Admin() {
                   {drafts[id] && (
                     <div className="mt-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800">
                       <div className="flex items-center justify-between mb-1">
-                        <div className="text-xs font-semibold text-brand-700 dark:text-brand-300">AI draft</div>
+                        <div className="flex items-center gap-2 text-xs font-semibold text-brand-700 dark:text-brand-300">
+                          AI draft in
+                          <select
+                            aria-label="Draft language"
+                            className="rounded-md border border-brand-200 dark:border-brand-800 bg-transparent px-1 py-0.5 text-xs"
+                            value={draftLangs[id] || 'en'}
+                            onChange={(e) => {
+                              const lang = e.target.value
+                              setDraftLangs((l) => ({ ...l, [id]: lang }))
+                              setDrafts((prev) => ({ ...prev, [id]: generateDraft(c, SIGNUP_ORIGIN, lang) }))
+                            }}
+                          >
+                            {Object.entries(DRAFT_LANGUAGES).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                          </select>
+                        </div>
                         <button
                           onClick={() => copyDraft(id)}
                           className="flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-300 hover:text-brand-900 dark:hover:text-brand-100"
@@ -2822,6 +2852,15 @@ export default function Admin() {
                         value={drafts[id]}
                         onChange={(e) => setDrafts((prev) => ({ ...prev, [id]: e.target.value }))}
                       />
+                      {(draftLangs[id] || 'en') !== 'en' && (
+                        <details className="mt-2 text-xs">
+                          <summary className="cursor-pointer text-brand-700 dark:text-brand-300 font-medium">Show this draft in English</summary>
+                          <p className="mt-1 whitespace-pre-wrap text-earth-600 dark:text-earth-400">{generateDraft(c, SIGNUP_ORIGIN, 'en')}</p>
+                          <p className="mt-1 text-earth-500">
+                            Changed the text above in English? <a href={googleTranslateUrl(drafts[id], draftLangs[id])} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700 dark:text-brand-300 hover:underline">Translate your text to {DRAFT_LANGUAGES[draftLangs[id]]} ↗</a> and paste it back.
+                          </p>
+                        </details>
+                      )}
                       <div className="flex items-center gap-2 mt-3 flex-wrap">
                         <button
                           onClick={() => { if (sendErrors[id] || confirm(`Send this reply to ${c.email}?`)) sendDraft(id) }}

@@ -7,6 +7,7 @@ import { requireAuth } from '../auth.js'
 import { verifyTurnstile } from '../turnstile.js'
 import { sendEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
+import { requestLang } from '../emailStrings.js'
 
 const router = express.Router()
 
@@ -113,9 +114,9 @@ router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) =
   try {
     const id = uid('cmsg')
     await query(
-      `INSERT INTO contact_messages (id, thread_id, direction, name, email, subject, message, account_code, coupon_code)
-       VALUES ($1, $1, 'inbound', $2, $3, $4, $5, $6, $7)`,
-      [id, name, email, subject, message, accountCode || null, couponCode || null],
+      `INSERT INTO contact_messages (id, thread_id, direction, name, email, subject, message, account_code, coupon_code, language)
+       VALUES ($1, $1, 'inbound', $2, $3, $4, $5, $6, $7, $8)`,
+      [id, name, email, subject, message, accountCode || null, couponCode || null, requestLang(req)],
     )
 
     // The message is already saved for Admin → Inbox; this is the heads-up.
@@ -142,7 +143,7 @@ router.get('/admin/threads', limiter, requireDb, requireAuth('admin'), async (re
   try {
     const { rows } = await query(`
       SELECT
-        first.thread_id, first.name, first.email, first.subject, first.message, first.account_code, first.coupon_code,
+        first.thread_id, first.name, first.email, first.subject, first.message, first.account_code, first.coupon_code, first.language,
         COALESCE(
           (SELECT s.name FROM schools s WHERE s.account_code = first.account_code),
           (SELECT o.name FROM organizations o WHERE o.account_code = first.account_code)
@@ -150,7 +151,7 @@ router.get('/admin/threads', limiter, requireDb, requireAuth('admin'), async (re
         latest.direction, latest.created_at,
         (SELECT COUNT(*) FROM contact_messages m2 WHERE m2.thread_id = first.thread_id) AS message_count
       FROM (
-        SELECT DISTINCT ON (thread_id) thread_id, name, email, subject, message, account_code, coupon_code
+        SELECT DISTINCT ON (thread_id) thread_id, name, email, subject, message, account_code, coupon_code, language
         FROM contact_messages
         ORDER BY thread_id, created_at ASC
       ) first
@@ -187,6 +188,9 @@ router.get('/admin/threads/:id/messages', limiter, requireDb, requireAuth('admin
 router.post('/admin/threads/:id/reply', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const message = String(req.body.message || '').trim()
   if (!message) return res.status(400).json({ error: 'Message is required.' })
+  // The topic in the sender's language (#757), from the admin's draft; the
+  // stored English topic otherwise.
+  const topic = String(req.body.subject || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 120)
 
   try {
     const { rows } = await query(
@@ -197,7 +201,7 @@ router.post('/admin/threads/:id/reply', limiter, requireDb, requireAuth('admin')
     const { email, subject } = rows[0]
 
     const html = message.split('\n').map((line) => `<p>${escapeHtml(line) || '&nbsp;'}</p>`).join('')
-    const result = await sendEmail({ to: email, subject: `Re: ${subject || 'Your message to VolunTrack'}`, html })
+    const result = await sendEmail({ to: email, subject: `Re: ${topic || subject || 'Your message to VolunTrack'}`, html })
 
     const id = uid('cmsg')
     await query(
