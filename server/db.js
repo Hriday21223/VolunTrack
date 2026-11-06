@@ -2615,5 +2615,10 @@ export async function initSchema() {
   try { await query('ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS job_id TEXT REFERENCES public_task_jobs(id) ON DELETE SET NULL') } catch {}
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS everyone_job TEXT') } catch {}
 
+  // Walk-ins (#765, server/walkIns.js): on unless the organizer turns them
+  // off; a signup made at the door is marked so the roster can say so.
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS allow_walkins BOOLEAN NOT NULL DEFAULT true') } catch {}
+  try { await query('ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS walk_in BOOLEAN NOT NULL DEFAULT false') } catch {}
+
   return true
 }

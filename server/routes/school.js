@@ -9,6 +9,7 @@ import { createHash, createHmac, timingSafeEqual, randomInt } from 'crypto'
 import { uid, generateToken } from '../ids.js'
 import { loadBadge } from '../badge.js'
 import { registerTaskJobRoutes, checkinJobs } from '../taskJobs.js'
+import { joinAsWalkIn } from '../walkIns.js'
 import { impactFor, PERIODS, rangeFromQuery } from '../impact.js'
 import { activeOrgChallenge, scoreboard as orgScoreboard } from '../orgChallenge.js'
 import { listRecipients, addRecipient, removeRecipient, RecipientError } from '../impactEmail.js'
@@ -5845,6 +5846,8 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                 'waiver_parent_name', s.waiver_parent_name, 'waiver_parent_at', s.waiver_parent_at,
                 -- Shifts (#589): which one they picked.
                 'shift_id', s.shift_id,
+                -- Joined at the door by scanning the QR code (#765).
+                'walk_in', s.walk_in,
                 -- Who invited them, when they signed up from a friend's link.
                 'came_with', (SELECT iu.name FROM users iu WHERE iu.id = s.invited_by),
                 -- Their entry for this task (check-out or logged hours), so the
@@ -6530,7 +6533,7 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
 router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, created_by, status, checkin_secret,
+      `SELECT id, created_by, status, checkin_secret, allow_walkins,
               (date BETWEEN current_date - 1 AND current_date + 1) AS around_today
          FROM public_tasks WHERE id = $1`,
       [req.params.id],
@@ -6547,7 +6550,7 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
     }
     const windowIndex = Math.floor(Date.now() / CHECKIN_WINDOW_MS)
     const { rows: people } = await query(
-      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name,
+      `SELECT u.id, u.role, u.name, s.checked_in_at, s.checked_out_at, s.parent_coming_name, s.walk_in,
               CASE WHEN s.screen_code_expires_at > now() THEN s.screen_code END AS screen_code FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved' ORDER BY u.name`,
       [task.id],
@@ -6563,7 +6566,8 @@ router.get('/public-tasks/:id/checkin', limiter, requireDb, requireAuth(), async
       code: checkinCode(secret, task.id, windowIndex),
       // Seconds until the code changes, so the screen refreshes on time.
       refreshIn: Math.ceil(((windowIndex + 1) * CHECKIN_WINDOW_MS - Date.now()) / 1000),
-      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, hours: stayHours(p), emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null, screenCode: p.screen_code || null })),
+      people: people.map((p) => ({ name: p.name, checkedInAt: p.checked_in_at, checkedOutAt: p.checked_out_at, hours: stayHours(p), emergencyContact: contacts.get(p.id) || null, parentComing: p.parent_coming_name || null, screenCode: p.screen_code || null, walkIn: Boolean(p.walk_in) })),
+      allowWalkins: task.allow_walkins !== false,
       totalHours: totalStayHours(people),
       checkoutPinUntil: await checkoutPinUntil(task.id),
     })
@@ -6596,8 +6600,20 @@ router.post('/public-tasks/:id/checkin', checkinLimiter, requireDb, requireAuth(
       "SELECT id, checked_in_at, checked_out_at, kiosk_pin_fails, screen_code, screen_code_expires_at > now() AS screen_live FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
       [task.id, req.auth.sub],
     )
-    const signup = signupRows[0]
-    if (!signup) return res.status(403).json({ error: "You aren't an approved volunteer for this task. Ask the organizer." })
+    let signup = signupRows[0]
+    if (!signup) {
+      // Walk-ins (#765): not signed up (or not approved yet) → offer to join
+      // at the door, then go on to the usual code-from-the-screen step.
+      const check = await joinAsWalkIn(task.id, req.auth.sub, { dryRun: req.body?.walkIn !== true })
+      if (!check.ok) return res.status(403).json({ error: check.error })
+      if (req.body?.walkIn !== true) return res.json({ walkInOffer: true, title: task.title })
+      const { rows: again } = await query(
+        "SELECT id, checked_in_at, checked_out_at, kiosk_pin_fails, screen_code, screen_code_expires_at > now() AS screen_live FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
+        [task.id, req.auth.sub],
+      )
+      signup = again[0]
+      if (!signup) return res.status(403).json({ error: "You aren't an approved volunteer for this task. Ask the organizer." })
+    }
     // After the scan, a 4-digit code shows under the volunteer's name on the
     // organizer's screen (kiosk or Check-in QR) and they type it on the phone,
     // which proves they're standing there (#668).
@@ -8264,6 +8280,19 @@ function round2(o) {
   }
   return o
 }
+
+// PUT /public-tasks/:id/walkins — the organizer turns walk-ins on or off (#765).
+router.put('/public-tasks/:id/walkins', limiter, requireDb, requireAuth(), async (req, res) => {
+  if (typeof req.body?.allow !== 'boolean') return res.status(400).json({ error: 'Allow must be true or false.' })
+  if (refuseTaskAccess(res, await canManageTask(req.params.id, req.auth.sub), "Only the task's organizer or a co-host can change walk-ins.")) return
+  try {
+    await query('UPDATE public_tasks SET allow_walkins = $2 WHERE id = $1', [req.params.id, req.body.allow])
+    return res.json({ ok: true, allowWalkins: req.body.allow })
+  } catch (error) {
+    console.error('walk-in setting failed:', error)
+    return res.status(500).json({ error: 'Could not save the setting.' })
+  }
+})
 
 registerTaskJobRoutes(router, { limiter, requireDb })
 

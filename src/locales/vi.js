@@ -3385,4 +3385,10 @@ export default {
   "1 friend": "1 người bạn",
   "{n} friends": "{n} người bạn",
   "{hours} in a month": "{hours} trong một tháng",
+  "Walk-in": "Đến trực tiếp",
+  "Allow walk-ins": "Cho phép người đến trực tiếp",
+  "People who didn’t sign up can scan this code to join and check in, while there are spots left.": "Người chưa đăng ký có thể quét mã này để tham gia và điểm danh, khi vẫn còn chỗ.",
+  "Join as a walk-in?": "Tham gia trực tiếp?",
+  "You didn’t sign up for {title}. Join now and check in, and your hours go to the organizer to sign.": "Bạn chưa đăng ký {title}. Hãy tham gia và điểm danh ngay, giờ của bạn sẽ được gửi đến người tổ chức để ký.",
+  "Join and check in": "Tham gia và điểm danh",
 }

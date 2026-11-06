@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
-import { CheckCircle, Clock, LogIn, AlertTriangle } from 'lucide-react'
+import { CheckCircle, Clock, LogIn, AlertTriangle, UserPlus } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { useData } from '@/hooks/useData.jsx'
@@ -31,14 +31,18 @@ export default function CheckIn() {
   const [pinNeeded, setPinNeeded] = useState(false)
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
+  // Walk-ins (#765): not signed up, so offer to join at the door.
+  const [walkIn, setWalkIn] = useState(null)
 
-  const send = useCallback(async (pinValue) => {
+  const send = useCallback(async (pinValue, { join = false } = {}) => {
     const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(taskId)}/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
-      body: JSON.stringify(pinValue ? { screenCode: pinValue } : { code }),
+      body: JSON.stringify(pinValue ? { screenCode: pinValue } : { code, ...(join ? { walkIn: true } : {}) }),
     })
     const body = await res.json().catch(() => ({}))
+    if (body.walkInOffer) { setWalkIn({ title: body.title }); return }
+    setWalkIn(null)
     if (body.screenCodeRequired) { setPinNeeded(true); if (pinValue) setError(body.error || ''); return }
     setPinNeeded(false)
     if (!res.ok) throw new Error(body.error || 'Could not check you in.')
@@ -46,6 +50,11 @@ export default function CheckIn() {
     setResult(body)
     setJobOpen(body?.state === 'checked_in' && hasJobs(body.jobs))
   }, [code, taskId])
+
+  const joinWalkIn = async () => {
+    setBusy(true)
+    try { await send(null, { join: true }) } catch (err) { setError(err.message); setWalkIn(null) } finally { setBusy(false) }
+  }
 
   const submitPin = async (e) => {
     e.preventDefault()
@@ -78,7 +87,11 @@ export default function CheckIn() {
   let icon = <Clock className="w-10 h-10 text-earth-400" />
   let heading = tr('Checking you in…')
   let lines = []
-  if (pinNeeded) {
+  if (walkIn && !pinNeeded) {
+    icon = <UserPlus className="w-10 h-10 text-brand-400" />
+    heading = tr('Join as a walk-in?')
+    lines = [tr('You didn’t sign up for {title}. Join now and check in, and your hours go to the organizer to sign.', { title: walkIn.title })]
+  } else if (pinNeeded) {
     icon = <LogIn className="w-10 h-10 text-brand-400" />
     heading = tr('Look at the organizer’s screen')
     lines = [tr('A 4-digit code is showing under your name. Type it here within 2 minutes.')]
@@ -109,6 +122,12 @@ export default function CheckIn() {
           <div className="grid place-items-center">{icon}</div>
           <h1 className="text-xl font-bold mt-3">{heading}</h1>
           {lines.map((l) => <p key={l} className="text-sm text-earth-400 mt-2">{l}</p>)}
+          {walkIn && !pinNeeded && (
+            <div className="mt-5 flex flex-col items-center gap-2">
+              <button type="button" className="btn-primary" onClick={joinWalkIn} disabled={busy}>{busy ? tr('Joining…') : tr('Join and check in')}</button>
+              {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+            </div>
+          )}
           {pinNeeded && (
             <form onSubmit={submitPin} className="mt-4 flex flex-col items-center gap-3">
               <input
