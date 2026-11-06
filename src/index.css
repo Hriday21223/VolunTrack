@@ -138,6 +138,27 @@ html[data-font='easy'] :is(body, .font-sans, .font-display) {
   @apply ring-2 ring-brand-500 bg-brand-50/60 dark:bg-brand-900/20;
 }
 
+/* Home page motion (src/components/HomeMotion.jsx): lines that light up,
+   and the floating Get started button. Still for reduced motion. */
+.home-light-line {
+  color: rgb(120 113 108 / 0.35);
+  transition: color 700ms ease-out;
+}
+.home-light-line.is-lit { color: rgb(28 25 23); }
+.dark .home-light-line.is-lit { color: #fff; }
+.home-light-line--brand.is-lit,
+.dark .home-light-line--brand.is-lit { color: #4ade80; }
+.home-float {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+.home-float.is-shown { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .home-light-line { transition: none; }
+  .home-float { transition: none; transform: none; }
+}
+
 /* Scroll-triggered animation for landing page sections */
 [data-animate] {
   opacity: 0;
