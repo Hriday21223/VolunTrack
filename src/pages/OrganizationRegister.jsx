@@ -11,6 +11,8 @@ import RegistrationCodeField from '@/components/RegistrationCodeField.jsx'
 import { isCompleteRegistrationCode } from '@/lib/registrationCode.js'
 
 import LegalSummary from '@/components/LegalSummary.jsx'
+import LanguagePicker from '@/components/LanguagePicker.jsx'
+import { tr } from '@/lib/i18n.js'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function OrganizationRegister() {
@@ -39,7 +41,7 @@ export default function OrganizationRegister() {
       try {
         const res = await fetch(`${apiUrl}/organization/invite/${inviteToken}`)
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'Invite link is invalid.')
+        if (!res.ok) throw new Error(data.error || tr('Invite link is invalid.'))
         setForm((f) => ({ ...f, name: data.name, email: data.email }))
       } catch (e) {
         setErr(e.message)
@@ -54,10 +56,10 @@ export default function OrganizationRegister() {
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
-    if (form.password.length < 8) { setErr('Password must be at least 8 characters.'); return }
-    if (!inviteToken && !isCompleteRegistrationCode(form.registrationCode)) { setErr('Enter the 16-character registration code we gave you.'); return }
-    if (!agreed) { setErr('Please agree to the Terms of Service and Privacy Policy.'); return }
-    if (turnstileEnabled && !captchaToken) { setErr('Please complete the CAPTCHA below.'); return }
+    if (form.password.length < 8) { setErr(tr('Password must be at least 8 characters.')); return }
+    if (!inviteToken && !isCompleteRegistrationCode(form.registrationCode)) { setErr(tr('Enter the 16-character registration code we gave you.')); return }
+    if (!agreed) { setErr(tr('Please agree to the Terms of Service and Privacy Policy.')); return }
+    if (turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
     setBusy(true)
     try {
       const res = await fetch(`${apiUrl}/organization/register`, {
@@ -66,7 +68,7 @@ export default function OrganizationRegister() {
         body: JSON.stringify({ ...form, inviteToken: inviteToken || undefined, registrationCode: inviteToken ? undefined : form.registrationCode, turnstileToken: captchaToken }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Registration failed')
+      if (!res.ok) throw new Error(data.error || tr('Registration failed'))
       localStorage.setItem('voluntrack:auth_token', data.token)
       await refreshUser()
       setToast(true)
@@ -89,39 +91,39 @@ export default function OrganizationRegister() {
         </Link>
 
         <Card padded={false} className="p-7">
-          <h1 className="text-2xl font-bold mb-1">{inviteToken ? 'Finish setting up your organization' : 'Register your organization'}</h1>
+          <h1 className="text-2xl font-bold mb-1">{inviteToken ? tr('Finish setting up your organization') : tr('Register your organization')}</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mb-6">
             {inviteToken
-              ? 'You were invited by a VolunTrack admin — just set your password.'
-              : 'Manage multiple schools under one account, using the registration code we sent you.'}
+              ? tr('You were invited by a VolunTrack admin. Just set your password.')
+              : tr('Manage multiple schools under one account, using the registration code we sent you.')}
           </p>
 
           {!inviteLoaded ? (
-            <p className="text-sm text-earth-500 py-4">Loading invite…</p>
+            <p className="text-sm text-earth-500 py-4">{tr('Loading invite…')}</p>
           ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             {!inviteToken && (
               <RegistrationCodeField kind="organization" value={form.registrationCode} onChange={(v) => setForm((f) => ({ ...f, registrationCode: v }))} />
             )}
             <div>
-              <label className="label">Organization name</label>
+              <label className="label">{tr('Organization name')}</label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                 <input type="text" className="input pl-9 disabled:opacity-60" placeholder="Lincoln School District" value={form.name} onChange={onChange('name')} disabled={!!inviteToken} required />
               </div>
             </div>
             <div>
-              <label className="label">Contact email</label>
+              <label className="label">{tr('Contact email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                 <input type="email" className="input pl-9 disabled:opacity-60" placeholder="admin@district.edu" value={form.email} onChange={onChange('email')} autoComplete="email" disabled={!!inviteToken} required />
               </div>
             </div>
             <div>
-              <label className="label">Password (8+ characters)</label>
+              <label className="label">{tr('Password (8+ characters)')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                <input type="password" className="input pl-9" placeholder="Min 8 characters" value={form.password} onChange={onChange('password')} autoComplete="new-password" required />
+                <input type="password" className="input pl-9" placeholder={tr('Min 8 characters')} value={form.password} onChange={onChange('password')} autoComplete="new-password" required />
               </div>
             </div>
 
@@ -136,10 +138,10 @@ export default function OrganizationRegister() {
                 onChange={(e) => setAgreed(e.target.checked)}
               />
               <span>
-                I&apos;ve read the short version and agree to the{' '}
-                <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Terms of Service</Link>
-                {' '}and{' '}
-                <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Privacy Policy</Link>.
+                {tr("I've read the short version and agree to the")}{' '}
+                <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Terms of Service')}</Link>
+                {' '}{tr('and')}{' '}
+                <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Privacy Policy')}</Link>.
               </span>
             </label>
 
@@ -148,19 +150,22 @@ export default function OrganizationRegister() {
             <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="organization-register" />
 
             <button type="submit" className="btn-primary w-full" disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
-              {busy ? 'Registering…' : <>Register organization <ArrowRight className="w-4 h-4" /></>}
+              {busy ? tr('Registering…') : <>{tr('Register organization')} <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
           )}
 
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-6">
-            Already have an organization account?{' '}
-            <Link to="/login" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">Sign in</Link>
+            {tr('Already have an organization account?')}{' '}
+            <Link to="/login" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Sign in')}</Link>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <LanguagePicker compact />
           </div>
         </Card>
       </div>
 
-      <Toast open={toast} onClose={() => setToast(false)}>Organization registered!</Toast>
+      <Toast open={toast} onClose={() => setToast(false)}>{tr('Organization registered!')}</Toast>
     </div>
   )
 }
