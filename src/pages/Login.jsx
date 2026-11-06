@@ -347,20 +347,20 @@ export default function Login() {
             </Link>
 
             <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-white animate-fade-in-up" style={{ animationDelay: '100ms' }}>{tr('Welcome back to the volunteer dashboard.')}</h1>
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-white animate-fade-in-up" style={{ animationDelay: '100ms' }}>{tr('Your hours are right where you left them.')}</h1>
               <p className="max-w-2xl text-lg text-slate-300 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                {tr('Sign in and pick up where you left off—track hours, keep goals moving, and export your service record with confidence.')}
+                {tr('Sign in to log today’s session, see how close you are to your goal, or download a report for school.')}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-              <FeatureCard title={tr('Fast logging')} description={tr('Jump straight to the hours form and save every session with proof and supervisor details.')} />
-              <FeatureCard title={tr('Progress tracking')} description={tr('See goal completion, weekly activity, and earned badges in one clean view.')} />
+              <FeatureCard title={tr('Log in a minute')} description={tr('What you did, when, where, and who can sign it. Add a photo if you have one.')} />
+              <FeatureCard title={tr('See where you stand')} description={tr('Your goal, this month’s hours and your badges on one page.')} />
             </div>
 
             <Link to="/help" className="block rounded-3xl border border-white/10 bg-slate-900/60 p-6 shadow-soft backdrop-blur text-sm text-slate-300 hover:bg-slate-800/60 transition animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-              <div className="font-semibold text-white">{tr('Need help getting started?')}</div>
-              <p className="mt-2 leading-6">{tr('Create an account, set your first goal, and log your first volunteer hours to earn a badge.')}</p>
+              <div className="font-semibold text-white">{tr('New here?')}</div>
+              <p className="mt-2 leading-6">{tr('Create a free account, set a goal, and log your first hours. It takes about five minutes.')}</p>
             </Link>
           </div>
         )}
@@ -374,7 +374,7 @@ export default function Login() {
             <div className="bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_25%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.14),transparent_25%)] p-8">
               <div className="flex items-center justify-between mb-6 animate-fade-in-up">
                 <div>
-                  <p className="text-sm text-brand-200 uppercase tracking-[0.3em]" style={tenantColor ? { color: tenantColor } : undefined}>{tr('Secure sign in')}</p>
+                  <p className="text-sm text-brand-200 uppercase tracking-[0.3em]" style={tenantColor ? { color: tenantColor } : undefined}>{tr('Sign in')}</p>
                   <h2 className="text-3xl font-bold text-white">{tr('Welcome back')}</h2>
                 </div>
                 <img src={logoSrc} alt={logoAlt} className="w-12 h-12 object-contain" />
