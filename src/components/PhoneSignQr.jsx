@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { CheckCircle2, Loader2, Smartphone } from 'lucide-react'
 import { isNativeApp } from '@/lib/platform.js'
 import { startCertificateSign, certificateSignStatus } from '@/lib/requirements.js'
+import { tr } from '@/lib/i18n.js'
 
 const SITE = ((isNativeApp && import.meta.env.VITE_SITE_URL) || window.location.origin).replace(/\/$/, '')
 const POLL_MS = 2000
@@ -59,7 +60,7 @@ export default function PhoneSignQr({ signerName, onSigned }) {
   if (state.status === 'done') {
     return (
       <p className="flex items-center gap-2 text-sm text-brand-600 dark:text-brand-400">
-        <CheckCircle2 className="w-4 h-4" /> Signature received from the phone. Press Save requirements to keep it.
+        <CheckCircle2 className="w-4 h-4" /> {tr('Signature received from the phone. Press Save requirements to keep it.')}
       </p>
     )
   }
@@ -67,12 +68,12 @@ export default function PhoneSignQr({ signerName, onSigned }) {
   if (state.status === 'waiting') {
     return (
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-earth-200 dark:border-earth-700 p-3">
-        <canvas ref={canvasRef} className="rounded-lg bg-white" aria-label="QR code to sign on a phone" />
+        <canvas ref={canvasRef} className="rounded-lg bg-white" aria-label={tr('QR code to sign on a phone')} />
         <div className="text-sm space-y-2 max-w-xs">
-          <p className="font-medium">Scan with the signer’s phone camera</p>
-          <p className="text-xs text-earth-500 dark:text-earth-400">They sign with a finger and tap Done. The signature shows up here by itself. The code works once, for 15 minutes.</p>
-          <p className="flex items-center gap-2 text-xs text-earth-500 dark:text-earth-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Waiting for the signature…</p>
-          <button type="button" className="btn-sm btn-ghost" onClick={() => setState({ status: 'idle', token: '', error: '' })}>Cancel</button>
+          <p className="font-medium">{tr('Scan with the signer’s phone camera')}</p>
+          <p className="text-xs text-earth-500 dark:text-earth-400">{tr('They sign with a finger and tap Done. The signature shows up here by itself. The code works once, for 15 minutes.')}</p>
+          <p className="flex items-center gap-2 text-xs text-earth-500 dark:text-earth-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> {tr('Waiting for the signature…')}</p>
+          <button type="button" className="btn-sm btn-ghost" onClick={() => setState({ status: 'idle', token: '', error: '' })}>{tr('Cancel')}</button>
         </div>
       </div>
     )
@@ -82,7 +83,7 @@ export default function PhoneSignQr({ signerName, onSigned }) {
     <div>
       <button type="button" className="btn-sm btn-secondary" onClick={start} disabled={state.status === 'loading'}>
         {state.status === 'loading' ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Smartphone className="w-3.5 h-3.5 mr-1" />}
-        Sign on your phone instead
+        {tr('Sign on your phone instead')}
       </button>
       {state.error && <p className="mt-1 text-xs text-red-500">{state.error}</p>}
     </div>

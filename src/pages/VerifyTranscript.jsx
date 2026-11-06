@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, Upload, AlertTriangle, Loader2 } from 'lucide-re
 import Card from '@/components/Card.jsx'
 import { readTranscriptFile, verifyTranscript } from '@/lib/transcript.js'
 import { fmtDate, fmtHours } from '@/utils/date.js'
+import { tr } from '@/lib/i18n.js'
 
 // Public checker for a signed transcript (#143). Built for a receiving school
 // or an admissions office with no VolunTrack account: drop the .json file the
@@ -39,14 +40,13 @@ export default function VerifyTranscript() {
       <div className="w-full max-w-3xl mx-auto">
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-6">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-10 h-10 object-contain" />
-          <span className="font-display font-bold text-2xl">VolunTrack</span>
+          <span className="font-display font-bold text-2xl">{tr('VolunTrack')}</span>
         </Link>
 
         <Card padded={false} className="p-7">
-          <h1 className="text-xl font-bold">Verify a volunteer transcript</h1>
+          <h1 className="text-xl font-bold">{tr('Verify a volunteer transcript')}</h1>
           <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">
-            Check that a VolunTrack transcript is genuine and has not been changed since it was issued. No account
-            needed. The file is checked by our server and not stored.
+            {tr('Check that a VolunTrack transcript is genuine and has not been changed since it was issued. No account needed. The file is checked by our server and not stored.')}
           </p>
 
           <label
@@ -89,7 +89,7 @@ function Result({ result, doc, fileName }) {
     return (
       <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/5 p-5">
         <div className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-300">
-          <XCircle className="w-5 h-5" /> Not verified
+          <XCircle className="w-5 h-5" /> {tr('Not verified')}
         </div>
         <p className="text-sm mt-1">{result.message}</p>
         <p className="text-xs text-earth-500 dark:text-earth-400 mt-2">{fileName}</p>
@@ -105,25 +105,25 @@ function Result({ result, doc, fileName }) {
     <div className="mt-6 space-y-5">
       <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
         <div className="flex items-center gap-2 font-semibold text-emerald-700 dark:text-emerald-300">
-          <CheckCircle2 className="w-5 h-5" /> Genuine and unaltered
+          <CheckCircle2 className="w-5 h-5" /> {tr('Genuine and unaltered')}
         </div>
         <p className="text-sm mt-1">
-          Issued by VolunTrack for <strong>{summary.studentName}</strong>
+          {tr('Issued by VolunTrack for')} <strong>{summary.studentName}</strong>
           {summary.issuer?.school ? <> at <strong>{summary.issuer.school}</strong></> : null} on{' '}
           {/* issued_at is a UTC timestamp; show the viewer's local day. */}
           {new Date(summary.issuedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}.
         </p>
         {result.keyStatus === 'retired' && (
           <p className="text-xs text-earth-500 dark:text-earth-400 mt-2">
-            Signed with a signing key that has since been rotated. It is still valid.
+            {tr('Signed with a signing key that has since been rotated. It is still valid.')}
           </p>
         )}
       </div>
 
       <div className="grid grid-cols-3 gap-3 text-center">
-        <Stat label="Total hours" value={fmtHours(Number(summary.totals?.hours) || 0)} />
-        <Stat label="Approved hours" value={fmtHours(Number(summary.totals?.approved_hours) || 0)} />
-        <Stat label="Entries" value={summary.totals?.entries ?? logs.length} />
+        <Stat label={tr('Total hours')} value={fmtHours(Number(summary.totals?.hours) || 0)} />
+        <Stat label={tr('Approved hours')} value={fmtHours(Number(summary.totals?.approved_hours) || 0)} />
+        <Stat label={tr('Entries')} value={summary.totals?.entries ?? logs.length} />
       </div>
 
       {logs.length > 0 && (
@@ -131,11 +131,11 @@ function Result({ result, doc, fileName }) {
           <table className="w-full text-sm">
             <thead className="bg-earth-50 dark:bg-[#0f1a14] text-earth-500 dark:text-earth-400">
               <tr>
-                <th className="text-left px-3 py-2">Date</th>
-                <th className="text-left px-3 py-2">Activity</th>
-                <th className="text-left px-3 py-2">Verification</th>
-                <th className="text-left px-3 py-2">Proof</th>
-                <th className="text-right px-3 py-2">Hours</th>
+                <th className="text-left px-3 py-2">{tr('Date')}</th>
+                <th className="text-left px-3 py-2">{tr('Activity')}</th>
+                <th className="text-left px-3 py-2">{tr('Verification')}</th>
+                <th className="text-left px-3 py-2">{tr('Proof')}</th>
+                <th className="text-right px-3 py-2">{tr('Hours')}</th>
               </tr>
             </thead>
             <tbody>
@@ -169,7 +169,7 @@ function Result({ result, doc, fileName }) {
 
 function VerificationCell({ v }) {
   const label = STATUS_LABEL[v?.status]
-  if (!label) return <span className="text-earth-500 dark:text-earth-400">Not verified</span>
+  if (!label) return <span className="text-earth-500 dark:text-earth-400">{tr('Not verified')}</span>
   const by = [ROLE_LABEL[v.verified_by_role], v.supervisor_name && v.verified_by_role === 'supervisor' ? v.supervisor_name : null]
     .filter(Boolean)
     .join(' ')

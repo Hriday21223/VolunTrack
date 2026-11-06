@@ -75,7 +75,7 @@ export default function GroupHoursCard({ students = [], onDone }) {
           ))}
         </ul>
         <button type="submit" className="btn-primary" disabled={busy || picked.size === 0}>
-          {busy ? tr('Adding…') : `Add hours for ${picked.size} student${picked.size === 1 ? '' : 's'}`}
+          {busy ? tr('Adding…') : (picked.size === 1 ? tr('Add hours for 1 student') : tr('Add hours for {n} students', { n: picked.size }))}
         </button>
         {msg && <p className="text-sm text-brand-700 dark:text-brand-300">{msg}</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}

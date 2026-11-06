@@ -9,6 +9,7 @@ import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { OPERATOR_NAME, OPERATOR_LOCATION } from '@/lib/business.js'
+import { tr } from '@/lib/i18n.js'
 
 export default function Contact() {
   useSeo({
@@ -145,49 +146,49 @@ export default function Contact() {
   return (
     <div className="min-h-screen page-shell">
       <PublicHeader>
-        <Link to="/" className="btn-ghost hidden sm:inline-flex">Home</Link>
-        <Link to="/help" className="btn-ghost hidden sm:inline-flex">Help</Link>
-        <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
+        <Link to="/" className="btn-ghost hidden sm:inline-flex">{tr('Home')}</Link>
+        <Link to="/help" className="btn-ghost hidden sm:inline-flex">{tr('Help')}</Link>
+        <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> {tr('Back to sign in')}</Link>
       </PublicHeader>
 
       <main className="max-w-4xl mx-auto px-4 md:px-8 pb-20">
-        <h1 className="text-3xl md:text-4xl font-bold text-center">Contact us</h1>
+        <h1 className="text-3xl md:text-4xl font-bold text-center">{tr('Contact us')}</h1>
         <p className="text-center text-earth-600 dark:text-earth-300 mt-3 max-w-xl mx-auto">
-          Found a bug, have a feature request, or just want to say hi? We'd love to hear from you.
+          {tr("Found a bug, have a feature request, or just want to say hi? We'd love to hear from you.")}
         </p>
 
         <div className="grid md:grid-cols-5 gap-6 mt-10">
           <Card className="md:col-span-3">
             <h2 className="font-display font-semibold text-lg mb-1 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-brand-600" /> Send a message
+              <MessageSquare className="w-5 h-5 text-brand-600" /> {tr('Send a message')}
             </h2>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-5">
-              We typically reply within a couple of days.
+              {tr('We typically reply within a couple of days.')}
             </p>
 
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label" htmlFor="contact-name">Your name</label>
+                  <label className="label" htmlFor="contact-name">{tr('Your name')}</label>
                   <input id="contact-name" className="input" value={form.name} onChange={onChange('name')} required />
                 </div>
                 <div>
-                  <label className="label" htmlFor="contact-email">Email</label>
+                  <label className="label" htmlFor="contact-email">{tr('Email')}</label>
                   <input id="contact-email" type="email" className="input" value={form.email} onChange={onChange('email')} required />
                 </div>
               </div>
               <div>
-                <label className="label" htmlFor="contact-subject">What is it about?</label>
+                <label className="label" htmlFor="contact-subject">{tr('What is it about?')}</label>
                 <select id="contact-subject" className="input" value={form.subject} onChange={onChange('subject')}>
-                  <option>General question</option>
-                  <option>Bug report</option>
-                  <option>Feature request</option>
-                  <option>School or organization partnership</option>
+                  <option value="General question">{tr('General question')}</option>
+                  <option value="Bug report">{tr('Bug report')}</option>
+                  <option value="Feature request">{tr('Feature request')}</option>
+                  <option value="School or organization partnership">{tr('School or organization partnership')}</option>
                 </select>
               </div>
               {form.subject === 'School or organization partnership' && (
                 <div>
-                  <label className="label">Customer ID <span className="text-earth-400 font-normal">(optional)</span></label>
+                  <label className="label">{tr('Customer ID')} <span className="text-earth-400 font-normal">(optional)</span></label>
                   <input
                     className="input font-mono uppercase"
                     value={form.accountCode}
@@ -197,17 +198,17 @@ export default function Contact() {
                   />
                   {accountCheck === 'checking' && (
                     <p className="text-xs text-earth-500 mt-1 flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Checking…
+                      <Loader2 className="w-3 h-3 animate-spin" /> {tr('Checking…')}
                     </p>
                   )}
                   {accountCheck === 'malformed' && (
                     <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                      <XCircle className="w-3 h-3" /> That doesn't look like a VolunTrack account ID (e.g. VT-SCH-4F2K9A).
+                      <XCircle className="w-3 h-3" /> {tr("That doesn't look like a VolunTrack account ID (e.g. VT-SCH-4F2K9A).")}
                     </p>
                   )}
                   {accountCheck === 'unknown' && (
                     <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                      <XCircle className="w-3 h-3" /> No account has that ID. Check it against your invoice, or leave it blank.
+                      <XCircle className="w-3 h-3" /> {tr('No account has that ID. Check it against your invoice, or leave it blank.')}
                     </p>
                   )}
                   {accountCheck?.name && (
@@ -220,7 +221,7 @@ export default function Contact() {
               )}
               {form.subject === 'School or organization partnership' && (
                 <div>
-                  <label className="label">Coupon code <span className="text-earth-400 font-normal">(optional)</span></label>
+                  <label className="label">{tr('Coupon code')} <span className="text-earth-400 font-normal">(optional)</span></label>
                   <input
                     className="input font-mono uppercase tracking-wider"
                     value={form.couponCode}
@@ -241,17 +242,17 @@ export default function Contact() {
                 </div>
               )}
               <div>
-                <label className="label">Message</label>
+                <label className="label">{tr('Message')}</label>
                 <textarea
                   className="input min-h-[140px] resize-y" required
                   value={form.message} onChange={onChange('message')}
-                  placeholder="Tell us a little about what you need…"
+                  placeholder={tr('Tell us a little about what you need…')}
                 />
               </div>
               {sendErr && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{sendErr}</div>}
               <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="contact" />
               <button className="btn-primary" disabled={busy || !accountCodeOk || (turnstileEnabled && !captchaToken)}>
-                {busy ? 'Sending…' : <>Send message <Send className="w-4 h-4" /></>}
+                {busy ? 'Sending…' : <>{tr('Send message')} <Send className="w-4 h-4" /></>}
               </button>
             </form>
           </Card>
@@ -259,17 +260,17 @@ export default function Contact() {
           <div className="md:col-span-2 space-y-4">
             <Card>
               <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
-                <Mail className="w-4 h-4 text-brand-600" /> Email
+                <Mail className="w-4 h-4 text-brand-600" /> {tr('Email')}
               </h3>
                <a href="mailto:volunteertrackinfo@gmail.com" className="text-brand-700 dark:text-brand-300 hover:underline font-medium">
                 volunteertrackinfo@gmail.com
               </a>
-              <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">For general questions and support.</p>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{tr('For general questions and support.')}</p>
             </Card>
 
             <Card>
               <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
-                <Building2 className="w-4 h-4 text-brand-600" /> Who runs VolunTrack
+                <Building2 className="w-4 h-4 text-brand-600" /> {tr('Who runs VolunTrack')}
               </h3>
               <p className="text-sm">{OPERATOR_NAME}</p>
               {OPERATOR_LOCATION && <p className="text-sm text-earth-500 dark:text-earth-400">{OPERATOR_LOCATION}</p>}
@@ -277,7 +278,7 @@ export default function Contact() {
 
             <Card>
               <h3 className="font-display font-semibold flex items-center gap-2 mb-2">
-                <MessageSquare className="w-4 h-4 text-brand-600" /> Office hours
+                <MessageSquare className="w-4 h-4 text-brand-600" /> {tr('Office hours')}
               </h3>
               <div className="text-sm text-earth-700 dark:text-earth-200">
                 {officeHours.days}<br />{officeHours.hours}
@@ -286,7 +287,7 @@ export default function Contact() {
             </Card>
 
             <Card>
-              <h3 className="font-display font-semibold mb-3">Follow along</h3>
+              <h3 className="font-display font-semibold mb-3">{tr('Follow along')}</h3>
               <div className="flex gap-3">
                 <a className="p-2 rounded-lg bg-earth-100 hover:bg-earth-200 dark:bg-[#1b2a22] dark:hover:bg-[#243529]" href="https://www.instagram.com/volunteertrackofficial/?hl=en" target="_blank" rel="noreferrer" aria-label="Instagram"><Instagram className="w-4 h-4" /></a>
               </div>
@@ -298,7 +299,7 @@ export default function Contact() {
       <Footer />
 
       <Toast open={done} onClose={() => setDone(false)} variant="success">
-        Message sent! We'll be in touch.
+        {tr("Message sent! We'll be in touch.")}
       </Toast>
     </div>
   )
