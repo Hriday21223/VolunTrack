@@ -1,0 +1,69 @@
+# Daily database snapshot (#777). Asks Neon to make a copy of the live
+# database as a branch named backup-YYYY-MM-DD inside the same Neon project,
+# then deletes backup-* branches older than KEEP_DAYS. The data never leaves
+# Neon: this job only calls Neon's API and never reads the database. A branch
+# without a compute endpoint costs no compute time; restoring is one click in
+# Neon (see docs/BACKUPS.md).
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   NEON_API_KEY     a Neon API key (Neon → Account settings → API keys)
+#   NEON_PROJECT_ID  the project's ID (Neon → project → Settings → General)
+# Until both are set, the job does nothing.
+name: Database snapshot
+
+on:
+  schedule:
+    - cron: '30 8 * * *'   # every day, 08:30 UTC (2:30 AM Central)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      KEEP_DAYS: '7'
+    steps:
+      - name: Make today's snapshot and remove old ones
+        run: |
+          set -euo pipefail
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "::warning::NEON_API_KEY or NEON_PROJECT_ID is not set, so no snapshot was made. See docs/BACKUPS.md."
+            exit 0
+          fi
+          api="https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID"
+          call() { curl -sS --fail-with-body -H "Authorization: Bearer $NEON_API_KEY" -H 'Accept: application/json' -H 'Content-Type: application/json' "$@"; }
+
+          branches=$(call "$api/branches")
+          parent=$(echo "$branches" | jq -r '[.branches[] | select(.default == true or .primary == true)][0].id')
+          if [ -z "$parent" ] || [ "$parent" = "null" ]; then
+            echo "::error::Couldn't find the project's main branch."; exit 1
+          fi
+          today="backup-$(date -u +%Y-%m-%d)"
+
+          if echo "$branches" | jq -e --arg n "$today" '.branches[] | select(.name == $n)' >/dev/null; then
+            echo "Today's snapshot ($today) already exists."
+          else
+            # No endpoints: a branch with no compute is just the saved data.
+            call -X POST "$api/branches" -d "{\"branch\":{\"name\":\"$today\",\"parent_id\":\"$parent\"}}" \
+              | jq -r '"Made snapshot \(.branch.name) (\(.branch.id))"'
+          fi
+
+          # Delete backup-* branches older than KEEP_DAYS, by the date in the name.
+          cutoff=$(date -u -d "-$KEEP_DAYS days" +%Y-%m-%d)
+          call "$api/branches" | jq -r --arg cutoff "$cutoff" \
+            '.branches[] | select(.name | test("^backup-[0-9]{4}-[0-9]{2}-[0-9]{2}$")) | select((.name | ltrimstr("backup-")) < $cutoff) | "\(.id) \(.name)"' \
+            | while read -r id name; do
+                call -X DELETE "$api/branches/$id" >/dev/null && echo "Removed old snapshot $name"
+              done
+
+          echo "Snapshots now:"
+          call "$api/branches" | jq -r '.branches[] | select(.name | startswith("backup-")) | .name' | sort
