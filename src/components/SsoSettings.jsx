@@ -284,8 +284,8 @@ export default function SsoSettings() {
               value={form.provider}
               onChange={(e) => setForm({ ...form, provider: e.target.value })}
             >
-              <option value="google">Google Workspace</option>
-              <option value="microsoft">Microsoft Entra ID (Microsoft 365)</option>
+              <option value="google">{tr('Google Workspace')}</option>
+              <option value="microsoft">{tr('Microsoft Entra ID (Microsoft 365)')}</option>
               <option value="oidc">{tr('Other (generic OIDC)')}</option>
             </select>
           </div>

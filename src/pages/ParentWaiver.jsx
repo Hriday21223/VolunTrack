@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, CheckCircle2, Loader2, FileSignature } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const fmt = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '')
@@ -53,7 +54,7 @@ export default function ParentWaiver() {
       <div className="w-full max-w-xl mx-auto">
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-6">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-10 h-10 object-contain" />
-          <span className="font-display font-bold text-2xl">VolunTrack</span>
+          <span className="font-display font-bold text-2xl">{tr('VolunTrack')}</span>
         </Link>
         <Card padded={false} className="p-6">
           {req.loading ? (
@@ -68,7 +69,7 @@ export default function ParentWaiver() {
           ) : done ? (
             <div className="text-center">
               <CheckCircle2 className="w-10 h-10 text-brand-500 mx-auto mb-3" />
-              <p className="font-semibold">Thank you</p>
+              <p className="font-semibold">{tr('Thank you')}</p>
               <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">We&apos;ve let {child} and the organizer know you agreed.</p>
             </div>
           ) : (
@@ -80,7 +81,7 @@ export default function ParentWaiver() {
                 </p>
               </div>
               <div className="max-h-72 overflow-y-auto whitespace-pre-line rounded-xl border border-earth-200 dark:border-white/10 p-3 text-sm">{d.waiverText}</div>
-              <label className="block text-sm"><span className="font-medium">Your full name</span>
+              <label className="block text-sm"><span className="font-medium">{tr('Your full name')}</span>
                 <input className="input mt-1" required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
               </label>
               <label className="flex items-start gap-2 text-sm">

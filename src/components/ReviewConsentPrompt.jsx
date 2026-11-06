@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ShieldCheck, KeyRound, X } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -123,9 +124,9 @@ export default function ReviewConsentPrompt() {
               <div className="w-14 h-14 rounded-full bg-brand-900/40 border border-brand-700/30 grid place-items-center mx-auto mb-4">
                 <ShieldCheck className="w-7 h-7 text-brand-400" />
               </div>
-              <h2 className="text-2xl font-bold">Feature your review?</h2>
+              <h2 className="text-2xl font-bold">{tr('Feature your review?')}</h2>
               <p className="mt-2 text-sm text-earth-400 leading-6">
-                You submitted a review. Do you want it considered for the public testimonials on our site?
+                {tr('You submitted a review. Do you want it considered for the public testimonials on our site?')}
               </p>
             </div>
             {error && <p className="mt-4 text-sm text-red-400 text-center">{error}</p>}
@@ -135,14 +136,14 @@ export default function ReviewConsentPrompt() {
                 disabled={busy}
                 className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-earth-200 hover:bg-white/5 disabled:opacity-40 transition-colors"
               >
-                No thanks
+                {tr('No thanks')}
               </button>
               <button
                 onClick={() => requestPin('yes')}
                 disabled={busy}
                 className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-40 transition-colors"
               >
-                Yes, feature it
+                {tr('Yes, feature it')}
               </button>
             </div>
           </>
@@ -154,7 +155,7 @@ export default function ReviewConsentPrompt() {
               <div className="w-14 h-14 rounded-full bg-brand-900/40 border border-brand-700/30 grid place-items-center mx-auto mb-4">
                 <KeyRound className="w-7 h-7 text-brand-400" />
               </div>
-              <h2 className="text-2xl font-bold">Confirm it's you</h2>
+              <h2 className="text-2xl font-bold">{tr("Confirm it's you")}</h2>
               <p className="mt-2 text-sm text-earth-400 leading-6">
                 We sent a 4-digit code to your email to confirm you {choice === 'yes' ? 'want' : "don't want"} your review featured.
               </p>
@@ -182,7 +183,7 @@ export default function ReviewConsentPrompt() {
               disabled={busy}
               className="mt-2 w-full text-xs text-earth-400 hover:text-earth-200 transition-colors"
             >
-              Resend code
+              {tr('Resend code')}
             </button>
           </>
         )}
@@ -192,7 +193,7 @@ export default function ReviewConsentPrompt() {
             <div className="w-14 h-14 rounded-full bg-brand-900/40 border border-brand-700/30 grid place-items-center mx-auto mb-4">
               <ShieldCheck className="w-7 h-7 text-brand-400" />
             </div>
-            <h2 className="text-2xl font-bold">Got it</h2>
+            <h2 className="text-2xl font-bold">{tr('Got it')}</h2>
             <p className="mt-2 text-sm text-earth-400 leading-6">
               {choice === 'yes'
                 ? "Thanks — your review is now eligible to be featured. We'll email you if it's approved."
@@ -202,7 +203,7 @@ export default function ReviewConsentPrompt() {
               onClick={() => setDismissed(true)}
               className="mt-5 w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 transition-colors"
             >
-              Close
+              {tr('Close')}
             </button>
           </div>
         )}

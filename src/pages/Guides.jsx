@@ -7,6 +7,7 @@ import PublicHeader from '@/components/PublicHeader.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { GUIDES, guideBySlug } from '@/lib/guides.js'
 import NotFound from '@/pages/NotFound.jsx'
+import { tr } from '@/lib/i18n.js'
 
 const SITE_URL = (import.meta.env.VITE_SITE_URL || 'http://localhost:5173').replace(/\/$/, '')
 
@@ -18,8 +19,8 @@ const SITE_URL = (import.meta.env.VITE_SITE_URL || 'http://localhost:5173').repl
 function Header() {
   return (
     <PublicHeader>
-      <Link to="/login" className="btn-ghost">Sign in</Link>
-      <Link to="/register" className="btn-primary hidden sm:inline-flex">Get started free</Link>
+      <Link to="/login" className="btn-ghost">{tr('Sign in')}</Link>
+      <Link to="/register" className="btn-primary hidden sm:inline-flex">{tr('Get started free')}</Link>
     </PublicHeader>
   )
 }
@@ -27,11 +28,11 @@ function Header() {
 function SignUpCta() {
   return (
     <Card className="mt-10 text-center">
-      <h2 className="text-xl font-bold">Track your hours with VolunTrack</h2>
-      <p className="mt-2 text-sm text-earth-500 dark:text-earth-400">Free for students. Log hours in a minute, see your goal, and export a report when it’s due.</p>
+      <h2 className="text-xl font-bold">{tr('Track your hours with VolunTrack')}</h2>
+      <p className="mt-2 text-sm text-earth-500 dark:text-earth-400">{tr('Free for students. Log hours in a minute, see your goal, and export a report when it’s due.')}</p>
       <div className="mt-4 flex flex-wrap justify-center gap-3">
-        <Link to="/register" className="btn-primary">Create a free account <ArrowRight className="w-4 h-4" /></Link>
-        <Link to="/for-schools" className="btn-ghost">For schools</Link>
+        <Link to="/register" className="btn-primary">{tr('Create a free account')} <ArrowRight className="w-4 h-4" /></Link>
+        <Link to="/for-schools" className="btn-ghost">{tr('For schools')}</Link>
       </div>
     </Card>
   )
@@ -56,8 +57,8 @@ export function GuidesIndex() {
     <div className="min-h-screen page-shell">
       <Header />
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
-        <h1 className="text-3xl md:text-4xl font-bold text-center">Volunteer hour guides</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-3">Simple, practical advice for logging service hours that count.</p>
+        <h1 className="text-3xl md:text-4xl font-bold text-center">{tr('Volunteer hour guides')}</h1>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-3">{tr('Simple, practical advice for logging service hours that count.')}</p>
         <ul className="mt-10 space-y-4">
           {GUIDES.map((g) => (
             <li key={g.slug}>
@@ -65,7 +66,7 @@ export function GuidesIndex() {
                 <Card className="transition group-hover:border-brand-500/50">
                   <h2 className="text-lg font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-brand-500 shrink-0" /> {g.title}</h2>
                   <p className="mt-2 text-sm text-earth-500 dark:text-earth-400">{g.description}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-sm text-brand-600 dark:text-brand-400">Read the guide <ChevronRight className="w-4 h-4" /></span>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm text-brand-600 dark:text-brand-400">{tr('Read the guide')} <ChevronRight className="w-4 h-4" /></span>
                 </Card>
               </Link>
             </li>
@@ -129,8 +130,8 @@ export function GuidePage() {
       <Header />
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <nav aria-label="Breadcrumb" className="text-sm text-earth-500 dark:text-earth-400">
-          <Link to="/" className="hover:underline">Home</Link>{' / '}
-          <Link to="/guides" className="hover:underline">Guides</Link>
+          <Link to="/" className="hover:underline">{tr('Home')}</Link>{' / '}
+          <Link to="/guides" className="hover:underline">{tr('Guides')}</Link>
         </nav>
         <article>
           <h1 className="mt-3 text-3xl md:text-4xl font-bold leading-tight">{guide.title}</h1>
@@ -147,7 +148,7 @@ export function GuidePage() {
         </article>
         <SignUpCta />
         <section className="mt-10">
-          <h2 className="text-lg font-semibold">More guides</h2>
+          <h2 className="text-lg font-semibold">{tr('More guides')}</h2>
           <ul className="mt-3 space-y-2">
             {others.map((g) => (
               <li key={g.slug}><Link to={`/guides/${g.slug}`} className="text-brand-600 dark:text-brand-400 hover:underline">{g.title}</Link></li>
