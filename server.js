@@ -65,7 +65,7 @@ import taskPhotoRoutes from './server/routes/taskPhotos.js'
 import organizerProfileRoutes from './server/routes/organizerProfile.js'
 import weatherRoutes from './server/routes/weather.js'
 import { escapeHtml } from './server/html.js'
-import { emailFooterHtml, emailFooterText } from './server/email.js'
+import { emailFooterHtml, sendEmail, hasEmail } from './server/email.js'
 import { loadEmailOverrides } from './server/emailSettings.js'
 import { isLocalDatabaseUrl } from './server/localDb.js'
 import { seedMonitor } from './server/monitor.js'
@@ -425,13 +425,12 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Invalid code.' })
   }
 
-  const { transport, missing } = transporter()
   logDevCode({ email: email.trim(), code, type, at: new Date().toISOString() })
 
-  if (!transport) {
+  if (!hasEmail()) {
     return res.status(503).json({
       error: 'Email backend is not configured.',
-      missingVars: missing,
+      missingVars: transporter().missing,
       serverGenerated,
     })
   }
@@ -439,24 +438,19 @@ app.post('/api/send-reset-email', emailLimiter, async (req, res) => {
   const subject = type === 'pin'
     ? 'VolunTrack PIN recovery code'
     : 'VolunTrack password recovery code'
-  const text = `Your VolunTrack recovery code is ${code}. It expires in 15 minutes. ${emailFooterText()}`
   const html = `<p>Your VolunTrack recovery code is <strong>${escapeHtml(code)}</strong>.</p><p>It expires in 15 minutes.</p>${emailFooterHtml()}`
 
-  try {
-    await transport.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to: email,
-      subject,
-      text,
-      html,
-    })
-    // `serverGenerated` tells the client its own locally-generated code is not
-    // the one that was emailed, so it must not show it on screen.
-    return res.status(200).json({ ok: true, serverGenerated, from: senderAddress() })
-  } catch (error) {
-    console.error('Email send failed:', error)
+  // Through sendEmail (#775): Brevo first, SMTP only as the local fallback —
+  // Render's free plan blocks SMTP, so a direct SMTP send could never arrive.
+  // High priority: it may use the reserve of the daily email budget.
+  const result = await sendEmail({ to: email, subject, html, priority: 'high' })
+  if (!result.sent) {
+    console.error('Recovery email send failed:', result.error || 'not sent')
     return res.status(500).json({ error: 'Failed to send email.', serverGenerated })
   }
+  // `serverGenerated` tells the client its own locally-generated code is not
+  // the one that was emailed, so it must not show it on screen.
+  return res.status(200).json({ ok: true, serverGenerated, from: senderAddress() })
 })
 
 // Dev-only helper: returns the most recently generated code for an email so
@@ -633,11 +627,11 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
     }
   }
 
-  const { transport, missing } = transporter()
-  if (!transport) {
+  // Any provider (#775): Brevo in production, where SMTP is blocked.
+  if (!hasEmail()) {
     return res.status(503).json({
       error: 'Email backend is not configured.',
-      missingVars: missing,
+      missingVars: transporter().missing,
     })
   }
 
@@ -662,14 +656,6 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
   const safeVerifyUrl = verifyUrl ? escapeHtml(verifyUrl) : null
   const greeting = safeSupervisorName ? `Hi ${safeSupervisorName},` : 'Hi,'
 
-  const text = `${supervisorName ? `Hi ${supervisorName},` : 'Hi,'}\n\n`
-    + `${studentName} logged ${hoursNum} hour(s) for "${activity}" and listed you as their supervisor on VolunTrack.\n\n`
-    + (verifyUrl
-      ? `Please review and approve or reject these hours: ${verifyUrl}\n\n`
-      : '')
-    + (inbox ? `You have ${inbox.count} requests waiting from students. Review them all at once: ${inbox.url}\n\n` : '')
-    + `Sign up for a free VolunTrack account: ${appUrl}\n\n${emailFooterText()}`
-
   const html = `
     <p>${greeting}</p>
     <p><strong>${safeStudent}</strong> logged <strong>${hoursNum}</strong> hour(s) for "${safeActivity}" and listed you as their supervisor on VolunTrack.</p>
@@ -688,13 +674,10 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
     ${emailFooterHtml()}`
 
   try {
-    await transport.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to: supervisorEmail,
-      subject: 'You were listed as a supervisor on VolunTrack',
-      text,
-      html,
-    })
+    // Through sendEmail (#775): Brevo first. Render blocks SMTP, so a direct
+    // SMTP send never reached the supervisor in production.
+    const sentMail = await sendEmail({ to: supervisorEmail, subject: 'You were listed as a supervisor on VolunTrack', html })
+    if (!sentMail.sent) throw new Error(sentMail.error || 'Email not sent')
     // The text (#609): same link, after the email went. Stored on the request
     // so the reminders can text too, and cleared after 30 days.
     let texted = false
@@ -817,16 +800,14 @@ async function decideVerification(token, action, signature, actorSub = null) {
   // Best-effort: let the student know the outcome. Never fails the response.
   const row = rows[0]
   if (row.student_email) {
-    const { transport } = transporter()
-    if (transport) {
+    // Through sendEmail (#775), so it goes out on Brevo in production.
+    if (hasEmail() && !row.student_email.endsWith('@test.com')) {
       const verb = newStatus === 'approved' ? 'approved' : 'rejected'
       const who = row.supervisor_name ? escapeHtml(row.supervisor_name) : 'Your supervisor'
       const safeActivity = escapeHtml(row.activity)
-      transport.sendMail({
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      sendEmail({
         to: row.student_email,
         subject: `Your supervisor ${verb} your VolunTrack hours`,
-        text: `${row.supervisor_name || 'Your supervisor'} ${verb} the ${row.hours} hour(s) you logged for "${row.activity}".\n\n${emailFooterText()}`,
         html: `<p><strong>${who}</strong> ${verb} the <strong>${row.hours}</strong> hour(s) you logged for "${safeActivity}".</p>${emailFooterHtml()}`,
       }).catch((error) => console.error('Student outcome email failed:', error))
     }
