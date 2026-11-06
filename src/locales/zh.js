@@ -3368,6 +3368,8 @@ export default {
   "School accounts need a one-time code from VolunTrack.": "学校账户需要 VolunTrack 提供的一次性代码。",
   "Don't have one?": "还没有？",
   "for a quote and your code.": "获取报价和你的代码。",
+  "Volunteer the same time every week?": "每周固定时间做志愿？",
+  "Add a regular shift": "添加固定班次",
   "Your hours are right where you left them.": "你的时数都还在。",
   "Sign in to log today’s session, see how close you are to your goal, or download a report for school.": "登录后可以记录今天的活动、查看离目标还有多远，或下载给学校的报告。",
   "Log in a minute": "一分钟记录",

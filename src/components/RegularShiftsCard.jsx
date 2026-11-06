@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CalendarClock, Check, Plus, Trash2, X } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import Card from '@/components/Card.jsx'
@@ -12,10 +12,15 @@ const blank = { activity: '', category: ACTIVITY_CATEGORIES[0], orgName: '', loc
 // "Repeat my regular shift" (#571): weekly shifts the student saved, and a
 // "Did you go?" for each recent one not logged yet. Log it opens Log Hours
 // filled in from the shift (/log?shift=…&date=…); Skip remembers that week.
+// Shown only to people who use regular shifts (#763): an empty card was
+// clutter for everyone else. The way in is the "Add a regular shift" link on
+// Log Hours, which opens /?addShift=1 with the form open.
 export default function RegularShiftsCard({ logs }) {
   const nav = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const wantsAdd = params.get('addShift') === '1'
   const [shifts, setShifts] = useState(null)
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState(wantsAdd)
   const [form, setForm] = useState(blank)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +30,18 @@ export default function RegularShiftsCard({ logs }) {
 
   const prompts = useMemo(() => (shifts || []).flatMap((s) => pendingShiftDates(s, logs).map((date) => ({ shift: s, date }))), [shifts, logs])
 
+  useEffect(() => {
+    if (!wantsAdd || shifts === null) return
+    setAdding(true)
+    // After the rest of the dashboard has laid out, or the card moves away again.
+    setTimeout(() => document.getElementById('regular-shifts')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600)
+    const next = new URLSearchParams(params)
+    next.delete('addShift')
+    setParams(next, { replace: true })
+  }, [wantsAdd, shifts, params, setParams])
+
   if (!hasAccount() || shifts === null) return null
+  if (shifts.length === 0 && !adding) return null
 
   const save = async (e) => {
     e.preventDefault()
@@ -58,7 +74,7 @@ export default function RegularShiftsCard({ logs }) {
   }
 
   return (
-    <Card className="p-4">
+    <Card className="p-4" id="regular-shifts">
       <div className="flex items-center justify-between gap-2 mb-2">
         <h3 className="font-semibold flex items-center gap-2"><CalendarClock className="w-4 h-4 text-brand-400" aria-hidden="true" /> {tr('Regular shifts')}</h3>
         {!adding && shifts.length < 10 && (
