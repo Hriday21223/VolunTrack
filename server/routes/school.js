@@ -5415,6 +5415,52 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
   }
 })
 
+// The day before an event with jobs (#773): if any job still has open spots,
+// or approved volunteers have no job, tell the organizer (bell + email).
+async function tellOrganizerUnfilledJobs(task) {
+  const { rows: jobs } = await query(
+    `SELECT j.title, j.spots,
+            (SELECT COUNT(*)::int FROM public_task_signups s WHERE s.job_id = j.id AND s.status = 'approved') AS taken
+       FROM public_task_jobs j WHERE j.task_id = $1 ORDER BY j.position, j.id`,
+    [task.id],
+  )
+  const { rows: free } = await query(
+    "SELECT COUNT(*)::int AS n FROM public_task_signups WHERE task_id = $1 AND status = 'approved' AND job_id IS NULL",
+    [task.id],
+  )
+  const open = jobs.filter((j) => j.taken < j.spots)
+  const noJob = free[0]?.n || 0
+  if (open.length === 0 && noJob === 0) return
+  const { rows: org } = await query('SELECT id, email, name, language FROM users WHERE id = $1', [task.created_by])
+  const o = org[0]
+  if (!o) return
+  notify(o.id, {
+    kind: 'jobs_unfilled',
+    title: task.title,
+    body: `Tomorrow: ${open.length} ${open.length === 1 ? 'job has' : 'jobs have'} open spots${noJob ? `, ${noJob} ${noJob === 1 ? 'volunteer has' : 'volunteers have'} no job` : ''}.`,
+    link: '/my-tasks',
+  })
+  if (!o.email || o.email.endsWith('@test.com')) return
+  const lang = emailLang(o.language)
+  await sendEmail({
+    to: o.email,
+    subject: et(lang, 'Jobs for tomorrow: {title}', { title: task.title }),
+    html: taskEmailHtml({
+      lang,
+      heading: et(lang, 'Some jobs still need people'),
+      lines: [
+        emailHi(lang, o.name),
+        ...jobs.map((j) => et(lang, '{job}: {taken} of {spots} spots taken', { job: j.title, taken: j.taken, spots: j.spots })),
+        ...(noJob ? [noJob === 1 ? et(lang, '1 volunteer doesn’t have a job yet.') : et(lang, '{n} volunteers don’t have a job yet.', { n: noJob })] : []),
+        et(lang, 'Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.'),
+      ],
+      task,
+      link: `${emailApiBase()}/my-tasks`,
+      linkLabel: et(lang, 'Open My Tasks'),
+    }),
+  })
+}
+
 // POST /api/school/public-tasks/internal/run-reminders
 // Driven by .github/workflows/task-reminders.yml, because Render's free tier
 // has no cron. Mails every approved volunteer on a task happening tomorrow,
@@ -5427,7 +5473,8 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
   try {
     const { rows: tasks } = await query(
       `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name, t.important_info,
-              t.meeting_point, t.day_of_contact
+              t.meeting_point, t.day_of_contact, t.everyone_job, t.created_by,
+              EXISTS (SELECT 1 FROM public_task_jobs j WHERE j.task_id = t.id) AS has_jobs
          FROM public_tasks t
         WHERE t.status = 'open'
           AND t.date = (current_date + interval '1 day')::date
@@ -5437,7 +5484,8 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
     const results = []
     for (const task of tasks) {
       const { rows: people } = await query(
-        `SELECT u.email, u.name, u.language, sh.label AS shift_label, sh.start_time, sh.end_time
+        `SELECT u.email, u.name, u.language, sh.label AS shift_label, sh.start_time, sh.end_time,
+                (SELECT j.title FROM public_task_jobs j WHERE j.id = s.job_id) AS job
            FROM public_task_signups s JOIN users u ON u.id = s.user_id
            LEFT JOIN public_task_shifts sh ON sh.id = s.shift_id
           WHERE s.task_id = $1 AND s.status = 'approved'`,
@@ -5448,6 +5496,8 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
 
       let sent = 0
       for (const person of people) {
+        // The @test.com fixtures are never emailed, as everywhere else.
+        if (!person.email || person.email.endsWith('@test.com')) continue
         try {
           const lang = emailLang(person.language)
           await sendEmail({
@@ -5461,6 +5511,10 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
                 et(lang, 'This is a reminder about tomorrow.'),
                 // Shifts (#589): their own time, not the whole event's.
                 ...(person.start_time ? [et(lang, 'Your shift: {shift}', { shift: shiftText({ label: person.shift_label, start_time: person.start_time, end_time: person.end_time }) })] : []),
+                // Jobs (#773): theirs, or a nudge to pick one; and the note for everyone.
+                ...(person.job ? [et(lang, 'Your job: {job}', { job: person.job })]
+                  : task.has_jobs ? [et(lang, 'This event has jobs. Pick one on your volunteer badge in the app (Attendance → Show my volunteer badge).')] : []),
+                ...(task.everyone_job ? [et(lang, 'For everyone: {note}', { note: task.everyone_job })] : []),
                 ...(task.important_info ? [task.important_info] : []),
                 // Only approved volunteers get this email, so the day-of details may go in.
                 ...(task.meeting_point ? [et(lang, 'Meeting point: {place}', { place: task.meeting_point })] : []),
@@ -5482,6 +5536,11 @@ router.post('/public-tasks/internal/run-reminders', cronLimiter(), requireCronKe
         [task.id, sent],
       )
       results.push({ task: task.title, recipients: people.length, sent })
+      // Jobs not filled yet (#773): a heads-up to the organizer, so they can
+      // give people jobs before the day. Inside the run's once-per-task claim.
+      if (task.has_jobs) {
+        try { await tellOrganizerUnfilledJobs(task) } catch (error) { console.error('unfilled jobs notice failed:', error) }
+      }
     }
 
     // Saved-for-later nudges ride the same daily run. A failure here is

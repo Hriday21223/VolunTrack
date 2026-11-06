@@ -238,6 +238,16 @@ export const EMAIL_VI = {
   "Log your next hours in a minute, get your hours signed on the spot, and check in at events with a scan.": "Ghi giờ tiếp theo trong một phút, xin ký xác nhận ngay tại chỗ và điểm danh tại sự kiện chỉ với một lần quét.",
   "Open {site} on your phone. On iPhone, tap Share, then Add to Home Screen. On Android, tap the menu, then Install app.": "Mở {site} trên điện thoại. Trên iPhone, chạm Chia sẻ rồi Thêm vào Màn hình chính. Trên Android, chạm menu rồi Cài đặt ứng dụng.",
   "Open VolunTrack": "Mở VolunTrack",
+  "Your job: {job}": "Việc của bạn: {job}",
+  "This event has jobs. Pick one on your volunteer badge in the app (Attendance → Show my volunteer badge).": "Sự kiện này có danh sách việc. Hãy chọn một việc trên thẻ tình nguyện viên trong ứng dụng (Điểm danh → Hiện thẻ tình nguyện viên).",
+  "For everyone: {note}": "Cho mọi người: {note}",
+  "Jobs for tomorrow: {title}": "Công việc cho ngày mai: {title}",
+  "Some jobs still need people": "Một số việc vẫn cần người",
+  "{job}: {taken} of {spots} spots taken": "{job}: đã có {taken}/{spots} chỗ",
+  "1 volunteer doesn’t have a job yet.": "1 tình nguyện viên chưa có việc.",
+  "{n} volunteers don’t have a job yet.": "{n} tình nguyện viên chưa có việc.",
+  "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "Mở sự kiện ở Nhiệm vụ của tôi để giao việc. Tình nguyện viên cũng có thể tự chọn trên thẻ của họ.",
+  "Open My Tasks": "Mở Nhiệm vụ của tôi",
 }
 
 export const EMAIL_ZH = {
@@ -478,4 +488,14 @@ export const EMAIL_ZH = {
   "Log your next hours in a minute, get your hours signed on the spot, and check in at events with a scan.": "一分钟记录下一次时数，当场获得签字，扫码即可在活动签到。",
   "Open {site} on your phone. On iPhone, tap Share, then Add to Home Screen. On Android, tap the menu, then Install app.": "在手机上打开 {site}。iPhone：点“分享”，再点“添加到主屏幕”。Android：点菜单，再点“安装应用”。",
   "Open VolunTrack": "打开 VolunTrack",
+  "Your job: {job}": "你的工作：{job}",
+  "This event has jobs. Pick one on your volunteer badge in the app (Attendance → Show my volunteer badge).": "本次活动有工作可选。请在应用中的志愿者证上选择（出勤 → 显示我的志愿者证）。",
+  "For everyone: {note}": "所有人：{note}",
+  "Jobs for tomorrow: {title}": "明天的工作：{title}",
+  "Some jobs still need people": "有些工作还缺人",
+  "{job}: {taken} of {spots} spots taken": "{job}：已占 {taken}/{spots} 个名额",
+  "1 volunteer doesn’t have a job yet.": "有 1 名志愿者还没有工作。",
+  "{n} volunteers don’t have a job yet.": "有 {n} 名志愿者还没有工作。",
+  "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "在“我的任务”中打开活动来分配工作。志愿者也可以在志愿者证上自己选择。",
+  "Open My Tasks": "打开“我的任务”",
 }

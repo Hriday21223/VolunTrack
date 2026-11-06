@@ -324,6 +324,16 @@ const ES = {
   "Log your next hours in a minute, get your hours signed on the spot, and check in at events with a scan.": "Registra tus próximas horas en un minuto, consigue la firma al momento y registra tu entrada en eventos con un escaneo.",
   "Open {site} on your phone. On iPhone, tap Share, then Add to Home Screen. On Android, tap the menu, then Install app.": "Abre {site} en tu teléfono. En iPhone, toca Compartir y luego Agregar a pantalla de inicio. En Android, toca el menú y luego Instalar app.",
   "Open VolunTrack": "Abrir VolunTrack",
+  "Your job: {job}": "Tu trabajo: {job}",
+  "This event has jobs. Pick one on your volunteer badge in the app (Attendance → Show my volunteer badge).": "Este evento tiene trabajos. Elige uno en tu credencial de voluntario en la app (Asistencia → Mostrar mi credencial).",
+  "For everyone: {note}": "Para todos: {note}",
+  "Jobs for tomorrow: {title}": "Trabajos para mañana: {title}",
+  "Some jobs still need people": "Algunos trabajos aún necesitan personas",
+  "{job}: {taken} of {spots} spots taken": "{job}: {taken} de {spots} lugares ocupados",
+  "1 volunteer doesn’t have a job yet.": "1 voluntario todavía no tiene trabajo.",
+  "{n} volunteers don’t have a job yet.": "{n} voluntarios todavía no tienen trabajo.",
+  "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "Abre el evento en Mis tareas para asignar trabajos. Los voluntarios también pueden elegir uno en su credencial.",
+  "Open My Tasks": "Abrir Mis tareas",
 }
 
 const DICTIONARIES = { es: ES, vi: EMAIL_VI, zh: EMAIL_ZH }
