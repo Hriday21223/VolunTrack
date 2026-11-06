@@ -58,15 +58,15 @@ function hoursLabel(n) {
 function TaskLogHours({ log, canSign, onSign }) {
   const hours = Math.round(Number(log.hours) * 100) / 100
   if (log.status === 'approved') {
-    return <span className="text-xs px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 whitespace-nowrap" title="Signed">{hours} h ✓</span>
+    return <span className="text-xs px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 whitespace-nowrap" title={tr('Signed')}>{hours} h ✓</span>
   }
   if (log.status === 'rejected') {
-    return <span className="text-xs px-2 py-1 rounded-lg bg-red-500/10 text-red-400 whitespace-nowrap" title="Rejected">{hours} h ✕</span>
+    return <span className="text-xs px-2 py-1 rounded-lg bg-red-500/10 text-red-400 whitespace-nowrap" title={tr('Rejected')}>{hours} h ✕</span>
   }
   return (
     <span className="flex items-center gap-1">
-      <span className="text-xs px-2 py-1 rounded-lg bg-amber-500/10 text-amber-300 whitespace-nowrap" title="Waiting for your signature">{hours} h</span>
-      {canSign && <button type="button" onClick={onSign} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">Sign</button>}
+      <span className="text-xs px-2 py-1 rounded-lg bg-amber-500/10 text-amber-300 whitespace-nowrap" title={tr('Waiting for your signature')}>{hours} h</span>
+      {canSign && <button type="button" onClick={onSign} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">{tr('Sign')}</button>}
     </span>
   )
 }
@@ -565,7 +565,7 @@ export default function MyTasks() {
 
   return (
     <AppLayout
-      title="My Tasks"
+      title={tr('My Tasks')}
       subtitle="Needed Volunteers"
       action={
         <button onClick={togglePostForm} className="btn-primary">
@@ -574,7 +574,7 @@ export default function MyTasks() {
       }
     >
       <div className="max-w-3xl mx-auto space-y-4">
-        <div role="tablist" aria-label="My Tasks view" className="inline-flex gap-1 p-1 rounded-xl bg-earth-100 dark:bg-white/5">
+        <div role="tablist" aria-label={tr('My Tasks view')} className="inline-flex gap-1 p-1 rounded-xl bg-earth-100 dark:bg-white/5">
           {[['tasks', 'Tasks'], ['stats', 'Stats']].map(([id, label]) => (
             <button
               key={id}
@@ -592,35 +592,35 @@ export default function MyTasks() {
 
         {view === 'tasks' && showPostTask && (
           <Card>
-            <h3 className="font-semibold mb-3">Post a volunteer opportunity</h3>
+            <h3 className="font-semibold mb-3">{tr('Post a volunteer opportunity')}</h3>
             {postAgainFrom && (
               <p className="text-xs text-earth-500 -mt-2 mb-3">Copied from “{postAgainFrom}”. Pick a new date, check the details and post.</p>
             )}
             <form onSubmit={handlePostTask} className="space-y-3">
-              <input className="input" maxLength={200} placeholder="Task title" value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
-              <textarea className="input" rows={2} maxLength={5000} placeholder="Description — what volunteers will do" value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
+              <input className="input" maxLength={200} placeholder={tr('Task title')} value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
+              <textarea className="input" rows={2} maxLength={5000} placeholder={tr('Description — what volunteers will do')} value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
               <TaskPhotoPicker value={taskPhoto} onChange={setTaskPhoto} />
               <OnlineToggle checked={taskForm.isOnline} onChange={(isOnline) => setTaskForm((f) => ({ ...f, isOnline }))} />
               {taskForm.isOnline ? (
                 <input className="input" maxLength={300} aria-label={tr('Where to join (optional)')} placeholder={tr('Where to join (optional), e.g. Zoom link sent after approval')} value={taskForm.location} onChange={(e) => setTaskForm({ ...taskForm, location: e.target.value })} />
               ) : (
               <div>
-                <label className="label text-xs">Location — where it happens *</label>
+                <label className="label text-xs">{tr('Location — where it happens *')}</label>
                 <LocationPicker
                   address={taskForm.location}
                   lat={taskForm.latitude}
                   lng={taskForm.longitude}
-                  placeholder="Location — where it happens"
+                  placeholder={tr('Location — where it happens')}
                   onChange={({ address, lat, lng }) => setTaskForm((f) => ({ ...f, location: address, latitude: lat, longitude: lng }))}
                 />
               </div>
               )}
-              <textarea className="input" rows={2} maxLength={2000} placeholder="Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)" value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
-              <input className="input" type="tel" maxLength={30} placeholder="Phone number — shown to approved volunteers" value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
+              <textarea className="input" rows={2} maxLength={2000} placeholder={tr('Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)')} value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
+              <input className="input" type="tel" maxLength={30} placeholder={tr('Phone number — shown to approved volunteers')} value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
               <div>
-                <label className="label text-xs" htmlFor="task-category">Category</label>
+                <label className="label text-xs" htmlFor="task-category">{tr('Category')}</label>
                 <select id="task-category" className="input" value={taskForm.category} onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}>
-                  <option value="">No category</option>
+                  <option value="">{tr('No category')}</option>
                   {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                 </select>
               </div>
@@ -628,17 +628,17 @@ export default function MyTasks() {
               <WaiverField id="new-task-waiver" value={taskForm.waiverText} onChange={(waiverText) => setTaskForm((f) => ({ ...f, waiverText }))} />
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="label text-xs">Date *</label>
+                  <label className="label text-xs">{tr('Date *')}</label>
                   <input type="date" className="input" value={taskForm.date} onChange={(e) => setTaskForm({...taskForm, date: e.target.value})} required />
                 </div>
                 {!taskForm.shifts && (
                   <>
                     <div>
-                      <label className="label text-xs">Time *</label>
+                      <label className="label text-xs">{tr('Time *')}</label>
                       <input type="time" className="input" value={taskForm.time} onChange={(e) => setTaskForm({...taskForm, time: e.target.value})} required />
                     </div>
                     <div>
-                      <label className="label text-xs">Volunteers needed *</label>
+                      <label className="label text-xs">{tr('Volunteers needed *')}</label>
                       <input type="number" className="input" min={1} placeholder="Slots" value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
                     </div>
                   </>
@@ -646,23 +646,23 @@ export default function MyTasks() {
               </div>
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" className="mt-1" checked={Boolean(taskForm.shifts)} onChange={(e) => setTaskForm((f) => ({ ...f, shifts: e.target.checked ? starterShifts(f.time) : null }))} />
-                <span>Split into shifts<span className="block text-xs text-earth-500 dark:text-earth-400">Several time slots or roles, each with its own spots. Volunteers pick one.</span></span>
+                <span>{tr('Split into shifts')}<span className="block text-xs text-earth-500 dark:text-earth-400">{tr('Several time slots or roles, each with its own spots. Volunteers pick one.')}</span></span>
               </label>
               {taskForm.shifts && (
                 <ShiftsEditor idPrefix="new-shift" value={taskForm.shifts} onChange={(shifts) => setTaskForm((f) => ({ ...f, shifts }))} />
               )}
               {!taskForm.isOnline && !(taskForm.latitude && taskForm.longitude) && (
-                <p className="text-xs text-earth-500">Pick a pin on the map above so this task can be sorted by distance.</p>
+                <p className="text-xs text-earth-500">{tr('Pick a pin on the map above so this task can be sorted by distance.')}</p>
               )}
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={repeatWeekly} onChange={(e) => setRepeatWeekly(e.target.checked)} />
-                  Repeat weekly
+                  {tr('Repeat weekly')}
                 </label>
                 {repeatWeekly && (
                   <span className="flex items-center gap-2 text-earth-400">
                     — every week for
-                    <input type="number" className="input w-20 py-1" min={1} max={12} aria-label="More weeks" value={taskForm.repeatWeeks} onChange={(e) => setTaskForm({ ...taskForm, repeatWeeks: e.target.value })} required />
+                    <input type="number" className="input w-20 py-1" min={1} max={12} aria-label={tr('More weeks')} value={taskForm.repeatWeeks} onChange={(e) => setTaskForm({ ...taskForm, repeatWeeks: e.target.value })} required />
                     more week{Number(taskForm.repeatWeeks) === 1 ? '' : 's'}
                   </span>
                 )}
@@ -676,7 +676,7 @@ export default function MyTasks() {
             the tasks and their signups; nothing could read it back out. */}
         {view === 'stats' && <Card>
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-brand-600" /> Impact report</h3>
+            <h3 className="font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-brand-600" /> {tr('Impact report')}</h3>
             <button
               onClick={() => { const next = !showReport; setShowReport(next); if (next && !report) loadReport(reportRange) }}
               className="btn-sm btn-ghost"
@@ -688,11 +688,11 @@ export default function MyTasks() {
             <div className="mt-3">
               <div className="flex flex-wrap items-end gap-2 mb-3">
                 <div>
-                  <label htmlFor="report-from" className="block text-[0.6875rem] text-earth-400 mb-1">From</label>
+                  <label htmlFor="report-from" className="block text-[0.6875rem] text-earth-400 mb-1">{tr('From')}</label>
                   <input id="report-from" type="date" className="input w-[145px]" value={reportRange.from} onChange={(e) => setReportRange((r) => ({ ...r, from: e.target.value }))} />
                 </div>
                 <div>
-                  <label htmlFor="report-to" className="block text-[0.6875rem] text-earth-400 mb-1">To</label>
+                  <label htmlFor="report-to" className="block text-[0.6875rem] text-earth-400 mb-1">{tr('To')}</label>
                   <input id="report-to" type="date" className="input w-[145px]" value={reportRange.to} onChange={(e) => setReportRange((r) => ({ ...r, to: e.target.value }))} />
                 </div>
                 <button onClick={() => loadReport(reportRange)} className="btn-sm btn-ghost" disabled={reportBusy}>
@@ -708,17 +708,17 @@ export default function MyTasks() {
               </div>
 
               {!report ? (
-                <p className="text-sm text-earth-500">Loading…</p>
+                <p className="text-sm text-earth-500">{tr('Loading…')}</p>
               ) : report.tasks.length === 0 ? (
-                <p className="text-sm text-earth-500">No events in that range.</p>
+                <p className="text-sm text-earth-500">{tr('No events in that range.')}</p>
               ) : (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                    <ReportStat label="Events" value={report.totals.events} />
-                    <ReportStat label="Volunteers" value={report.totals.volunteers} />
-                    <ReportStat label="Hours logged" value={report.totals.hours} />
+                    <ReportStat label={tr('Events')} value={report.totals.events} />
+                    <ReportStat label={tr('Volunteers')} value={report.totals.volunteers} />
+                    <ReportStat label={tr('Hours logged')} value={report.totals.hours} />
                     <ReportStat
-                      label="Attendance"
+                      label={tr('Attendance')}
                       value={report.totals.attendanceRate == null ? 'Not marked' : `${Math.round(report.totals.attendanceRate * 100)}%`}
                     />
                   </div>
@@ -726,11 +726,11 @@ export default function MyTasks() {
                     <table className="w-full text-sm">
                       <thead className="text-earth-500">
                         <tr>
-                          <th className="text-left py-2">Date</th>
-                          <th className="text-left py-2">Event</th>
-                          <th className="text-right py-2">Approved</th>
-                          <th className="text-right py-2">Present</th>
-                          <th className="text-right py-2">Hours</th>
+                          <th className="text-left py-2">{tr('Date')}</th>
+                          <th className="text-left py-2">{tr('Event')}</th>
+                          <th className="text-right py-2">{tr('Approved')}</th>
+                          <th className="text-right py-2">{tr('Present')}</th>
+                          <th className="text-right py-2">{tr('Hours')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -753,10 +753,10 @@ export default function MyTasks() {
         </Card>}
 
         {view !== 'tasks' ? null : loading ? (
-          <Card><p className="text-center text-earth-500 py-8">Loading…</p></Card>
+          <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
         ) : tasks.length === 0 ? (
           <Card>
-            <p className="text-center text-earth-500 py-8">You haven't posted any tasks yet.</p>
+            <p className="text-center text-earth-500 py-8">{tr("You haven't posted any tasks yet.")}</p>
           </Card>
         ) : tasks.map((t) => {
           const filled = Number(t.slots_filled)
@@ -791,7 +791,7 @@ export default function MyTasks() {
                       </span>
                     ))}
                     {t.rating_count > 0 && (
-                      <span className="flex items-center gap-1 text-amber-400" title="Average rating from volunteers who came">
+                      <span className="flex items-center gap-1 text-amber-400" title={tr('Average rating from volunteers who came')}>
                         ★ {Number(t.rating_avg).toFixed(1)} <span className="text-earth-500">({t.rating_count} {t.rating_count === 1 ? 'rating' : 'ratings'})</span>
                       </span>
                     )}
@@ -834,7 +834,7 @@ export default function MyTasks() {
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-2 text-earth-500">Comments are anonymous. If one breaks the rules, contact us from Help.</p>
+                  <p className="mt-2 text-earth-500">{tr('Comments are anonymous. If one breaks the rules, contact us from Help.')}</p>
                 </details>
               )}
 
@@ -848,7 +848,7 @@ export default function MyTasks() {
                     {t.status !== 'cancelled' && (
                       <>
                         <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
-                          <QrCode className="w-3.5 h-3.5 mr-1" /> Check-in QR
+                          <QrCode className="w-3.5 h-3.5 mr-1" /> {tr('Check-in QR')}
                         </button>
                         {!t.is_online && (
                           <button onClick={() => nav(`/kiosk/${t.id}`)} className="btn-sm btn-ghost" disabled={actionBusy} title={tr('A tablet at the door: volunteers tap their name and enter the PIN from their approval email.')}>
@@ -867,24 +867,24 @@ export default function MyTasks() {
                               <Pencil className="w-3.5 h-3.5 mr-1" /> {editingId === t.id ? 'Cancel edit' : 'Edit'}
                             </button>
                             <button onClick={() => setTaskStatus(t.id, t.status === 'open' ? 'closed' : 'open')} className="btn-sm btn-ghost" disabled={actionBusy}>
-                              {t.status === 'open' ? <><Lock className="w-3.5 h-3.5 mr-1" /> Close signups</> : <><Unlock className="w-3.5 h-3.5 mr-1" /> Reopen signups</>}
+                              {t.status === 'open' ? <><Lock className="w-3.5 h-3.5 mr-1" /> {tr('Close signups')}</> : <><Unlock className="w-3.5 h-3.5 mr-1" /> {tr('Reopen signups')}</>}
                             </button>
                           </>
                         )}
                         <button onClick={() => { setMessagingId(messagingId === t.id ? null : t.id); setEditingId(null); setCancellingId(null) }} className="btn-sm btn-ghost" disabled={actionBusy}>
-                          <Mail className="w-3.5 h-3.5 mr-1" /> Message volunteers
+                          <Mail className="w-3.5 h-3.5 mr-1" /> {tr('Message volunteers')}
                         </button>
                         {!t.is_cohost && t.status === 'open' && <InvitePastVolunteers task={t} onDone={(m) => { setToastMsg(m); setToast(true) }} />}
                         {!t.is_cohost && (
                           <button onClick={() => { setCancellingId(cancellingId === t.id ? null : t.id); setEditingId(null); setMessagingId(null) }} className="btn-sm btn-ghost text-red-400" disabled={actionBusy}>
-                            <Ban className="w-3.5 h-3.5 mr-1" /> Cancel event
+                            <Ban className="w-3.5 h-3.5 mr-1" /> {tr('Cancel event')}
                           </button>
                         )}
                       </>
                     )}
                     {!t.is_cohost && (
                       <button onClick={() => postAgain(t)} className="btn-sm btn-ghost" disabled={actionBusy}>
-                        <Copy className="w-3.5 h-3.5 mr-1" /> Post again
+                        <Copy className="w-3.5 h-3.5 mr-1" /> {tr('Post again')}
                       </button>
                     )}
                     {!t.is_cohost && t.status !== 'cancelled' && t.date < localToday() && !t.thanks_sent_at && (
@@ -938,7 +938,7 @@ export default function MyTasks() {
 
                   {editingId === t.id && editForm && (
                     <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">
-                      <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="Task title" />
+                      <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder={tr('Task title')} />
                       <textarea className="input" rows={2} maxLength={5000} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
                       <TaskPhotoPicker taskId={t.id} photoId={t.cover_photo_id} onSaved={(id) => setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, cover_photo_id: id } : x)))} />
                       <OnlineToggle checked={editForm.isOnline} onChange={(isOnline) => setEditForm((f) => ({ ...f, isOnline, ...(isOnline || f.location !== 'Online' ? {} : { location: '' }) }))} />
@@ -954,23 +954,23 @@ export default function MyTasks() {
                         />
                       )}
                       <select className="input" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} aria-label="Category">
-                        <option value="">No category</option>
+                        <option value="">{tr('No category')}</option>
                         {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                       </select>
                       <TaskDetailFields idPrefix={`edit-${t.id}`} value={editForm} onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))} />
                       <WaiverField id={`edit-${t.id}-waiver`} value={editForm.waiverText} onChange={(waiverText) => setEditForm((f) => ({ ...f, waiverText }))} hasSignups={(t.signups || []).length > 0} />
-                      <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder="Important info — approved volunteers only" />
+                      <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder={tr('Important info — approved volunteers only')} />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <input type="date" className="input" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} aria-label="Date" />
                         {!editForm.shifts && <input type="time" className="input" value={editForm.time} onChange={(e) => setEditForm({ ...editForm, time: e.target.value })} aria-label="Time" />}
-                        {!editForm.shifts && <input type="number" min={1} className="input" value={editForm.slotsTotal} onChange={(e) => setEditForm({ ...editForm, slotsTotal: e.target.value })} aria-label="Volunteers needed" />}
+                        {!editForm.shifts && <input type="number" min={1} className="input" value={editForm.slotsTotal} onChange={(e) => setEditForm({ ...editForm, slotsTotal: e.target.value })} aria-label={tr('Volunteers needed')} />}
                         <input type="tel" className="input" maxLength={30} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} aria-label="Phone" />
                       </div>
                       {/* Shifts can be added only before anyone signs up (server/taskShifts.js). */}
                       {(editForm.shifts || (t.signups || []).length === 0) && (
                         <label className="flex items-start gap-2 text-sm">
                           <input type="checkbox" className="mt-1" checked={Boolean(editForm.shifts)} disabled={Boolean(editForm.shifts?.some((sh) => sh.filled > 0))} onChange={(e) => setEditForm((f) => ({ ...f, shifts: e.target.checked ? starterShifts(/^\d{2}:\d{2}$/.test(f.time) ? f.time : '') : null }))} />
-                          <span>Split into shifts</span>
+                          <span>{tr('Split into shifts')}</span>
                         </label>
                       )}
                       {editForm.shifts && (
@@ -984,9 +984,9 @@ export default function MyTasks() {
 
                   {messagingId === t.id && (
                     <div className="mb-4 p-3 rounded-xl border border-white/10">
-                      <label htmlFor={`msg-${t.id}`} className="label text-xs">Message every approved volunteer</label>
-                      <textarea id={`msg-${t.id}`} className="input" rows={3} maxLength={2000} value={messageDraft} onChange={(e) => setMessageDraft(e.target.value)} placeholder="Bring gloves and water. Park at the back of the lot." />
-                      <p className="text-xs text-earth-500 mt-1">Sent one message per person — volunteers never see each other&apos;s addresses.</p>
+                      <label htmlFor={`msg-${t.id}`} className="label text-xs">{tr('Message every approved volunteer')}</label>
+                      <textarea id={`msg-${t.id}`} className="input" rows={3} maxLength={2000} value={messageDraft} onChange={(e) => setMessageDraft(e.target.value)} placeholder={tr('Bring gloves and water. Park at the back of the lot.')} />
+                      <p className="text-xs text-earth-500 mt-1">{tr("Sent one message per person — volunteers never see each other's addresses.")}</p>
                       <button onClick={() => messageVolunteers(t.id)} className="btn-primary btn-sm mt-2" disabled={actionBusy || !messageDraft.trim()}>
                         {actionBusy ? 'Sending…' : 'Send'}
                       </button>
@@ -995,24 +995,24 @@ export default function MyTasks() {
 
                   {cancellingId === t.id && (
                     <div className="mb-4 p-3 rounded-xl border border-red-500/30">
-                      <label htmlFor={`cancel-${t.id}`} className="label text-xs">Cancel this event</label>
-                      <input id={`cancel-${t.id}`} className="input" maxLength={500} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason (optional) — included in the email" />
-                      <p className="text-xs text-earth-500 mt-1">Everyone signed up is emailed. Attendance already recorded is kept, and the event cannot be reopened.</p>
+                      <label htmlFor={`cancel-${t.id}`} className="label text-xs">{tr('Cancel this event')}</label>
+                      <input id={`cancel-${t.id}`} className="input" maxLength={500} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder={tr('Reason (optional) — included in the email')} />
+                      <p className="text-xs text-earth-500 mt-1">{tr('Everyone signed up is emailed. Attendance already recorded is kept, and the event cannot be reopened.')}</p>
                       <div className="flex gap-2 mt-2">
                         <button onClick={() => cancelTask(t.id)} className="btn-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-1.5" disabled={actionBusy}>
                           {actionBusy ? 'Cancelling…' : 'Yes, cancel it'}
                         </button>
-                        <button onClick={() => { setCancellingId(null); setCancelReason('') }} className="btn-sm btn-ghost" disabled={actionBusy}>Keep it</button>
+                        <button onClick={() => { setCancellingId(null); setCancelReason('') }} className="btn-sm btn-ghost" disabled={actionBusy}>{tr('Keep it')}</button>
                       </div>
                     </div>
                   )}
 
                   {signups.length === 0 ? (
-                    <p className="text-sm text-earth-500 text-center py-4">No one has signed up yet.</p>
+                    <p className="text-sm text-earth-500 text-center py-4">{tr('No one has signed up yet.')}</p>
                   ) : (
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">Volunteers signed up</p>
+                        <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">{tr('Volunteers signed up')}</p>
                         {shifts.length > 0 && signups.some((s) => s.status === 'approved' && s.attendance_status !== 'absent' && shiftHours(shiftById.get(s.shift_id))) && (
                           <button
                             type="button"
@@ -1026,7 +1026,7 @@ export default function MyTasks() {
                               return next
                             })}
                           >
-                            Fill in shift lengths
+                            {tr('Fill in shift lengths')}
                           </button>
                         )}
                       </div>
@@ -1044,9 +1044,9 @@ export default function MyTasks() {
                               {s.guest_count > 0 && <p className="text-xs text-brand-400 truncate">{guestSummary(s.guest_count, s.guest_names)}</p>}
                               {s.parent_coming_name && <p className="text-xs text-amber-400 truncate">{tr('Parent coming: {name}', { name: s.parent_coming_name })}</p>}
                               <WaiverStatus signup={s} />
-                              {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">Approved</p>}
-                              {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">Rejected</p>}
-                              {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">Pending approval</p>}
+                              {s.status === 'approved' && <p className="text-xs text-emerald-400 mt-0.5">{tr('Approved')}</p>}
+                              {s.status === 'rejected' && <p className="text-xs text-red-400 mt-0.5">{tr('Rejected')}</p>}
+                              {s.status === 'pending' && <p className="text-xs text-amber-400 mt-0.5">{tr('Pending approval')}</p>}
                               {s.status === 'waitlisted' && (
                                 <p className="text-xs text-sky-300 mt-0.5">
                                   Waitlist #{signups.filter((w) => w.status === 'waitlisted' && (w.shift_id || null) === (s.shift_id || null)).indexOf(s) + 1} · moves up when a spot opens
@@ -1070,14 +1070,14 @@ export default function MyTasks() {
                             </div>
                             {isApproved && (
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <div className="flex items-center gap-0.5" title="Mark attendance">
-                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'present')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'present' ? 'text-emerald-400' : 'text-earth-500'}`} title="Present">
+                                <div className="flex items-center gap-0.5" title={tr('Mark attendance')}>
+                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'present')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'present' ? 'text-emerald-400' : 'text-earth-500'}`} title={tr('Present')}>
                                     <CheckCircle className="w-3.5 h-3.5" />
                                   </button>
-                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'absent')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'absent' ? 'text-red-400' : 'text-earth-500'}`} title="Absent">
+                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'absent')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'absent' ? 'text-red-400' : 'text-earth-500'}`} title={tr('Absent')}>
                                     <XCircle className="w-3.5 h-3.5" />
                                   </button>
-                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'excused')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'excused' ? 'text-amber-400' : 'text-earth-500'}`} title="Excused">
+                                  <button onClick={() => handleMarkAttendance(t.id, s.id, 'excused')} className={`p-1 rounded-lg hover:bg-white/10 ${s.attendance_status === 'excused' ? 'text-amber-400' : 'text-earth-500'}`} title={tr('Excused')}>
                                     <MinusCircle className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
@@ -1115,10 +1115,10 @@ export default function MyTasks() {
                                 {s.status === 'pending' && (
                                   <>
                                     <button onClick={() => handleApprove(t.id, s.id)} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">
-                                      <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                                      <CheckCircle className="w-3 h-3 mr-1" /> {tr('Approve')}
                                     </button>
                                     <button onClick={() => handleReject(t.id, s.id)} className="btn-sm text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-2 py-1">
-                                      <XCircle className="w-3 h-3 mr-1" /> Reject
+                                      <XCircle className="w-3 h-3 mr-1" /> {tr('Reject')}
                                     </button>
                                   </>
                                 )}
@@ -1156,12 +1156,12 @@ export default function MyTasks() {
 
         <div className={view === 'tasks' ? 'pt-2' : 'hidden'}>
           <p className="text-xs font-medium text-earth-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <GraduationCap className="w-3.5 h-3.5" /> My Students
+            <GraduationCap className="w-3.5 h-3.5" /> {tr('My Students')}
           </p>
           {studentsLoading ? (
-            <Card><p className="text-center text-earth-500 py-8">Loading…</p></Card>
+            <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
           ) : students.length === 0 ? (
-            <Card><p className="text-center text-earth-500 py-8">No approved students yet — approve a signup above to see them here.</p></Card>
+            <Card><p className="text-center text-earth-500 py-8">{tr('No approved students yet — approve a signup above to see them here.')}</p></Card>
           ) : (
             <div className="space-y-3">
               {pendingLogs.length > 0 && (
@@ -1228,7 +1228,7 @@ export default function MyTasks() {
                   <p className="text-sm font-medium">{student.name}</p>
                   <p className="text-xs text-earth-400">{student.email}</p>
                   {student.logs.length === 0 ? (
-                    <p className="text-xs text-earth-500 mt-2">No logged hours yet.</p>
+                    <p className="text-xs text-earth-500 mt-2">{tr('No logged hours yet.')}</p>
                   ) : (
                     <div className="mt-3 space-y-2">
                       {student.logs.map((log) => (
@@ -1249,16 +1249,16 @@ export default function MyTasks() {
                             <p className="text-xs text-earth-500">{fmtDate(log.date)}</p>
                           </div>
                           {log.verification_status === 'approved' ? (
-                            <span className="text-xs text-emerald-400 shrink-0">Signed &amp; approved</span>
+                            <span className="text-xs text-emerald-400 shrink-0">{tr('Signed & approved')}</span>
                           ) : log.verification_status === 'rejected' ? (
-                            <span className="text-xs text-red-400 shrink-0">Rejected</span>
+                            <span className="text-xs text-red-400 shrink-0">{tr('Rejected')}</span>
                           ) : signing?.logId === log.id ? null : (
                             <div className="flex gap-1.5 shrink-0">
                               <button onClick={() => setSigning({ logId: log.id, signature: '' })} className="btn-sm text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-2 py-1">
-                                <CheckCircle className="w-3 h-3 mr-1" /> Sign &amp; approve
+                                <CheckCircle className="w-3 h-3 mr-1" /> {tr('Sign & approve')}
                               </button>
                               <button onClick={() => handleVerifyLog(student.id, log.id, 'rejected')} className="btn-sm text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg px-2 py-1">
-                                <XCircle className="w-3 h-3 mr-1" /> Reject
+                                <XCircle className="w-3 h-3 mr-1" /> {tr('Reject')}
                               </button>
                             </div>
                           )}
@@ -1276,9 +1276,9 @@ export default function MyTasks() {
                                 onClick={() => handleVerifyLog(student.id, log.id, 'approved', signing.signature)}
                                 className="btn-sm btn-primary text-xs"
                               >
-                                Confirm approval
+                                {tr('Confirm approval')}
                               </button>
-                              <button onClick={() => setSigning(null)} className="btn-sm btn-ghost text-xs">Cancel</button>
+                              <button onClick={() => setSigning(null)} className="btn-sm btn-ghost text-xs">{tr('Cancel')}</button>
                             </div>
                           </div>
                         )}
@@ -1296,18 +1296,18 @@ export default function MyTasks() {
       {showLogForm && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowLogForm(false)}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-4">Log hours for volunteer</h3>
+            <h3 className="font-semibold mb-4">{tr('Log hours for volunteer')}</h3>
             <form onSubmit={handleLogHours} className="space-y-3">
               <div>
-                <label className="label">Hours</label>
+                <label className="label">{tr('Hours')}</label>
                 <input type="number" step="0.5" min="0.5" className="input" placeholder="e.g. 2" value={logForm.hours} onChange={(e) => setLogForm({...logForm, hours: e.target.value})} required />
               </div>
               <div>
-                <label className="label">Date</label>
+                <label className="label">{tr('Date')}</label>
                 <input type="date" className="input" value={logForm.date} onChange={(e) => setLogForm({...logForm, date: e.target.value})} />
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setShowLogForm(false)} className="btn-ghost flex-1">Cancel</button>
+                <button type="button" onClick={() => setShowLogForm(false)} className="btn-ghost flex-1">{tr('Cancel')}</button>
                 <button type="submit" className="btn-primary flex-1" disabled={busy}>{busy ? 'Saving…' : 'Log hours'}</button>
               </div>
             </form>
@@ -1336,14 +1336,14 @@ function WaiverField({ id, value, onChange, hasSignups = false }) {
   if (!open) {
     return (
       <button type="button" className="btn-ghost btn-sm self-start" onClick={() => setOpen(true)}>
-        <FileSignature className="w-4 h-4" /> Add a waiver volunteers must agree to
+        <FileSignature className="w-4 h-4" /> {tr('Add a waiver volunteers must agree to')}
       </button>
     )
   }
   return (
     <div>
-      <label className="label text-xs" htmlFor={id}>Waiver (optional)</label>
-      <textarea id={id} className="input min-h-[120px] text-sm" maxLength={5000} value={value} onChange={(e) => onChange(e.target.value)} placeholder="Paste your organization's waiver or release. Volunteers agree by typing their name; for anyone under 18, a parent or guardian agrees too." />
+      <label className="label text-xs" htmlFor={id}>{tr('Waiver (optional)')}</label>
+      <textarea id={id} className="input min-h-[120px] text-sm" maxLength={5000} value={value} onChange={(e) => onChange(e.target.value)} placeholder={tr("Paste your organization's waiver or release. Volunteers agree by typing their name; for anyone under 18, a parent or guardian agrees too.")} />
       <p className="text-xs text-earth-500 mt-1">
         VolunTrack shows this text and records who agreed and when. Use your organization&apos;s own wording.
         {hasSignups ? ' If you change it, people who already agreed show as agreeing to an earlier version.' : ''}

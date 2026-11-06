@@ -47,7 +47,7 @@ export default function LeaderboardSettingsCard({ canEdit }) {
           <h3 className="font-semibold mb-1 flex items-center gap-2"><Trophy className="w-4 h-4 text-brand-600" />{' '}{tr('Student leaderboard')}</h3>
           <p className="text-sm text-earth-500 dark:text-earth-400">
             {state.enabled
-              ? `On. Students who join see a top-10 of your school by approved hours (first name and last initial only). Under-13s never appear. ${state.joined} ${state.joined === 1 ? 'student has' : 'students have'} joined.`
+              ? `${tr('On. Students who join see a top-10 of your school by approved hours (first name and last initial only). Under-13s never appear.')} ${state.joined === 1 ? tr('1 student has joined.') : tr('{n} students have joined.', { n: state.joined })}`
               : tr('Off. Your students don’t see a leaderboard.')}
           </p>
         </div>

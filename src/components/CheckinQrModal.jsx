@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { X, QrCode, CheckCircle, LogIn, Phone } from 'lucide-react'
 import { isNativeApp } from '@/lib/platform.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // Where the QR code points. The phone app's own origin is a localhost the
@@ -48,20 +49,20 @@ function CheckoutPinSection({ taskId, until, onChange }) {
   const live = pin && new Date(pin.until) > new Date() ? pin : null
   return (
     <div className="mt-3 border-t border-white/10 pt-3">
-      <p className="text-sm font-medium">Check-out PIN for phones</p>
+      <p className="text-sm font-medium">{tr('Check-out PIN for phones')}</p>
       {live ? (
         <>
           <p className="text-4xl font-bold tracking-[0.3em] text-yellow-300 my-2" aria-label={`Check-out PIN ${live.pin.split('').join(' ')}`}>{live.pin}</p>
-          <p className="text-xs text-earth-400">Volunteers who checked in open <strong>Attendance</strong> on their phone and type this to check out. It works until {clock(live.until)}.</p>
+          <p className="text-xs text-earth-400">{tr('Volunteers who checked in open')} <strong>{tr('Attendance')}</strong> on their phone and type this to check out. It works until {clock(live.until)}.</p>
         </>
       ) : until ? (
         <p className="text-xs text-earth-400 mt-1">A check-out PIN is on until {clock(until)}. It's shown only when it's made, so make a new one if you need to see it.</p>
       ) : (
-        <p className="text-xs text-earth-400 mt-1">Instead of scanning again, volunteers can check out on their phone with a PIN you make. It lasts 30 minutes.</p>
+        <p className="text-xs text-earth-400 mt-1">{tr('Instead of scanning again, volunteers can check out on their phone with a PIN you make. It lasts 30 minutes.')}</p>
       )}
       <div className="flex flex-wrap gap-2 mt-2">
         <button type="button" onClick={() => call('POST')} disabled={busy} className="btn-secondary btn-sm">{live || until ? 'Make a new PIN' : 'Make a check-out PIN'}</button>
-        {(live || until) && <button type="button" onClick={() => call('DELETE')} disabled={busy} className="btn-ghost btn-sm">Turn off</button>}
+        {(live || until) && <button type="button" onClick={() => call('DELETE')} disabled={busy} className="btn-ghost btn-sm">{tr('Turn off')}</button>}
       </div>
       {msg && <p className="text-sm text-red-400 mt-1" role="alert">{msg}</p>}
     </div>
@@ -152,7 +153,7 @@ export default function CheckinQrModal({ task, onClose }) {
       <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0f1813] p-5 text-white shadow-soft max-h-[95vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="checkin-title" className="font-display font-semibold text-lg flex items-center gap-2"><QrCode className="w-5 h-5 text-brand-400" /> Check-in</h2>
+            <h2 id="checkin-title" className="font-display font-semibold text-lg flex items-center gap-2"><QrCode className="w-5 h-5 text-brand-400" /> {tr('Check-in')}</h2>
             <p className="text-sm text-earth-400">{task.title}</p>
           </div>
           <button onClick={onClose} className="btn-ghost p-1" aria-label="Close"><X className="w-5 h-5" /></button>
@@ -162,12 +163,12 @@ export default function CheckinQrModal({ task, onClose }) {
           {error ? (
             <p className="text-sm text-red-400 py-10 text-center">{error}</p>
           ) : (
-            <div className="rounded-2xl bg-white p-3"><canvas ref={canvasRef} aria-label="Check-in QR code" /></div>
+            <div className="rounded-2xl bg-white p-3"><canvas ref={canvasRef} aria-label={tr('Check-in QR code')} /></div>
           )}
           <p className="text-sm text-earth-300 mt-3 text-center">
-            Volunteers scan this with their phone's camera when they <strong>arrive</strong>, and again when they <strong>leave</strong> — their hours are worked out from the two scans and sent to you to sign.
+            {tr("Volunteers scan this with their phone's camera when they")} <strong>arrive</strong>, and again when they <strong>leave</strong> — their hours are worked out from the two scans and sent to you to sign.
           </p>
-          <p className="text-xs text-earth-500 mt-1 text-center">The code changes every minute, so a photo of it stops working.</p>
+          <p className="text-xs text-earth-500 mt-1 text-center">{tr('The code changes every minute, so a photo of it stops working.')}</p>
         </div>
 
         <div className="mt-4 border-t border-white/10 pt-3">
@@ -177,7 +178,7 @@ export default function CheckinQrModal({ task, onClose }) {
           )}
           <div className="mb-2" />
           {people.length === 0 ? (
-            <p className="text-sm text-earth-500">No approved volunteers yet.</p>
+            <p className="text-sm text-earth-500">{tr('No approved volunteers yet.')}</p>
           ) : (
             <ul className="space-y-1">
               {people.map((p) => (
@@ -194,7 +195,7 @@ export default function CheckinQrModal({ task, onClose }) {
                     )}
                   </span>
                   <span className={`text-xs flex items-center gap-1 ${p.checkedOutAt ? 'text-emerald-400' : p.checkedInAt ? 'text-amber-300' : 'text-earth-500'}`}>
-                    {p.checkedOutAt ? <><CheckCircle className="w-3.5 h-3.5" /> Done</> : p.checkedInAt ? <><LogIn className="w-3.5 h-3.5" /> Here</> : 'Not yet'}
+                    {p.checkedOutAt ? <><CheckCircle className="w-3.5 h-3.5" /> {tr('Done')}</> : p.checkedInAt ? <><LogIn className="w-3.5 h-3.5" /> {tr('Here')}</> : 'Not yet'}
                     {p.checkedOutAt
                       ? <span className="text-earth-300 whitespace-nowrap">· {clock(p.checkedInAt)}–{clock(p.checkedOutAt)} · {hoursText(p.hours)}</span>
                       : p.checkedInAt && <span className="text-earth-300 whitespace-nowrap">· since {clock(p.checkedInAt)}</span>}
@@ -209,14 +210,14 @@ export default function CheckinQrModal({ task, onClose }) {
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-earth-300">Check out {stillHere === 1 ? 'the 1 volunteer' : `all ${stillHere} volunteers`} still here, and log their hours until now?</span>
                   <button onClick={checkEveryoneOut} disabled={closing} className="btn-primary btn-sm">{closing ? 'Checking out…' : 'Yes'}</button>
-                  <button onClick={() => setConfirmClose(false)} disabled={closing} className="btn-ghost btn-sm">No</button>
+                  <button onClick={() => setConfirmClose(false)} disabled={closing} className="btn-ghost btn-sm">{tr('No')}</button>
                 </div>
               ) : (
                 <button onClick={() => { setCloseMsg(null); setConfirmClose(true) }} className="btn-secondary btn-sm">
                   Check everyone out ({stillHere})
                 </button>
               )}
-              <p className="text-xs text-earth-500 mt-1">For volunteers who leave without scanning again.</p>
+              <p className="text-xs text-earth-500 mt-1">{tr('For volunteers who leave without scanning again.')}</p>
             </div>
           )}
           {closeMsg && <p className={`text-sm mt-2 ${closeMsg.ok ? 'text-emerald-300' : 'text-red-400'}`} role="status">{closeMsg.text}</p>}

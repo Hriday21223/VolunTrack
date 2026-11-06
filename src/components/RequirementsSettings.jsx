@@ -633,17 +633,17 @@ function CertificatesEditor({ value, onChange }) {
   }
   const field = (key, label, placeholder, max) => (
     <div>
-      <label className="label">{label}</label>
+      <label className="label">{tr(label)}</label>
       <input
         className="input"
         value={value[key] || ''}
         maxLength={max}
         onChange={(e) => setField(key, e.target.value)}
-        placeholder={placeholder}
+        placeholder={tr(placeholder)}
       />
     </div>
   )
-  const name = value.signerName?.trim() || 'Your school’s name'
+  const name = value.signerName?.trim() || tr('Your school’s name')
   const title = value.signerTitle?.trim() || 'Adviser'
   return (
     <>

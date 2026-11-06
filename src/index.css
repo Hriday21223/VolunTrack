@@ -142,7 +142,7 @@ html[data-font='easy'] :is(body, .font-sans, .font-display) {
    and the floating Get started button. Still for reduced motion. */
 .home-light-line {
   color: rgb(120 113 108 / 0.35);
-  transition: color 700ms ease-out;
+  transition: color 250ms ease-out;
 }
 .home-light-line.is-lit { color: rgb(28 25 23); }
 .dark .home-light-line.is-lit { color: #fff; }

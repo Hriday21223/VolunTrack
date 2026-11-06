@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TURNSTILE_SITE_KEY, turnstileEnabled } from '@/lib/turnstile.js'
+import { tr } from '@/lib/i18n.js'
 
 // Explicit-render mode: we mount the widget ourselves so it lands inside the
 // form and we control its lifecycle across React re-renders.
@@ -85,7 +86,7 @@ export default function Turnstile({ onVerify, action, className = '' }) {
       <div ref={containerRef} />
       {failed && (
         <p className="text-xs text-red-600 dark:text-red-300 mt-1">
-          Couldn&rsquo;t load the CAPTCHA. Refresh the page and try again.
+          {tr('Couldn’t load the CAPTCHA. Refresh the page and try again.')}
         </p>
       )}
     </div>

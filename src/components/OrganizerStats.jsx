@@ -4,6 +4,7 @@ import { ChevronUp, ChevronDown, CalendarCheck, Users, UserCheck, Clock, Star } 
 import Card from '@/components/Card.jsx'
 import BarChart from '@/components/BarChart.jsx'
 import { fmtDate } from '@/utils/date.js'
+import { tr } from '@/lib/i18n.js'
 
 // The Stats tab of My Tasks: how the organizer's own tasks went. Everything
 // comes from GET /school/public-tasks/mine/stats, which returns counts only.
@@ -125,7 +126,7 @@ export default function OrganizerStats() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Date range">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={tr('Date range')}>
         {PRESETS.map((p) => (
           <button
             key={p.id}
@@ -139,13 +140,13 @@ export default function OrganizerStats() {
       </div>
 
       {loading && !stats ? (
-        <Card><p className="text-center text-earth-500 py-8">Loading…</p></Card>
+        <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
       ) : error ? (
         <Card><p className="text-center text-red-400 py-8">{error}</p></Card>
       ) : empty ? (
         <Card>
           <div className="text-center py-8">
-            <p className="font-medium">No tasks to show yet</p>
+            <p className="font-medium">{tr('No tasks to show yet')}</p>
             <p className="text-sm text-earth-500 mt-1">
               {preset === 'all'
                 ? 'Once a task you posted has its day, its sign-ups, attendance, hours and ratings add up here.'
@@ -159,18 +160,18 @@ export default function OrganizerStats() {
       ) : (
         <div className={`space-y-4 ${loading ? 'opacity-60' : ''}`}>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            <StatTile icon={CalendarCheck} label="Tasks run" value={totals.tasksRun} />
-            <StatTile icon={Users} label="Volunteers" value={totals.volunteers} hint={`${totals.signups} sign-up${totals.signups === 1 ? '' : 's'}${totals.guests > 0 ? ` · +${totals.guests} guest${totals.guests === 1 ? '' : 's'}` : ''} · ${totals.waitlisted} waitlisted`} />
+            <StatTile icon={CalendarCheck} label={tr('Tasks run')} value={totals.tasksRun} />
+            <StatTile icon={Users} label={tr('Volunteers')} value={totals.volunteers} hint={`${totals.signups} sign-up${totals.signups === 1 ? '' : 's'}${totals.guests > 0 ? ` · +${totals.guests} guest${totals.guests === 1 ? '' : 's'}` : ''} · ${totals.waitlisted} waitlisted`} />
             <StatTile
               icon={UserCheck}
-              label="Show-up rate"
+              label={tr('Show-up rate')}
               value={pct(totals.showUpRate)}
               hint={totals.showUpRate == null ? 'No attendance taken yet' : `${totals.showedUp} came · ${totals.noShows} no-show${totals.noShows === 1 ? '' : 's'}`}
             />
-            <StatTile icon={Clock} label="Hours given" value={hrs(totals.hours)} />
+            <StatTile icon={Clock} label={tr('Hours given')} value={hrs(totals.hours)} />
             <StatTile
               icon={Star}
-              label="Avg rating"
+              label={tr('Avg rating')}
               value={totals.rating.average == null ? '—' : `★ ${totals.rating.average.toFixed(1)}`}
               hint={`${totals.rating.count} rating${totals.rating.count === 1 ? '' : 's'}`}
             />
@@ -178,7 +179,7 @@ export default function OrganizerStats() {
 
           <Card>
             <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 mb-2">
-              <h3 className="font-semibold">Hours given by month</h3>
+              <h3 className="font-semibold">{tr('Hours given by month')}</h3>
               <span className="text-xs text-earth-500">
                 {stats.from ? `${fmtDate(stats.from)} – ${fmtDate(stats.to)}` : `Up to ${fmtDate(stats.to)}`}
               </span>
@@ -186,19 +187,19 @@ export default function OrganizerStats() {
             <HoursChart months={stats.months} />
             <ul className="mt-3 text-sm text-earth-600 dark:text-earth-300 space-y-1">
               {totals.busiestMonth && (
-                <li>Busiest month: <span className="font-medium">{format(parseISO(`${totals.busiestMonth.month}-01`), 'MMMM yyyy')}</span> — {hrs(totals.busiestMonth.hours)} hours, {totals.busiestMonth.tasks} task{totals.busiestMonth.tasks === 1 ? '' : 's'}</li>
+                <li>{tr('Busiest month:')} <span className="font-medium">{format(parseISO(`${totals.busiestMonth.month}-01`), 'MMMM yyyy')}</span> — {hrs(totals.busiestMonth.hours)} hours, {totals.busiestMonth.tasks} task{totals.busiestMonth.tasks === 1 ? '' : 's'}</li>
               )}
               {totals.busiestCategory && (
-                <li>Busiest category: <span className="font-medium">{totals.busiestCategory.category}</span> — {hrs(totals.busiestCategory.hours)} hours, {totals.busiestCategory.tasks} task{totals.busiestCategory.tasks === 1 ? '' : 's'}</li>
+                <li>{tr('Busiest category:')} <span className="font-medium">{totals.busiestCategory.category}</span> — {hrs(totals.busiestCategory.hours)} hours, {totals.busiestCategory.tasks} task{totals.busiestCategory.tasks === 1 ? '' : 's'}</li>
               )}
-              <li>Repeat volunteers: <span className="font-medium">{totals.repeatVolunteers}</span> of {totals.attended} who came were at 2 or more of your tasks</li>
+              <li>{tr('Repeat volunteers:')} <span className="font-medium">{totals.repeatVolunteers}</span> of {totals.attended} who came were at 2 or more of your tasks</li>
               {totals.excused > 0 && <li>Excused: {totals.excused} (not counted in the show-up rate)</li>}
               {totals.cancelled > 0 && <li className="text-earth-500">{totals.cancelled} cancelled task{totals.cancelled === 1 ? '' : 's'} left out of these numbers</li>}
             </ul>
           </Card>
 
           <Card padded={false} className="p-4">
-            <h3 className="font-semibold mb-2">Your tasks</h3>
+            <h3 className="font-semibold mb-2">{tr('Your tasks')}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-earth-500">
@@ -225,7 +226,7 @@ export default function OrganizerStats() {
                         {t.title}
                         {t.waitlisted > 0 && <span className="text-xs text-earth-500"> · {t.waitlisted} waitlisted</span>}
                       </td>
-                      <td className="py-2 px-1 text-right">{t.signups}{t.guests > 0 && <span className="text-xs text-earth-500" title="Guests of approved volunteers"> +{t.guests}</span>}</td>
+                      <td className="py-2 px-1 text-right">{t.signups}{t.guests > 0 && <span className="text-xs text-earth-500" title={tr('Guests of approved volunteers')}> +{t.guests}</span>}</td>
                       <td className="py-2 px-1 text-right" title={t.excused ? `${t.excused} excused, not counted` : undefined}>{pct(t.showUpRate)}</td>
                       <td className="py-2 px-1 text-right">{t.noShows}</td>
                       <td className="py-2 px-1 text-right">{hrs(t.hours)}</td>
@@ -238,7 +239,7 @@ export default function OrganizerStats() {
               </table>
             </div>
             <p className="text-xs text-earth-500 mt-3">
-              Show-up rate counts volunteers you approved who were marked present or checked in, out of those plus anyone marked absent. Excused volunteers and anyone not yet marked aren't counted. Hours are approved hours logged on the task.
+              {tr("Show-up rate counts volunteers you approved who were marked present or checked in, out of those plus anyone marked absent. Excused volunteers and anyone not yet marked aren't counted. Hours are approved hours logged on the task.")}
             </p>
           </Card>
         </div>

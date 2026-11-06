@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import Card from '@/components/Card.jsx'
 import { clearWelcomePending, readWelcomePending } from '@/lib/welcome.js'
+import { tr } from '@/lib/i18n.js'
 
 // Starting points, not rules — every school and society sets its own number,
 // so the hours stay editable and the copy says "a common target".
@@ -115,7 +116,7 @@ export default function Welcome() {
       <div className="w-full max-w-lg">
         <div className="flex items-center gap-2.5 justify-center mb-6">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-10 h-10 object-contain" />
-          <span className="font-display font-bold text-2xl">VolunTrack</span>
+          <span className="font-display font-bold text-2xl">{tr('VolunTrack')}</span>
         </div>
 
         <Card padded={false} className="p-7 animate-fade-in-up">
@@ -132,7 +133,7 @@ export default function Welcome() {
               <div>
                 <h1 className="text-2xl font-bold mb-1">Welcome{firstName ? `, ${firstName}` : ''}! What are you working toward?</h1>
                 <p className="text-sm text-earth-500 dark:text-earth-400">
-                  Set a goal and your dashboard will show how close you are. You can change it any time in Settings.
+                  {tr('Set a goal and your dashboard will show how close you are. You can change it any time in Settings.')}
                 </p>
               </div>
 
@@ -158,16 +159,16 @@ export default function Welcome() {
               {preset && (
                 <div className="space-y-4 animate-fade-in-up">
                   <div>
-                    <label className="label" htmlFor="welcome-goal-title">Goal name</label>
-                    <input id="welcome-goal-title" className="input" value={goal.title} onChange={(e) => setGoal({ ...goal, title: e.target.value })} placeholder="e.g. Summer service hours" />
+                    <label className="label" htmlFor="welcome-goal-title">{tr('Goal name')}</label>
+                    <input id="welcome-goal-title" className="input" value={goal.title} onChange={(e) => setGoal({ ...goal, title: e.target.value })} placeholder={tr('e.g. Summer service hours')} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="label" htmlFor="welcome-goal-hours">Hours</label>
+                      <label className="label" htmlFor="welcome-goal-hours">{tr('Hours')}</label>
                       <input id="welcome-goal-hours" className="input" type="number" min="1" max="10000" step="any" inputMode="decimal" value={goal.targetHours} onChange={(e) => setGoal({ ...goal, targetHours: e.target.value })} />
                     </div>
                     <div>
-                      <label className="label" htmlFor="welcome-goal-deadline">Due by (optional)</label>
+                      <label className="label" htmlFor="welcome-goal-deadline">{tr('Due by (optional)')}</label>
                       <div className="relative">
                         <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400 pointer-events-none" />
                         <input id="welcome-goal-deadline" className="input pl-9" type="date" value={goal.deadline} onChange={(e) => setGoal({ ...goal, deadline: e.target.value })} />
@@ -185,9 +186,9 @@ export default function Welcome() {
               {goalErr && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{goalErr}</div>}
 
               <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-between">
-                <button type="button" className="btn-ghost" onClick={next}>Skip for now</button>
+                <button type="button" className="btn-ghost" onClick={next}>{tr('Skip for now')}</button>
                 <button type="submit" className="btn-primary" disabled={!preset}>
-                  Save goal <ArrowRight className="w-4 h-4" />
+                  {tr('Save goal')} <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </form>
@@ -196,7 +197,7 @@ export default function Welcome() {
           {steps[step] === 'school' && (
             <div className="space-y-5">
               <div>
-                <h1 className="text-2xl font-bold mb-1">Link your school</h1>
+                <h1 className="text-2xl font-bold mb-1">{tr('Link your school')}</h1>
                 <p className="text-sm text-earth-500 dark:text-earth-400">
                   If your school uses VolunTrack, its code lets your coordinator review and approve your hours. No code? Skip this — you can add one later in Settings.
                 </p>
@@ -205,7 +206,7 @@ export default function Welcome() {
               {join.status === 'linked' ? (
                 <div className="flex items-start gap-3 rounded-2xl border border-brand-500/40 bg-brand-500/10 p-4 text-sm">
                   <Check className="w-5 h-5 text-brand-500 shrink-0" />
-                  <span>You&apos;re linked to your school. Hours you log will show up for your coordinator to review.</span>
+                  <span>{tr("You're linked to your school. Hours you log will show up for your coordinator to review.")}</span>
                 </div>
               ) : join.status === 'transfer' ? (
                 <div className="flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
@@ -225,7 +226,7 @@ export default function Welcome() {
                     </div>
                   )}
                   <div>
-                    <label className="label" htmlFor="welcome-school-code">School code</label>
+                    <label className="label" htmlFor="welcome-school-code">{tr('School code')}</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400 pointer-events-none" />
@@ -243,11 +244,11 @@ export default function Welcome() {
               <div className="flex justify-end">
                 {join.status === 'linked' || join.status === 'transfer' ? (
                   <button type="button" className="btn-primary" onClick={finish}>
-                    Go to my dashboard <ArrowRight className="w-4 h-4" />
+                    {tr('Go to my dashboard')} <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button type="button" className="btn-ghost" onClick={finish} disabled={join.status === 'busy'}>
-                    Skip for now <ArrowRight className="w-4 h-4" />
+                    {tr('Skip for now')} <ArrowRight className="w-4 h-4" />
                   </button>
                 )}
               </div>

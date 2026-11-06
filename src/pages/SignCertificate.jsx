@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import SignaturePad from '@/components/SignaturePad.jsx'
 import { fetchCertificateSignRequest, submitCertificateSign } from '@/lib/requirements.js'
+import { tr } from '@/lib/i18n.js'
 
 // The phone half of signing a certificate (#548): opened from the QR code on
 // the Certificates settings. No sign-in; the one-time link is the key.
@@ -42,7 +43,7 @@ export default function SignCertificate() {
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-6">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-10 h-10 object-contain" />
-          <span className="font-display font-bold text-2xl">VolunTrack</span>
+          <span className="font-display font-bold text-2xl">{tr('VolunTrack')}</span>
         </Link>
         <Card padded={false} className="p-6">
           {req.loading ? (
@@ -57,13 +58,13 @@ export default function SignCertificate() {
           ) : done ? (
             <div className="text-center">
               <CheckCircle2 className="w-10 h-10 text-brand-500 mx-auto mb-3" />
-              <p className="font-semibold">Signature sent</p>
-              <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">It’s now on the computer. Press Save requirements there to keep it.</p>
+              <p className="font-semibold">{tr('Signature sent')}</p>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{tr('It’s now on the computer. Press Save requirements there to keep it.')}</p>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <h1 className="font-display font-bold text-xl">Sign the certificates</h1>
+                <h1 className="font-display font-bold text-xl">{tr('Sign the certificates')}</h1>
                 <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">
                   {d.signerName ? `${d.signerName}, sign` : 'Sign'} with your finger. This signature goes on the service certificates{d.tenantName ? ` from ${d.tenantName}` : ''}.
                 </p>
