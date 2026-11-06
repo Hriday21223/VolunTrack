@@ -6448,7 +6448,7 @@ const kioskName = (name) => {
 router.get('/public-tasks/:id/kiosk', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, title, status, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
+      `SELECT id, title, status, allow_walkins, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
       [req.params.id],
     )
     const task = rows[0]
@@ -6464,6 +6464,7 @@ router.get('/public-tasks/:id/kiosk', limiter, requireDb, requireAuth(), async (
       [task.id],
     )
     return res.json({
+      allowWalkins: task.allow_walkins !== false,
       title: task.title,
       people: people.map((p) => ({
         signupId: p.id, name: kioskName(p.name), hasPin: p.has_pin,
@@ -6502,9 +6503,15 @@ router.post('/public-tasks/:id/kiosk/:signupId', limiter, requireDb, requireAuth
       await query('UPDATE public_task_signups SET kiosk_pin_fails = 0 WHERE id = $1', [signup.id])
       return res.json({ state: 'unlocked' })
     }
-    if (!signup.kiosk_pin_hash) return res.status(400).json({ error: 'This volunteer has no check-in PIN. Mark them present on My Tasks.' })
-    const pinCheck = await checkKioskPin(signup, pin)
-    if (!pinCheck.ok) return res.status(pinCheck.status).json(pinCheck.body)
+    // The organizer checks out someone with no PIN (a walk-in added at the
+    // kiosk, #767) after typing their kiosk code; the kiosk runs on their own
+    // session, so this is the organizer acting.
+    const byOrganizer = req.body?.organizerCheckout === true && !signup.kiosk_pin_hash && signup.checked_in_at
+    if (!byOrganizer) {
+      if (!signup.kiosk_pin_hash) return res.status(400).json({ error: 'This volunteer has no check-in PIN. Mark them present on My Tasks.' })
+      const pinCheck = await checkKioskPin(signup, pin)
+      if (!pinCheck.ok) return res.status(pinCheck.status).json(pinCheck.body)
+    }
     if (!signup.checked_in_at) {
       const { rows: done } = await query(
         `UPDATE public_task_signups SET checked_in_at = now(), checkin_method = 'kiosk', attendance_status = 'present', attendance_marked_at = now()
@@ -8280,6 +8287,44 @@ function round2(o) {
   }
   return o
 }
+
+// POST /public-tasks/:id/kiosk-walkin — the organizer, at the kiosk, adds a
+// walk-in by their account email and checks them in (#767). For people with no
+// phone on them; the kiosk asks for the organizer's own 4-digit code first.
+// The same walk-in rules as the phone (server/walkIns.js).
+router.post('/public-tasks/:id/kiosk-walkin', limiter, requireDb, requireAuth(), async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase()
+  if (!email || !email.includes('@') || email.length > 254) return res.status(400).json({ error: 'Enter the email they use for VolunTrack.' })
+  try {
+    const { rows } = await query(
+      `SELECT id, title, created_by, status, date, min_stay_minutes, date BETWEEN CURRENT_DATE - 1 AND CURRENT_DATE + 1 AS today FROM public_tasks WHERE id = $1`,
+      [req.params.id],
+    )
+    const task = rows[0]
+    if (!task) return res.status(404).json({ error: 'Task not found.' })
+    if (refuseTaskAccess(res, await canManageTask(task.id, req.auth.sub), "Only the task's organizer or a co-host can add walk-ins.")) return
+    if (task.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (!task.today) return res.status(400).json({ error: 'The kiosk only works on the day of the task.' })
+    const { rows: who } = await query('SELECT id, name FROM users WHERE lower(email) = $1', [email])
+    if (!who[0]) return res.status(404).json({ error: 'No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.' })
+    const joined = await joinAsWalkIn(task.id, who[0].id)
+    if (!joined.ok) return res.status(403).json({ error: joined.error })
+    const { rows: done } = await query(
+      `UPDATE public_task_signups SET checked_in_at = now(), checkin_method = 'kiosk', attendance_status = 'present', attendance_marked_at = now()
+        WHERE task_id = $1 AND user_id = $2 AND checked_in_at IS NULL RETURNING checked_in_at`,
+      [task.id, who[0].id],
+    )
+    if (done.length > 0) tellParentsOfAttendance(who[0].id, task, 'in')
+    // A walk-in has no PIN from an approval email, so the kiosk shows them a
+    // new one once, to check themselves out with. Someone who signed up keeps theirs.
+    const { rows: pinRow } = await query('SELECT kiosk_pin_hash IS NOT NULL AS has_pin FROM public_task_signups WHERE task_id = $1 AND user_id = $2', [task.id, who[0].id])
+    const pin = pinRow[0]?.has_pin ? null : await issueKioskPin(task.id, who[0].id)
+    return res.json({ state: 'checked_in', name: who[0].name, pin, jobs: await checkinJobs(task.id, who[0].id) })
+  } catch (error) {
+    console.error('kiosk walk-in failed:', error)
+    return res.status(500).json({ error: 'Could not add the walk-in.' })
+  }
+})
 
 // PUT /public-tasks/:id/walkins — the organizer turns walk-ins on or off (#765).
 router.put('/public-tasks/:id/walkins', limiter, requireDb, requireAuth(), async (req, res) => {

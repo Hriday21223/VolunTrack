@@ -376,6 +376,8 @@ export const ERRORS_VI = {
   "A parent needs to approve your events first. Ask the organizer to add you.": "Phụ huynh cần duyệt sự kiện của bạn trước. Hãy nhờ người tổ chức thêm bạn.",
   "A parent or guardian has to come with you to this event. Ask the organizer to add you.": "Cha mẹ hoặc người giám hộ phải đi cùng bạn đến sự kiện này. Hãy nhờ người tổ chức thêm bạn.",
   "This event is full. Ask the organizer to add you.": "Sự kiện này đã đủ người. Hãy nhờ người tổ chức thêm bạn.",
+  "Enter the email they use for VolunTrack.": "Nhập email họ dùng cho VolunTrack.",
+  "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "Không có tài khoản VolunTrack nào dùng email đó. Họ có thể đăng ký trên điện thoại rồi quét mã, hoặc ghi giờ sau.",
 }
 
 export const ERRORS_ZH = {
@@ -754,4 +756,6 @@ export const ERRORS_ZH = {
   "A parent needs to approve your events first. Ask the organizer to add you.": "需要家长先批准你的活动。请让组织者把你加进来。",
   "A parent or guardian has to come with you to this event. Ask the organizer to add you.": "此活动需要家长或监护人陪同。请让组织者把你加进来。",
   "This event is full. Ask the organizer to add you.": "此活动已满。请让组织者把你加进来。",
+  "Enter the email they use for VolunTrack.": "请输入对方的 VolunTrack 邮箱。",
+  "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "没有 VolunTrack 账户使用该邮箱。对方可以用手机注册后扫码，或稍后再记录时数。",
 }

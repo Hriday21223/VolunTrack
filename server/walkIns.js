@@ -49,6 +49,8 @@ export async function joinAsWalkIn(taskId, userId, { dryRun = false } = {}) {
     const { rows: mine } = await client.query('SELECT id, status FROM public_task_signups WHERE task_id = $1 AND user_id = $2', [taskId, userId])
     const existing = mine[0]
     if (existing && ['rejected', 'parent_pending', 'parent_declined'].includes(existing.status)) return refuse(ASK)
+    // Already approved: nothing to join, they just check in.
+    if (existing && existing.status === 'approved') { await client.query('ROLLBACK'); return { ok: true, alreadyApproved: true } }
     const { rows: used } = await client.query(`SELECT ${SPOTS_USED_SQL('$1')} AS n`, [taskId])
     // A pending sign-up already holds its spot; a waitlisted one doesn't.
     const holdsSpot = existing && existing.status === 'pending'
