@@ -378,6 +378,10 @@ export const ERRORS_VI = {
   "This event is full. Ask the organizer to add you.": "Sự kiện này đã đủ người. Hãy nhờ người tổ chức thêm bạn.",
   "Enter the email they use for VolunTrack.": "Nhập email họ dùng cho VolunTrack.",
   "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "Không có tài khoản VolunTrack nào dùng email đó. Họ có thể đăng ký trên điện thoại rồi quét mã, hoặc ghi giờ sau.",
+  "Choose a student.": "Hãy chọn một học sinh.",
+  "That student is not at your school.": "Học sinh đó không thuộc trường bạn.",
+  "You already picked a volunteer of the month. Undo it first to pick someone else.": "Bạn đã chọn tình nguyện viên của tháng. Hãy hoàn tác trước để chọn người khác.",
+  "Only this month’s pick can be undone.": "Chỉ có thể hoàn tác lựa chọn của tháng này.",
 }
 
 export const ERRORS_ZH = {
@@ -758,4 +762,8 @@ export const ERRORS_ZH = {
   "This event is full. Ask the organizer to add you.": "此活动已满。请让组织者把你加进来。",
   "Enter the email they use for VolunTrack.": "请输入对方的 VolunTrack 邮箱。",
   "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "没有 VolunTrack 账户使用该邮箱。对方可以用手机注册后扫码，或稍后再记录时数。",
+  "Choose a student.": "请选择一名学生。",
+  "That student is not at your school.": "该学生不在你的学校。",
+  "You already picked a volunteer of the month. Undo it first to pick someone else.": "你已经选了本月志愿者。请先撤销再选别人。",
+  "Only this month’s pick can be undone.": "只能撤销本月的选择。",
 }

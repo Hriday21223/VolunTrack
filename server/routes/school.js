@@ -718,6 +718,112 @@ async function challengeProgress(challenge, viewerId = null) {
 const CHALLENGE_COLS = `id, school_id, title, goal_hours, to_char(starts_on, 'YYYY-MM-DD') AS starts_on, to_char(ends_on, 'YYYY-MM-DD') AS ends_on`
 
 // The running challenge for the caller's school, or null.
+// --- Volunteer of the month (#786) -----------------------------------------
+//
+// An adviser picks one student a month with a short note. Private: the
+// student, their linked parents and the school's advisers see it; nobody else.
+// One per school per month (UNIQUE); undo deletes it.
+
+const SPOTLIGHT_NOTE_MAX = 300
+const thisMonth = () => new Date().toISOString().slice(0, 7)
+
+async function adviserSchool(userId) {
+  const { rows } = await query(
+    'SELECT u.school_id, s.plan, s.payment_status, s.name AS school_name FROM users u LEFT JOIN schools s ON s.id = u.school_id WHERE u.id = $1',
+    [userId],
+  )
+  return rows[0]?.school_id ? rows[0] : null
+}
+
+router.get('/spotlight', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const me = await adviserSchool(req.auth.sub)
+    if (!me) return res.json({ current: null, recent: [] })
+    const { rows } = await query(
+      `SELECT sp.id, sp.month, sp.note, sp.student_id, u.name
+         FROM school_spotlights sp JOIN users u ON u.id = sp.student_id
+        WHERE sp.school_id = $1 ORDER BY sp.month DESC LIMIT 6`,
+      [me.school_id],
+    )
+    const list = rows.map((r) => ({ id: r.id, month: r.month, note: r.note, studentId: r.student_id, name: r.name }))
+    return res.json({ month: thisMonth(), current: list.find((r) => r.month === thisMonth()) || null, recent: list.filter((r) => r.month !== thisMonth()) })
+  } catch (error) {
+    console.error('spotlight read failed:', error)
+    return res.status(500).json({ error: 'Could not load volunteer of the month.' })
+  }
+})
+
+router.post('/spotlight', limiter, requireDb, requireAuth('school', 'school_staff'), requirePaidSchool, async (req, res) => {
+  const studentId = String(req.body?.studentId || '')
+  const note = String(req.body?.note || '').trim()
+  if (!studentId) return res.status(400).json({ error: 'Choose a student.' })
+  if (note.length > SPOTLIGHT_NOTE_MAX) return res.status(400).json({ error: `Keep the note under ${SPOTLIGHT_NOTE_MAX} characters.` })
+  try {
+    const me = await adviserSchool(req.auth.sub)
+    if (!me) return res.status(404).json({ error: 'School not found.' })
+    const scope = await clubScope(req.auth.sub)
+    if (scope && !scope.has(studentId)) return res.status(403).json({ error: OUT_OF_SCOPE })
+    const { rows: st } = await query(
+      `SELECT id, name FROM users WHERE id = $1 AND school_id = $2 AND role = 'student'
+          AND (parental_consent_status IS NULL OR parental_consent_status <> 'pending')`,
+      [studentId, me.school_id],
+    )
+    if (!st[0]) return res.status(404).json({ error: 'That student is not at your school.' })
+    const month = thisMonth()
+    const { rows } = await query(
+      `INSERT INTO school_spotlights (id, school_id, student_id, month, note, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (school_id, month) DO NOTHING RETURNING id`,
+      [uid('spot'), me.school_id, studentId, month, note || null, req.auth.sub],
+    )
+    if (!rows[0]) return res.status(409).json({ error: 'You already picked a volunteer of the month. Undo it first to pick someone else.' })
+    const school = me.school_name || 'Your school'
+    notify(studentId, {
+      kind: 'spotlight',
+      title: "You're volunteer of the month! 🌟",
+      body: note ? `${school}: “${note}”` : `${school} picked you as volunteer of the month.`,
+      link: '/',
+    })
+    const { rows: parents } = await query('SELECT parent_id FROM parent_child_links WHERE child_id = $1', [studentId])
+    const first = String(st[0].name || '').split(/\s+/)[0] || 'Your child'
+    for (const p of parents) {
+      notify(p.parent_id, { kind: 'spotlight', title: `${first} is volunteer of the month! 🌟`, body: `${school} picked ${first} this month.`, link: '/parent' })
+    }
+    return res.status(201).json({ ok: true, id: rows[0].id })
+  } catch (error) {
+    console.error('spotlight create failed:', error)
+    return res.status(500).json({ error: 'Could not save volunteer of the month.' })
+  }
+})
+
+router.delete('/spotlight/:id', limiter, requireDb, requireAuth('school', 'school_staff'), async (req, res) => {
+  try {
+    const me = await adviserSchool(req.auth.sub)
+    if (!me) return res.status(404).json({ error: 'School not found.' })
+    const { rowCount } = await query('DELETE FROM school_spotlights WHERE id = $1 AND school_id = $2 AND month = $3', [req.params.id, me.school_id, thisMonth()])
+    if (!rowCount) return res.status(404).json({ error: 'Only this month’s pick can be undone.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('spotlight delete failed:', error)
+    return res.status(500).json({ error: 'Could not undo volunteer of the month.' })
+  }
+})
+
+// The student's own picks (newest first), for the Dashboard card.
+router.get('/my-spotlight', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT sp.month, sp.note, s.name AS school_name, (sp.month = $2) AS current
+         FROM school_spotlights sp JOIN schools s ON s.id = sp.school_id
+        WHERE sp.student_id = $1 ORDER BY sp.month DESC LIMIT 12`,
+      [req.auth.sub, thisMonth()],
+    )
+    return res.json({ spotlights: rows.map((r) => ({ month: r.month, note: r.note, schoolName: r.school_name, current: r.current })) })
+  } catch (error) {
+    console.error('my spotlight failed:', error)
+    return res.status(500).json({ error: 'Could not load.' })
+  }
+})
+
 router.get('/challenge', limiter, requireDb, requireAuth('student', 'school', 'school_staff'), async (req, res) => {
   try {
     const { rows: me } = await query(
