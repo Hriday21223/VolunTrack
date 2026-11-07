@@ -1164,6 +1164,10 @@ export default function SchoolDashboard() {
                     <input type="number" className="input" min={1} placeholder={tr('Slots')} value={taskForm.slotsTotal} onChange={(e) => setTaskForm({...taskForm, slotsTotal: e.target.value})} required />
                   </div>
                 </div>
+                <label className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" className="mt-1" checked={Boolean(taskForm.serviceDay)} onChange={(e) => setTaskForm({...taskForm, serviceDay: e.target.checked})} />
+                  <span>{tr('School service day')}<span className="block text-xs text-earth-500">{tr('Your students get a notification and see it on their dashboard.')}</span></span>
+                </label>
                 <button type="submit" className="btn-primary w-full" disabled={taskBusy}>{taskBusy ? tr('Posting…') : tr('Post task')}</button>
               </form>
             </Card>

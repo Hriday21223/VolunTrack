@@ -3406,4 +3406,9 @@ export default {
   "Your check-out PIN": "Mã PIN ra về của bạn",
   "Remember it. When you leave, tap your name here and type this PIN to check out.": "Hãy nhớ mã này. Khi ra về, chạm vào tên bạn ở đây và nhập mã PIN này để ra về.",
   "I’ll remember it": "Tôi sẽ nhớ",
+  "School service day": "Ngày phục vụ của trường",
+  "School service days": "Ngày phục vụ của trường",
+  "Your students get a notification and see it on their dashboard.": "Học sinh của bạn nhận được thông báo và thấy nó trên trang chính.",
+  "You're going": "Bạn sẽ tham gia",
+  "On the waitlist": "Trong danh sách chờ",
 }

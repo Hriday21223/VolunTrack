@@ -3406,4 +3406,9 @@ export default {
   "Your check-out PIN": "你的签退 PIN",
   "Remember it. When you leave, tap your name here and type this PIN to check out.": "请记住它。离开时，在这里点你的名字并输入此 PIN 签退。",
   "I’ll remember it": "我记住了",
+  "School service day": "学校服务日",
+  "School service days": "学校服务日",
+  "Your students get a notification and see it on their dashboard.": "你的学生会收到通知，并在首页看到它。",
+  "You're going": "你会参加",
+  "On the waitlist": "在候补名单上",
 }

@@ -609,6 +609,11 @@ export default function Opportunities() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{t.title}</p>
+                    {t.school_service_day && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-300 font-medium shrink-0">
+                        {tr('School service day')}
+                      </span>
+                    )}
                     {t.for_my_schools && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-500 dark:text-sky-300 font-medium shrink-0">
                         {tr('For your school')}

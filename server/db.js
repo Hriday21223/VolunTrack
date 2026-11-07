@@ -2620,5 +2620,8 @@ export async function initSchema() {
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS allow_walkins BOOLEAN NOT NULL DEFAULT true') } catch {}
   try { await query('ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS walk_in BOOLEAN NOT NULL DEFAULT false') } catch {}
 
+  // School service days (#784): a task an adviser posts for their own school's students.
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS service_school_id TEXT') } catch {}
+  try { await query('CREATE INDEX IF NOT EXISTS public_tasks_service_school_idx ON public_tasks (service_school_id, date) WHERE service_school_id IS NOT NULL') } catch {}
   return true
 }
