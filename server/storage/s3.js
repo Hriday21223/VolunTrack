@@ -1,4 +1,5 @@
 import { createHash, createHmac } from 'crypto'
+import { publicFetch } from '../publicHost.js'
 
 // Minimal AWS Signature V4 *query* presigner for S3-compatible object stores
 // (AWS S3, Cloudflare R2, MinIO, Backblaze B2's S3 API, …).
@@ -202,20 +203,20 @@ export async function checkRoundTrip(config) {
   let putDone = false
 
   try {
-    const put = await fetch(presign(config, { method: 'PUT', key, expiresIn: 60 }), {
+    const put = await publicFetch(presign(config, { method: 'PUT', key, expiresIn: 60 }), {
       method: 'PUT',
       body,
     })
     if (!put.ok) return { ok: false, error: await describeFailure(put, 'write to') }
     putDone = true
 
-    const get = await fetch(presign(config, { method: 'GET', key, expiresIn: 60 }))
+    const get = await publicFetch(presign(config, { method: 'GET', key, expiresIn: 60 }))
     if (!get.ok) return { ok: false, error: await describeFailure(get, 'read back from') }
     if ((await get.text()) !== body) {
       return { ok: false, error: 'The probe file read back with different contents.' }
     }
 
-    const del = await fetch(presign(config, { method: 'DELETE', key, expiresIn: 60 }), {
+    const del = await publicFetch(presign(config, { method: 'DELETE', key, expiresIn: 60 }), {
       method: 'DELETE',
     })
     if (!del.ok) return { ok: false, error: await describeFailure(del, 'delete from') }
@@ -227,7 +228,7 @@ export async function checkRoundTrip(config) {
   } finally {
     // Never leave a probe object behind if we bailed between PUT and DELETE.
     if (putDone) {
-      await fetch(presign(config, { method: 'DELETE', key, expiresIn: 60 }), { method: 'DELETE' })
+      await publicFetch(presign(config, { method: 'DELETE', key, expiresIn: 60 }), { method: 'DELETE' })
         .catch(() => {})
     }
   }
@@ -258,7 +259,7 @@ export async function checkCors(config, origin) {
   if (!origin) return { ok: null, error: null }
   try {
     const { origin: base, canonicalUri } = resolveTarget(config, withPrefix(config.prefix, 'probe'))
-    const res = await fetch(`${base}${canonicalUri}`, {
+    const res = await publicFetch(`${base}${canonicalUri}`, {
       method: 'OPTIONS',
       headers: {
         Origin: origin,

@@ -54,6 +54,7 @@ function taskMinStay(v) {
 
 import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
 import { LEGAL_VERSION } from '../legal.js'
+import { publicFetch } from '../publicHost.js'
 const router = express.Router()
 
 // Shared across every route in this file, including reads (a single
@@ -7870,7 +7871,9 @@ router.post('/admin/drain-pdf-uploads', limiter, requireDb, requireAuth('admin')
           headers: { 'content-length': String(body.length) },
         })
 
-        const put = await fetch(url, {
+        // publicFetch: the bucket address is the school's own setting, so it's
+        // checked again at connect time (it may point somewhere else by now).
+        const put = await publicFetch(url, {
           method: 'PUT',
           headers: { 'Content-Type': row.file_type || 'application/pdf', 'Content-Length': String(body.length) },
           body,
