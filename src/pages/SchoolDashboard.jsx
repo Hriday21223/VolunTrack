@@ -30,6 +30,7 @@ import GraduationReportPanel from '@/components/GraduationReportPanel.jsx'
 import GradeRolloverCard from '@/components/GradeRolloverCard.jsx'
 import SchoolStarterKit from '@/components/SchoolStarterKit.jsx'
 import LeaderboardSettingsCard from '@/components/LeaderboardSettingsCard.jsx'
+import SpotlightPickCard from '@/components/SpotlightPickCard.jsx'
 import ChallengeCard from '@/components/ChallengeCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
@@ -823,6 +824,7 @@ export default function SchoolDashboard() {
             <ImportHoursCard onDone={loadData} />
 
             <ChallengeCard manage />
+            <SpotlightPickCard />
             <SchoolVsSchoolCard />
 
             <LeaderboardSettingsCard canEdit={user?.role === 'school'} />
