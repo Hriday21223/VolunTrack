@@ -263,7 +263,6 @@ function LogRulesEditor({ value, onChange }) {
         <Check label={tr('Require a supervisor name and email')} checked={value.supervisorRequired} onChange={(v) => onChange({ supervisorRequired: v })} />
         <Check label={tr('Require a location')} checked={value.locationRequired} onChange={(v) => onChange({ locationRequired: v })} />
         <Check label={tr('Require the organization name')} checked={value.orgNameRequired} onChange={(v) => onChange({ orgNameRequired: v })} />
-        <Check label={tr('Allow future-dated entries')} checked={value.allowFutureDates} onChange={(v) => onChange({ allowFutureDates: v })} />
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <NumberBox label={tr('Minimum hours per entry')} value={value.minHoursPerEntry} onChange={(v) => onChange({ minHoursPerEntry: v })} placeholder={tr('No minimum')} />

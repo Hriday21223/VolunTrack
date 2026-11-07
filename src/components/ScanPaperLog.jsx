@@ -5,6 +5,8 @@ import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { tr } from '@/lib/i18n.js'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
 
+const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const MAX_SIDE = 1600
 
@@ -120,7 +122,7 @@ export default function ScanPaperLog({ onAdd }) {
               <li key={r.key} className={`rounded-xl border p-3 grid grid-cols-[auto,1fr] gap-x-3 gap-y-2 ${r.keep ? 'border-brand-500/40' : 'border-earth-200 dark:border-earth-700 opacity-70'}`}>
                 <input type="checkbox" className="mt-2 w-4 h-4" checked={r.keep} onChange={(e) => update(r.key, 'keep', e.target.checked)} aria-label={tr('Add this entry')} />
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <input type="date" className="input min-w-0" value={r.date} onChange={(e) => update(r.key, 'date', e.target.value)} aria-label={tr('Date')} />
+                  <input type="date" className="input min-w-0" max={localToday()} value={r.date} onChange={(e) => update(r.key, 'date', e.target.value)} aria-label={tr('Date')} />
                   <input type="number" min="0.25" max="24" step="0.25" className="input min-w-0" value={r.hours || ''} placeholder={tr('Hours')} onChange={(e) => update(r.key, 'hours', e.target.value)} aria-label={tr('Hours')} />
                   <input className="input min-w-0 col-span-2" value={r.activity} placeholder={tr('Activity')} onChange={(e) => update(r.key, 'activity', e.target.value)} aria-label={tr('Activity')} />
                   <input className="input min-w-0 col-span-2" value={r.orgName} placeholder={tr('Organization')} onChange={(e) => update(r.key, 'orgName', e.target.value)} aria-label={tr('Organization')} />

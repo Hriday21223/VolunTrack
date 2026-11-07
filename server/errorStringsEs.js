@@ -382,6 +382,8 @@ export const ERRORS_ES = {
   "Could not save the weekly goal.": "No se pudo guardar la meta semanal.",
   "Choose a student.": "Elige un estudiante.",
   "That student is not at your school.": "Ese estudiante no está en tu escuela.",
+  "That date is too far in the past.": "Esa fecha es demasiado antigua.",
+  "You can't log hours for a future date.": "No puedes registrar horas en una fecha futura.",
   "You already picked a volunteer of the month. Undo it first to pick someone else.": "Ya elegiste un voluntario del mes. Deshazlo primero para elegir a otra persona.",
   "Only this month’s pick can be undone.": "Solo se puede deshacer la elección de este mes.",
 }

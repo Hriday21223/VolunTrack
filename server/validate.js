@@ -12,6 +12,15 @@ export function isValidDateString(value) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
 }
 
+// Hours are logged after the volunteering, so a log's date is today or
+// earlier (UTC's today, which is already tomorrow on a US evening, so nobody
+// in the US is refused their own today). Typos like 1901 are refused too.
+export function logDateRangeError(value) {
+  if (value < '1990-01-01') return 'That date is too far in the past.'
+  if (value > new Date().toISOString().slice(0, 10)) return "You can't log hours for a future date."
+  return null
+}
+
 // Text fields on a log. The body limit alone allowed a megabyte in each.
 export const LOG_TEXT_LIMITS = [
   ['Activity', 'activity', 200],

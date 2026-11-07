@@ -101,7 +101,6 @@ export function describePolicy(policy) {
   if (rules.maxHoursPerEntry != null) out.push(`At most ${rules.maxHoursPerEntry} hour(s) per entry`)
   if (rules.maxHoursPerDay != null) out.push(`At most ${rules.maxHoursPerDay} hour(s) on one day`)
   if (rules.maxBackdateDays != null) out.push(`Logged within ${rules.maxBackdateDays} day(s) of the activity`)
-  if (!rules.allowFutureDates) out.push('No future-dated entries')
   if (rules.allowedCategories?.length) out.push(`Only these categories: ${rules.allowedCategories.join(', ')}`)
   const needs = signatureNeeds(policy)
   if (needs.supervisorSignature && needs.studentSignature) out.push('Signed by you and your supervisor')
