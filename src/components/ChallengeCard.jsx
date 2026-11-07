@@ -46,11 +46,14 @@ export default function ChallengeCard({ manage = false, className = '' }) {
 
   const end = async () => {
     if (!window.confirm(tr('End this challenge now? Students will stop seeing it.'))) return
-    setBusy(true)
+    setBusy(true); setError('')
     try {
-      await fetch(`${apiUrl}/school/challenge/${challenge.id}`, { method: 'DELETE', headers: auth() })
+      // Only hide it once the server has ended it; otherwise students still see it.
+      const res = await fetch(`${apiUrl}/school/challenge/${challenge.id}`, { method: 'DELETE', headers: auth() })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || tr('Could not end the challenge.'))
       setChallenge(null)
-    } finally { setBusy(false) }
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
   if (!challenge) {
@@ -91,6 +94,7 @@ export default function ChallengeCard({ manage = false, className = '' }) {
         {tr('{n} students taking part', { n: challenge.participants })}
         {challenge.myHours != null && ` · ${challenge.myHours > 0 ? tr('you added {h} hours', { h: challenge.myHours }) : tr('log hours to add yours')}`}
       </p>
+      {manage && error && <p className="text-sm text-red-500 mt-2" role="alert">{error}</p>}
     </Card>
   )
 }

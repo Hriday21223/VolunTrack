@@ -3436,4 +3436,6 @@ export default {
   "Set with {name}": "Đặt cùng {name}",
   "Could not save the weekly goal.": "Không lưu được mục tiêu hằng tuần.",
   "Could not undo volunteer of the month.": "Không thể hoàn tác tình nguyện viên của tháng.",
+  "Could not end the challenge.": "Không thể kết thúc thử thách.",
+  "Could not remove the reference.": "Không thể xóa người giới thiệu.",
 }

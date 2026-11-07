@@ -3465,4 +3465,6 @@ export default {
   "Set with {name}": "Fijada con {name}",
   "Could not save the weekly goal.": "No se pudo guardar la meta semanal.",
   "Could not undo volunteer of the month.": "No se pudo deshacer el voluntario del mes.",
+  "Could not end the challenge.": "No se pudo terminar el desafío.",
+  "Could not remove the reference.": "No se pudo quitar la referencia.",
 }
