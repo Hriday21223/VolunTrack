@@ -180,7 +180,13 @@ ws.delete('/v1/devices/:device/registrations/:type/:serial', safe(async (req, re
 // Apple's error log for the web service: kept short in our own log.
 ws.post('/v1/log', (req, res) => {
   const logs = Array.isArray(req.body?.logs) ? req.body.logs.slice(0, 5) : []
-  for (const l of logs) console.warn('apple wallet log:', String(l).slice(0, 300))
+  for (const l of logs) {
+    const sanitized = String(l)
+      .replace(/[\r\n\u2028\u2029]+/g, ' ')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .slice(0, 300)
+    console.warn('apple wallet log:', sanitized)
+  }
   res.sendStatus(200)
 })
 
