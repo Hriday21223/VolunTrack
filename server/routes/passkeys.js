@@ -19,7 +19,7 @@ import { isoBase64URL } from '@simplewebauthn/server/helpers'
 import { query, hasDatabase } from '../db.js'
 import { uid } from '../ids.js'
 import { signToken, verifyTempToken, requireAuth, verifyPassword } from '../auth.js'
-import { publicUser, generateBackupCodes, hashBackupCodes } from './auth.js'
+import { publicUser, generateBackupCodes, hashBackupCodes, accountLockGate } from './auth.js'
 import { RP_NAME, rpId, expectedOrigins, userHandle, CHALLENGE_TTL_MS, MAX_PASSKEYS_PER_USER } from '../passkeys.js'
 
 const router = express.Router()
@@ -271,6 +271,8 @@ router.post('/challenge/verify', limiter, requireDb, async (req, res) => {
     )
     const { rows: users } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
     if (!users[0]) return res.status(404).json({ error: 'Account not found.' })
+    const locked = await accountLockGate(users[0])
+    if (locked) return res.status(locked.status).json(locked.body)
     const user = publicUser(users[0])
     return res.json({ token: signToken(user), user })
   } catch (error) {
