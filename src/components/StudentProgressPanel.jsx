@@ -9,6 +9,11 @@ import { tr } from '@/lib/i18n.js'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
 
+// Behind on hours and nothing logged (dated) in the last 30 days (#782).
+const QUIET_DAYS = 30
+const isQuiet = (s) => Boolean(s.target && s.remaining > 0 && !s.consentPending
+  && (!s.lastLogDate || differenceInCalendarDays(new Date(), parseISO(s.lastLogDate)) >= QUIET_DAYS))
+
 // Students tab → Hours progress: each linked student's hours against the
 // school's requirement (Setup → Requirements → goals), most hours to go first,
 // with a reminder email (server: GET /students/progress, POST /students/remind).
@@ -16,6 +21,7 @@ export default function StudentProgressPanel({ onSetRequirement }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [behindOnly, setBehindOnly] = useState(true)
+  const [quietOnly, setQuietOnly] = useState(false)
   const [picked, setPicked] = useState(() => new Set())
   const [confirming, setConfirming] = useState(false)
   const [sending, setSending] = useState(false)
@@ -39,9 +45,9 @@ export default function StudentProgressPanel({ onSetRequirement }) {
   const canRemind = (s) => s.target && s.remaining > 0 && !s.consentPending && !recentlyReminded(s)
 
   const rows = useMemo(() => {
-    const list = (data?.students || []).filter((s) => !behindOnly || (s.target && s.remaining > 0))
+    const list = (data?.students || []).filter((s) => (quietOnly ? isQuiet(s) : !behindOnly || (s.target && s.remaining > 0)))
     return [...list].sort((a, b) => (b.remaining ?? -1) - (a.remaining ?? -1) || String(a.name).localeCompare(String(b.name)))
-  }, [data, behindOnly])
+  }, [data, behindOnly, quietOnly])
 
   if (error) return <Card><p className="text-sm text-red-400">{error}</p></Card>
   if (!data) return <Card><p className="text-sm text-earth-500 py-6 text-center">{tr('Loading…')}</p></Card>
@@ -49,6 +55,7 @@ export default function StudentProgressPanel({ onSetRequirement }) {
   const students = data.students
   const withGoal = students.filter((s) => s.target)
   const behind = withGoal.filter((s) => s.remaining > 0)
+  const quiet = students.filter(isQuiet)
   const daysLeft = data.deadline ? differenceInCalendarDays(parseISO(data.deadline), new Date()) : null
   const weeksLeft = daysLeft != null && daysLeft > 0 ? daysLeft / 7 : null
   const remindable = rows.filter(canRemind)
@@ -110,9 +117,22 @@ export default function StudentProgressPanel({ onSetRequirement }) {
           </button>
         )}
         <label className="flex items-center gap-2 text-sm text-earth-300">
-          <input type="checkbox" checked={behindOnly} onChange={(e) => setBehindOnly(e.target.checked)} />{' '}{tr('Only students with hours to go')}
+          <input type="checkbox" checked={behindOnly} disabled={quietOnly} onChange={(e) => setBehindOnly(e.target.checked)} />{' '}{tr('Only students with hours to go')}
         </label>
       </div>
+
+      {quiet.length > 0 && (
+        <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 flex flex-wrap items-center justify-between gap-2" role="status">
+          <p className="text-sm text-amber-200">
+            {quiet.length === 1
+              ? tr("1 student is behind and hasn't logged anything in {n} days.", { n: QUIET_DAYS })
+              : tr("{count} students are behind and haven't logged anything in {n} days.", { count: quiet.length, n: QUIET_DAYS })}
+          </p>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => { setQuietOnly((q) => !q); setPicked(new Set()) }}>
+            {quietOnly ? tr('Show everyone') : tr('Show them')}
+          </button>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-sm text-emerald-400 py-6 text-center">{tr('Everyone has met their hours. 🎉')}</p>
@@ -151,8 +171,8 @@ export default function StudentProgressPanel({ onSetRequirement }) {
                         {tr('{term}: {done} of {target} h', { term: data.term.name, done: s.termHours, target: data.term.hours })}{' · '}
                       </span>
                     )}
-                    {s.lastLogDate ? `Last logged ${fmtDate(s.lastLogDate)}` : tr('Nothing logged yet')}
-                    {weeksLeft && s.remaining > 0 ? ` · needs ${Math.ceil((s.remaining / weeksLeft) * 4) / 4} h/week` : ''}
+                    {s.lastLogDate ? tr('Last logged {date}', { date: fmtDate(s.lastLogDate) }) : tr('Nothing logged yet')}
+                    {weeksLeft && s.remaining > 0 ? ` · ${tr('needs {n} h/week', { n: Math.ceil((s.remaining / weeksLeft) * 4) / 4 })}` : ''}
                     {s.categoryShort?.length > 0 && <span className="text-amber-300">{` · ${tr('still needs')} `}{s.categoryShort.map((c) => `${c.remaining} h ${c.category}`).join(', ')}</span>}
                     {s.consentPending ? ` · ${tr('waiting for parent approval')}` : recentlyReminded(s) ? ` · ${tr('reminded {date}', { date: fmtDate(String(s.remindedAt).slice(0, 10)) })}` : ''}
                   </p>
