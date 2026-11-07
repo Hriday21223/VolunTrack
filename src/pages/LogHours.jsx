@@ -583,7 +583,7 @@ export default function LogHours({ editId, onCloseEdit }) {
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
                 <label className="label">{tr('Date *')}</label>
-                <input className="input" type="date" required value={form.date} onChange={onChange('date')} />
+                <input className="input" type="date" required max={format(new Date(), 'yyyy-MM-dd')} value={form.date} onChange={onChange('date')} />
               </div>
               <div>
                 <label className="label">{tr('Start time *')}</label>

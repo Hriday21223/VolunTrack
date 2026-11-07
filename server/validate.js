@@ -12,13 +12,12 @@ export function isValidDateString(value) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
 }
 
-// A log's date has to be plausible: typos like 1901 or 2031 were accepted and
-// then counted. Future dates are allowed (a school can turn that off), but at
-// most a year ahead.
+// Hours are logged after the volunteering, so a log's date is today or
+// earlier (UTC's today, which is already tomorrow on a US evening, so nobody
+// in the US is refused their own today). Typos like 1901 are refused too.
 export function logDateRangeError(value) {
-  const d = new Date(`${value}T00:00:00Z`).getTime()
-  if (d < Date.UTC(1990, 0, 1)) return 'That date is too far in the past.'
-  if (d > Date.now() + 366 * 86400000) return 'That date is more than a year away.'
+  if (value < '1990-01-01') return 'That date is too far in the past.'
+  if (value > new Date().toISOString().slice(0, 10)) return "You can't log hours for a future date."
   return null
 }
 
