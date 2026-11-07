@@ -181,7 +181,10 @@ ws.delete('/v1/devices/:device/registrations/:type/:serial', safe(async (req, re
 ws.post('/v1/log', (req, res) => {
   const logs = Array.isArray(req.body?.logs) ? req.body.logs.slice(0, 5) : []
   for (const l of logs) {
-    const sanitized = String(l).replace(/[\r\n]+/g, ' ').replace(/[\x00-\x1F\x7F]/g, '').slice(0, 300)
+    const sanitized = String(l)
+      .replace(/[\r\n\u2028\u2029]+/g, ' ')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .slice(0, 300)
     console.warn('apple wallet log:', sanitized)
   }
   res.sendStatus(200)
