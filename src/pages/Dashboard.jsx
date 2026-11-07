@@ -23,6 +23,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import LeaderboardCard from '@/components/LeaderboardCard.jsx'
 import ChallengeCard from '@/components/ChallengeCard.jsx'
+import ServiceDaysCard from '@/components/ServiceDaysCard.jsx'
 import { isNativeApp } from '@/lib/platform.js'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import { categoryColor } from '@/lib/categories.js'
@@ -1029,6 +1030,7 @@ export default function Dashboard() {
 
         {reviewYear && !reviewSeason && <YearInReviewLink year={reviewYear} />}
 
+        {user?.role === 'student' && user?.schoolId && <ServiceDaysCard className="lg:col-span-3" />}
         {user?.role === 'student' && user?.schoolId && <ChallengeCard className="lg:col-span-3" />}
         {user?.role === 'student' && user?.schoolId && <SchoolVsSchoolCard className="lg:col-span-3" />}
         {user?.role === 'student' && <LeaderboardCard className="lg:col-span-3" />}
