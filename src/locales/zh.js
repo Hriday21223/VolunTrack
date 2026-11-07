@@ -3436,4 +3436,6 @@ export default {
   "Set with {name}": "与 {name} 一起设定",
   "Could not save the weekly goal.": "无法保存每周目标。",
   "Could not undo volunteer of the month.": "无法撤销本月志愿者。",
+  "Could not end the challenge.": "无法结束挑战。",
+  "Could not remove the reference.": "无法删除推荐人。",
 }

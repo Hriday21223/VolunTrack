@@ -64,9 +64,11 @@ export default function ReferencesCard({ logs = [], notify }) {
 
   const remove = async (r) => {
     try {
-      await fetch(`${apiUrl}/references/${encodeURIComponent(r.id)}`, { method: 'DELETE', headers: headers() })
+      const res = await fetch(`${apiUrl}/references/${encodeURIComponent(r.id)}`, { method: 'DELETE', headers: headers() })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error)
       load()
-    } catch { /* stays listed; nothing else to do */ }
+    } catch (err) { notify?.(err.message || tr('Could not remove the reference.')) }
   }
 
   const togglePortfolio = async (r) => {
