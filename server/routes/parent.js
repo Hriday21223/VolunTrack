@@ -260,7 +260,10 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
 // counted logs, so only the target is stored.
 router.put('/children/:childId/weekly-goal', limiter, requireDb, requireAuth('parent'), async (req, res) => {
   const raw = req.body?.hours
-  const hours = raw == null || raw === '' ? 0 : Number(raw)
+  // A number, or a numeric string; null removes the goal. Blank text, true
+  // or [2] used to slip through Number() as 0 or a real value.
+  const valid = raw === null || typeof raw === 'number' || (typeof raw === 'string' && /^\s*\d+(\.\d+)?\s*$/.test(raw))
+  const hours = raw === null ? 0 : valid ? Number(raw) : NaN
   if (!Number.isFinite(hours) || hours < 0 || hours > 40 || (hours > 0 && hours < 0.5) || Math.round(hours * 4) !== hours * 4) {
     return res.status(400).json({ error: 'Pick a weekly goal between 0.5 and 40 hours.' })
   }

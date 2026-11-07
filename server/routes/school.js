@@ -474,7 +474,7 @@ router.get('/students', limiter, requireDb, requireAuth('school', 'school_staff'
     if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
 
     const { rows } = await query(
-      `SELECT id, name, email, grade, created_at FROM users
+      `SELECT id, name, email, grade, created_at, (parental_consent_status = 'pending') AS consent_pending FROM users
        WHERE school_id = $1 AND role = 'student'
        ORDER BY created_at DESC`,
       [userRows[0].school_id],
@@ -725,7 +725,9 @@ const CHALLENGE_COLS = `id, school_id, title, goal_hours, to_char(starts_on, 'YY
 // One per school per month (UNIQUE); undo deletes it.
 
 const SPOTLIGHT_NOTE_MAX = 300
-const thisMonth = () => new Date().toISOString().slice(0, 7)
+// US Pacific time, so a pick on the last evening of a month counts for that
+// month anywhere in the US (UTC had already rolled over).
+const thisMonth = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit' }).format(new Date()).slice(0, 7)
 
 async function adviserSchool(userId) {
   const { rows } = await query(

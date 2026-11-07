@@ -3435,4 +3435,5 @@ export default {
   "Agree on a small number of hours together. You both see how the week is going.": "一起商定一个小目标时数。你们都能看到本周的进展。",
   "Set with {name}": "与 {name} 一起设定",
   "Could not save the weekly goal.": "无法保存每周目标。",
+  "Could not undo volunteer of the month.": "无法撤销本月志愿者。",
 }
