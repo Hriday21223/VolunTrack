@@ -1,5 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { randomBytes } from 'crypto'
 import { query, hasDatabase, getPool } from '../db.js'
 import { requireAuth } from '../auth.js'
@@ -24,6 +25,7 @@ export const MAX_TASK_PHOTO_BYTES = 3 * 1024 * 1024
 const TYPES = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'webp' }
 
 const uploadLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   // A weekly series of 13 uploads its photo to each copy.
   max: 40,

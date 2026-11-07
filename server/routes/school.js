@@ -4813,6 +4813,7 @@ router.delete('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), asy
 
 const LATE_ETAS = [10, 20, 30]
 const dayOfLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
@@ -6136,6 +6137,7 @@ const OPEN_QUESTIONS_PER_TASK = 3
 // Per IP, and a school's students often share one, so it's a spam cap, not a
 // per-student quota (that's OPEN_QUESTIONS_PER_TASK).
 const askLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 60 * 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -6640,6 +6642,7 @@ async function logCheckout(task, userId, inAt, outAt, note) {
 }
 
 const checkinLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 30,
   standardHeaders: true,

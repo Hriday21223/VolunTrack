@@ -50,6 +50,7 @@ function requireDb(_req, res, next) {
 // after the parent linked — so a cheer can't confirm an entry exists that the
 // parent isn't allowed to see. Once per parent per entry.
 const cheerLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 60,
   standardHeaders: true,
