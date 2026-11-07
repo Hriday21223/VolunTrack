@@ -33,8 +33,17 @@ export async function hashPassword(password) {
   return bcrypt.hash(password, SALT_ROUNDS)
 }
 
+// With no hash (no such account, or an SSO-only one) it still does one
+// bcrypt compare, against a throwaway hash, so the answer takes as long as a
+// wrong password. A fast "no" told anyone timing the login which emails have
+// accounts.
+let dummyHash = null
 export async function verifyPassword(password, hash) {
-  if (!hash) return false
+  if (!hash) {
+    dummyHash ||= await bcrypt.hash('not-a-real-password', SALT_ROUNDS)
+    await bcrypt.compare(String(password), dummyHash)
+    return false
+  }
   return bcrypt.compare(password, hash)
 }
 

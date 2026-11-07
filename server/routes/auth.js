@@ -572,7 +572,8 @@ router.post('/login', authLimiter, requireDb, turnstileUnlessMonitor(), async (r
   try {
     const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.email = $1`, [email])
     const row = rows[0]
-    const ok = row && (await verifyPassword(password, row.password_hash))
+    // Always verified, even with no such account, so both take as long.
+    const ok = (await verifyPassword(password, row?.password_hash)) && Boolean(row)
     if (!ok) {
       return res.status(401).json({ error: 'Invalid email or password.' })
     }
