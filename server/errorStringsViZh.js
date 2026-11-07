@@ -378,6 +378,8 @@ export const ERRORS_VI = {
   "This event is full. Ask the organizer to add you.": "Sự kiện này đã đủ người. Hãy nhờ người tổ chức thêm bạn.",
   "Enter the email they use for VolunTrack.": "Nhập email họ dùng cho VolunTrack.",
   "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "Không có tài khoản VolunTrack nào dùng email đó. Họ có thể đăng ký trên điện thoại rồi quét mã, hoặc ghi giờ sau.",
+  "Pick a weekly goal between 0.5 and 40 hours.": "Hãy chọn mục tiêu hằng tuần từ 0,5 đến 40 giờ.",
+  "Could not save the weekly goal.": "Không lưu được mục tiêu hằng tuần.",
 }
 
 export const ERRORS_ZH = {
@@ -758,4 +760,6 @@ export const ERRORS_ZH = {
   "This event is full. Ask the organizer to add you.": "此活动已满。请让组织者把你加进来。",
   "Enter the email they use for VolunTrack.": "请输入对方的 VolunTrack 邮箱。",
   "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "没有 VolunTrack 账户使用该邮箱。对方可以用手机注册后扫码，或稍后再记录时数。",
+  "Pick a weekly goal between 0.5 and 40 hours.": "请选择 0.5 到 40 小时之间的每周目标。",
+  "Could not save the weekly goal.": "无法保存每周目标。",
 }

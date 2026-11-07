@@ -3440,4 +3440,12 @@ export default {
   "Your students get a notification and see it on their dashboard.": "Tus estudiantes reciben una notificación y lo ven en su panel.",
   "You're going": "Vas a ir",
   "On the waitlist": "En la lista de espera",
+  "Weekly family goal": "Meta familiar semanal",
+  "Goal met! 🎉": "¡Meta cumplida! 🎉",
+  "Set a goal": "Fijar una meta",
+  "Hours each week": "Horas cada semana",
+  "hours each week": "horas cada semana",
+  "Agree on a small number of hours together. You both see how the week is going.": "Acuerden juntos un número pequeño de horas. Ambos verán cómo va la semana.",
+  "Set with {name}": "Fijada con {name}",
+  "Could not save the weekly goal.": "No se pudo guardar la meta semanal.",
 }

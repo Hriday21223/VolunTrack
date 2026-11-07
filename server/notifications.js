@@ -28,6 +28,7 @@ export const NOTIFICATION_KINDS = new Set([
   'hours_reminder',
   'friend_joined',
   'parent_cheer',
+  'family_goal',
   'child_checked_in',
   'child_checked_out',
   'parent_ok_request',

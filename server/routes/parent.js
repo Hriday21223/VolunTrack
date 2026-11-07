@@ -213,9 +213,10 @@ router.delete('/my-parents/:parentId', limiter, requireDb, requireAuth('student'
 router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT u.id, u.name, u.email, u.grade
+      `SELECT u.id, u.name, u.email, u.grade, g.hours AS weekly_goal
        FROM parent_child_links pcl
        JOIN users u ON u.id = pcl.child_id
+       LEFT JOIN family_weekly_goals g ON g.parent_id = pcl.parent_id AND g.child_id = u.id
        WHERE pcl.parent_id = $1
        ORDER BY u.name`,
       [req.auth.sub],
@@ -226,7 +227,8 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
     // deadline, not just a list of entries. Resolved per child because two
     // children can be at different schools — and per grade, since a school may
     // ask more of a senior than a freshman.
-    const children = await Promise.all(rows.map(async (child) => {
+    const children = await Promise.all(rows.map(async ({ weekly_goal: weeklyGoal, ...row }) => {
+      const child = { ...row, weeklyGoal: weeklyGoal == null ? null : Number(weeklyGoal) }
       try {
         const resolved = await policyForUser(child.id)
         if (!resolved) return { ...child, requirement: null }
@@ -250,6 +252,64 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
   } catch (error) {
     console.error('parent children fetch failed:', error)
     return res.status(500).json({ error: 'Could not fetch children.' })
+  }
+})
+
+// Weekly family goal (#788): PUT { hours } (0.5–40, quarter hours; null or 0
+// removes it). Progress is worked out on each device from the child's own
+// counted logs, so only the target is stored.
+router.put('/children/:childId/weekly-goal', limiter, requireDb, requireAuth('parent'), async (req, res) => {
+  const raw = req.body?.hours
+  const hours = raw == null || raw === '' ? 0 : Number(raw)
+  if (!Number.isFinite(hours) || hours < 0 || hours > 40 || (hours > 0 && hours < 0.5) || Math.round(hours * 4) !== hours * 4) {
+    return res.status(400).json({ error: 'Pick a weekly goal between 0.5 and 40 hours.' })
+  }
+  try {
+    if (!(await isLinkedParent(req.auth.sub, req.params.childId))) return res.status(404).json({ error: 'Child not found.' })
+    if (hours === 0) {
+      await query('DELETE FROM family_weekly_goals WHERE parent_id = $1 AND child_id = $2', [req.auth.sub, req.params.childId])
+      return res.json({ ok: true, weeklyGoal: null })
+    }
+    const { rows } = await query(
+      `INSERT INTO family_weekly_goals (parent_id, child_id, hours) VALUES ($1, $2, $3)
+       ON CONFLICT (parent_id, child_id) DO UPDATE SET hours = EXCLUDED.hours, updated_at = now()
+       WHERE family_weekly_goals.hours <> EXCLUDED.hours
+       RETURNING hours`,
+      [req.auth.sub, req.params.childId, hours],
+    )
+    // Only when it actually changed, so saving the same number twice is quiet.
+    if (rows[0]) {
+      const { rows: me } = await query('SELECT name FROM users WHERE id = $1', [req.auth.sub])
+      const first = String(me[0]?.name || '').split(/\s+/)[0] || 'Your parent'
+      notify(req.params.childId, {
+        kind: 'family_goal',
+        title: `${first} set a weekly goal: ${hours} ${hours === 1 ? 'hour' : 'hours'}`,
+        body: 'See how this week is going on your dashboard.',
+        link: '/',
+      })
+    }
+    return res.json({ ok: true, weeklyGoal: hours })
+  } catch (error) {
+    console.error('weekly goal save failed:', error)
+    return res.status(500).json({ error: 'Could not save the weekly goal.' })
+  }
+})
+
+// The student's weekly goal from a linked parent (the most recently set one).
+router.get('/my-weekly-goal', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT g.hours, u.name FROM family_weekly_goals g
+         JOIN parent_child_links pcl ON pcl.parent_id = g.parent_id AND pcl.child_id = g.child_id
+         JOIN users u ON u.id = g.parent_id
+        WHERE g.child_id = $1 ORDER BY g.updated_at DESC LIMIT 1`,
+      [req.auth.sub],
+    )
+    if (!rows[0]) return res.json({ weeklyGoal: null })
+    return res.json({ weeklyGoal: { hours: Number(rows[0].hours), parentFirstName: String(rows[0].name || '').split(/\s+/)[0] || null } })
+  } catch (error) {
+    console.error('my weekly goal failed:', error)
+    return res.status(500).json({ error: 'Could not load the weekly goal.' })
   }
 })
 

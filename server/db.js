@@ -2623,5 +2623,16 @@ export async function initSchema() {
   // School service days (#784): a task an adviser posts for their own school's students.
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS service_school_id TEXT') } catch {}
   try { await query('CREATE INDEX IF NOT EXISTS public_tasks_service_school_idx ON public_tasks (service_school_id, date) WHERE service_school_id IS NOT NULL') } catch {}
+  // Weekly family goal (#788): a parent's weekly hours target for a child.
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS family_weekly_goals (
+      parent_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      child_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      hours       NUMERIC(5,2) NOT NULL CHECK (hours > 0 AND hours <= 40),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (parent_id, child_id)
+    )`)
+    await query('CREATE INDEX IF NOT EXISTS family_weekly_goals_child_idx ON family_weekly_goals (child_id)')
+  } catch (error) { console.error('family_weekly_goals migration failed:', error.message) }
   return true
 }

@@ -3411,4 +3411,12 @@ export default {
   "Your students get a notification and see it on their dashboard.": "你的学生会收到通知，并在首页看到它。",
   "You're going": "你会参加",
   "On the waitlist": "在候补名单上",
+  "Weekly family goal": "家庭每周目标",
+  "Goal met! 🎉": "目标达成！🎉",
+  "Set a goal": "设定目标",
+  "Hours each week": "每周时数",
+  "hours each week": "小时/每周",
+  "Agree on a small number of hours together. You both see how the week is going.": "一起商定一个小目标时数。你们都能看到本周的进展。",
+  "Set with {name}": "与 {name} 一起设定",
+  "Could not save the weekly goal.": "无法保存每周目标。",
 }

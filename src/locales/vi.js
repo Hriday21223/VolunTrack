@@ -3411,4 +3411,12 @@ export default {
   "Your students get a notification and see it on their dashboard.": "Học sinh của bạn nhận được thông báo và thấy nó trên trang chính.",
   "You're going": "Bạn sẽ tham gia",
   "On the waitlist": "Trong danh sách chờ",
+  "Weekly family goal": "Mục tiêu gia đình hằng tuần",
+  "Goal met! 🎉": "Đã đạt mục tiêu! 🎉",
+  "Set a goal": "Đặt mục tiêu",
+  "Hours each week": "Số giờ mỗi tuần",
+  "hours each week": "giờ mỗi tuần",
+  "Agree on a small number of hours together. You both see how the week is going.": "Cùng nhau thống nhất một số giờ nhỏ. Cả hai sẽ thấy tuần này đang thế nào.",
+  "Set with {name}": "Đặt cùng {name}",
+  "Could not save the weekly goal.": "Không lưu được mục tiêu hằng tuần.",
 }

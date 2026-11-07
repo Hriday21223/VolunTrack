@@ -378,4 +378,6 @@ export const ERRORS_ES = {
   "This event is full. Ask the organizer to add you.": "Este evento está lleno. Pide al organizador que te agregue.",
   "Enter the email they use for VolunTrack.": "Escribe el correo que usa en VolunTrack.",
   "No VolunTrack account uses that email. They can sign up on their phone and scan the code, or log the hours later.": "Ninguna cuenta de VolunTrack usa ese correo. Puede registrarse en su teléfono y escanear el código, o registrar las horas después.",
+  "Pick a weekly goal between 0.5 and 40 hours.": "Elige una meta semanal entre 0.5 y 40 horas.",
+  "Could not save the weekly goal.": "No se pudo guardar la meta semanal.",
 }
