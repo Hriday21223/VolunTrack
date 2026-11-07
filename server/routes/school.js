@@ -2833,7 +2833,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
 
   try {
     const { rows } = await query(
-      `SELECT u.name, u.email, u.posting_suspended_at, o.id AS org_id, o.name AS org_name
+      `SELECT u.name, u.email, u.role, u.school_id, u.posting_suspended_at, o.id AS org_id, o.name AS org_name
          FROM users u LEFT JOIN organizations o ON o.id = u.organization_id AND u.role = 'org'
         WHERE u.id = $1`,
       [req.auth.sub],
@@ -2846,6 +2846,12 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     // An organization posts for its schools (#565), under its own name.
     const orgId = rows[0].org_id || null
     const creatorName = rows[0].org_name || rows[0].name
+    // School service day (#784): only an adviser, and only for their own school.
+    if (req.body.serviceDay != null && typeof req.body.serviceDay !== 'boolean') {
+      return res.status(400).json({ error: 'School service day must be true or false.' })
+    }
+    const serviceSchoolId = req.body.serviceDay === true && ['school', 'school_staff'].includes(rows[0].role) && rows[0].school_id
+      ? rows[0].school_id : null
 
     // Every week of a repeat goes in together or not at all, so a failure
     // can't leave the organizer with half a series to find and fix.
@@ -2859,10 +2865,10 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
         const id = uid('ptask')
         await client.query(
           `INSERT INTO public_tasks (id, title, description, location, date, time, slots_total, created_by, creator_name, creator_email, phone, latitude, longitude, important_info, category,
-                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes, series_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)`,
+                                    min_age, is_online, wheelchair_accessible, accessibility_note, is_outdoor, meeting_point, day_of_contact, allow_guests, organization_id, waiver_text, young_need_parent, min_stay_minutes, series_id, service_school_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)`,
           [id, title, description, location, day, time || null, Number(slotsTotal) || 1, req.auth.sub, creatorName, rows[0].email, phone, lat.value, lng.value, importantInfo || null, category.value,
-            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value, seriesId],
+            minAge, isOnline, wheelchair, accessNote, isOutdoor, meetingPoint, dayOfContact, allowGuests, orgId, waiver.value ?? null, youngNeedParent, minStay.value, seriesId, serviceSchoolId],
         )
         // Each week of a series gets its own copy of the shifts.
         if (shiftsIn.shifts) {
@@ -2881,6 +2887,7 @@ router.post('/public-tasks', limiter, requireDb, requireAuth(), async (req, res)
     // Once per post, after it's saved: a weekly series is one email, not one per week.
     notifyFollowers(req.auth.sub, created[0].id)
     if (orgId) notifyOrgSchools(orgId, created[0].id)
+    if (serviceSchoolId) notifySchoolServiceDay(serviceSchoolId, created[0].id)
     return res.status(201).json({ ok: true, id: created[0].id, createdCount: created.length, tasks: created })
   } catch (error) {
     if (error.status === 400) return res.status(400).json({ error: error.message })
@@ -2938,6 +2945,7 @@ router.get('/public-tasks', limiter, requireDb, authenticate, async (req, res) =
                t.min_age, t.young_need_parent, t.min_stay_minutes, t.is_online, t.wheelchair_accessible, t.accessibility_note, t.is_outdoor, t.cover_photo_id,
                ${userId ? PROVABLY_TOO_YOUNG_SQL('t', '$1') : 'false'} AS my_too_young,
                ${userId ? `COALESCE(t.organization_id IS NOT NULL AND t.organization_id = (SELECT s.organization_id FROM users mu JOIN schools s ON s.id = mu.school_id WHERE mu.id = $1), false)` : 'false'} AS for_my_schools,
+               ${userId ? `COALESCE(t.service_school_id IS NOT NULL AND t.service_school_id = (SELECT su.school_id FROM users su WHERE su.id = $1), false)` : 'false'} AS school_service_day,
                ${userId ? PARTNER_TASK_SQL : 'false'} AS by_partner,
                ${SPOTS_USED_SQL('t.id')} AS slots_filled,
                ${SHIFTS_JSON_SQL('t.id')} AS shifts,
@@ -3491,6 +3499,60 @@ async function notifyOrgSchools(orgId, taskId) {
     console.error('org event notification failed:', error.message)
   }
 }
+
+// School service day (#784): a bell for every student at the school (no
+// email). Pending-consent under-13s are skipped, like org events.
+async function notifySchoolServiceDay(schoolId, taskId) {
+  try {
+    const { rows: taskRows } = await query(
+      `SELECT title, to_char(date, 'YYYY-MM-DD') AS date, time FROM public_tasks WHERE id = $1 AND status = 'open'`,
+      [taskId],
+    )
+    const task = taskRows[0]
+    if (!task) return
+    const { rows: students } = await query(
+      `SELECT id FROM users WHERE school_id = $1 AND role = 'student'
+          AND (parental_consent_status IS NULL OR parental_consent_status <> 'pending')
+        LIMIT 20000`,
+      [schoolId],
+    )
+    const when = friendlyWhen(task.date, task.time)
+    for (const st of students) {
+      await notify(st.id, {
+        kind: 'new_task',
+        title: `School service day: ${task.title}`,
+        body: `Your school posted a service day${when ? ` · ${when}` : ''}. Sign up on Opportunities.`,
+        link: `/opportunities?task=${encodeURIComponent(taskId)}`,
+      })
+    }
+  } catch (error) {
+    console.error('service day notification failed:', error.message)
+  }
+}
+
+// GET /api/school/service-days (#784): a student's school's upcoming service
+// days (next 60 days, at most 5) and whether they signed up.
+router.get('/service-days', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location,
+              (SELECT s.status FROM public_task_signups s WHERE s.task_id = t.id AND s.user_id = $1) AS my_status
+         FROM public_tasks t
+        WHERE t.service_school_id IS NOT NULL
+          AND t.service_school_id = (SELECT school_id FROM users WHERE id = $1)
+          AND t.status = 'open'
+          AND t.date >= (now() AT TIME ZONE 'UTC')::date - 1
+          AND t.date <= (now() AT TIME ZONE 'UTC')::date + 60
+        ORDER BY t.date, t.time NULLS LAST
+        LIMIT 5`,
+      [req.auth.sub],
+    )
+    return res.json({ serviceDays: rows.map((r) => ({ id: r.id, title: r.title, date: r.date, time: r.time, location: r.location, myStatus: r.my_status || null })) })
+  } catch (error) {
+    console.error('service days failed:', error)
+    return res.status(500).json({ error: 'Could not load service days.' })
+  }
+})
 
 async function notifyFollowers(organizerId, taskId) {
   try {

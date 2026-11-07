@@ -2634,5 +2634,8 @@ export async function initSchema() {
     )`)
     await query('CREATE INDEX IF NOT EXISTS school_spotlights_student_idx ON school_spotlights (student_id)')
   } catch (error) { console.error('school_spotlights migration failed:', error.message) }
+  // School service days (#784): a task an adviser posts for their own school's students.
+  try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS service_school_id TEXT') } catch {}
+  try { await query('CREATE INDEX IF NOT EXISTS public_tasks_service_school_idx ON public_tasks (service_school_id, date) WHERE service_school_id IS NOT NULL') } catch {}
   return true
 }

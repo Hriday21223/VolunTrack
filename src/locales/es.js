@@ -3445,4 +3445,9 @@ export default {
   "Undo this month’s volunteer of the month?": "¿Deshacer el voluntario del mes de este mes?",
   "You're volunteer of the month! 🌟": "¡Eres el voluntario del mes! 🌟",
   "{school} picked you for {month}.": "{school} te eligió para {month}.",
+  "School service day": "Día de servicio escolar",
+  "School service days": "Días de servicio escolar",
+  "Your students get a notification and see it on their dashboard.": "Tus estudiantes reciben una notificación y lo ven en su panel.",
+  "You're going": "Vas a ir",
+  "On the waitlist": "En la lista de espera",
 }

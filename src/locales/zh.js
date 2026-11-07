@@ -3416,4 +3416,9 @@ export default {
   "Undo this month’s volunteer of the month?": "撤销本月的本月志愿者？",
   "You're volunteer of the month! 🌟": "你是本月志愿者！🌟",
   "{school} picked you for {month}.": "{school} 选你为 {month} 的志愿者。",
+  "School service day": "学校服务日",
+  "School service days": "学校服务日",
+  "Your students get a notification and see it on their dashboard.": "你的学生会收到通知，并在首页看到它。",
+  "You're going": "你会参加",
+  "On the waitlist": "在候补名单上",
 }

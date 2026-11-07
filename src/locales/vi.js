@@ -3416,4 +3416,9 @@ export default {
   "Undo this month’s volunteer of the month?": "Hoàn tác tình nguyện viên của tháng này?",
   "You're volunteer of the month! 🌟": "Bạn là tình nguyện viên của tháng! 🌟",
   "{school} picked you for {month}.": "{school} đã chọn bạn cho {month}.",
+  "School service day": "Ngày phục vụ của trường",
+  "School service days": "Ngày phục vụ của trường",
+  "Your students get a notification and see it on their dashboard.": "Học sinh của bạn nhận được thông báo và thấy nó trên trang chính.",
+  "You're going": "Bạn sẽ tham gia",
+  "On the waitlist": "Trong danh sách chờ",
 }
