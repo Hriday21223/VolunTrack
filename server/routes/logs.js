@@ -105,9 +105,30 @@ const scanLimiter = rateLimit({
 
 router.get('/scan/available', limiter, (_req, res) => res.json({ available: paperScanAvailable() }))
 
-router.post('/scan', requireAuth('student', 'volunteer'), scanLimiter, async (req, res) => {
+// Site-wide cap on paid scans per day (UTC), on top of the per-account limit:
+// accounts are free, so many of them could otherwise run up the AI bill.
+// PAPER_SCAN_DAILY_MAX overrides the default.
+const PAPER_SCAN_DAILY_MAX = Math.max(0, Number(process.env.PAPER_SCAN_DAILY_MAX) || 300)
+
+// Counts one scan if today is under the cap, in one step so a burst can't
+// slip past it. True when this scan may go ahead.
+async function takeDailyScan() {
+  const { rows } = await query(
+    `INSERT INTO paper_scan_daily (day, scans) VALUES ((now() AT TIME ZONE 'UTC')::date, 1)
+     ON CONFLICT (day) DO UPDATE SET scans = paper_scan_daily.scans + 1
+       WHERE paper_scan_daily.scans < $1
+     RETURNING scans`,
+    [PAPER_SCAN_DAILY_MAX],
+  )
+  return rows.length > 0
+}
+
+router.post('/scan', requireAuth('student', 'volunteer'), scanLimiter, requireDb, async (req, res) => {
   if (!paperScanAvailable()) return res.status(503).json({ error: 'Photo scanning is not set up on this server.' })
   try {
+    if (!(await takeDailyScan())) {
+      return res.status(429).json({ error: 'Photo scanning has reached its limit for today. Type your hours in, or try again tomorrow.' })
+    }
     const result = await scanPaperLog(req.body?.image)
     return res.json(result)
   } catch (error) {

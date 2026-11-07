@@ -2648,5 +2648,12 @@ export async function initSchema() {
     )`)
     await query('CREATE INDEX IF NOT EXISTS family_weekly_goals_child_idx ON family_weekly_goals (child_id)')
   } catch (error) { console.error('family_weekly_goals migration failed:', error.message) }
+  // Paper-log photo scans per day (UTC), for the site-wide daily cap (logs.js).
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS paper_scan_daily (
+      day    DATE PRIMARY KEY,
+      scans  INTEGER NOT NULL DEFAULT 0
+    )`)
+  } catch (error) { console.error('paper_scan_daily migration failed:', error.message) }
   return true
 }
