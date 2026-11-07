@@ -23,6 +23,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import LeaderboardCard from '@/components/LeaderboardCard.jsx'
 import ChallengeCard from '@/components/ChallengeCard.jsx'
+import { StudentWeeklyGoal } from '@/components/WeeklyFamilyGoal.jsx'
 import MySpotlightCard from '@/components/MySpotlightCard.jsx'
 import ServiceDaysCard from '@/components/ServiceDaysCard.jsx'
 import { isNativeApp } from '@/lib/platform.js'
@@ -1033,6 +1034,7 @@ export default function Dashboard() {
 
         {user?.role === 'student' && user?.schoolId && <MySpotlightCard user={user} className="lg:col-span-3" />}
         {user?.role === 'student' && user?.schoolId && <ServiceDaysCard className="lg:col-span-3" />}
+        {user?.role === 'student' && <StudentWeeklyGoal logs={logs} className="lg:col-span-3" />}
         {user?.role === 'student' && user?.schoolId && <ChallengeCard className="lg:col-span-3" />}
         {user?.role === 'student' && user?.schoolId && <SchoolVsSchoolCard className="lg:col-span-3" />}
         {user?.role === 'student' && <LeaderboardCard className="lg:col-span-3" />}

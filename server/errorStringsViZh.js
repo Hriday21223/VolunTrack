@@ -382,6 +382,8 @@ export const ERRORS_VI = {
   "That student is not at your school.": "Học sinh đó không thuộc trường bạn.",
   "You already picked a volunteer of the month. Undo it first to pick someone else.": "Bạn đã chọn tình nguyện viên của tháng. Hãy hoàn tác trước để chọn người khác.",
   "Only this month’s pick can be undone.": "Chỉ có thể hoàn tác lựa chọn của tháng này.",
+  "Pick a weekly goal between 0.5 and 40 hours.": "Hãy chọn mục tiêu hằng tuần từ 0,5 đến 40 giờ.",
+  "Could not save the weekly goal.": "Không lưu được mục tiêu hằng tuần.",
 }
 
 export const ERRORS_ZH = {
@@ -766,4 +768,6 @@ export const ERRORS_ZH = {
   "That student is not at your school.": "该学生不在你的学校。",
   "You already picked a volunteer of the month. Undo it first to pick someone else.": "你已经选了本月志愿者。请先撤销再选别人。",
   "Only this month’s pick can be undone.": "只能撤销本月的选择。",
+  "Pick a weekly goal between 0.5 and 40 hours.": "请选择 0.5 到 40 小时之间的每周目标。",
+  "Could not save the weekly goal.": "无法保存每周目标。",
 }

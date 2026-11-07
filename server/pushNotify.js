@@ -15,7 +15,7 @@ import { sendPush, pushConfigured } from './push.js'
 export const PUSH_GROUPS = {
   hours: ['hours_approved', 'hours_rejected', 'report_approved', 'report_rejected', 'goal_reached', 'spotlight', 'reference_received', 'reference_declined'],
   tasks: ['signup_approved', 'signup_rejected', 'waitlist_spot', 'new_task', 'task_alert', 'saved_task_reminder', 'task_thanks', 'task_answer', 'task_question', 'cohost_added', 'volunteer_late', 'volunteer_cancelled_day_of', 'attendance_nudge', 'sign_reminder', 'log_hours_nudge', 'rate_task', 'friend_joined', 'past_volunteer_invite', 'jobs_unfilled'],
-  family: ['parent_cheer', 'parent_ok_request', 'parent_ok_given', 'parent_ok_declined', 'child_checked_in', 'child_checked_out'],
+  family: ['parent_cheer', 'family_goal', 'parent_ok_request', 'parent_ok_given', 'parent_ok_declined', 'child_checked_in', 'child_checked_out'],
   reminders: ['hours_reminder', 'deadline_reminder', 'comeback_nudge'],
 }
 export const PUSH_GROUP_NAMES = Object.keys(PUSH_GROUPS)

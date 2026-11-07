@@ -8,6 +8,7 @@ import VerificationBadge from '@/components/VerificationBadge.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import EmergencyContactCard from '@/components/EmergencyContactCard.jsx'
+import { ParentWeeklyGoal } from '@/components/WeeklyFamilyGoal.jsx'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { gradeOptionLabel, isYoungGrade } from '@policy'
@@ -296,6 +297,8 @@ function ChildCard({ child }) {
         </div>
         <div className="text-sm font-medium text-brand-600">{fmtHours(stats.total)} total</div>
       </div>
+
+      <ParentWeeklyGoal child={child} />
 
       {requirement?.goalHours != null && (
         <div className="mb-4 p-3 rounded-xl border border-earth-100 dark:border-[#1f2e25]">
