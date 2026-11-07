@@ -3464,4 +3464,5 @@ export default {
   "Agree on a small number of hours together. You both see how the week is going.": "Acuerden juntos un número pequeño de horas. Ambos verán cómo va la semana.",
   "Set with {name}": "Fijada con {name}",
   "Could not save the weekly goal.": "No se pudo guardar la meta semanal.",
+  "Could not undo volunteer of the month.": "No se pudo deshacer el voluntario del mes.",
 }

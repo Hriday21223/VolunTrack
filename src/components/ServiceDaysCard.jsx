@@ -12,6 +12,8 @@ const STATUS = {
   approved: () => tr("You're going"),
   pending: () => tr('Waiting for approval'),
   waitlisted: () => tr('On the waitlist'),
+  parent_pending: () => tr("Waiting for a parent's OK"),
+  rejected: () => tr('Rejected'),
 }
 
 // School service days (#784): upcoming days the student's school posted

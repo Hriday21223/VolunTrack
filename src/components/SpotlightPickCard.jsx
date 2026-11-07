@@ -25,7 +25,7 @@ export default function SpotlightPickCard({ className = '' }) {
     load()
     fetch(`${apiUrl}/school/students`, { headers: auth() })
       .then((r) => (r.ok ? r.json() : { students: [] }))
-      .then((d) => setStudents((d.students || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)))))
+      .then((d) => setStudents((d.students || []).filter((s) => !s.consent_pending).sort((a, b) => String(a.name).localeCompare(String(b.name)))))
       .catch(() => setStudents([]))
   }, [load])
 
@@ -45,8 +45,13 @@ export default function SpotlightPickCard({ className = '' }) {
   }
   const undo = async () => {
     if (!window.confirm(tr('Undo this month’s volunteer of the month?'))) return
-    setBusy(true)
-    try { await fetch(`${apiUrl}/school/spotlight/${data.current.id}`, { method: 'DELETE', headers: auth() }); load() } finally { setBusy(false) }
+    setBusy(true); setError('')
+    try {
+      const res = await fetch(`${apiUrl}/school/spotlight/${data.current.id}`, { method: 'DELETE', headers: auth() })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || tr('Could not undo volunteer of the month.'))
+      load()
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
   return (
