@@ -326,27 +326,30 @@ app.post('/api/auth/reset-password', emailLimiter, async (req, res) => {
 
   try {
     const { rows } = await query('SELECT * FROM users WHERE email = $1', [email.trim().toLowerCase()])
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'No account with that email.' })
-    }
+    // No account, no code and a wrong code all get the same answer in the same
+    // time (verifyPassword does a throwaway compare with no hash), so this
+    // can't be used to find out which emails have accounts.
     const row = rows[0]
-
-    const expired = !row.reset_code_expires_at || new Date(row.reset_code_expires_at) <= new Date()
-    if (!row.reset_code_hash || expired) {
+    const expired = !row?.reset_code_expires_at || new Date(row.reset_code_expires_at) <= new Date()
+    if (!row || !row.reset_code_hash || expired) {
+      await verifyPassword(code.trim(), null)
       return res.status(401).json({ error: 'Invalid or expired recovery code.' })
     }
     // A 6-digit code is small enough to guess through; cap the tries on the
-    // account itself, since emailLimiter is per-IP and rotatable.
-    if ((row.reset_code_attempts || 0) >= RESET_CODE_MAX_ATTEMPTS) {
+    // account itself, since emailLimiter is per-IP and rotatable. The try is
+    // counted before checking, in one step, so guesses sent all at once can't
+    // all slip in under the cap.
+    const { rows: counted } = await query(
+      `UPDATE users SET reset_code_attempts = COALESCE(reset_code_attempts, 0) + 1
+        WHERE id = $1 AND COALESCE(reset_code_attempts, 0) < $2 RETURNING id`,
+      [row.id, RESET_CODE_MAX_ATTEMPTS],
+    )
+    if (!counted[0]) {
       return res.status(429).json({ error: 'Too many incorrect codes. Request a new one.' })
     }
 
     const codeOk = await verifyPassword(code.trim(), row.reset_code_hash)
     if (!codeOk) {
-      await query(
-        'UPDATE users SET reset_code_attempts = reset_code_attempts + 1 WHERE id = $1',
-        [row.id],
-      ).catch((e) => console.error('reset attempt count failed:', e.message))
       return res.status(401).json({ error: 'Invalid or expired recovery code.' })
     }
 

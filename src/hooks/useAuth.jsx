@@ -580,7 +580,13 @@ export function AuthProvider({ children }) {
     } catch {
       // Backend unreachable — fall through to the local-only path.
     }
-    if (serverError) throw serverError
+    // The server answers an unknown email like a wrong code (so it can't be
+    // used to find accounts); an account that only exists in this browser
+    // still resets with its own local code.
+    if (serverError) {
+      const local = findUserByEmail(email)
+      if (!(local && isResetPasswordCodeValid(local, code))) throw serverError
+    }
 
     const account = findUserByEmail(email)
     if (!account) {
