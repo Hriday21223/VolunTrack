@@ -1,6 +1,7 @@
 import express from 'express'
 import { hoursBySkill } from '../skills.js'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { generatePortfolioSlug } from '../ids.js'
@@ -26,6 +27,7 @@ import { portfolioReferences } from './references.js'
 const router = express.Router()
 
 const signedInLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 120,
   standardHeaders: true,

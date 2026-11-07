@@ -1,6 +1,7 @@
 import express from 'express'
 import { inviterForCode, INVITE_ROLES } from './invites.js'
 import rateLimit from 'express-rate-limit'
+import { signInKey } from '../rateKey.js'
 import validator from 'validator'
 import bcrypt from 'bcryptjs'
 import * as OTPAuth from 'otpauth'
@@ -31,13 +32,25 @@ const router = express.Router()
 const TOTP_MAX_ATTEMPTS = 8
 
 // Rate limit auth endpoints to prevent brute force attacks
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many authentication attempts. Please try again later.' },
-})
+// 20 tries per address and email (signInKey), plus 300 per address in all:
+// a class signing in together on school Wi-Fi shares one address.
+const authLimiter = [
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many authentication attempts. Please try again later.' },
+  }),
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    keyGenerator: signInKey,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many authentication attempts. Please try again later.' },
+  }),
+]
 
 // Input validation helpers
 function validateEmail(email) {

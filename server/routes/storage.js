@@ -1,5 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import validator from 'validator'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
@@ -295,6 +296,7 @@ router.delete('/config', limiter, requireDb, requireAuth('school', 'org'), async
 // Minting a URL is cheap for us but hands out a credential, so it gets a
 // tighter budget than reading config.
 const mintLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 60,
   standardHeaders: true,

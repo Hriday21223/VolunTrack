@@ -1,5 +1,6 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
+import { perPersonKey } from '../rateKey.js'
 import bcrypt from 'bcryptjs'
 import { randomInt } from 'crypto'
 import { query, hasDatabase } from '../db.js'
@@ -23,6 +24,7 @@ const submitLimiter = rateLimit({
 })
 
 const limiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 15 * 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -44,6 +46,7 @@ const adminLimiter = rateLimit({
 // Tighter than the general limiter — guards PIN request/confirm, which are
 // otherwise only rate-limited per-review by consent_pin_attempts.
 const consentLimiter = rateLimit({
+  keyGenerator: perPersonKey,
   windowMs: 60 * 60 * 1000,
   max: 20,
   standardHeaders: true,

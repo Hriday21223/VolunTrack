@@ -21,7 +21,7 @@ import schoolRoutes from './server/routes/school.js'
 import organizationRoutes from './server/routes/organization.js'
 import embedRoutes from './server/routes/embed.js'
 import walletRoutes from './server/routes/wallet.js'
-import { perPersonKey } from './server/rateKey.js'
+import { perPersonKey, signInKey } from './server/rateKey.js'
 import { startWalletUpdates } from './server/walletUpdates.js'
 import ogRoutes from './server/routes/og.js'
 import logsRoutes from './server/routes/logs.js'
@@ -99,13 +99,12 @@ const apiLimiter = rateLimit({
 })
 
 // Stricter rate limiting for email endpoints
-const emailLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // 20 emails per hour
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many email requests. Please try again later.' },
-})
+const emailLimiter = [
+  // 300 an hour per address in all, 20 per address and email (signInKey), so
+  // a class resetting passwords on school Wi-Fi isn't refused together.
+  rateLimit({ windowMs: 60 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many email requests. Please try again later.' } }),
+  rateLimit({ windowMs: 60 * 60 * 1000, max: 20, keyGenerator: signInKey, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many email requests. Please try again later.' } }),
+]
 
 // The raw-body webhook routes below are mounted ahead of the global
 // apiLimiter, so they need their own cap. Legitimate senders (Resend, GitHub)
