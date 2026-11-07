@@ -277,13 +277,13 @@ export function announcementHtml({ recipientName, title, message, dashboardPath,
 function warnAdminEmailBudget(sent) {
   const to = process.env.ADMIN_EMAIL
   if (!to) return
-  const { limit, reserve } = emailBudgetLimits()
+  const { limit, reserve, bulkCap } = emailBudgetLimits()
   sendEmail({
     to,
     priority: 'high',
     subject: `VolunTrack has sent ${sent} of ${limit} emails today`,
     html: `<p>VolunTrack has sent <strong>${sent}</strong> emails today (UTC). Brevo's daily limit is about <strong>${limit}</strong>.</p>
-<p>From ${limit - reserve}, routine emails (reminders, digests, announcements) wait until tomorrow, and the last ${reserve} are kept for sign-up and sign-in codes, password resets and parent approvals.</p>
+<p>From ${bulkCap}, scheduled emails (digests, nudges, alerts) wait; from ${limit - reserve}, other routine emails wait until tomorrow, and the last ${reserve} are kept for sign-up and sign-in codes, password resets and parent approvals.</p>
 <p>If this keeps happening, raise the limit by moving to a paid Brevo plan and set <code>EMAIL_DAILY_LIMIT</code> on Render to match.</p>`,
   }).catch(() => {})
 }
@@ -292,8 +292,8 @@ export async function sendEmail({ to, subject, html, unsubscribeUrl, attachments
   const from = fromAddress()
   const key = brevoKey()
   // Daily budget (#775, server/emailBudget.js): only for Brevo, whose free
-  // plan stops at ~300 a day. Routine mail waits for tomorrow near the limit;
-  // codes and resets (priority 'high') keep the reserve.
+  // plan stops at ~300 a day. Bulk mail (priority 'low') stops at 60%,
+  // routine mail near the limit; codes and resets ('high') keep the reserve.
   if (key && from) {
     const budget = await takeEmailBudget(priority)
     if (!budget.ok) {
