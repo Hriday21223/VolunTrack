@@ -322,7 +322,7 @@ router.post('/domains/:id/verify', tenantProvisionLimiter, requireDb, requireAut
       created = await createCustomHostname(row.hostname)
     } catch (error) {
       console.error('cloudflare custom hostname failed:', error.message)
-      return res.status(502).json({ error: error.message })
+      return res.status(502).json({ error: 'Could not set up the certificate for this domain. Please try again later.' })
     }
 
     await query(
@@ -359,7 +359,8 @@ router.post('/domains/:id/refresh', tenantProvisionLimiter, requireDb, requireAu
     try {
       result = await getCustomHostname(row.cf_hostname_id)
     } catch (error) {
-      return res.status(502).json({ error: error.message })
+      console.error('cloudflare custom hostname check failed:', error.message)
+      return res.status(502).json({ error: 'Could not check the certificate for this domain. Please try again later.' })
     }
 
     await query(
