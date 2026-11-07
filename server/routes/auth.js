@@ -930,11 +930,39 @@ router.put('/sync-pin', requireDb, requireAuth(), async (req, res) => {
   }
 })
 
+// The account locks /login applies after the password: a school that requires
+// its own sign-in for students, and an under-13 account still waiting for a
+// parent's OK. Every other way in (sync PIN, passkey) must apply them too, or
+// the lock is simply routed around. Returns { status, body } or null.
+export async function accountLockGate(row) {
+  if (row.role === 'student' && row.auth_provider !== 'sso') {
+    const signIn = await signInPolicyForEmail(row.email)
+    if (signIn?.policy?.signIn?.ssoOnly) {
+      return {
+        status: 403,
+        body: {
+          error: `${signIn.schoolName || 'Your school'} requires you to sign in with your school account. Use the school sign-in option instead of a password.`,
+          ssoRequired: true,
+        },
+      }
+    }
+  }
+  if (row.parental_consent_status === 'pending') {
+    return {
+      status: 403,
+      body: { error: 'A parent or guardian needs to approve this account first. Ask them to check their email.', parentalConsentPending: true },
+    }
+  }
+  return null
+}
+
 // Both PIN routes below issue a session the same way /login does, so they
-// have to respect the same second-factor gates — otherwise TOTP (and the
-// mandatory-MFA requirement for privileged roles) is simply routed around.
-// Returns a response body to send instead of a session, or null to proceed.
+// have to respect the same gates — the account locks above, and TOTP (with
+// the mandatory-MFA requirement for privileged roles) — or they're routed
+// around. Returns a response body to send instead of a session, or null.
 async function secondFactorGate(row) {
+  const locked = await accountLockGate(row)
+  if (locked) return locked
   const secondFactor = await secondFactorChallenge(row)
   if (secondFactor) return { status: 200, body: secondFactor }
   // Past its enrolment deadline, a privileged account gets no session at all.
@@ -963,10 +991,9 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
 
   try {
     const { rows } = await query('SELECT * FROM users WHERE email = $1', [email])
-    if (rows.length === 0) return res.status(404).json({ error: 'Account not found.' })
-
-    const ok = await verifyPassword(password, rows[0].password_hash)
-    if (!ok) return res.status(403).json({ error: 'Password is incorrect.' })
+    // Same answer, in the same time, whether or not the account exists (as /login).
+    const ok = (await verifyPassword(password, rows[0]?.password_hash)) && rows.length > 0
+    if (!ok) return res.status(401).json({ error: 'Invalid email or password.' })
 
     // Gate before the PIN is written: a PIN set on a password alone would be
     // a standing second-factor bypass for POST /sync-login. The client
