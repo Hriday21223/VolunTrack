@@ -3412,4 +3412,9 @@ export default {
   "Show everyone": "显示全部",
   "Last logged {date}": "最近记录：{date}",
   "needs {n} h/week": "每周需 {n} 小时",
+  "School service day": "学校服务日",
+  "School service days": "学校服务日",
+  "Your students get a notification and see it on their dashboard.": "你的学生会收到通知，并在首页看到它。",
+  "You're going": "你会参加",
+  "On the waitlist": "在候补名单上",
 }

@@ -3412,4 +3412,9 @@ export default {
   "Show everyone": "Hiện tất cả",
   "Last logged {date}": "Ghi lần cuối {date}",
   "needs {n} h/week": "cần {n} giờ/tuần",
+  "School service day": "Ngày phục vụ của trường",
+  "School service days": "Ngày phục vụ của trường",
+  "Your students get a notification and see it on their dashboard.": "Học sinh của bạn nhận được thông báo và thấy nó trên trang chính.",
+  "You're going": "Bạn sẽ tham gia",
+  "On the waitlist": "Trong danh sách chờ",
 }

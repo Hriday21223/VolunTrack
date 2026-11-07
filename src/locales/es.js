@@ -3441,4 +3441,9 @@ export default {
   "Show everyone": "Mostrar a todos",
   "Last logged {date}": "Último registro: {date}",
   "needs {n} h/week": "necesita {n} h/semana",
+  "School service day": "Día de servicio escolar",
+  "School service days": "Días de servicio escolar",
+  "Your students get a notification and see it on their dashboard.": "Tus estudiantes reciben una notificación y lo ven en su panel.",
+  "You're going": "Vas a ir",
+  "On the waitlist": "En la lista de espera",
 }
