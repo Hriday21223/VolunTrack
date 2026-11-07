@@ -819,3 +819,40 @@ export async function schoolCertificatesPDF({ schoolName, students, certificate 
   })
   return doc.output('blob')
 }
+
+// Volunteer of the month certificate (#786), same look as printCertificate.
+// `month` is YYYY-MM.
+export function printSpotlightCertificate({ name, schoolName, month, note }) {
+  const w = window.open('', '_blank', 'width=820,height=1000')
+  if (!w) return false
+  const monthText = new Date(`${month}-01T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  w.document.write(`
+    <html><head><title>Volunteer of the Month</title>
+    <style>
+      body { font-family: 'Plus Jakarta Sans', Inter, sans-serif; background:#f1f8f1;
+             margin:0; padding:40px; display:flex; align-items:center; justify-content:center; min-height:100vh; }
+      .frame { background:white; border:8px double #3f8344; padding:48px 64px; max-width:720px; text-align:center; }
+      h1 { color:#27542d; font-size:36px; margin:0 0 8px; letter-spacing:1px; }
+      .sub { color:#6c502d; font-size:14px; letter-spacing:2px; text-transform:uppercase; }
+      .name { font-size:42px; color:#214327; margin:24px 0 8px; font-weight:700; }
+      .body { color:#3a3024; font-size:15px; line-height:1.6; margin-top:16px; }
+      .note { color:#3f8344; font-size:18px; font-style:italic; margin:20px 0; }
+      .sig { margin-top:48px; color:#6c502d; font-size:13px; }
+    </style></head>
+    <body>
+      <div class="frame">
+        <img src="${window.location.origin}${import.meta.env.BASE_URL}logo.png" alt="VolunTrack" style="width:64px;height:auto;margin:0 auto 12px;display:block;" />
+        <div class="sub">${escapeHtml(monthText)}</div>
+        <h1>Volunteer of the Month</h1>
+        <div class="body">This certificate is awarded to</div>
+        <div class="name">${escapeHtml(name || 'Volunteer')}</div>
+        <div class="body">for outstanding volunteer service${schoolName ? ` at <strong>${escapeHtml(schoolName)}</strong>` : ''}.</div>
+        ${note ? `<div class="note">“${escapeHtml(note)}”</div>` : ''}
+        <div class="sig">${escapeHtml(schoolName || 'VolunTrack')}</div>
+      </div>
+      <script>window.onload=()=>window.print();</script>
+    </body></html>
+  `)
+  w.document.close()
+  return true
+}

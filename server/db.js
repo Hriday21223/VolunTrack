@@ -2620,5 +2620,19 @@ export async function initSchema() {
   try { await query('ALTER TABLE public_tasks ADD COLUMN IF NOT EXISTS allow_walkins BOOLEAN NOT NULL DEFAULT true') } catch {}
   try { await query('ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS walk_in BOOLEAN NOT NULL DEFAULT false') } catch {}
 
+  // Volunteer of the month (#786): one student per school per month.
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS school_spotlights (
+      id          TEXT PRIMARY KEY,
+      school_id   TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      student_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      month       TEXT NOT NULL,
+      note        TEXT,
+      created_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (school_id, month)
+    )`)
+    await query('CREATE INDEX IF NOT EXISTS school_spotlights_student_idx ON school_spotlights (student_id)')
+  } catch (error) { console.error('school_spotlights migration failed:', error.message) }
   return true
 }
