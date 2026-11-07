@@ -3406,4 +3406,10 @@ export default {
   "Your check-out PIN": "你的签退 PIN",
   "Remember it. When you leave, tap your name here and type this PIN to check out.": "请记住它。离开时，在这里点你的名字并输入此 PIN 签退。",
   "I’ll remember it": "我记住了",
+  "1 student is behind and hasn't logged anything in {n} days.": "有 1 名学生进度落后，{n} 天内没有记录任何时数。",
+  "{count} students are behind and haven't logged anything in {n} days.": "有 {count} 名学生进度落后，{n} 天内没有记录任何时数。",
+  "Show them": "显示他们",
+  "Show everyone": "显示全部",
+  "Last logged {date}": "最近记录：{date}",
+  "needs {n} h/week": "每周需 {n} 小时",
 }

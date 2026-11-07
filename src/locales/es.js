@@ -3435,4 +3435,10 @@ export default {
   "Your check-out PIN": "Tu PIN de salida",
   "Remember it. When you leave, tap your name here and type this PIN to check out.": "Recuérdalo. Cuando te vayas, toca tu nombre aquí y escribe este PIN para registrar tu salida.",
   "I’ll remember it": "Lo recordaré",
+  "1 student is behind and hasn't logged anything in {n} days.": "1 estudiante va atrasado y no ha registrado nada en {n} días.",
+  "{count} students are behind and haven't logged anything in {n} days.": "{count} estudiantes van atrasados y no han registrado nada en {n} días.",
+  "Show them": "Mostrarlos",
+  "Show everyone": "Mostrar a todos",
+  "Last logged {date}": "Último registro: {date}",
+  "needs {n} h/week": "necesita {n} h/semana",
 }

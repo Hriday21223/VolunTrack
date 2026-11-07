@@ -3406,4 +3406,10 @@ export default {
   "Your check-out PIN": "Mã PIN ra về của bạn",
   "Remember it. When you leave, tap your name here and type this PIN to check out.": "Hãy nhớ mã này. Khi ra về, chạm vào tên bạn ở đây và nhập mã PIN này để ra về.",
   "I’ll remember it": "Tôi sẽ nhớ",
+  "1 student is behind and hasn't logged anything in {n} days.": "1 học sinh đang chậm tiến độ và chưa ghi gì trong {n} ngày.",
+  "{count} students are behind and haven't logged anything in {n} days.": "{count} học sinh đang chậm tiến độ và chưa ghi gì trong {n} ngày.",
+  "Show them": "Hiện các em",
+  "Show everyone": "Hiện tất cả",
+  "Last logged {date}": "Ghi lần cuối {date}",
+  "needs {n} h/week": "cần {n} giờ/tuần",
 }
