@@ -12,6 +12,16 @@ export function isValidDateString(value) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
 }
 
+// A log's date has to be plausible: typos like 1901 or 2031 were accepted and
+// then counted. Future dates are allowed (a school can turn that off), but at
+// most a year ahead.
+export function logDateRangeError(value) {
+  const d = new Date(`${value}T00:00:00Z`).getTime()
+  if (d < Date.UTC(1990, 0, 1)) return 'That date is too far in the past.'
+  if (d > Date.now() + 366 * 86400000) return 'That date is more than a year away.'
+  return null
+}
+
 // Text fields on a log. The body limit alone allowed a megabyte in each.
 export const LOG_TEXT_LIMITS = [
   ['Activity', 'activity', 200],
