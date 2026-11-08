@@ -13,6 +13,7 @@ import { isCompleteRegistrationCode } from '@/lib/registrationCode.js'
 import LegalSummary from '@/components/LegalSummary.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import { tr } from '@/lib/i18n.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function SchoolRegister() {
@@ -195,8 +196,8 @@ export default function SchoolRegister() {
             <div>
               <label className="label">{tr('Password (8+ characters)')}</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                <input type="password" className="input pl-9" placeholder={tr('Min 8 characters')} value={form.password} onChange={onChange('password')} autoComplete="new-password" required />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400 z-10" />
+                <PasswordInput className="input pl-9" placeholder={tr('Min 8 characters')} value={form.password} onChange={onChange('password')} autoComplete="new-password" required />
               </div>
             </div>
             <div>

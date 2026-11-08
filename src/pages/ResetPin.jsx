@@ -5,6 +5,7 @@ import Card from '@/components/Card.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { sendRecoveryEmail, getRecoveryStatus, fetchDevRecoveryCode } from '@/lib/recovery.js'
 import { tr } from '@/lib/i18n.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 export default function ResetPin() {
   const { requestPinReset, completePinReset } = useAuth()
@@ -181,8 +182,8 @@ export default function ResetPin() {
                     <label className="label">{tr('PIN recovery code')}</label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                      <input
-                        type="password"
+                      <PasswordInput
+                       
                         required
                         inputMode="numeric"
                         pattern="[0-9]{6}"
@@ -197,8 +198,8 @@ export default function ResetPin() {
 
                   <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
                     <label className="label">{tr('New 4-digit PIN')}</label>
-                    <input
-                      type="password"
+                    <PasswordInput
+                     
                       inputMode="numeric"
                       pattern="[0-9]{4}"
                       className="input"
@@ -211,8 +212,8 @@ export default function ResetPin() {
 
                   <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
                     <label className="label">{tr('Confirm PIN')}</label>
-                    <input
-                      type="password"
+                    <PasswordInput
+                     
                       inputMode="numeric"
                       pattern="[0-9]{4}"
                       className="input"

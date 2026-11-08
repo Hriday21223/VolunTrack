@@ -5,6 +5,7 @@ import Card from '@/components/Card.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { updateUser, hashPassword } from '@/api/index.js'
 import { tr } from '@/lib/i18n.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 export default function ResetPassword() {
   const { user, completePasswordReset } = useAuth()
@@ -86,8 +87,8 @@ export default function ResetPassword() {
                     <label className="label">{tr('Recovery code')}</label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                      <input
-                        type="password"
+                      <PasswordInput
+                       
                         required
                         inputMode="numeric"
                         pattern="[0-9]{6}"
@@ -105,8 +106,8 @@ export default function ResetPassword() {
                   <label className="label">{tr('New password')}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                    <input
-                      type="password"
+                    <PasswordInput
+                     
                       required
                       minLength={8}
                       className="input pl-9"
@@ -119,8 +120,8 @@ export default function ResetPassword() {
                   <label className="label">{tr('Confirm new password')}</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                    <input
-                      type="password"
+                    <PasswordInput
+                     
                       required
                       minLength={8}
                       className="input pl-9"

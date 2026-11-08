@@ -6,6 +6,7 @@ import {
   passkeysAvailable, addPasskey, listPasskeys, removePasskey, defaultPasskeyName, isPasskeyCancel,
 } from '@/lib/passkey.js'
 import { tr } from '@/lib/i18n.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 /**
  * Passkeys as a second sign-in step (server/routes/passkeys.js). Works the
@@ -94,8 +95,8 @@ export default function PasskeySettings() {
               </div>
               {removing === p.id && (
                 <form onSubmit={onRemove} className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <input
-                    type="password"
+                  <PasswordInput
+                   
                     required
                     autoComplete="current-password"
                     placeholder={tr('Your password')}
