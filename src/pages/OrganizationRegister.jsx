@@ -20,6 +20,7 @@ export default function OrganizationRegister() {
     title: 'Register Your Organization',
     description: 'VolunTrack organization accounts, for managing multiple schools under one login, are set up with an invite or a one-time code from us — contact us to get started.',
     path: '/organization/register',
+    image: '/og/organization.png',
   })
 
   const nav = useNavigate()

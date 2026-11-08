@@ -16,6 +16,7 @@ export default function Contact() {
     title: 'Contact Us',
     description: 'Found a bug, have a feature request, or want to say hi? Get in touch with the VolunTrack team.',
     path: '/contact',
+    image: '/og/contact.png',
   })
 
   useEffect(() => { window.scrollTo(0, 0) }, [])

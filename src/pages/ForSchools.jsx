@@ -51,6 +51,7 @@ export default function ForSchools() {
     title: 'Volunteer Hour Tracking for Schools and Clubs',
     description: 'Collect, approve and report student service hours in one place. Built for NHS, Key Club and service-club advisers: QR check-in, hour requirements, CSV and graduation reports.',
     path: '/for-schools',
+    image: '/og/for-schools.png',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'FAQPage',

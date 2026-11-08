@@ -43,6 +43,7 @@ export function GuidesIndex() {
     title: 'Volunteer Hour Guides',
     description: 'Practical guides for students and parents: tracking NHS service hours, community service hours for high school, and volunteer hours for college applications.',
     path: '/guides',
+    image: '/og/guides.png',
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
