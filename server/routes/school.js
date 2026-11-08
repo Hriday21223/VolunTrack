@@ -54,6 +54,7 @@ function taskMinStay(v) {
 
 import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
 import { LEGAL_VERSION } from '../legal.js'
+import { issueSignupCode, useSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
 import { publicFetch } from '../publicHost.js'
 const router = express.Router()
 
@@ -114,7 +115,67 @@ async function requirePaidSchool(req, res, next) {
 // Register a school. If `inviteToken` is present, it must reference a
 // pending, unexpired invite — consumed (marked 'completed') on success so
 // it can't be reused.
-router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res) => {
+// Free clubs (#817) prove their email with a 6-digit code first, like student
+// sign-up: a club needs no registration code, so without it anyone could
+// start clubs under a made-up address (or a real teacher's). The CAPTCHA is on
+// send-code, the request that emails someone; /register for a club then needs
+// the code instead.
+const isClubSignup = (body) => !body?.inviteToken && body?.plan === 'club'
+
+router.post('/register/send-code', limiter, requireDb, verifyTurnstile(), async (req, res) => {
+  if (!isClubSignup(req.body)) return res.status(400).json({ error: 'Only a free club verifies its email this way.' })
+  const name = String(req.body.name || '').trim()
+  const email = String(req.body.email || '').trim().toLowerCase()
+  const password = req.body.password
+  const pin = String(req.body.pin || '').trim().toLowerCase()
+  if (!name || name.length > 100) return res.status(400).json({ error: 'School name is required.' })
+  if (!email || !validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Valid email required.' })
+  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' })
+  if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
+  if (!pin || !/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
+  try {
+    if ((await query('SELECT 1 FROM schools WHERE pin = $1', [pin])).rowCount > 0) return res.status(409).json({ error: 'That school code is already taken.' })
+    if ((await query('SELECT 1 FROM users WHERE email = $1', [email])).rowCount > 0) return res.status(409).json({ error: 'An account with that email already exists.' })
+    const issued = await issueSignupCode(email, requestLang(req))
+    if (!issued.ok) return res.status(issued.status).json({ error: issued.error })
+    return res.json({ ok: true, expiresInMinutes: SIGNUP_CODE_TTL_MINUTES })
+  } catch (error) {
+    console.error('club send-code failed:', error)
+    return res.status(500).json({ error: 'Could not send the verification code.' })
+  }
+})
+
+// One email domain starting many free clubs is usually one school splitting
+// itself up to stay free: worth a friendly note about the school plan. The
+// admin is told once the domain passes CLUB_DOMAIN_ALERT_AT. Webmail and the
+// @test.com fixtures are skipped, since those domains say nothing about a school.
+const CLUB_DOMAIN_ALERT_AT = 3
+const WEBMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'icloud.com', 'me.com', 'mac.com', 'aol.com', 'protonmail.com', 'proton.me', 'gmx.com', 'mail.com', 'test.com'])
+async function checkClubDomain(email) {
+  try {
+    const domain = String(email).split('@')[1] || ''
+    const to = process.env.ADMIN_EMAIL
+    if (!domain || WEBMAIL_DOMAINS.has(domain) || !to) return
+    const { rows } = await query(
+      "SELECT name, pin FROM schools WHERE plan = 'club' AND lower(split_part(contact_email, '@', 2)) = $1 ORDER BY created_at DESC LIMIT 20",
+      [domain],
+    )
+    if (rows.length <= CLUB_DOMAIN_ALERT_AT) return
+    const list = rows.map((r) => `<li>${escapeHtml(r.name)} (${escapeHtml(r.pin)})</li>`).join('')
+    await sendEmail({
+      to,
+      subject: `${rows.length} free clubs from @${domain}`,
+      html: `<p>${rows.length} free clubs have now been started with <strong>@${escapeHtml(domain)}</strong> addresses. That is often one school splitting into clubs to stay on the free plan, and a good moment to offer them the school plan.</p><ul>${list}</ul><p>You can see them in Admin → Schools.</p>`,
+    })
+  } catch (error) {
+    console.error('club domain check failed:', error.message)
+  }
+}
+
+// A club's CAPTCHA was on send-code; its code is checked below instead.
+const turnstileUnlessClub = (req, res, next) => (isClubSignup(req.body) ? next() : verifyTurnstile()(req, res, next))
+
+router.post('/register', limiter, requireDb, turnstileUnlessClub, async (req, res) => {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const password = req.body.password
@@ -153,6 +214,13 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     const existingUser = await query('SELECT 1 FROM users WHERE email = $1', [email])
     if (existingUser.rowCount > 0) return res.status(409).json({ error: 'An account with that email already exists.' })
 
+    // A free club proves its email first (#817), after the checks above so a
+    // taken school code doesn't spend the code.
+    if (plan === 'club') {
+      const codeProblem = await useSignupCode(email, req.body.emailCode)
+      if (codeProblem) return res.status(codeProblem.status).json({ error: codeProblem.error })
+    }
+
     // Spent only now, once every other check has passed, so a taken email or
     // school code doesn't cost the school its registration code.
     if (registrationCode) {
@@ -189,6 +257,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
 
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, schoolId: rows[0].school_id, grade: rows[0].grade }
     await sendWelcomeEmail({ to: user.email, name: user.name, role: 'school', schoolPin: pin, plan, language: requestLang(req) })
+    if (plan === 'club') checkClubDomain(email)
     return res.status(201).json({ token: signToken(user), user, referral })
   } catch (error) {
     await releaseCode(claimedCodeId).catch((e) => console.error('registration code release failed:', e.message))
