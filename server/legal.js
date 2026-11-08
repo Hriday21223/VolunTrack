@@ -3,6 +3,8 @@
 // agree to, set LEGAL_VERSION to the new "Last updated" date and replace
 // LEGAL_CHANGES with a short, plain list of what changed: every signed-in
 // account is then asked to accept before using the app again.
+// 2026-11-08: Terms only clarified that a free club is free (nothing new to
+// agree to), so the version stays at the last change people accepted.
 export const LEGAL_VERSION = '2026-11-03'
 
 export const LEGAL_CHANGES = [
