@@ -89,12 +89,15 @@ export function publicFetch(url, { method = 'GET', headers = {}, body } = {}) {
       const chunks = []
       res.on('data', (c) => chunks.push(c))
       res.on('end', () => {
-        const text = Buffer.concat(chunks).toString('utf8')
+        const buf = Buffer.concat(chunks)
+        const text = buf.toString('utf8')
         resolve({
           ok: res.statusCode >= 200 && res.statusCode < 300,
           status: res.statusCode,
           headers: { get: (name) => res.headers[String(name).toLowerCase()] ?? null },
           text: async () => text,
+          rawBody: buf,
+          rawHeaders: res.headers,
         })
       })
       res.on('error', reject)
@@ -104,4 +107,22 @@ export function publicFetch(url, { method = 'GET', headers = {}, body } = {}) {
     if (payload) req.write(payload)
     req.end()
   })
+}
+
+// publicFetch shaped as a real fetch (url, init) => Response, for libraries
+// that take a custom fetch: openid-client's [customFetch] for SSO, so the
+// issuer and every endpoint its discovery document names (token, keys,
+// userinfo) are checked at connect time too.
+export async function publicFetchAsFetch(input, init = {}) {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+  const headers = Object.fromEntries(new Headers(init.headers || {}))
+  const body = init.body == null ? undefined : init.body instanceof URLSearchParams ? init.body.toString() : init.body
+  const r = await publicFetch(url, { method: init.method || 'GET', headers, body })
+  const outHeaders = new Headers()
+  for (const [k, v] of Object.entries(r.rawHeaders)) {
+    if (Array.isArray(v)) v.forEach((x) => outHeaders.append(k, x))
+    else if (v != null) outHeaders.set(k, String(v))
+  }
+  const noBody = r.status === 204 || r.status === 304 || (r.status >= 100 && r.status < 200)
+  return new Response(noBody ? null : r.rawBody, { status: r.status, headers: outHeaders })
 }

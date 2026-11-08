@@ -6,7 +6,7 @@ import { query, hasDatabase } from '../db.js'
 import { uid, generateToken } from '../ids.js'
 import { signToken, requireAuth } from '../auth.js'
 import { recordAudit, AUDIT } from '../audit.js'
-import { isPublicHost } from '../publicHost.js'
+import { isPublicHost, publicFetchAsFetch } from '../publicHost.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { publicUser, USER_WITH_SCHOOL_SELECT } from './auth.js'
 import { joinWithSeat } from '../plans.js'
@@ -87,11 +87,17 @@ async function oidcConfig(connection) {
     return cached.config
   }
   const secret = decryptSecret(connection.oidc_client_secret_enc)
+  // The issuer is a school's own setting, so every request to it (and to the
+  // endpoints its discovery document names) goes through publicFetchAsFetch:
+  // a public address checked at connect time, not just when it was saved.
   const config = await oidc.discovery(
     new URL(connection.oidc_issuer),
     connection.oidc_client_id,
     secret,
+    undefined,
+    { [oidc.customFetch]: publicFetchAsFetch },
   )
+  config[oidc.customFetch] = publicFetchAsFetch
   configCache.set(connection.id, {
     config,
     issuer: connection.oidc_issuer,
