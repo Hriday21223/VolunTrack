@@ -3438,4 +3438,10 @@ export default {
   "Could not undo volunteer of the month.": "Không thể hoàn tác tình nguyện viên của tháng.",
   "Could not end the challenge.": "Không thể kết thúc thử thách.",
   "Could not remove the reference.": "Không thể xóa người giới thiệu.",
+  "Student Sign Up": "Đăng ký cho học sinh",
+  "Parent Sign Up": "Đăng ký cho phụ huynh",
+  "Event Organizer Sign Up": "Đăng ký cho người tổ chức sự kiện",
+  "Create a free student account: log volunteer hours, join your school, set goals and share your hours.": "Tạo tài khoản học sinh miễn phí: ghi giờ tình nguyện, tham gia trường của bạn, đặt mục tiêu và chia sẻ số giờ.",
+  "Create a free parent account to follow your child's volunteer hours, cheer them on and set a weekly goal together.": "Tạo tài khoản phụ huynh miễn phí để theo dõi giờ tình nguyện của con, cổ vũ con và cùng đặt mục tiêu hằng tuần.",
+  "Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.": "Tạo tài khoản miễn phí để đăng sự kiện tình nguyện, nhận đăng ký, điểm danh tình nguyện viên và ký xác nhận giờ của họ.",
 }

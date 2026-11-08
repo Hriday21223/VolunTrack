@@ -132,6 +132,9 @@ function Shell() {
         <Routes>
           <Route path="/login"           element={<PublicOnly><Login /></PublicOnly>} />
           <Route path="/register"        element={<PublicOnly><Register /></PublicOnly>} />
+          <Route path="/register/student"   element={<PublicOnly><Register who="student" /></PublicOnly>} />
+          <Route path="/register/parent"    element={<PublicOnly><Register who="parent" /></PublicOnly>} />
+          <Route path="/register/organizer" element={<PublicOnly><Register who="organizer" /></PublicOnly>} />
           <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
           <Route path="/reset-password"  element={<PublicOnly><ResetPassword /></PublicOnly>} />
           <Route path="/reset-pin"       element={<PublicOnly><ResetPin /></PublicOnly>} />

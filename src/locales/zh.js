@@ -3438,4 +3438,10 @@ export default {
   "Could not undo volunteer of the month.": "无法撤销本月志愿者。",
   "Could not end the challenge.": "无法结束挑战。",
   "Could not remove the reference.": "无法删除推荐人。",
+  "Student Sign Up": "学生注册",
+  "Parent Sign Up": "家长注册",
+  "Event Organizer Sign Up": "活动组织者注册",
+  "Create a free student account: log volunteer hours, join your school, set goals and share your hours.": "创建免费学生账户：记录志愿时数、加入你的学校、设定目标并分享你的时数。",
+  "Create a free parent account to follow your child's volunteer hours, cheer them on and set a weekly goal together.": "创建免费家长账户，关注孩子的志愿时数，为他们加油，并一起设定每周目标。",
+  "Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.": "创建免费账户，发布志愿活动、接受报名、为志愿者签到并签署他们的时数。",
 }

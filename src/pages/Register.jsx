@@ -73,8 +73,35 @@ const ROLES = [
   },
 ]
 
-export default function Register() {
-  useSeo({
+// /register/:who (#813): a page per kind of account, so a shared link (or a
+// Linktree button) opens the form with that account type already picked and
+// shows its own preview picture. Plain /register keeps the generic page.
+const ROLE_PAGES = {
+  student: {
+    role: 'student',
+    title: () => tr('Student Sign Up'),
+    description: () => tr('Create a free student account: log volunteer hours, join your school, set goals and share your hours.'),
+  },
+  parent: {
+    role: 'parent',
+    title: () => tr('Parent Sign Up'),
+    description: () => tr("Create a free parent account to follow your child's volunteer hours, cheer them on and set a weekly goal together."),
+  },
+  organizer: {
+    role: 'volunteer',
+    title: () => tr('Event Organizer Sign Up'),
+    description: () => tr('Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.'),
+  },
+}
+
+export default function Register({ who } = {}) {
+  const rolePage = ROLE_PAGES[who] || null
+  useSeo(rolePage ? {
+    title: rolePage.title(),
+    description: rolePage.description(),
+    path: `/register/${who}`,
+    image: `/og/register-${who}.png`,
+  } : {
     title: tr('Create an Account'),
     description: tr('Create a free VolunTrack account to start tracking volunteer hours, setting goals, and earning badges.'),
     path: '/register',
@@ -83,7 +110,7 @@ export default function Register() {
 
   const { sendSignupCode, register } = useAuth()
   const nav = useNavigate()
-  const [role, setRole] = useState('student')
+  const [role, setRole] = useState(rolePage?.role || 'student')
   // A school's join link (/join/:code, #491) sends new students here with
   // ?school=<code>, so the code is already filled in and Welcome links it.
   const [params] = useSearchParams()
