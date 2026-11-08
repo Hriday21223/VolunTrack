@@ -49,7 +49,7 @@ export const LEGAL_SUMMARY_PARENT = [
 ]
 
 export const LEGAL_SUMMARY_ORGANIZER = [
-  'Event organizer accounts are for adults 18 and over, and are free.',
+  'Volunteer Task Maker accounts are for adults 18 and over, and are free.',
   "You run your events: keep the details accurate and up to date, and keep volunteers safe on the day. VolunTrack doesn't supervise events.",
   "Use volunteers' names and contact details only to run your event, and add co-hosts only if you trust them.",
   'Share check-in PINs and codes only at the event, and sign hours only when you believe they are right.',
