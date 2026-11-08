@@ -489,7 +489,7 @@ export default function Register({ who } = {}) {
                 </>
               )}
 
-              <LegalSummary />
+              <LegalSummary role={role} />
 
               <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
                 <input

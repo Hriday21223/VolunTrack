@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { ScrollText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { tr } from '@/lib/i18n.js'
-import { LEGAL_VERSION, LEGAL_CHANGES, LEGAL_SUMMARY, LEGAL_SUMMARY_SCHOOL } from '@/lib/legal.js'
+import { LEGAL_VERSION, LEGAL_CHANGES, legalSummaryFor } from '@/lib/legal.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -22,7 +22,7 @@ export default function LegalUpdateGate() {
   if (pathname === '/terms' || pathname === '/privacy') return null
   const firstTime = !user.legalVersion
   const isSchool = ['school', 'school_staff', 'org'].includes(user.role)
-  const points = firstTime ? (isSchool ? LEGAL_SUMMARY_SCHOOL : LEGAL_SUMMARY) : LEGAL_CHANGES
+  const points = firstTime ? legalSummaryFor(user?.role) : LEGAL_CHANGES
 
   const accept = async () => {
     setBusy(true)

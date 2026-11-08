@@ -128,7 +128,7 @@ export default function OrganizationRegister() {
               </div>
             </div>
 
-            <LegalSummary audience="school" />
+            <LegalSummary role="org" />
 
 
             <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300">
