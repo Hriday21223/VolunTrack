@@ -3468,4 +3468,6 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "Chỉ gửi liên kết xác nhận của đối tác tới đúng người liên hệ thật của đối tác, và chỉ phê duyệt hoặc ký giờ khi bạn tin là đúng.",
   "Almost done. Pick your account type, then fill in the rest. You won’t need a password: sign in with the same button next time.": "Sắp xong rồi. Hãy chọn loại tài khoản, sau đó điền phần còn lại. Bạn sẽ không cần mật khẩu: lần sau hãy đăng nhập bằng cùng nút đó.",
   "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "Sắp xong rồi. Hãy điền phần còn lại. Bạn sẽ không cần mật khẩu: lần sau hãy đăng nhập bằng cùng nút đó.",
+  "Show password": "Hiện mật khẩu",
+  "Hide password": "Ẩn mật khẩu",
 }

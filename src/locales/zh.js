@@ -3468,4 +3468,6 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "合作伙伴确认链接只能发给该合作伙伴的真实联系人；只有在你认为时数无误时才批准或签署。",
   "Almost done. Pick your account type, then fill in the rest. You won’t need a password: sign in with the same button next time.": "快完成了。先选择账户类型，再填写其余信息。你不需要密码：下次用同一个按钮登录即可。",
   "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "快完成了。请填写其余信息。你不需要密码：下次用同一个按钮登录即可。",
+  "Show password": "显示密码",
+  "Hide password": "隐藏密码",
 }

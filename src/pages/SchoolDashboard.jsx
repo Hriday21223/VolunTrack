@@ -49,6 +49,7 @@ import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
 
 import EmbedWidgetCard from '@/components/EmbedWidgetCard.jsx'
+import PasswordInput from '@/components/PasswordInput.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 const SCHOOL_TOUR_STEPS = [
@@ -1059,7 +1060,7 @@ export default function SchoolDashboard() {
                 <form onSubmit={handleAddStaff} className="space-y-3">
                   <input type="text" className="input" placeholder={tr('Name')} value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
                   <input type="email" className="input" placeholder={tr('Email')} value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} required />
-                  <input type="password" className="input" placeholder={tr('Temporary password (min 8 chars)')} value={staffForm.password} onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })} minLength={8} required />
+                  <PasswordInput className="input" placeholder={tr('Temporary password (min 8 chars)')} value={staffForm.password} onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })} minLength={8} required />
                   <button type="submit" className="btn-primary" disabled={addingStaff}>{addingStaff ? tr('Adding…') : tr('Add co-admin')}</button>
                   {staffErr && <p className="text-sm text-red-500">{staffErr}</p>}
                 </form>

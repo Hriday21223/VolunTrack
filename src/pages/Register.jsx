@@ -21,6 +21,7 @@ import LanguagePicker from '@/components/LanguagePicker.jsx'
 // server. Expires after a day so a family sharing one device isn't locked
 // out for good — e.g. a parent signing up after their child tried.
 import LegalSummary from '@/components/LegalSummary.jsx'
+import PasswordInput from '@/components/PasswordInput.jsx'
 const AGE_GATE_KEY = 'voluntrack:age_gate'
 const AGE_GATE_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -548,8 +549,10 @@ function Field({ icon: Icon, label, type = 'text', id, ...rest }) {
     <div>
       <label className="label" htmlFor={inputId}>{label}</label>
       <div className="relative">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" aria-hidden="true" />
-        <input id={inputId} type={type} className="input pl-9" {...rest} />
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400 z-10" aria-hidden="true" />
+        {type === 'password'
+          ? <PasswordInput id={inputId} className="input pl-9" {...rest} />
+          : <input id={inputId} type={type} className="input pl-9" {...rest} />}
       </div>
     </div>
   )

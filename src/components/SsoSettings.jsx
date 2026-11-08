@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, Copy, Loader2, ShieldCheck, ShieldAlert, Trash2 } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -339,8 +340,8 @@ export default function SsoSettings() {
 
           <div>
             <label className="label" htmlFor="sso-client-secret">{tr('Client secret')}</label>
-            <input
-              id="sso-client-secret" className="input" required type="password"
+            <PasswordInput
+              id="sso-client-secret" className="input" required
               value={form.clientSecret}
               onChange={(e) => setForm({ ...form, clientSecret: e.target.value })}
             />

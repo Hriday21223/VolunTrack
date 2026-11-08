@@ -3497,4 +3497,6 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "Envía los enlaces de confirmación de socios solo al contacto real del socio, y aprueba o firma horas solo cuando creas que son correctas.",
   "Almost done. Pick your account type, then fill in the rest. You won’t need a password: sign in with the same button next time.": "Ya casi terminas. Elige tu tipo de cuenta y luego completa el resto. No necesitarás contraseña: la próxima vez inicia sesión con el mismo botón.",
   "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "Ya casi terminas. Completa el resto. No necesitarás contraseña: la próxima vez inicia sesión con el mismo botón.",
+  "Show password": "Mostrar contraseña",
+  "Hide password": "Ocultar contraseña",
 }

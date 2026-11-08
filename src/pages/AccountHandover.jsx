@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { fetchHandover, acceptHandover } from '@/lib/handover.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 // The new principal's or director's side of a handover (#550), opened from
 // the emailed link. No sign-in: the one-time link is the key.
@@ -82,7 +83,7 @@ export default function AccountHandover() {
               ) : (
                 <div>
                   <label className="label">Choose a password</label>
-                  <input className="input" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <PasswordInput className="input" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               )}
               {error && <p className="text-sm text-red-500">{error}</p>}
