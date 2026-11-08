@@ -8,6 +8,17 @@ const SITE_URL = import.meta.env.VITE_SITE_URL
 const DEFAULT_TITLE = 'VolunTrack · Volunteer Hour Tracker'
 const DEFAULT_DESCRIPTION = 'VolunTrack is a calm volunteer hour tracker. Log hours, set goals, earn badges, and generate reports for school or community service.'
 const DEFAULT_CANONICAL_URL = `${SITE_URL}/`
+// The link-preview picture (1200×630). A page can pass its own from public/og/.
+const DEFAULT_IMAGE = '/og-image.png'
+const DEFAULT_IMAGE_ALT = 'VolunTrack — track volunteer hours, get them signed off, and share them with your school.'
+
+function setImage(src, alt) {
+  const url = /^https?:/.test(src) ? src : `${SITE_URL}${src}`
+  setMetaTag('property', 'og:image', url)
+  setMetaTag('property', 'og:image:alt', alt)
+  setMetaTag('name', 'twitter:image', url)
+  setMetaTag('name', 'twitter:image:alt', alt)
+}
 
 function setMetaTag(attr, key, content) {
   let el = document.querySelector(`meta[${attr}="${key}"]`)
@@ -55,8 +66,10 @@ function setJsonLd(data) {
  * (e.g. duplicate-content pages that should canonicalize to the primary one).
  * Pass jsonLd (a schema.org object, or an array for multiple schemas) to
  * inject page-specific structured data — e.g. FAQPage, AggregateRating.
+ * Pass image (a path under public/, e.g. '/og/register.png') and imageAlt for
+ * the page's own link-preview picture; the prerendered page keeps it.
  */
-export function useSeo({ title, description, path, canonicalPath, jsonLd } = {}) {
+export function useSeo({ title, description, path, canonicalPath, jsonLd, image, imageAlt } = {}) {
   useEffect(() => {
     const fullTitle = title ? `${title} · VolunTrack` : DEFAULT_TITLE
     const desc = description || DEFAULT_DESCRIPTION
@@ -71,6 +84,7 @@ export function useSeo({ title, description, path, canonicalPath, jsonLd } = {})
     setMetaTag('name', 'twitter:description', desc)
     setCanonicalLink(canonicalUrl)
     setJsonLd(jsonLd)
+    setImage(image || DEFAULT_IMAGE, image ? (imageAlt || desc) : DEFAULT_IMAGE_ALT)
 
     return () => {
       document.title = DEFAULT_TITLE
@@ -82,6 +96,7 @@ export function useSeo({ title, description, path, canonicalPath, jsonLd } = {})
       setMetaTag('name', 'twitter:description', DEFAULT_DESCRIPTION)
       setCanonicalLink(DEFAULT_CANONICAL_URL)
       setJsonLd(null)
+      setImage(DEFAULT_IMAGE, DEFAULT_IMAGE_ALT)
     }
-  }, [title, description, path, canonicalPath, jsonLd])
+  }, [title, description, path, canonicalPath, jsonLd, image, imageAlt])
 }

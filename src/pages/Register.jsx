@@ -78,6 +78,7 @@ export default function Register() {
     title: tr('Create an Account'),
     description: tr('Create a free VolunTrack account to start tracking volunteer hours, setting goals, and earning badges.'),
     path: '/register',
+    image: '/og/register.png',
   })
 
   const { sendSignupCode, register } = useAuth()

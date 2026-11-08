@@ -130,7 +130,9 @@ export default defineConfig(({ mode }) => {
           // The on-device paper-log reader (~15 MB) loads only when someone
           // scans, so it isn't precached for every visitor.
           // The easy-read font downloads only for people who turn it on (#553).
-          globIgnores: ['tesseract/**', 'fonts/atkinson-*'],
+          // Link-preview pictures (public/og/) are for chat apps' robots, not
+          // for visitors, so they aren't precached either.
+          globIgnores: ['tesseract/**', 'fonts/atkinson-*', 'og/**', 'og-image.png'],
           // Web Push handlers. generateSW can't host custom SW code, but it
           // can importScripts one — see public/push-sw.js.
           importScripts: ['/push-sw.js'],
