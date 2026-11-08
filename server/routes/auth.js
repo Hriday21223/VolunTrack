@@ -8,6 +8,7 @@ import * as OTPAuth from 'otpauth'
 import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { uid, generateToken, generateNumericCode } from '../ids.js'
+import { issueSignupCode, useSignupCode, SIGNUP_CODE_TTL_MINUTES, SIGNUP_CODE_MAX_ATTEMPTS, SIGNUP_CODE_RESEND_SECONDS } from '../signupCodes.js'
 import { signupPlatform } from '../platform.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole, endSessions } from '../auth.js'
@@ -221,9 +222,6 @@ function readSignup(body) {
 // The emailed sign-up code (#310): six digits, good for 10 minutes and one
 // use, and dead after SIGNUP_CODE_MAX_ATTEMPTS wrong guesses — 5 tries at a
 // million values is what makes six digits enough.
-const SIGNUP_CODE_TTL_MINUTES = 10
-const SIGNUP_CODE_MAX_ATTEMPTS = 5
-const SIGNUP_CODE_RESEND_SECONDS = 60
 
 // Under-13 requests nobody approved are not kept: 14 days, then the account
 // goes — before the email check, so the address can be used again. Sign-up
@@ -245,10 +243,6 @@ router.post('/register/send-code', authLimiter, requireDb, verifyTurnstile(), as
   const signup = readSignup(req.body)
   if (signup.error) return res.status(signup.status || 400).json({ error: signup.error })
   const { email } = signup
-  const devLog = !hasEmail() && process.env.NODE_ENV !== 'production'
-  if (!hasEmail() && !devLog) {
-    return res.status(503).json({ error: 'We cannot send the verification email right now. Please try again later.' })
-  }
 
   try {
     await pruneStaleSignups()
@@ -256,63 +250,14 @@ router.post('/register/send-code', authLimiter, requireDb, verifyTurnstile(), as
     if (existing.rowCount > 0) {
       return res.status(409).json({ error: 'An account with that email already exists.' })
     }
-    const code = generateNumericCode(6)
-    const codeHash = await bcrypt.hash(code, 10)
-    // The WHERE on the upsert is the resend limit: a row sent less than a
-    // minute ago is left alone and nothing comes back.
-    const { rowCount } = await query(
-      `INSERT INTO signup_codes (email, code_hash, expires_at, attempts, sent_at)
-       VALUES ($1, $2, now() + interval '${SIGNUP_CODE_TTL_MINUTES} minutes', 0, now())
-       ON CONFLICT (email) DO UPDATE
-         SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, sent_at = now()
-         WHERE signup_codes.sent_at < now() - interval '${SIGNUP_CODE_RESEND_SECONDS} seconds'`,
-      [email, codeHash],
-    )
-    if (rowCount === 0) {
-      return res.status(429).json({ error: 'We just sent a code. Wait a minute before asking for another.' })
-    }
-    if (devLog) {
-      console.log(`[dev] No email provider configured — sign-up code for ${forLog(email)}: ${code}`)
-    } else {
-      const sent = await sendSignupCodeEmail({ to: email, code, minutes: SIGNUP_CODE_TTL_MINUTES, language: requestLang(req) })
-      if (!sent.sent) {
-        await query('DELETE FROM signup_codes WHERE email = $1', [email])
-        return res.status(502).json({ error: 'We could not send the verification email. Check the address and try again.' })
-      }
-    }
+    const issued = await issueSignupCode(email, requestLang(req))
+    if (!issued.ok) return res.status(issued.status).json({ error: issued.error })
     return res.json({ ok: true, expiresInMinutes: SIGNUP_CODE_TTL_MINUTES })
   } catch (error) {
     console.error('send sign-up code failed:', error)
     return res.status(500).json({ error: 'Could not send the verification code.' })
   }
 })
-
-// Checks and spends the code for `email`. → null when it matched (the row is
-// gone, so it can't be used again), otherwise { status, error }.
-async function useSignupCode(email, code) {
-  if (typeof code !== 'string' || !/^\d{6}$/.test(code)) {
-    return { status: 400, error: 'Enter the 6-digit code we emailed you.' }
-  }
-  const { rows } = await query('SELECT code_hash, expires_at, attempts FROM signup_codes WHERE email = $1', [email])
-  const row = rows[0]
-  if (!row) return { status: 400, error: 'No code is waiting for this email. Ask for a new one.' }
-  if (new Date(row.expires_at) < new Date()) {
-    await query('DELETE FROM signup_codes WHERE email = $1', [email])
-    return { status: 410, error: 'That code expired. Ask for a new one.' }
-  }
-  if (row.attempts >= SIGNUP_CODE_MAX_ATTEMPTS) {
-    return { status: 429, error: 'Too many wrong codes. Ask for a new one.' }
-  }
-  if (!(await bcrypt.compare(code, row.code_hash))) {
-    await query('UPDATE signup_codes SET attempts = attempts + 1 WHERE email = $1', [email])
-    const left = SIGNUP_CODE_MAX_ATTEMPTS - row.attempts - 1
-    return { status: 401, error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask for a new one.' }
-  }
-  // Two requests racing on one good code: only the one that deletes the row wins.
-  const spent = await query('DELETE FROM signup_codes WHERE email = $1 AND code_hash = $2', [email, row.code_hash])
-  if (spent.rowCount === 0) return { status: 400, error: 'No code is waiting for this email. Ask for a new one.' }
-  return null
-}
 
 router.post('/register', authLimiter, requireDb, async (req, res) => {
   // Coming from Google or Apple (#661): the provider already verified the
@@ -462,10 +407,15 @@ async function useEmailOtp(userId, purpose, code) {
     await query('DELETE FROM email_otp_codes WHERE user_id = $1', [userId])
     return { status: 410, error: 'That code expired. Ask for a new one.' }
   }
-  if (row.attempts >= SIGNUP_CODE_MAX_ATTEMPTS) return { status: 429, error: 'Too many wrong codes. Ask for a new one.' }
+  // Counted before checking, in one step, so a burst of guesses can't get
+  // more than the allowed tries at this second factor.
+  const { rows: counted } = await query(
+    'UPDATE email_otp_codes SET attempts = attempts + 1 WHERE user_id = $1 AND purpose = $2 AND attempts < $3 RETURNING attempts',
+    [userId, purpose, SIGNUP_CODE_MAX_ATTEMPTS],
+  )
+  if (!counted[0]) return { status: 429, error: 'Too many wrong codes. Ask for a new one.' }
   if (!(await bcrypt.compare(code.trim(), row.code_hash))) {
-    await query('UPDATE email_otp_codes SET attempts = attempts + 1 WHERE user_id = $1', [userId])
-    const left = SIGNUP_CODE_MAX_ATTEMPTS - row.attempts - 1
+    const left = SIGNUP_CODE_MAX_ATTEMPTS - counted[0].attempts
     return { status: 401, error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask for a new one.' }
   }
   const spent = await query('DELETE FROM email_otp_codes WHERE user_id = $1 AND code_hash = $2', [userId, row.code_hash])
@@ -837,10 +787,14 @@ router.post('/email-change/confirm', authLimiter, requireDb, requireAuth(), asyn
       await query('DELETE FROM email_change_codes WHERE user_id = $1', [req.auth.sub])
       return res.status(410).json({ error: 'That code expired. Ask for a new one.' })
     }
-    if (pending.attempts >= SIGNUP_CODE_MAX_ATTEMPTS) return res.status(429).json({ error: 'Too many wrong codes. Ask for a new one.' })
+    // Counted before checking, in one step (see useSignupCode).
+    const { rows: counted } = await query(
+      'UPDATE email_change_codes SET attempts = attempts + 1 WHERE user_id = $1 AND attempts < $2 RETURNING attempts',
+      [req.auth.sub, SIGNUP_CODE_MAX_ATTEMPTS],
+    )
+    if (!counted[0]) return res.status(429).json({ error: 'Too many wrong codes. Ask for a new one.' })
     if (!(await bcrypt.compare(code, pending.code_hash))) {
-      await query('UPDATE email_change_codes SET attempts = attempts + 1 WHERE user_id = $1', [req.auth.sub])
-      const left = SIGNUP_CODE_MAX_ATTEMPTS - pending.attempts - 1
+      const left = SIGNUP_CODE_MAX_ATTEMPTS - counted[0].attempts
       return res.status(401).json({ error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask for a new one.' })
     }
     // Spend it first: two racing requests with one good code, only one wins.

@@ -3446,4 +3446,9 @@ export default {
   "Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.": "创建免费账户，发布志愿活动、接受报名、为志愿者签到并签署他们的时数。",
   "Who are you signing up as?": "你以什么身份注册？",
   "Not you? Change account type": "不是你？更改账户类型",
+  "We sent a 6-digit code to {email}. It works for 10 minutes.": "我们已向 {email} 发送了 6 位数验证码，10 分钟内有效。",
+  "Wrong email or no code? Go back": "邮箱填错或没收到验证码？返回",
+  "Email me a code": "给我发送验证码",
+  "Enter the 6-digit code we emailed you.": "请输入我们通过邮件发送的 6 位数验证码。",
+  "Could not send the verification code.": "无法发送验证码。",
 }

@@ -37,6 +37,9 @@ export default function SchoolRegister() {
   const [agreed, setAgreed] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [captchaKey, setCaptchaKey] = useState(0)
+  // A free club proves its email with a 6-digit code first (#817).
+  const [codeSent, setCodeSent] = useState(false)
+  const [emailCode, setEmailCode] = useState('')
 
   useEffect(() => {
     if (!inviteToken) return
@@ -66,17 +69,11 @@ export default function SchoolRegister() {
     if (turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
     setBusy(true)
     try {
-      const res = await fetch(`${apiUrl}/school/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, referralCode: isClub ? undefined : form.referralCode, pin: form.pin.toLowerCase(), plan: isClub ? 'club' : 'school', inviteToken: inviteToken || undefined, registrationCode: inviteToken || isClub ? undefined : form.registrationCode, turnstileToken: captchaToken }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || tr('Registration failed'))
-      localStorage.setItem('voluntrack:auth_token', data.token)
-      await refreshUser()
-      setToast(true)
-      setTimeout(() => nav('/school/dashboard', { replace: true }), 600)
+      if (isClub) {
+        await sendClubCode()
+        return
+      }
+      await createAccount()
     } catch (e) {
       setErr(e.message)
       setCaptchaToken('')
@@ -84,6 +81,37 @@ export default function SchoolRegister() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const body = () => ({ ...form, referralCode: isClub ? undefined : form.referralCode, pin: form.pin.toLowerCase(), plan: isClub ? 'club' : 'school', inviteToken: inviteToken || undefined, registrationCode: inviteToken || isClub ? undefined : form.registrationCode, turnstileToken: captchaToken })
+
+  const sendClubCode = async () => {
+    const res = await fetch(`${apiUrl}/school/register/send-code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body()) })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || tr('Could not send the verification code.'))
+    setCodeSent(true); setEmailCode('')
+  }
+
+  const onConfirmCode = async (e) => {
+    e.preventDefault()
+    setErr('')
+    if (!/^\d{6}$/.test(emailCode.trim())) { setErr(tr('Enter the 6-digit code we emailed you.')); return }
+    setBusy(true)
+    try { await createAccount(emailCode.trim()) } catch (e2) { setErr(e2.message) } finally { setBusy(false) }
+  }
+
+  const createAccount = async (code) => {
+    const res = await fetch(`${apiUrl}/school/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body(), emailCode: code }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || tr('Registration failed'))
+    localStorage.setItem('voluntrack:auth_token', data.token)
+    await refreshUser()
+    setToast(true)
+    setTimeout(() => nav('/school/dashboard', { replace: true }), 600)
   }
 
   return (
@@ -127,6 +155,24 @@ export default function SchoolRegister() {
 
           {!inviteLoaded ? (
             <p className="text-sm text-earth-500 py-4">{tr('Loading invite…')}</p>
+          ) : codeSent ? (
+            <form onSubmit={onConfirmCode} className="space-y-4">
+              <div className="rounded-xl bg-brand-500/10 px-4 py-3 text-sm">
+                <p className="font-medium">{tr('Check your email')}</p>
+                <p className="text-earth-500 dark:text-earth-400 mt-0.5">{tr('We sent a 6-digit code to {email}. It works for 10 minutes.', { email: form.email })}</p>
+              </div>
+              <div>
+                <label className="label" htmlFor="club-email-code">{tr('Code')}</label>
+                <input id="club-email-code" className="input tracking-[0.3em] text-lg" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={emailCode} onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ''))} autoFocus required />
+              </div>
+              {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{err}</div>}
+              <button type="submit" className="btn-primary w-full" disabled={busy || emailCode.length !== 6}>
+                {busy ? tr('Registering…') : <>{tr('Start free club')} <ArrowRight className="w-4 h-4" /></>}
+              </button>
+              <button type="button" className="btn-ghost w-full" onClick={() => { setCodeSent(false); setErr(''); setCaptchaToken(''); setCaptchaKey((k) => k + 1) }}>
+                {tr('Wrong email or no code? Go back')}
+              </button>
+            </form>
           ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             {!inviteToken && !isClub && (
@@ -201,7 +247,7 @@ export default function SchoolRegister() {
             <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="school-register" />
 
             <button type="submit" className="btn-primary w-full" disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
-              {busy ? tr('Registering…') : <>{isClub ? tr('Start free club') : tr('Register school')} <ArrowRight className="w-4 h-4" /></>}
+              {busy ? (isClub ? tr('Sending code…') : tr('Registering…')) : <>{isClub ? tr('Email me a code') : tr('Register school')} <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
           )}

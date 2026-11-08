@@ -3475,4 +3475,9 @@ export default {
   "Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.": "Crea una cuenta gratuita para publicar eventos de voluntariado, recibir inscripciones, registrar la llegada de voluntarios y firmar sus horas.",
   "Who are you signing up as?": "¿Cómo te registras?",
   "Not you? Change account type": "¿No eres tú? Cambia el tipo de cuenta",
+  "We sent a 6-digit code to {email}. It works for 10 minutes.": "Enviamos un código de 6 dígitos a {email}. Funciona durante 10 minutos.",
+  "Wrong email or no code? Go back": "¿Correo incorrecto o no llegó el código? Vuelve atrás",
+  "Email me a code": "Envíame un código",
+  "Enter the 6-digit code we emailed you.": "Escribe el código de 6 dígitos que te enviamos por correo.",
+  "Could not send the verification code.": "No se pudo enviar el código de verificación.",
 }

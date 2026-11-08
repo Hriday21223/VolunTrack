@@ -382,6 +382,7 @@ export const ERRORS_ES = {
   "Could not save the weekly goal.": "No se pudo guardar la meta semanal.",
   "Choose a student.": "Elige un estudiante.",
   "That student is not at your school.": "Ese estudiante no está en tu escuela.",
+  "Only a free club verifies its email this way.": "Solo un club gratuito verifica su correo de esta forma.",
   "Photo scanning has reached its limit for today. Type your hours in, or try again tomorrow.": "El escaneo de fotos llegó a su límite de hoy. Escribe tus horas o inténtalo de nuevo mañana.",
   "That date is too far in the past.": "Esa fecha es demasiado antigua.",
   "You can't log hours for a future date.": "No puedes registrar horas en una fecha futura.",

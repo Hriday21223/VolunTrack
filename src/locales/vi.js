@@ -3446,4 +3446,9 @@ export default {
   "Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.": "Tạo tài khoản miễn phí để đăng sự kiện tình nguyện, nhận đăng ký, điểm danh tình nguyện viên và ký xác nhận giờ của họ.",
   "Who are you signing up as?": "Bạn đăng ký với tư cách là ai?",
   "Not you? Change account type": "Không phải bạn? Đổi loại tài khoản",
+  "We sent a 6-digit code to {email}. It works for 10 minutes.": "Chúng tôi đã gửi mã 6 chữ số tới {email}. Mã dùng được trong 10 phút.",
+  "Wrong email or no code? Go back": "Sai email hoặc không nhận được mã? Quay lại",
+  "Email me a code": "Gửi mã cho tôi",
+  "Enter the 6-digit code we emailed you.": "Nhập mã 6 chữ số chúng tôi đã gửi qua email.",
+  "Could not send the verification code.": "Không thể gửi mã xác minh.",
 }
