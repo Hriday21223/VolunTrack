@@ -90,7 +90,7 @@ const ROLE_PAGES = {
   },
   organizer: {
     role: 'volunteer',
-    title: () => tr('Event Organizer Sign Up'),
+    title: () => tr('Volunteer Task Maker Sign Up'),
     description: () => tr('Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.'),
   },
 }

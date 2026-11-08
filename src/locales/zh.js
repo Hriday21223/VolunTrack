@@ -3470,4 +3470,6 @@ export default {
   "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "快完成了。请填写其余信息。你不需要密码：下次用同一个按钮登录即可。",
   "Show password": "显示密码",
   "Hide password": "隐藏密码",
+  "Volunteer Task Maker Sign Up": "志愿任务发布者注册",
+  "Volunteer Task Maker accounts are for adults 18 and over, and are free.": "志愿任务发布者账户适用于 18 岁及以上的成年人，且免费。",
 }

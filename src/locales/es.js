@@ -3499,4 +3499,6 @@ export default {
   "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "Ya casi terminas. Completa el resto. No necesitarás contraseña: la próxima vez inicia sesión con el mismo botón.",
   "Show password": "Mostrar contraseña",
   "Hide password": "Ocultar contraseña",
+  "Volunteer Task Maker Sign Up": "Registro para creadores de tareas de voluntariado",
+  "Volunteer Task Maker accounts are for adults 18 and over, and are free.": "Las cuentas de creador de tareas de voluntariado son para adultos de 18 años o más y son gratuitas.",
 }
