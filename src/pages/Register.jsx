@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import SocialSignIn from '@/components/SocialSignIn.jsx'
 import { useState, useEffect, useId } from 'react'
 import { Mail, Lock, User as UserIcon, ArrowRight, School, GraduationCap, Hash, Hand, Check, Users, Cake } from 'lucide-react'
@@ -94,6 +94,8 @@ const ROLE_PAGES = {
   },
 }
 
+const WHO_FOR_ROLE = { student: 'student', volunteer: 'organizer', parent: 'parent' }
+
 export default function Register({ who } = {}) {
   const rolePage = ROLE_PAGES[who] || null
   useSeo(rolePage ? {
@@ -110,7 +112,11 @@ export default function Register({ who } = {}) {
 
   const { sendSignupCode, register } = useAuth()
   const nav = useNavigate()
-  const [role, setRole] = useState(rolePage?.role || 'student')
+  const location = useLocation()
+  // The page decides the account type; /register itself is only the picker.
+  const role = rolePage?.role || 'student'
+  const currentRole = ROLES.find((r) => r.id === role)
+  const CurrentRoleIcon = currentRole.icon
   // A school's join link (/join/:code, #491) sends new students here with
   // ?school=<code>, so the code is already filled in and Welcome links it.
   const [params] = useSearchParams()
@@ -380,125 +386,136 @@ export default function Register({ who } = {}) {
         </Link>
 
         <Card padded={false} className="p-7 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-          <h1 className="text-2xl font-bold mb-1 animate-fade-in-up" style={{ animationDelay: '150ms' }}>{tr('Create your account')}</h1>
-          <p className="text-sm text-earth-500 dark:text-earth-400 mb-6 animate-fade-in-up" style={{ animationDelay: '200ms' }}>{tr('Choose your account type to get started.')}</p>
-
-          <div className="grid gap-3 mb-6">
-            {ROLES.map((r, i) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRole(r.id)}
-                className={`flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition animate-fade-in-up ${
-                  role === r.id
-                    ? 'border-brand-500 bg-brand-500/10'
-                    : 'border-earth-200 dark:border-earth-800 hover:border-earth-300 dark:hover:border-earth-700'
-                }`}
-                style={{ animationDelay: `${250 + i * 100}ms` }}
-              >
-                <div className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 ${
-                  role === r.id ? 'bg-brand-500 text-white' : 'bg-earth-100 dark:bg-earth-800 text-earth-500'
-                }`}>
-                  <r.icon className="w-5 h-5" />
+          {!rolePage ? (
+            <>
+              {/* Step 1 (#815): only "who are you?". Each choice opens its own page
+                  (/register/student|parent|organizer) with just that account's
+                  fields; ?school=, ?invite= and ?social= ride along. */}
+              <h1 className="text-2xl font-bold mb-1 animate-fade-in-up" style={{ animationDelay: '150ms' }}>{tr('Create your account')}</h1>
+              <p className="text-sm text-earth-500 dark:text-earth-400 mb-6 animate-fade-in-up" style={{ animationDelay: '200ms' }}>{tr('Who are you signing up as?')}</p>
+              <div className="grid gap-3">
+                {ROLES.map((r, i) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => nav(`/register/${WHO_FOR_ROLE[r.id]}${location.search}`)}
+                    className="flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition animate-fade-in-up border-earth-200 dark:border-earth-800 hover:border-brand-500 hover:bg-brand-500/5"
+                    style={{ animationDelay: `${250 + i * 100}ms` }}
+                  >
+                    <div className="w-10 h-10 rounded-xl grid place-items-center shrink-0 bg-earth-100 dark:bg-earth-800 text-earth-500">
+                      <r.icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{r.label}</div>
+                      <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{r.description}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-earth-400 shrink-0" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Step 2: this account's details only. */}
+              <div className="flex items-start gap-3 mb-6 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+                <div className="w-10 h-10 rounded-xl grid place-items-center shrink-0 bg-brand-500 text-white">
+                  <CurrentRoleIcon className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm flex items-center gap-2">
-                    {r.label}
-                    {role === r.id && <Check className="w-4 h-4 text-brand-500" />}
-                  </div>
-                  <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{r.description}</p>
+                  <h1 className="text-2xl font-bold">{rolePage.title()}</h1>
+                  <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">{currentRole.description}</p>
+                  <Link to={`/register${location.search}`} className="text-sm text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Not you? Change account type')}</Link>
                 </div>
-              </button>
-            ))}
-          </div>
-
-          {socialTicket ? (
-            <p className="text-sm rounded-lg bg-brand-500/10 text-brand-800 dark:text-brand-200 px-3 py-2 mb-3">{tr('Almost done. Pick your account type and fill in the rest. You won’t need a password: sign in with the same button next time.')}</p>
-          ) : (
-            <div className="mb-4"><SocialSignIn /></div>
-          )}
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="animate-fade-in-up" style={{ animationDelay: '450ms' }}>
-              <Field icon={UserIcon}  label={tr('Full name')} value={form.name} onChange={onChange('name')} placeholder={tr('Jane Doe')} required />
-            </div>
-            <div className="animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-              <Field icon={Mail}      label="Email" type="email" value={form.email} onChange={onChange('email')} placeholder={tr('you@email.com')} autoComplete="email" required readOnly={Boolean(socialTicket)} />
-            </div>
-            <div className="animate-fade-in-up" style={{ animationDelay: '550ms' }}>
-              {!socialTicket && <Field icon={Lock}      label={tr('Password')} type="password" value={form.password} onChange={onChange('password')} placeholder={tr('8+ characters')} autoComplete="new-password" required />}
-            </div>
-
-            <div className="animate-fade-in-up" style={{ animationDelay: '625ms' }}>
-              <Field icon={Cake} label={tr('Date of birth')} type="date" value={form.dateOfBirth} onChange={onChange('dateOfBirth')} onBlur={onDobBlur} max={todayIso()} autoComplete="bday" required />
-              <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-                {tr("Only used to check our age rules — we don't keep it.")}
-              </p>
-            </div>
-
-            {role === 'student' && (
-              <>
-                {under13 && (
-                  <div className="animate-fade-in-up">
-                    <Field icon={Mail} label={tr("Parent or guardian's email")} type="email" value={form.parentEmail} onChange={onChange('parentEmail')} placeholder={tr('parent@example.com')} autoComplete="off" required />
-                    <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-                      {tr("We'll email them to ask for permission. You can sign in once they approve. If your school gave you a VolunTrack account, use that instead.")}
-                    </p>
-                    {!ageCheck.under13 && (
-                      <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-                        {tr('An under-13 date of birth was entered on this device earlier, so a parent or guardian still needs to approve.')}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
-                  <Field icon={School}        label={tr('School / Organization')} value={form.school} onChange={onChange('school')} placeholder={tr('Lincoln High School')} />
-                </div>
-                <div className="animate-fade-in-up" style={{ animationDelay: '700ms' }}>
-                  <Field icon={Hash}          label={tr('School code (optional)')} value={form.schoolCode} onChange={onChange('schoolCode')} placeholder={tr('cisd-12345')} />
-                </div>
-                <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
-                  <label className="label" htmlFor="register-grade">{codeGrades.length ? tr('Grade') : tr('Grade (optional)')}</label>
-                  <div className="relative">
-                    <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
-                    <select id="register-grade" className="input pl-9" value={form.grade} onChange={onChange('grade')} required={codeGrades.length > 0}>
-                      <option value="">{tr('Select your grade')}</option>
-                      {(codeGrades.length ? codeGrades : SCHOOL_GRADES).map((g) => (
-                        <option key={g} value={g}>{gradeOptionLabel(g)}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="animate-fade-in-up" style={{ animationDelay: '800ms' }}>
-                  <Field icon={Hash} label={tr('Student ID number (optional)')} value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder={tr('For school verification forms')} />
-                </div>
-              </>
+              </div>
+            {socialTicket ? (
+              <p className="text-sm rounded-lg bg-brand-500/10 text-brand-800 dark:text-brand-200 px-3 py-2 mb-3">{tr('Almost done. Pick your account type and fill in the rest. You won’t need a password: sign in with the same button next time.')}</p>
+            ) : (
+              <div className="mb-4"><SocialSignIn /></div>
             )}
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="animate-fade-in-up" style={{ animationDelay: '450ms' }}>
+                <Field icon={UserIcon}  label={tr('Full name')} value={form.name} onChange={onChange('name')} placeholder={tr('Jane Doe')} required />
+              </div>
+              <div className="animate-fade-in-up" style={{ animationDelay: '500ms' }}>
+                <Field icon={Mail}      label="Email" type="email" value={form.email} onChange={onChange('email')} placeholder={tr('you@email.com')} autoComplete="email" required readOnly={Boolean(socialTicket)} />
+              </div>
+              <div className="animate-fade-in-up" style={{ animationDelay: '550ms' }}>
+                {!socialTicket && <Field icon={Lock}      label={tr('Password')} type="password" value={form.password} onChange={onChange('password')} placeholder={tr('8+ characters')} autoComplete="new-password" required />}
+              </div>
 
-            <LegalSummary />
+              <div className="animate-fade-in-up" style={{ animationDelay: '625ms' }}>
+                <Field icon={Cake} label={tr('Date of birth')} type="date" value={form.dateOfBirth} onChange={onChange('dateOfBirth')} onBlur={onDobBlur} max={todayIso()} autoComplete="bday" required />
+                <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                  {tr("Only used to check our age rules — we don't keep it.")}
+                </p>
+              </div>
 
-            <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
-              <input
-                type="checkbox"
-                className="mt-0.5 w-4 h-4 rounded border-earth-300 dark:border-earth-700 text-brand-600 focus:ring-brand-500"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-              />
-              <span>
-                {tr("I've read the short version and agree to the")}{' '}
-                <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Terms of Service')}</Link>
-                {' '}{tr('and')}{' '}
-                <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Privacy Policy')}</Link>.
-              </span>
-            </label>
+              {role === 'student' && (
+                <>
+                  {under13 && (
+                    <div className="animate-fade-in-up">
+                      <Field icon={Mail} label={tr("Parent or guardian's email")} type="email" value={form.parentEmail} onChange={onChange('parentEmail')} placeholder={tr('parent@example.com')} autoComplete="off" required />
+                      <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                        {tr("We'll email them to ask for permission. You can sign in once they approve. If your school gave you a VolunTrack account, use that instead.")}
+                      </p>
+                      {!ageCheck.under13 && (
+                        <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                          {tr('An under-13 date of birth was entered on this device earlier, so a parent or guardian still needs to approve.')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
+                    <Field icon={School}        label={tr('School / Organization')} value={form.school} onChange={onChange('school')} placeholder={tr('Lincoln High School')} />
+                  </div>
+                  <div className="animate-fade-in-up" style={{ animationDelay: '700ms' }}>
+                    <Field icon={Hash}          label={tr('School code (optional)')} value={form.schoolCode} onChange={onChange('schoolCode')} placeholder={tr('cisd-12345')} />
+                  </div>
+                  <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
+                    <label className="label" htmlFor="register-grade">{codeGrades.length ? tr('Grade') : tr('Grade (optional)')}</label>
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
+                      <select id="register-grade" className="input pl-9" value={form.grade} onChange={onChange('grade')} required={codeGrades.length > 0}>
+                        <option value="">{tr('Select your grade')}</option>
+                        {(codeGrades.length ? codeGrades : SCHOOL_GRADES).map((g) => (
+                          <option key={g} value={g}>{gradeOptionLabel(g)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+                    <Field icon={Hash} label={tr('Student ID number (optional)')} value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder={tr('For school verification forms')} />
+                  </div>
+                </>
+              )}
 
-            {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
+              <LegalSummary />
 
-            <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="register" className="animate-fade-in-up" />
+              <label className="flex items-start gap-2.5 text-sm text-earth-600 dark:text-earth-300 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+                <input
+                  type="checkbox"
+                  className="mt-0.5 w-4 h-4 rounded border-earth-300 dark:border-earth-700 text-brand-600 focus:ring-brand-500"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                />
+                <span>
+                  {tr("I've read the short version and agree to the")}{' '}
+                  <Link to="/terms" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Terms of Service')}</Link>
+                  {' '}{tr('and')}{' '}
+                  <Link to="/privacy" target="_blank" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Privacy Policy')}</Link>.
+                </span>
+              </label>
 
-            <button type="submit" className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '800ms' }} disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
-              {busy ? tr('Sending code…') : <>{tr('Create account')}{' '}<ArrowRight className="w-4 h-4" /></>}
-            </button>
-          </form>
+              {err && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg animate-shake">{err}</div>}
+
+              <Turnstile key={captchaKey} onVerify={setCaptchaToken} action="register" className="animate-fade-in-up" />
+
+              <button type="submit" className="btn-primary w-full animate-fade-in-up" style={{ animationDelay: '800ms' }} disabled={busy || !agreed || (turnstileEnabled && !captchaToken)}>
+                {busy ? tr('Sending code…') : <>{tr('Create account')}{' '}<ArrowRight className="w-4 h-4" /></>}
+              </button>
+            </form>
+            </>
+          )}
 
           <div className="text-center text-sm text-earth-500 dark:text-earth-400 mt-6">
             {tr('Already have an account?')}{' '}

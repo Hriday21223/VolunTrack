@@ -105,7 +105,7 @@ export default function JoinSchool() {
             {tr('Log your volunteer hours and send them to {school} for approval. Free for students.', { school: school.name })}
           </p>
           <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
-            <Link to={`/register?school=${encodeURIComponent(code)}`} className="btn-primary">
+            <Link to={`/register/student?school=${encodeURIComponent(code)}`} className="btn-primary">
               {tr('Create my free account')} <ArrowRight className="w-4 h-4" />
             </Link>
             <Link to="/login" state={{ from: loc }} className="btn-secondary">{tr('I already have an account')}</Link>
