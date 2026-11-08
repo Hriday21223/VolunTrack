@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import { ScrollText } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
-import { LEGAL_SUMMARY, LEGAL_SUMMARY_SCHOOL } from '@/lib/legal.js'
+import { legalSummaryFor } from '@/lib/legal.js'
 
 // "The short version" of the Terms and Privacy Policy (#689), shown above
-// the "I agree" box so the key points are read, not skipped.
-export default function LegalSummary({ audience = 'person', points }) {
-  const list = points || (audience === 'school' ? LEGAL_SUMMARY_SCHOOL : LEGAL_SUMMARY)
+// the "I agree" box so the key points are read, not skipped. `role` picks the
+// version for that kind of account (#821).
+export default function LegalSummary({ role, points }) {
+  const list = points || legalSummaryFor(role)
   return (
     <div className="rounded-xl border border-earth-200 dark:border-white/10 bg-earth-50 dark:bg-white/5 p-3 text-sm">
       <p className="font-semibold flex items-center gap-1.5"><ScrollText className="w-4 h-4 text-brand-600" aria-hidden="true" />{tr('The short version')}</p>
