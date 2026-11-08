@@ -3467,4 +3467,10 @@ export default {
   "Could not undo volunteer of the month.": "No se pudo deshacer el voluntario del mes.",
   "Could not end the challenge.": "No se pudo terminar el desafío.",
   "Could not remove the reference.": "No se pudo quitar la referencia.",
+  "Student Sign Up": "Registro para estudiantes",
+  "Parent Sign Up": "Registro para padres",
+  "Event Organizer Sign Up": "Registro para organizadores de eventos",
+  "Create a free student account: log volunteer hours, join your school, set goals and share your hours.": "Crea una cuenta gratuita de estudiante: registra horas de voluntariado, únete a tu escuela, fija metas y comparte tus horas.",
+  "Create a free parent account to follow your child's volunteer hours, cheer them on and set a weekly goal together.": "Crea una cuenta gratuita de padre o madre para seguir las horas de voluntariado de tu hijo, animarlo y fijar juntos una meta semanal.",
+  "Create a free account to post volunteer events, take sign-ups, check volunteers in and sign their hours.": "Crea una cuenta gratuita para publicar eventos de voluntariado, recibir inscripciones, registrar la llegada de voluntarios y firmar sus horas.",
 }

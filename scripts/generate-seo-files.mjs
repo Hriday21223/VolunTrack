@@ -68,6 +68,9 @@ const DISALLOWED_PATHS = [
 const SITEMAP_ENTRIES = [
   { path: '/', changefreq: 'weekly', priority: '1.0' },
   { path: '/register', changefreq: 'monthly', priority: '0.8' },
+  { path: '/register/student', changefreq: 'monthly', priority: '0.7' },
+  { path: '/register/parent', changefreq: 'monthly', priority: '0.7' },
+  { path: '/register/organizer', changefreq: 'monthly', priority: '0.7' },
   { path: '/for-schools', changefreq: 'monthly', priority: '0.8' },
   { path: '/school/register', changefreq: 'monthly', priority: '0.7' },
   { path: '/organization/register', changefreq: 'monthly', priority: '0.7' },
