@@ -3470,4 +3470,7 @@ export default {
   "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "Sắp xong rồi. Hãy điền phần còn lại. Bạn sẽ không cần mật khẩu: lần sau hãy đăng nhập bằng cùng nút đó.",
   "Volunteer Task Maker Sign Up": "Đăng ký cho người tạo nhiệm vụ tình nguyện",
   "Volunteer Task Maker accounts are for adults 18 and over, and are free.": "Tài khoản người tạo nhiệm vụ tình nguyện dành cho người từ 18 tuổi trở lên và miễn phí.",
+  "School admin": "Quản trị viên trường",
+  "School staff": "Nhân viên trường",
+  "Your profile": "Hồ sơ của bạn",
 }

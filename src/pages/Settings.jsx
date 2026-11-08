@@ -31,6 +31,7 @@ import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
 import { countedLogs } from '@/lib/achievements.js'
 import { goalCategory, hoursForGoal } from '@/lib/goalProgress.js'
 import { tr } from '@/lib/i18n.js'
+import { roleLabel } from '@/lib/roleLabels.js'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -250,6 +251,8 @@ export default function Settings() {
   // them the join box linked the wrong kind of account to a school. Mirrors
   // requireAuth('student') on POST /school/join.
   const canJoinSchool = user?.role === 'student'
+  const isStudent = user?.role === 'student'
+  const showsOrganizerProfile = ['student', 'volunteer', 'school', 'school_staff', 'org'].includes(user?.role)
   const [showQR, setShowQR] = useState(false)
   const qrCanvasRef = useRef(null)
 
@@ -826,7 +829,12 @@ export default function Settings() {
           <AccessibilitySettings />
         </Card>
 
-        <CollapsibleSection icon={Star} label={tr('Goals & Data')} defaultOpen={true}>
+        {/* Only what applies to this kind of account (#829): goals, portfolio and
+            interests are for students (the only role that logs hours); the
+            organizer profile is for anyone who runs events. */}
+        {(isStudent || showsOrganizerProfile) && (
+        <CollapsibleSection icon={Star} label={isStudent ? tr('Goals & Data') : tr('Your profile')} defaultOpen={true}>
+          {isStudent && (
           <Card>
             <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Star className="w-4 h-4 text-amber-500" />{' '}{tr('Goals')}</h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">{tr('Set a target and we\'ll track your progress toward it. The primary goal powers your dashboard ring.')}</p>
@@ -892,10 +900,12 @@ export default function Settings() {
             <p className="text-xs text-earth-400 mt-2">{tr('Add a deadline and the dashboard works out the pace you need to keep.')}</p>
             <p className="text-xs text-earth-400 mt-1">{tr('Pick a cause to count only hours logged in that category, like 20 hours in Environmental.')}</p>
           </Card>
-          {user?.role === 'student' && <PortfolioCard />}
-          {user?.role === 'student' && <InterestsCard />}
-          {['student', 'volunteer', 'school', 'school_staff', 'org'].includes(user?.role) && <OrganizerProfileCard />}
+          )}
+          {isStudent && <PortfolioCard />}
+          {isStudent && <InterestsCard />}
+          {showsOrganizerProfile && <OrganizerProfileCard />}
         </CollapsibleSection>
+        )}
 
         <CollapsibleSection icon={Lock} label={tr('Account & Security')} defaultOpen={true}>
           <Card>
@@ -907,8 +917,8 @@ export default function Settings() {
                 <p className="font-medium">{user?.name || 'User'}</p>
                 <p className="text-xs text-earth-400">{user?.email}</p>
               </div>
-              <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-500 dark:text-brand-400 font-medium capitalize">
-                {user?.role || 'student'}
+              <span className="ml-auto text-xs px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-500 dark:text-brand-400 font-medium">
+                {roleLabel(user?.role)}
               </span>
             </div>
           </Card>
@@ -1662,7 +1672,7 @@ export default function Settings() {
             </Card>
           )}
 
-          <PushNotificationsCard />
+          <PushNotificationsCard role={user?.role} />
 
           {['school', 'org', 'volunteer'].includes(user?.role) && <ApiKeysCard />}
           {['school', 'org', 'volunteer'].includes(user?.role) && <WebhooksCard />}
@@ -1680,7 +1690,7 @@ export default function Settings() {
             </p>
             <div className="text-xs text-earth-500 dark:text-earth-400 mt-3 space-y-1">
               <div>{tr('Signed in as')}{' '}<span className="font-medium text-earth-800 dark:text-earth-100">{user?.email}</span></div>
-              <div>{tr('Role:')}{' '}<span className="font-medium text-earth-800 dark:text-earth-100 capitalize">{user?.role}</span></div>
+              <div>{tr('Role:')}{' '}<span className="font-medium text-earth-800 dark:text-earth-100">{roleLabel(user?.role)}</span></div>
             </div>
           </Card>
 

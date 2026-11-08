@@ -15,6 +15,17 @@ const GROUPS = [
   { key: 'reminders', label: () => tr('Reminders'), help: () => tr('Deadlines coming up and reminders to log hours.') },
 ]
 
+// Which switches each kind of account sees (#829): only the notices it can
+// actually get. Hidden groups stay on server-side (cleanPrefs defaults to on).
+const GROUPS_FOR_ROLE = {
+  student: ['hours', 'tasks', 'family', 'reminders'],
+  volunteer: ['hours', 'tasks'],
+  parent: ['family', 'hours'],
+  school: ['tasks'],
+  school_staff: ['tasks'],
+  org: ['tasks'],
+}
+
 function headers() {
   let token = null
   try { token = localStorage.getItem('voluntrack:auth_token') } catch { /* storage blocked */ }
@@ -23,7 +34,8 @@ function headers() {
 
 // Settings → Notifications (#603): turn on push for this phone or browser, and
 // choose which kinds of notice are pushed. The bell keeps everything either way.
-export default function PushNotificationsCard() {
+export default function PushNotificationsCard({ role } = {}) {
+  const shownGroups = GROUPS.filter((g) => (GROUPS_FOR_ROLE[role] || GROUPS.map((x) => x.key)).includes(g.key))
   const [state, setState] = useState(null) // { prefs, available }
   const [deviceOn, setDeviceOn] = useState(false)
   const [webKey, setWebKey] = useState(null)
@@ -99,7 +111,7 @@ export default function PushNotificationsCard() {
       {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
       <div className="mt-4 space-y-3">
         <p className="text-xs font-medium text-earth-500 uppercase tracking-wide">{tr('What to send')}</p>
-        {GROUPS.map((g) => (
+        {shownGroups.map((g) => (
           <label key={g.key} className="flex items-start justify-between gap-3 cursor-pointer">
             <span>
               <span className="text-sm font-medium block">{g.label()}</span>
