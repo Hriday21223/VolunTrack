@@ -3466,4 +3466,6 @@ export default {
   "You see your schools' students' hours and progress only to review and verify their service. Keep them private and use them for nothing else.": "Bạn chỉ xem giờ và tiến độ của học sinh các trường mình để xem xét và xác minh hoạt động phục vụ. Hãy giữ bí mật và không dùng cho việc gì khác.",
   "Organization accounts are billed by invoice; until a payment is verified, some tools may be paused.": "Tài khoản tổ chức được thanh toán qua hóa đơn; cho đến khi khoản thanh toán được xác minh, một số công cụ có thể bị tạm dừng.",
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "Chỉ gửi liên kết xác nhận của đối tác tới đúng người liên hệ thật của đối tác, và chỉ phê duyệt hoặc ký giờ khi bạn tin là đúng.",
+  "Almost done. Pick your account type, then fill in the rest. You won’t need a password: sign in with the same button next time.": "Sắp xong rồi. Hãy chọn loại tài khoản, sau đó điền phần còn lại. Bạn sẽ không cần mật khẩu: lần sau hãy đăng nhập bằng cùng nút đó.",
+  "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "Sắp xong rồi. Hãy điền phần còn lại. Bạn sẽ không cần mật khẩu: lần sau hãy đăng nhập bằng cùng nút đó.",
 }

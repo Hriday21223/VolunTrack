@@ -3466,4 +3466,6 @@ export default {
   "You see your schools' students' hours and progress only to review and verify their service. Keep them private and use them for nothing else.": "你查看所属学校学生的时数和进度，仅用于审核和核实他们的服务。请保密，不得用于其他用途。",
   "Organization accounts are billed by invoice; until a payment is verified, some tools may be paused.": "组织账户按发票计费；在付款核实之前，部分工具可能会暂停。",
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "合作伙伴确认链接只能发给该合作伙伴的真实联系人；只有在你认为时数无误时才批准或签署。",
+  "Almost done. Pick your account type, then fill in the rest. You won’t need a password: sign in with the same button next time.": "快完成了。先选择账户类型，再填写其余信息。你不需要密码：下次用同一个按钮登录即可。",
+  "Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.": "快完成了。请填写其余信息。你不需要密码：下次用同一个按钮登录即可。",
 }
