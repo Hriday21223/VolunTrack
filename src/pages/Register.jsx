@@ -393,6 +393,9 @@ export default function Register({ who } = {}) {
                   fields; ?school=, ?invite= and ?social= ride along. */}
               <h1 className="text-2xl font-bold mb-1 animate-fade-in-up" style={{ animationDelay: '150ms' }}>{tr('Create your account')}</h1>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-6 animate-fade-in-up" style={{ animationDelay: '200ms' }}>{tr('Who are you signing up as?')}</p>
+              {socialTicket && (
+                <p className="text-sm rounded-lg bg-brand-500/10 text-brand-800 dark:text-brand-200 px-3 py-2 mb-4">{tr('Almost done. Pick your account type, then fill in the rest. You won’t need a password: sign in with the same button next time.')}</p>
+              )}
               <div className="grid gap-3">
                 {ROLES.map((r, i) => (
                   <button
@@ -428,7 +431,7 @@ export default function Register({ who } = {}) {
                 </div>
               </div>
             {socialTicket ? (
-              <p className="text-sm rounded-lg bg-brand-500/10 text-brand-800 dark:text-brand-200 px-3 py-2 mb-3">{tr('Almost done. Pick your account type and fill in the rest. You won’t need a password: sign in with the same button next time.')}</p>
+              <p className="text-sm rounded-lg bg-brand-500/10 text-brand-800 dark:text-brand-200 px-3 py-2 mb-3">{tr('Almost done. Fill in the rest. You won’t need a password: sign in with the same button next time.')}</p>
             ) : (
               <div className="mb-4"><SocialSignIn /></div>
             )}
