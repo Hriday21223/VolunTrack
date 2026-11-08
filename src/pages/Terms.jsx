@@ -25,7 +25,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 3, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 8, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -53,7 +53,7 @@ export default function Terms() {
           </Section>
 
           <Section title="Fees and Payment">
-            <p>Student, volunteer, and parent accounts are free. School and organization accounts are paid: we send an invoice by email showing the amount, the billing period, and the due date, along with how to pay. Until a school&apos;s payment is verified, its students&apos; submissions and its management tools may be paused.</p>
+            <p>Student, volunteer, and parent accounts are free. A free club, for one club or class with an adviser, one co-adviser and up to 50 students, is also free and is never billed. Whole-school and organization accounts are paid: we send an invoice by email showing the amount, the billing period, and the due date, along with how to pay. Until a paid school&apos;s payment is verified, its students&apos; submissions and its management tools may be paused; a free club is never paused for payment.</p>
             <p className="mt-2">We may offer discounts, such as a promotional code or a referral credit for recommending VolunTrack to another school. An offer applies only on the terms stated when it is made, may be limited in number or time, and cannot be combined with another offer on the same invoice or exchanged for cash. The price and any discount on an invoice are fixed once that invoice is sent. Questions about an invoice go to the contact address below.</p>
           </Section>
 
