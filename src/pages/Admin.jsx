@@ -20,6 +20,7 @@ import { csvCell } from '@/lib/csv.js'
 import ReportsPanel from '@/components/ReportsPanel.jsx'
 import AppErrorsCard from '@/components/AppErrorsCard.jsx'
 import { generateDraft, replyLanguage, topicIn, DRAFT_LANGUAGES } from '@/lib/inboxDraft.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 // Opens Google Translate in a new tab (free, no key). Only on the admin's click.
 const googleTranslateUrl = (text, to) => `https://translate.google.com/?sl=auto&tl=${to}&op=translate&text=${encodeURIComponent(String(text || '').slice(0, 4500))}`
@@ -2382,9 +2383,9 @@ export default function Admin() {
                   <label htmlFor={`email-key-${field}`} className="text-xs font-medium text-earth-500 dark:text-earth-400">
                     {label} <span className="text-earth-400">— {status.override ? 'set here (overrides Render)' : status.env ? 'from Render' : 'not set'}</span>
                   </label>
-                  <input
+                  <PasswordInput
                     id={`email-key-${field}`}
-                    type="password"
+                   
                     autoComplete="off"
                     value={emailKeyDraft[field]}
                     onChange={(e) => setEmailKeyDraft({ ...emailKeyDraft, [field]: e.target.value })}

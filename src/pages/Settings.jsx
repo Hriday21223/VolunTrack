@@ -32,6 +32,7 @@ import { countedLogs } from '@/lib/achievements.js'
 import { goalCategory, hoursForGoal } from '@/lib/goalProgress.js'
 import { tr } from '@/lib/i18n.js'
 import { roleLabel } from '@/lib/roleLabels.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 function CollapsibleSection({ icon: Icon, label, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -951,7 +952,7 @@ export default function Settings() {
                   </div>
                   <div>
                     <label className="label" htmlFor="email-change-password">{tr('Your password')}</label>
-                    <input id="email-change-password" type="password" autoComplete="current-password" className="input" required
+                    <PasswordInput id="email-change-password" autoComplete="current-password" className="input" required
                       value={emailChange.password} onChange={(e) => setEmailChange((f) => ({ ...f, password: e.target.value }))} />
                   </div>
                   {emailError && <div className="sm:col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{emailError}</div>}
@@ -1025,8 +1026,8 @@ export default function Settings() {
                 {showDisableForm ? (
                   <form onSubmit={handleDisableTotp} className="space-y-3">
                     <p className="text-sm text-earth-400">{tr('Enter your password to disable 2FA:')}</p>
-                    <input
-                      type="password"
+                    <PasswordInput
+                     
                       value={disablePw}
                       onChange={(e) => setDisablePw(e.target.value)}
                       placeholder={tr('Your password')}
@@ -1123,7 +1124,7 @@ export default function Settings() {
                   <form onSubmit={onDisableEmailOtp} className="flex flex-col sm:flex-row gap-2 sm:items-end">
                     <div className="flex-1">
                       <label className="label" htmlFor="otp-off-password">{tr('Your password')}</label>
-                      <input id="otp-off-password" type="password" autoComplete="current-password" className="input" required value={otpInput} onChange={(e) => setOtpInput(e.target.value)} />
+                      <PasswordInput id="otp-off-password" autoComplete="current-password" className="input" required value={otpInput} onChange={(e) => setOtpInput(e.target.value)} />
                     </div>
                     <button className="btn-danger" type="submit" disabled={otpBusy || !otpInput}>{tr('Turn off')}</button>
                     <button type="button" className="btn-ghost" onClick={() => { setOtpStep('idle'); setOtpInput(''); setOtpError('') }}>{tr('Cancel')}</button>
@@ -1164,8 +1165,8 @@ export default function Settings() {
             </p>
             <div className="space-y-3">
               <label className="label">{tr('New app unlock PIN')}</label>
-              <input
-                type="password"
+              <PasswordInput
+               
                 inputMode="numeric"
                 maxLength={4}
                 value={pin}
@@ -1174,8 +1175,8 @@ export default function Settings() {
                 className="input w-full bg-slate-900/80 text-white border-white/10"
               />
               <label className="label">{tr('Confirm app unlock PIN')}</label>
-              <input
-                type="password"
+              <PasswordInput
+               
                 inputMode="numeric"
                 maxLength={4}
                 value={pinConfirm}

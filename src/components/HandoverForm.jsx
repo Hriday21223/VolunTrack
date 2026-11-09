@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CheckCircle2, UserCog } from 'lucide-react'
 import { startHandover } from '@/lib/handover.js'
 import { tr } from '@/lib/i18n.js'
+import PasswordInput from '@/components/PasswordInput.jsx'
 
 // "Hand over to a new person" (#550): name + email (or a preset co-admin),
 // plus the caller's password when `needsPassword`. The new person accepts
@@ -60,7 +61,7 @@ export default function HandoverForm({ path, needsPassword = true, preset = null
         </div>
       )}
       {needsPassword && (
-        <input className="input" type="password" autoComplete="current-password" placeholder={tr('Your password, to confirm')} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+        <PasswordInput className="input" autoComplete="current-password" placeholder={tr('Your password, to confirm')} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
       )}
       {error && <p className="text-sm text-red-500">{error}</p>}
       <div className="flex flex-wrap gap-2">
