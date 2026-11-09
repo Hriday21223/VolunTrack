@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit'
 import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
-import { generateChildLinkCode } from '../ids.js'
+import { generateChildLinkCode, generateNumericCode } from '../ids.js'
 import { hasEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 import { friendlyWhen } from '../when.js'
@@ -15,6 +15,7 @@ import { recordAudit, AUDIT } from '../audit.js'
 import { WAITLIST_POSITION_SQL, decideParentOk } from './school.js'
 import { notify } from '../notifications.js'
 import { cleanPhone, saveEmergencyContact, deleteEmergencyContact, emergencyContactsFor } from '../emergencyContacts.js'
+import bcrypt from 'bcryptjs'
 
 const router = express.Router()
 
@@ -199,9 +200,52 @@ router.get('/my-parents', limiter, requireDb, requireAuth('student'), async (req
   }
 })
 
-router.delete('/my-parents/:parentId', limiter, requireDb, requireAuth('student'), async (req, res) => {
+// Leaving a family link (#833): a student removes a parent only with a
+// one-time 6-digit code that parent made on their Family dashboard
+// (POST /children/:childId/leave-pin). 15 minutes, 5 tries, spent on use.
+// The parent can still unlink on their own (DELETE /children/:childId).
+const LEAVE_PIN_MINUTES = 15
+const LEAVE_PIN_MAX_ATTEMPTS = 5
+
+router.post('/children/:childId/leave-pin', limiter, requireDb, requireAuth('parent'), async (req, res) => {
   try {
-    const del = await query('DELETE FROM parent_child_links WHERE parent_id = $1 AND child_id = $2', [req.params.parentId, req.auth.sub])
+    if (!(await isLinkedParent(req.auth.sub, req.params.childId))) return res.status(404).json({ error: 'Child not found.' })
+    const pin = generateNumericCode(6)
+    await query(
+      `INSERT INTO family_leave_pins (parent_id, child_id, pin_hash, expires_at, attempts)
+       VALUES ($1, $2, $3, now() + interval '${LEAVE_PIN_MINUTES} minutes', 0)
+       ON CONFLICT (parent_id, child_id) DO UPDATE SET pin_hash = EXCLUDED.pin_hash, expires_at = EXCLUDED.expires_at, attempts = 0`,
+      [req.auth.sub, req.params.childId, await bcrypt.hash(pin, 10)],
+    )
+    return res.json({ pin, minutes: LEAVE_PIN_MINUTES })
+  } catch (error) {
+    console.error('leave pin failed:', error)
+    return res.status(500).json({ error: 'Could not make a code.' })
+  }
+})
+
+router.delete('/my-parents/:parentId', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  const pin = String(req.body?.pin || '').trim()
+  if (!/^\d{6}$/.test(pin)) return res.status(400).json({ error: 'Enter the 6-digit code from your parent’s Family dashboard.', needsPin: true })
+  try {
+    const parentId = req.params.parentId
+    const { rows } = await query('SELECT pin_hash, expires_at FROM family_leave_pins WHERE parent_id = $1 AND child_id = $2', [parentId, req.auth.sub])
+    const row = rows[0]
+    if (!row || new Date(row.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'That code expired or there isn’t one. Ask your parent to make a new code on their Family dashboard.', needsPin: true })
+    }
+    // Counted before checking, in one step, so a burst can't get extra tries.
+    const { rows: counted } = await query(
+      'UPDATE family_leave_pins SET attempts = attempts + 1 WHERE parent_id = $1 AND child_id = $2 AND attempts < $3 RETURNING attempts',
+      [parentId, req.auth.sub, LEAVE_PIN_MAX_ATTEMPTS],
+    )
+    if (!counted[0]) return res.status(429).json({ error: 'Too many wrong codes. Ask your parent for a new one.', needsPin: true })
+    if (!(await bcrypt.compare(pin, row.pin_hash))) {
+      const left = LEAVE_PIN_MAX_ATTEMPTS - counted[0].attempts
+      return res.status(401).json({ error: left > 0 ? `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.` : 'Too many wrong codes. Ask your parent for a new one.', needsPin: true })
+    }
+    await query('DELETE FROM family_leave_pins WHERE parent_id = $1 AND child_id = $2', [parentId, req.auth.sub])
+    const del = await query('DELETE FROM parent_child_links WHERE parent_id = $1 AND child_id = $2', [parentId, req.auth.sub])
     if (del.rowCount === 0) return res.status(404).json({ error: 'That parent is not linked to you.' })
     return res.json({ ok: true })
   } catch (error) {

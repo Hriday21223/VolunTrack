@@ -623,17 +623,21 @@ export default function Settings() {
     loadLinkedParents()
   }, [user?.role])
 
-  const removeLinkedParent = async (parentId) => {
+  // Leaving a family link needs a one-time code from that parent's Family
+  // dashboard (#833). leavingParent = { id, pin, error, busy } while open.
+  const [leavingParent, setLeavingParent] = useState(null)
+  const removeLinkedParent = async (parentId, pin) => {
+    setLeavingParent((l) => ({ ...l, busy: true, error: '' }))
     try {
-      const res = await fetch(`${familyApiUrl}/parent/my-parents/${encodeURIComponent(parentId)}`, { method: 'DELETE', headers: authHeaders() })
+      const res = await fetch(`${familyApiUrl}/parent/my-parents/${encodeURIComponent(parentId)}`, { method: 'DELETE', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not remove the parent.')
+      if (!res.ok) throw new Error(data.error || tr('Could not remove the parent.'))
       setLinkedParents((list) => list.filter((p) => p.id !== parentId))
+      setLeavingParent(null)
       setToastMessage(tr('Parent removed'))
       setToast(true)
     } catch (error) {
-      setToastMessage(error.message)
-      setToast(true)
+      setLeavingParent((l) => ({ ...l, busy: false, error: error.message }))
     }
   }
 
@@ -1592,12 +1596,25 @@ export default function Settings() {
                   ) : (
                     <ul className="space-y-2">
                       {linkedParents.map((p) => (
-                        <li key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2">
+                        <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2">
                           <div className="min-w-0">
                             <div className="text-sm font-medium truncate">{p.name}</div>
                             <div className="text-xs text-earth-400 truncate">{p.email}</div>
                           </div>
-                          <button onClick={() => removeLinkedParent(p.id)} className="btn-ghost text-sm shrink-0">{tr('Remove')}</button>
+                          {leavingParent?.id !== p.id && (
+                            <button onClick={() => setLeavingParent({ id: p.id, pin: '', error: '', busy: false })} className="btn-ghost text-sm shrink-0">{tr('Remove')}</button>
+                          )}
+                          {leavingParent?.id === p.id && (
+                            <form className="basis-full mt-2" onSubmit={(e) => { e.preventDefault(); removeLinkedParent(p.id, leavingParent.pin.trim()) }}>
+                              <p className="text-xs text-earth-400 mb-1.5">{tr('Ask {name} for a one-time code from their Family dashboard, then type it here.', { name: p.name })}</p>
+                              <div className="flex flex-wrap gap-2">
+                                <input className="input w-36 tracking-[0.3em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" aria-label={tr('Code')} value={leavingParent.pin} onChange={(e) => setLeavingParent((l) => ({ ...l, pin: e.target.value.replace(/\D/g, '') }))} autoFocus />
+                                <button type="submit" className="btn-primary btn-sm" disabled={leavingParent.busy || leavingParent.pin.length !== 6}>{tr('Remove')}</button>
+                                <button type="button" className="btn-ghost btn-sm" onClick={() => setLeavingParent(null)}>{tr('Cancel')}</button>
+                              </div>
+                              {leavingParent.error && <p className="text-sm text-red-400 mt-2" role="alert">{leavingParent.error}</p>}
+                            </form>
+                          )}
                         </li>
                       ))}
                     </ul>

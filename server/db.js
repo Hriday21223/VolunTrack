@@ -2655,5 +2655,16 @@ export async function initSchema() {
       scans  INTEGER NOT NULL DEFAULT 0
     )`)
   } catch (error) { console.error('paper_scan_daily migration failed:', error.message) }
+  // One-time codes a parent gives a child to leave the family link (#833).
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS family_leave_pins (
+      parent_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      child_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      pin_hash    TEXT NOT NULL,
+      expires_at  TIMESTAMPTZ NOT NULL,
+      attempts    INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (parent_id, child_id)
+    )`)
+  } catch (error) { console.error('family_leave_pins migration failed:', error.message) }
   return true
 }
