@@ -3504,4 +3504,8 @@ export default {
   "School admin": "Administrador de la escuela",
   "School staff": "Personal de la escuela",
   "Your profile": "Tu perfil",
+  "Confirm password": "Confirma la contraseña",
+  "Type it again": "Escríbela otra vez",
+  "Forgot your current password? Reset it by email (you’ll be signed out)": "¿Olvidaste tu contraseña actual? Restablécela por correo (se cerrará tu sesión)",
+  "Forgot your current password? Reset it by email": "¿Olvidaste tu contraseña actual? Restablécela por correo",
 }

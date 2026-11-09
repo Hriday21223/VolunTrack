@@ -114,6 +114,8 @@ export default function Register({ who } = {}) {
   const { sendSignupCode, register } = useAuth()
   const nav = useNavigate()
   const location = useLocation()
+  // Typed twice so a typo doesn't lock them out (#831). Never sent.
+  const [confirmPw, setConfirmPw] = useState('')
   // The page decides the account type; /register itself is only the picker.
   const role = rolePage?.role || 'student'
   const currentRole = ROLES.find((r) => r.id === role)
@@ -206,6 +208,7 @@ export default function Register({ who } = {}) {
     e.preventDefault()
     setErr('')
     if (!socialTicket && form.password.length < 8) { setErr(tr('Password must be at least 8 characters.')); return }
+    if (!socialTicket && form.password !== confirmPw) { setErr(tr("Passwords don't match.")); return }
     if (ageCheck.error) {
       if (ageCheck.tooYoung) recordAgeGate(role)
       setErr(ageCheck.error)
@@ -445,6 +448,7 @@ export default function Register({ who } = {}) {
               </div>
               <div className="animate-fade-in-up" style={{ animationDelay: '550ms' }}>
                 {!socialTicket && <Field icon={Lock}      label={tr('Password')} type="password" value={form.password} onChange={onChange('password')} placeholder={tr('8+ characters')} autoComplete="new-password" required />}
+                {!socialTicket && <div className="mt-4"><Field icon={Lock} label={tr('Confirm password')} type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder={tr('Type it again')} autoComplete="new-password" required /></div>}
               </div>
 
               <div className="animate-fade-in-up" style={{ animationDelay: '625ms' }}>

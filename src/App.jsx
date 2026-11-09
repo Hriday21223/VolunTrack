@@ -135,8 +135,9 @@ function Shell() {
           <Route path="/register/student"   element={<PublicOnly><Register who="student" /></PublicOnly>} />
           <Route path="/register/parent"    element={<PublicOnly><Register who="parent" /></PublicOnly>} />
           <Route path="/register/organizer" element={<PublicOnly><Register who="organizer" /></PublicOnly>} />
-          <Route path="/forgot-password" element={<PublicOnly><ForgotPassword /></PublicOnly>} />
-          <Route path="/reset-password"  element={<PublicOnly><ResetPassword /></PublicOnly>} />
+          {/* Open signed in too: Settings links here for a forgotten current password (#831). */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password"  element={<ResetPassword />} />
           <Route path="/reset-pin"       element={<PublicOnly><ResetPin /></PublicOnly>} />
           <Route path="/sync-login"      element={<PublicOnly><SyncLogin /></PublicOnly>} />
           {/* Deliberately not wrapped in PublicOnly — the exchange signs the

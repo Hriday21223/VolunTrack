@@ -3475,4 +3475,8 @@ export default {
   "School admin": "学校管理员",
   "School staff": "学校教职员",
   "Your profile": "你的资料",
+  "Confirm password": "确认密码",
+  "Type it again": "再输入一次",
+  "Forgot your current password? Reset it by email (you’ll be signed out)": "忘记当前密码？通过邮件重置（你将被退出登录）",
+  "Forgot your current password? Reset it by email": "忘记当前密码？通过邮件重置",
 }

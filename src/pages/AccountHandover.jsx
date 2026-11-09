@@ -12,6 +12,7 @@ export default function AccountHandover() {
   const token = params.get('token') || ''
   const [info, setInfo] = useState({ loading: true, data: null, error: '' })
   const [password, setPassword] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -25,8 +26,9 @@ export default function AccountHandover() {
 
   const accept = async (e) => {
     e.preventDefault()
-    setBusy(true)
     setError('')
+    if (!info.data.hasAccount && password !== confirmPw) { setError("Passwords don't match."); return }
+    setBusy(true)
     try {
       await acceptHandover(token, info.data.hasAccount ? undefined : password)
       setDone(true)
@@ -84,6 +86,8 @@ export default function AccountHandover() {
                 <div>
                   <label className="label">Choose a password</label>
                   <PasswordInput className="input" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <label className="label mt-3">Confirm password</label>
+                  <PasswordInput className="input" autoComplete="new-password" minLength={8} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
                 </div>
               )}
               {error && <p className="text-sm text-red-500">{error}</p>}

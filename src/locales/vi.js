@@ -3475,4 +3475,8 @@ export default {
   "School admin": "Quản trị viên trường",
   "School staff": "Nhân viên trường",
   "Your profile": "Hồ sơ của bạn",
+  "Confirm password": "Xác nhận mật khẩu",
+  "Type it again": "Nhập lại",
+  "Forgot your current password? Reset it by email (you’ll be signed out)": "Quên mật khẩu hiện tại? Đặt lại qua email (bạn sẽ bị đăng xuất)",
+  "Forgot your current password? Reset it by email": "Quên mật khẩu hiện tại? Đặt lại qua email",
 }

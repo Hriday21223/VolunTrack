@@ -8,7 +8,7 @@ import { tr } from '@/lib/i18n.js'
 import PasswordInput from '@/components/PasswordInput.jsx'
 
 export default function ResetPassword() {
-  const { user, completePasswordReset } = useAuth()
+  const { user, completePasswordReset, logout } = useAuth()
   const location = useLocation()
   const nav = useNavigate()
   const [email, setEmail] = useState(location.state?.email || '')
@@ -34,7 +34,9 @@ export default function ResetPassword() {
         await completePasswordReset(email, code, pw1)
       }
       setDone(true)
-      setTimeout(() => nav('/login', { replace: true }), 1200)
+      // A reset ends every session on the server, so sign out here too and
+      // sign in again with the new password.
+      setTimeout(() => { logout(); nav('/login', { replace: true }) }, 1200)
     } catch (error) {
       setErr(error.message)
     }
