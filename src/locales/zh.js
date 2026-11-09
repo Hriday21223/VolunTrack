@@ -3472,4 +3472,8 @@ export default {
   "Hide password": "隐藏密码",
   "Volunteer Task Maker Sign Up": "志愿任务发布者注册",
   "Volunteer Task Maker accounts are for adults 18 and over, and are free.": "志愿任务发布者账户适用于 18 岁及以上的成年人，且免费。",
+  "Confirm password": "确认密码",
+  "Type it again": "再输入一次",
+  "Forgot your current password? Reset it by email (you’ll be signed out)": "忘记当前密码？通过邮件重置（你将被退出登录）",
+  "Forgot your current password? Reset it by email": "忘记当前密码？通过邮件重置",
 }

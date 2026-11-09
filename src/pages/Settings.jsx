@@ -389,7 +389,6 @@ export default function Settings() {
   const [emailBusy, setEmailBusy] = useState(false)
   const [emailError, setEmailError] = useState('')
   const [emailDone, setEmailDone] = useState('')
-  const [showPw, setShowPw] = useState(false)
   const [pwBusy, setPwBusy] = useState(false)
   const [pwError, setPwError] = useState('')
   const [pwDone, setPwDone] = useState(false)
@@ -976,26 +975,25 @@ export default function Settings() {
             <form onSubmit={onChangePassword} className="grid sm:grid-cols-3 gap-4">
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('Current password')}</label>
-                <input type={showPw ? 'text' : 'password'} className="input" value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))} required />
+                <PasswordInput className="input" autoComplete="current-password" value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))} required />
               </div>
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('New password')}</label>
-                <input type={showPw ? 'text' : 'password'} className="input" value={pwForm.newPw} onChange={(e) => setPwForm((f) => ({ ...f, newPw: e.target.value }))} required minLength={8} />
+                <PasswordInput className="input" autoComplete="new-password" value={pwForm.newPw} onChange={(e) => setPwForm((f) => ({ ...f, newPw: e.target.value }))} required minLength={8} />
               </div>
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('Confirm new')}</label>
-                <div className="flex gap-2">
-                  <input type={showPw ? 'text' : 'password'} className="input flex-1" value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))} required />
-                  <button type="button" onClick={() => setShowPw(!showPw)} className="btn-ghost px-2" title={showPw ? tr('Hide') : tr('Show')}>
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+                <PasswordInput className="input" autoComplete="new-password" value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))} required />
               </div>
               {pwError && <div className="sm:col-span-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{pwError}</div>}
               {pwDone && <div className="sm:col-span-3 text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300 px-3 py-2 rounded-lg flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />{' '}{tr('Password updated')}</div>}
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                 <button className="btn-primary" type="submit" disabled={pwBusy}>
                   {pwBusy ? tr('Updating…') : tr('Update password')}
+                </button>
+                {/* The reset signs them out everywhere once it's done (#831). */}
+                <button type="button" className="text-sm text-brand-700 dark:text-brand-300 hover:underline" onClick={() => nav(`/forgot-password${user?.email ? `?email=${encodeURIComponent(user.email)}` : ''}`)}>
+                  {tr('Forgot your current password? Reset it by email')}
                 </button>
               </div>
             </form>

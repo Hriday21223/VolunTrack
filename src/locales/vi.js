@@ -3472,4 +3472,8 @@ export default {
   "Hide password": "Ẩn mật khẩu",
   "Volunteer Task Maker Sign Up": "Đăng ký cho người tạo nhiệm vụ tình nguyện",
   "Volunteer Task Maker accounts are for adults 18 and over, and are free.": "Tài khoản người tạo nhiệm vụ tình nguyện dành cho người từ 18 tuổi trở lên và miễn phí.",
+  "Confirm password": "Xác nhận mật khẩu",
+  "Type it again": "Nhập lại",
+  "Forgot your current password? Reset it by email (you’ll be signed out)": "Quên mật khẩu hiện tại? Đặt lại qua email (bạn sẽ bị đăng xuất)",
+  "Forgot your current password? Reset it by email": "Quên mật khẩu hiện tại? Đặt lại qua email",
 }

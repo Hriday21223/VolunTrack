@@ -31,6 +31,8 @@ export default function SchoolRegister() {
   const [plan, setPlan] = useState(() => (inviteToken || searchParams.get('plan') === 'school' ? 'school' : 'club'))
   const isClub = !inviteToken && plan === 'club'
   const [form, setForm] = useState({ name: '', email: '', password: '', pin: '', referralCode: '', registrationCode: '' })
+  // Typed twice so a typo doesn't lock them out (#831). Never sent.
+  const [confirmPw, setConfirmPw] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [toast, setToast] = useState(false)
@@ -64,6 +66,7 @@ export default function SchoolRegister() {
     e.preventDefault()
     setErr('')
     if (form.password.length < 8) { setErr(tr('Password must be at least 8 characters.')); return }
+    if (form.password !== confirmPw) { setErr(tr("Passwords don't match.")); return }
     if (!form.pin || !/^[a-zA-Z]+-?\d{3,5}$/.test(form.pin)) { setErr(tr('School code must be letters followed by digits (e.g. cisd-12345).')); return }
     if (!inviteToken && !isClub && !isCompleteRegistrationCode(form.registrationCode)) { setErr(tr('Enter the 16-character registration code we gave you.')); return }
     if (!agreed) { setErr(tr('Please agree to the Terms of Service and Privacy Policy.')); return }
@@ -198,6 +201,13 @@ export default function SchoolRegister() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400 z-10" />
                 <PasswordInput className="input pl-9" placeholder={tr('Min 8 characters')} value={form.password} onChange={onChange('password')} autoComplete="new-password" required />
+              </div>
+            </div>
+            <div>
+              <label className="label">{tr('Confirm password')}</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400 z-10" />
+                <PasswordInput className="input pl-9" placeholder={tr('Type it again')} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} autoComplete="new-password" required />
               </div>
             </div>
             <div>
