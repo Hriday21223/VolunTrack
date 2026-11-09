@@ -3501,4 +3501,8 @@ export default {
   "Hide password": "Ocultar contraseña",
   "Volunteer Task Maker Sign Up": "Registro para creadores de tareas de voluntariado",
   "Volunteer Task Maker accounts are for adults 18 and over, and are free.": "Las cuentas de creador de tareas de voluntariado son para adultos de 18 años o más y son gratuitas.",
+  "Confirm password": "Confirma la contraseña",
+  "Type it again": "Escríbela otra vez",
+  "Forgot your current password? Reset it by email (you’ll be signed out)": "¿Olvidaste tu contraseña actual? Restablécela por correo (se cerrará tu sesión)",
+  "Forgot your current password? Reset it by email": "¿Olvidaste tu contraseña actual? Restablécela por correo",
 }

@@ -8,7 +8,8 @@ import { tr } from '@/lib/i18n.js'
 
 export default function ForgotPassword() {
   const { requestPasswordReset } = useAuth()
-  const [email, setEmail] = useState('')
+  // Settings' "Forgot your current password?" link passes ?email= (#831).
+  const [email, setEmail] = useState(() => { try { return String(new URLSearchParams(window.location.search).get('email') || '').slice(0, 254) } catch { return '' } })
   const [code, setCode] = useState('')
   const [delivery, setDelivery] = useState({ status: 'idle', reason: '', missingVars: [] })
   const [serverInfo, setServerInfo] = useState({ ok: false, smtpConfigured: false, missingVars: [], backendAvailable: false })
