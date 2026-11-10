@@ -10,16 +10,21 @@
 // activity descriptions are the user's own words and stay as they are.
 
 import { EMAIL_VI, EMAIL_ZH } from './emailStringsViZh.js'
+import { EMAIL_HI, EMAIL_AR, EMAIL_PT, EMAIL_FR, EMAIL_BN, EMAIL_RU, EMAIL_JA } from './emailStringsMore.js'
 
-export const EMAIL_LANGUAGES = ['en', 'es', 'vi', 'zh']
-// Languages the app can be set to (#637, #834). Emails and server messages are
-// translated for EMAIL_LANGUAGES; the rest get English from the server.
-export const APP_LANGUAGES = [...EMAIL_LANGUAGES, 'hi', 'ar', 'pt', 'fr', 'bn', 'ru', 'ja']
+// Every language the app can be set to (#637, #834) also gets translated
+// emails (#836). Server error messages are fully translated for es/vi/zh; the
+// newer languages get short fallbacks (server/errorStrings.js).
+export const EMAIL_LANGUAGES = ['en', 'es', 'vi', 'zh', 'hi', 'ar', 'pt', 'fr', 'bn', 'ru', 'ja']
+export const APP_LANGUAGES = EMAIL_LANGUAGES
 
 // toLocaleDateString locale for each language.
-export const DATE_LOCALES = { en: 'en-US', es: 'es-ES', vi: 'vi-VN', zh: 'zh-CN' }
+export const DATE_LOCALES = {
+  en: 'en-US', es: 'es-ES', vi: 'vi-VN', zh: 'zh-CN',
+  hi: 'hi-IN', ar: 'ar-u-nu-latn', pt: 'pt-BR', fr: 'fr-FR', bn: 'bn-BD', ru: 'ru-RU', ja: 'ja-JP',
+}
 
-/** The app language a request asked for: 'en' | 'es' | 'vi' | 'zh'. */
+/** The app language a request asked for (one of APP_LANGUAGES). */
 export function requestAppLang(req) {
   const h = String(req?.headers?.['accept-language'] || '').trim().toLowerCase()
   return APP_LANGUAGES.find((l) => h.startsWith(l)) || 'en'
@@ -337,7 +342,10 @@ const ES = {
   "Open My Tasks": "Abrir Mis tareas",
 }
 
-const DICTIONARIES = { es: ES, vi: EMAIL_VI, zh: EMAIL_ZH }
+const DICTIONARIES = {
+  es: ES, vi: EMAIL_VI, zh: EMAIL_ZH,
+  hi: EMAIL_HI, ar: EMAIL_AR, pt: EMAIL_PT, fr: EMAIL_FR, bn: EMAIL_BN, ru: EMAIL_RU, ja: EMAIL_JA,
+}
 
 /**
  * Translate one email string. `lang` is 'en' | 'es' (anything else → English).

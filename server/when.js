@@ -3,7 +3,10 @@
 // shows only when it isn't this one. A time that isn't HH:MM (free text) is shown as typed;
 // ./ics.js reads times the same way.
 // Date locale per language; everyone but English uses a 24-hour clock.
-const LOCALES = { es: 'es-ES', vi: 'vi-VN', zh: 'zh-CN' }
+const LOCALES = {
+  es: 'es-ES', vi: 'vi-VN', zh: 'zh-CN',
+  hi: 'hi-IN', ar: 'ar-u-nu-latn', pt: 'pt-BR', fr: 'fr-FR', bn: 'bn-BD', ru: 'ru-RU', ja: 'ja-JP',
+}
 
 export function friendlyWhen(date, time, lang = 'en') {
   const es = Boolean(LOCALES[lang])

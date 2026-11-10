@@ -288,7 +288,20 @@ function warnAdminEmailBudget(sent) {
   }).catch(() => {})
 }
 
+// Arabic emails (#836) read right to left. Decided from the text itself, so
+// no caller has to pass the language: when most of the letters (tags removed)
+// are Arabic, the body is wrapped in a dir="rtl" block. An English email that
+// only quotes an Arabic name stays left to right.
+export function withTextDirection(html) {
+  if (!html) return html
+  const text = String(html || '').replace(/<[^>]*>/g, ' ')
+  const arabic = (text.match(/[\u0600-\u06FF]/g) || []).length
+  const latin = (text.match(/[A-Za-z]/g) || []).length
+  return arabic > latin ? `<div dir="rtl" style="direction:rtl;text-align:right">${html}</div>` : html
+}
+
 export async function sendEmail({ to, subject, html, unsubscribeUrl, attachments, priority = 'normal' }) {
+  html = withTextDirection(html)
   const from = fromAddress()
   const key = brevoKey()
   // Daily budget (#775, server/emailBudget.js): only for Brevo, whose free

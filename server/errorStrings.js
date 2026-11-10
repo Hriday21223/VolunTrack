@@ -10,6 +10,7 @@
 import { requestLang } from './emailStrings.js'
 import { ERRORS_ES } from './errorStringsEs.js'
 import { ERRORS_VI, ERRORS_ZH } from './errorStringsViZh.js'
+import { ERRORS_MORE, FALLBACKS_MORE, WAIT_MORE } from './errorStringsMore.js'
 
 const PATTERNS_ES = [
   [/^Too many .*(code|attempt)/i, 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.'],
@@ -28,9 +29,10 @@ const FALLBACKS = {
   vi: ['Thử quá nhiều lần. Hãy chờ vài phút rồi thử lại.', 'Quá nhiều yêu cầu. Vui lòng thử lại sau.', 'Không tải được. Hãy thử lại.', 'Không lưu được. Hãy thử lại.', 'Không gửi được. Hãy thử lại.', 'Không gỡ được. Hãy thử lại.', 'Không hoàn tất được. Hãy thử lại.', 'Không hoàn tất được. Hãy thử lại.', 'Không tìm thấy.'],
   zh: ['尝试次数过多，请等几分钟再试。', '请求过多，请稍后再试。', '加载失败，请重试。', '保存失败，请重试。', '发送失败，请重试。', '移除失败，请重试。', '操作未完成，请重试。', '操作未完成，请重试。', '未找到。'],
 }
-const EXACT = { es: ERRORS_ES, vi: ERRORS_VI, zh: ERRORS_ZH }
+Object.assign(FALLBACKS, FALLBACKS_MORE)
+const EXACT = { es: ERRORS_ES, vi: ERRORS_VI, zh: ERRORS_ZH, ...ERRORS_MORE }
 
-/** One message in `lang` ('en' | 'es' | 'vi' | 'zh'). */
+/** One message in `lang` (any app language; English is left as is). */
 export function translateError(lang, message) {
   const exact = EXACT[lang]
   if (!exact || typeof message !== 'string' || !message) return message
@@ -64,6 +66,7 @@ const WAIT = {
   es: (n) => `Demasiadas solicitudes. Inténtalo de nuevo en ${n} ${n === 1 ? 'minuto' : 'minutos'}.`,
   vi: (n) => `Quá nhiều yêu cầu. Vui lòng thử lại sau ${n} phút.`,
   zh: (n) => `请求过多，请在 ${n} 分钟后再试。`,
+  ...Object.fromEntries(Object.entries(WAIT_MORE).map(([l, text]) => [l, (n) => text.replace('{n}', n)])),
 }
 export function waitMinutes(res) {
   const sec = Number(res.getHeader('Retry-After') ?? res.getHeader('RateLimit-Reset'))
