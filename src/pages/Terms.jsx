@@ -25,7 +25,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 8, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 10, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -86,6 +86,10 @@ export default function Terms() {
 
           <Section title="Emails and Notifications">
             <p>We send emails and in-app notifications needed to use VolunTrack, such as sign-in codes, sign-up decisions, reminders about tasks you joined, and messages from your task&apos;s organizer. Optional ones — such as reminders you set, the parent weekly summary and &ldquo;We miss you&rdquo; emails — can be turned off in Settings or from the link in the email.</p>
+          </Section>
+
+          <Section title="Languages and Translations">
+            <p>VolunTrack, its emails and the short summaries of these terms are offered in several languages. Translations are provided for convenience: they may contain mistakes, and some screens may still show English. If a translation differs from the English version of these Terms or our Privacy Policy, the English version applies.</p>
           </Section>
 
           <Section title="Account Termination">

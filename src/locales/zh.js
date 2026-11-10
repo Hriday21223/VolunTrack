@@ -1499,7 +1499,6 @@ export default {
   "Goes to everyone marked present or checked in, as a notification and an email. You can send one per task.": "以通知和邮件发送给所有标记出席或已签到的人。每个任务可发送一次。",
   "Thank you so much for volunteering at {title}! Your time and effort made a real difference, and we hope to see you again soon.": "非常感谢你在 {title} 做志愿者！你的时间和付出带来了真正的改变，希望很快再见到你。",
   "App language": "应用语言",
-  "the language you pick in the app (English, Spanish, Vietnamese or Chinese). If you’re signed in, we save it with your account so the emails we send you, such as the weekly summary for parents and the “We miss you” email, come in that language. It’s replaced when you pick another, and deleted with your account.": "你在应用中选择的语言（英语、西班牙语、越南语或中文）。登录后我们会把它保存在你的账户中，让我们发给你的邮件（如家长每周摘要和“我们想你了”邮件）使用该语言。选择其他语言时会被替换，并随账户一起删除。",
   "Can I get VolunTrack emails in my language?": "能用我的语言收到 VolunTrack 邮件吗？",
   "Yes. Pick Español, Tiếng Việt or 中文 from the language menu while you’re signed in and we save it with your account, so the weekly summary for parents, the “We miss you” email and other emails arrive in that language. Task names, activities and anything else people typed stay as they were written.": "可以。登录后在语言菜单中选择 Español、Tiếng Việt 或 中文，我们会保存到你的账户，家长每周摘要、“我们想你了”邮件及其他邮件就会用该语言发送。任务名称、活动以及其他人输入的内容保持原样。",
   "Select all pending ({n})": "全选待处理（{n}）",
@@ -3489,4 +3488,5 @@ export default {
   "Ask {name} for a one-time code from their Family dashboard, then type it here.": "请向 {name} 索取其家庭面板上的一次性代码，然后在此输入。",
   "Could not remove the parent.": "无法移除家长。",
   "A parent can unlink at any time from the Family dashboard. A student removes a parent in Settings → Family with a one-time code that parent makes on their Family dashboard. Unlinking stops any further sharing immediately.": "家长可以随时在家庭面板中取消关联。学生需在设置 → 家庭中输入该家长在其家庭面板上生成的一次性代码才能移除家长。取消关联后立即停止分享。",
+  "the language you pick in the app, such as English, Spanish, Vietnamese, Chinese, Hindi, Arabic, Portuguese, French, Bengali, Russian or Japanese. If you’re signed in, we save it with your account so the emails we send you, such as sign-in codes, the weekly summary for parents and the “We miss you” email, come in that language. It’s replaced when you pick another, and deleted with your account.": "你在应用中选择的语言，例如英语、西班牙语、越南语、中文、印地语、阿拉伯语、葡萄牙语、法语、孟加拉语、俄语或日语。如果你已登录，我们会把它保存在你的账户中，让我们发给你的邮件（例如登录验证码、给家长的每周摘要和“我们想你了”邮件）使用该语言。你选择其他语言时会替换它，删除账户时一并删除。",
 }

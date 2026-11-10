@@ -5,6 +5,8 @@
 // account is then asked to accept before using the app again.
 // 2026-11-08: Terms only clarified that a free club is free (nothing new to
 // agree to), so the version stays at the last change people accepted.
+// 2026-11-10: Terms added that translations are for convenience and English
+// applies, and Privacy lists the new languages; nothing new to agree to either.
 export const LEGAL_VERSION = '2026-11-03'
 
 export const LEGAL_CHANGES = [

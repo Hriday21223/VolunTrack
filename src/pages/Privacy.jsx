@@ -31,7 +31,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 5, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 10, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -43,7 +43,7 @@ export default function Privacy() {
               <li><strong>Where you signed up</strong> — whether your account was created on the website, in the Android app or in the iPhone app. We use it only to count sign-ups, so we know which versions of VolunTrack people use.</li>
               <li><strong>Push notifications</strong> — only if you turn them on in Settings → Notifications. We keep a token your phone or browser gives us for sending notifications to that device, and which kinds you want pushed. A notification says the same as the one in your bell. The token is deleted when you turn notifications off on that device, sign out there, or delete your account, and when the push service tells us it no longer works. Android notifications go through Google&apos;s Firebase Cloud Messaging and iPhone notifications through Apple&apos;s push service.</li>
               <li><strong>{tr('Welcome tours')}</strong> — {tr('which welcome tours you have finished or skipped, so each one shows only once on any device. Deleted with your account.')}</li>
-              <li><strong>{tr('App language')}</strong> — {tr('the language you pick in the app (English, Spanish, Vietnamese or Chinese). If you’re signed in, we save it with your account so the emails we send you, such as the weekly summary for parents and the “We miss you” email, come in that language. It’s replaced when you pick another, and deleted with your account.')}</li>
+              <li><strong>{tr('App language')}</strong> — {tr('the language you pick in the app, such as English, Spanish, Vietnamese, Chinese, Hindi, Arabic, Portuguese, French, Bengali, Russian or Japanese. If you’re signed in, we save it with your account so the emails we send you, such as sign-in codes, the weekly summary for parents and the “We miss you” email, come in that language. It’s replaced when you pick another, and deleted with your account.')}</li>
               <li><strong>Text size and contrast</strong> — if you make text bigger or turn on high contrast, the choice is saved on that device only and never sent to us.</li>
               <li><strong>Skills</strong> — the optional skills you tag on an entry (like Leadership or Tutoring). They are saved with that entry so they follow you across devices, and only you can see them; a linked parent and your school don&apos;t. If you turn on your volunteer portfolio and leave <em>Top skills</em> ticked, it shows your top skills and their hours, from approved entries only.</li>
               <li><strong>Reflections</strong> — the optional &ldquo;What did you learn?&rdquo; text on an entry. It is saved with that entry so it follows you across devices, and only you can see it: it is never shown to a linked parent, your school or a task organizer, and it isn&apos;t part of the reports you submit. It is included in your own CSV export.</li>
