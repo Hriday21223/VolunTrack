@@ -19,8 +19,27 @@ export const LANGUAGES = [
   // in English.
   { code: 'vi', label: 'Tiếng Việt' },
   { code: 'zh', label: '中文（简体）' },
+  // The world's most-spoken languages (#834). Their files are loaded only for
+  // someone who picks them (loadLanguage), so nobody else downloads them, and
+  // so far only the most-seen screens are translated: the rest shows English.
+  { code: 'hi', label: 'हिन्दी' },
+  { code: 'ar', label: 'العربية', dir: 'rtl' },
+  { code: 'pt', label: 'Português' },
+  { code: 'fr', label: 'Français' },
+  { code: 'bn', label: 'বাংলা' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'ja', label: '日本語' },
 ]
 const DICTIONARIES = { es, vi, zh }
+const LAZY_DICTIONARIES = {
+  hi: () => import('@/locales/hi.js'),
+  ar: () => import('@/locales/ar.js'),
+  pt: () => import('@/locales/pt.js'),
+  fr: () => import('@/locales/fr.js'),
+  bn: () => import('@/locales/bn.js'),
+  ru: () => import('@/locales/ru.js'),
+  ja: () => import('@/locales/ja.js'),
+}
 const STORAGE_KEY = 'voluntrack:language'
 
 function detect() {
@@ -34,13 +53,27 @@ function detect() {
   if (lower.startsWith('vi')) return 'vi'
   // Simplified only: a browser set to Traditional Chinese keeps English.
   if (lower === 'zh' || lower.startsWith('zh-cn') || lower.startsWith('zh-sg') || lower.startsWith('zh-hans')) return 'zh'
+  for (const code of Object.keys(LAZY_DICTIONARIES)) if (lower === code || lower.startsWith(`${code}-`)) return code
   return 'en'
 }
 
 export const language = detect()
-const dictionary = DICTIONARIES[language] || null
+let dictionary = DICTIONARIES[language] || null
 
-if (typeof document !== 'undefined') document.documentElement.lang = language
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = language
+  // Arabic reads right to left; index.css flips the few left/right-pinned bits.
+  document.documentElement.dir = LANGUAGES.find((l) => l.code === language)?.dir || 'ltr'
+}
+
+// For a language loaded on demand, main.jsx awaits this before importing the
+// app, so tr() calls in module-level constants already see it. A failed load
+// (offline, old cached page) just leaves English.
+export async function loadLanguage() {
+  const load = LAZY_DICTIONARIES[language]
+  if (!load) return
+  try { dictionary = (await load()).default } catch { dictionary = null }
+}
 
 export function tr(text, vars) {
   if (text == null) return text

@@ -699,6 +699,11 @@ export async function initSchema() {
     await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_language_check`)
     await query(`ALTER TABLE users ADD CONSTRAINT users_language_check CHECK (language IS NULL OR language IN ('en','es','vi','zh'))`)
   } catch (error) { console.error('language check migration failed:', error.message) }
+  // Seven more app languages (#834).
+  try {
+    await query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_language_check`)
+    await query(`ALTER TABLE users ADD CONSTRAINT users_language_check CHECK (language IS NULL OR language IN ('en','es','vi','zh','hi','ar','pt','fr','bn','ru','ja'))`)
+  } catch (error) { console.error('language check migration (#834) failed:', error.message) }
 
   // A student's chosen causes (activity categories) for the "For you" row on
   // Opportunities (server/routes/interests.js).

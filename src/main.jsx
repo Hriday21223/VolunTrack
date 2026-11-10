@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import App from './App.jsx'
+import { loadLanguage } from './lib/i18n.js'
 import './index.css'
 import { applyStoredTheme } from './hooks/useTheme.js'
 import { applyStoredDisplay } from './hooks/useDisplayPrefs.js'
@@ -57,13 +57,17 @@ applyStoredTheme()
 applyStoredDisplay()
 applyNativeAppChrome()
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>,
-)
+// The app is imported only once the language file is in (#834), so tr() in
+// module-level constants sees it. For English/es/vi/zh this resolves at once.
+loadLanguage().then(() => import('./App.jsx')).then(({ default: App }) => {
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </React.StrictMode>,
+  )
+})
 
 startNativeApp()
 // Phone push (#603): route notification taps; refresh the token if it was on.

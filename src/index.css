@@ -413,3 +413,14 @@ html[data-contrast='high'] a:is([class*='text-sky-'], [class*='text-brand-']):no
 @media (prefers-reduced-motion: reduce) {
   .badge-shine { animation-duration: 12s; }
 }
+
+/* Right-to-left languages (Arabic, #834). Flex and grid flip on their own;
+   these are the few things pinned to the left: icons inside inputs, the
+   password eye, and the phone menu drawer. */
+[dir="rtl"] .left-3 { left: auto; right: 0.75rem; }
+[dir="rtl"] .right-2 { right: auto; left: 0.5rem; }
+[dir="rtl"] .pl-9 { padding-left: 0.75rem; padding-right: 2.25rem; }
+[dir="rtl"] .pr-11 { padding-right: 0.75rem; padding-left: 2.75rem; }
+[dir="rtl"] .pl-9.pr-11 { padding-right: 2.25rem; padding-left: 2.75rem; }
+[dir="rtl"] .left-0.w-72 { left: auto; right: 0; }
+[dir="rtl"] .w-72.-translate-x-full { --tw-translate-x: 100%; }

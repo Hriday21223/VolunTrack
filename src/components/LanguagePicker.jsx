@@ -44,7 +44,7 @@ function OtherLanguageHelp({ onClose }) {
           <h2 id="other-lang-title" className="font-display font-semibold text-lg flex items-center gap-2"><Globe className="w-5 h-5 text-brand-600" aria-hidden="true" />{tr('Use VolunTrack in another language')}</h2>
           <button type="button" onClick={onClose} className="btn-ghost p-1" aria-label={tr('Close')}><X className="w-5 h-5" /></button>
         </div>
-        <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{tr('VolunTrack is written in English, Spanish, Vietnamese and Chinese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Arabic, Korean, Russian, French and Haitian Creole.')}</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400 mt-1">{tr('VolunTrack is written in English, Spanish, Vietnamese and Chinese, and its main screens in Hindi, Arabic, Portuguese, French, Bengali, Russian and Japanese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Korean, Haitian Creole, German and Urdu.')}</p>
         {steps.length > 0 && (
           <ol className="mt-3 list-decimal pl-5 space-y-1 text-sm">{steps.map((s) => <li key={s}>{s}</li>)}</ol>
         )}
