@@ -19,6 +19,7 @@ import { format } from 'date-fns'
 import { tr } from '@/lib/i18n.js'
 
 import CalendarFeedCard from '@/components/CalendarFeedCard.jsx'
+import LeaveFamilyCode from '@/components/LeaveFamilyCode.jsx'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 // family-link and child-card render in mutually exclusive branches (no
@@ -299,6 +300,7 @@ function ChildCard({ child }) {
       </div>
 
       <ParentWeeklyGoal child={child} />
+      <LeaveFamilyCode child={child} />
 
       {requirement?.goalHours != null && (
         <div className="mb-4 p-3 rounded-xl border border-earth-100 dark:border-[#1f2e25]">

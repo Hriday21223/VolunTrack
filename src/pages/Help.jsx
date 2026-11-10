@@ -370,7 +370,7 @@ function ParentHandbook() {
       </Section>
 
       <Section title={tr('Unlinking')}>
-        <p>{tr('Either side can unlink at any time from Settings → Family. Unlinking stops any further sharing immediately.')}</p>
+        <p>{tr('A parent can unlink at any time from the Family dashboard. A student removes a parent in Settings → Family with a one-time code that parent makes on their Family dashboard. Unlinking stops any further sharing immediately.')}</p>
       </Section>
     </div>
   )
