@@ -3046,7 +3046,7 @@ export default {
   "Open VolunTrack in your phone’s web browser (Chrome or Safari) using the button below, and sign in.": "使用下方按钮在手机浏览器（Chrome 或 Safari）中打开 VolunTrack 并登录。",
   "Then use the browser’s translate, as shown below.": "然后按下方说明使用浏览器的翻译功能。",
   "Use VolunTrack in another language": "以其他语言使用 VolunTrack",
-  "VolunTrack is written in English, Spanish, Vietnamese and Chinese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Arabic, Korean, Russian, French and Haitian Creole.": "VolunTrack 提供英语、西班牙语、越南语和中文。其他语言可以用浏览器翻译页面。免费且支持 100 多种语言，例如他加禄语、阿拉伯语、韩语、俄语、法语和海地克里奥尔语。",
+  "VolunTrack is written in English, Spanish, Vietnamese and Chinese, and its main screens in Hindi, Arabic, Portuguese, French, Bengali, Russian and Japanese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Korean, Haitian Creole, German and Urdu.": "VolunTrack 提供英语、西班牙语、越南语和中文版本，主要页面还提供印地语、阿拉伯语、葡萄牙语、法语、孟加拉语、俄语和日语。其他语言可以使用浏览器翻译页面，免费且支持 100 多种语言，例如他加禄语、韩语、海地克里奥尔语、德语和乌尔都语。",
   "computer": "电脑",
   "Android phone": "安卓手机",
   "iPhone": "iPhone",

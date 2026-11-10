@@ -3046,7 +3046,7 @@ export default {
   "Open VolunTrack in your phone’s web browser (Chrome or Safari) using the button below, and sign in.": "Mở VolunTrack trong trình duyệt trên điện thoại (Chrome hoặc Safari) bằng nút bên dưới và đăng nhập.",
   "Then use the browser’s translate, as shown below.": "Sau đó dùng tính năng dịch của trình duyệt như hướng dẫn bên dưới.",
   "Use VolunTrack in another language": "Dùng VolunTrack bằng ngôn ngữ khác",
-  "VolunTrack is written in English, Spanish, Vietnamese and Chinese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Arabic, Korean, Russian, French and Haitian Creole.": "VolunTrack có tiếng Anh, tiếng Tây Ban Nha, tiếng Việt và tiếng Trung. Với các ngôn ngữ khác, trình duyệt có thể dịch trang cho bạn. Miễn phí và hỗ trợ hơn 100 ngôn ngữ như tiếng Tagalog, Ả Rập, Hàn, Nga, Pháp và Creole Haiti.",
+  "VolunTrack is written in English, Spanish, Vietnamese and Chinese, and its main screens in Hindi, Arabic, Portuguese, French, Bengali, Russian and Japanese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Korean, Haitian Creole, German and Urdu.": "VolunTrack được viết bằng tiếng Anh, Tây Ban Nha, Việt và Trung, và các màn hình chính bằng tiếng Hindi, Ả Rập, Bồ Đào Nha, Pháp, Bengal, Nga và Nhật. Với ngôn ngữ khác, trình duyệt của bạn có thể dịch trang. Miễn phí và hỗ trợ hơn 100 ngôn ngữ, như tiếng Tagalog, Hàn, Creole Haiti, Đức và Urdu.",
   "computer": "máy tính",
   "Android phone": "điện thoại Android",
   "iPhone": "iPhone",

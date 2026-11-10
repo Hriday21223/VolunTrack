@@ -3075,7 +3075,7 @@ export default {
   "Open VolunTrack in your phone’s web browser (Chrome or Safari) using the button below, and sign in.": "Abre VolunTrack en el navegador de tu teléfono (Chrome o Safari) con el botón de abajo e inicia sesión.",
   "Then use the browser’s translate, as shown below.": "Luego usa el traductor del navegador, como se muestra abajo.",
   "Use VolunTrack in another language": "Usa VolunTrack en otro idioma",
-  "VolunTrack is written in English, Spanish, Vietnamese and Chinese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Arabic, Korean, Russian, French and Haitian Creole.": "VolunTrack está en inglés, español, vietnamita y chino. Para cualquier otro idioma, tu navegador puede traducir la página. Es gratis y funciona en más de 100 idiomas, como tagalo, árabe, coreano, ruso, francés y criollo haitiano.",
+  "VolunTrack is written in English, Spanish, Vietnamese and Chinese, and its main screens in Hindi, Arabic, Portuguese, French, Bengali, Russian and Japanese. For any other language, your browser can translate the page for you. It’s free and works for 100+ languages, like Tagalog, Korean, Haitian Creole, German and Urdu.": "VolunTrack está escrito en inglés, español, vietnamita y chino, y sus pantallas principales en hindi, árabe, portugués, francés, bengalí, ruso y japonés. Para cualquier otro idioma, tu navegador puede traducir la página. Es gratis y funciona con más de 100 idiomas, como tagalo, coreano, criollo haitiano, alemán y urdu.",
   "computer": "computadora",
   "Android phone": "teléfono Android",
   "iPhone": "iPhone",

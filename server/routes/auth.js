@@ -645,7 +645,7 @@ router.get('/me', requireDb, requireAuth(), async (req, res) => {
 router.put('/me/language', requireDb, requireAuth(), async (req, res) => {
   const language = req.body?.language
   if (!APP_LANGUAGES.includes(language)) {
-    return res.status(400).json({ error: 'Language must be "en", "es", "vi" or "zh".' })
+    return res.status(400).json({ error: 'That language is not supported.' })
   }
   try {
     const { rowCount } = await query('UPDATE users SET language = $1 WHERE id = $2', [language, req.auth.sub])

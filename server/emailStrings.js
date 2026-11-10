@@ -12,8 +12,9 @@
 import { EMAIL_VI, EMAIL_ZH } from './emailStringsViZh.js'
 
 export const EMAIL_LANGUAGES = ['en', 'es', 'vi', 'zh']
-// Languages the app can be set to (#637). Emails are translated for all of them.
-export const APP_LANGUAGES = EMAIL_LANGUAGES
+// Languages the app can be set to (#637, #834). Emails and server messages are
+// translated for EMAIL_LANGUAGES; the rest get English from the server.
+export const APP_LANGUAGES = [...EMAIL_LANGUAGES, 'hi', 'ar', 'pt', 'fr', 'bn', 'ru', 'ja']
 
 // toLocaleDateString locale for each language.
 export const DATE_LOCALES = { en: 'en-US', es: 'es-ES', vi: 'vi-VN', zh: 'zh-CN' }
