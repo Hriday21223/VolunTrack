@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ShieldCheck, KeyRound, X, User as UserIcon } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -42,6 +43,9 @@ function loadMyReview(headers) {
 // server/routes/reviews.js PATCH /admin/:id/approve, which still gates
 // actual publication.
 export default function ReviewConsentPrompt() {
+  // Under 13 (#845): no name, and the code goes to a parent, not the child.
+  const { user } = useAuth()
+  const child = Boolean(user?.under13)
   const [review, setReview] = useState(null)
   const [step, setStep] = useState(null) // 'ask' | 'details' | 'pin' | 'done' | null (hidden)
   const [name, setName] = useState('')
@@ -78,7 +82,7 @@ export default function ReviewConsentPrompt() {
       const res = await fetch(`${apiUrl}/reviews/mine/${review.id}/consent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify(pickedChoice === 'yes' ? { choice: 'yes', name: name.trim() } : { choice: 'no' }),
+        body: JSON.stringify(pickedChoice === 'yes' ? { choice: 'yes', name: child ? '' : name.trim() } : { choice: 'no' }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -169,9 +173,12 @@ export default function ReviewConsentPrompt() {
               </div>
               <h2 className="text-2xl font-bold">{tr('Feature your review?')}</h2>
               <p className="mt-2 text-sm text-earth-400 leading-6">
-                {tr('Your review and this name may appear on our website once our team approves it.')}
+                {child
+                  ? tr('Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.')
+                  : tr('Your review and this name may appear on our website once our team approves it.')}
               </p>
             </div>
+            {!child && <>
             <label htmlFor="review-consent-name" className="block mt-5 text-sm font-medium text-earth-200">{tr('Show my review with this name (optional)')}</label>
             <input
               id="review-consent-name"
@@ -182,6 +189,7 @@ export default function ReviewConsentPrompt() {
               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-white placeholder-earth-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
             />
             <p className="mt-1 text-xs text-earth-400">{tr('Leave it blank and we show your account type instead, like “VolunTrack Student”.')}</p>
+            </>}
             {error && <p className="mt-3 text-sm text-red-400 text-center">{error}</p>}
             <div className="mt-5 flex gap-3">
               <button
@@ -196,7 +204,7 @@ export default function ReviewConsentPrompt() {
                 disabled={busy}
                 className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-40 transition-colors"
               >
-                {busy ? tr('Sending…') : tr('Send me a code')}
+                {busy ? tr('Sending…') : child ? tr('Send the code to my parent') : tr('Send me a code')}
               </button>
             </div>
           </>
@@ -210,7 +218,9 @@ export default function ReviewConsentPrompt() {
               </div>
               <h2 className="text-2xl font-bold">{tr("Confirm it's you")}</h2>
               <p className="mt-2 text-sm text-earth-400 leading-6">
-                {tr('We sent a 4-digit code to your email. Enter it to confirm you want your review featured.')}
+                {child
+                  ? tr('We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.')
+                  : tr('We sent a 4-digit code to your email. Enter it to confirm you want your review featured.')}
               </p>
             </div>
             <input

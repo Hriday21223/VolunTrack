@@ -33,7 +33,7 @@ export default function ReviewUs() {
       const res = await fetch(`${apiUrl}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ rating, comment: comment.trim(), name: name.trim() || null }),
+        body: JSON.stringify({ rating, comment: comment.trim(), name: user?.under13 ? null : (name.trim() || null) }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -53,10 +53,7 @@ export default function ReviewUs() {
   return (
     <AppLayout title={tr('Review us')} subtitle={tr('Tell us how VolunTrack is working for you.')}>
       <div className="max-w-xl space-y-4">
-        {user?.under13 ? (
-          <Card><p className="text-sm">{tr('Reviews aren’t available for this account.')}</p></Card>
-        ) : (
-          <Card>
+        <Card>
             {sent > 0 && (
               <p className="mb-4 rounded-lg bg-brand-500/10 text-brand-800 dark:text-brand-200 px-3 py-2 text-sm flex items-center gap-2">
                 <Heart className="w-4 h-4" aria-hidden="true" />{tr('Thanks for your review! You can send another any time.')}
@@ -94,6 +91,9 @@ export default function ReviewUs() {
                   onChange={(e) => setComment(e.target.value)}
                 />
               </div>
+              {user?.under13 ? (
+                <p className="text-xs text-earth-500 dark:text-earth-400">{tr('Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.')}</p>
+              ) : (
               <div>
                 <label htmlFor="review-name" className="label">{tr('Your name (optional)')}</label>
                 <input id="review-name" className="input" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
@@ -101,6 +101,7 @@ export default function ReviewUs() {
                   {tr('Leave it blank and it shows as “{label}” if we feature it.', { label: anonymousReviewerName(user?.role) })}
                 </p>
               </div>
+              )}
               <p className="text-xs text-earth-500 dark:text-earth-400">{tr('Reviews are checked by our team before they appear anywhere in the app.')}</p>
               {error && <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
               <button type="submit" className="btn-primary" disabled={busy || rating === 0}>
@@ -108,7 +109,6 @@ export default function ReviewUs() {
               </button>
             </form>
           </Card>
-        )}
       </div>
       {/* After each review, ask whether to feature it. */}
       {sent > 0 && <ReviewConsentPrompt key={sent} />}

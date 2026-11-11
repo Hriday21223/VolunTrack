@@ -3511,5 +3511,9 @@ export default {
   "Okay": "ठीक है",
   "Pretty good": "काफ़ी अच्छा",
   "Great": "बहुत बढ़िया",
-  "Amazing!": "शानदार!"
+  "Amazing!": "शानदार!",
+  "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "आपकी समीक्षा हमारी वेबसाइट पर “VolunTrack Student” के रूप में दिख सकती है, आपके नाम के साथ कभी नहीं। हम आपके माता-पिता या अभिभावक को एक कोड ईमेल करेंगे, पूरा करने के लिए आपको उनसे वह कोड लेना होगा।",
+  "Send the code to my parent": "कोड मेरे माता-पिता को भेजें",
+  "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "हमने आपके माता-पिता या अभिभावक के ईमेल पर 4 अंकों का कोड भेजा है। उनसे लेकर यहाँ डालें।",
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "आपका नाम आपकी समीक्षा के साथ कभी नहीं दिखता। अगर आप इसे दिखाना चाहें, तो आपके माता-पिता या अभिभावक को हाँ कहने के लिए एक कोड मिलता है।"
 }
