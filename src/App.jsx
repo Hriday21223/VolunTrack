@@ -59,6 +59,7 @@ const OrganizationDashboard = lazy(() => import('@/pages/OrganizationDashboard.j
 const OrganizationRegister = lazy(() => import('@/pages/OrganizationRegister.jsx'))
 const Help = lazy(() => import('@/pages/Help.jsx'))
 const WhatsNew = lazy(() => import('@/pages/WhatsNew.jsx'))
+const ReviewUs = lazy(() => import('@/pages/ReviewUs.jsx'))
 const MyTasks = lazy(() => import('@/pages/MyTasks.jsx'))
 const Kiosk = lazy(() => import('@/pages/Kiosk.jsx'))
 const Attendance = lazy(() => import('@/pages/Attendance.jsx'))
@@ -188,6 +189,7 @@ function Shell() {
           <Route path="/settings"     element={<Protected roles={ROUTE_ROLES['/settings']}><Settings /></Protected>} />
           <Route path="/help"         element={<Help />} />
           <Route path="/whats-new"    element={<WhatsNew />} />
+          <Route path="/review"       element={<Protected><ReviewUs /></Protected>} />
           <Route path="/my-tasks"    element={<Protected roles={ROUTE_ROLES['/my-tasks']}><MyTasks /></Protected>} />
           <Route path="/kiosk/:taskId" element={<Protected roles={ROUTE_ROLES['/kiosk']}><Kiosk /></Protected>} />
           <Route path="/attendance"  element={<Protected roles={ROUTE_ROLES['/attendance']}><Attendance /></Protected>} />

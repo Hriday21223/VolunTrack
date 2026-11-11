@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useSearchParams, Link } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, Sparkles, ClipboardList, ClipboardCheck, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Plus, Shield, HelpCircle, Sparkles, Star, ClipboardList, ClipboardCheck, School, Activity, MapPin, X, ChevronRight } from 'lucide-react'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { isNativeApp, APP_BACK_EVENT } from '@/lib/platform.js'
@@ -56,6 +56,7 @@ const MORE_ITEMS = {
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   volunteer: [
@@ -65,11 +66,13 @@ const MORE_ITEMS = {
     { to: '/settings',     label: 'Settings',      icon: Settings },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   school: [
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   admin: [
@@ -77,15 +80,18 @@ const MORE_ITEMS = {
     { to: '/reports',      label: 'Reports',       icon: FileText },
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   parent: [
     { to: '/help',         label: 'Help',     icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
   ],
   org: [
     { to: '/help',         label: 'Help',          icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
 }

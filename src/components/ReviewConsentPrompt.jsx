@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ShieldCheck, KeyRound, X } from 'lucide-react'
+import { ShieldCheck, KeyRound, X, User as UserIcon } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -14,6 +14,11 @@ function authHeaders() {
 // endpoint's per-IP limit after a dozen pages, sooner on a shared school
 // network. Cleared once the consent step finishes.
 let mineCache = { token: null, request: null }
+
+// Called after a new review is sent (src/pages/ReviewUs.jsx), so the next
+// check sees it.
+// eslint-disable-next-line react-refresh/only-export-components
+export function resetMyReviewCache() { mineCache = { token: null, request: null } }
 
 function loadMyReview(headers) {
   const token = headers.Authorization
@@ -31,14 +36,15 @@ function loadMyReview(headers) {
 }
 
 // A submitted-but-undecided review (see ReviewPopup.jsx) gets a self-serve
-// consent step here: the reviewer confirms, via a one-time PIN emailed to
-// their account, whether they want it considered for the public testimonials
-// at all. Saying yes only makes it *eligible* for admin approval — see
+// consent step here (#843). "No thanks" is saved at once. "Yes" first asks
+// which name to show, then a one-time PIN emailed to their account confirms
+// it, since only yes can make the review public. Saying yes only makes it *eligible* for admin approval — see
 // server/routes/reviews.js PATCH /admin/:id/approve, which still gates
 // actual publication.
 export default function ReviewConsentPrompt() {
   const [review, setReview] = useState(null)
-  const [step, setStep] = useState(null) // 'ask' | 'pin' | 'done' | null (hidden)
+  const [step, setStep] = useState(null) // 'ask' | 'details' | 'pin' | 'done' | null (hidden)
+  const [name, setName] = useState('')
   const [choice, setChoice] = useState(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
@@ -53,28 +59,34 @@ export default function ReviewConsentPrompt() {
         const r = data.review
         if (!r || r.consent_choice) return
         setReview(r)
-        setStep(r.pending_consent_choice ? 'pin' : 'ask')
-        if (r.pending_consent_choice) setChoice(r.pending_consent_choice)
+        setName(r.name || '')
+        // Only a "yes" waits for a code now; an old pending "no" (from before
+        // #843) just asks again.
+        const waitingYes = r.pending_consent_choice === 'yes'
+        setStep(waitingYes ? 'pin' : 'ask')
+        if (waitingYes) setChoice('yes')
       })
   }, [])
 
   if (dismissed || !review || !step) return null
 
-  const requestPin = async (pickedChoice) => {
+  // "no" is recorded straight away; "yes" sends the code for the PIN step.
+  const sendChoice = async (pickedChoice) => {
     setBusy(true)
     setError('')
     try {
       const res = await fetch(`${apiUrl}/reviews/mine/${review.id}/consent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ choice: pickedChoice }),
+        body: JSON.stringify(pickedChoice === 'yes' ? { choice: 'yes', name: name.trim() } : { choice: 'no' }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Could not send a confirmation code.')
+        throw new Error(data.error || tr('Could not save your answer.'))
       }
       setChoice(pickedChoice)
-      setStep('pin')
+      if (pickedChoice === 'no') mineCache = { token: null, request: null }
+      setStep(pickedChoice === 'no' ? 'done' : 'pin')
     } catch (e) {
       setError(e.message)
     } finally {
@@ -83,7 +95,7 @@ export default function ReviewConsentPrompt() {
   }
 
   const confirmPin = async () => {
-    if (!/^\d{4}$/.test(pin)) { setError('Enter the 4-digit code.'); return }
+    if (!/^\d{4}$/.test(pin)) { setError(tr('Enter the 4-digit code.')); return }
     setBusy(true)
     setError('')
     try {
@@ -93,7 +105,7 @@ export default function ReviewConsentPrompt() {
         body: JSON.stringify({ pin }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Incorrect code.')
+      if (!res.ok) throw new Error(data.error || tr('Invalid code.'))
       mineCache = { token: null, request: null }
       setStep('done')
     } catch (e) {
@@ -112,7 +124,7 @@ export default function ReviewConsentPrompt() {
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          aria-label="Close"
+          aria-label={tr('Close')}
           className="absolute top-4 right-4 p-1 text-earth-400 hover:text-white transition-colors"
         >
           <X className="w-5 h-5" />
@@ -132,18 +144,59 @@ export default function ReviewConsentPrompt() {
             {error && <p className="mt-4 text-sm text-red-400 text-center">{error}</p>}
             <div className="mt-6 flex gap-3">
               <button
-                onClick={() => requestPin('no')}
+                onClick={() => sendChoice('no')}
                 disabled={busy}
                 className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-earth-200 hover:bg-white/5 disabled:opacity-40 transition-colors"
               >
                 {tr('No thanks')}
               </button>
               <button
-                onClick={() => requestPin('yes')}
+                onClick={() => { setError(''); setStep('details') }}
                 disabled={busy}
                 className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-40 transition-colors"
               >
                 {tr('Yes, feature it')}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 'details' && (
+          <>
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-brand-900/40 border border-brand-700/30 grid place-items-center mx-auto mb-4">
+                <UserIcon className="w-7 h-7 text-brand-400" />
+              </div>
+              <h2 className="text-2xl font-bold">{tr('Feature your review?')}</h2>
+              <p className="mt-2 text-sm text-earth-400 leading-6">
+                {tr('Your review and this name may appear on our website once our team approves it.')}
+              </p>
+            </div>
+            <label htmlFor="review-consent-name" className="block mt-5 text-sm font-medium text-earth-200">{tr('Show my review with this name (optional)')}</label>
+            <input
+              id="review-consent-name"
+              type="text"
+              maxLength={100}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-white placeholder-earth-600 focus:outline-none focus:ring-2 focus:ring-brand-500/50"
+            />
+            <p className="mt-1 text-xs text-earth-400">{tr('Leave it blank and we show your account type instead, like “VolunTrack Student”.')}</p>
+            {error && <p className="mt-3 text-sm text-red-400 text-center">{error}</p>}
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => { setError(''); setStep('ask') }}
+                disabled={busy}
+                className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-earth-200 hover:bg-white/5 disabled:opacity-40 transition-colors"
+              >
+                {tr('Back')}
+              </button>
+              <button
+                onClick={() => sendChoice('yes')}
+                disabled={busy}
+                className="flex-1 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-40 transition-colors"
+              >
+                {busy ? tr('Sending…') : tr('Send me a code')}
               </button>
             </div>
           </>
@@ -157,7 +210,7 @@ export default function ReviewConsentPrompt() {
               </div>
               <h2 className="text-2xl font-bold">{tr("Confirm it's you")}</h2>
               <p className="mt-2 text-sm text-earth-400 leading-6">
-                We sent a 4-digit code to your email to confirm you {choice === 'yes' ? 'want' : "don't want"} your review featured.
+                {tr('We sent a 4-digit code to your email. Enter it to confirm you want your review featured.')}
               </p>
             </div>
             <input
@@ -176,14 +229,21 @@ export default function ReviewConsentPrompt() {
               disabled={busy || pin.length !== 4}
               className="mt-4 w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {busy ? 'Confirming...' : 'Confirm code'}
+              {busy ? tr('Checking…') : tr('Confirm code')}
             </button>
             <button
-              onClick={() => requestPin(choice)}
+              onClick={() => sendChoice('yes')}
               disabled={busy}
               className="mt-2 w-full text-xs text-earth-400 hover:text-earth-200 transition-colors"
             >
               {tr('Resend code')}
+            </button>
+            <button
+              onClick={() => { setPin(''); setError(''); setStep('ask') }}
+              disabled={busy}
+              className="mt-1 w-full text-xs text-earth-400 hover:text-earth-200 transition-colors"
+            >
+              {tr('Back')}
             </button>
           </>
         )}
@@ -196,8 +256,8 @@ export default function ReviewConsentPrompt() {
             <h2 className="text-2xl font-bold">{tr('Got it')}</h2>
             <p className="mt-2 text-sm text-earth-400 leading-6">
               {choice === 'yes'
-                ? "Thanks — your review is now eligible to be featured. We'll email you if it's approved."
-                : "Understood — your review won't be featured. Thanks for the feedback."}
+                ? tr("Thanks — your review is now eligible to be featured. We'll email you if it's approved.")
+                : tr("Understood — your review won't be featured. Thanks for the feedback.")}
             </p>
             <button
               onClick={() => setDismissed(true)}

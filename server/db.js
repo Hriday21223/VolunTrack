@@ -1554,6 +1554,8 @@ export async function initSchema() {
   // PATCH /admin/:id/approve schedule params.
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id TEXT`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pending_consent_choice TEXT CHECK (pending_consent_choice IN ('yes','no'))`) } catch {}
+  // The name a reviewer asks to be shown with, held until their emailed code confirms "yes" (#843).
+  try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pending_name TEXT`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_choice TEXT CHECK (consent_choice IN ('yes','no'))`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_pin_hash TEXT`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_pin_expires_at TIMESTAMPTZ`) } catch {}
