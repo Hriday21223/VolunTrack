@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Building2, Check, Copy, KeyRound, Plus, School } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import useEscapeKey from '@/hooks/useEscapeKey.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
@@ -16,6 +17,7 @@ export default function RegistrationCodesPanel() {
   const [form, setForm] = useState(null) // { kind, label, days } while the create dialog is open
   const [busy, setBusy] = useState(false)
   const [created, setCreated] = useState(null) // { code, kind, label, expiresAt } — the one-time reveal
+  useEscapeKey(() => setForm(null), Boolean(form))
   const [copied, setCopied] = useState(false)
   const [confirmRevoke, setConfirmRevoke] = useState(null)
 
@@ -129,8 +131,8 @@ export default function RegistrationCodesPanel() {
 
       {form && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setForm(null)}>
-          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold mb-2">New registration code</h3>
+          <Card className="w-full max-w-sm" role="dialog" aria-modal="true" aria-labelledby="rc-new-title" onClick={(e) => e.stopPropagation()}>
+            <h3 id="rc-new-title" className="font-semibold mb-2">New registration code</h3>
             <p className="text-sm text-earth-400 mb-4">Give it to the customer however you like — text, email, or on a call. It works once.</p>
             <div className="space-y-3">
               <div>

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Mail, KeyRound, X } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
+import useEscapeKey from '@/hooks/useEscapeKey.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
 
 function Shell({ title, onClose, children }) {
+  useEscapeKey(onClose)
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1813] p-6 text-white shadow-soft" role="dialog" aria-modal="true" aria-label={title}>

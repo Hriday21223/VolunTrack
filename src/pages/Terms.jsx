@@ -54,11 +54,11 @@ export default function Terms() {
 
           <Section title="Fees and Payment">
             <p>Student, volunteer, and parent accounts are free. A free club, for one club or class with an adviser, one co-adviser and up to 50 students, is also free and is never billed. Whole-school and organization accounts are paid: we send an invoice by email showing the amount, the billing period, and the due date, along with how to pay. Until a paid school&apos;s payment is verified, its students&apos; submissions and its management tools may be paused; a free club is never paused for payment.</p>
-            <p className="mt-2">We may offer discounts, such as a promotional code or a referral credit for recommending VolunTrack to another school. An offer applies only on the terms stated when it is made, may be limited in number or time, and cannot be combined with another offer on the same invoice or exchanged for cash. The price and any discount on an invoice are fixed once that invoice is sent. Questions about an invoice go to the contact address below.</p>
+            <p className="mt-2">We may offer discounts, such as a promotional code or a referral credit for recommending VolunTrack to another school. An offer applies only on the terms stated when it is made, may be limited in number or time, and cannot be combined with another offer on the same invoice or exchanged for cash. The price and any discount on an invoice are fixed once that invoice is sent. Questions about an invoice go to the contact email address below.</p>
           </Section>
 
           <Section id="refunds" title="Cancellation and Refunds">
-            <p>A school or organization can cancel its paid account at any time by contacting us at the address below. We then refund the full months left in the billing period you paid for, counted from the first day of the month after we receive your request. The month in which you cancel is not refunded, and your account keeps working until the end of that month.</p>
+            <p>A school or organization can cancel its paid account at any time by emailing us at the address below. We then refund the full months left in the billing period you paid for, counted from the first day of the month after we receive your request. The month in which you cancel is not refunded, and your account keeps working until the end of that month.</p>
             <p className="mt-2">The refund is worked out from the amount you actually paid for that period, after any discount, and is sent back the same way you paid, normally within 30 days. Nothing is owed for a period you haven&apos;t paid for yet. Students, volunteers and parents keep their own free accounts and the hours in them whatever a school decides.</p>
           </Section>
 

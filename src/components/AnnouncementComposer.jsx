@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Megaphone } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+import useEscapeKey from '@/hooks/useEscapeKey.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
@@ -43,6 +44,7 @@ export default function AnnouncementComposer({ defaultAudience = 'schools', onCl
     ...Object.fromEntries(GROUPS.map(([key]) => [key, (PRESETS[defaultAudience] || []).includes(key)])),
   }))
   const [confirming, setConfirming] = useState(false)
+  useEscapeKey(onClose)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [sent, setSent] = useState(null)
@@ -104,8 +106,8 @@ export default function AnnouncementComposer({ defaultAudience = 'schools', onCl
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <h3 className="font-semibold mb-1 flex items-center gap-2"><Megaphone className="w-4 h-4 text-brand-400" /> Send an announcement</h3>
+      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="announce-title" onClick={(e) => e.stopPropagation()}>
+        <h3 id="announce-title" className="font-semibold mb-1 flex items-center gap-2"><Megaphone className="w-4 h-4 text-brand-400" /> Send an announcement</h3>
         <p className="text-sm text-earth-400 mb-4">
           Shows as a banner on their dashboard for the time you choose, and is emailed to each person. Not a payment notice — use it for things like planned downtime.
         </p>

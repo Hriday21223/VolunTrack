@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Globe, X } from 'lucide-react'
 import { LANGUAGES, language, setLanguage, tr } from '@/lib/i18n.js'
 import { isNativeApp } from '@/lib/platform.js'
+import useEscapeKey from '@/hooks/useEscapeKey.js'
 
 const SITE = (import.meta.env.VITE_SITE_URL || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
 
@@ -33,6 +34,7 @@ export default function LanguagePicker({ className = '', compact = false }) {
 }
 
 function OtherLanguageHelp({ onClose }) {
+  useEscapeKey(onClose)
   const steps = isNativeApp
     ? [tr('Open VolunTrack in your phone’s web browser (Chrome or Safari) using the button below, and sign in.'),
       tr('Then use the browser’s translate, as shown below.')]
