@@ -87,17 +87,17 @@ icon label stays *VolunTrack*:
 > PRIVATE BY DESIGN
 > • Free for students, volunteers and parents
 > • We never sell your data
-> • In English, Spanish, Vietnamese and Chinese
+> • In 11 languages, including Spanish, Hindi, Arabic and Chinese
 
-**Release notes / What's new** (Play 500 max) — 0.14.0:
+**Release notes / What's new** (Play 500 max) — 0.15.0:
 
-> New in 0.14.0:
-> • Walk-ins: join an event at the door, on your phone or the kiosk
-> • Pick a job on your volunteer badge; see it when you check in
-> • Get your signed hours record by email
-> • Link previews when you share an event or invite
-> • More of the app in Spanish, Vietnamese and Chinese
-> • Fixes: password reset and supervisor emails
+> New in 0.15.0:
+> • 7 new languages: Hindi, Arabic, Portuguese, French, Bengali, Russian and Japanese
+> • Emails come in your language; pick it when you sign up
+> • Show-password button and type-twice check for new passwords
+> • Settings shows only what fits your account
+> • Leaving a family link now needs a code from the parent
+> • Plain-language summary of the Terms for each account type
 
 ## Graphics
 
@@ -170,7 +170,7 @@ as local notifications (`src/lib/nativeReminders.js`) and nothing about them
 leaves the device. The notification permission is asked for only on the
 Reminders page's *Allow* tap.
 
-The app language (`users.language`, `en` | `es`, sent when a signed-in user
+The app language (`users.language`, one of the 11 app languages, sent when a signed-in user
 picks one so the weekly digest and "We miss you" email can be sent in it) is
 an app setting, not one of the store's data types, so it doesn't change any
 answer either. It is still listed on the Privacy page.
