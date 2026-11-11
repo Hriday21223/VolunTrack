@@ -249,7 +249,10 @@ export const EMAIL_HI = {
   "1 volunteer doesn’t have a job yet.": "1 स्वयंसेवक को अभी कोई काम नहीं मिला है।",
   "{n} volunteers don’t have a job yet.": "{n} स्वयंसेवकों को अभी कोई काम नहीं मिला है।",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "लोगों को काम देने के लिए मेरे कार्य में इवेंट खोलें। स्वयंसेवक अपने बैज पर भी एक चुन सकते हैं।",
-  "Open My Tasks": "मेरे कार्य खोलें"
+  "Open My Tasks": "मेरे कार्य खोलें",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} ने VolunTrack पर इस स्वयंसेवा कार्य के लिए साइन अप किया है। चूँकि उनकी उम्र 13 से कम है, आपकी सहमति तक आयोजक साइन-अप नहीं देखेगा।",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "अगर आप सहमत हैं, तो {child} को VolunTrack में डालने के लिए यह PIN दें: {pin}। यह {n} मिनट तक काम करता है।",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "अगर आप सहमत नहीं हैं, तो PIN न बताएँ, और आयोजक को कुछ नहीं भेजा जाएगा।",
 }
 
 export const EMAIL_AR = {
@@ -499,7 +502,10 @@ export const EMAIL_AR = {
   "1 volunteer doesn’t have a job yet.": "متطوع واحد ليس لديه دور بعد.",
   "{n} volunteers don’t have a job yet.": "{n} متطوعين ليس لديهم دور بعد.",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "افتح الفعالية في مهامي لتوزيع الأدوار. ويمكن للمتطوعين أيضًا اختيار دور من شاراتهم.",
-  "Open My Tasks": "افتح مهامي"
+  "Open My Tasks": "افتح مهامي",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "سجّل {name} في هذه المهمة التطوعية على VolunTrack. ولأن عمره أقل من 13 عامًا، لن يرى المنظّم التسجيل حتى توافق.",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "إذا وافقت، فأعطِ {child} رمز PIN هذا ليكتبه في VolunTrack: {pin}. يعمل لمدة {n} دقيقة.",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "إذا لم توافق، فلا تشارك الرمز، ولن يُرسل أي شيء إلى المنظّم.",
 }
 
 export const EMAIL_PT = {
@@ -749,7 +755,10 @@ export const EMAIL_PT = {
   "1 volunteer doesn’t have a job yet.": "1 voluntário ainda não tem função.",
   "{n} volunteers don’t have a job yet.": "{n} voluntários ainda não têm função.",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "Abra o evento em Minhas tarefas para dar funções às pessoas. Os voluntários também podem escolher uma no crachá.",
-  "Open My Tasks": "Abrir Minhas tarefas"
+  "Open My Tasks": "Abrir Minhas tarefas",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} se inscreveu nesta tarefa voluntária no VolunTrack. Como tem menos de 13 anos, o organizador só verá a inscrição depois que você concordar.",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "Se você concordar, dê a {child} este PIN para digitar no VolunTrack: {pin}. Ele funciona por {n} minutos.",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "Se não concordar, não compartilhe o PIN, e nada será enviado ao organizador.",
 }
 
 export const EMAIL_FR = {
@@ -999,7 +1008,10 @@ export const EMAIL_FR = {
   "1 volunteer doesn’t have a job yet.": "1 bénévole n’a pas encore de rôle.",
   "{n} volunteers don’t have a job yet.": "{n} bénévoles n’ont pas encore de rôle.",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "Ouvre l’événement dans Mes missions pour attribuer des rôles. Les bénévoles peuvent aussi en choisir un sur leur badge.",
-  "Open My Tasks": "Ouvrir Mes missions"
+  "Open My Tasks": "Ouvrir Mes missions",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} s’est inscrit à cette mission de bénévolat sur VolunTrack. Comme il a moins de 13 ans, l’organisateur ne verra pas l’inscription tant que vous n’aurez pas donné votre accord.",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "Si vous êtes d’accord, donnez à {child} ce PIN à saisir dans VolunTrack : {pin}. Il est valable {n} minutes.",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "Si vous n’êtes pas d’accord, ne donnez pas le PIN, et rien n’est envoyé à l’organisateur.",
 }
 
 export const EMAIL_BN = {
@@ -1249,7 +1261,10 @@ export const EMAIL_BN = {
   "1 volunteer doesn’t have a job yet.": "১ জন স্বেচ্ছাসেবকের এখনও কোনো দায়িত্ব নেই।",
   "{n} volunteers don’t have a job yet.": "{n} জন স্বেচ্ছাসেবকের এখনও কোনো দায়িত্ব নেই।",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "লোকদের দায়িত্ব দিতে আমার কাজ-এ ইভেন্টটি খুলুন। স্বেচ্ছাসেবকরাও তাদের ব্যাজে একটি বেছে নিতে পারে।",
-  "Open My Tasks": "আমার কাজ খুলুন"
+  "Open My Tasks": "আমার কাজ খুলুন",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} VolunTrack-এ এই স্বেচ্ছাসেবার কাজে সাইন আপ করেছে। তার বয়স ১৩-এর কম, তাই আপনি সম্মতি না দেওয়া পর্যন্ত আয়োজক সাইন-আপটি দেখবেন না।",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "আপনি রাজি থাকলে {child}-কে VolunTrack-এ লেখার জন্য এই PIN দিন: {pin}। এটি {n} মিনিট কাজ করে।",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "রাজি না থাকলে PIN দেবেন না, আর আয়োজকের কাছে কিছুই পাঠানো হবে না।",
 }
 
 export const EMAIL_RU = {
@@ -1499,7 +1514,10 @@ export const EMAIL_RU = {
   "1 volunteer doesn’t have a job yet.": "У 1 волонтёра ещё нет роли.",
   "{n} volunteers don’t have a job yet.": "У волонтёров ({n}) ещё нет роли.",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "Открой мероприятие в Моих заданиях, чтобы распределить роли. Волонтёры также могут выбрать роль на своём бейдже.",
-  "Open My Tasks": "Открыть Мои задания"
+  "Open My Tasks": "Открыть Мои задания",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} записался(-ась) на это волонтёрское задание в VolunTrack. Так как ему (ей) меньше 13 лет, организатор не увидит запись, пока вы не дадите согласие.",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "Если вы согласны, дайте {child} этот PIN, чтобы ввести его в VolunTrack: {pin}. Он действует {n} мин.",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "Если вы не согласны, не сообщайте PIN, и организатору ничего не отправится.",
 }
 
 export const EMAIL_JA = {
@@ -1749,5 +1767,8 @@ export const EMAIL_JA = {
   "1 volunteer doesn’t have a job yet.": "担当が決まっていないボランティアが 1 人います。",
   "{n} volunteers don’t have a job yet.": "担当が決まっていないボランティアが {n} 人います。",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "マイタスク でイベントを開いて担当を割り当てましょう。ボランティアもバッジで選べます。",
-  "Open My Tasks": "マイタスク を開く"
+  "Open My Tasks": "マイタスク を開く",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} さんが VolunTrack でこのボランティア活動に申し込みました。13 歳未満のため、あなたが同意するまで主催者には申し込みが見えません。",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "同意する場合は、この PIN を {child} さんに伝えて VolunTrack に入力してもらってください：{pin}。{n} 分間有効です。",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "同意しない場合は PIN を伝えないでください。主催者には何も送られません。",
 }

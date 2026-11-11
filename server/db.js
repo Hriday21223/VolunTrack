@@ -1554,6 +1554,11 @@ export async function initSchema() {
   // PATCH /admin/:id/approve schedule params.
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id TEXT`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pending_consent_choice TEXT CHECK (pending_consent_choice IN ('yes','no'))`) } catch {}
+  // An under-13's parent OK by PIN instead of the Approve button (#849): the
+  // parent is emailed a 6-digit code the child types in. Hashed with the sign-up id.
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_pin_hash TEXT`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_pin_expires_at TIMESTAMPTZ`) } catch {}
+  try { await query(`ALTER TABLE public_task_signups ADD COLUMN IF NOT EXISTS parent_ok_pin_attempts INTEGER NOT NULL DEFAULT 0`) } catch {}
   // The name a reviewer asks to be shown with, held until their emailed code confirms "yes" (#843).
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pending_name TEXT`) } catch {}
   try { await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS consent_choice TEXT CHECK (consent_choice IN ('yes','no'))`) } catch {}

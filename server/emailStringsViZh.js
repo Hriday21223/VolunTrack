@@ -248,6 +248,9 @@ export const EMAIL_VI = {
   "{n} volunteers don’t have a job yet.": "{n} tình nguyện viên chưa có việc.",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "Mở sự kiện ở Nhiệm vụ của tôi để giao việc. Tình nguyện viên cũng có thể tự chọn trên thẻ của họ.",
   "Open My Tasks": "Mở Nhiệm vụ của tôi",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} đã đăng ký nhiệm vụ tình nguyện này trên VolunTrack. Vì em dưới 13 tuổi, người tổ chức sẽ không thấy đăng ký cho đến khi bạn đồng ý.",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "Nếu bạn đồng ý, hãy đưa {child} mã PIN này để nhập vào VolunTrack: {pin}. Mã dùng được trong {n} phút.",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "Nếu bạn không đồng ý, đừng chia sẻ mã PIN, và không có gì được gửi cho người tổ chức.",
 }
 
 export const EMAIL_ZH = {
@@ -498,4 +501,7 @@ export const EMAIL_ZH = {
   "{n} volunteers don’t have a job yet.": "有 {n} 名志愿者还没有工作。",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "在“我的任务”中打开活动来分配工作。志愿者也可以在志愿者证上自己选择。",
   "Open My Tasks": "打开“我的任务”",
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} 在 VolunTrack 上报名了这个志愿任务。因为孩子未满 13 岁，在你同意之前组织者看不到这个报名。",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "如果你同意，请把这个 PIN 告诉 {child}，让孩子在 VolunTrack 中输入：{pin}。有效期 {n} 分钟。",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "如果你不同意，请不要告诉孩子 PIN，组织者不会收到任何信息。",
 }

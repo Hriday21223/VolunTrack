@@ -15,6 +15,7 @@ import DayOfPanel from '@/components/DayOfPanel.jsx'
 import WeatherChip from '@/components/WeatherChip.jsx'
 import VolunteerBadge from '@/components/VolunteerBadge.jsx'
 import { tr } from '@/lib/i18n.js'
+import { ParentPinEntry } from '@/components/ParentOkDialogs.jsx'
 import { shiftText } from '@/lib/taskShifts.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -95,6 +96,7 @@ function SignupRow({ s, onChanged, canRate }) {
   const attendance = !cancelled && s.attendance_status ? ATTENDANCE_META[s.attendance_status] : null
   const isPast = dayOf(s.date) < todayDay()
   const [showBadge, setShowBadge] = useState(false)
+  const [pinOpen, setPinOpen] = useState(false)
   const { user } = useAuth()
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
 
@@ -124,8 +126,12 @@ function SignupRow({ s, onChanged, canRate }) {
           )}
           {showBadge && <VolunteerBadge taskId={s.id} onClose={() => setShowBadge(false)} />}
           {!cancelled && !isPast && s.signup_status === 'parent_pending' && (
-            <p className="text-xs text-amber-400 mt-2">{tr('The organizer sees your sign-up once a parent approves it. No parent linked yet? Ask them to make a VolunTrack parent account and enter the link code from Settings → Family.')}</p>
+            <>
+              <p className="text-xs text-amber-400 mt-2">{tr('The organizer sees your sign-up once a parent approves it. No parent linked yet? Ask them to make a VolunTrack parent account and enter the link code from Settings → Family.')}</p>
+              <button type="button" className="btn-ghost text-xs mt-1" onClick={() => setPinOpen(true)}>{tr('Use a PIN from my parent')}</button>
+            </>
           )}
+          {pinOpen && <ParentPinEntry taskId={s.id} sent={false} onClose={() => setPinOpen(false)} onDone={() => { setPinOpen(false); onChanged?.(tr('Your parent said yes. Now the organizer will confirm your sign-up.')) }} />}
           {!cancelled && !isPast && s.signup_status === 'parent_declined' && (
             <p className="text-xs text-red-400 mt-2">{tr('Your parent said no to this one. Talk with them, then you can ask again from Opportunities.')}</p>
           )}

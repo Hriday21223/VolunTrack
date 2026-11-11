@@ -340,6 +340,10 @@ const ES = {
   "{n} volunteers don’t have a job yet.": "{n} voluntarios todavía no tienen trabajo.",
   "Open the event on My Tasks to give people jobs. Volunteers can also pick one on their badge.": "Abre el evento en Mis tareas para asignar trabajos. Los voluntarios también pueden elegir uno en su credencial.",
   "Open My Tasks": "Abrir Mis tareas",
+  // Parent OK by PIN (#849)
+  "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.": "{name} se inscribió en esta tarea de voluntariado en VolunTrack. Como tiene menos de 13 años, el organizador no verá la inscripción hasta que des tu permiso.",
+  "If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.": "Si estás de acuerdo, dale a {child} este PIN para escribirlo en VolunTrack: {pin}. Funciona durante {n} minutos.",
+  "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "Si no estás de acuerdo, no compartas el PIN y no se enviará nada al organizador.",
 }
 
 const DICTIONARIES = {

@@ -4054,6 +4054,12 @@ router.post('/public-tasks/:id/signup', limiter, requireDb, requireAuth(), async
       )
       await agreeTo(pid)
       await client.query('COMMIT')
+      // The child picks how their parent says yes (#849): the usual Approve
+      // button, or a PIN emailed to the parent that the child types in.
+      if (req.body?.parentOkMethod === 'pin') {
+        const asked = await sendParentOkPin(pid)
+        return res.json({ ok: true, id: pid, parentPending: true, parentAsked: asked, parentPin: asked !== 'none' })
+      }
       const asked = await requestParentOk(pid)
       return res.json({ ok: true, id: pid, parentPending: true, parentAsked: asked })
     }
@@ -4515,6 +4521,120 @@ router.post('/waiver/:token', limiter, requireDb, async (req, res) => {
   }
 })
 
+// --- Parent OK by PIN (#849) -------------------------------------------------
+// The other way a parent can OK an under-13's sign-up: we email the parent a
+// 6-digit PIN (never the child), and the child types it in. Like the kiosk
+// PINs, it is hashed with the sign-up id, so it is good for that sign-up only;
+// 30 minutes, 5 wrong tries counted atomically, and a new one replaces it.
+const PARENT_PIN_TTL_MIN = 30
+const PARENT_PIN_MAX_TRIES = 5
+const parentPinHash = (signupId, pin) => createHash('sha256').update(`voluntrack-parent-ok:${signupId}:${pin}`).digest('hex')
+
+/** Emails a fresh PIN to the child's parents. 'linked' | 'email' | 'none' (nobody to ask). */
+export async function sendParentOkPin(signupId) {
+  try {
+    const { rows } = await query(
+      `SELECT s.id, s.user_id, t.id AS task_id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
+              c.name AS child_name, c.parent_consent_email, c.language AS child_language
+         FROM public_task_signups s JOIN public_tasks t ON t.id = s.task_id JOIN users c ON c.id = s.user_id
+        WHERE s.id = $1 AND s.status = 'parent_pending'`,
+      [signupId],
+    )
+    const row = rows[0]
+    if (!row) return 'none'
+    const { rows: parents } = await query(
+      `SELECT u.id, u.email, u.language FROM parent_child_links l JOIN users u ON u.id = l.parent_id
+        WHERE l.child_id = $1 AND u.role = 'parent'`,
+      [row.user_id],
+    )
+    const recipients = parents.length > 0
+      ? parents.map((p) => ({ email: p.email, lang: p.language }))
+      : (row.parent_consent_email ? [{ email: row.parent_consent_email, lang: row.child_language }] : [])
+    if (recipients.length === 0) return 'none'
+    const pin = String(randomInt(0, 1000000)).padStart(6, '0')
+    await query(
+      `UPDATE public_task_signups SET parent_ok_pin_hash = $2, parent_ok_pin_attempts = 0,
+              parent_ok_pin_expires_at = now() + make_interval(mins => $3)
+        WHERE id = $1 AND status = 'parent_pending'`,
+      [signupId, parentPinHash(signupId, pin), PARENT_PIN_TTL_MIN],
+    )
+    const child = childFirstName(row.child_name)
+    for (const p of parents) {
+      notify(p.id, {
+        kind: 'parent_ok_request',
+        title: `${child} wants to join ${row.title}`,
+        body: 'We emailed you a PIN to give them, or approve on your Family dashboard.',
+        link: '/parent',
+      })
+    }
+    sendParentOkEmails(recipients, (lang) => et(lang, '{child} wants to volunteer: {title}', { child, title: row.title }), (lang) => ({
+      lang,
+      heading: et(lang, '{child} needs your OK to volunteer', { child }),
+      lines: [
+        et(lang, "{name} signed up for this volunteer task on VolunTrack. Because they are under 13, the organizer won't see the sign-up until you agree.", { name: row.child_name || child }),
+        et(lang, 'If you agree, give {child} this PIN to type in VolunTrack: {pin}. It works for {n} minutes.', { child, pin, n: PARENT_PIN_TTL_MIN }),
+        et(lang, "If you don't agree, don't share the PIN, and nothing is sent to the organizer."),
+      ],
+      task: row,
+      link: parents.length > 0 ? `${frontendBase()}/parent` : null,
+      linkLabel: et(lang, 'Review on your Family dashboard'),
+    }))
+    return parents.length > 0 ? 'linked' : 'email'
+  } catch (error) {
+    console.error('parent OK PIN failed:', error)
+    return 'none'
+  }
+}
+
+// The child asks for a (new) PIN for their own waiting sign-up.
+router.post('/public-tasks/:id/parent-pin/send', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, parent_ok_pin_expires_at > now() + make_interval(mins => $3) AS just_sent
+         FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'parent_pending'`,
+      [req.params.id, req.auth.sub, PARENT_PIN_TTL_MIN - 1],
+    )
+    if (!rows[0]) return res.status(404).json({ error: 'There is no sign-up waiting for a parent here.' })
+    if (rows[0].just_sent) return res.status(429).json({ error: 'We just sent a PIN. Wait a minute before asking for another.' })
+    const asked = await sendParentOkPin(rows[0].id)
+    if (asked === 'none') return res.status(400).json({ error: 'Ask a parent or guardian to link their VolunTrack account first, so we can send them the code.', needsParent: true })
+    return res.json({ ok: true, parentAsked: asked })
+  } catch (error) {
+    console.error('parent PIN send failed:', error)
+    return res.status(500).json({ error: 'Could not send the code.' })
+  }
+})
+
+// The child types the PIN their parent gave them: the same as the parent
+// pressing Approve (decideParentOk).
+router.post('/public-tasks/:id/parent-pin', limiter, requireDb, requireAuth(), async (req, res) => {
+  const pin = String(req.body?.pin || '').replace(/\D/g, '')
+  if (pin.length !== 6) return res.status(400).json({ error: 'Enter the 6-digit PIN from your parent.' })
+  try {
+    // One try is spent before checking, in one statement, so parallel guesses can't beat the limit.
+    const { rows } = await query(
+      `UPDATE public_task_signups SET parent_ok_pin_attempts = parent_ok_pin_attempts + 1
+        WHERE task_id = $1 AND user_id = $2 AND status = 'parent_pending'
+          AND parent_ok_pin_hash IS NOT NULL AND parent_ok_pin_attempts < $3
+        RETURNING id, parent_ok_pin_hash, parent_ok_pin_expires_at > now() AS fresh`,
+      [req.params.id, req.auth.sub, PARENT_PIN_MAX_TRIES],
+    )
+    const row = rows[0]
+    if (!row) return res.status(400).json({ error: 'Too many wrong tries, or no PIN was sent. Ask for a new PIN.' })
+    if (!row.fresh) return res.status(410).json({ error: 'That PIN expired. Ask for a new one.' })
+    const given = Buffer.from(parentPinHash(row.id, pin))
+    const stored = Buffer.from(row.parent_ok_pin_hash)
+    if (given.length !== stored.length || !timingSafeEqual(given, stored)) return res.status(401).json({ error: 'That PIN is not right. Check it with your parent.' })
+    await query('UPDATE public_task_signups SET parent_ok_pin_hash = NULL, parent_ok_pin_expires_at = NULL WHERE id = $1', [row.id])
+    const r = await decideParentOk(row.id, true)
+    if (!r.ok) return res.status(r.code).json({ error: r.error })
+    return res.json({ ok: true, status: r.status })
+  } catch (error) {
+    console.error('parent PIN check failed:', error)
+    return res.status(500).json({ error: 'Could not check the PIN.' })
+  }
+})
+
 export async function requestParentOk(signupId) {
   try {
     const { rows } = await query(
@@ -4654,7 +4774,7 @@ export async function decideParentOk(signupId, approve) {
 
     if (!approve) {
       await client.query(
-        "UPDATE public_task_signups SET status = 'parent_declined', parent_ok_token = NULL, parent_ok_decided_at = now() WHERE id = $1",
+        "UPDATE public_task_signups SET status = 'parent_declined', parent_ok_token = NULL, parent_ok_pin_hash = NULL, parent_ok_decided_at = now() WHERE id = $1",
         [signupId],
       )
       await client.query('COMMIT')
@@ -4675,7 +4795,7 @@ export async function decideParentOk(signupId, approve) {
       // line behind people who were already waiting.
       const status = cap.used + 1 + (Number(signup.guest_count) || 0) <= cap.slots ? 'pending' : 'waitlisted'
       await client.query(
-        `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_decided_at = now(),
+        `UPDATE public_task_signups SET status = $2, signed_up_at = now(), parent_ok_token = NULL, parent_ok_pin_hash = NULL, parent_ok_decided_at = now(),
                 -- Approving an under-13's sign-up is the parent's agreement to its waiver (#595).
                 waiver_parent_at = CASE WHEN waiver_at IS NOT NULL THEN now() ELSE waiver_parent_at END,
                 waiver_parent_name = CASE WHEN waiver_at IS NOT NULL THEN COALESCE(waiver_parent_name, 'Parent or guardian') ELSE waiver_parent_name END
