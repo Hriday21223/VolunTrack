@@ -3515,5 +3515,11 @@ export default {
   "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "Ваш отзыв может появиться на сайте как «VolunTrack Student», никогда с вашим именем. Мы отправим код на почту родителя или опекуна, и он понадобится, чтобы закончить.",
   "Send the code to my parent": "Отправить код родителю",
   "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "Мы отправили 4-значный код на почту родителя или опекуна. Попросите его и введите здесь.",
-  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "Ваше имя никогда не показывается с отзывом. Если хотите, чтобы его показали, родитель или опекун получит код для согласия."
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "Ваше имя никогда не показывается с отзывом. Если хотите, чтобы его показали, родитель или опекун получит код для согласия.",
+  "You volunteered": "Вы волонтёрили",
+  "{h} h {m} min": "{h} ч {m} мин",
+  "{m} min": "{m} мин",
+  "Volunteering for": "Волонтёрите уже",
+  "Checked in at {time}": "Отметка входа в {time}",
+  "Not checked in yet": "Ещё не отметились"
 }

@@ -3515,5 +3515,11 @@ export default {
   "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "আপনার রিভিউ আমাদের ওয়েবসাইটে “VolunTrack Student” নামে দেখা যেতে পারে, কখনো আপনার নামে নয়। আমরা আপনার বাবা-মা বা অভিভাবককে একটি কোড ইমেল করব, শেষ করতে তাঁদের কাছ থেকে সেটি নিতে হবে।",
   "Send the code to my parent": "কোড আমার অভিভাবককে পাঠান",
   "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "আমরা আপনার বাবা-মা বা অভিভাবকের ইমেলে ৪ সংখ্যার কোড পাঠিয়েছি। তাঁদের কাছ থেকে নিয়ে এখানে দিন।",
-  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "আপনার নাম কখনো আপনার রিভিউর সাথে দেখানো হয় না। এটি দেখাতে চাইলে আপনার বাবা-মা বা অভিভাবক সম্মতির জন্য একটি কোড পান।"
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "আপনার নাম কখনো আপনার রিভিউর সাথে দেখানো হয় না। এটি দেখাতে চাইলে আপনার বাবা-মা বা অভিভাবক সম্মতির জন্য একটি কোড পান।",
+  "You volunteered": "আপনি স্বেচ্ছাসেবা করেছেন",
+  "{h} h {m} min": "{h} ঘণ্টা {m} মিনিট",
+  "{m} min": "{m} মিনিট",
+  "Volunteering for": "স্বেচ্ছাসেবা করছেন",
+  "Checked in at {time}": "{time}-এ চেক ইন করেছেন",
+  "Not checked in yet": "এখনও চেক ইন করেননি"
 }
