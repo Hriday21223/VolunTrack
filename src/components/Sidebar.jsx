@@ -1,4 +1,4 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, Sparkles, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin } from 'lucide-react'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, Sparkles, Star, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin } from 'lucide-react'
 import { NavLink, Link } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -20,6 +20,7 @@ const ROLE_ITEMS = {
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',        icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status',      icon: Activity },
   ],
   // An account that runs events, not one that tracks its own volunteering:
@@ -33,6 +34,7 @@ const ROLE_ITEMS = {
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   // A school account never logs its own hours, so the personal Dashboard /
@@ -44,6 +46,7 @@ const ROLE_ITEMS = {
     { to: '/settings',     label: 'Settings',         icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   admin: [
@@ -56,6 +59,7 @@ const ROLE_ITEMS = {
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
   parent: [
@@ -63,6 +67,7 @@ const ROLE_ITEMS = {
     { to: '/settings',     label: 'Settings',   icon: Settings },
     { to: '/help',         label: 'Help',       icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
   ],
   org: [
     { to: '/organization/dashboard', label: 'Dashboard', icon: Home },
@@ -71,6 +76,7 @@ const ROLE_ITEMS = {
     { to: '/settings',     label: 'Settings',         icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
     { to: '/whats-new',    label: "What's new", icon: Sparkles },
+    { to: '/review',       label: 'Review us',  icon: Star },
     { to: '/status',       label: 'System Status',           icon: Activity },
   ],
 }

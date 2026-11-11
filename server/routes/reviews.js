@@ -118,7 +118,7 @@ router.post('/', submitLimiter, requireDb, async (req, res) => {
 router.get('/mine', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, rating, comment, approved, consent_choice, pending_consent_choice, publish_at, expires_at, created_at
+      `SELECT id, rating, comment, name, approved, consent_choice, pending_consent_choice, publish_at, expires_at, created_at
        FROM reviews WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
       [req.auth.sub],
     )
@@ -129,9 +129,10 @@ router.get('/mine', limiter, requireDb, requireAuth(), async (req, res) => {
   }
 })
 
-// Request a one-time PIN to confirm a yes/no featuring decision. Whichever
-// way they answer, the PIN proves the choice actually came from the account
-// owner before it's recorded — see /mine/:id/confirm.
+// Record a featuring decision (#843). "No" is saved at once: it only keeps
+// the review private, so there is nothing to protect. "Yes" can put the
+// reviewer's words (and the name they give here) on the public site, so it
+// needs a one-time PIN emailed to the account owner — see /mine/:id/confirm.
 router.post('/mine/:id/consent', consentLimiter, requireDb, requireAuth(), async (req, res) => {
   const choice = req.body.choice
   if (choice !== 'yes' && choice !== 'no') {
@@ -146,18 +147,29 @@ router.post('/mine/:id/consent', consentLimiter, requireDb, requireAuth(), async
       return res.status(409).json({ error: 'Consent has already been recorded for this review.' })
     }
 
+    if (choice === 'no') {
+      await query(
+        `UPDATE reviews SET consent_choice = 'no', pending_consent_choice = NULL, pending_name = NULL,
+         consent_pin_hash = NULL, consent_pin_expires_at = NULL, consent_pin_attempts = 0 WHERE id = $1`,
+        [req.params.id],
+      )
+      return res.json({ ok: true, recorded: true })
+    }
+
+    // Optional name to show with the review; blank means "VolunTrack <role>".
+    const name = typeof req.body.name === 'string' ? req.body.name.trim().slice(0, 100) : ''
     const pin = generatePin()
     const pinHash = await bcrypt.hash(pin, 10)
     const expiresAt = new Date(Date.now() + PIN_TTL_MS)
 
     await query(
-      `UPDATE reviews SET pending_consent_choice = $1, consent_pin_hash = $2, consent_pin_expires_at = $3, consent_pin_attempts = 0
-       WHERE id = $4`,
-      [choice, pinHash, expiresAt, req.params.id],
+      `UPDATE reviews SET pending_consent_choice = $1, consent_pin_hash = $2, consent_pin_expires_at = $3, consent_pin_attempts = 0,
+       pending_name = $5 WHERE id = $4`,
+      [choice, pinHash, expiresAt, req.params.id, name],
     )
 
     if (req.auth.email) {
-      const choiceLabel = choice === 'yes' ? 'feature your review on the site' : 'not feature your review on the site'
+      const choiceLabel = 'feature your review on the site'
       sendEmail({
         to: req.auth.email,
         subject: 'Confirm your VolunTrack review preference',
@@ -209,7 +221,8 @@ router.post('/mine/:id/confirm', consentLimiter, requireDb, requireAuth(), async
 
     await query(
       `UPDATE reviews SET consent_choice = pending_consent_choice, pending_consent_choice = NULL,
-       consent_pin_hash = NULL, consent_pin_expires_at = NULL, consent_pin_attempts = 0 WHERE id = $1`,
+       name = CASE WHEN pending_consent_choice = 'yes' AND pending_name IS NOT NULL THEN NULLIF(pending_name, '') ELSE name END,
+       pending_name = NULL, consent_pin_hash = NULL, consent_pin_expires_at = NULL, consent_pin_attempts = 0 WHERE id = $1`,
       [req.params.id],
     )
 
