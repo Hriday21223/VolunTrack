@@ -7,6 +7,8 @@
 // agree to), so the version stays at the last change people accepted.
 // 2026-11-10: Terms added that translations are for convenience and English
 // applies, and Privacy lists the new languages; nothing new to agree to either.
+// 2026-11-11: Privacy says an under-13's review keeps no name and needs a
+// parent's code to be featured (more protective; nothing new to agree to).
 export const LEGAL_VERSION = '2026-11-03'
 
 export const LEGAL_CHANGES = [

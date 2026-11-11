@@ -85,7 +85,7 @@ router.post('/', submitLimiter, requireDb, async (req, res) => {
   const comment = req.body.comment ? String(req.body.comment).trim() : null
   // Reviewer opts in to being named; otherwise the site shows "VolunTrack
   // <role>" instead of a real name.
-  const name = req.body.name ? String(req.body.name).trim().slice(0, 100) : null
+  let name = req.body.name ? String(req.body.name).trim().slice(0, 100) : null
 
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return res.status(400).json({ error: 'Rating must be an integer from 1 to 5.' })
@@ -93,11 +93,11 @@ router.post('/', submitLimiter, requireDb, async (req, res) => {
   if (comment && comment.length > 2000) return res.status(400).json({ error: 'Comment is too long.' })
 
   try {
-    // An approved review can be published with the reviewer's name, so
-    // under-13 accounts can't submit one (the app doesn't ask them either).
-    if (req.auth?.sub) {
+    // Under-13s may review (#845), but their name is never kept, and featuring
+    // one needs their parent's code (see /mine/:id/consent).
+    if (req.auth?.sub && name) {
       const { rows } = await query('SELECT under_13 FROM users WHERE id = $1', [req.auth.sub])
-      if (rows[0]?.under_13) return res.status(403).json({ error: 'Reviews are not available for this account.' })
+      if (rows[0]?.under_13) name = null
     }
     const id = uid('rev')
     await query(
@@ -156,8 +156,26 @@ router.post('/mine/:id/consent', consentLimiter, requireDb, requireAuth(), async
       return res.json({ ok: true, recorded: true })
     }
 
+    // A child under 13 can't agree to being featured alone (#845): the code goes
+    // to a linked parent (or the parent email from sign-up), never the child,
+    // and the review never shows the child's name.
+    const { rows: me } = await query('SELECT name, under_13, parent_consent_email FROM users WHERE id = $1', [req.auth.sub])
+    const child = me[0]?.under_13 === true
+    let sendTo = req.auth.email ? [req.auth.email] : []
+    if (child) {
+      const { rows: parents } = await query(
+        `SELECT u.email FROM parent_child_links l JOIN users u ON u.id = l.parent_id WHERE l.child_id = $1 AND u.email IS NOT NULL`,
+        [req.auth.sub],
+      )
+      sendTo = parents.map((p) => p.email)
+      if (sendTo.length === 0 && me[0]?.parent_consent_email) sendTo = [me[0].parent_consent_email]
+      if (sendTo.length === 0) {
+        return res.status(400).json({ error: 'Ask a parent or guardian to link their VolunTrack account first, so we can send them the code.', needsParent: true })
+      }
+    }
+
     // Optional name to show with the review; blank means "VolunTrack <role>".
-    const name = typeof req.body.name === 'string' ? req.body.name.trim().slice(0, 100) : ''
+    const name = child ? '' : (typeof req.body.name === 'string' ? req.body.name.trim().slice(0, 100) : '')
     const pin = generatePin()
     const pinHash = await bcrypt.hash(pin, 10)
     const expiresAt = new Date(Date.now() + PIN_TTL_MS)
@@ -168,16 +186,20 @@ router.post('/mine/:id/consent', consentLimiter, requireDb, requireAuth(), async
       [choice, pinHash, expiresAt, req.params.id, name],
     )
 
-    if (req.auth.email) {
-      const choiceLabel = 'feature your review on the site'
+    const firstName = String(me[0]?.name || '').trim().split(/\s+/)[0] || 'Your child'
+    for (const to of sendTo) {
+      if (child && /@test\.com$/i.test(to)) continue // fixtures are never emailed
       sendEmail({
-        to: req.auth.email,
-        subject: 'Confirm your VolunTrack review preference',
-        html: `<p>Enter this code to confirm you'd like us to <strong>${escapeHtml(choiceLabel)}</strong>:</p><p style="font-size:24px;font-weight:600;letter-spacing:0.1em;">${pin}</p><p>It expires in 10 minutes. If you didn't request this, you can ignore this email.</p>${emailFooterHtml()}`,
+        priority: 'high',
+        to,
+        subject: child ? `${firstName} wants their VolunTrack review featured` : 'Confirm your VolunTrack review preference',
+        html: child
+          ? `<p>${escapeHtml(firstName)} left a review of VolunTrack and would like it considered for the public reviews on our website. It would show as “VolunTrack Student”, never with their name, and only after our team approves it.</p><p>If you agree, give ${escapeHtml(firstName)} this code to enter in the app:</p><p style="font-size:24px;font-weight:600;letter-spacing:0.1em;">${pin}</p><p>It expires in 10 minutes. If you don't agree, don't share the code and nothing is published.</p>${emailFooterHtml()}`
+          : `<p>Enter this code to confirm you'd like us to <strong>feature your review on the site</strong>:</p><p style="font-size:24px;font-weight:600;letter-spacing:0.1em;">${pin}</p><p>It expires in 10 minutes. If you didn't request this, you can ignore this email.</p>${emailFooterHtml()}`,
       }).catch(() => {})
     }
 
-    return res.json({ ok: true })
+    return res.json({ ok: true, sentTo: child ? 'parent' : 'you' })
   } catch (error) {
     console.error('request review consent PIN failed:', error)
     return res.status(500).json({ error: 'Could not send confirmation code.' })

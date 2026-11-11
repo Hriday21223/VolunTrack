@@ -3511,5 +3511,9 @@ export default {
   "Okay": "مقبول",
   "Pretty good": "جيد جدًا",
   "Great": "رائع",
-  "Amazing!": "مذهل!"
+  "Amazing!": "مذهل!",
+  "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "قد تظهر مراجعتك على موقعنا باسم «VolunTrack Student»، ولا تظهر باسمك أبدًا. سنرسل رمزًا إلى بريد أحد والديك أو ولي أمرك، وستحتاج إليه منه للإكمال.",
+  "Send the code to my parent": "أرسل الرمز إلى أحد والديّ",
+  "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "أرسلنا رمزًا من 4 أرقام إلى بريد أحد والديك أو ولي أمرك. اطلبه منه وأدخله هنا.",
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "لا يظهر اسمك أبدًا مع مراجعتك. إذا أردت عرضها، يتلقى أحد والديك أو ولي أمرك رمزًا للموافقة."
 }

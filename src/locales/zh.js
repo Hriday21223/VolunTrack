@@ -3512,5 +3512,9 @@ export default {
   "Okay": "还行",
   "Pretty good": "挺好",
   "Great": "很棒",
-  "Amazing!": "太棒了！"
+  "Amazing!": "太棒了！",
+  "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "你的评价可能会以“VolunTrack Student”的名义出现在我们的网站上，绝不会显示你的名字。我们会把验证码发到你父母或监护人的邮箱，你需要向他们要验证码才能完成。",
+  "Send the code to my parent": "把验证码发给我的父母",
+  "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "我们已向你父母或监护人的邮箱发送了 4 位数验证码。向他们要验证码并在这里输入。",
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "你的名字绝不会和评价一起显示。如果你想展示它，你的父母或监护人会收到一个验证码来同意。"
 }

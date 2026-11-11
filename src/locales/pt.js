@@ -3511,5 +3511,9 @@ export default {
   "Okay": "Ok",
   "Pretty good": "Muito bom",
   "Great": "Ótimo",
-  "Amazing!": "Incrível!"
+  "Amazing!": "Incrível!",
+  "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "Sua avaliação pode aparecer no nosso site como “VolunTrack Student”, nunca com seu nome. Vamos enviar um código para o e-mail do seu responsável, e você vai precisar dele para terminar.",
+  "Send the code to my parent": "Enviar o código para meu responsável",
+  "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "Enviamos um código de 4 dígitos para o e-mail do seu responsável. Peça a ele e digite aqui.",
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "Seu nome nunca aparece com sua avaliação. Se quiser destacá-la, seu responsável recebe um código para autorizar."
 }
