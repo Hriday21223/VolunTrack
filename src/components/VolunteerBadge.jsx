@@ -80,8 +80,7 @@ export default function VolunteerBadge({ taskId, onClose }) {
             </div>
             <div className="mt-5 flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-wider text-white/70">{tr('Now')}</p>
-                <p className="font-mono text-xl font-bold tabular-nums whitespace-nowrap" aria-live="off">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</p>
+                <BadgeTimer badge={b} now={now} />
                 <p className="mt-2 text-xs text-white/80 max-w-[9rem]">{tr('Staff can scan the code to check this badge.')}</p>
               </div>
               <canvas ref={canvas} className="rounded-xl bg-white p-1 shrink-0 w-36 h-36" width={168} height={168} aria-label={tr('Badge check code')} />
@@ -96,5 +95,43 @@ export default function VolunteerBadge({ taskId, onClose }) {
         )}
       </div>
     </div>
+  )
+}
+
+// How long they've been volunteering (#847), counting up every second from
+// check-in, so it stays live like the clock it replaced (a screenshot shows a
+// frozen number). Before check-in it shows the clock; after check-out, the total.
+function BadgeTimer({ badge, now }) {
+  const start = badge.checkedInAt ? new Date(badge.checkedInAt) : null
+  const end = badge.checkedOutAt ? new Date(badge.checkedOutAt) : null
+  if (start && end) {
+    const mins = Math.max(0, Math.round((end - start) / 60000))
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    return (
+      <>
+        <p className="text-xs uppercase tracking-wider text-white/70">{tr('You volunteered')}</p>
+        <p className="text-xl font-bold whitespace-nowrap">{h > 0 ? tr('{h} h {m} min', { h, m }) : tr('{m} min', { m })}</p>
+        <p className="mt-1 font-mono text-xs tabular-nums text-white/80" aria-live="off">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</p>
+      </>
+    )
+  }
+  if (start) {
+    const secs = Math.max(0, Math.floor((now - start) / 1000))
+    const pad = (n) => String(n).padStart(2, '0')
+    const text = `${Math.floor(secs / 3600)}:${pad(Math.floor(secs / 60) % 60)}:${pad(secs % 60)}`
+    return (
+      <>
+        <p className="text-xs uppercase tracking-wider text-white/70">{tr('Volunteering for')}</p>
+        <p className="font-mono text-xl font-bold tabular-nums whitespace-nowrap" aria-live="off">{text}</p>
+        <p className="mt-1 text-xs text-white/80">{tr('Checked in at {time}', { time: start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) })}</p>
+      </>
+    )
+  }
+  return (
+    <>
+      <p className="text-xs uppercase tracking-wider text-white/70">{tr('Not checked in yet')}</p>
+      <p className="font-mono text-xl font-bold tabular-nums whitespace-nowrap" aria-live="off">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</p>
+    </>
   )
 }

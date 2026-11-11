@@ -10,7 +10,7 @@ export const newBadgeCode = () => generateToken().replace(/[^A-Za-z0-9]/g, '').s
 /** { badge } for the volunteer's sign-up to the task, or { status, error }. */
 export async function loadBadge(taskId, userId) {
   const { rows } = await query(
-    `SELECT s.id, s.status, s.badge_code, s.checked_in_at, u.name,
+    `SELECT s.id, s.status, s.badge_code, s.checked_in_at, s.checked_out_at, u.name,
             t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.is_online, t.creator_name, t.status AS task_status,
             t.latitude, t.longitude, t.date < CURRENT_DATE - 1 AS past
        FROM public_task_signups s JOIN users u ON u.id = s.user_id JOIN public_tasks t ON t.id = s.task_id
@@ -41,6 +41,9 @@ export async function loadBadge(taskId, userId) {
       location: online ? null : b.location,
       organizer: b.creator_name,
       checkedIn: Boolean(b.checked_in_at),
+      // For the badge's "volunteering for" timer (#847): the app counts up from these.
+      checkedInAt: b.checked_in_at ? new Date(b.checked_in_at).toISOString() : null,
+      checkedOutAt: b.checked_out_at ? new Date(b.checked_out_at).toISOString() : null,
     },
     // Only for the wallet ticket's "near the place" reminder; never sent to the app.
     place: !online && b.latitude != null && b.longitude != null ? { latitude: Number(b.latitude), longitude: Number(b.longitude) } : null,

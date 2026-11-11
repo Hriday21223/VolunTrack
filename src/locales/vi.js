@@ -3516,5 +3516,11 @@ export default {
   "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "Đánh giá của bạn có thể hiện trên trang web là “VolunTrack Student”, không bao giờ kèm tên bạn. Chúng tôi sẽ gửi mã tới email của cha mẹ hoặc người giám hộ, và bạn cần xin mã đó để hoàn tất.",
   "Send the code to my parent": "Gửi mã cho cha mẹ tôi",
   "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "Chúng tôi đã gửi mã 4 chữ số tới email của cha mẹ hoặc người giám hộ. Hãy xin mã và nhập vào đây.",
-  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "Tên bạn không bao giờ hiện kèm đánh giá. Nếu bạn muốn nó được giới thiệu, cha mẹ hoặc người giám hộ sẽ nhận mã để đồng ý."
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "Tên bạn không bao giờ hiện kèm đánh giá. Nếu bạn muốn nó được giới thiệu, cha mẹ hoặc người giám hộ sẽ nhận mã để đồng ý.",
+  "You volunteered": "Bạn đã tình nguyện",
+  "{h} h {m} min": "{h} giờ {m} phút",
+  "{m} min": "{m} phút",
+  "Volunteering for": "Đang tình nguyện được",
+  "Checked in at {time}": "Đã điểm danh lúc {time}",
+  "Not checked in yet": "Chưa điểm danh"
 }

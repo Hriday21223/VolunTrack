@@ -3515,5 +3515,11 @@ export default {
   "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "レビューはサイトに「VolunTrack Student」として表示されることがあり、名前は表示されません。保護者のメールにコードを送るので、終えるにはそのコードが必要です。",
   "Send the code to my parent": "保護者にコードを送る",
   "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "保護者のメールに 4 桁のコードを送りました。保護者に聞いて、ここに入力してください。",
-  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "名前がレビューと一緒に表示されることはありません。掲載を希望する場合は、保護者に同意用のコードが届きます。"
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "名前がレビューと一緒に表示されることはありません。掲載を希望する場合は、保護者に同意用のコードが届きます。",
+  "You volunteered": "活動時間",
+  "{h} h {m} min": "{h} 時間 {m} 分",
+  "{m} min": "{m} 分",
+  "Volunteering for": "活動中",
+  "Checked in at {time}": "{time} にチェックイン",
+  "Not checked in yet": "まだチェックインしていません"
 }

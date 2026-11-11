@@ -3515,5 +3515,11 @@ export default {
   "Your review may appear on our website as “VolunTrack Student”, never with your name. We’ll email your parent or guardian a code, and you’ll need it from them to finish.": "Ton avis peut apparaître sur notre site sous « VolunTrack Student », jamais avec ton nom. Nous enverrons un code à ton parent ou tuteur par e-mail, et tu en auras besoin pour terminer.",
   "Send the code to my parent": "Envoyer le code à mon parent",
   "We sent a 4-digit code to your parent or guardian’s email. Ask them for it and enter it here.": "Nous avons envoyé un code à 4 chiffres à ton parent ou tuteur. Demande-le-lui et saisis-le ici.",
-  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "Ton nom n’est jamais affiché avec ton avis. Si tu veux qu’il soit mis en avant, ton parent ou tuteur reçoit un code pour dire oui."
+  "Your name is never shown with your review. If you want it featured, your parent or guardian gets a code to say yes.": "Ton nom n’est jamais affiché avec ton avis. Si tu veux qu’il soit mis en avant, ton parent ou tuteur reçoit un code pour dire oui.",
+  "You volunteered": "Tu as fait du bénévolat",
+  "{h} h {m} min": "{h} h {m} min",
+  "{m} min": "{m} min",
+  "Volunteering for": "En bénévolat depuis",
+  "Checked in at {time}": "Arrivé à {time}",
+  "Not checked in yet": "Arrivée pas encore enregistrée"
 }
