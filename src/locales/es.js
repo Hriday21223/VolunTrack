@@ -301,7 +301,7 @@ export default {
   "Approved places:": "Lugares aprobados:",
   "and {n} more": "y {n} más",
   "References": "Referencias",
-  "Ask a supervisor or organizer who saw you volunteer to write a few lines about it, for college and scholarship applications. They get an email link and don\u2019t need an account.": "Pide a un supervisor u organizador que te vio hacer voluntariado que escriba unas líneas sobre ello, para solicitudes a universidades y becas. Recibe un enlace por correo y no necesita cuenta.",
+  "Ask a supervisor or organizer who saw you volunteer to write a few lines about it, for college and scholarship applications. They get an email link and don’t need an account.": "Pide a un supervisor u organizador que te vio hacer voluntariado que escriba unas líneas sobre ello, para solicitudes a universidades y becas. Recibe un enlace por correo y no necesita cuenta.",
   "Could not send the request.": "No se pudo enviar la solicitud.",
   "Request sent to {name}.": "Solicitud enviada a {name}.",
   "Can't write one right now": "No puede escribirla ahora",
@@ -313,14 +313,14 @@ export default {
   "Show less": "Ver menos",
   "Read all": "Leer todo",
   "Show on my public portfolio": "Mostrar en mi portafolio público",
-  "Only for you: the writer didn\u2019t agree to share it publicly.": "Solo para ti: quien la escribió no aceptó compartirla públicamente.",
+  "Only for you: the writer didn’t agree to share it publicly.": "Solo para ti: quien la escribió no aceptó compartirla públicamente.",
   "Ask for a reference": "Pedir una referencia",
   "From your entries:": "De tus registros:",
   "Their name": "Su nombre",
   "Their email": "Su correo",
   "Where you volunteered with them": "Dónde hiciste voluntariado con esa persona",
   "A note to them (optional)": "Una nota para esa persona (opcional)",
-  "e.g. I\u2019m applying for a scholarship in March. Thank you for having me at the food bank!": "p. ej., voy a solicitar una beca en marzo. ¡Gracias por recibirme en el banco de alimentos!",
+  "e.g. I’m applying for a scholarship in March. Thank you for having me at the food bank!": "p. ej., voy a solicitar una beca en marzo. ¡Gracias por recibirme en el banco de alimentos!",
   "Send request": "Enviar solicitud",
   "New reference": "Nueva referencia",
   "Reference request": "Solicitud de referencia",
@@ -911,7 +911,6 @@ export default {
   "Unfollow": "Dejar de seguir",
   "Following": "Siguiendo",
   "Follow": "Seguir",
-  // Invite friends to a task (InviteFriends, Opportunities, Attendance)
   "Invite friends": "Invitar amigos",
   "You can invite up to {n} friends at a time.": "Puedes invitar hasta {n} amigos a la vez.",
   "Invited {n}.": "Invitaste a {n}.",
@@ -922,7 +921,6 @@ export default {
   "We email each friend once with a link to this task, and don't keep their address.": "Enviamos un solo correo a cada amigo con un enlace a esta tarea, y no guardamos su dirección.",
   "Send": "Enviar",
   "A friend invited you to this one.": "Un amigo te invitó a esta.",
-  // Calendar feed (Settings)
   "Calendar feed": "Calendario suscrito",
   "Subscribe once and the tasks you signed up for or posted show up in your phone or computer calendar, and stay up to date.": "Suscríbete una vez y las tareas en las que te inscribiste o que publicaste aparecerán en el calendario de tu teléfono o computadora, siempre actualizadas.",
   "Get my calendar link": "Obtener mi enlace de calendario",
@@ -941,7 +939,6 @@ export default {
   "Resetting…": "Restableciendo…",
   "No": "No",
   "Reset link": "Restablecer enlace",
-  // Rating a task (RateTask.jsx, Opportunities)
   "Stars": "Estrellas",
   "1 star": "1 estrella",
   "{n} stars": "{n} estrellas",
@@ -966,9 +963,7 @@ export default {
   "You're all caught up.": "Estás al día.",
   "Update": "Novedad",
   "unread": "sin leer",
-  // Invite friends to a task (InviteFriends, Opportunities, Attendance)
   "A friend joined": "Se unió un amigo",
-  // Volunteer portfolio (PortfolioCard in Settings, public page /p/:slug)
   "Volunteer portfolio": "Portafolio de voluntariado",
   "A public page with your approved volunteer hours that you can put on a college application. Only people you give the link to can find it, and search engines are asked not to list it.": "Una página pública con tus horas de voluntariado aprobadas que puedes poner en una solicitud universitaria. Solo la encuentra quien tenga el enlace, y pedimos a los buscadores que no la muestren.",
   "Public portfolios are for students 13 and older.": "Los portafolios públicos son para estudiantes de 13 años o más.",
@@ -1148,7 +1143,6 @@ export default {
   "Thank you so much for volunteering at {title}! Your time and effort made a real difference, and we hope to see you again soon.": "¡Muchas gracias por ser voluntario en {title}! Tu tiempo y esfuerzo marcaron una gran diferencia, y esperamos verte pronto otra vez.",
   "App language": "Idioma de la app",
   "Can I get VolunTrack emails in my language?": "¿Puedo recibir los correos de VolunTrack en mi idioma?",
-  "Yes. Pick Español, Tiếng Việt or 中文 from the language menu while you’re signed in and we save it with your account, so the weekly summary for parents, the “We miss you” email and other emails arrive in that language. Task names, activities and anything else people typed stay as they were written.": "Sí. Elige Español, Tiếng Việt o 中文 en el menú de idioma mientras tienes la sesión iniciada y lo guardamos con tu cuenta, así el resumen semanal para padres, el correo «Te extrañamos» y los demás correos llegan en ese idioma. Los nombres de las tareas, las actividades y todo lo que otras personas escribieron se quedan como se escribieron.",
   "Select all pending ({n})": "Seleccionar todas las pendientes ({n})",
   "Approve selected ({n})": "Aprobar seleccionadas ({n})",
   "Reject selected ({n})": "Rechazar seleccionadas ({n})",
@@ -1296,7 +1290,6 @@ export default {
   "Could not copy the photo.": "No se pudo copiar la foto.",
   "Can I add a photo to a volunteer task?": "¿Puedo añadir una foto a una tarea de voluntariado?",
   "Yes. On My Tasks, tap Add a photo when you post a task, or open Edit on one you already posted, and pick a JPEG, PNG or WebP picture. It shows at the top of the task on Opportunities for everyone who can see the task. Your device shrinks it and removes hidden details such as where it was taken before it is uploaded. Use Change photo or Remove photo to replace or delete it; Post again copies the photo to the new task. Please don't upload photos where volunteers can be identified without their permission — especially children. Anyone can report a task with an inappropriate photo, and we can remove the photo.": "Sí. En Mis tareas, toca Añadir una foto al publicar una tarea, o abre Editar en una que ya publicaste, y elige una imagen JPEG, PNG o WebP. Se muestra arriba de la tarea en Oportunidades para todos los que pueden ver la tarea. Tu dispositivo la reduce y le quita datos ocultos, como dónde se tomó, antes de subirla. Usa Cambiar foto o Quitar foto para reemplazarla o borrarla; Publicar de nuevo copia la foto a la nueva tarea. Por favor, no subas fotos en las que se pueda reconocer a voluntarios sin su permiso, sobre todo a niños. Cualquiera puede denunciar una tarea con una foto inapropiada, y podemos quitar la foto.",
-  // Group sign-ups (#439)
   "+1 guest": "+1 invitado",
   "+{n} guests": "+{n} invitados",
   "Volunteers can bring up to 3 guests": "Los voluntarios pueden traer hasta 3 invitados",
@@ -1383,7 +1376,6 @@ export default {
   "Monthly progress email": "Correo mensual de progreso",
   "On. After a month you logged hours, we'll email you on the 1st with what you logged and how close you are to your goal.": "Activado. Después de un mes en que registres horas, te escribiremos el día 1 con lo que registraste y cuánto te falta para tu meta.",
   "Off. We won't email you a monthly summary of your hours.": "Desactivado. No te enviaremos un resumen mensual de tus horas.",
-  // Join a school by link (#491)
   "Join {school} on VolunTrack": "Únete a {school} en VolunTrack",
   "Join your school on VolunTrack": "Únete a tu escuela en VolunTrack",
   "Track your volunteer hours free and send them to your school for approval.": "Registra tus horas de voluntariado gratis y envíalas a tu escuela para su aprobación.",
@@ -1407,7 +1399,6 @@ export default {
   "Your hours will go to {school} for approval.": "Tus horas irán a {school} para su aprobación.",
   "Joining…": "Uniéndote…",
   "Join {school}": "Unirme a {school}",
-  // Invite a friend (#493)
   "{name} invited you to VolunTrack": "{name} te invitó a VolunTrack",
   "You're invited to VolunTrack": "Te invitaron a VolunTrack",
   "Track your volunteer hours free: log hours in a minute, see your goal, and download a report when it is due.": "Registra tus horas de voluntariado gratis: anota horas en un minuto, mira tu meta y descarga un informe cuando haya que entregarlo.",
@@ -1428,14 +1419,12 @@ export default {
   "A friend joined VolunTrack with your invite link.": "Un amigo se unió a VolunTrack con tu enlace de invitación.",
   "Team Builder": "Formador de equipos",
   "Five friends joined VolunTrack with your invite link.": "Cinco amigos se unieron a VolunTrack con tu enlace de invitación.",
-  // Weekly streak (#497)
   "1 week in a row": "1 semana seguida",
   "Best streak: {n} weeks": "Mejor racha: {n} semanas",
   "Log this week to start a streak": "Registra horas esta semana para empezar una racha",
   "Log hours this week to keep it going": "Registra horas esta semana para mantenerla",
   "Best: {n} weeks": "Mejor: {n} semanas",
   "Your best yet": "Tu mejor racha",
-  // Opportunities map (#496)
   "You are here": "Estás aquí",
   "{n} tasks here": "{n} tareas aquí",
   "View details": "Ver detalles",
@@ -1448,7 +1437,6 @@ export default {
   "List": "Lista",
   "Map": "Mapa",
   "Loading map…": "Cargando el mapa…",
-  // Goal reached (#607)
   "Goal reached": "Meta alcanzada",
   "You met your requirement!": "¡Cumpliste con tus horas!",
   "You reached your goal!": "¡Alcanzaste tu meta!",
@@ -1458,7 +1446,6 @@ export default {
   "your goal": "tu meta",
   "We’ve let your linked parents know.": "Se lo hemos contado a tus padres vinculados.",
   "Rate an event": "Calificar un evento",
-  // Skills (#605)
   "Leadership": "Liderazgo",
   "Teamwork": "Trabajo en equipo",
   "Communication": "Comunicación",
@@ -1483,7 +1470,6 @@ export default {
   "Hours spent using each skill. Handy for a résumé.": "Horas usando cada habilidad. Útil para un currículum.",
   "Copy list": "Copiar lista",
   "Top skills": "Principales habilidades",
-  // Impact report date ranges (#610)
   "Last month": "El mes pasado",
   "Last quarter": "El trimestre pasado",
   "This calendar year": "Este año",
@@ -1493,13 +1479,11 @@ export default {
   "The start date must be on or before the end date.": "La fecha de inicio debe ser igual o anterior a la de fin.",
   "Download CSV": "Descargar CSV",
   "{from} to {to}, compared with the same dates last year.": "Del {from} al {to}, comparado con las mismas fechas del año pasado.",
-  // Partner list (#611)
   "Partners ({n})": "Organizaciones aliadas ({n})",
   "Places {org} works with. Hours you serve at them count toward your goals.": "Lugares con los que trabaja {org}. Las horas que sirvas ahí cuentan para tus metas.",
   "Places your school works with. Hours you serve at them count toward your goals.": "Lugares con los que trabaja tu escuela. Las horas que sirvas ahí cuentan para tus metas.",
   "Website": "Sitio web",
   "District partner": "Aliado del distrito",
-  // Parent dashboard (#604)
   "Family dashboard": "Panel familiar",
   "Your children's volunteer hours": "Las horas de voluntariado de tus hijos",
   "Could not load your children's hours": "No se pudieron cargar las horas de tus hijos",
@@ -1522,7 +1506,6 @@ export default {
   "Your child is under 13, so these sign-ups reach the organizer only after you approve them.": "Tu hijo o hija tiene menos de 13 años, así que estas inscripciones llegan al organizador solo después de que las apruebes.",
   "The organizer's waiver: approving also agrees to it for your child": "La exención del organizador: al aprobar, también la aceptas en nombre de tu hijo o hija",
   "Decline": "Rechazar",
-  // Parent dashboard (#604)
   "Every Monday, a summary of what your children logged last week.": "Cada lunes, un resumen de lo que tus hijos registraron la semana anterior.",
   "Turned off. You can switch it back on at any time.": "Desactivado. Puedes volver a activarlo cuando quieras.",
   "Email is not configured on this server right now.": "El correo no está configurado en este servidor ahora mismo.",
@@ -1532,7 +1515,6 @@ export default {
   "{n} entries were rejected — your child can edit and resubmit them.": "Se rechazaron {n} registros: tu hijo o hija puede editarlos y enviarlos de nuevo.",
   "Show all {n} sessions": "Mostrar los {n} registros",
   "Show all {n} upcoming tasks": "Mostrar las {n} próximas tareas",
-  // Settings (#604)
   "School linked!": "¡Escuela vinculada!",
   "You left your school.": "Saliste de tu escuela.",
   "Transfer request cancelled.": "Se canceló la solicitud de cambio.",
@@ -1671,7 +1653,6 @@ export default {
   "your email address": "tu correo electrónico",
   "Deleting…": "Eliminando…",
   "Yes, delete everything": "Sí, eliminar todo",
-  // Passkeys (#604)
   "Passkey added. You can use it the next time you sign in.": "Llave de acceso agregada. Puedes usarla la próxima vez que inicies sesión.",
   "Passkey removed.": "Llave de acceso eliminada.",
   "Passkeys": "Llaves de acceso",
@@ -1682,7 +1663,6 @@ export default {
   "Add a passkey": "Agregar una llave de acceso",
   "If you lose this device, sign in with one of these instead of your passkey. Each works once, and this is the only time they're shown.": "Si pierdes este dispositivo, inicia sesión con uno de estos en vez de tu llave de acceso. Cada uno sirve una vez, y esta es la única vez que se muestran.",
   "I've saved them": "Ya los guardé",
-  // School and organization screens (#604)
   "Free club plan": "Plan gratuito para clubes",
   "Your club is full, so new students can’t join.": "Tu club está lleno, así que no pueden unirse más estudiantes.",
   "You’re close to the limit.": "Estás cerca del límite.",
@@ -2145,7 +2125,6 @@ export default {
   "Email it every month": "Enviarlo por correo cada mes",
   "On the 1st, each person here gets last month’s numbers and the school year so far, with a link to the full report. Up to 5 people; each can unsubscribe.": "El día 1, cada persona de aquí recibe las cifras del mes anterior y del año escolar hasta la fecha, con un enlace al informe completo. Hasta 5 personas; cada una puede darse de baja.",
   "To change it, go to": "Para cambiarlo, ve a",
-  // School and organization labels (#604)
   "See everyone linked to your school, and invite students by email.": "Ve a todos los vinculados a tu escuela e invita a estudiantes por correo.",
   "Review the PDF proof documents students upload and approve or reject each one — and export every student's hours for a date range.": "Revisa los PDF de comprobante que suben los estudiantes y aprueba o rechaza cada uno, y exporta las horas de todos para un rango de fechas.",
   "Send a message to every student linked to your school at once.": "Envía un mensaje a todos los estudiantes vinculados a tu escuela a la vez.",
@@ -2207,7 +2186,6 @@ export default {
   "Account name": "Titular de la cuenta",
   "Account number": "Número de cuenta",
   "Routing number": "Número de ruta",
-  // Requirement sources and sidebar notes (#604)
   "Set by your school": "Definido por tu escuela",
   "Your default": "Tu valor predeterminado",
   "Not set — these schools use your defaults": "Sin definir: estas escuelas usan tus valores predeterminados",
@@ -2219,7 +2197,6 @@ export default {
   "VolunTrack defaults": "Valores de VolunTrack",
   "Your students' uploads and hour records are stored on our servers, visible only to your school's admins and co-admins.": "Los documentos y las horas de tus estudiantes se guardan en nuestros servidores; solo los ven los administradores y coadministradores de tu escuela.",
   "Your organization's schools, invites and billing records are stored on our servers.": "Las escuelas, invitaciones y facturas de tu organización se guardan en nuestros servidores.",
-  // Help page (#604)
   "Quick Start": "Inicio rápido",
   "Get up and running in a couple of minutes. Follow these steps and you'll be tracking hours in no time.": "Empieza en un par de minutos. Sigue estos pasos y estarás registrando horas enseguida.",
   "1. Create your account": "1. Crea tu cuenta",
@@ -2341,7 +2318,6 @@ export default {
   "volunteer portfolio": "portafolio de voluntariado",
   ": a public page of approved hours to share with a link, for example on a college application.": ": una página pública con sus horas aprobadas para compartir con un enlace, por ejemplo en una solicitud universitaria.",
   "Calendar Feed, Language and Display": "Calendario, idioma y pantalla",
-  "In Settings you can turn on a calendar feed so your tasks show up in Apple or Google Calendar, switch the app to Spanish, Vietnamese or Chinese (emails follow your choice), and make text bigger or turn on high contrast. Text size and contrast are saved on that device only.": "En Configuración puedes activar un calendario para que tus tareas aparezcan en Apple o Google Calendar, cambiar la app a español, vietnamita o chino (los correos siguen tu elección) y agrandar el texto o activar el alto contraste. El tamaño del texto y el contraste se guardan solo en ese dispositivo.",
   "Profile & Settings": "Perfil y configuración",
   "Your Profile page shows your account info, total hours, and earned badges. In Settings you can change your password, manage your school link, set goals, enable 2FA or add a passkey, generate a sync PIN, and manage reminders.": "Tu página de Perfil muestra los datos de tu cuenta, tus horas totales y las insignias que ganaste. En Configuración puedes cambiar tu contraseña, gestionar tu vínculo con la escuela, poner metas, activar la verificación en dos pasos o agregar una llave de acceso, generar un PIN de sincronización y gestionar recordatorios.",
   "Parent Handbook": "Guía para padres",
@@ -2372,7 +2348,6 @@ export default {
   "keeps it from the organizer, and your child can ask again later. You also get a notification and an email for each one. Until you answer, their card shows the task as": "la oculta al organizador, y tu hijo o hija puede volver a pedirlo más tarde. También recibes una notificación y un correo por cada una. Hasta que respondas, su tarjeta muestra la tarea como",
   "If the dashboard can't load, that's almost always a temporary connection issue — use \"Try again\" rather than assuming something is wrong with the link.": "Si el panel no carga, casi siempre es un problema pasajero de conexión: usa \"Intentar de nuevo\" en vez de pensar que algo falla con el vínculo.",
   "Weekly Summary and Notifications": "Resumen semanal y notificaciones",
-  "Each week we email you a short summary of your children's volunteering. It comes in the language you use in the app (English, Spanish, Vietnamese or Chinese), and you can stop it from the link at the bottom of the email. The bell at the top of the app lists updates for you, such as a task waiting for your OK.": "Cada semana te enviamos por correo un breve resumen del voluntariado de tus hijos. Llega en el idioma que usas en la app (inglés, español, vietnamita o chino), y puedes darte de baja con el enlace al final del correo. La campana de arriba muestra novedades para ti, como una tarea que espera tu aprobación.",
   "What you can't do": "Lo que no puedes hacer",
   "Parent accounts can't edit or delete logs, message the school, or see entries from before linking. If something needs to change, ask your child or their school to make the change.": "Las cuentas de padres no pueden editar ni eliminar registros, escribir a la escuela ni ver registros anteriores al vínculo. Si hay que cambiar algo, pídeselo a tu hijo o hija o a su escuela.",
   "Unlinking": "Desvincular",
@@ -2601,7 +2576,6 @@ export default {
   "Handbooks": "Guías",
   "Help & Handbooks": "Ayuda y guías",
   "Guides, FAQs, and handbooks for every role": "Guías, preguntas frecuentes y manuales para cada rol",
-  // Help FAQ (#604)
   "Is my data private?": "¿Mis datos son privados?",
   "Yes. Your hours are stored in a secure database, protected by your password and, if you turn them on, two-factor authentication or a passkey. They're visible only to you, the school you join, and parents you invite. Signature drawings stay on your device — the server only records that an entry was signed. We never sell your data or show ads.": "Sí. Tus horas se guardan en una base de datos segura, protegida por tu contraseña y, si los activas, por la verificación en dos pasos o una llave de acceso. Solo las ven tú, la escuela a la que te unas y los padres que invites. Los dibujos de las firmas se quedan en tu dispositivo: el servidor solo registra que un registro se firmó. Nunca vendemos tus datos ni mostramos anuncios.",
   "Do I need an account?": "¿Necesito una cuenta?",
@@ -2712,9 +2686,7 @@ export default {
   "Go to Settings and scroll to Goals. Set a target (e.g. \"50 hours by June\") to track your progress with a visual ring on the dashboard.": "Ve a Configuración y baja hasta Metas. Ponte un objetivo (p. ej., \"50 horas para junio\") y sigue tu progreso con un círculo en el panel.",
   "Return to Home to see your total hours, goal progress, weekly chart, recent activity, and earned badges — all in one place.": "Vuelve a Inicio para ver tus horas totales, el progreso de tu meta, la gráfica semanal, la actividad reciente y las insignias que ganaste, todo en un solo lugar.",
   "Set up VolunTrack and log your first verified volunteer hours in a few minutes.": "Configura VolunTrack y registra tus primeras horas de voluntariado verificadas en unos minutos.",
-  // Help tabs (#604)
   "FAQ": "Preguntas frecuentes",
-  // Push notifications (#603)
   "Hours and reports": "Horas e informes",
   "Hours approved or sent back, report decisions, reaching your goal, references.": "Horas aprobadas o devueltas, decisiones sobre informes, alcanzar tu meta, referencias.",
   "Volunteer tasks": "Tareas de voluntariado",
@@ -2736,11 +2708,9 @@ export default {
   "Could not turn on notifications.": "No se pudieron activar las notificaciones.",
   "Notifications are blocked. Allow them in your browser settings, then try again.": "Las notificaciones están bloqueadas. Permítelas en los ajustes del navegador y vuelve a intentarlo.",
   "This browser does not support push notifications.": "Este navegador no admite notificaciones.",
-  // Supervisor texts (#609)
   "Supervisor mobile (optional)": "Móvil del supervisor (opcional)",
   "(555) 123-4567": "(555) 123-4567",
   "We also text them the link. Good for supervisors who don’t check email. The number is deleted after 30 days.": "También le enviamos el enlace por mensaje de texto. Útil para supervisores que no revisan el correo. El número se borra a los 30 días.",
-  // Roster sync (#608)
   "Could not connect Google Classroom.": "No se pudo conectar Google Classroom.",
   "Import from Google Classroom or Clever": "Importar desde Google Classroom o Clever",
   "Pick your classes and every student gets an invite, like Invite a whole class. Nobody is linked until they accept. Imported classes are checked again every night for new students.": "Elige tus clases y cada estudiante recibe una invitación, como en Invitar a toda una clase. Nadie queda vinculado hasta que acepta. Las clases importadas se revisan cada noche por si hay estudiantes nuevos.",
@@ -2755,7 +2725,6 @@ export default {
   "No longer in this class: {names}. They are still linked to your school; remove them from the student list if they left.": "Ya no están en esta clase: {names}. Siguen vinculados a tu escuela; quítalos de la lista de estudiantes si se fueron.",
   "Imported classes": "Clases importadas",
   "Sync now": "Sincronizar ahora",
-  // API keys (#622)
   "Students (name, email, grade)": "Estudiantes (nombre, correo, grado)",
   "Hours logged": "Horas registradas",
   "Progress toward the requirement": "Progreso hacia el requisito",
@@ -2774,7 +2743,6 @@ export default {
   "Test key (returns sample data only)": "Clave de prueba (solo devuelve datos de ejemplo)",
   "Creating…": "Creando…",
   "Create key": "Crear clave",
-  // Webhooks (#622)
   "Webhooks": "Webhooks",
   "VolunTrack calls your own https address when something happens, so your systems don’t have to keep asking. Each call is signed so you can check it came from us.": "VolunTrack llama a tu propia dirección https cuando pasa algo, para que tus sistemas no tengan que preguntar todo el tiempo. Cada llamada va firmada para que compruebes que viene de nosotros.",
   "Copy the signing secret now. It won’t be shown again.": "Copia el secreto de firma ahora. No se volverá a mostrar.",
@@ -2793,7 +2761,6 @@ export default {
   "Delete the webhook to {url}?": "¿Eliminar el webhook a {url}?",
   "Skip to content": "Ir al contenido",
   "All rights reserved.": "Todos los derechos reservados.",
-  // New features (#635–#649)
   "Weekly adviser email": "Correo semanal para asesores",
   "On. Every Monday we email you what needs your review, who is behind on hours and what students logged that week.": "Activado. Cada lunes te enviamos lo que necesita tu revisión, quién va atrasado en horas y lo que registraron los estudiantes esa semana.",
   "Off. We won't email you a weekly summary.": "Desactivado. No te enviaremos un resumen semanal.",
@@ -2877,9 +2844,8 @@ export default {
   "Tick the times that work for you. \"When I'm free\" then shows only events that start then. Only you see this.": "Marca los horarios que te funcionan. \"Cuando estoy libre\" mostrará solo los eventos que empiezan en esos horarios. Solo tú lo ves.",
   "Morning is before noon, afternoon noon to 5 PM, evening after 5 PM.": "La mañana es antes del mediodía, la tarde del mediodía a las 5 PM y la noche después de las 5 PM.",
   "Could not save when you are free.": "No se pudo guardar cuándo estás libre.",
-  "Saving\u2026": "Guardando…",
   "Total so far: {n} hours": "Total hasta ahora: {n} horas",
-  "Making\u2026": "Creando…",
+  "Making…": "Creando…",
   "Ask them to confirm hours": "Pedirles que confirmen horas",
   "Emailed to {email}.": "Enviado a {email}.",
   "Copy this link to them:": "Envíales este enlace:",
@@ -2900,7 +2866,7 @@ export default {
   "Leaving? Check out": "¿Te vas? Registra tu salida",
   "Checked in at {time}. Type the check-out PIN the organizer gives you.": "Llegada registrada a las {time}. Escribe el PIN de salida que te dé el organizador.",
   "Check-out PIN": "PIN de salida",
-  "Checking out\u2026": "Registrando salida…",
+  "Checking out…": "Registrando salida…",
   "Check out": "Registrar salida",
   "Only their clubs": "Solo sus clubes",
   "They see only students in the clubs they advise: student list, hours to check, progress and reports.": "Solo ven a los estudiantes de los clubes que asesoran: lista de estudiantes, horas por revisar, progreso e informes.",
@@ -2975,10 +2941,9 @@ export default {
   "Signed up for {n} dates.": "Inscrito en {n} fechas.",
   "On the waitlist for {n}.": "En lista de espera para {n}.",
   "Couldn't sign up for: {list}": "No se pudo inscribir en: {list}",
-  "Signing up\u2026": "Inscribiendo…",
   "Sign up for all {n} dates": "Inscribirse en las {n} fechas",
   "Hours by partner": "Horas por socio",
-  "{from} to {to} \u00b7 {hours} hours from your students \u00b7 counts only, no names": "{from} a {to} · {hours} horas de tus estudiantes · solo totales, sin nombres",
+  "{from} to {to} · {hours} hours from your students · counts only, no names": "{from} a {to} · {hours} horas de tus estudiantes · solo totales, sin nombres",
   "Partner": "Socio",
   "Event check-in notices": "Avisos de llegada a eventos",
   "A notification when your child checks in or out of a volunteer event, with their hours.": "Un aviso cuando tu hijo o hija registra su llegada o salida de un evento de voluntariado, con sus horas.",
@@ -3087,9 +3052,7 @@ export default {
   "Open in browser": "Abrir en el navegador",
   "Got it": "Entendido",
   "My language isn’t listed. Can I still use VolunTrack?": "Mi idioma no aparece. ¿Puedo usar VolunTrack?",
-  "Yes. Pick Other language… in the language menu: it shows how to turn on your browser’s own translate (Chrome, Edge or Safari), which works for 100+ languages, like Tagalog, Arabic, Korean, Russian, French and Haitian Creole. It’s done by your browser and may not be perfect. In the phone app, open VolunTrack in your phone’s browser to translate it.": "Sí. Elige Otro idioma… en el menú de idioma: muestra cómo activar el traductor de tu navegador (Chrome, Edge o Safari), que funciona en más de 100 idiomas, como tagalo, árabe, coreano, ruso, francés y criollo haitiano. Lo hace tu navegador y puede no ser perfecto. En la app del teléfono, abre VolunTrack en el navegador del teléfono para traducirlo.",
   "Which languages does VolunTrack support?": "¿En qué idiomas está VolunTrack?",
-  "English, Spanish (Español), Vietnamese (Tiếng Việt) and Simplified Chinese (中文). Pick one from the language menu on the sign-in page, in the side menu, or in Settings. Every screen is translated, and emails to students and parents and error messages come in your language too. Emails to supervisors, principals and admins stay in English. Names, activities and anything people typed stay as they were written.": "Inglés, español, vietnamita (Tiếng Việt) y chino simplificado (中文). Elige uno en el menú de idioma de la página de inicio de sesión, en el menú lateral o en Configuración. Todas las pantallas están traducidas, y los correos para estudiantes y padres y los mensajes de error también llegan en tu idioma. Los correos para supervisores, directores y administradores siguen en inglés. Los nombres, las actividades y todo lo que la gente escribe se quedan como se escribieron.",
   "+{n} more achievements": "+{n} logros más",
   "Your plan on the Dashboard: how many hours a week you need to reach your goal on time, with events that fit.": "Tu plan en el Panel: cuántas horas por semana necesitas para llegar a tu meta a tiempo, con eventos que encajan.",
   "A family calendar link with your children's events, for your phone's calendar.": "Un enlace de calendario familiar con los eventos de tus hijos, para el calendario de tu teléfono.",
@@ -3512,10 +3475,16 @@ export default {
   "Works once, for {n} more minutes. They enter it in Settings → Family.": "Funciona una vez, durante {n} minutos más. Lo escriben en Configuración → Familia.",
   "Make a code": "Crear un código",
   "Make a new code": "Crear un código nuevo",
-  "Making…": "Creando…",
   "Could not make a code.": "No se pudo crear el código.",
   "Ask {name} for a one-time code from their Family dashboard, then type it here.": "Pide a {name} un código de un solo uso de su panel familiar y escríbelo aquí.",
   "Could not remove the parent.": "No se pudo quitar al padre o madre.",
   "A parent can unlink at any time from the Family dashboard. A student removes a parent in Settings → Family with a one-time code that parent makes on their Family dashboard. Unlinking stops any further sharing immediately.": "Un padre o madre puede desvincularse en cualquier momento desde el panel familiar. Un estudiante quita a un padre o madre en Configuración → Familia con un código de un solo uso que ese padre o madre crea en su panel familiar. Al desvincular, se deja de compartir de inmediato.",
   "the language you pick in the app, such as English, Spanish, Vietnamese, Chinese, Hindi, Arabic, Portuguese, French, Bengali, Russian or Japanese. If you’re signed in, we save it with your account so the emails we send you, such as sign-in codes, the weekly summary for parents and the “We miss you” email, come in that language. It’s replaced when you pick another, and deleted with your account.": "el idioma que eliges en la app, como inglés, español, vietnamita, chino, hindi, árabe, portugués, francés, bengalí, ruso o japonés. Si iniciaste sesión, lo guardamos con tu cuenta para que los correos que te enviamos, como los códigos de inicio de sesión, el resumen semanal para padres y el correo “Te extrañamos”, lleguen en ese idioma. Se reemplaza cuando eliges otro y se elimina con tu cuenta.",
+  "Yes. Pick Other language… in the language menu: it shows how to turn on your browser’s own translate (Chrome, Edge or Safari), which works for 100+ languages, like Tagalog, Korean, German, Urdu and Haitian Creole. It’s done by your browser and may not be perfect. In the phone app, open VolunTrack in your phone’s browser to translate it.": "Sí. Elige Otro idioma… en el menú de idiomas: te muestra cómo activar la traducción de tu navegador (Chrome, Edge o Safari), que funciona en más de 100 idiomas, como tagalo, coreano, alemán, urdu y criollo haitiano. La hace tu navegador y puede no ser perfecta. En la app del teléfono, abre VolunTrack en el navegador del teléfono para traducirlo.",
+  "English, Spanish (Español), Vietnamese (Tiếng Việt), Simplified Chinese (中文), Hindi (हिन्दी), Arabic (العربية), Portuguese (Português), French (Français), Bengali (বাংলা), Russian (Русский) and Japanese (日本語). Pick one from the language menu on the sign-in page, in the side menu, or in Settings. Every screen is translated, and emails to students and parents and error messages come in your language too. Emails to supervisors, principals and admins stay in English. Names, activities and anything people typed stay as they were written.": "Inglés, español, vietnamita (Tiếng Việt), chino simplificado (中文), hindi (हिन्दी), árabe (العربية), portugués (Português), francés (Français), bengalí (বাংলা), ruso (Русский) y japonés (日本語). Elige uno en el menú de idiomas de la página de inicio de sesión, en el menú lateral o en Configuración. Todas las pantallas están traducidas, y los correos a estudiantes y padres y los mensajes de error también llegan en tu idioma. Los correos a supervisores, directores y administradores siguen en inglés. Los nombres, actividades y todo lo que la gente escribió se quedan como se escribieron.",
+  "Yes. Pick your language from the language menu while you’re signed in and we save it with your account, so the weekly summary for parents, the “We miss you” email and other emails arrive in that language. Task names, activities and anything else people typed stay as they were written.": "Sí. Elige tu idioma en el menú de idiomas con la sesión iniciada y lo guardamos con tu cuenta, para que el resumen semanal para padres, el correo “Te extrañamos” y los demás correos lleguen en ese idioma. Los nombres de tareas, actividades y todo lo que la gente escribió se quedan como se escribieron.",
+  "In Settings you can turn on a calendar feed so your tasks show up in Apple or Google Calendar, switch the app to another language (emails follow your choice), and make text bigger or turn on high contrast. Text size and contrast are saved on that device only.": "En Configuración puedes activar un calendario suscrito para que tus tareas aparezcan en Apple o Google Calendar, cambiar la app a otro idioma (los correos siguen tu elección) y agrandar el texto o activar el alto contraste. El tamaño del texto y el contraste se guardan solo en ese dispositivo.",
+  "Each week we email you a short summary of your children's volunteering. It comes in the language you use in the app, and you can stop it from the link at the bottom of the email. The bell at the top of the app lists updates for you, such as a task waiting for your OK.": "Cada semana te enviamos un breve resumen del voluntariado de tus hijos. Llega en el idioma que usas en la app, y puedes detenerlo desde el enlace al final del correo. La campana de arriba de la app muestra tus novedades, como una tarea que espera tu aprobación.",
+  "Preferred language": "Idioma preferido",
+  "VolunTrack and your emails will use this language. You can change it later in Settings.": "VolunTrack y tus correos usarán este idioma. Puedes cambiarlo después en Configuración."
 }
