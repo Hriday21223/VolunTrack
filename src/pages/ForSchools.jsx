@@ -27,7 +27,7 @@ const FEATURES = [
   { icon: GraduationCap, title: 'A new school year in one click', text: 'Move every student up a grade at the start of the year, with an undo if you change your mind.' },
   { icon: Users, title: 'Co-advisers and parents', text: 'Add co-advisers to share the approving. Parents can follow their child’s hours with their own account.' },
   { icon: ShieldCheck, title: 'Built for student privacy', text: 'Parent approval for students under 13, school sign-in (SSO) if you use it, and two-step sign-in for staff.' },
-  { icon: Languages, title: 'Four languages', text: 'Students and families can use VolunTrack in English, Spanish, Vietnamese or Chinese. The flyer and messages to share come in English and Spanish.' },
+  { icon: Languages, title: 'Eleven languages', text: 'Students and families can use VolunTrack in English, Spanish, Vietnamese, Chinese, Hindi, Arabic, Portuguese, French, Bengali, Russian or Japanese. The flyer and messages to share come in English and Spanish.' },
 ]
 
 const STEPS = [
