@@ -3522,5 +3522,21 @@ export default {
   "{m} min": "{m} phút",
   "Volunteering for": "Đang tình nguyện được",
   "Checked in at {time}": "Đã điểm danh lúc {time}",
-  "Not checked in yet": "Chưa điểm danh"
+  "Not checked in yet": "Chưa điểm danh",
+  "Your parent needs to OK this": "Phụ huynh của bạn cần đồng ý việc này",
+  "Because you are under 13, a parent or guardian says yes before the organizer sees your sign-up. How should they say yes?": "Vì bạn chưa đủ 13 tuổi, cha mẹ hoặc người giám hộ cần đồng ý trước khi người tổ chức thấy đăng ký của bạn. Họ sẽ đồng ý bằng cách nào?",
+  "Email my parent to approve": "Gửi email để phụ huynh duyệt",
+  "They get an email and tap Approve. You wait for them.": "Họ nhận email và chạm vào Duyệt. Bạn chờ họ nhé.",
+  "Get a PIN from my parent": "Lấy mã PIN từ phụ huynh",
+  "We email your parent a 6-digit PIN. If they agree, they give it to you and you type it in.": "Chúng tôi gửi email cho phụ huynh mã PIN 6 chữ số. Nếu họ đồng ý, họ đưa mã cho bạn và bạn nhập vào.",
+  "We emailed your parent a 6-digit PIN. Ask them for it and type it here.": "Chúng tôi đã gửi email cho phụ huynh mã PIN 6 chữ số. Hãy xin mã và nhập vào đây.",
+  "Could not send the code.": "Không gửi được mã.",
+  "Could not check the PIN.": "Không kiểm tra được mã PIN.",
+  "Enter the PIN from your parent": "Nhập mã PIN từ phụ huynh",
+  "PIN from your parent": "Mã PIN từ phụ huynh",
+  "Send a new PIN to my parent": "Gửi mã PIN mới cho phụ huynh",
+  "Send a PIN to my parent": "Gửi mã PIN cho phụ huynh",
+  "Signed up. Type your parent's PIN any time from Attendance.": "Đã đăng ký. Bạn có thể nhập mã PIN của phụ huynh bất cứ lúc nào trong Điểm danh.",
+  "Your parent said yes. Now the organizer will confirm your sign-up.": "Phụ huynh đã đồng ý. Giờ người tổ chức sẽ xác nhận đăng ký của bạn.",
+  "Use a PIN from my parent": "Dùng mã PIN từ phụ huynh"
 }

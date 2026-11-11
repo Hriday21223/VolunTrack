@@ -3521,5 +3521,21 @@ export default {
   "{m} min": "{m} min",
   "Volunteering for": "Voluntariando há",
   "Checked in at {time}": "Check-in às {time}",
-  "Not checked in yet": "Ainda sem check-in"
+  "Not checked in yet": "Ainda sem check-in",
+  "Your parent needs to OK this": "Seu responsável precisa aprovar isto",
+  "Because you are under 13, a parent or guardian says yes before the organizer sees your sign-up. How should they say yes?": "Como você tem menos de 13 anos, seu pai, mãe ou responsável precisa dizer sim antes de o organizador ver sua inscrição. Como ele vai dizer sim?",
+  "Email my parent to approve": "Enviar e-mail ao meu responsável para aprovar",
+  "They get an email and tap Approve. You wait for them.": "Ele recebe um e-mail e toca em Aprovar. Você espera por ele.",
+  "Get a PIN from my parent": "Pegar um PIN com meu responsável",
+  "We email your parent a 6-digit PIN. If they agree, they give it to you and you type it in.": "Enviamos por e-mail um PIN de 6 dígitos ao seu responsável. Se ele concordar, ele passa o PIN para você e você digita.",
+  "We emailed your parent a 6-digit PIN. Ask them for it and type it here.": "Enviamos por e-mail um PIN de 6 dígitos ao seu responsável. Peça o PIN a ele e digite aqui.",
+  "Could not send the code.": "Não foi possível enviar o código.",
+  "Could not check the PIN.": "Não foi possível verificar o PIN.",
+  "Enter the PIN from your parent": "Digite o PIN do seu responsável",
+  "PIN from your parent": "PIN do seu responsável",
+  "Send a new PIN to my parent": "Enviar um novo PIN ao meu responsável",
+  "Send a PIN to my parent": "Enviar um PIN ao meu responsável",
+  "Signed up. Type your parent's PIN any time from Attendance.": "Inscrito. Digite o PIN do seu responsável quando quiser em Presença.",
+  "Your parent said yes. Now the organizer will confirm your sign-up.": "Seu responsável disse sim. Agora o organizador vai confirmar sua inscrição.",
+  "Use a PIN from my parent": "Usar um PIN do meu responsável"
 }

@@ -3522,5 +3522,21 @@ export default {
   "{m} min": "{m} min",
   "Volunteering for": "Voluntariado durante",
   "Checked in at {time}": "Llegada a las {time}",
-  "Not checked in yet": "Aún no has registrado tu llegada"
+  "Not checked in yet": "Aún no has registrado tu llegada",
+  "Your parent needs to OK this": "Tu padre o madre tiene que aprobar esto",
+  "Because you are under 13, a parent or guardian says yes before the organizer sees your sign-up. How should they say yes?": "Como tienes menos de 13 años, tu padre, madre o tutor tiene que decir que sí antes de que el organizador vea tu inscripción. ¿Cómo prefieres que lo haga?",
+  "Email my parent to approve": "Enviar un correo a mi padre o madre para que apruebe",
+  "They get an email and tap Approve. You wait for them.": "Recibe un correo y toca Aprobar. Tú esperas a que lo haga.",
+  "Get a PIN from my parent": "Pedirle un PIN a mi padre o madre",
+  "We email your parent a 6-digit PIN. If they agree, they give it to you and you type it in.": "Le enviamos a tu padre o madre un PIN de 6 dígitos por correo. Si está de acuerdo, te lo da y tú lo escribes.",
+  "We emailed your parent a 6-digit PIN. Ask them for it and type it here.": "Le enviamos a tu padre o madre un PIN de 6 dígitos por correo. Pídeselo y escríbelo aquí.",
+  "Could not send the code.": "No se pudo enviar el código.",
+  "Could not check the PIN.": "No se pudo comprobar el PIN.",
+  "Enter the PIN from your parent": "Escribe el PIN de tu padre o madre",
+  "PIN from your parent": "PIN de tu padre o madre",
+  "Send a new PIN to my parent": "Enviar un PIN nuevo a mi padre o madre",
+  "Send a PIN to my parent": "Enviar un PIN a mi padre o madre",
+  "Signed up. Type your parent's PIN any time from Attendance.": "Te inscribiste. Escribe el PIN de tu padre o madre cuando quieras desde Asistencia.",
+  "Your parent said yes. Now the organizer will confirm your sign-up.": "Tu padre o madre dijo que sí. Ahora el organizador confirmará tu inscripción.",
+  "Use a PIN from my parent": "Usar un PIN de mi padre o madre"
 }

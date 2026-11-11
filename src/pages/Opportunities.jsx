@@ -24,6 +24,7 @@ import TaskCoverPhoto from '@/components/TaskCoverPhoto.jsx'
 import TaskQuestions from '@/components/TaskQuestions.jsx'
 import WeatherChip from '@/components/WeatherChip.jsx'
 import { taskMapsUrl } from '@/lib/taskDetails.js'
+import { ParentOkChoice, ParentPinEntry } from '@/components/ParentOkDialogs.jsx'
 import { tr } from '@/lib/i18n.js'
 import { askParentComing } from '@/lib/parentComing.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -224,6 +225,9 @@ export default function Opportunities() {
   const scrolledTo = useRef(false)
   const [badgeFor, setBadgeFor] = useState(null)
   const [waiverFor, setWaiverFor] = useState(null)
+  // Under 13 (#849): how a parent says yes, then the PIN box if they chose one.
+  const [parentChoice, setParentChoice] = useState(null)
+  const [pinFor, setPinFor] = useState(null)
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
   const reload = () => { loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius); if (canFollow) loadSaved() }
   // A full task offers the waitlist instead: no slot is held, and the first
@@ -238,6 +242,7 @@ export default function Opportunities() {
   }
   // Throws on failure, so WaiverDialog can show the error and stay open.
   const doSignUp = async (t, full, extra = {}) => {
+    if (user?.under13 && !extra.parentOkMethod) { setParentChoice({ t, full, extra }); return }
     // Minimum age (#426): no birth date is kept, so the student confirms it.
     if (t.min_age != null && !window.confirm(tr("This task is for volunteers {n} or older. Are you {n} or older?", { n: t.min_age }))) return
     // A parent must come with K–5 volunteers (#649).
@@ -257,6 +262,7 @@ export default function Opportunities() {
     })
     const d = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(d.error || 'Failed')
+    if (d.parentPin) { setPinFor(t.id); reload(); return }
     // Under 13: a parent says yes first (server/routes/school.js,
     // requestParentOk). parentAsked says who was asked.
     setToastMsg(d.parentPending
@@ -788,6 +794,23 @@ export default function Opportunities() {
 
       <Toast open={toast} onClose={() => setToast(false)}>{toastMsg}</Toast>
       {badgeFor && <VolunteerBadge taskId={badgeFor} onClose={() => setBadgeFor(null)} />}
+      {parentChoice && (
+        <ParentOkChoice
+          onClose={() => setParentChoice(null)}
+          onPick={async (method) => {
+            const { t, full, extra } = parentChoice
+            setParentChoice(null)
+            try { await doSignUp(t, full, { ...extra, parentOkMethod: method }) } catch (e) { setToastMsg(e.message); setToast(true) }
+          }}
+        />
+      )}
+      {pinFor && (
+        <ParentPinEntry
+          taskId={pinFor}
+          onClose={() => { setPinFor(null); setToastMsg(tr("Signed up. Type your parent's PIN any time from Attendance.")); setToast(true) }}
+          onDone={() => { setPinFor(null); setToastMsg(tr('Your parent said yes. Now the organizer will confirm your sign-up.')); setToast(true); reload() }}
+        />
+      )}
       {waiverFor && (
         <WaiverDialog
           task={waiverFor.t}
