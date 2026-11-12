@@ -440,7 +440,7 @@ export async function sendSignupCodeEmail({ to, code, minutes, language = null }
   return sendEmail({
     priority: 'high',
     to,
-    subject: t('{code} is your VolunTrack code', { code }),
+    subject: t('{code} is your VolunTrack sign-up code', { code }),
     html: `<p>${t('Enter this code to finish creating your VolunTrack account:')}</p>
 <p style="font-size:28px;font-weight:600;letter-spacing:0.2em;">${code}</p>
 <p>${t('It works once and expires in {n} minutes. If you didn’t try to sign up, you can ignore this email — no account is created without the code.', { n: minutes })}</p>
@@ -459,7 +459,7 @@ export async function sendEmailOtpEmail({ to, code, minutes, language, purpose =
   return sendEmail({
     priority: 'high',
     to,
-    subject: t('{code} is your VolunTrack code', { code }),
+    subject: t('{code} is your VolunTrack sign-in code', { code }),
     html: `<p>${intro}</p>
 <p style="font-size:28px;font-weight:600;letter-spacing:0.2em;">${code}</p>
 <p>${t("It works once and expires in {minutes} minutes. If you didn't just try to sign in, someone may know your password: change it in Settings.", { minutes })}</p>
@@ -474,7 +474,7 @@ export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) 
   return sendEmail({
     priority: 'high',
     to,
-    subject: t('{code} is your VolunTrack code', { code }),
+    subject: t('{code} confirms your new VolunTrack email', { code }),
     html: `<p>${t('Enter this code in VolunTrack to use this address for your account:')}</p>
 <p style="font-size:28px;font-weight:600;letter-spacing:0.2em;">${code}</p>
 <p>${t("It works once and expires in {minutes} minutes. If you didn't ask for this, ignore this email. Nothing changes without the code.", { minutes })}</p>

@@ -86,6 +86,9 @@ const ES = {
 
   // Sign-up code and welcome emails (server/email.js, #604)
   '{code} is your VolunTrack code': '{code} es tu código de VolunTrack',
+  '{code} is your VolunTrack sign-up code': '{code} es tu código para registrarte en VolunTrack',
+  '{code} is your VolunTrack sign-in code': '{code} es tu código para iniciar sesión en VolunTrack',
+  '{code} confirms your new VolunTrack email': '{code} confirma tu nuevo correo en VolunTrack',
   'Enter this code to finish creating your VolunTrack account:': 'Escribe este código para terminar de crear tu cuenta de VolunTrack:',
   'It works once and expires in {n} minutes. If you didn’t try to sign up, you can ignore this email — no account is created without the code.': 'Sirve una vez y vence en {n} minutos. Si no intentaste registrarte, puedes ignorar este correo: no se crea ninguna cuenta sin el código.',
   '— The VolunTrack Team': '— El equipo de VolunTrack',
