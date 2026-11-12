@@ -21,6 +21,7 @@
     "version:app": "node scripts/mobile-version.mjs",
     "bundle:android": "npm run version:app && npm run build:app && cd android && ./gradlew bundleRelease",
     "lint": "eslint .",
+    "test": "node --test tests/*.test.js",
     "secret-scan": "node scripts/secret-scan.mjs"
   },
   "dependencies": {
