@@ -919,6 +919,7 @@ export default {
   "Parent coming: {name}": "陪同家长：{name}",
   "VolunTrack. All rights reserved.": "VolunTrack。保留所有权利。",
   "Waking up the server — this can take up to a minute after a quiet spell.": "正在唤醒服务器，闲置一段时间后可能需要一分钟。",
+  "Your connection is slow. Still loading…": "你的网络连接较慢，仍在加载…",
   "Geolocation is not supported by your browser.": "你的浏览器不支持定位。",
   "Search for an address or place…": "搜索地址或地点…",
   "Use current location": "使用当前位置",

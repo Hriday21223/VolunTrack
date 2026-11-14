@@ -716,6 +716,7 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "パートナー確認用リンクはパートナーの実際の連絡先にだけ送り、正しいと思うときだけ時間を承認またはサインしてください。",
   "VolunTrack. All rights reserved.": "VolunTrack. All rights reserved.",
   "Waking up the server — this can take up to a minute after a quiet spell.": "サーバーを起動しています。しばらく使われていなかった場合、最大1分ほどかかります。",
+  "Your connection is slow. Still loading…": "接続が遅いようです。読み込み中…",
   "Geolocation is not supported by your browser.": "お使いのブラウザは位置情報に対応していません。",
   "Search for an address or place…": "住所や場所を検索…",
   "Use current location": "現在地を使う",

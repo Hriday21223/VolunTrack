@@ -513,6 +513,10 @@ export default function Dashboard() {
                         // A parent must come with K–5 volunteers (#649).
                         const parentPart = askParentComing(t, user)
                         if (parentPart === null) return
+                        // Optimistic (#861): show Pending now, put it back if the server says no.
+                        const setStatus = (status) => setPublicTasks((list) => list.map((x) => (x.id === t.id ? { ...x, my_signup_status: status } : x)))
+                        const before = t.my_signup_status ?? null
+                        setStatus('pending')
                         try {
                           const token = localStorage.getItem('voluntrack:auth_token')
                           const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
@@ -520,9 +524,9 @@ export default function Dashboard() {
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                             body: JSON.stringify({ ...(t.min_age != null ? { ageConfirmed: true } : {}), ...parentPart }),
                           })
-                          if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+                          if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
                           setToastMsg(tr('Signed up — awaiting organizer approval')); setToast(true); loadPublicTasks()
-                        } catch (e) { setToastMsg(e.message); setToast(true) }
+                        } catch (e) { setStatus(before); setToastMsg(e.message); setToast(true) }
                       }} className="btn-primary text-sm">{tr('Sign up')}</button>
                     )}
                   </div>

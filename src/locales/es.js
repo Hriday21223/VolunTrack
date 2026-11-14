@@ -12,6 +12,7 @@ export default {
   "Volunteer": "Voluntario",
   "Log out": "Cerrar sesión",
   "Waking up the server — this can take up to a minute after a quiet spell.": "Despertando el servidor: puede tardar hasta un minuto después de un rato sin uso.",
+  "Your connection is slow. Still loading…": "Tu conexión es lenta. Seguimos cargando…",
   "Geolocation is not supported by your browser.": "Tu navegador no permite la geolocalización.",
   "Search for an address or place…": "Busca una dirección o un lugar…",
   "Use current location": "Usar mi ubicación actual",

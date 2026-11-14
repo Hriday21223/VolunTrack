@@ -716,6 +716,7 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "أرسل روابط اعتماد الشريك إلى جهة الاتصال الحقيقية لدى الشريك فقط، ولا توافق أو توقّع إلا على الساعات التي تعتقد أنها صحيحة.",
   "VolunTrack. All rights reserved.": "VolunTrack. جميع الحقوق محفوظة.",
   "Waking up the server — this can take up to a minute after a quiet spell.": "جارٍ تشغيل الخادم — قد يستغرق ذلك حتى دقيقة بعد فترة هدوء.",
+  "Your connection is slow. Still loading…": "اتصالك بطيء. ما زال التحميل جارياً…",
   "Geolocation is not supported by your browser.": "متصفحك لا يدعم تحديد الموقع.",
   "Search for an address or place…": "ابحث عن عنوان أو مكان…",
   "Use current location": "استخدم الموقع الحالي",

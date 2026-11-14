@@ -476,33 +476,38 @@ function ParentConfirm({ log }) {
 }
 
 // "Proud of you" on one entry (#514): the child gets a bell notification.
-// Once per entry; the server ignores a repeat.
+// Once per entry; the server ignores a repeat. Optimistic (#861): it shows
+// "Sent" straight away and only goes back to the button if the server says no.
 function CheerButton({ log, childName }) {
   const [state, setState] = useState(log.cheeredByMe ? 'done' : 'idle')
+  const [failed, setFailed] = useState(false)
   const first = String(childName || '').trim().split(/\s+/)[0] || 'them'
   const cheer = async () => {
-    setState('busy')
+    setState('done')
+    setFailed(false)
+    let ok = false
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/parent/cheer/${encodeURIComponent(log.id)}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-      setState(res.ok ? 'done' : 'idle')
-    } catch {
-      setState('idle')
-    }
+      ok = res.ok
+    } catch { /* treated as a failure below */ }
+    if (!ok) { setState('idle'); setFailed(true) }
   }
   if (state === 'done') {
     return <span className="text-xs text-brand-600 dark:text-brand-400 whitespace-nowrap" title={`${first} got your cheer`}>{tr('🎉 Sent')}</span>
   }
   return (
+    <>
+    {failed && <span role="alert" className="block text-xs text-red-500 mb-1">{tr('Something went wrong. Try again.')}</span>}
     <button
       type="button"
       onClick={cheer}
-      disabled={state === 'busy'}
       className="text-xs font-medium px-2 py-1 rounded-full border border-earth-200 dark:border-earth-700 hover:bg-brand-50 dark:hover:bg-brand-900/20 whitespace-nowrap"
       title={`Tell ${first} you're proud of them`}
     >
       {tr('🎉 Proud of you')}
     </button>
+    </>
   )
 }
 

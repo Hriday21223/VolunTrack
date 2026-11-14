@@ -331,7 +331,17 @@ export default function MyTasks() {
   // for the organizer's signature. { logId, signature }
   const [signing, setSigning] = useState(null)
 
+  // Optimistic (#861): an entry shows its new status as soon as it's decided;
+  // a failed request puts the old one back, and loadStudents() has the last word.
+  const setLogStatuses = (ids, status) => setStudents((list) => list.map((st) => ({
+    ...st,
+    logs: (st.logs || []).map((l) => (ids.has(l.id) ? { ...l, verification_status: status } : l)),
+  })))
+
   const handleVerifyLog = async (studentId, logId, status, signature = null) => {
+    const prev = students.find((st) => st.id === studentId)?.logs?.find((l) => l.id === logId)?.verification_status ?? 'pending'
+    setLogStatuses(new Set([logId]), status)
+    setSigning(null)
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
       const res = await fetch(`${apiUrl}/school/students/${studentId}/logs/${logId}/verify`, {
@@ -343,7 +353,7 @@ export default function MyTasks() {
       setToastMsg(status === 'approved' ? 'Hours signed and approved' : 'Hours rejected'); setToast(true)
       setSigning(null)
       loadStudents()
-    } catch (e) { setToastMsg(e.message); setToast(true) }
+    } catch (e) { setLogStatuses(new Set([logId]), prev); setToastMsg(e.message); setToast(true) }
   }
 
   // Bulk approve/reject: the ticked pending logs ({ [logId]: studentId }) and
@@ -382,6 +392,7 @@ export default function MyTasks() {
     if (!bulk || selectedPending.length === 0) return
     const { status, signature } = bulk
     setBulkBusy(true)
+    setLogStatuses(new Set(selectedPending.map((p) => p.logId)), status)
     let ok = 0
     let failed = 0
     let firstError = ''

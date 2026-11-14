@@ -716,6 +716,7 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "অংশীদার সাইন-অফ লিঙ্ক শুধু অংশীদারের আসল যোগাযোগে পাঠান, আর ঘণ্টা সঠিক বলে বিশ্বাস করলে তবেই অনুমোদন বা স্বাক্ষর করুন।",
   "VolunTrack. All rights reserved.": "VolunTrack. সর্বস্বত্ব সংরক্ষিত।",
   "Waking up the server — this can take up to a minute after a quiet spell.": "সার্ভার চালু হচ্ছে — কিছুক্ষণ বন্ধ থাকার পর এতে এক মিনিট পর্যন্ত লাগতে পারে।",
+  "Your connection is slow. Still loading…": "আপনার সংযোগ ধীর। এখনও লোড হচ্ছে…",
   "Geolocation is not supported by your browser.": "আপনার ব্রাউজার লোকেশন সমর্থন করে না।",
   "Search for an address or place…": "ঠিকানা বা জায়গা খুঁজুন…",
   "Use current location": "বর্তমান লোকেশন ব্যবহার করুন",
