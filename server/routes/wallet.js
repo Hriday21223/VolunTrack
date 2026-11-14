@@ -177,18 +177,13 @@ ws.delete('/v1/devices/:device/registrations/:type/:serial', safe(async (req, re
   return res.sendStatus(200)
 }))
 
-// Apple's error log for the web service: kept short in our own log.
+// Apple's error log for the web service. Its text comes from the request, so
+// it isn't written to our log at all (CodeQL #40, #45): only how many lines
+// arrived and how long they were, which is enough to notice a problem and
+// then reproduce it with Apple's own device logs.
 ws.post('/v1/log', (req, res) => {
-  const logs = Array.isArray(req.body?.logs) ? req.body.logs.slice(0, 5) : []
-  for (const l of logs) {
-    // Line breaks out first, in the shape CodeQL recognises (#40), then any
-    // other control characters, then capped.
-    const sanitized = String(l)
-      .replace(/\n|\r/g, ' ')
-      .replace(/[\u2028\u2029\x00-\x1F\x7F]/g, '')
-      .slice(0, 300)
-    console.warn('apple wallet log: %s', sanitized)
-  }
+  const logs = Array.isArray(req.body?.logs) ? req.body.logs : []
+  if (logs.length) console.warn(`apple wallet log: ${Number(logs.length)} line(s), ${logs.slice(0, 5).map((l) => Number(String(l).length)).join('/')} chars`)
   res.sendStatus(200)
 })
 
