@@ -518,7 +518,7 @@ export default function Settings() {
         body: JSON.stringify({ email: user.email, currentPassword: pwForm.current, newPassword: pwForm.newPw }),
       })
       if (!res.ok) {
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to update password')
       }
       // Changing the password ends every older session, this one included;

@@ -533,7 +533,19 @@ router.post('/email-otp/disable', authLimiter, requireDb, requireAuth(), async (
 // the answer carries a tempToken for /totp/challenge, passkeys or email OTP.
 // Five wrong passwords in a row and the client signs the account out.
 const REAUTH_MAX_FAILS = 5
-const reauthFails = new Map() // userId -> wrong tries since the last success
+// userId -> { n, at }: wrong tries in a row. A run older than
+// REAUTH_FAIL_WINDOW_MS starts over, so one slip a week never adds up to a
+// sign-out, and the map doesn't keep stale entries forever.
+const REAUTH_FAIL_WINDOW_MS = 15 * 60 * 1000
+const reauthFails = new Map()
+function noteReauthFail(userId) {
+  const now = Date.now()
+  for (const [id, f] of reauthFails) if (now - f.at > REAUTH_FAIL_WINDOW_MS) reauthFails.delete(id)
+  const prev = reauthFails.get(userId)
+  const n = (prev ? prev.n : 0) + 1
+  reauthFails.set(userId, { n, at: now })
+  return n
+}
 
 // PUT { pin, password } sets or changes the unlock PIN; DELETE removes it.
 // The current password is required when the account has one, so a person at
@@ -571,8 +583,7 @@ router.post('/reauth', authLimiter, requireDb, requireAuth(), async (req, res) =
     const row = rows[0]
     if (!row) return res.status(401).json({ error: 'Please sign in again.', signOut: true })
     const wrong = (error) => {
-      const fails = (reauthFails.get(row.id) || 0) + 1
-      reauthFails.set(row.id, fails)
+      const fails = noteReauthFail(row.id)
       if (fails >= REAUTH_MAX_FAILS) {
         reauthFails.delete(row.id)
         return res.status(401).json({ error: 'Too many wrong tries.', signOut: true })

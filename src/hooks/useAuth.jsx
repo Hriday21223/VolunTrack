@@ -164,7 +164,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ tempToken, code }),
     })
     if (!response.ok) {
-      const err = await response.json()
+      const err = await response.json().catch(() => ({}))
       throw new Error(err.error || 'Invalid code')
     }
     const data = await response.json()
@@ -246,7 +246,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ tempToken, code }),
     })
     if (!response.ok) {
-      const err = await response.json()
+      const err = await response.json().catch(() => ({}))
       throw new Error(err.error || 'Invalid backup code')
     }
     const data = await response.json()
@@ -268,7 +268,7 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     })
     if (!response.ok) {
-      const err = await response.json()
+      const err = await response.json().catch(() => ({}))
       throw new Error(err.error || 'Failed to set up 2FA')
     }
     return response.json()
@@ -284,7 +284,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ code }),
     })
     if (!response.ok) {
-      const err = await response.json()
+      const err = await response.json().catch(() => ({}))
       throw new Error(err.error || 'Invalid code')
     }
     const data = await response.json()
@@ -310,7 +310,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ password }),
     })
     if (!response.ok) {
-      const err = await response.json()
+      const err = await response.json().catch(() => ({}))
       throw new Error(err.error || 'Failed to disable 2FA')
     }
     const data = await response.json()
