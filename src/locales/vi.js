@@ -919,6 +919,7 @@ export default {
   "Parent coming: {name}": "Phụ huynh đi cùng: {name}",
   "VolunTrack. All rights reserved.": "VolunTrack. Bảo lưu mọi quyền.",
   "Waking up the server — this can take up to a minute after a quiet spell.": "Đang khởi động máy chủ, có thể mất tới một phút sau thời gian không hoạt động.",
+  "Your connection is slow. Still loading…": "Kết nối của bạn chậm. Vẫn đang tải…",
   "Geolocation is not supported by your browser.": "Trình duyệt của bạn không hỗ trợ định vị.",
   "Search for an address or place…": "Tìm địa chỉ hoặc địa điểm…",
   "Use current location": "Dùng vị trí hiện tại",

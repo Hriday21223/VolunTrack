@@ -6,7 +6,9 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // "Cancel sign-up" / "Leave waitlist", with an inline "are you sure" instead
 // of a browser dialog. Cancelling frees the slot for the first person on the
 // waitlist (DELETE /api/school/public-tasks/:id/signup).
-export default function CancelSignup({ task, onDone, onError }) {
+// `onOptimistic` (optional, #861) updates the list before the server answers
+// and returns a function that undoes it, which runs if the request fails.
+export default function CancelSignup({ task, onDone, onOptimistic, onError }) {
   const [asking, setAsking] = useState(false)
   const [busy, setBusy] = useState(false)
   const status = task.my_signup_status || task.signup_status
@@ -17,6 +19,7 @@ export default function CancelSignup({ task, onDone, onError }) {
 
   const cancel = async () => {
     setBusy(true)
+    const undo = onOptimistic?.()
     try {
       const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(task.id)}/signup`, {
         method: 'DELETE',
@@ -26,6 +29,7 @@ export default function CancelSignup({ task, onDone, onError }) {
       if (!res.ok) throw new Error(d.error || 'Could not cancel.')
       onDone?.(waitlisted ? 'You left the waitlist.' : parentHeld ? tr('Sign-up removed.') : 'Sign-up cancelled. Your spot goes to the next person waiting.')
     } catch (e) {
+      undo?.()
       onError?.(e.message)
     } finally {
       setBusy(false)

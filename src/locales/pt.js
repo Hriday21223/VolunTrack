@@ -716,6 +716,7 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "Envie links de confirmação de parceiros só para o contato real do parceiro, e aprove ou assine horas só quando acreditar que estão corretas.",
   "VolunTrack. All rights reserved.": "VolunTrack. Todos os direitos reservados.",
   "Waking up the server — this can take up to a minute after a quiet spell.": "Acordando o servidor — isso pode levar até um minuto depois de um tempo parado.",
+  "Your connection is slow. Still loading…": "Sua conexão está lenta. Ainda carregando…",
   "Geolocation is not supported by your browser.": "Seu navegador não suporta geolocalização.",
   "Search for an address or place…": "Pesquise um endereço ou lugar…",
   "Use current location": "Usar localização atual",

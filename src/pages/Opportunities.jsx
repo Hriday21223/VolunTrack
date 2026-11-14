@@ -229,6 +229,10 @@ export default function Opportunities() {
   const [parentChoice, setParentChoice] = useState(null)
   const [pinFor, setPinFor] = useState(null)
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
+  // Optimistic updates (#861): change one task's fields on screen before the
+  // server answers; the caller puts them back if the request fails, and the
+  // reload after every call makes the server's answer win.
+  const patchTask = (id, fields) => setNearbyTasks((list) => list.map((x) => (x.id === id ? { ...x, ...fields } : x)))
   const reload = () => { loadNearbyTasks(userLoc?.lat ?? null, userLoc?.lng ?? null, nearbyRadius); if (canFollow) loadSaved() }
   // A full task offers the waitlist instead: no slot is held, and the first
   // person waiting moves up (and is emailed) when someone cancels.
@@ -249,19 +253,25 @@ export default function Opportunities() {
     const parentPart = askParentComing(t, user)
     if (parentPart === null) return
     const token = localStorage.getItem('voluntrack:auth_token')
-    const res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        ...(full ? { waitlist: true } : {}),
-        ...(t.min_age != null ? { ageConfirmed: true } : {}),
-        ...parentPart,
-        ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
-        ...extra,
-      }),
-    })
-    const d = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(d.error || 'Failed')
+    // Show the likely result now; the server's real status arrives with reload().
+    const before = { my_signup_status: t.my_signup_status ?? null }
+    patchTask(t.id, { my_signup_status: user?.under13 ? 'parent_pending' : full ? 'waitlisted' : 'pending' })
+    let res, d
+    try {
+      res = await fetch(`${apiUrl}/school/public-tasks/${t.id}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          ...(full ? { waitlist: true } : {}),
+          ...(t.min_age != null ? { ageConfirmed: true } : {}),
+          ...parentPart,
+          ...(invitedFrom && t.id === linkedTask ? { invitedBy: invitedFrom } : {}),
+          ...extra,
+        }),
+      })
+      d = await res.json().catch(() => ({}))
+    } catch (e) { patchTask(t.id, before); throw e }
+    if (!res.ok) { patchTask(t.id, before); throw new Error(d.error || 'Failed') }
     if (d.parentPin) { setPinFor(t.id); reload(); return }
     // Under 13: a parent says yes first (server/routes/school.js,
     // requestParentOk). parentAsked says who was asked.
@@ -771,7 +781,12 @@ export default function Opportunities() {
                     <span className="text-xs text-earth-500">{tr('Full')}{Number(t.waitlist_count) > 0 ? ` · ${tr('{n} waiting', { n: t.waitlist_count })}` : ''}</span>
                   )}
                   {['pending', 'approved', 'waitlisted', 'parent_pending'].includes(t.my_signup_status) && (
-                    <CancelSignup task={t} onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }} onError={(msg) => { setToastMsg(msg); setToast(true) }} />
+                    <CancelSignup
+                      task={t}
+                      onOptimistic={() => { const prev = t.my_signup_status; patchTask(t.id, { my_signup_status: null }); return () => patchTask(t.id, { my_signup_status: prev }) }}
+                      onDone={(msg) => { setToastMsg(msg); setToast(true); reload() }}
+                      onError={(msg) => { setToastMsg(msg); setToast(true) }}
+                    />
                   )}
                   {canFollow && t.organizer_id !== user?.id && (
                     <button

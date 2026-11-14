@@ -99,6 +99,9 @@ function SignupRow({ s, onChanged, canRate }) {
   const [pinOpen, setPinOpen] = useState(false)
   const { user } = useAuth()
   const canInvite = user?.role === 'student' && Boolean(localStorage.getItem('voluntrack:auth_token'))
+  // Cancelling hides the row at once (#861); it comes back if the server says no.
+  const [gone, setGone] = useState(false)
+  if (gone) return null
 
   return (
     <Card padded={false} className="p-4">
@@ -151,7 +154,7 @@ function SignupRow({ s, onChanged, canRate }) {
             </span>
           ) : null}
           {!cancelled && !isPast && !s.attendance_status && ['pending', 'approved', 'waitlisted', 'parent_pending', 'parent_declined'].includes(s.signup_status) && (
-            <CancelSignup task={s} onDone={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />
+            <CancelSignup task={s} onOptimistic={() => { setGone(true); return () => setGone(false) }} onDone={(msg) => onChanged?.(msg)} onError={(msg) => onChanged?.(msg, true)} />
           )}
         </div>
       </div>

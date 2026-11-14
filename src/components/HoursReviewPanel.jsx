@@ -43,9 +43,24 @@ export default function HoursReviewPanel({ onSetPlaces }) {
 
   useEffect(() => { load() }, [load])
 
+  // Optimistic (#861): decided entries leave the list at once. If the server
+  // says no, the list as it was comes back with the error.
+  const removeEntries = (ids) => setData((d) => {
+    if (!d) return d
+    const gone = new Set(ids)
+    const left = d.entries.filter((e) => !gone.has(e.id))
+    const removed = d.entries.length - left.length
+    const offRemoved = d.entries.filter((e) => gone.has(e.id) && e.offList).length
+    return { ...d, entries: left, counts: { ...d.counts, unconfirmed: Math.max(0, d.counts.unconfirmed - removed), offList: Math.max(0, (d.counts.offList || 0) - offRemoved) } }
+  })
+
   const approve = async (ids) => {
     setBusy(true)
     setMessage('')
+    setError('')
+    const before = data
+    removeEntries(ids)
+    setPicked(new Set())
     try {
       const res = await fetch(`${apiUrl}/school/hours-review-approve`, { method: 'POST', headers: auth(), body: JSON.stringify({ ids }) })
       const d = await res.json().catch(() => ({}))
@@ -53,6 +68,7 @@ export default function HoursReviewPanel({ onSetPlaces }) {
       setMessage(`${d.approved} approved.${d.skipped ? ` ${d.skipped} had already been decided.` : ''} Each student was told.`)
       await load()
     } catch (e) {
+      setData(before)
       setError(e.message)
     } finally {
       setBusy(false)
@@ -63,17 +79,25 @@ export default function HoursReviewPanel({ onSetPlaces }) {
     if (!reason.trim()) { setError(tr('Say why, so the student can fix it.')); return }
     setBusy(true)
     setError('')
+    const entry = rejecting
+    const note = reason.trim()
+    const before = data
+    removeEntries([entry.id])
+    setRejecting(null)
+    setReason('')
     try {
-      const res = await fetch(`${apiUrl}/school/hours-review/${encodeURIComponent(rejecting.id)}`, {
-        method: 'POST', headers: auth(), body: JSON.stringify({ decision: 'reject', note: reason.trim() }),
+      const res = await fetch(`${apiUrl}/school/hours-review/${encodeURIComponent(entry.id)}`, {
+        method: 'POST', headers: auth(), body: JSON.stringify({ decision: 'reject', note }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Could not send it back.')
-      setMessage(`Sent back to ${rejecting.student_name}. Those hours don't count until they fix the entry.`)
-      setRejecting(null)
-      setReason('')
+      setMessage(`Sent back to ${entry.student_name}. Those hours don't count until they fix the entry.`)
       await load()
     } catch (e) {
+      // Put the entry and the typed reason back, so nothing has to be retyped.
+      setData(before)
+      setRejecting(entry)
+      setReason(note)
       setError(e.message)
     } finally {
       setBusy(false)

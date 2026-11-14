@@ -716,6 +716,7 @@ export default {
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.": "Отправляйте ссылки для подтверждения только реальному контакту партнёра и одобряйте или подписывайте часы, только если уверены в них.",
   "VolunTrack. All rights reserved.": "VolunTrack. Все права защищены.",
   "Waking up the server — this can take up to a minute after a quiet spell.": "Сервер просыпается — после простоя это может занять до минуты.",
+  "Your connection is slow. Still loading…": "Медленное соединение. Загрузка продолжается…",
   "Geolocation is not supported by your browser.": "Ваш браузер не поддерживает геолокацию.",
   "Search for an address or place…": "Найдите адрес или место…",
   "Use current location": "Моё местоположение",
