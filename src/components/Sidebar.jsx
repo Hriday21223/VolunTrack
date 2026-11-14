@@ -29,7 +29,6 @@ const ROLE_ITEMS = {
   volunteer: [
     { to: '/my-tasks',     label: 'My Tasks',    icon: ClipboardList },
     { to: '/attendance',   label: 'Attendance',  icon: ClipboardCheck },
-    { to: '/',             label: 'Dashboard',   icon: Home },
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },

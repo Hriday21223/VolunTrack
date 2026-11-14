@@ -82,15 +82,9 @@ const STUDENT_TOUR_STEPS = [
   { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
 ]
 
-// A Volunteer Task Maker runs events (#708), so their tour points there.
-const ORGANIZER_TOUR_STEPS = [
-  { selector: '[data-tour="nav-my-tasks"], [data-tour="nav-more"]', title: tr('Run your events'), description: tr('Post events on My Tasks. On the day, use the check-in QR code, the kiosk, a check-out PIN or the paper sheet. Everyone\'s hours come to you to sign at once.') },
-  { selector: '[data-tour="nav-attendance"], [data-tour="nav-more"]', title: tr('Events you joined'), description: tr('Events you signed up for yourself, with check-in on the day.') },
-  { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
-]
-
-// Students and Task Makers share this page; a Task Maker can't open the
-// student pages (src/lib/roleAccess.js), so links to them aren't drawn.
+// Students' home (Task Makers land on My Tasks since #867). Links are drawn
+// only to pages this account may open (src/lib/roleAccess.js), so an admin
+// viewing it doesn't get links that bounce.
 function RoleLink(props) {
   const { user } = useAuth()
   return canOpen(user?.role, props.to) ? <Link {...props} /> : null
@@ -439,7 +433,7 @@ export default function Dashboard() {
     >
       <UnsentBanner />
       {dashTab === 'home' && (
-        <SpotlightTour storageKey={user?.role === 'volunteer' ? 'voluntrack:tour-seen:organizer' : 'voluntrack:tour-seen:student'} steps={user?.role === 'volunteer' ? ORGANIZER_TOUR_STEPS : STUDENT_TOUR_STEPS} />
+        <SpotlightTour storageKey="voluntrack:tour-seen:student" steps={STUDENT_TOUR_STEPS} />
       )}
 
       {/* Admin announcements (#290); renders nothing for a local-only account. */}

@@ -121,6 +121,9 @@ function Home() {
   if (user.role === 'school' || user.role === 'school_staff') return <Navigate to="/school/dashboard" replace />
   // Just signed up in this tab (see src/lib/welcome.js).
   if ((user.role === 'student' || user.role === 'volunteer') && readWelcomePending()) return <Navigate to="/welcome" replace />
+  // A Task Maker runs events and doesn't log hours of their own, so their home
+  // is My Tasks, not the student dashboard (#867).
+  if (user.role === 'volunteer') return <Navigate to="/my-tasks" replace />
   return <Protected roles={ROUTE_ROLES['/']}><Dashboard /></Protected>
 }
 

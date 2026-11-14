@@ -8,6 +8,7 @@ import SignaturePad from '@/components/SignaturePad.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { csvCell } from '@/lib/csv.js'
 import { fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
@@ -70,6 +71,14 @@ function TaskLogHours({ log, canSign, onSign }) {
     </span>
   )
 }
+
+// A Volunteer Task Maker's first-visit tour (#708). It lived on the student
+// Dashboard until My Tasks became their home (#867).
+const ORGANIZER_TOUR_STEPS = [
+  { selector: '[data-tour="nav-my-tasks"], [data-tour="nav-more"]', title: tr('Run your events'), description: tr('Post events on My Tasks. On the day, use the check-in QR code, the kiosk, a check-out PIN or the paper sheet. Everyone\'s hours come to you to sign at once.') },
+  { selector: '[data-tour="nav-attendance"], [data-tour="nav-more"]', title: tr('Events you joined'), description: tr('Events you signed up for yourself, with check-in on the day.') },
+  { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
+]
 
 export default function MyTasks() {
   const nav = useNavigate()
@@ -612,6 +621,7 @@ export default function MyTasks() {
         </button>
       }
     >
+      {user?.role === 'volunteer' && <SpotlightTour storageKey="voluntrack:tour-seen:organizer" steps={ORGANIZER_TOUR_STEPS} />}
       <div className="max-w-3xl mx-auto space-y-4">
         <div role="tablist" aria-label={tr('My Tasks view')} className="inline-flex gap-1 p-1 rounded-xl bg-earth-100 dark:bg-white/5">
           {[['tasks', 'Tasks'], ['stats', 'Stats']].map(([id, label]) => (
