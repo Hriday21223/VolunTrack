@@ -209,7 +209,7 @@ export function AuthProvider({ children }) {
   // | throws (with .signOut / .triesLeft on a wrong password).
   const reauth = useCallback(async (password, { pin } = {}) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
-    const response = await fetch(`${apiUrl}/auth/reauth`, {
+    const response = await fetch(`${apiUrl}/auth/reauth${pin != null ? '/pin' : ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
       body: JSON.stringify(pin != null ? { pin } : { password }),

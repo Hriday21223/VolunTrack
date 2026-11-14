@@ -577,35 +577,34 @@ router.delete('/me/unlock-pin', authLimiter, requireDb, requireAuth(), async (re
   }
 })
 
+// Two routes, so the request can't pick which check applies (CodeQL #44):
+// /reauth takes the password (then the second step), /reauth/pin the unlock
+// PIN. Both share the five-try count.
+async function reauthAccount(req, res) {
+  const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [req.auth.sub])
+  const row = rows[0]
+  if (!row) { res.status(401).json({ error: 'Please sign in again.', signOut: true }); return null }
+  return row
+}
+function reauthWrong(res, row, error) {
+  const fails = noteReauthFail(row.id)
+  if (fails >= REAUTH_MAX_FAILS) {
+    reauthFails.delete(row.id)
+    return res.status(401).json({ error: 'Too many wrong tries.', signOut: true })
+  }
+  return res.status(401).json({ error, triesLeft: REAUTH_MAX_FAILS - fails })
+}
+
 router.post('/reauth', authLimiter, requireDb, requireAuth(), async (req, res) => {
   try {
-    const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [req.auth.sub])
-    const row = rows[0]
-    if (!row) return res.status(401).json({ error: 'Please sign in again.', signOut: true })
-    const wrong = (error) => {
-      const fails = noteReauthFail(row.id)
-      if (fails >= REAUTH_MAX_FAILS) {
-        reauthFails.delete(row.id)
-        return res.status(401).json({ error: 'Too many wrong tries.', signOut: true })
-      }
-      return res.status(401).json({ error, triesLeft: REAUTH_MAX_FAILS - fails })
-    }
-    // Unlock PIN (#871): stands in for the password and second step. It
-    // shares the five-try limit, so 4 digits give a guesser 5 in 10,000.
-    if (req.body?.pin != null) {
-      const pin = String(req.body.pin)
-      if (!row.unlock_pin_hash) return res.status(400).json({ error: 'No unlock PIN is set.' })
-      if (!/^[0-9]{4,8}$/.test(pin) || !(await bcrypt.compare(pin, row.unlock_pin_hash))) return wrong('Wrong PIN.')
-      reauthFails.delete(row.id)
-      const user = publicUser(row)
-      return res.json({ token: signToken(user), user })
-    }
+    const row = await reauthAccount(req, res)
+    if (!row) return
     // Google, Apple and school sign-in accounts hold no VolunTrack password.
     if (!row.password_hash) return res.json({ noPassword: true })
     // Any length is checked (a short guess still counts as a wrong try).
     const password = String(req.body?.password || '')
     if (!password) return res.status(400).json({ error: 'Password is required.' })
-    if (password.length > 128 || !(await verifyPassword(password, row.password_hash))) return wrong('Wrong password.')
+    if (password.length > 128 || !(await verifyPassword(password, row.password_hash))) return reauthWrong(res, row, 'Wrong password.')
     reauthFails.delete(row.id)
     const secondFactor = await secondFactorChallenge(row)
     if (secondFactor) return res.json(secondFactor)
@@ -614,6 +613,24 @@ router.post('/reauth', authLimiter, requireDb, requireAuth(), async (req, res) =
   } catch (error) {
     console.error('reauth failed:', error)
     return res.status(500).json({ error: 'Could not check your password.' })
+  }
+})
+
+// Unlock PIN (#871): stands in for the password and second step. It shares
+// the five-try limit, so 4 digits give a guesser 5 in 10,000.
+router.post('/reauth/pin', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const row = await reauthAccount(req, res)
+    if (!row) return
+    if (!row.unlock_pin_hash) return res.status(400).json({ error: 'No unlock PIN is set.' })
+    const pin = String(req.body?.pin ?? '')
+    if (!/^[0-9]{4,8}$/.test(pin) || !(await bcrypt.compare(pin, row.unlock_pin_hash))) return reauthWrong(res, row, 'Wrong PIN.')
+    reauthFails.delete(row.id)
+    const user = publicUser(row)
+    return res.json({ token: signToken(user), user })
+  } catch (error) {
+    console.error('reauth pin failed:', error)
+    return res.status(500).json({ error: 'Could not check your PIN.' })
   }
 })
 
