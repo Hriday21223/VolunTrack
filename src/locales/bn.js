@@ -3547,5 +3547,12 @@ export default {
   "Nothing left to sign for this event.": "এই ইভেন্টে স্বাক্ষরের আর কিছু বাকি নেই।",
   "Signed off · {came} came · {signed} signed": "সম্পন্ন · {came} জন এসেছে · {signed}টি স্বাক্ষরিত",
   "{n} absent": "{n} জন অনুপস্থিত",
-  "Volunteers' details are no longer shown.": "স্বেচ্ছাসেবকদের তথ্য আর দেখানো হয় না।"
+  "Volunteers' details are no longer shown.": "স্বেচ্ছাসেবকদের তথ্য আর দেখানো হয় না।",
+  "You were away for a while": "আপনি কিছুক্ষণ দূরে ছিলেন",
+  "Enter your password to keep going. Your page is just as you left it.": "চালিয়ে যেতে আপনার পাসওয়ার্ড দিন। আপনার পেজ যেমন রেখে গিয়েছিলেন তেমনই আছে।",
+  "You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.": "আপনি Google, Apple বা আপনার স্কুল দিয়ে সাইন ইন করেছেন, তাই এখানে কোনো পাসওয়ার্ড নেই। চালিয়ে যেতে আবার সাইন ইন করুন।",
+  "Sign in again": "আবার সাইন ইন করুন",
+  "Wrong password. {n} tries left.": "ভুল পাসওয়ার্ড। আর {n}টি চেষ্টা বাকি।",
+  "Too many wrong tries, so we signed you out.": "অনেকবার ভুল চেষ্টা হয়েছে, তাই আমরা আপনাকে সাইন আউট করেছি।",
+  "Wrong password. 1 try left.": "ভুল পাসওয়ার্ড। আর ১টি চেষ্টা বাকি।"
 }

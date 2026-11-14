@@ -204,6 +204,31 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
+  // Away lock (#869): re-check the password of the account already signed in.
+  // → { ok: true } | { requiresTotp, tempToken, methods } | { noPassword: true }
+  // | throws (with .signOut / .triesLeft on a wrong password).
+  const reauth = useCallback(async (password) => {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api'
+    const response = await fetch(`${apiUrl}/auth/reauth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+      body: JSON.stringify({ password }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const err = new Error(data.error || 'Could not check your password.')
+      err.signOut = Boolean(data.signOut)
+      err.triesLeft = data.triesLeft
+      throw err
+    }
+    if (data.noPassword) return { noPassword: true }
+    if (data.requiresTotp) return { requiresTotp: true, tempToken: data.tempToken, methods: data.methods || ['totp'] }
+    localStorage.setItem('voluntrack:auth_token', data.token)
+    write(SESSION_KEY, data.user)
+    setUser(data.user)
+    return { ok: true }
+  }, [])
+
   const verifyPasskey = useCallback(async (tempToken) => {
     const data = await signInWithPasskey(tempToken)
     localStorage.setItem('voluntrack:auth_token', data.token)
@@ -651,7 +676,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, login, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
+    <AuthContext.Provider value={{ user, login, reauth, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
       {children}
     </AuthContext.Provider>
   )

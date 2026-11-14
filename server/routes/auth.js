@@ -521,6 +521,46 @@ router.post('/email-otp/disable', authLimiter, requireDb, requireAuth(), async (
   }
 })
 
+// --- Away lock (#869) -------------------------------------------------------
+// After 5 minutes away the app covers itself (src/components/AwayLock.jsx) and
+// asks for the password again. It needs a live session, so it isn't a
+// password oracle for strangers, and no CAPTCHA: the person is already signed
+// in. The second step, if the account has one, is the same as at sign-in:
+// the answer carries a tempToken for /totp/challenge, passkeys or email OTP.
+// Five wrong passwords in a row and the client signs the account out.
+const REAUTH_MAX_FAILS = 5
+const reauthFails = new Map() // userId -> wrong tries since the last success
+
+router.post('/reauth', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [req.auth.sub])
+    const row = rows[0]
+    if (!row) return res.status(401).json({ error: 'Please sign in again.', signOut: true })
+    // Google, Apple and school sign-in accounts hold no VolunTrack password.
+    if (!row.password_hash) return res.json({ noPassword: true })
+    // Any length is checked (a short guess still counts as a wrong try).
+    const password = String(req.body?.password || '')
+    if (!password) return res.status(400).json({ error: 'Password is required.' })
+    if (password.length > 128 || !(await verifyPassword(password, row.password_hash))) {
+      const fails = (reauthFails.get(row.id) || 0) + 1
+      reauthFails.set(row.id, fails)
+      if (fails >= REAUTH_MAX_FAILS) {
+        reauthFails.delete(row.id)
+        return res.status(401).json({ error: 'Too many wrong tries.', signOut: true })
+      }
+      return res.status(401).json({ error: 'Wrong password.', triesLeft: REAUTH_MAX_FAILS - fails })
+    }
+    reauthFails.delete(row.id)
+    const secondFactor = await secondFactorChallenge(row)
+    if (secondFactor) return res.json(secondFactor)
+    const user = publicUser(row)
+    return res.json({ token: signToken(user), user })
+  } catch (error) {
+    console.error('reauth failed:', error)
+    return res.status(500).json({ error: 'Could not check your password.' })
+  }
+})
+
 router.post('/login', authLimiter, requireDb, turnstileUnlessMonitor(), async (req, res) => {
   const email = validateEmail(req.body.email || '')
   const password = validatePassword(req.body.password || '')

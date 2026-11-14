@@ -3547,5 +3547,12 @@ export default {
   "Nothing left to sign for this event.": "このイベントで署名するものは残っていません。",
   "Signed off · {came} came · {signed} signed": "完了 · 参加 {came} 人 · 署名済み {signed} 件",
   "{n} absent": "欠席 {n} 人",
-  "Volunteers' details are no longer shown.": "ボランティアの情報は表示されなくなりました。"
+  "Volunteers' details are no longer shown.": "ボランティアの情報は表示されなくなりました。",
+  "You were away for a while": "しばらく離れていました",
+  "Enter your password to keep going. Your page is just as you left it.": "続けるにはパスワードを入力してください。ページは離れたときのままです。",
+  "You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.": "Google、Apple、または学校のアカウントでサインインしているため、ここにはパスワードがありません。続けるにはもう一度サインインしてください。",
+  "Sign in again": "もう一度サインイン",
+  "Wrong password. {n} tries left.": "パスワードが違います。残り {n} 回です。",
+  "Too many wrong tries, so we signed you out.": "間違いが多すぎたため、サインアウトしました。",
+  "Wrong password. 1 try left.": "パスワードが違います。残り 1 回です。"
 }
