@@ -210,7 +210,7 @@ export default function SchoolDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: messageText.trim() }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       setMessageText('')
       loadMessages()
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setSendingMsg(false) }
@@ -329,7 +329,7 @@ export default function SchoolDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ reference: confirmRef.trim() }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to submit') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed to submit') }
       setToastMsg(tr('Confirmation submitted — please allow 3–5 business days for verification. We\'ll email you once approved.'))
       setToast(true)
       setConfirmRef('')
@@ -1143,7 +1143,7 @@ export default function SchoolDashboard() {
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify(taskForm),
                   })
-                  if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+                  if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
                    setTaskForm({ title: '', description: '', location: '', date: '', time: '', slotsTotal: 1, phone: '', importantInfo: '' })
                   setToastMsg(tr('Task posted!')); setToast(true); loadData()
                 } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
@@ -1232,7 +1232,7 @@ export default function SchoolDashboard() {
                               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                               body: JSON.stringify({ ...(t.min_age != null ? { ageConfirmed: true } : {}), ...parentPart }),
                             })
-                            if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+                            if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
                             setToastMsg(tr('Signed up — awaiting organizer approval')); setToast(true); loadData()
                           } catch (e) { setToastMsg(e.message); setToast(true) }
                         }} className="btn-primary text-sm">{tr('Sign up')}</button>

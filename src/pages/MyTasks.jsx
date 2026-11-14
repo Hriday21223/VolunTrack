@@ -381,7 +381,7 @@ export default function MyTasks() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status, ...(signature ? { signature } : {}) }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       setToastMsg(status === 'approved' ? 'Hours signed and approved' : 'Hours rejected'); setToast(true)
       setSigning(null)
       // Both reload: a fully signed event drops out of Sign hours, and its
@@ -477,7 +477,7 @@ export default function MyTasks() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       setToastMsg(`Marked ${status}`); setToast(true)
       loadTasks()
     } catch (e) { setToastMsg(e.message); setToast(true) }
@@ -493,7 +493,7 @@ export default function MyTasks() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ volunteerId: logForm.volunteerId, hours: logForm.hours, date: logForm.date || undefined }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       setToastMsg('Hours logged!'); setToast(true)
       setShowLogForm(false); setLogForm({ volunteerId: '', taskId: '', hours: '', date: '' })
       refreshLogs(); loadTasks()
@@ -507,7 +507,7 @@ export default function MyTasks() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       setToastMsg('Signup approved — contact info shared'); setToast(true); loadTasks()
     } catch (e) { setToastMsg(e.message); setToast(true) }
   }
@@ -519,7 +519,7 @@ export default function MyTasks() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       setToastMsg('Signup rejected'); setToast(true); loadTasks()
     } catch (e) { setToastMsg(e.message); setToast(true) }
   }
@@ -542,7 +542,7 @@ export default function MyTasks() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ entries, date: batchDate || taskDate || undefined }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       const d = await res.json()
       setToastMsg(`Logged hours for ${d.logged} volunteer${d.logged === 1 ? '' : 's'}${d.skipped ? ` · ${d.skipped} already had hours for that day` : ''}`); setToast(true)
       setBatchHours({}); setBatchDate('')

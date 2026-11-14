@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Lock } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { isNativeApp } from '@/lib/platform.js'
@@ -104,6 +105,20 @@ export default function AwayLock() {
 
   useEffect(() => { if (locked) setTimeout(() => inputRef.current?.focus(), 50) }, [locked, step])
 
+  // While locked, the app behind can't be reached: `inert` takes it out of
+  // tab order, clicks and screen readers. The lock itself renders outside
+  // #root (a portal), above every dialog the app can open — a PDF preview,
+  // a volunteer badge or a check-in QR left open must not show through.
+  // Every other child of <body> is made inert, so a dialog that portals out
+  // of #root (the check-in scanner) is covered too.
+  const lockRef = useRef(null)
+  useEffect(() => {
+    if (!enabled || !locked) return
+    const others = [...document.body.children].filter((el) => el !== lockRef.current && !el.hasAttribute('inert'))
+    for (const el of others) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true') }
+    return () => { for (const el of others) { el.removeAttribute('inert'); el.removeAttribute('aria-hidden') } }
+  }, [enabled, locked])
+
   const unlocked = () => {
     setLockedFlag(false)
     markActive() // the new session token's tag
@@ -187,8 +202,8 @@ export default function AwayLock() {
   if (!enabled || !locked) return null
   const methods = second?.methods || []
 
-  return (
-    <div role="dialog" aria-modal="true" aria-labelledby="away-lock-title" className="fixed inset-0 z-[95] flex items-center justify-center bg-[#071117] px-4">
+  return createPortal(
+    <div ref={lockRef} role="dialog" aria-modal="true" aria-labelledby="away-lock-title" className="fixed inset-0 z-[5000] flex items-center justify-center bg-[#071117] px-4">
       <div className="w-full max-w-sm text-center text-earth-100">
         <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="h-11 w-11 object-contain" />
@@ -253,6 +268,7 @@ export default function AwayLock() {
           <button type="button" onClick={signOut} className="mt-5 text-sm text-earth-400 underline">{tr('Sign out instead')}</button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
