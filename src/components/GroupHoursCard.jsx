@@ -3,11 +3,11 @@ import { UsersRound } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { tr } from '@/lib/i18n.js'
+import { todayLocal } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
-// The adviser's own date, not UTC: an evening meeting in the US is already
-// "tomorrow" in UTC, which the server then refuses as a future date.
-const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+// The adviser's own date, not UTC (an evening meeting would be tomorrow's).
+const today = () => todayLocal()
 
 // Students tab → Log hours for a group (#539): after a meeting or event, tick
 // who was there and add the same approved hours for all of them at once.

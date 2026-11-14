@@ -20,4 +20,24 @@ export default [
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  // Dates (#878): toISOString() is the UTC date, already "tomorrow" in the US
+  // evening, so it must not stand in for the person's "today". Use
+  // todayLocal() from src/utils/date.js, or date-fns format(). Where UTC is
+  // really meant (week maths on YYYY-MM-DD strings), disable it on that line
+  // with a reason.
+  {
+    files: ['src/**/*.{js,jsx}'],
+    rules: {
+      'no-restricted-syntax': ['error',
+        {
+          selector: "CallExpression[callee.property.name='slice'][callee.object.callee.property.name='toISOString']",
+          message: "toISOString().slice(0, 10) is the UTC date. Use todayLocal() / date-fns format() for the person's date, or disable this line with a reason if UTC is meant.",
+        },
+        {
+          selector: "MemberExpression[object.callee.property.name='split'][object.callee.object.callee.property.name='toISOString']",
+          message: "toISOString().split('T')[0] is the UTC date. Use todayLocal() / date-fns format() for the person's date, or disable this line with a reason if UTC is meant.",
+        },
+      ],
+    },
+  },
 ]

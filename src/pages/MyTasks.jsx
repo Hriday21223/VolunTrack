@@ -10,7 +10,7 @@ import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { csvCell } from '@/lib/csv.js'
-import { fmtDate } from '@/utils/date.js'
+import { todayLocal, fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import TaskJobsPanel from '@/components/TaskJobsPanel.jsx'
@@ -169,7 +169,7 @@ export default function MyTasks() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `volunteer-impact-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `volunteer-impact-${todayLocal()}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }

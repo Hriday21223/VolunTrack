@@ -15,6 +15,7 @@ function weekKey(date) {
   const d = new Date(`${date}T00:00:00Z`)
   const day = (d.getUTCDay() + 6) % 7
   d.setUTCDate(d.getUTCDate() - day)
+  // eslint-disable-next-line no-restricted-syntax -- UTC on purpose: week maths on YYYY-MM-DD strings, not "today"
   return d.toISOString().slice(0, 10)
 }
 

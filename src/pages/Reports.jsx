@@ -14,7 +14,7 @@ import ReflectionsCard from '@/components/ReflectionsCard.jsx'
 import SkillsCard from '@/components/SkillsCard.jsx'
 import ReferencesCard from '@/components/ReferencesCard.jsx'
 import SentReportsCard from '@/components/SentReportsCard.jsx'
-import { fmtDate, fmtHours } from '@/utils/date.js'
+import { todayLocal, fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { downloadResume } from '@/lib/resume.js'
 import { categoryColor } from '@/lib/categories.js'
@@ -105,7 +105,7 @@ export default function Reports() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `volunteer-log-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `volunteer-log-${todayLocal()}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
