@@ -424,6 +424,7 @@ function TermGoals({ value, onChange }) {
   const set = (i, patch) => onChange(value.map((t, j) => (j === i ? { ...t, ...patch } : t)))
   const add = () => {
     const last = value[value.length - 1]
+    // eslint-disable-next-line no-restricted-syntax -- UTC on purpose: day after a YYYY-MM-DD string, not "today"
     const start = last?.end ? new Date(new Date(`${last.end}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10) : ''
     onChange([...value, { name: value.length === 0 ? tr('Fall') : value.length === 1 ? tr('Spring') : '', hours: 10, start, end: '' }])
   }

@@ -35,6 +35,12 @@ export function fmtHours(n) {
   return `${n.toFixed(2)}h`
 }
 
+// The person's own date as YYYY-MM-DD. Not toISOString(), which is UTC and
+// already tomorrow in the US evening (lint rule in eslint.config.js, #878).
+export function todayLocal(d = new Date()) {
+  return dfFormat(d, 'yyyy-MM-dd')
+}
+
 export function startOfTodayISO() {
   const d = new Date()
   d.setHours(0, 0, 0, 0)

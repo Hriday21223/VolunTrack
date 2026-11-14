@@ -12,6 +12,7 @@
 import { zipSync, strToU8 } from 'fflate'
 import { exportLogsPDF, schoolHoursCSV, schoolSummaryCSV, schoolHoursPDF, schoolCertificatesPDF } from '@/lib/export.js'
 import { csvCell } from '@/lib/csv.js'
+import { todayLocal } from '@/utils/date.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
@@ -127,7 +128,7 @@ export async function buildYearEndPacket({ kind, year, onStep }) {
   }
   files['README.txt'] = strToU8([
     `VolunTrack end-of-year packet, school year ${year.label} (${year.from} to ${year.to}).`,
-    `Made ${new Date().toISOString().slice(0, 10)}.`,
+    `Made ${todayLocal()}.`,
     '',
     'summary.pdf / summary.csv: one row per student.',
     'all-hours.csv: every entry and how it was approved.',
