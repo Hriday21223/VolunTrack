@@ -498,7 +498,7 @@ function CheerButton({ log, childName }) {
   }
   return (
     <>
-    {failed && <span role="alert" className="block text-xs text-red-500 mb-1">{tr('Something went wrong. Try again.')}</span>}
+    {failed && <span role="alert" className="block ml-auto max-w-[8rem] text-right whitespace-normal leading-tight text-[0.6875rem] text-red-500 mb-1">{tr('Something went wrong. Try again.')}</span>}
     <button
       type="button"
       onClick={cheer}

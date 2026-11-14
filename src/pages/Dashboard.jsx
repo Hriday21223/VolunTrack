@@ -241,7 +241,10 @@ export default function Dashboard() {
     try {
       let url = `${apiUrl}/school/public-tasks`
       if (lat != null && lng != null) url += `?lat=${lat}&lng=${lng}`
-      const res = await fetch(url)
+      // With the token, so the list carries this student's own sign-up status
+      // and leaves out organizers they blocked (#358).
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
       if (res.ok) { const d = await res.json(); setPublicTasks(d.tasks || []) }
     } catch {}
   }, [])
@@ -504,8 +507,16 @@ export default function Dashboard() {
                       <span className="text-xs text-amber-400 font-medium">{tr('Pending')}</span>
                     ) : t.my_signup_status === 'rejected' ? (
                       <span className="text-xs text-red-400 font-medium">{tr('Rejected')}</span>
-                    ) : full ? (
-                      <span className="text-xs text-red-400 font-medium">{tr('Full')}</span>
+                    ) : t.my_signup_status === 'waitlisted' ? (
+                      <span className="text-xs text-sky-300 font-medium">{tr('Waitlist #')}{t.my_waitlist_position || 1}</span>
+                    ) : t.my_signup_status === 'parent_pending' ? (
+                      <span className="text-xs text-amber-400 font-medium">{tr("Waiting for a parent's OK")}</span>
+                    ) : (full || t.my_signup_status === 'parent_declined' || t.waiver_text || t.shifts?.length || user?.under13) ? (
+                      // Waitlist, waiver, shifts and an under-13's parent OK all
+                      // need the steps Opportunities walks through, so sign up there.
+                      <Link to={`/opportunities?task=${encodeURIComponent(t.id)}`} className={full ? 'btn-secondary text-sm' : 'btn-primary text-sm'}>
+                        {full ? tr('Join waitlist') : tr('Sign up')}
+                      </Link>
                     ) : (
                       <button onClick={async () => {
                         // Minimum age (#426): confirmed by the student, as on Opportunities.
