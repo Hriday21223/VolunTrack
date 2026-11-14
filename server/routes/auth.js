@@ -166,6 +166,10 @@ export function publicUser(row) {
     // counts as current so the notice never blocks its checks.
     // Welcome tours already seen on any device (#736).
     toursSeen: Array.isArray(row.tours_seen) ? row.tours_seen : [],
+    // Whether an away-lock unlock PIN is set (#871); never the PIN itself.
+    hasUnlockPin: Boolean(row.unlock_pin_hash),
+    // Google, Apple and school sign-in accounts have none.
+    hasPassword: Boolean(row.password_hash),
     legalVersion: row.email && process.env.MONITOR_EMAIL && row.email.toLowerCase() === process.env.MONITOR_EMAIL.toLowerCase() ? LEGAL_VERSION : (row.legal_version ?? null),
     createdAt: row.created_at,
   }
@@ -531,25 +535,66 @@ router.post('/email-otp/disable', authLimiter, requireDb, requireAuth(), async (
 const REAUTH_MAX_FAILS = 5
 const reauthFails = new Map() // userId -> wrong tries since the last success
 
+// PUT { pin, password } sets or changes the unlock PIN; DELETE removes it.
+// The current password is required when the account has one, so a person at
+// an unattended, unlocked session can't set a PIN of their own.
+router.put('/me/unlock-pin', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const pin = String(req.body?.pin ?? '')
+    if (!/^[0-9]{4,8}$/.test(pin)) return res.status(400).json({ error: 'The PIN must be 4 to 8 digits.' })
+    const { rows } = await query('SELECT password_hash FROM users WHERE id = $1', [req.auth.sub])
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+    if (rows[0].password_hash && !(await verifyPassword(String(req.body?.password || ''), rows[0].password_hash))) {
+      return res.status(401).json({ error: 'Your current password is not right.' })
+    }
+    await query('UPDATE users SET unlock_pin_hash = $1 WHERE id = $2', [await bcrypt.hash(pin, 10), req.auth.sub])
+    return res.json({ ok: true, hasUnlockPin: true })
+  } catch (error) {
+    console.error('set unlock pin failed:', error)
+    return res.status(500).json({ error: 'Could not save the PIN.' })
+  }
+})
+
+router.delete('/me/unlock-pin', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    await query('UPDATE users SET unlock_pin_hash = NULL WHERE id = $1', [req.auth.sub])
+    return res.json({ ok: true, hasUnlockPin: false })
+  } catch (error) {
+    console.error('remove unlock pin failed:', error)
+    return res.status(500).json({ error: 'Could not remove the PIN.' })
+  }
+})
+
 router.post('/reauth', authLimiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [req.auth.sub])
     const row = rows[0]
     if (!row) return res.status(401).json({ error: 'Please sign in again.', signOut: true })
-    // Google, Apple and school sign-in accounts hold no VolunTrack password.
-    if (!row.password_hash) return res.json({ noPassword: true })
-    // Any length is checked (a short guess still counts as a wrong try).
-    const password = String(req.body?.password || '')
-    if (!password) return res.status(400).json({ error: 'Password is required.' })
-    if (password.length > 128 || !(await verifyPassword(password, row.password_hash))) {
+    const wrong = (error) => {
       const fails = (reauthFails.get(row.id) || 0) + 1
       reauthFails.set(row.id, fails)
       if (fails >= REAUTH_MAX_FAILS) {
         reauthFails.delete(row.id)
         return res.status(401).json({ error: 'Too many wrong tries.', signOut: true })
       }
-      return res.status(401).json({ error: 'Wrong password.', triesLeft: REAUTH_MAX_FAILS - fails })
+      return res.status(401).json({ error, triesLeft: REAUTH_MAX_FAILS - fails })
     }
+    // Unlock PIN (#871): stands in for the password and second step. It
+    // shares the five-try limit, so 4 digits give a guesser 5 in 10,000.
+    if (req.body?.pin != null) {
+      const pin = String(req.body.pin)
+      if (!row.unlock_pin_hash) return res.status(400).json({ error: 'No unlock PIN is set.' })
+      if (!/^[0-9]{4,8}$/.test(pin) || !(await bcrypt.compare(pin, row.unlock_pin_hash))) return wrong('Wrong PIN.')
+      reauthFails.delete(row.id)
+      const user = publicUser(row)
+      return res.json({ token: signToken(user), user })
+    }
+    // Google, Apple and school sign-in accounts hold no VolunTrack password.
+    if (!row.password_hash) return res.json({ noPassword: true })
+    // Any length is checked (a short guess still counts as a wrong try).
+    const password = String(req.body?.password || '')
+    if (!password) return res.status(400).json({ error: 'Password is required.' })
+    if (password.length > 128 || !(await verifyPassword(password, row.password_hash))) return wrong('Wrong password.')
     reauthFails.delete(row.id)
     const secondFactor = await secondFactorChallenge(row)
     if (secondFactor) return res.json(secondFactor)
