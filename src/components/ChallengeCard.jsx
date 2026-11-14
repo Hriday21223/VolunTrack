@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Flag } from 'lucide-react'
 import Card from '@/components/Card.jsx'
+
+// The adviser's own date, not UTC (in the US evening UTC is already tomorrow).
+const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -64,7 +67,7 @@ export default function ChallengeCard({ manage = false, className = '' }) {
         <form onSubmit={start} className="grid sm:grid-cols-[1fr,8rem,10rem,auto] gap-2">
           <input className="input" placeholder={tr('Fall food drive')} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required maxLength={120} />
           <input className="input" type="number" min="1" placeholder={tr('Hours')} value={form.goalHours} onChange={(e) => setForm({ ...form, goalHours: e.target.value })} required />
-          <input className="input" type="date" value={form.endsOn} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} required aria-label={tr('End date')} />
+          <input className="input" type="date" value={form.endsOn} min={localToday()} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} required aria-label={tr('End date')} />
           <button type="submit" className="btn-primary" disabled={busy}>{busy ? tr('Starting…') : tr('Start')}</button>
         </form>
         {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
