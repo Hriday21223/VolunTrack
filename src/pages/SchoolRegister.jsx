@@ -105,12 +105,13 @@ export default function SchoolRegister() {
   }
 
   const createAccount = async (code) => {
-    const res = await fetch(`${apiUrl}/school/register`, {
+    // A free club has its own route (#884): its CAPTCHA was on send-code.
+    const res = await fetch(`${apiUrl}/school/register${isClub ? '/club' : ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...body(), emailCode: code }),
     })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || tr('Registration failed'))
     localStorage.setItem('voluntrack:auth_token', data.token)
     await refreshUser()

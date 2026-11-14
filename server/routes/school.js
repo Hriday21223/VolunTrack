@@ -54,7 +54,7 @@ function taskMinStay(v) {
 
 import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
 import { LEGAL_VERSION } from '../legal.js'
-import { issueSignupCode, useSignupCode, hasPendingSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
+import { issueSignupCode, useSignupCode as spendSignupCode, hasPendingSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
 import { publicFetch } from '../publicHost.js'
 const router = express.Router()
 
@@ -198,17 +198,24 @@ async function checkClubDomain(email) {
   }
 }
 
-// A club's CAPTCHA was on send-code; its code is checked below instead.
-const turnstileUnlessClub = (req, res, next) => (isClubSignup(req.body) ? next() : verifyTurnstile()(req, res, next))
+// Two routes, so the request can't choose whether the CAPTCHA applies
+// (CodeQL #41): /register always has it; /register/club has none because
+// its CAPTCHA was on /register/send-code, and it is always a club, whose
+// emailed code is checked below.
+router.post('/register', limiter, requireDb, verifyTurnstile(), (req, res) => registerSchool(req, res, { club: false }))
+router.post('/register/club', limiter, requireDb, (req, res) => registerSchool(req, res, { club: true }))
 
-router.post('/register', limiter, requireDb, turnstileUnlessClub, async (req, res) => {
+async function registerSchool(req, res, { club }) {
   const name = String(req.body.name || '').trim()
   const email = String(req.body.email || '').trim().toLowerCase()
   const password = req.body.password
   const pin = String(req.body.pin || '').trim().toLowerCase()
   const inviteToken = req.body.inviteToken ? String(req.body.inviteToken).trim() : null
   // A free club (#506) needs no code. An invite link always makes a school.
-  const plan = !inviteToken && req.body.plan === 'club' ? 'club' : 'school'
+  // A club only through /register/club; /register makes a school (an
+  // invite link always does).
+  if (club && inviteToken) return res.status(400).json({ error: 'An invite link registers a school, not a club.' })
+  const plan = club ? 'club' : 'school'
   // Otherwise a one-time code from us is required (#287), so a paying school
   // can't become a customer without having contacted us.
   const registrationCode = plan === 'school' && !inviteToken && req.body.registrationCode ? String(req.body.registrationCode) : null
@@ -248,7 +255,7 @@ router.post('/register', limiter, requireDb, turnstileUnlessClub, async (req, re
     // A free club proves its email first (#817), after the checks above so a
     // taken school code doesn't spend the code.
     if (plan === 'club') {
-      const codeProblem = await useSignupCode(email, req.body.emailCode)
+      const codeProblem = await spendSignupCode(email, req.body.emailCode)
       if (codeProblem) return res.status(codeProblem.status).json({ error: codeProblem.error })
     }
 
@@ -295,7 +302,7 @@ router.post('/register', limiter, requireDb, turnstileUnlessClub, async (req, re
     console.error('school register failed:', error)
     return res.status(500).json({ error: 'Could not register school.' })
   }
-})
+}
 
 // Look up a pending invite by token (public — the school clicks the emailed
 // link before they're authenticated). Returns just enough to pre-fill the
