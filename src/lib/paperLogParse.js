@@ -17,7 +17,8 @@ function isRealDate(y, m, d) {
 function withYear(m, d, today) {
   let y = today.getFullYear()
   const iso = (yy) => `${yy}-${pad(m)}-${pad(d)}`
-  if (iso(y) > today.toISOString().slice(0, 10)) y -= 1
+  // Local date, like the rest of the parse (not UTC).
+  if (iso(y) > `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`) y -= 1
   return isRealDate(y, m, d) ? iso(y) : ''
 }
 
