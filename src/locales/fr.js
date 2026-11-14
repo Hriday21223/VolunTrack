@@ -3538,5 +3538,14 @@ export default {
   "Send a PIN to my parent": "Envoyer un code PIN à mon parent",
   "Signed up. Type your parent's PIN any time from Attendance.": "Inscrit. Saisis le code PIN de ton parent quand tu veux depuis Présence.",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "Ton parent a dit oui. L’organisateur va maintenant confirmer ton inscription.",
-  "Use a PIN from my parent": "Utiliser un code PIN de mon parent"
+  "Use a PIN from my parent": "Utiliser un code PIN de mon parent",
+  "Sign hours": "Signer les heures",
+  "Pick an event to sign": "Choisissez un événement à signer",
+  "{n} to sign": "{n} à signer",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "Rien à signer. Une fois toutes les heures d’un événement signées, les informations de ses bénévoles ne sont plus affichées.",
+  "Pick an event to sign its hours.": "Choisissez un événement pour signer ses heures.",
+  "Nothing left to sign for this event.": "Plus rien à signer pour cet événement.",
+  "Signed off · {came} came · {signed} signed": "Clôturé · {came} venus · {signed} signées",
+  "{n} absent": "{n} absents",
+  "Volunteers' details are no longer shown.": "Les informations des bénévoles ne sont plus affichées."
 }

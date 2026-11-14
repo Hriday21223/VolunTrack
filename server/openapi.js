@@ -37,8 +37,8 @@ export function openApiSpec(serverUrl) {
       '/progress/summary': { get: op('Progress counts', 'progress:read', [schoolParam]) },
       '/reports/impact': { get: op('Impact report numbers', 'reports:read', [schoolParam, { name: 'period', in: 'query', schema: { enum: ['year', 'all'] } }, date('from'), date('to')]) },
       '/events': { get: op("The organizer's events", 'events:read', [...cursorParams, date('from'), date('to')], page) },
-      '/events/{id}/signups': { get: op('Sign-ups for an event', 'events:read', [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], page) },
-      '/events/{id}/attendance': { get: op('Attendance for an event', 'events:read', [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], page) },
+      '/events/{id}/signups': { get: op('Sign-ups for an event (409 event_closed once the event is signed off or 30 days old)', 'events:read', [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], page) },
+      '/events/{id}/attendance': { get: op('Attendance for an event (409 event_closed once the event is signed off or 30 days old)', 'events:read', [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }], page) },
     },
     webhooks: Object.fromEntries(['hours.created', 'hours.approved', 'hours.rejected', 'student.joined', 'student.left', 'requirement.met', 'event.signup', 'event.attendance'].map((e) => [e, {
       post: {

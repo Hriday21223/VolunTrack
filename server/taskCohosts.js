@@ -32,6 +32,34 @@ export const MANAGED_BY_SQL = (taskAlias, userExpr) => `(${taskAlias}.created_by
                 AND tc_u.posting_suspended_at IS NULL))`
 
 /**
+ * SQL: is task `taskAlias` closed out (#865)? Once it is, its organizer and
+ * co-hosts no longer see who volunteered: no roster, no names, no entries.
+ * True when the event day has passed and either it was cancelled, it was more
+ * than 30 days ago, or every approved volunteer is decided — their entry for
+ * the event is approved or rejected, or they were marked absent/excused.
+ * Anyone still waiting (no entry, or an unsigned one) keeps it open.
+ */
+export const CLOSED_OUT_SQL = (taskAlias) => `(${taskAlias}.date < CURRENT_DATE AND (
+  ${taskAlias}.date < CURRENT_DATE - 30
+  OR ${taskAlias}.status = 'cancelled'
+  OR NOT EXISTS (
+    SELECT 1 FROM public_task_signups co_s
+     WHERE co_s.task_id = ${taskAlias}.id AND co_s.status = 'approved'
+       AND COALESCE(co_s.attendance_status, '') NOT IN ('absent', 'excused')
+       AND NOT EXISTS (SELECT 1 FROM logs co_l
+                        WHERE co_l.task_id = co_s.task_id AND co_l.user_id = co_s.user_id
+                          AND co_l.verification_status IN ('approved', 'rejected')))))`
+
+/** Is this task closed out? False for an unknown id. */
+export async function taskClosedOut(taskId) {
+  if (!taskId) return false
+  const { rows } = await query(`SELECT ${CLOSED_OUT_SQL('t')} AS closed FROM public_tasks t WHERE t.id = $1`, [String(taskId)])
+  return rows[0]?.closed === true
+}
+
+export const CLOSED_OUT_ERROR = "This event is signed off, so its volunteers' details are no longer shown."
+
+/**
  * May `userId` act as an organizer of task `taskId`?
  * creatorOnly: only the task's creator passes (edit, cancel, co-hosts, thanks).
  * @returns {Promise<{ found: boolean, allowed: boolean, isCreator: boolean, isCohost: boolean, createdBy: string|null }>}

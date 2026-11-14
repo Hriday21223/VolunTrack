@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Tablet, ChevronDown, ChevronUp, MapPin, Calendar as CalIcon, Users, Clock, Phone, CheckCircle, XCircle, MinusCircle, Plus, Send, GraduationCap, Pencil, Lock, Unlock, Mail, Ban, Heart, BarChart3, Download, FileSpreadsheet, QrCode, Copy, Printer, FileSignature, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -95,6 +95,11 @@ export default function MyTasks() {
   const [batchHours, setBatchHours] = useState({})
   const [batchDate, setBatchDate] = useState('')
   const [batchBusy, setBatchBusy] = useState(false)
+  // Sign hours by event (#865): the events with entries to sign, the one
+  // picked, and its entries grouped by volunteer (names only, no emails).
+  const [eventsToSign, setEventsToSign] = useState([])
+  const [signEventId, setSignEventId] = useState(null)
+  const signEventRef = useRef(null)
   const [students, setStudents] = useState([])
   const [studentsLoading, setStudentsLoading] = useState(true)
   // Editing, cancelling and messaging are all per-task panels rather than
@@ -314,15 +319,33 @@ export default function MyTasks() {
     } catch {} finally { setLoading(false) }
   }, [])
 
-  const loadStudents = useCallback(async () => {
+  const groupEntries = (entries) => {
+    const byStudent = new Map()
+    for (const e of entries) {
+      const st = byStudent.get(e.studentId) || { id: e.studentId, name: e.name, logs: [] }
+      st.logs.push({ id: e.id, date: e.date, activity: e.activity, hours: e.hours, verification_status: e.status })
+      byStudent.set(e.studentId, st)
+    }
+    return [...byStudent.values()]
+  }
+  // `pick` (optional) switches to that event first.
+  const loadStudents = useCallback(async (pick) => {
     setStudentsLoading(true)
+    const headers = { Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` }
     try {
-      const token = localStorage.getItem('voluntrack:auth_token')
-      const res = await fetch(`${apiUrl}/school/my-students`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) { const d = await res.json(); setStudents(d.students || []) }
-    } catch {} finally { setStudentsLoading(false) }
+      const res = await fetch(`${apiUrl}/school/my-events-to-sign`, { headers })
+      const events = res.ok ? ((await res.json()).events || []) : []
+      setEventsToSign(events)
+      const want = pick ?? signEventRef.current
+      const chosen = events.some((e) => e.id === want) ? want : (events.length === 1 ? events[0].id : null)
+      signEventRef.current = chosen
+      setSignEventId(chosen)
+      if (!chosen) { setStudents([]); return [] }
+      const r2 = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(chosen)}/entries-to-sign`, { headers })
+      const list = r2.ok ? groupEntries((await r2.json()).entries || []) : []
+      setStudents(list)
+      return list
+    } catch { return [] } finally { setStudentsLoading(false) }
   }, [])
 
   useEffect(() => { loadTasks(); loadStudents() }, [loadTasks, loadStudents])
@@ -352,7 +375,10 @@ export default function MyTasks() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed') }
       setToastMsg(status === 'approved' ? 'Hours signed and approved' : 'Hours rejected'); setToast(true)
       setSigning(null)
+      // Both reload: a fully signed event drops out of Sign hours, and its
+      // card switches to counts only (#865).
       loadStudents()
+      loadTasks()
     } catch (e) { setLogStatuses(new Set([logId]), prev); setToastMsg(e.message); setToast(true) }
   }
 
@@ -381,7 +407,8 @@ export default function MyTasks() {
 
   // "Sign" on a roster row (#681): pick just that entry and open the
   // sign-once panel under My Students.
-  const signOne = (studentId, logId) => {
+  const signOne = async (taskId, studentId, logId) => {
+    await loadStudents(taskId)
     setSelectedLogs({ [logId]: studentId })
     setSigning(null)
     setBulk({ status: 'approved', signature: '' })
@@ -430,6 +457,7 @@ export default function MyTasks() {
     setSelectedLogs({})
     setBulkBusy(false)
     loadStudents()
+    loadTasks()
   }
 
   const handleMarkAttendance = async (taskId, userId, status) => {
@@ -858,20 +886,25 @@ export default function MyTasks() {
                   <div className="flex flex-wrap gap-2 mb-4">
                     {t.status !== 'cancelled' && (
                       <>
-                        <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
-                          <QrCode className="w-3.5 h-3.5 mr-1" /> {tr('Check-in QR')}
-                        </button>
-                        {!t.is_online && (
-                          <button onClick={() => nav(`/kiosk/${t.id}`)} className="btn-sm btn-ghost" disabled={actionBusy} title={tr('A tablet at the door: volunteers tap their name and enter the PIN from their approval email.')}>
-                            <Tablet className="w-3.5 h-3.5 mr-1" /> {tr('Kiosk')}
-                          </button>
+                        {/* Roster tools; a signed-off event has no roster (#865). */}
+                        {!t.closed_out && (
+                          <>
+                            <button onClick={() => setCheckinTask(t)} className="btn-sm btn-primary" disabled={actionBusy}>
+                              <QrCode className="w-3.5 h-3.5 mr-1" /> {tr('Check-in QR')}
+                            </button>
+                            {!t.is_online && (
+                              <button onClick={() => nav(`/kiosk/${t.id}`)} className="btn-sm btn-ghost" disabled={actionBusy} title={tr('A tablet at the door: volunteers tap their name and enter the PIN from their approval email.')}>
+                                <Tablet className="w-3.5 h-3.5 mr-1" /> {tr('Kiosk')}
+                              </button>
+                            )}
+                            <button onClick={() => signInSheet(t)} className="btn-sm btn-ghost" disabled={actionBusy || sheetBusyId === t.id}>
+                              <Printer className="w-3.5 h-3.5 mr-1" /> {sheetBusyId === t.id ? 'Preparing…' : 'Sign-in sheet (PDF)'}
+                            </button>
+                            <button onClick={() => setPaperFor(paperFor === t.id ? null : t.id)} className="btn-sm btn-ghost" disabled={actionBusy}>
+                              <FileText className="w-3.5 h-3.5 mr-1" /> {tr('Enter paper sheet')}
+                            </button>
+                          </>
                         )}
-                        <button onClick={() => signInSheet(t)} className="btn-sm btn-ghost" disabled={actionBusy || sheetBusyId === t.id}>
-                          <Printer className="w-3.5 h-3.5 mr-1" /> {sheetBusyId === t.id ? 'Preparing…' : 'Sign-in sheet (PDF)'}
-                        </button>
-                        <button onClick={() => setPaperFor(paperFor === t.id ? null : t.id)} className="btn-sm btn-ghost" disabled={actionBusy}>
-                          <FileText className="w-3.5 h-3.5 mr-1" /> {tr('Enter paper sheet')}
-                        </button>
                         {!t.is_cohost && (
                           <>
                             <button onClick={() => (editingId === t.id ? setEditingId(null) : startEdit(t))} className="btn-sm btn-ghost" disabled={actionBusy}>
@@ -969,7 +1002,7 @@ export default function MyTasks() {
                         {ACTIVITY_CATEGORIES.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                       </select>
                       <TaskDetailFields idPrefix={`edit-${t.id}`} value={editForm} onChange={(patch) => setEditForm((f) => ({ ...f, ...patch }))} />
-                      <WaiverField id={`edit-${t.id}-waiver`} value={editForm.waiverText} onChange={(waiverText) => setEditForm((f) => ({ ...f, waiverText }))} hasSignups={(t.signups || []).length > 0} />
+                      <WaiverField id={`edit-${t.id}-waiver`} value={editForm.waiverText} onChange={(waiverText) => setEditForm((f) => ({ ...f, waiverText }))} hasSignups={(t.signup_summary?.total || (t.signups || []).length) > 0} />
                       <textarea className="input" rows={2} maxLength={2000} value={editForm.importantInfo} onChange={(e) => setEditForm({ ...editForm, importantInfo: e.target.value })} placeholder={tr('Important info — approved volunteers only')} />
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <input type="date" className="input" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} aria-label="Date" />
@@ -978,7 +1011,7 @@ export default function MyTasks() {
                         <input type="tel" className="input" maxLength={30} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} aria-label="Phone" />
                       </div>
                       {/* Shifts can be added only before anyone signs up (server/taskShifts.js). */}
-                      {(editForm.shifts || (t.signups || []).length === 0) && (
+                      {(editForm.shifts || !(t.signup_summary?.total || (t.signups || []).length)) && (
                         <label className="flex items-start gap-2 text-sm">
                           <input type="checkbox" className="mt-1" checked={Boolean(editForm.shifts)} disabled={Boolean(editForm.shifts?.some((sh) => sh.filled > 0))} onChange={(e) => setEditForm((f) => ({ ...f, shifts: e.target.checked ? starterShifts(/^\d{2}:\d{2}$/.test(f.time) ? f.time : '') : null }))} />
                           <span>{tr('Split into shifts')}</span>
@@ -1018,7 +1051,14 @@ export default function MyTasks() {
                     </div>
                   )}
 
-                  {signups.length === 0 ? (
+                  {t.closed_out ? (
+                    // Signed off (#865): counts only, never who.
+                    <p className="text-sm text-earth-500 text-center py-4">
+                      {tr('Signed off · {came} came · {signed} signed', { came: Math.max(0, (t.signup_summary?.approved || 0) - (t.signup_summary?.absent || 0)), signed: t.signup_summary?.signed || 0 })}
+                      {t.signup_summary?.absent ? ` · ${tr('{n} absent', { n: t.signup_summary.absent })}` : ''}
+                      <span className="block text-xs mt-1">{tr("Volunteers' details are no longer shown.")}</span>
+                    </p>
+                  ) : signups.length === 0 ? (
                     <p className="text-sm text-earth-500 text-center py-4">{tr('No one has signed up yet.')}</p>
                   ) : (
                     <div className="space-y-3">
@@ -1095,8 +1135,8 @@ export default function MyTasks() {
                                 {s.task_log ? (
                                   <TaskLogHours
                                     log={s.task_log}
-                                    canSign={pendingLogs.some((p) => p.logId === s.task_log.id)}
-                                    onSign={() => signOne(s.id, s.task_log.id)}
+                                    canSign={['none', 'pending'].includes(s.task_log.status)}
+                                    onSign={() => signOne(t.id, s.id, s.task_log.id)}
                                   />
                                 ) : (
                                 <input
@@ -1167,12 +1207,31 @@ export default function MyTasks() {
 
         <div className={view === 'tasks' ? 'pt-2' : 'hidden'}>
           <p className="text-xs font-medium text-earth-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <GraduationCap className="w-3.5 h-3.5" /> {tr('My Students')}
+            <GraduationCap className="w-3.5 h-3.5" /> {tr('Sign hours')}
           </p>
-          {studentsLoading ? (
+          {eventsToSign.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3" role="group" aria-label={tr('Pick an event to sign')}>
+              {eventsToSign.map((ev) => (
+                <button
+                  key={ev.id}
+                  type="button"
+                  aria-pressed={signEventId === ev.id}
+                  onClick={() => { setSelectedLogs({}); setBulk(null); setSigning(null); loadStudents(ev.id) }}
+                  className={`btn-sm text-xs ${signEventId === ev.id ? 'btn-primary' : 'btn-ghost border border-white/10'}`}
+                >
+                  {ev.title} · {fmtDate(ev.date)} · {tr('{n} to sign', { n: ev.pending })}
+                </button>
+              ))}
+            </div>
+          )}
+          {studentsLoading && students.length === 0 ? (
             <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
+          ) : eventsToSign.length === 0 ? (
+            <Card><p className="text-center text-earth-500 py-8">{tr("Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.")}</p></Card>
+          ) : !signEventId ? (
+            <Card><p className="text-center text-earth-500 py-8">{tr('Pick an event to sign its hours.')}</p></Card>
           ) : students.length === 0 ? (
-            <Card><p className="text-center text-earth-500 py-8">{tr('No approved students yet — approve a signup above to see them here.')}</p></Card>
+            <Card><p className="text-center text-earth-500 py-8">{tr('Nothing left to sign for this event.')}</p></Card>
           ) : (
             <div className="space-y-3">
               {pendingLogs.length > 0 && (
@@ -1237,7 +1296,6 @@ export default function MyTasks() {
               {students.map((student) => (
                 <Card key={student.id} padded={false} className="p-4">
                   <p className="text-sm font-medium">{student.name}</p>
-                  <p className="text-xs text-earth-400">{student.email}</p>
                   {student.logs.length === 0 ? (
                     <p className="text-xs text-earth-500 mt-2">{tr('No logged hours yet.')}</p>
                   ) : (

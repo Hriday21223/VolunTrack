@@ -21,8 +21,8 @@ const ENDPOINTS = [
   ['GET', '/v1/progress/summary', 'progress:read', 'Counts: students, with a requirement, met, behind.'],
   ['GET', '/v1/reports/impact', 'reports:read', 'Impact report numbers for period=year|all, or from and to. Organizations also get per-school totals.'],
   ['GET', '/v1/events', 'events:read', "An organizer's events with sign-up counts. Paged."],
-  ['GET', '/v1/events/:id/signups', 'events:read', 'Sign-ups, volunteers as first name and last initial.'],
-  ['GET', '/v1/events/:id/attendance', 'events:read', 'Approved volunteers and whether they came.'],
+  ['GET', '/v1/events/:id/signups', 'events:read', 'Sign-ups, volunteers as first name and last initial. 409 event_closed once the event is signed off or 30 days old.'],
+  ['GET', '/v1/events/:id/attendance', 'events:read', 'Approved volunteers and whether they came. 409 event_closed once the event is signed off or 30 days old.'],
 ]
 
 const EVENTS = [

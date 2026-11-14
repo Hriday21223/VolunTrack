@@ -3538,5 +3538,14 @@ export default {
   "Send a PIN to my parent": "保護者にPINを送る",
   "Signed up. Type your parent's PIN any time from Attendance.": "申し込みました。保護者のPINは「出欠」からいつでも入力できます。",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "保護者が承認しました。次は主催者が申し込みを確定します。",
-  "Use a PIN from my parent": "保護者からのPINを使う"
+  "Use a PIN from my parent": "保護者からのPINを使う",
+  "Sign hours": "時間に署名",
+  "Pick an event to sign": "署名するイベントを選択",
+  "{n} to sign": "署名待ち {n} 件",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "署名するものはありません。イベントの時間がすべて署名されると、ボランティアの情報は表示されなくなります。",
+  "Pick an event to sign its hours.": "時間に署名するイベントを選んでください。",
+  "Nothing left to sign for this event.": "このイベントで署名するものは残っていません。",
+  "Signed off · {came} came · {signed} signed": "完了 · 参加 {came} 人 · 署名済み {signed} 件",
+  "{n} absent": "欠席 {n} 人",
+  "Volunteers' details are no longer shown.": "ボランティアの情報は表示されなくなりました。"
 }

@@ -3539,5 +3539,14 @@ export default {
   "Send a PIN to my parent": "Gửi mã PIN cho phụ huynh",
   "Signed up. Type your parent's PIN any time from Attendance.": "Đã đăng ký. Bạn có thể nhập mã PIN của phụ huynh bất cứ lúc nào trong Điểm danh.",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "Phụ huynh đã đồng ý. Giờ người tổ chức sẽ xác nhận đăng ký của bạn.",
-  "Use a PIN from my parent": "Dùng mã PIN từ phụ huynh"
+  "Use a PIN from my parent": "Dùng mã PIN từ phụ huynh",
+  "Sign hours": "Ký giờ",
+  "Pick an event to sign": "Chọn một sự kiện để ký",
+  "{n} to sign": "{n} cần ký",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "Không có gì để ký. Khi mọi giờ của một sự kiện đã được ký, thông tin tình nguyện viên sẽ không còn hiển thị.",
+  "Pick an event to sign its hours.": "Chọn một sự kiện để ký giờ.",
+  "Nothing left to sign for this event.": "Sự kiện này không còn gì để ký.",
+  "Signed off · {came} came · {signed} signed": "Đã hoàn tất · {came} người đến · {signed} đã ký",
+  "{n} absent": "{n} vắng mặt",
+  "Volunteers' details are no longer shown.": "Thông tin tình nguyện viên không còn hiển thị."
 }
