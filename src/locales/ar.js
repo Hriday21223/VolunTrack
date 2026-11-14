@@ -3538,5 +3538,14 @@ export default {
   "Send a PIN to my parent": "أرسل رمز PIN إلى ولي أمري",
   "Signed up. Type your parent's PIN any time from Attendance.": "تم التسجيل. اكتب رمز PIN من ولي أمرك في أي وقت من الحضور.",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "وافق ولي أمرك. الآن سيؤكد المنظّم تسجيلك.",
-  "Use a PIN from my parent": "استخدم رمز PIN من ولي أمري"
+  "Use a PIN from my parent": "استخدم رمز PIN من ولي أمري",
+  "Sign hours": "توقيع الساعات",
+  "Pick an event to sign": "اختر فعالية للتوقيع",
+  "{n} to sign": "{n} بانتظار التوقيع",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "لا شيء للتوقيع. بعد توقيع كل ساعات الفعالية، لا تعود بيانات متطوعيها ظاهرة.",
+  "Pick an event to sign its hours.": "اختر فعالية لتوقيع ساعاتها.",
+  "Nothing left to sign for this event.": "لم يبقَ شيء للتوقيع في هذه الفعالية.",
+  "Signed off · {came} came · {signed} signed": "مكتملة · حضر {came} · تم توقيع {signed}",
+  "{n} absent": "{n} غائبون",
+  "Volunteers' details are no longer shown.": "لم تعد بيانات المتطوعين ظاهرة."
 }

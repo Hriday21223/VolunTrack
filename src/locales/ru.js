@@ -3538,5 +3538,14 @@ export default {
   "Send a PIN to my parent": "Отправить родителю PIN-код",
   "Signed up. Type your parent's PIN any time from Attendance.": "Вы записались. Введите PIN-код родителя в любое время в разделе «Посещения».",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "Родитель дал согласие. Теперь организатор подтвердит вашу запись.",
-  "Use a PIN from my parent": "Использовать PIN-код от родителя"
+  "Use a PIN from my parent": "Использовать PIN-код от родителя",
+  "Sign hours": "Подписать часы",
+  "Pick an event to sign": "Выберите событие для подписи",
+  "{n} to sign": "{n} на подпись",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "Подписывать нечего. Когда все часы события подписаны, данные его волонтёров больше не показываются.",
+  "Pick an event to sign its hours.": "Выберите событие, чтобы подписать часы.",
+  "Nothing left to sign for this event.": "В этом событии больше нечего подписывать.",
+  "Signed off · {came} came · {signed} signed": "Закрыто · пришли: {came} · подписано: {signed}",
+  "{n} absent": "Отсутствовали: {n}",
+  "Volunteers' details are no longer shown.": "Данные волонтёров больше не показываются."
 }

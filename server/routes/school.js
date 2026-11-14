@@ -37,7 +37,7 @@ import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
 import { displayName } from './portfolio.js'
-import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
+import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, CLOSED_OUT_SQL, CLOSED_OUT_ERROR, taskClosedOut, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
 import { schoolIsActive, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_STUDENT_LIMIT, CLUB_MAX_CO_ADMINS, PLANS } from '../plans.js'
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
 import { readWaiverText, readWaiverAgreement, saveWaiverAgreement, hashWaiverToken, WAIVER_STATUS_SQL } from '../taskWaivers.js'
@@ -57,6 +57,32 @@ import { LEGAL_VERSION } from '../legal.js'
 import { issueSignupCode, useSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
 import { publicFetch } from '../publicHost.js'
 const router = express.Router()
+
+// Closed-out events (#865): once an event is signed off (or 30 days old), the
+// organizer's routes that show or act on its volunteers refuse. Registered
+// before the routes so it runs first; any new organizer route that returns a
+// task's volunteers belongs in this list.
+const CLOSED_OUT_GUARDED = [
+  '/public-tasks/:id/approve/:userId', '/public-tasks/:id/reject/:userId',
+  '/public-tasks/:id/kiosk', '/public-tasks/:id/kiosk/:signupId', '/public-tasks/:id/kiosk-walkin',
+  '/public-tasks/:id/walkins', '/public-tasks/:id/paper-attendance',
+  '/public-tasks/:id/log-hours', '/public-tasks/:id/log-hours-batch', '/public-tasks/:id/logs',
+  '/public-tasks/:id/attendance/:userId', '/public-tasks/:id/entries-to-sign',
+]
+router.all(CLOSED_OUT_GUARDED, async (req, res, next) => {
+  try {
+    if (await taskClosedOut(req.params.id)) return res.status(409).json({ error: CLOSED_OUT_ERROR, closedOut: true })
+  } catch (error) { return next(error) }
+  return next()
+})
+// The organizer's QR screen lists who checked in; the volunteer's own scan
+// (POST) isn't an organizer view, so only GET is guarded.
+router.get('/public-tasks/:id/checkin', async (req, res, next) => {
+  try {
+    if (await taskClosedOut(req.params.id)) return res.status(409).json({ error: CLOSED_OUT_ERROR, closedOut: true })
+  } catch (error) { return next(error) }
+  return next()
+})
 
 // Shared across every route in this file, including reads (a single
 // dashboard load fires several parallel GETs: pdfs, tasks, info,
@@ -6250,6 +6276,16 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
               t.waiver_text,
               ${SPOTS_USED_SQL('t.id')} AS slots_filled,
               ${SHIFTS_JSON_SQL('t.id')} AS shifts,
+              -- Closed out (#865): counts only, never who.
+              ${CLOSED_OUT_SQL('t')} AS closed_out,
+              (SELECT json_build_object(
+                 'approved', COUNT(*) FILTER (WHERE s.status = 'approved'),
+                 'signed', COUNT(*) FILTER (WHERE s.status = 'approved' AND EXISTS (SELECT 1 FROM logs l WHERE l.task_id = s.task_id AND l.user_id = s.user_id AND l.verification_status = 'approved')),
+                 'rejected', COUNT(*) FILTER (WHERE s.status = 'approved' AND EXISTS (SELECT 1 FROM logs l WHERE l.task_id = s.task_id AND l.user_id = s.user_id AND l.verification_status = 'rejected')),
+                 'absent', COUNT(*) FILTER (WHERE s.status = 'approved' AND s.attendance_status IN ('absent', 'excused')),
+                 'total', COUNT(*))
+                 FROM public_task_signups s WHERE s.task_id = t.id AND s.status NOT IN ('parent_pending', 'parent_declined')) AS signup_summary,
+              CASE WHEN ${CLOSED_OUT_SQL('t')} THEN '[]'::json ELSE
               (SELECT COALESCE(json_agg(json_build_object(
                 'id', u.id, 'name', u.name, 'email', u.email, 'status', s.status, 'signed_up_at', s.signed_up_at,
                 'attendance_status', s.attendance_status, 'attendance_marked_at', s.attendance_marked_at,
@@ -6281,7 +6317,7 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
                FROM public_task_signups s JOIN users u ON u.id = s.user_id
               -- Not before a parent's OK (decideParentOk): an under-13's name
               -- and email reach the organizer only once a parent agreed.
-              WHERE s.task_id = t.id AND s.status NOT IN ('parent_pending', 'parent_declined')) AS signups,
+              WHERE s.task_id = t.id AND s.status NOT IN ('parent_pending', 'parent_declined')) END AS signups,
               -- Ratings (PUT /public-tasks/:id/rating): the average, the count
               -- and the comments with their stars and date — never the
               -- student's name or id, so a comment can't be traced to a row.
@@ -7429,47 +7465,72 @@ router.get('/public-tasks/:id/logs', limiter, requireDb, requireAuth(), async (r
   }
 })
 
-// List every student approved on a task I created or co-host, with their recent logs —
-// lets a volunteer review and approve/reject hours a student logged themselves,
-// not just log hours on the student's behalf (see log-hours/log-hours-batch above).
-router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) => {
-  try {
-    const { rows: signups } = await query(
-      `SELECT DISTINCT u.id, u.name, u.email
-       FROM public_task_signups s
-       JOIN public_tasks t ON t.id = s.task_id
-       JOIN users u ON u.id = s.user_id
-       WHERE ${MANAGED_BY_SQL('t', '$1')} AND s.status = 'approved'
-       ORDER BY u.name`,
-      [req.auth.sub],
-    )
-    if (signups.length === 0) return res.json({ students: [] })
+// Sign hours by event (#865). An organizer sees only events that still have
+// entries to sign and aren't closed out, then one event's unsigned entries:
+// first name and entry, never an email. Once an event is signed off its
+// volunteers drop out of every organizer view (CLOSED_OUT_SQL).
+const TO_SIGN_SQL = `l.verification_status IN ('none', 'pending')
+  AND EXISTS (SELECT 1 FROM public_task_signups s
+               WHERE s.task_id = l.task_id AND s.user_id = l.user_id AND s.status = 'approved')`
 
-    const students = {}
-    for (const row of signups) {
-      students[row.id] = { id: row.id, name: row.name, email: row.email }
-    }
-
-    const studentIds = Object.keys(students)
-    // Scoped to logs whose task_id belongs to a task this host created —
-    // real ownership via the task/signup relationship, not a title-text guess.
-    const { rows: logs } = await query(
-      `SELECT l.id, l.user_id, l.date, l.activity, l.category, l.hours, l.notes, l.verification_status, l.created_at
+async function entriesToSign(organizerId, taskId = null) {
+  const { rows } = await query(
+    `SELECT l.id, l.user_id, u.name, to_char(l.date, 'YYYY-MM-DD') AS date, l.activity, l.category, l.hours,
+            l.verification_status, l.task_id, t.title AS task_title, to_char(t.date, 'YYYY-MM-DD') AS task_date
        FROM logs l
        JOIN public_tasks t ON t.id = l.task_id
-       WHERE l.user_id = ANY($1::text[]) AND ${MANAGED_BY_SQL('t', '$2')}
-       ORDER BY l.created_at DESC`,
-      [studentIds, req.auth.sub],
-    )
-    const logsByStudent = {}
-    for (const log of logs) {
-      if (!logsByStudent[log.user_id]) logsByStudent[log.user_id] = []
-      logsByStudent[log.user_id].push(log)
-    }
+       JOIN users u ON u.id = l.user_id
+      WHERE ${MANAGED_BY_SQL('t', '$1')} AND NOT ${CLOSED_OUT_SQL('t')} AND ${TO_SIGN_SQL}
+        AND ($2::text IS NULL OR t.id = $2)
+      ORDER BY t.date DESC, u.name, l.date`,
+    [organizerId, taskId],
+  )
+  return rows
+}
 
+// GET: the events with something to sign — { events: [{ id, title, date, pending }] }.
+router.get('/my-events-to-sign', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const byTask = new Map()
+    for (const e of await entriesToSign(req.auth.sub)) {
+      const ev = byTask.get(e.task_id) || { id: e.task_id, title: e.task_title, date: e.task_date, pending: 0 }
+      ev.pending += 1
+      byTask.set(e.task_id, ev)
+    }
+    return res.json({ events: [...byTask.values()] })
+  } catch (error) {
+    console.error('events to sign failed:', error)
+    return res.status(500).json({ error: 'Could not load your events.' })
+  }
+})
+
+// GET: one event's unsigned entries — { entries: [{ id, studentId, name, date, activity, hours, status }] }.
+// Closed-out events are refused by the guard at the top of this file.
+router.get('/public-tasks/:id/entries-to-sign', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can sign its hours.")) return
+    const rows = await entriesToSign(req.auth.sub, req.params.id)
     return res.json({
-      students: studentIds.map((id) => ({ ...students[id], logs: logsByStudent[id] || [] })),
+      entries: rows.map((e) => ({ id: e.id, studentId: e.user_id, name: e.name, date: e.date, activity: e.activity, category: e.category, hours: e.hours, status: e.verification_status })),
     })
+  } catch (error) {
+    console.error('entries to sign failed:', error)
+    return res.status(500).json({ error: 'Could not load the entries.' })
+  }
+})
+
+// Old app versions (before #865) still call this. It now answers with only
+// unsigned entries of open events, names only, in the old shape.
+router.get('/my-students', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const students = new Map()
+    for (const e of await entriesToSign(req.auth.sub)) {
+      const st = students.get(e.user_id) || { id: e.user_id, name: e.name, logs: [] }
+      st.logs.push({ id: e.id, user_id: e.user_id, date: e.date, activity: e.activity, category: e.category, hours: e.hours, verification_status: e.verification_status })
+      students.set(e.user_id, st)
+    }
+    return res.json({ students: [...students.values()] })
   } catch (error) {
     console.error('my students failed:', error)
     return res.status(500).json({ error: 'Could not fetch students.' })
@@ -7506,6 +7567,7 @@ async function verifyStudentLog({ organizerId, studentId, logId, status, signatu
     [logRows[0].task_id, organizerId],
   )
   if (ownsTask.length === 0) return { ok: false, httpStatus: 403, error: 'This log is not for one of your tasks.' }
+  if (await taskClosedOut(logRows[0].task_id)) return { ok: false, httpStatus: 409, error: CLOSED_OUT_ERROR }
 
   // What (if anything) had already been recorded, so the caller can tell
   // this was a change rather than a first decision.

@@ -3539,5 +3539,14 @@ export default {
   "Send a PIN to my parent": "给家长发送 PIN",
   "Signed up. Type your parent's PIN any time from Attendance.": "已报名。你可以随时在“出勤”中输入家长的 PIN。",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "家长已同意。现在组织者会确认你的报名。",
-  "Use a PIN from my parent": "使用家长给的 PIN"
+  "Use a PIN from my parent": "使用家长给的 PIN",
+  "Sign hours": "签署时长",
+  "Pick an event to sign": "选择要签署的活动",
+  "{n} to sign": "{n} 条待签",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "没有待签内容。活动的时长全部签完后，将不再显示志愿者的信息。",
+  "Pick an event to sign its hours.": "选择一个活动来签署时长。",
+  "Nothing left to sign for this event.": "此活动已没有待签内容。",
+  "Signed off · {came} came · {signed} signed": "已结束 · {came} 人到场 · {signed} 条已签",
+  "{n} absent": "{n} 人缺席",
+  "Volunteers' details are no longer shown.": "不再显示志愿者的信息。"
 }

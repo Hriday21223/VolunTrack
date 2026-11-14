@@ -3538,5 +3538,14 @@ export default {
   "Send a PIN to my parent": "मेरे अभिभावक को PIN भेजें",
   "Signed up. Type your parent's PIN any time from Attendance.": "साइन अप हो गया। अपने अभिभावक का PIN कभी भी हाज़िरी से डालें।",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "आपके अभिभावक ने हाँ कह दिया। अब आयोजक आपके साइन-अप की पुष्टि करेंगे।",
-  "Use a PIN from my parent": "मेरे अभिभावक से मिला PIN इस्तेमाल करें"
+  "Use a PIN from my parent": "मेरे अभिभावक से मिला PIN इस्तेमाल करें",
+  "Sign hours": "घंटों पर हस्ताक्षर करें",
+  "Pick an event to sign": "हस्ताक्षर के लिए कोई इवेंट चुनें",
+  "{n} to sign": "{n} हस्ताक्षर बाकी",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "हस्ताक्षर के लिए कुछ नहीं है। किसी इवेंट के सभी घंटों पर हस्ताक्षर हो जाने के बाद उसके स्वयंसेवकों की जानकारी नहीं दिखाई जाती।",
+  "Pick an event to sign its hours.": "घंटों पर हस्ताक्षर करने के लिए कोई इवेंट चुनें।",
+  "Nothing left to sign for this event.": "इस इवेंट में हस्ताक्षर के लिए कुछ बाकी नहीं है।",
+  "Signed off · {came} came · {signed} signed": "पूरा हुआ · {came} आए · {signed} पर हस्ताक्षर",
+  "{n} absent": "{n} अनुपस्थित",
+  "Volunteers' details are no longer shown.": "स्वयंसेवकों की जानकारी अब नहीं दिखाई जाती।"
 }

@@ -10,6 +10,7 @@ import { recordAudit, AUDIT } from '../audit.js'
 import { openApiSpec } from '../openapi.js'
 import { backendUrl } from '../email.js'
 import { rangeFromQuery, PERIODS } from '../impact.js'
+import { taskClosedOut } from '../taskCohosts.js'
 import {
   schoolIdsFor, pageSize, isDate, listStudents, getStudent, listHours, progress, progressSummary,
   impact, schoolTotals, schoolsFor, listEvents, ownsEvent, eventSignups, SAMPLE,
@@ -201,6 +202,8 @@ router.get('/events', forOrganizers, requireScope('events:read'), wrap(async (re
 router.get('/events/:id/signups', forOrganizers, requireScope('events:read'), wrap(async (req, res) => {
   if (isTest(req)) return req.params.id === 'pt_sample_1' ? res.json({ data: SAMPLE.signups }) : apiError(res, 404, 'not_found', 'No such event for this key.')
   if (!(await ownsEvent(req.apiKey.ownerId, req.params.id))) return apiError(res, 404, 'not_found', 'No such event for this key.')
+  // Closed out (#865): a signed-off event no longer names its volunteers.
+  if (await taskClosedOut(req.params.id)) return apiError(res, 409, 'event_closed', 'This event is signed off, so its volunteers are no longer shown.')
   return res.json({ data: await eventSignups(req.params.id) })
 }))
 
@@ -209,6 +212,8 @@ router.get('/events/:id/attendance', forOrganizers, requireScope('events:read'),
   const pick = (rows) => rows.filter((r) => r.status === 'approved').map(({ id, volunteer, shift, attendance, checkedInAt, checkedOutAt }) => ({ id, volunteer, shift, attendance, checkedInAt, checkedOutAt }))
   if (isTest(req)) return req.params.id === 'pt_sample_1' ? res.json({ data: pick(SAMPLE.signups) }) : apiError(res, 404, 'not_found', 'No such event for this key.')
   if (!(await ownsEvent(req.apiKey.ownerId, req.params.id))) return apiError(res, 404, 'not_found', 'No such event for this key.')
+  // Closed out (#865): a signed-off event no longer names its volunteers.
+  if (await taskClosedOut(req.params.id)) return apiError(res, 409, 'event_closed', 'This event is signed off, so its volunteers are no longer shown.')
   return res.json({ data: pick(await eventSignups(req.params.id)) })
 }))
 

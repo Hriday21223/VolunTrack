@@ -3538,5 +3538,14 @@ export default {
   "Send a PIN to my parent": "আমার অভিভাবককে PIN পাঠান",
   "Signed up. Type your parent's PIN any time from Attendance.": "সাইন আপ হয়েছে। আপনার অভিভাবকের PIN যেকোনো সময় উপস্থিতি থেকে লিখুন।",
   "Your parent said yes. Now the organizer will confirm your sign-up.": "আপনার অভিভাবক রাজি হয়েছেন। এখন আয়োজক আপনার সাইন আপ নিশ্চিত করবেন।",
-  "Use a PIN from my parent": "আমার অভিভাবকের দেওয়া PIN ব্যবহার করুন"
+  "Use a PIN from my parent": "আমার অভিভাবকের দেওয়া PIN ব্যবহার করুন",
+  "Sign hours": "ঘণ্টায় স্বাক্ষর করুন",
+  "Pick an event to sign": "স্বাক্ষরের জন্য একটি ইভেন্ট বেছে নিন",
+  "{n} to sign": "{n}টি স্বাক্ষর বাকি",
+  "Nothing to sign. Once an event's hours are all signed, its volunteers' details are no longer shown.": "স্বাক্ষরের কিছু নেই। কোনো ইভেন্টের সব ঘণ্টায় স্বাক্ষর হয়ে গেলে তার স্বেচ্ছাসেবকদের তথ্য আর দেখানো হয় না।",
+  "Pick an event to sign its hours.": "ঘণ্টায় স্বাক্ষর করতে একটি ইভেন্ট বেছে নিন।",
+  "Nothing left to sign for this event.": "এই ইভেন্টে স্বাক্ষরের আর কিছু বাকি নেই।",
+  "Signed off · {came} came · {signed} signed": "সম্পন্ন · {came} জন এসেছে · {signed}টি স্বাক্ষরিত",
+  "{n} absent": "{n} জন অনুপস্থিত",
+  "Volunteers' details are no longer shown.": "স্বেচ্ছাসেবকদের তথ্য আর দেখানো হয় না।"
 }
