@@ -44,6 +44,15 @@ export async function issueSignupCode(email, language) {
 
 // Checks and spends the code for `email`. → null when it matched (the row is
 // gone, so it can't be used again), otherwise { status, error }.
+// Is there an unexpired code waiting for this address? Doesn't spend it or
+// count a try. Lets a route that skipped the CAPTCHA (a free club, whose
+// CAPTCHA was on send-code) refuse early, before any lookup that could tell a
+// stranger whether an email or school code is taken (CodeQL #41).
+export async function hasPendingSignupCode(email) {
+  const { rowCount } = await query('SELECT 1 FROM signup_codes WHERE email = $1 AND expires_at > now()', [String(email || '')])
+  return rowCount > 0
+}
+
 export async function useSignupCode(email, code) {
   if (typeof code !== 'string' || !/^\d{6}$/.test(code)) {
     return { status: 400, error: 'Enter the 6-digit code we emailed you.' }

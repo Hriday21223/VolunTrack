@@ -294,7 +294,9 @@ function warnAdminEmailBudget(sent) {
 // only quotes an Arabic name stays left to right.
 export function withTextDirection(html) {
   if (!html) return html
-  const text = String(html || '').replace(/<[^>]*>/g, ' ')
+  // [^<>] (not [^>]) keeps this linear: a run of '<' with no '>' can't make
+  // each one rescan the rest of the string (CodeQL #42). Capped for the same reason.
+  const text = String(html || '').slice(0, 200000).replace(/<[^<>]*>/g, ' ')
   const arabic = (text.match(/[\u0600-\u06FF]/g) || []).length
   const latin = (text.match(/[A-Za-z]/g) || []).length
   return arabic > latin ? `<div dir="rtl" style="direction:rtl;text-align:right">${html}</div>` : html
