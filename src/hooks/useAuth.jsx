@@ -207,12 +207,12 @@ export function AuthProvider({ children }) {
   // Away lock (#869): re-check the password of the account already signed in.
   // → { ok: true } | { requiresTotp, tempToken, methods } | { noPassword: true }
   // | throws (with .signOut / .triesLeft on a wrong password).
-  const reauth = useCallback(async (password) => {
+  const reauth = useCallback(async (password, { pin } = {}) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api'
     const response = await fetch(`${apiUrl}/auth/reauth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify(pin != null ? { pin } : { password }),
     })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {

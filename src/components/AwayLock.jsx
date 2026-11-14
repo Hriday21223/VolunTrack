@@ -42,8 +42,9 @@ export default function AwayLock() {
   const { user, reauth, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, logout } = useAuth()
   const [enabled, setEnabled] = useState(false)
   const [locked, setLocked] = useState(false)
-  const [step, setStep] = useState('password') // password | second | noPassword
+  const [step, setStep] = useState('password') // password | pin | second | noPassword
   const [password, setPassword] = useState('')
+  const [pin, setPin] = useState('')
   const [code, setCode] = useState('')
   const [second, setSecond] = useState(null) // { tempToken, methods, emailSent }
   const [error, setError] = useState('')
@@ -63,8 +64,8 @@ export default function AwayLock() {
   const lock = useCallback(() => {
     setLockedFlag(true)
     setLocked(true)
-    setStep('password'); setPassword(''); setCode(''); setSecond(null); setError('')
-  }, [])
+    setStep(user?.hasUnlockPin ? 'pin' : 'password'); setPassword(''); setPin(''); setCode(''); setSecond(null); setError('')
+  }, [user?.hasUnlockPin])
 
   // Is it time to lock? Called on load and whenever a tab comes back.
   const check = useCallback(() => {
@@ -134,16 +135,28 @@ export default function AwayLock() {
       }
       else unlocked()
     } catch (err) {
-      if (err.signOut) {
-        setError(tr('Too many wrong tries, so we signed you out.'))
-        setTimeout(signOut, 1500)
-      } else if (err.triesLeft != null) {
-        setError(err.triesLeft === 1 ? tr('Wrong password. 1 try left.') : tr('Wrong password. {n} tries left.', { n: err.triesLeft }))
-      } else {
-        setError(err.message)
-      }
+      failed(err)
       setPassword('')
     } finally { setBusy(false) }
+  }
+
+  const failed = (err) => {
+    if (err.signOut) {
+      setError(tr('Too many wrong tries, so we signed you out.'))
+      setTimeout(signOut, 1500)
+    } else if (err.triesLeft != null) {
+      setError(err.triesLeft === 1 ? tr('Wrong PIN or password. 1 try left.') : tr('Wrong PIN or password. {n} tries left.', { n: err.triesLeft }))
+    } else {
+      setError(err.message)
+    }
+  }
+
+  // Unlock PIN (#871): stands in for the password and second step.
+  const submitPin = async (e) => {
+    e.preventDefault()
+    if (!pin || busy) return
+    setBusy(true); setError('')
+    try { await reauth(null, { pin }); unlocked() } catch (err) { failed(err) } finally { setPin(''); setBusy(false) }
   }
 
   const submitCode = async (e) => {
@@ -181,12 +194,25 @@ export default function AwayLock() {
         </h2>
         {user?.email && <p className="mt-1 text-sm text-earth-400">{user.email}</p>}
 
+        {step === 'pin' && (
+          <form onSubmit={submitPin} className="mt-5 space-y-3 text-left">
+            <p className="text-sm text-earth-300 text-center">{tr('Enter your unlock PIN to keep going. Your page is just as you left it.')}</p>
+            <label htmlFor="away-lock-pin" className="label">{tr('Unlock PIN')}</label>
+            <input id="away-lock-pin" type="password" inputMode="numeric" autoComplete="off" autoFocus maxLength={8} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="input text-center tracking-[0.5em]" />
+            <button type="submit" className="btn-primary w-full py-3" disabled={busy || pin.length < 4}>{busy ? tr('Checking…') : tr('Unlock')}</button>
+            <button type="button" onClick={() => { setStep('password'); setError('') }} className="btn-ghost w-full">{tr('Use your password instead')}</button>
+          </form>
+        )}
+
         {step === 'password' && (
           <form onSubmit={submitPassword} className="mt-5 space-y-3 text-left">
             <p className="text-sm text-earth-300 text-center">{tr('Enter your password to keep going. Your page is just as you left it.')}</p>
             <label htmlFor="away-lock-password" className="label">{tr('Password')}</label>
             <PasswordInput id="away-lock-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="input" />
             <button type="submit" className="btn-primary w-full py-3" disabled={busy || !password}>{busy ? tr('Checking…') : tr('Unlock')}</button>
+            {user?.hasUnlockPin && (
+              <button type="button" onClick={() => { setStep('pin'); setError('') }} className="btn-ghost w-full">{tr('Use your PIN instead')}</button>
+            )}
           </form>
         )}
 

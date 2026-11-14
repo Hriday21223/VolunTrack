@@ -2332,6 +2332,8 @@ export async function initSchema() {
   // Welcome tours this account has finished or skipped (#736), so each shows
   // once per person, not once per device.
   try { await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tours_seen TEXT[] NOT NULL DEFAULT '{}'") } catch {}
+  // Away-lock unlock PIN (#871): bcrypt hash, never the digits.
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_pin_hash TEXT') } catch {}
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}
