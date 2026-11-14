@@ -54,7 +54,7 @@ function taskMinStay(v) {
 
 import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
 import { LEGAL_VERSION } from '../legal.js'
-import { issueSignupCode, useSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
+import { issueSignupCode, useSignupCode, hasPendingSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
 import { publicFetch } from '../publicHost.js'
 const router = express.Router()
 
@@ -222,6 +222,11 @@ router.post('/register', limiter, requireDb, turnstileUnlessClub, async (req, re
   if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
   if (!pin || !/^[a-z]+-?\d{3,5}$/.test(pin)) return res.status(400).json({ error: 'School code must be letters followed by digits (e.g. cisd-12345).' })
   if (plan === 'school' && !inviteToken && !registrationCode) return res.status(403).json({ error: CODE_REQUIRED_MESSAGE.school })
+  // A club skipped the CAPTCHA (turnstileUnlessClub) because send-code had
+  // one. Without a code sent through it, stop here, before the lookups below.
+  if (plan === 'club' && !(await hasPendingSignupCode(email))) {
+    return res.status(400).json({ error: 'Ask for a sign-up code first, then enter it here.' })
+  }
 
   let claimedCodeId = null
   try {
