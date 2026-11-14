@@ -145,7 +145,11 @@ export default function AwayLock() {
       setError(tr('Too many wrong tries, so we signed you out.'))
       setTimeout(signOut, 1500)
     } else if (err.triesLeft != null) {
-      setError(err.triesLeft === 1 ? tr('Wrong PIN or password. 1 try left.') : tr('Wrong PIN or password. {n} tries left.', { n: err.triesLeft }))
+      // Name the PIN only to someone who has one.
+      const n = err.triesLeft
+      setError(user?.hasUnlockPin
+        ? (n === 1 ? tr('Wrong PIN or password. 1 try left.') : tr('Wrong PIN or password. {n} tries left.', { n }))
+        : (n === 1 ? tr('Wrong password. 1 try left.') : tr('Wrong password. {n} tries left.', { n })))
     } else {
       setError(err.message)
     }
