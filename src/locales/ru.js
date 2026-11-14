@@ -3547,5 +3547,12 @@ export default {
   "Nothing left to sign for this event.": "В этом событии больше нечего подписывать.",
   "Signed off · {came} came · {signed} signed": "Закрыто · пришли: {came} · подписано: {signed}",
   "{n} absent": "Отсутствовали: {n}",
-  "Volunteers' details are no longer shown.": "Данные волонтёров больше не показываются."
+  "Volunteers' details are no longer shown.": "Данные волонтёров больше не показываются.",
+  "You were away for a while": "Вас не было какое-то время",
+  "Enter your password to keep going. Your page is just as you left it.": "Введите пароль, чтобы продолжить. Страница осталась такой, какой вы её оставили.",
+  "You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.": "Вы вошли через Google, Apple или аккаунт школы, поэтому пароля здесь нет. Войдите снова, чтобы продолжить.",
+  "Sign in again": "Войти снова",
+  "Wrong password. {n} tries left.": "Неверный пароль. Осталось попыток: {n}.",
+  "Too many wrong tries, so we signed you out.": "Слишком много неверных попыток, поэтому мы вышли из вашего аккаунта.",
+  "Wrong password. 1 try left.": "Неверный пароль. Осталась 1 попытка."
 }

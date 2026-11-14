@@ -3548,5 +3548,12 @@ export default {
   "Nothing left to sign for this event.": "Sự kiện này không còn gì để ký.",
   "Signed off · {came} came · {signed} signed": "Đã hoàn tất · {came} người đến · {signed} đã ký",
   "{n} absent": "{n} vắng mặt",
-  "Volunteers' details are no longer shown.": "Thông tin tình nguyện viên không còn hiển thị."
+  "Volunteers' details are no longer shown.": "Thông tin tình nguyện viên không còn hiển thị.",
+  "You were away for a while": "Bạn đã rời đi một lúc",
+  "Enter your password to keep going. Your page is just as you left it.": "Nhập mật khẩu để tiếp tục. Trang của bạn vẫn giữ nguyên như lúc bạn rời đi.",
+  "You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.": "Bạn đăng nhập bằng Google, Apple hoặc tài khoản trường nên không có mật khẩu ở đây. Hãy đăng nhập lại để tiếp tục.",
+  "Sign in again": "Đăng nhập lại",
+  "Wrong password. {n} tries left.": "Sai mật khẩu. Còn {n} lần thử.",
+  "Too many wrong tries, so we signed you out.": "Bạn đã nhập sai quá nhiều lần nên chúng tôi đã đăng xuất bạn.",
+  "Wrong password. 1 try left.": "Sai mật khẩu. Còn 1 lần thử."
 }

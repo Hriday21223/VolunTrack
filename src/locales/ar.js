@@ -3547,5 +3547,12 @@ export default {
   "Nothing left to sign for this event.": "لم يبقَ شيء للتوقيع في هذه الفعالية.",
   "Signed off · {came} came · {signed} signed": "مكتملة · حضر {came} · تم توقيع {signed}",
   "{n} absent": "{n} غائبون",
-  "Volunteers' details are no longer shown.": "لم تعد بيانات المتطوعين ظاهرة."
+  "Volunteers' details are no longer shown.": "لم تعد بيانات المتطوعين ظاهرة.",
+  "You were away for a while": "كنت بعيدًا لبعض الوقت",
+  "Enter your password to keep going. Your page is just as you left it.": "أدخل كلمة المرور للمتابعة. صفحتك كما تركتها.",
+  "You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.": "سجّلت الدخول عبر Google أو Apple أو مدرستك، لذا لا توجد كلمة مرور هنا. سجّل الدخول مرة أخرى للمتابعة.",
+  "Sign in again": "تسجيل الدخول مرة أخرى",
+  "Wrong password. {n} tries left.": "كلمة مرور خاطئة. تبقّى {n} محاولات.",
+  "Too many wrong tries, so we signed you out.": "محاولات خاطئة كثيرة، لذلك سجّلنا خروجك.",
+  "Wrong password. 1 try left.": "كلمة مرور خاطئة. تبقّت محاولة واحدة."
 }

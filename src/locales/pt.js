@@ -3547,5 +3547,12 @@ export default {
   "Nothing left to sign for this event.": "Não há mais nada para assinar neste evento.",
   "Signed off · {came} came · {signed} signed": "Encerrado · {came} vieram · {signed} assinadas",
   "{n} absent": "{n} ausentes",
-  "Volunteers' details are no longer shown.": "Os dados dos voluntários não aparecem mais."
+  "Volunteers' details are no longer shown.": "Os dados dos voluntários não aparecem mais.",
+  "You were away for a while": "Você ficou fora por um tempo",
+  "Enter your password to keep going. Your page is just as you left it.": "Digite sua senha para continuar. Sua página está do jeito que você deixou.",
+  "You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.": "Você entrou com Google, Apple ou sua escola, então não há senha aqui. Entre de novo para continuar.",
+  "Sign in again": "Entrar de novo",
+  "Wrong password. {n} tries left.": "Senha incorreta. Restam {n} tentativas.",
+  "Too many wrong tries, so we signed you out.": "Tentativas erradas demais, então encerramos sua sessão.",
+  "Wrong password. 1 try left.": "Senha incorreta. Resta 1 tentativa."
 }

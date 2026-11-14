@@ -3548,5 +3548,12 @@ export default {
   "Nothing left to sign for this event.": "此活动已没有待签内容。",
   "Signed off · {came} came · {signed} signed": "已结束 · {came} 人到场 · {signed} 条已签",
   "{n} absent": "{n} 人缺席",
-  "Volunteers' details are no longer shown.": "不再显示志愿者的信息。"
+  "Volunteers' details are no longer shown.": "不再显示志愿者的信息。",
+  "You were away for a while": "你离开了一会儿",
+  "Enter your password to keep going. Your page is just as you left it.": "输入密码以继续。页面会保持你离开时的样子。",
+  "You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.": "你是用 Google、Apple 或学校账号登录的，这里没有密码。请重新登录以继续。",
+  "Sign in again": "重新登录",
+  "Wrong password. {n} tries left.": "密码错误。还可以尝试 {n} 次。",
+  "Too many wrong tries, so we signed you out.": "错误次数过多，我们已将你退出登录。",
+  "Wrong password. 1 try left.": "密码错误。还可以尝试 1 次。"
 }
