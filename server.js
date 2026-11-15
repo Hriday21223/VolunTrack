@@ -13,6 +13,7 @@ import { authenticate, requireAuth, hashPassword, verifyPassword, endSessions, w
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from './server/validate.js'
 import { uid, generateToken, generateNumericCode } from './server/ids.js'
 import authRoutes from './server/routes/auth.js'
+import testAccountRoutes from './server/routes/testAccounts.js'
 import authSsoRoutes from './server/routes/authSso.js'
 import authSocialRoutes from './server/routes/authSocial.js'
 import passkeyRoutes from './server/routes/passkeys.js'
@@ -189,6 +190,7 @@ app.use('/api/auth/social', authSocialRoutes)
 app.use('/api/auth/passkey', passkeyRoutes)
 app.use('/api/auth/parent-consent', parentConsentRoutes)
 app.use('/api/auth', authRoutes)
+app.use('/api/admin/test-accounts', testAccountRoutes)
 // Organizer profiles; ahead of /api/school, which has no /organizers routes.
 app.use('/api/school/organizers', organizerProfileRoutes)
 app.use('/api/school', schoolRoutes)

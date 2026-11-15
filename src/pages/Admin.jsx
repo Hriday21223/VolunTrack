@@ -21,6 +21,7 @@ import ReportsPanel from '@/components/ReportsPanel.jsx'
 import AppErrorsCard from '@/components/AppErrorsCard.jsx'
 import { generateDraft, replyLanguage, topicIn, DRAFT_LANGUAGES } from '@/lib/inboxDraft.js'
 import PasswordInput from '@/components/PasswordInput.jsx'
+import TestAccountsCard from '@/components/TestAccountsCard.jsx'
 
 // Opens Google Translate in a new tab (free, no key). Only on the admin's click.
 const googleTranslateUrl = (text, to) => `https://translate.google.com/?sl=auto&tl=${to}&op=translate&text=${encodeURIComponent(String(text || '').slice(0, 4500))}`
@@ -2418,6 +2419,7 @@ export default function Admin() {
         </div>
       ) : tab === 'users' ? (
         <div className="space-y-6">
+          <TestAccountsCard />
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-earth-500 dark:text-earth-400">
               Accounts created on the website or in the apps. Someone using VolunTrack without an account isn’t counted.

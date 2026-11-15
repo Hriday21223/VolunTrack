@@ -17,6 +17,8 @@ import { syncLanguageWithServer } from '@/lib/i18n.js'
 
 const AuthContext = createContext(null)
 
+// While the admin is signed in as a test account, their own token waits here.
+export const ADMIN_RETURN_KEY = 'voluntrack:admin-return-token'
 export const SESSION_KEY = `${keys.user}::session`
 
 export function AuthProvider({ children }) {
@@ -505,6 +507,8 @@ export function AuthProvider({ children }) {
     forgetNativePushOnSignOut()
     remove(SESSION_KEY)
     localStorage.removeItem('voluntrack:auth_token')
+    // The admin's own session, kept while trying a test account (#890).
+    localStorage.removeItem(ADMIN_RETURN_KEY)
     // Local logs/goals/achievements are stored under one global key, not
     // scoped per account — without this, the next account signed into on
     // this browser would see the previous account's cached local data.
@@ -515,6 +519,18 @@ export function AuthProvider({ children }) {
     // And the home-screen widget stops showing this account's hours.
     clearWidget()
     setUser(null)
+  }, [])
+
+  // Switch this browser to another session the server just issued: the admin
+  // trying a test account, and back (#890). Local data belongs to the account
+  // being left, so it's cleared like at sign-out.
+  const adoptSession = useCallback(({ token, user: next }) => {
+    clearUserData()
+    syncNativeReminders([])
+    clearWidget()
+    localStorage.setItem('voluntrack:auth_token', token)
+    write(SESSION_KEY, next)
+    setUser(next)
   }, [])
 
   // A server-backed account is erased on the server first. Until
@@ -676,7 +692,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, login, reauth, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
+    <AuthContext.Provider value={{ user, login, reauth, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, adoptSession, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
       {children}
     </AuthContext.Provider>
   )

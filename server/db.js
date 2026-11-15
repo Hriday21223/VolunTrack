@@ -2353,6 +2353,8 @@ export async function initSchema() {
   } catch (error) { console.error('sign-in alert tables failed:', error.message) }
   // Away-lock unlock PIN (#871): bcrypt hash, never the digits.
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_pin_hash TEXT') } catch {}
+  // The admin's 6-digit PIN for signing in as a live test account (#890).
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS test_login_pin_hash TEXT') } catch {}
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}
