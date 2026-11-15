@@ -94,8 +94,9 @@ router.put('/pin', async (req, res) => {
     if (/^(\d)\1{5}$/.test(pin) || '0123456789'.includes(pin) || '9876543210'.includes(pin)) {
       return res.status(400).json({ error: 'Pick a PIN that is harder to guess than 111111 or 123456.' })
     }
-    const password = String(req.body?.password || '')
-    if (!password || password.length > 128 || !(await verifyPassword(password, row.password_hash))) {
+    // Only the password check decides (an empty one simply doesn't match).
+    const passwordOk = await verifyPassword(String(req.body?.password || ''), row.password_hash)
+    if (!passwordOk) {
       return res.status(401).json({ error: 'Your current password is not right.' })
     }
     await query('UPDATE users SET test_login_pin_hash = $1 WHERE id = $2', [await bcrypt.hash(pin, 10), row.id])
