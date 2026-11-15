@@ -489,6 +489,43 @@ ${emailFooterHtml(lang)}`,
   })
 }
 
+// Free-trial emails (#894) to a school's or organization's main account.
+function appLink() {
+  return (process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app').split(',')[0].trim().replace(/\/$/, '')
+}
+
+export async function sendTrialEndingEmail({ to, name, language, accountName, endsAt, backToClub }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const date = emailDate(lang, new Date(endsAt), true)
+  return sendEmail({
+    to,
+    subject: t('Your VolunTrack free trial ends on {date}', { date }),
+    html: `<p>${t('Hi {name},', { name: escapeHtml(String(name || '').split(' ')[0] || '') })}</p>
+<p>${t('Your free trial ends on {date}.', { date: `<strong>${date}</strong>` })}</p>
+<p>${backToClub
+    ? t('After that, {name} goes back to the free club plan: up to 50 students, with every school feature.', { name: escapeHtml(accountName || '') })
+    : t('After that, your account is locked until payment is made. Pay before then to keep going without a break.')}</p>
+<p><a href="${appLink()}">${t('Open VolunTrack')}</a></p>
+${emailFooterHtml(lang)}`,
+  })
+}
+
+export async function sendTrialEndedEmail({ to, name, language, accountName, backToClub }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  return sendEmail({
+    to,
+    subject: t('Your VolunTrack free trial has ended'),
+    html: `<p>${t('Hi {name},', { name: escapeHtml(String(name || '').split(' ')[0] || '') })}</p>
+<p>${backToClub
+    ? t('{name} is back on the free club plan: up to 50 students, with every school feature. You can upgrade again any time.', { name: escapeHtml(accountName || '') })
+    : t('Your account is locked until payment is made. Sign in to VolunTrack to see how to pay.')}</p>
+<p><a href="${appLink()}">${t('Open VolunTrack')}</a></p>
+${emailFooterHtml(lang)}`,
+  })
+}
+
 // Confirms a new address before an account moves to it (#464).
 export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) {
   const lang = emailLang(language)

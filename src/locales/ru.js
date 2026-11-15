@@ -3587,5 +3587,8 @@ export default {
   "Upgrading…": "Переходим…",
   "Upgrade": "Перейти",
   "Don’t have a code?": "Нет кода?",
-  "Free trial until {date}": "Бесплатный период до {date}"
+  "Free trial until {date}": "Бесплатный период до {date}",
+  "Your free trial ends on {date}.": "Ваш бесплатный период заканчивается {date}.",
+  "After that, your school goes back to the free club plan (up to 50 students).": "После этого ваша школа вернётся на бесплатный тариф для клуба (до 50 учеников).",
+  "After that, your school is locked until payment is made.": "После этого школа будет заблокирована до оплаты."
 }

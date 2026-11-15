@@ -3587,5 +3587,8 @@ export default {
   "Upgrading…": "جارٍ الترقية…",
   "Upgrade": "ترقية",
   "Don’t have a code?": "ليس لديك رمز؟",
-  "Free trial until {date}": "تجربة مجانية حتى {date}"
+  "Free trial until {date}": "تجربة مجانية حتى {date}",
+  "Your free trial ends on {date}.": "تنتهي فترة تجربتك المجانية في {date}.",
+  "After that, your school goes back to the free club plan (up to 50 students).": "بعد ذلك، تعود مدرستك إلى خطة النادي المجانية (حتى 50 طالبًا).",
+  "After that, your school is locked until payment is made.": "بعد ذلك، ستُقفل مدرستك حتى يتم الدفع."
 }

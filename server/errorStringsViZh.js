@@ -1,6 +1,9 @@
 // Vietnamese and Simplified Chinese for server error messages (#637), used by
 // server/errorStrings.js. English text is the key, exactly as the route writes it.
 export const ERRORS_VI = {
+  "That upgrade code is not right, has expired or was already used.": "Mã nâng cấp không đúng, đã hết hạn hoặc đã được dùng.",
+  "Your school is already on a school plan.": "Trường của bạn đã dùng gói trường.",
+  "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "Câu lạc bộ này đã dùng thử miễn phí rồi. Hãy xin VolunTrack một mã nâng cấp không kèm dùng thử.",
   "VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.": "VolunTrack đang được cập nhật. Vui lòng thử lại sau vài phút. Giờ bạn ghi lúc này được lưu trên thiết bị và tự động gửi đi.",
   "Could not make your wallet card.": "Không thể tạo thẻ ví của bạn.",
   "Google Wallet isn't available yet.": "Google Wallet chưa khả dụng.",
@@ -395,6 +398,9 @@ export const ERRORS_VI = {
 }
 
 export const ERRORS_ZH = {
+  "That upgrade code is not right, has expired or was already used.": "该升级码不正确、已过期或已被使用。",
+  "Your school is already on a school plan.": "你的学校已经是学校方案。",
+  "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "该社团已经享受过一次免费试用。请向 VolunTrack 索取不含试用的升级码。",
   "VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.": "VolunTrack 正在更新，请几分钟后再试。你现在记录的时长会保存在设备上并自动发送。",
   "Could not make your wallet card.": "无法生成你的钱包卡片。",
   "Google Wallet isn't available yet.": "Google 钱包暂不可用。",

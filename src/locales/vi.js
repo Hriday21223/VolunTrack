@@ -3588,5 +3588,8 @@ export default {
   "Upgrading…": "Đang nâng cấp…",
   "Upgrade": "Nâng cấp",
   "Don’t have a code?": "Chưa có mã?",
-  "Free trial until {date}": "Dùng thử miễn phí đến {date}"
+  "Free trial until {date}": "Dùng thử miễn phí đến {date}",
+  "Your free trial ends on {date}.": "Thời gian dùng thử miễn phí của bạn kết thúc vào {date}.",
+  "After that, your school goes back to the free club plan (up to 50 students).": "Sau đó, trường của bạn sẽ trở lại gói câu lạc bộ miễn phí (tối đa 50 học sinh).",
+  "After that, your school is locked until payment is made.": "Sau đó, trường của bạn sẽ bị khóa cho đến khi thanh toán."
 }

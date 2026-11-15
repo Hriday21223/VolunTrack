@@ -128,6 +128,24 @@ function ClubPlanCard({ count, limit, canUpgrade, onUpgraded }) {
   )
 }
 
+// The last week of a free trial (#894): when it ends and what happens then.
+function TrialEndingNotice({ info }) {
+  if (!info?.trialEndsAt) return null
+  const ends = new Date(info.trialEndsAt)
+  const msLeft = ends.getTime() - Date.now()
+  if (msLeft <= 0 || msLeft > 7 * 24 * 60 * 60 * 1000) return null
+  return (
+    <div role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+      <p className="font-medium">{tr('Your free trial ends on {date}.', { date: fmtDate(String(info.trialEndsAt).slice(0, 10)) })}</p>
+      <p className="text-earth-600 dark:text-earth-300 mt-0.5">
+        {info.trialBackToClub
+          ? tr('After that, your school goes back to the free club plan (up to 50 students).')
+          : tr('After that, your school is locked until payment is made.')}
+      </p>
+    </div>
+  )
+}
+
 export default function SchoolDashboard() {
   const { user, refreshUser } = useAuth()
   const nav = useNavigate()
@@ -648,6 +666,7 @@ export default function SchoolDashboard() {
       )}
       <div className="max-w-4xl mx-auto space-y-4">
         {isSchoolAdmin && <AnnouncementBanner />}
+        {isSchoolAdmin && <TrialEndingNotice info={schoolInfo} />}
         {/* Billing used to render on every tab, which buried whichever tab you
             were actually on. It lives under School setup -> Billing now. */}
         {/* Each sub-tab bar sits at the top of the tab it belongs to. */}

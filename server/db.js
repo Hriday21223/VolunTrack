@@ -2360,6 +2360,14 @@ export async function initSchema() {
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
   try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
   try { await query('ALTER TABLE registration_codes ADD COLUMN IF NOT EXISTS trial_days INT') } catch {}
+  // Trial reminders (#894): the last one sent (7 or 1 days before), and
+  // whether the school was a free club before its trial, so it can go back.
+  try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_reminder_days INT') } catch {}
+  try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS trial_reminder_days INT') } catch {}
+  try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_from_club BOOLEAN NOT NULL DEFAULT false') } catch {}
+  // One free trial per school (#894): when its first trial started.
+  try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS had_trial_at TIMESTAMPTZ') } catch {}
+  try { await query('UPDATE schools SET had_trial_at = COALESCE(paid_at, now()) WHERE trial_ends_at IS NOT NULL AND had_trial_at IS NULL') } catch {}
   // Club upgrade codes (#892): the admin makes one, a free club's adviser
   // types it and the club becomes a school plan. Only the hash is kept.
   try {
