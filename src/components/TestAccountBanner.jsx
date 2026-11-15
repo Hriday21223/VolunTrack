@@ -1,13 +1,7 @@
 import { useState } from 'react'
 import { FlaskConical } from 'lucide-react'
-import { useAuth, ADMIN_RETURN_KEY } from '@/hooks/useAuth.jsx'
-import { inTestSession } from '@/lib/testSession.js'
-
-const apiUrl = import.meta.env.VITE_API_URL || '/api'
-
-function readReturnToken() {
-  try { return localStorage.getItem(ADMIN_RETURN_KEY) || null } catch { return null }
-}
+import { useAuth } from '@/hooks/useAuth.jsx'
+import { inTestSession, backToAdmin } from '@/lib/testSession.js'
 
 // Shown while the admin is signed in as a live test account (#890): which
 // account this is, and the way back to the admin's own session. Only the
@@ -16,23 +10,8 @@ export default function TestAccountBanner() {
   const { user, adoptSession, logout } = useAuth()
   const [busy, setBusy] = useState(false)
   if (!inTestSession(user)) return null
-  const returnToken = readReturnToken()
 
-  const back = async () => {
-    setBusy(true)
-    try {
-      const res = await fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${returnToken}` } })
-      const d = await res.json().catch(() => ({}))
-      if (!res.ok || d?.user?.role !== 'admin') throw new Error('expired')
-      localStorage.removeItem(ADMIN_RETURN_KEY)
-      adoptSession({ token: returnToken, user: d.user })
-      window.location.assign('/admin/users')
-    } catch {
-      // The admin session ran out meanwhile: sign out and sign in again.
-      logout()
-      window.location.assign('/login')
-    }
-  }
+  const back = () => { setBusy(true); backToAdmin({ adoptSession, logout }) }
 
   return (
     <div role="status" className="fixed top-0 inset-x-0 z-[4000] bg-amber-400 text-amber-950 text-sm px-4 py-1.5 flex items-center justify-center gap-3 shadow">
