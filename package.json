@@ -12,6 +12,7 @@
     "dev": "vite",
     "backend": "node server.js",
     "seed:test-accounts": "node scripts/seed-test-accounts.mjs",
+    "seed:live-test-accounts": "node scripts/seed-live-test-accounts.mjs",
     "start": "node server.js",
     "prebuild": "node scripts/generate-seo-files.mjs && node scripts/generate-well-known.mjs",
     "build": "vite build",
