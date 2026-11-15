@@ -64,11 +64,32 @@ const SCHOOL_TOUR_STEPS = [
 // school_staff — so its tour step only applies there too.
 const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: tr('School setup'), description: tr('Add co-admins, let students sign in with your school\'s Google or Microsoft account, and serve VolunTrack on your own domain.') }
 
-// How full a free club is, and how to upgrade (#506).
-function ClubPlanCard({ count, limit }) {
+// How full a free club is, and how to upgrade (#506). The club's own adviser
+// can type an upgrade code from us (#892); without one, Contact us.
+function ClubPlanCard({ count, limit, canUpgrade, onUpgraded }) {
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
   if (count == null || !limit) return null
   const full = count >= limit
   const near = !full && count >= limit * 0.8
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setBusy(true); setError(null)
+    try {
+      const res = await fetch(`${apiUrl}/school/upgrade-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+        body: JSON.stringify({ code }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || tr('Something went wrong. Try again.'))
+      onUpgraded?.(d)
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+
   return (
     <Card>
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -78,11 +99,31 @@ function ClubPlanCard({ count, limit }) {
             {count} of {limit} students. {full ? tr('Your club is full, so new students can’t join.') : near ? tr('You’re close to the limit.') : tr('Every school feature is included.')}
           </p>
         </div>
-        <Link to="/contact?topic=school" className={full || near ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>{tr('Upgrade to a school plan')}</Link>
+        {canUpgrade ? (
+          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className={full || near ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>{tr('Upgrade to a school plan')}</button>
+        ) : (
+          <Link to="/contact?topic=school" className={full || near ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}>{tr('Upgrade to a school plan')}</Link>
+        )}
       </div>
       <div className="mt-3 h-1.5 rounded-full bg-earth-100 dark:bg-earth-800 overflow-hidden">
         <div className={`h-full rounded-full ${full ? 'bg-amber-500' : 'bg-brand-500'}`} style={{ width: `${Math.min(100, (count / limit) * 100)}%` }} />
       </div>
+      {open && canUpgrade && (
+        <form onSubmit={submit} className="mt-4 space-y-2">
+          <label className="label" htmlFor="upgrade-code">{tr('Upgrade code from VolunTrack')}</label>
+          <div className="flex flex-wrap gap-2">
+            <input
+              id="upgrade-code" className="input flex-1 min-w-[12rem] font-mono uppercase tracking-wider" autoComplete="off" spellCheck={false}
+              maxLength={14} placeholder="XXXXX-XXXXX" value={code} onChange={(e) => setCode(e.target.value)}
+            />
+            <button type="submit" disabled={busy || code.replace(/[^a-z0-9]/gi, '').length !== 10} className="btn-primary btn-sm">{busy ? tr('Upgrading…') : tr('Upgrade')}</button>
+          </div>
+          {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+          <p className="text-xs text-earth-500 dark:text-earth-400">
+            {tr('Don’t have a code?')}{' '}<Link to="/contact?topic=school" className="text-brand-700 dark:text-brand-300 hover:underline">{tr('Contact us')}</Link>
+          </p>
+        </form>
+      )}
     </Card>
   )
 }
@@ -564,7 +605,7 @@ export default function SchoolDashboard() {
                 ? 'bg-emerald-500/20 text-emerald-600'
                 : 'bg-amber-500/20 text-amber-600'
             }`}>
-              {schoolInfo.paymentStatus === 'paid' ? tr('Paid') : tr('Unpaid')}
+              {schoolInfo.paymentStatus === 'paid' ? (schoolInfo.trialEndsAt ? tr('Free trial until {date}', { date: fmtDate(String(schoolInfo.trialEndsAt).slice(0, 10)) }) : tr('Paid')) : tr('Unpaid')}
             </span>
           )}
         </span>
@@ -810,7 +851,7 @@ export default function SchoolDashboard() {
               </Card>
             )}
 
-            {schoolInfo?.plan === 'club' && <ClubPlanCard count={schoolInfo.studentCount} limit={schoolInfo.studentLimit} />}
+            {schoolInfo?.plan === 'club' && <ClubPlanCard count={schoolInfo.studentCount} limit={schoolInfo.studentLimit} canUpgrade={user?.role === 'school'} onUpgraded={() => { refreshUser?.(); loadData() }} />}
 
             {schoolInfo?.pin && (
               <SchoolStarterKit

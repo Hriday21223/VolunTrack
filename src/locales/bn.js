@@ -3582,5 +3582,10 @@ export default {
   "Signing out…": "সাইন আউট হচ্ছে…",
   "Sign out of all other devices": "অন্য সব ডিভাইস থেকে সাইন আউট করুন",
   "Download my data": "আমার ডেটা ডাউনলোড করুন",
-  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "আমার ডেটা ডাউনলোড করুন দিয়ে একটি ফাইল পাবেন, যাতে VolunTrack আপনার অ্যাকাউন্ট সম্পর্কে যা রাখে সব আছে। পাসওয়ার্ড, PIN ও কোড কেবল এলোমেলো রূপে রাখা হয়, তাই সেগুলো এতে নেই।"
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "আমার ডেটা ডাউনলোড করুন দিয়ে একটি ফাইল পাবেন, যাতে VolunTrack আপনার অ্যাকাউন্ট সম্পর্কে যা রাখে সব আছে। পাসওয়ার্ড, PIN ও কোড কেবল এলোমেলো রূপে রাখা হয়, তাই সেগুলো এতে নেই।",
+  "Upgrade code from VolunTrack": "VolunTrack থেকে আপগ্রেড কোড",
+  "Upgrading…": "আপগ্রেড হচ্ছে…",
+  "Upgrade": "আপগ্রেড করুন",
+  "Don’t have a code?": "কোড নেই?",
+  "Free trial until {date}": "{date} পর্যন্ত বিনামূল্যে ট্রায়াল"
 }

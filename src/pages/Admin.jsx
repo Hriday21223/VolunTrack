@@ -6,6 +6,7 @@ import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import RegistrationCodesPanel from '@/components/RegistrationCodesPanel.jsx'
+import UpgradeCodesPanel from '@/components/UpgradeCodesPanel.jsx'
 import AnnouncementComposer from '@/components/AnnouncementComposer.jsx'
 import LiveChecksCard from '@/components/LiveChecksCard.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -1608,7 +1609,7 @@ export default function Admin() {
                             ? 'bg-red-500/10 text-red-400'
                             : 'bg-amber-500/10 text-amber-400'
                         }`}>
-                          {s.payment_status === 'paid' ? 'Paid' : s.payment_status === 'pending' ? 'Pending review' : s.payment_status === 'rejected' ? 'Rejected' : 'Unpaid'}
+                          {s.payment_status === 'paid' ? (s.trial_ends_at ? `Free trial until ${new Date(s.trial_ends_at).toLocaleDateString()}` : 'Paid') : s.payment_status === 'pending' ? 'Pending review' : s.payment_status === 'rejected' ? 'Rejected' : 'Unpaid'}
                         </span>
                         {s.plan === 'club' && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-300" title="Free club plan: up to 50 students, never payment-locked">Free club</span>
@@ -1686,6 +1687,7 @@ export default function Admin() {
       ) : tab === 'invites' ? (
         <div className="space-y-6">
         <RegistrationCodesPanel />
+        <UpgradeCodesPanel />
         {loadingInvites ? (
           <Card><p className="text-center text-earth-400 py-8">Loading invites…</p></Card>
         ) : invites.length === 0 ? (
@@ -1815,7 +1817,7 @@ export default function Admin() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           org.payment_status === 'paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
                         }`}>
-                          {org.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                          {org.payment_status === 'paid' ? (org.trial_ends_at ? `Free trial until ${new Date(org.trial_ends_at).toLocaleDateString()}` : 'Paid') : 'Unpaid'}
                         </span>
                       </div>
                       {org.payment_notes && (

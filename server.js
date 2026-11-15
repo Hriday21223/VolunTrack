@@ -71,6 +71,7 @@ import { loadEmailOverrides } from './server/emailSettings.js'
 import { isLocalDatabaseUrl } from './server/localDb.js'
 import { seedMonitor } from './server/monitor.js'
 import { startKeepAwake } from './server/keepAwake.js'
+import { endExpiredTrials } from './server/trials.js'
 import { isSignatureImage } from './server/signature.js'
 import { recordLogEvent } from './server/logHistory.js'
 
@@ -973,6 +974,9 @@ async function start() {
     startWebhookWorker()
     // Wallet cards that update themselves (#730), every 15 minutes.
     startWalletUpdates()
+    // Free trials that ended while the server slept (#892); the hourly run is
+    // .github/workflows/end-trials.yml.
+    if (hasDatabase()) endExpiredTrials().catch((e) => console.error('end trials at start failed:', e.message))
   })
 }
 

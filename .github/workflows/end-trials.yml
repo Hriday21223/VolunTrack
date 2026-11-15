@@ -1,0 +1,41 @@
+name: End free trials
+
+# Every hour: schools and organizations whose free trial (#892) has ended
+# turn unpaid. Render's free tier has no cron, so the schedule lives here and
+# the work happens on the backend (server/trials.js). The backend also runs it
+# when it starts. Idempotent: an ended trial is cleared, so a repeat run does
+# nothing.
+#
+# Setup: repo secret CRON_SECRET (matching the backend's env var) and repo
+# variable PUBLIC_BACKEND_URL.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+jobs:
+  end-trials:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the end-trials endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ vars.PUBLIC_BACKEND_URL }}
+        run: |
+          set -uo pipefail
+          url="$BACKEND_URL/api/school/internal/end-trials"
+          body="$(mktemp)"
+          attempt=1
+          while :; do
+            code=$(curl -sS -X POST --connect-timeout 30 --max-time 300 \
+              -o "$body" -w '%{http_code}' -H "x-cron-key: $CRON_SECRET" "$url") || code=000
+            echo "HTTP $code"; cat "$body"; echo
+            case "$code" in
+              2??) exit 0 ;;
+              000) : ;;
+              *) echo "::error::unexpected HTTP $code from the end-trials endpoint."; exit 1 ;;
+            esac
+            if [ "$attempt" -ge 3 ]; then echo "::error::backend unreachable after $attempt attempts."; exit 1; fi
+            attempt=$((attempt + 1)); sleep 30
+          done

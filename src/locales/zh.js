@@ -3583,5 +3583,10 @@ export default {
   "Signing out…": "正在退出…",
   "Sign out of all other devices": "退出所有其他设备",
   "Download my data": "下载我的数据",
-  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "“下载我的数据”会给你一个文件，包含 VolunTrack 保存的关于你账号的所有内容。密码、PIN 和验证码只以加密形式保存，因此不在其中。"
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "“下载我的数据”会给你一个文件，包含 VolunTrack 保存的关于你账号的所有内容。密码、PIN 和验证码只以加密形式保存，因此不在其中。",
+  "Upgrade code from VolunTrack": "VolunTrack 升级码",
+  "Upgrading…": "正在升级…",
+  "Upgrade": "升级",
+  "Don’t have a code?": "没有升级码？",
+  "Free trial until {date}": "免费试用至 {date}"
 }
