@@ -3588,5 +3588,8 @@ export default {
   "Upgrading…": "正在升级…",
   "Upgrade": "升级",
   "Don’t have a code?": "没有升级码？",
-  "Free trial until {date}": "免费试用至 {date}"
+  "Free trial until {date}": "免费试用至 {date}",
+  "Your free trial ends on {date}.": "你的免费试用将于 {date} 结束。",
+  "After that, your school goes back to the free club plan (up to 50 students).": "之后，你的学校将回到免费社团方案（最多 50 名学生）。",
+  "After that, your school is locked until payment is made.": "之后，你的学校将被锁定，直到完成付款。"
 }

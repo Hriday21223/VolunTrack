@@ -3588,5 +3588,8 @@ export default {
   "Upgrading…": "Mejorando…",
   "Upgrade": "Mejorar",
   "Don’t have a code?": "¿No tienes un código?",
-  "Free trial until {date}": "Prueba gratis hasta el {date}"
+  "Free trial until {date}": "Prueba gratis hasta el {date}",
+  "Your free trial ends on {date}.": "Tu prueba gratis termina el {date}.",
+  "After that, your school goes back to the free club plan (up to 50 students).": "Después, tu escuela vuelve al plan de club gratis (hasta 50 estudiantes).",
+  "After that, your school is locked until payment is made.": "Después, tu escuela quedará bloqueada hasta que se haga el pago."
 }

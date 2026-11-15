@@ -42,6 +42,17 @@ export async function claimUpgradeCode(code, schoolId) {
   return rows[0] ? { id: rows[0].id, trialDays: rows[0].trial_days } : null
 }
 
+// The trial an unused, unexpired code would give (null for none or no such code).
+export async function upgradeCodeTrialDays(code) {
+  const normalized = normalizeUpgradeCode(code)
+  if (normalized.length !== UPGRADE_CODE_LENGTH) return null
+  const { rows } = await query(
+    `SELECT trial_days FROM upgrade_codes WHERE code_hash = $1 AND status = 'active' AND expires_at > now()`,
+    [hashUpgradeCode(normalized)],
+  )
+  return rows[0]?.trial_days || null
+}
+
 export async function releaseUpgradeCode(id) {
   if (!id) return
   await query(`UPDATE upgrade_codes SET status = 'active', used_at = NULL, used_by_school_id = NULL WHERE id = $1 AND status = 'used'`, [id])

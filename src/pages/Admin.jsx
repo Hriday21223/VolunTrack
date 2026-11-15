@@ -1614,6 +1614,9 @@ export default function Admin() {
                         {s.plan === 'club' && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-300" title="Free club plan: up to 50 students, never payment-locked">Free club</span>
                         )}
+                        {s.had_trial_at && !s.trial_ends_at && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-earth-500/15 text-earth-300" title="A school gets one free trial; a trial upgrade code is refused">Had a free trial ({new Date(s.had_trial_at).toLocaleDateString()})</span>
+                        )}
                         {s.price_amount && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-400">
                             {s.price_amount}{s.price_period === 'monthly' ? ' / month' : s.price_period === 'yearly' ? ' / year' : s.price_period === 'one_time' ? ' one-time' : ''}

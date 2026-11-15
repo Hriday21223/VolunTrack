@@ -33,8 +33,8 @@ import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
 import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
-import { startTrial, trialDaysOfRegistrationCode, endExpiredTrials } from '../trials.js'
-import { claimUpgradeCode, releaseUpgradeCode } from '../upgradeCodes.js'
+import { startTrial, trialDaysOfRegistrationCode, runTrialJob } from '../trials.js'
+import { claimUpgradeCode, releaseUpgradeCode, upgradeCodeTrialDays } from '../upgradeCodes.js'
 import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
@@ -2708,7 +2708,7 @@ router.get('/info', limiter, requireDb, async (req, res) => {
     // not expose the bank/payment confirmation reference the school submitted.
     // payment_notes is kept — the school's own dashboard shows it as the
     // "confirmation could not be verified" message (SchoolDashboard.jsx).
-    const cols = 'id, name, pin, plan, payment_status, payment_notes, paid_at, payment_due_date, trial_ends_at'
+    const cols = 'id, name, pin, plan, payment_status, payment_notes, paid_at, payment_due_date, trial_ends_at, trial_from_club'
     let rows
     if (pin) {
       const r = await query(`SELECT ${cols} FROM schools WHERE pin = $1`, [pin])
@@ -2736,10 +2736,10 @@ router.get('/info', limiter, requireDb, async (req, res) => {
     if (!privileged) return res.json({ school: { id: school.id, name: school.name, grades: ownGrades } })
 
     let studentCount = null
-    if (school.plan === 'club') {
+    if (school.plan === 'club' || school.trial_from_club) {
       studentCount = await clubStudentCount(school.id)
     }
-    return res.json({ school: { id: school.id, name: school.name, grades: ownGrades, pin: school.pin, plan: school.plan, studentCount, studentLimit: school.plan === 'club' ? CLUB_STUDENT_LIMIT : null, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date, trialEndsAt: school.trial_ends_at || null } })
+    return res.json({ school: { id: school.id, name: school.name, grades: ownGrades, pin: school.pin, plan: school.plan, studentCount, studentLimit: school.plan === 'club' ? CLUB_STUDENT_LIMIT : null, paymentStatus: school.payment_status, paymentNotes: school.payment_notes, paidAt: school.paid_at, paymentDueDate: school.payment_due_date, trialEndsAt: school.trial_ends_at || null, trialBackToClub: Boolean(school.trial_from_club) && studentCount <= CLUB_STUDENT_LIMIT } })
   } catch (error) {
     return res.status(500).json({ error: 'Could not fetch school.' })
   }
@@ -7953,7 +7953,7 @@ router.post('/submit-payment-confirmation', limiter, requireDb, requireAuth('sch
 router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.pin, s.account_code, s.contact_email, s.plan, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at, s.trial_ends_at,
+      `SELECT s.id, s.name, s.pin, s.account_code, s.contact_email, s.plan, s.payment_status, s.payment_notes, s.admin_notes, s.paid_at, s.payment_due_date, s.payment_confirmation_ref, s.price_amount, s.price_period, s.created_at, s.trial_ends_at, s.had_trial_at,
         (SELECT COUNT(*) FROM users WHERE school_id = s.id AND role = 'student') AS student_count
        FROM schools s ORDER BY s.created_at DESC`,
     )
@@ -8053,7 +8053,7 @@ const upgradeFails = new Map() // schoolId -> { n, at }
 router.post('/upgrade-code', limiter, requireDb, requireAuth('school'), async (req, res) => {
   let claimed = null
   try {
-    const { rows } = await query('SELECT s.id, s.plan FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1', [req.auth.sub])
+    const { rows } = await query('SELECT s.id, s.plan, s.had_trial_at FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1', [req.auth.sub])
     const school = rows[0]
     if (!school) return res.status(404).json({ error: 'School not found.' })
     if (school.plan !== 'club') return res.status(409).json({ error: 'Your school is already on a school plan.' })
@@ -8063,6 +8063,11 @@ router.post('/upgrade-code', limiter, requireDb, requireAuth('school'), async (r
     const fails = upgradeFails.get(school.id)
     if (fails && fails.n >= UPGRADE_MAX_FAILS) return res.status(429).json({ error: 'Too many wrong codes.' })
 
+    // One free trial per school (#894): a trial code is refused, unspent,
+    // for a school that has had one. A paid code still works.
+    if (school.had_trial_at && (await upgradeCodeTrialDays(req.body?.code))) {
+      return res.status(409).json({ error: 'This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.' })
+    }
     claimed = await claimUpgradeCode(req.body?.code, school.id)
     if (!claimed) {
       const n = (fails ? fails.n : 0) + 1
@@ -8073,7 +8078,9 @@ router.post('/upgrade-code', limiter, requireDb, requireAuth('school'), async (r
 
     await query(
       `UPDATE schools SET plan = 'school', payment_status = 'paid', paid_at = now(),
-              trial_ends_at = CASE WHEN $2::int IS NULL THEN NULL ELSE now() + make_interval(days => $2::int) END
+              trial_ends_at = CASE WHEN $2::int IS NULL THEN NULL ELSE now() + make_interval(days => $2::int) END,
+              trial_from_club = ($2::int IS NOT NULL), trial_reminder_days = NULL,
+              had_trial_at = CASE WHEN $2::int IS NULL THEN had_trial_at ELSE COALESCE(had_trial_at, now()) END
         WHERE id = $1`,
       [school.id, claimed.trialDays],
     )
@@ -8094,7 +8101,7 @@ router.post('/upgrade-code', limiter, requireDb, requireAuth('school'), async (r
 // turn unpaid (#892).
 router.post('/internal/end-trials', cronLimiter(), requireCronKey, requireDb, async (_req, res) => {
   try {
-    return res.json({ ok: true, ended: await endExpiredTrials() })
+    return res.json({ ok: true, ...(await runTrialJob()) })
   } catch (error) {
     console.error('end trials failed:', error)
     return res.status(500).json({ error: 'Could not end trials.' })
@@ -8280,7 +8287,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
     let school
     if (status === 'paid') {
       const { rows } = await query(
-        `UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now(), trial_ends_at = NULL
+        `UPDATE schools SET payment_status = $1, payment_notes = $2, paid_at = now(), trial_ends_at = NULL, trial_from_club = false, trial_reminder_days = NULL
          WHERE id = $3 AND (payment_status IS DISTINCT FROM $1 OR trial_ends_at IS NOT NULL)
          RETURNING contact_email`,
         [status, notes || null, req.params.id],
@@ -8302,7 +8309,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
       }
     } else {
       const { rows } = await query(
-        `UPDATE schools SET payment_status = $1, payment_notes = $2::text, paid_at = NULL, trial_ends_at = NULL
+        `UPDATE schools SET payment_status = $1, payment_notes = $2::text, paid_at = NULL, trial_ends_at = NULL, trial_from_club = false, trial_reminder_days = NULL
          WHERE id = $3 AND (payment_status, COALESCE(payment_notes, '')) IS DISTINCT FROM ($1, COALESCE($2::text, ''))
          RETURNING contact_email`,
         [status, notes || null, req.params.id],

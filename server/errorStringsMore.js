@@ -6,6 +6,9 @@
 
 export const ERRORS_MORE = {
   "hi": {
+    "That upgrade code is not right, has expired or was already used.": "वह अपग्रेड कोड सही नहीं है, उसकी समय-सीमा खत्म हो गई है या वह पहले ही इस्तेमाल हो चुका है।",
+    "Your school is already on a school plan.": "आपका स्कूल पहले से स्कूल प्लान पर है।",
+    "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "यह क्लब पहले ही एक मुफ़्त ट्रायल ले चुका है। VolunTrack से बिना ट्रायल वाला अपग्रेड कोड माँगें।",
     "A parent needs to approve your account first.": "पहले माता-पिता को आपका खाता स्वीकृत करना होगा।",
     "Account not found.": "खाता नहीं मिला।",
     "Add your parent or guardian's email.": "अपने माता-पिता या अभिभावक का ईमेल जोड़ें।",
@@ -68,6 +71,9 @@ export const ERRORS_MORE = {
     "Too many wrong codes. Ask your parent for a new one.": "बहुत ज़्यादा गलत कोड। अपने माता-पिता से नया माँगें।"
   },
   "ar": {
+    "That upgrade code is not right, has expired or was already used.": "رمز الترقية هذا غير صحيح أو منتهي الصلاحية أو استُخدم من قبل.",
+    "Your school is already on a school plan.": "مدرستك على خطة المدارس بالفعل.",
+    "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "حصل هذا النادي على تجربة مجانية من قبل. اطلب من VolunTrack رمز ترقية بدون تجربة.",
     "A parent needs to approve your account first.": "يجب أن يوافق أحد الوالدين على حسابك أولًا.",
     "Account not found.": "الحساب غير موجود.",
     "Add your parent or guardian's email.": "أضف البريد الإلكتروني لأحد والديك أو ولي أمرك.",
@@ -130,6 +136,9 @@ export const ERRORS_MORE = {
     "Too many wrong codes. Ask your parent for a new one.": "رموز خاطئة كثيرة جدًا. اطلب من ولي أمرك رمزًا جديدًا."
   },
   "pt": {
+    "That upgrade code is not right, has expired or was already used.": "Esse código de upgrade não está certo, expirou ou já foi usado.",
+    "Your school is already on a school plan.": "Sua escola já está em um plano de escola.",
+    "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "Este clube já teve um teste grátis. Peça ao VolunTrack um código de upgrade sem teste.",
     "A parent needs to approve your account first.": "Um responsável precisa aprovar sua conta primeiro.",
     "Account not found.": "Conta não encontrada.",
     "Add your parent or guardian's email.": "Adicione o e-mail do seu pai, mãe ou responsável.",
@@ -192,6 +201,9 @@ export const ERRORS_MORE = {
     "Too many wrong codes. Ask your parent for a new one.": "Muitos códigos errados. Peça um novo ao seu responsável."
   },
   "fr": {
+    "That upgrade code is not right, has expired or was already used.": "Ce code de mise à niveau n’est pas bon, a expiré ou a déjà été utilisé.",
+    "Your school is already on a school plan.": "Votre école est déjà sur un plan école.",
+    "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "Ce club a déjà eu un essai gratuit. Demandez à VolunTrack un code de mise à niveau sans essai.",
     "A parent needs to approve your account first.": "Un parent doit d’abord approuver ton compte.",
     "Account not found.": "Compte introuvable.",
     "Add your parent or guardian's email.": "Ajoute l’e-mail de ton parent ou tuteur.",
@@ -254,6 +266,9 @@ export const ERRORS_MORE = {
     "Too many wrong codes. Ask your parent for a new one.": "Trop de codes erronés. Demandes-en un nouveau à ton parent."
   },
   "bn": {
+    "That upgrade code is not right, has expired or was already used.": "এই আপগ্রেড কোডটি ঠিক নয়, মেয়াদ শেষ হয়েছে বা আগেই ব্যবহার হয়েছে।",
+    "Your school is already on a school plan.": "আপনার স্কুল ইতিমধ্যেই স্কুল প্ল্যানে আছে।",
+    "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "এই ক্লাব আগেই একটি বিনামূল্যে ট্রায়াল পেয়েছে। VolunTrack-এর কাছে ট্রায়াল ছাড়া একটি আপগ্রেড কোড চান।",
     "A parent needs to approve your account first.": "আগে একজন অভিভাবককে আপনার অ্যাকাউন্ট অনুমোদন করতে হবে।",
     "Account not found.": "অ্যাকাউন্ট পাওয়া যায়নি।",
     "Add your parent or guardian's email.": "আপনার বাবা-মা বা অভিভাবকের ইমেল যোগ করুন।",
@@ -316,6 +331,9 @@ export const ERRORS_MORE = {
     "Too many wrong codes. Ask your parent for a new one.": "অনেক বেশি ভুল কোড। আপনার অভিভাবকের কাছে নতুন একটি চান।"
   },
   "ru": {
+    "That upgrade code is not right, has expired or was already used.": "Этот код перехода неверный, истёк или уже использован.",
+    "Your school is already on a school plan.": "Ваша школа уже на тарифе для школы.",
+    "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "У этого клуба уже был бесплатный период. Попросите у VolunTrack код перехода без бесплатного периода.",
     "A parent needs to approve your account first.": "Сначала родитель должен одобрить твой аккаунт.",
     "Account not found.": "Аккаунт не найден.",
     "Add your parent or guardian's email.": "Добавь почту родителя или опекуна.",
@@ -378,6 +396,9 @@ export const ERRORS_MORE = {
     "Too many wrong codes. Ask your parent for a new one.": "Слишком много неверных кодов. Попроси у родителя новый."
   },
   "ja": {
+    "That upgrade code is not right, has expired or was already used.": "そのアップグレードコードは正しくないか、期限切れか、すでに使われています。",
+    "Your school is already on a school plan.": "あなたの学校はすでに学校プランです。",
+    "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "このクラブはすでに無料トライアルを利用しています。トライアルなしのアップグレードコードを VolunTrack にご依頼ください。",
     "A parent needs to approve your account first.": "まず保護者がアカウントを承認する必要があります。",
     "Account not found.": "アカウントが見つかりません。",
     "Add your parent or guardian's email.": "保護者のメールアドレスを追加してください。",

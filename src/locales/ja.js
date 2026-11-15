@@ -3587,5 +3587,8 @@ export default {
   "Upgrading…": "アップグレード中…",
   "Upgrade": "アップグレード",
   "Don’t have a code?": "コードをお持ちでない場合",
-  "Free trial until {date}": "{date} まで無料トライアル"
+  "Free trial until {date}": "{date} まで無料トライアル",
+  "Your free trial ends on {date}.": "無料トライアルは {date} に終了します。",
+  "After that, your school goes back to the free club plan (up to 50 students).": "その後、学校は無料のクラブプラン（生徒 50 人まで）に戻ります。",
+  "After that, your school is locked until payment is made.": "その後、お支払いが完了するまで学校はロックされます。"
 }

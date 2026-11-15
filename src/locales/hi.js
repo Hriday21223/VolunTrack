@@ -3587,5 +3587,8 @@ export default {
   "Upgrading…": "अपग्रेड हो रहा है…",
   "Upgrade": "अपग्रेड करें",
   "Don’t have a code?": "कोड नहीं है?",
-  "Free trial until {date}": "{date} तक मुफ़्त ट्रायल"
+  "Free trial until {date}": "{date} तक मुफ़्त ट्रायल",
+  "Your free trial ends on {date}.": "आपका मुफ़्त ट्रायल {date} को खत्म होगा।",
+  "After that, your school goes back to the free club plan (up to 50 students).": "उसके बाद, आपका स्कूल फिर से मुफ़्त क्लब प्लान पर आ जाएगा (50 छात्रों तक)।",
+  "After that, your school is locked until payment is made.": "उसके बाद, भुगतान होने तक आपका स्कूल लॉक रहेगा।"
 }

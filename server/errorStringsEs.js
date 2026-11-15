@@ -2,6 +2,9 @@
 // The English text is the key, exactly as the route writes it. Informal tú,
 // matching the app. Messages not listed fall back to a pattern sentence.
 export const ERRORS_ES = {
+  "That upgrade code is not right, has expired or was already used.": "Ese código de mejora no es correcto, venció o ya se usó.",
+  "Your school is already on a school plan.": "Tu escuela ya tiene un plan de escuela.",
+  "This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.": "Este club ya tuvo una prueba gratis. Pide a VolunTrack un código de mejora sin prueba.",
   "VolunTrack is being updated. Please try again in a few minutes. Hours you log now are kept on your device and sent automatically.": "VolunTrack se está actualizando. Inténtalo de nuevo en unos minutos. Las horas que registres ahora se guardan en tu dispositivo y se envían solas.",
   "Could not make your wallet card.": "No se pudo crear tu tarjeta para la billetera.",
   "Google Wallet isn't available yet.": "Google Wallet aún no está disponible.",
