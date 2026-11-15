@@ -62,57 +62,11 @@ const ok = await ask(`Create or reset the five live test accounts on ${host}? Ty
 if (ok.toLowerCase() !== 'yes') { console.error('Nothing done.'); process.exit(1) }
 
 rl.close()
-const { initSchema, query, getPool } = await import('../server/db.js')
-const { hashPassword } = await import('../server/auth.js')
-
-const SCHOOL_ID = 'sch_live_test'
-const ORG_ID = 'org_live_test'
-const ACCOUNTS = [
-  { id: 'usr_live_student', role: 'student', name: 'Live Test Student', email: 'live-student@test.com', schoolId: SCHOOL_ID, grade: '10' },
-  { id: 'usr_live_volunteer', role: 'volunteer', name: 'Live Test Task Maker', email: 'live-volunteer@test.com' },
-  { id: 'usr_live_parent', role: 'parent', name: 'Live Test Parent', email: 'live-parent@test.com' },
-  { id: 'usr_live_school', role: 'school', name: 'Live Test Adviser', email: 'live-school@test.com', schoolId: SCHOOL_ID },
-  { id: 'usr_live_org', role: 'org', name: 'Live Test Organization', email: 'live-organization@test.com', organizationId: ORG_ID },
-]
+const { initSchema, getPool } = await import('../server/db.js')
+const { ensureLiveTestAccounts, LIVE_TEST_ACCOUNTS: ACCOUNTS } = await import('../server/liveTestAccounts.js')
 
 await initSchema()
-
-// A free club, so it's never payment-locked and needs no invoice.
-await query(
-  `INSERT INTO schools (id, name, pin, contact_email, payment_status, plan)
-   VALUES ($1, 'Live Test School', 'livetest-2026', 'live-school@test.com', 'unpaid', 'club')
-   ON CONFLICT (id) DO NOTHING`,
-  [SCHOOL_ID],
-)
-await query(
-  `INSERT INTO organizations (id, name, contact_email) VALUES ($1, 'Live Test Organization', 'live-organization@test.com')
-   ON CONFLICT (id) DO NOTHING`,
-  [ORG_ID],
-)
-
-const hash = await hashPassword(password)
-for (const a of ACCOUNTS) {
-  await query(
-    `INSERT INTO users (id, role, name, email, password_hash, school_id, grade, organization_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     ON CONFLICT (email) DO UPDATE SET role = $2, name = $3, password_hash = $5, school_id = $6, grade = $7, organization_id = $8`,
-    [a.id, a.role, a.name, a.email, hash, a.schoolId || null, a.grade || null, a.organizationId || null],
-  )
-}
-
-// School and organization accounts must set up two-step sign-in; give these
-// test ones a long grace period so the password alone signs in, as locally.
-await query(
-  `UPDATE users SET mfa_required_at = now() + interval '1 year'
-    WHERE email = ANY($1) AND role IN ('school', 'school_staff', 'org') AND NOT totp_enabled`,
-  [ACCOUNTS.map((a) => a.email)],
-)
-
-await query(
-  `INSERT INTO parent_child_links (parent_id, child_id)
-   SELECT p.id, c.id FROM users p, users c WHERE p.email = 'live-parent@test.com' AND c.email = 'live-student@test.com'
-   ON CONFLICT DO NOTHING`,
-)
+await ensureLiveTestAccounts({ password })
 
 console.log(`Done on ${host}. The five live test accounts (password: the one you just typed):`)
 for (const a of ACCOUNTS) console.log(`  ${a.role.padEnd(10)} ${a.email}`)

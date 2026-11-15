@@ -47,11 +47,11 @@ export async function verifyPassword(password, hash) {
   return bcrypt.compare(password, hash)
 }
 
-export function signToken(user) {
+export function signToken(user, { expiresIn = TOKEN_TTL, extra = null } = {}) {
   return jwt.sign(
-    { sub: user.id, role: user.role, email: user.email },
+    { ...(extra || {}), sub: user.id, role: user.role, email: user.email },
     secret(),
-    { expiresIn: TOKEN_TTL },
+    { expiresIn },
   )
 }
 

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, ChevronRight, Users, X, HelpCircle, Mail, Activity, FileText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { inTestSession, backToAdmin } from '@/lib/testSession.js'
 import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
@@ -68,7 +69,7 @@ function randomBelow(n) {
 
 export default function Settings() {
   const { theme, setTheme, toggle } = useTheme()
-  const { user, logout, deleteAccount, updateProfile, refreshUser, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp, verifyPasskey } = useAuth()
+  const { user, logout, adoptSession, deleteAccount, updateProfile, refreshUser, setSyncPin: setSyncPinAuth, setupTotp, verifyTotpSetup, disableTotp, verifyTotp, verifyPasskey } = useAuth()
   const { goals, saveGoal, removeGoal, logs } = useData()
   const nav = useNavigate()
   const [newGoal, setNewGoal] = useState({ title: '', targetHours: 50, deadline: '', category: '', primary: false })
@@ -1762,7 +1763,7 @@ export default function Settings() {
 
           <Card>
             <button
-              onClick={() => { logout(); nav('/login') }}
+              onClick={() => { if (inTestSession(user)) backToAdmin({ adoptSession, logout }); else { logout(); nav('/login') } }}
               className="btn-danger w-full"
             >
               <LogOut className="w-4 h-4" />{' '}{tr('Sign out')}

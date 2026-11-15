@@ -58,6 +58,9 @@ export const AUDIT = {
   // different roster, so both halves — the ask and the decision — are kept.
   TRANSFER_REQUESTED: 'transfer.requested',
   TRANSFER_DECIDED: 'transfer.decided',
+  // The admin signed in as one of the five live test accounts (#890).
+  TEST_ACCOUNT_SIGNIN: 'admin.test_account_signin',
+  TEST_ACCOUNT_PIN_SET: 'admin.test_account_pin_set',
   // A tenant's own hour-logging rules. Changing them retroactively decides
   // whose entries count, so the current value of the column is not enough of
   // an answer on its own.
