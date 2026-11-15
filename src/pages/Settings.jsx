@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, ChevronRight, Users, X, HelpCircle, Mail, Activity, FileText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { inTestSession } from '@/lib/testSession.js'
 import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
@@ -1760,14 +1761,16 @@ export default function Settings() {
             </Card>
           )}
 
-          <Card>
-            <button
-              onClick={() => { logout(); nav('/login') }}
-              className="btn-danger w-full"
-            >
-              <LogOut className="w-4 h-4" />{' '}{tr('Sign out')}
-            </button>
-          </Card>
+          {!inTestSession(user) && (
+            <Card>
+              <button
+                onClick={() => { logout(); nav('/login') }}
+                className="btn-danger w-full"
+              >
+                <LogOut className="w-4 h-4" />{' '}{tr('Sign out')}
+              </button>
+            </Card>
+          )}
 
           <Card className="border-red-500/30 bg-red-950/10">
             <div className="inline-flex items-center gap-3 rounded-3xl border border-red-500/40 bg-red-600/10 px-4 py-3 text-sm font-semibold text-red-100 shadow-sm shadow-red-500/10 mb-4">

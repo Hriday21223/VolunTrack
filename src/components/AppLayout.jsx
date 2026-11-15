@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { LogOut, Menu } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { inTestSession } from '@/lib/testSession.js'
 import { cn } from '@/utils/cn.js'
 import { isNativeApp } from '@/lib/platform.js'
 import Sidebar from './Sidebar.jsx'
@@ -103,14 +104,14 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
                   <div className="text-xs text-earth-400 leading-tight">{user?.school || '—'}</div>
                 </div>
               </div>
-              <button
+              {!inTestSession(user) && <button
                 onClick={() => { logout(); navigate('/login') }}
                 className="p-2 rounded-lg text-earth-200 hover:text-red-400 hover:bg-red-500/10"
                 title={tr('Log out')}
                 aria-label={tr('Log out')}
               >
                 <LogOut className="w-5 h-5" />
-              </button>
+              </button>}
             </div>
           </header>
 

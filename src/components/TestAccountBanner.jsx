@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FlaskConical } from 'lucide-react'
 import { useAuth, ADMIN_RETURN_KEY } from '@/hooks/useAuth.jsx'
+import { inTestSession } from '@/lib/testSession.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -14,8 +15,8 @@ function readReturnToken() {
 export default function TestAccountBanner() {
   const { user, adoptSession, logout } = useAuth()
   const [busy, setBusy] = useState(false)
+  if (!inTestSession(user)) return null
   const returnToken = readReturnToken()
-  if (!user || !returnToken || !String(user.email || '').endsWith('@test.com')) return null
 
   const back = async () => {
     setBusy(true)
