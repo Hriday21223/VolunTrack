@@ -526,6 +526,26 @@ ${emailFooterHtml(lang)}`,
   })
 }
 
+// Tells the admin (ADMIN_EMAIL) a free trial ended, so a locked school gets a
+// follow-up (#897). English, like the other admin emails.
+export async function sendAdminTrialEndedEmail({ accountName, entity, backToClub, contactEmail }) {
+  const to = process.env.ADMIN_EMAIL
+  if (!to) return { sent: false }
+  const name = escapeHtml(accountName || (entity === 'organization' ? 'An organization' : 'A school'))
+  const what = backToClub
+    ? 'went back to the free club plan (50 students or fewer).'
+    : entity === 'organization'
+      ? 'is now unpaid.'
+      : 'is now locked until you mark it paid.'
+  return sendEmail({
+    to,
+    subject: `Free trial ended: ${accountName || 'a ' + entity}${backToClub ? ' (back to free club)' : ' (unpaid)'}`,
+    html: `<p><strong>${name}</strong>'s free trial ended, and it ${what}</p>
+${contactEmail ? `<p>Contact: ${escapeHtml(contactEmail)}</p>` : ''}
+<p><a href="${appLink()}/admin/${entity === 'organization' ? 'organizations' : 'schools'}">Open the admin panel</a></p>`,
+  })
+}
+
 // Confirms a new address before an account moves to it (#464).
 export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) {
   const lang = emailLang(language)
