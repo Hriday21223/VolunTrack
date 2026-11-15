@@ -3574,5 +3574,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "الرمز أو كلمة المرور خاطئة. تبقّى {n} محاولات.",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "أدخل رمز فتح القفل للمتابعة. صفحتك كما تركتها.",
   "Use your password instead": "استخدام كلمة المرور",
-  "Use your PIN instead": "استخدام الرمز"
+  "Use your PIN instead": "استخدام الرمز",
+  "Every other device is signed out. You are still signed in here.": "تم تسجيل الخروج من كل الأجهزة الأخرى. ما زلت مسجّل الدخول هنا.",
+  "Your data is downloading.": "يتم تنزيل بياناتك.",
+  "Devices and your data": "الأجهزة وبياناتك",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "تركت VolunTrack مفتوحًا على جهاز مشترك؟ سجّل الخروج من كل الأجهزة الأخرى من هنا. نرسل إليك أيضًا بريدًا عندما يُسجَّل الدخول إلى حسابك من جهاز جديد.",
+  "Signing out…": "جارٍ تسجيل الخروج…",
+  "Sign out of all other devices": "تسجيل الخروج من كل الأجهزة الأخرى",
+  "Download my data": "تنزيل بياناتي",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "يمنحك «تنزيل بياناتي» ملفًا واحدًا فيه كل ما يحتفظ به VolunTrack عن حسابك. كلمات المرور والرموز تُحفظ مشفّرة فقط، لذا ليست فيه."
 }

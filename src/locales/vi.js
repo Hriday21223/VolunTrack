@@ -3575,5 +3575,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "Sai PIN hoặc mật khẩu. Còn {n} lần thử.",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "Nhập mã PIN mở khóa để tiếp tục. Trang của bạn vẫn giữ nguyên như lúc bạn rời đi.",
   "Use your password instead": "Dùng mật khẩu",
-  "Use your PIN instead": "Dùng PIN"
+  "Use your PIN instead": "Dùng PIN",
+  "Every other device is signed out. You are still signed in here.": "Đã đăng xuất khỏi mọi thiết bị khác. Bạn vẫn đăng nhập ở đây.",
+  "Your data is downloading.": "Dữ liệu của bạn đang được tải xuống.",
+  "Devices and your data": "Thiết bị và dữ liệu của bạn",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "Bạn để VolunTrack đăng nhập trên máy tính dùng chung? Hãy đăng xuất khỏi mọi thiết bị khác tại đây. Chúng tôi cũng gửi email cho bạn khi tài khoản đăng nhập trên thiết bị mới.",
+  "Signing out…": "Đang đăng xuất…",
+  "Sign out of all other devices": "Đăng xuất khỏi mọi thiết bị khác",
+  "Download my data": "Tải dữ liệu của tôi",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "Tải dữ liệu của tôi cho bạn một tệp chứa mọi thứ VolunTrack lưu về tài khoản của bạn. Mật khẩu, mã PIN và mã xác minh chỉ được lưu ở dạng mã hóa nên không có trong đó."
 }

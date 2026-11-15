@@ -21,6 +21,7 @@ import { uid } from '../ids.js'
 import { signToken, verifyTempToken, requireAuth, verifyPassword } from '../auth.js'
 import { publicUser, generateBackupCodes, hashBackupCodes, accountLockGate } from './auth.js'
 import { RP_NAME, rpId, expectedOrigins, userHandle, CHALLENGE_TTL_MS, MAX_PASSKEYS_PER_USER } from '../passkeys.js'
+import { noteSignIn } from '../signInAlerts.js'
 
 const router = express.Router()
 
@@ -274,6 +275,7 @@ router.post('/challenge/verify', limiter, requireDb, async (req, res) => {
     const locked = await accountLockGate(users[0])
     if (locked) return res.status(locked.status).json(locked.body)
     const user = publicUser(users[0])
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('passkey challenge verify failed:', error)

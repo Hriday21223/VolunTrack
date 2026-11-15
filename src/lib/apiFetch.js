@@ -39,6 +39,32 @@ function withLanguage(init) {
   return { ...(init || {}), headers }
 }
 
+// New-sign-in emails (#886): a random id kept on this device, sent only with
+// sign-in and sign-up requests so the server can tell a device it has seen
+// before from a new one. Those are JSON POSTs, already preflighted, so the
+// extra header costs no extra request. Never sent anywhere else.
+const SIGN_IN_PATH = /\/(auth\/(login|register|sync-login|sync-pin-auth|totp\/challenge|totp\/backup-recovery|email-otp\/challenge|sso\/exchange|passkey\/challenge\/verify)|school\/register(\/club)?|organization\/register)$/
+function deviceId() {
+  try {
+    let id = localStorage.getItem('voluntrack:device-id')
+    if (!id || !/^[A-Za-z0-9_-]{16,64}$/.test(id)) {
+      id = (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, '')
+      localStorage.setItem('voluntrack:device-id', id)
+    }
+    return id
+  } catch { return null }
+}
+function withDevice(url, init) {
+  if (String(init?.method || 'GET').toUpperCase() !== 'POST') return init
+  let path = ''
+  try { path = new URL(url, window.location.origin).pathname } catch { return init }
+  if (!SIGN_IN_PATH.test(path)) return init
+  const id = deviceId()
+  if (!id) return init
+  init.headers.set('X-Device-Id', id)
+  return init
+}
+
 export function installApiFetchGuard() {
   if (typeof window === 'undefined' || window.__voluntrackFetchGuard) return
   window.__voluntrackFetchGuard = true
@@ -52,7 +78,7 @@ export function installApiFetchGuard() {
     // The app's language, so emails sent from this request (a sign-up code,
     // the welcome email) and error messages come back in it (#604).
     // Accept-Language is a CORS-safelisted header: no extra preflight.
-    init = withLanguage(init)
+    init = withDevice(url, withLanguage(init))
     if (init?.signal) return original(input, init)
     const request = original(input, { ...(init || {}), signal: AbortSignal.timeout(API_TIMEOUT_MS) })
     let slow = false

@@ -141,6 +141,7 @@ cost of the app running letterboxed on iPads.
 | App activity → Other user-generated content (hours, descriptions, supervisor contacts (a supervisor's mobile number only if the student adds one for a text, deleted after 30 days), app reviews, contact-form messages, optional first names of guests brought to a task, references the student asks for (the writer's name, email and text), names typed to agree to an event's waiver and, for minors, a parent's name and email; for students in a school, the notes their school writes: private adviser notes, and the reason a submitted report or an hours entry was sent back) | Yes | No | Required | App functionality |
 | App activity → Other actions (whether the account was created on the website, Android or iPhone) | Yes | No | Required for an account | Analytics |
 | Device or other IDs (a push notification token, only if notifications are turned on in Settings → Notifications; deleted on sign-out or when turned off) | Yes | No | Optional | App functionality |
+| Device or other IDs (sign-in devices, #886: a random id the app keeps on the device, stored only as a hash with a "Chrome on macOS"-style label and first/last sign-in dates, so we can email the account when it signs in on a new device; deleted with the account) | Yes | No | Required (signed-in accounts) | App functionality, Account management, Fraud prevention / security |
 | App info and performance → Crash logs (error message, technical details, page and app version, with no account, name or email attached) | Yes | No | Required | App functionality |
 
 Also under *Other user-generated content* (#669–#687): event check-in and
@@ -154,7 +155,7 @@ entries naming that partner; like a supervisor link, it's part of the
 verification the school runs, so *Shared* stays No.
 
 Not collected: financial info (school invoices are paid by bank transfer outside
-the app), contacts, messages, health, audio, web history, device IDs,
+the app), contacts, messages, health, audio, web history, advertising IDs,
 diagnostics, and no analytics beyond the one sign-up fact in the table
 (`users.signup_platform`, read from the request's origin when an account is
 created and used only for the admin's sign-up counts) — and **no biometric data**: Face ID / Touch ID /

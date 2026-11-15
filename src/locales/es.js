@@ -3575,5 +3575,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "PIN o contraseña incorrectos. Te quedan {n} intentos.",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "Escribe tu PIN de desbloqueo para continuar. Tu página está tal como la dejaste.",
   "Use your password instead": "Usar mi contraseña",
-  "Use your PIN instead": "Usar mi PIN"
+  "Use your PIN instead": "Usar mi PIN",
+  "Every other device is signed out. You are still signed in here.": "Se cerró la sesión en todos los demás dispositivos. Sigues con la sesión iniciada aquí.",
+  "Your data is downloading.": "Tus datos se están descargando.",
+  "Devices and your data": "Dispositivos y tus datos",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "¿Dejaste VolunTrack abierto en una computadora compartida? Cierra la sesión en los demás dispositivos desde aquí. También te enviamos un correo cuando tu cuenta inicia sesión en un dispositivo nuevo.",
+  "Signing out…": "Cerrando sesión…",
+  "Sign out of all other devices": "Cerrar sesión en los demás dispositivos",
+  "Download my data": "Descargar mis datos",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "Descargar mis datos te da un archivo con todo lo que VolunTrack guarda sobre tu cuenta. Las contraseñas, los PIN y los códigos solo se guardan cifrados, así que no aparecen."
 }
