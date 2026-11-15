@@ -27,6 +27,13 @@ export function generateChildLinkCode() {
 // "K7XQ-2M9P-RT4W-8HNC". 16 characters from CODE_ALPHABET — about 10^23
 // possibilities, so it can't be guessed — grouped so it can be read out on a
 // call or typed from a text message.
+// Club upgrade code (#892): 10 characters, letters and numbers, "K7XQ2-M9PRT".
+export function generateUpgradeCode() {
+  let s = ''
+  for (let i = 0; i < 10; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
+  return `${s.slice(0, 5)}-${s.slice(5)}`
+}
+
 export function generateRegistrationCode() {
   let s = ''
   for (let i = 0; i < 16; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]

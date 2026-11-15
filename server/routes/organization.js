@@ -25,6 +25,7 @@ import { emitHours } from '../webhooks.js'
 import { notify } from '../notifications.js'
 import { emailLang, et } from '../emailStrings.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
+import { startTrial, trialDaysOfRegistrationCode } from '../trials.js'
 
 import { LEGAL_VERSION } from '../legal.js'
 import { noteSignIn } from '../signInAlerts.js'
@@ -100,6 +101,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
       [userId, name, email, hash, orgId, signupPlatform(req), LEGAL_VERSION],
     )
     await markCodeUser(claimedCodeId, userId)
+    await startTrial('organization', orgId, await trialDaysOfRegistrationCode(claimedCodeId))
 
     if (invite) {
       await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
@@ -284,7 +286,7 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
   }
   try {
     await query(
-      `UPDATE organizations SET payment_status = $1, payment_notes = $2, paid_at = CASE WHEN $1 = 'paid' THEN now() ELSE NULL END WHERE id = $3`,
+      `UPDATE organizations SET payment_status = $1, payment_notes = $2, paid_at = CASE WHEN $1 = 'paid' THEN now() ELSE NULL END, trial_ends_at = NULL WHERE id = $3`,
       [status, notes || null, req.params.id],
     )
     await query(

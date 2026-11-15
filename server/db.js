@@ -2355,6 +2355,29 @@ export async function initSchema() {
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_pin_hash TEXT') } catch {}
   // The admin's 6-digit PIN for signing in as a live test account (#890).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS test_login_pin_hash TEXT') } catch {}
+  // Free trials (#892): while trial_ends_at is set the account counts as paid;
+  // endExpiredTrials() (server/trials.js) turns it unpaid when the date passes.
+  try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
+  try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
+  try { await query('ALTER TABLE registration_codes ADD COLUMN IF NOT EXISTS trial_days INT') } catch {}
+  // Club upgrade codes (#892): the admin makes one, a free club's adviser
+  // types it and the club becomes a school plan. Only the hash is kept.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS upgrade_codes (
+        id                TEXT PRIMARY KEY,
+        code_hash         TEXT UNIQUE NOT NULL,
+        code_hint         TEXT NOT NULL,
+        label             TEXT,
+        trial_days        INT,
+        status            TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','used','revoked')),
+        expires_at        TIMESTAMPTZ NOT NULL,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+        used_at           TIMESTAMPTZ,
+        used_by_school_id TEXT REFERENCES schools(id) ON DELETE SET NULL
+      )
+    `)
+  } catch (error) { console.error('upgrade_codes table failed:', error.message) }
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}

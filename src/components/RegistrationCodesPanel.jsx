@@ -44,7 +44,7 @@ export default function RegistrationCodesPanel() {
       const res = await fetch(`${apiUrl}/registration-codes/admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ kind: form.kind, label: form.label.trim(), expiresInDays: Number(form.days) }),
+        body: JSON.stringify({ kind: form.kind, label: form.label.trim(), expiresInDays: Number(form.days), trialDays: Number(form.trial) || null }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not create a code.')
@@ -87,7 +87,7 @@ export default function RegistrationCodesPanel() {
             A school or organization needs one of these (or an invite link) to register. Each works once, and leaves this list when it's used, revoked or expired.
           </p>
         </div>
-        <button onClick={() => setForm({ kind: 'school', label: '', days: 14 })} className="btn-sm btn-primary">
+        <button onClick={() => setForm({ kind: 'school', label: '', days: 14, trial: 0 })} className="btn-sm btn-primary">
           <Plus className="w-3.5 h-3.5 mr-1" /> New code
         </button>
       </div>
@@ -114,6 +114,7 @@ export default function RegistrationCodesPanel() {
                   {c.kind === 'organization' ? 'Organization' : 'School'}
                   {' · '}
                   {`Expires ${new Date(c.expiresAt).toLocaleDateString()}`}
+                  {c.trialDays ? ` · ${c.trialDays}-day free trial` : ''}
                 </p>
               </div>
               {confirmRevoke === c.id ? (
@@ -156,6 +157,17 @@ export default function RegistrationCodesPanel() {
                   <option value={90}>90 days</option>
                 </select>
               </div>
+              <div>
+                <label className="label" htmlFor="rc-trial">Free trial</label>
+                <select id="rc-trial" className="input" value={form.trial} onChange={(e) => setForm({ ...form, trial: e.target.value })}>
+                  <option value={0}>No free trial</option>
+                  <option value={14}>14 days</option>
+                  <option value={30}>1 month (30 days)</option>
+                  <option value={60}>2 months (60 days)</option>
+                  <option value={90}>3 months (90 days)</option>
+                </select>
+                <p className="text-xs text-earth-400 mt-1">With a free trial the account counts as paid until it ends, then turns unpaid on its own.</p>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => setForm(null)} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={create} className="btn-primary flex-1" disabled={busy}>{busy ? 'Creating…' : 'Create code'}</button>
@@ -173,6 +185,7 @@ export default function RegistrationCodesPanel() {
             </h3>
             <p className="text-sm text-earth-400 mb-4">
               Copy it now — <strong>you won&apos;t be able to see it again</strong>. It expires {new Date(created.expiresAt).toLocaleDateString()}.
+              {created.trialDays ? ` It comes with a ${created.trialDays}-day free trial.` : ''}
             </p>
             <div className="rounded-xl bg-earth-100 dark:bg-earth-900 px-4 py-3 text-center font-mono text-lg tracking-wider select-all break-all">
               {created.code}

@@ -3582,5 +3582,10 @@ export default {
   "Signing out…": "サインアウト中…",
   "Sign out of all other devices": "ほかのすべての端末からサインアウト",
   "Download my data": "自分のデータをダウンロード",
-  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "「自分のデータをダウンロード」では、VolunTrackがあなたのアカウントについて保存しているすべてを1つのファイルで受け取れます。パスワード、PIN、コードは暗号化された形でのみ保存されているため含まれません。"
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "「自分のデータをダウンロード」では、VolunTrackがあなたのアカウントについて保存しているすべてを1つのファイルで受け取れます。パスワード、PIN、コードは暗号化された形でのみ保存されているため含まれません。",
+  "Upgrade code from VolunTrack": "VolunTrack のアップグレードコード",
+  "Upgrading…": "アップグレード中…",
+  "Upgrade": "アップグレード",
+  "Don’t have a code?": "コードをお持ちでない場合",
+  "Free trial until {date}": "{date} まで無料トライアル"
 }

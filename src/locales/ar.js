@@ -3582,5 +3582,10 @@ export default {
   "Signing out…": "جارٍ تسجيل الخروج…",
   "Sign out of all other devices": "تسجيل الخروج من كل الأجهزة الأخرى",
   "Download my data": "تنزيل بياناتي",
-  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "يمنحك «تنزيل بياناتي» ملفًا واحدًا فيه كل ما يحتفظ به VolunTrack عن حسابك. كلمات المرور والرموز تُحفظ مشفّرة فقط، لذا ليست فيه."
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "يمنحك «تنزيل بياناتي» ملفًا واحدًا فيه كل ما يحتفظ به VolunTrack عن حسابك. كلمات المرور والرموز تُحفظ مشفّرة فقط، لذا ليست فيه.",
+  "Upgrade code from VolunTrack": "رمز الترقية من VolunTrack",
+  "Upgrading…": "جارٍ الترقية…",
+  "Upgrade": "ترقية",
+  "Don’t have a code?": "ليس لديك رمز؟",
+  "Free trial until {date}": "تجربة مجانية حتى {date}"
 }

@@ -2,10 +2,11 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
-import { uid, generateRegistrationCode } from '../ids.js'
+import { uid, generateRegistrationCode, generateUpgradeCode } from '../ids.js'
 import {
   REGISTRATION_CODE_KINDS, DEFAULT_CODE_TTL_DAYS, MAX_CODE_TTL_DAYS, hashCode, codeHint,
 } from '../registrationCodes.js'
+import { hashUpgradeCode, upgradeCodeHint, readTrialDays } from '../upgradeCodes.js'
 
 // Admin management of one-time registration codes (#287). Redeeming one
 // happens inside POST /api/school/register and /api/organization/register.
@@ -32,6 +33,9 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
   const days = req.body.expiresInDays == null ? DEFAULT_CODE_TTL_DAYS : Number(req.body.expiresInDays)
 
   if (!REGISTRATION_CODE_KINDS.includes(kind)) return res.status(400).json({ error: 'Choose school or organization.' })
+  // An optional free trial (#892): the account starts paid until it ends.
+  const trial = readTrialDays(req.body.trialDays)
+  if (trial.error) return res.status(400).json({ error: trial.error })
   if (!Number.isInteger(days) || days < 1 || days > MAX_CODE_TTL_DAYS) {
     return res.status(400).json({ error: `Expiry must be between 1 and ${MAX_CODE_TTL_DAYS} days.` })
   }
@@ -40,12 +44,12 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     const code = generateRegistrationCode()
     const id = uid('rgc')
     const { rows } = await query(
-      `INSERT INTO registration_codes (id, kind, code_hash, code_hint, label, expires_at)
-       VALUES ($1, $2, $3, $4, $5, now() + make_interval(days => $6))
+      `INSERT INTO registration_codes (id, kind, code_hash, code_hint, label, expires_at, trial_days)
+       VALUES ($1, $2, $3, $4, $5, now() + make_interval(days => $6), $7)
        RETURNING expires_at`,
-      [id, kind, hashCode(code), codeHint(code), label, days],
+      [id, kind, hashCode(code), codeHint(code), label, days, trial.days],
     )
-    return res.status(201).json({ id, code, kind, label, expiresAt: rows[0].expires_at })
+    return res.status(201).json({ id, code, kind, label, trialDays: trial.days, expiresAt: rows[0].expires_at })
   } catch (error) {
     console.error('registration code create failed:', error)
     return res.status(500).json({ error: 'Could not create a code.' })
@@ -59,7 +63,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
 router.get('/admin', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, kind, code_hint, label, expires_at, created_at
+      `SELECT id, kind, code_hint, label, expires_at, created_at, trial_days
          FROM registration_codes
         WHERE status = 'active' AND expires_at > now()
         ORDER BY created_at DESC
@@ -71,6 +75,7 @@ router.get('/admin', limiter, requireDb, requireAuth('admin'), async (_req, res)
         kind: r.kind,
         hint: r.code_hint,
         label: r.label,
+        trialDays: r.trial_days,
         expiresAt: r.expires_at,
         createdAt: r.created_at,
       })),
@@ -93,6 +98,60 @@ router.post('/admin/:id/revoke', limiter, requireDb, requireAuth('admin'), async
     return res.json({ ok: true })
   } catch (error) {
     console.error('registration code revoke failed:', error)
+    return res.status(500).json({ error: 'Could not revoke the code.' })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Club upgrade codes (#892). A free club's adviser types one under "Upgrade to
+// a school plan" (POST /api/school/upgrade-code). With trialDays the school
+// plan is free until then; without, the code stands for a payment already made.
+// ---------------------------------------------------------------------------
+
+router.post('/admin/upgrade', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const label = String(req.body.label || '').trim().slice(0, 120) || null
+  const days = req.body.expiresInDays == null ? DEFAULT_CODE_TTL_DAYS : Number(req.body.expiresInDays)
+  if (!Number.isInteger(days) || days < 1 || days > MAX_CODE_TTL_DAYS) {
+    return res.status(400).json({ error: `Expiry must be between 1 and ${MAX_CODE_TTL_DAYS} days.` })
+  }
+  const trial = readTrialDays(req.body.trialDays)
+  if (trial.error) return res.status(400).json({ error: trial.error })
+  try {
+    const code = generateUpgradeCode()
+    const id = uid('upc')
+    const { rows } = await query(
+      `INSERT INTO upgrade_codes (id, code_hash, code_hint, label, trial_days, expires_at)
+       VALUES ($1, $2, $3, $4, $5, now() + make_interval(days => $6))
+       RETURNING expires_at`,
+      [id, hashUpgradeCode(code), upgradeCodeHint(code), label, trial.days, days],
+    )
+    return res.status(201).json({ id, code, label, trialDays: trial.days, expiresAt: rows[0].expires_at })
+  } catch (error) {
+    console.error('upgrade code create failed:', error)
+    return res.status(500).json({ error: 'Could not create a code.' })
+  }
+})
+
+router.get('/admin/upgrade', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, code_hint, label, trial_days, expires_at, created_at FROM upgrade_codes
+        WHERE status = 'active' AND expires_at > now() ORDER BY created_at DESC LIMIT 200`,
+    )
+    return res.json({ codes: rows.map((r) => ({ id: r.id, hint: r.code_hint, label: r.label, trialDays: r.trial_days, expiresAt: r.expires_at, createdAt: r.created_at })) })
+  } catch (error) {
+    console.error('upgrade code list failed:', error)
+    return res.status(500).json({ error: 'Could not load codes.' })
+  }
+})
+
+router.post('/admin/upgrade/:id/revoke', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { rowCount } = await query(`UPDATE upgrade_codes SET status = 'revoked' WHERE id = $1 AND status = 'active'`, [req.params.id])
+    if (rowCount === 0) return res.status(409).json({ error: 'Only an unused code can be revoked.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('upgrade code revoke failed:', error)
     return res.status(500).json({ error: 'Could not revoke the code.' })
   }
 })

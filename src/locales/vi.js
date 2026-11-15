@@ -3583,5 +3583,10 @@ export default {
   "Signing out…": "Đang đăng xuất…",
   "Sign out of all other devices": "Đăng xuất khỏi mọi thiết bị khác",
   "Download my data": "Tải dữ liệu của tôi",
-  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "Tải dữ liệu của tôi cho bạn một tệp chứa mọi thứ VolunTrack lưu về tài khoản của bạn. Mật khẩu, mã PIN và mã xác minh chỉ được lưu ở dạng mã hóa nên không có trong đó."
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "Tải dữ liệu của tôi cho bạn một tệp chứa mọi thứ VolunTrack lưu về tài khoản của bạn. Mật khẩu, mã PIN và mã xác minh chỉ được lưu ở dạng mã hóa nên không có trong đó.",
+  "Upgrade code from VolunTrack": "Mã nâng cấp từ VolunTrack",
+  "Upgrading…": "Đang nâng cấp…",
+  "Upgrade": "Nâng cấp",
+  "Don’t have a code?": "Chưa có mã?",
+  "Free trial until {date}": "Dùng thử miễn phí đến {date}"
 }
