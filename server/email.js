@@ -469,6 +469,26 @@ ${emailFooterHtml(lang)}`,
   })
 }
 
+// New-device sign-in alert (#886): device, time and a one-time link that signs
+// every device out. The link goes through the website (vercel.json) to the
+// backend's own confirm page, so opening it changes nothing.
+export async function sendNewSignInEmail({ to, name, language, device, when, token }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const link = `${emailApiBase()}/api/auth/sign-out-everywhere/${token}`
+  const stamp = new Date(when).toISOString().slice(0, 16).replace('T', ' ')
+  return sendEmail({
+    to,
+    subject: t('New sign-in to your VolunTrack account'),
+    html: `<p>${t('Hi {name},', { name: escapeHtml(String(name || '').split(' ')[0] || '') })}</p>
+<p>${t('Your VolunTrack account was just signed in to from {device}, on {when} (UTC).', { device: `<strong>${escapeHtml(device)}</strong>`, when: stamp })}</p>
+<p>${t("If this was you, you don't need to do anything.")}</p>
+<p>${t('Not you? Sign out every device right away, then change your password.')}</p>
+<p><a href="${link}">${t('Sign out everywhere')}</a></p>
+${emailFooterHtml(lang)}`,
+  })
+}
+
 // Confirms a new address before an account moves to it (#464).
 export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) {
   const lang = emailLang(language)

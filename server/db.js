@@ -2332,6 +2332,25 @@ export async function initSchema() {
   // Welcome tours this account has finished or skipped (#736), so each shows
   // once per person, not once per device.
   try { await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS tours_seen TEXT[] NOT NULL DEFAULT '{}'") } catch {}
+  // Devices an account has signed in on, for new-sign-in alerts (#886): a hash,
+  // a coarse "Chrome on macOS" label and dates. And one-time "sign out
+  // everywhere" links from those emails (hash only, 7 days).
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS known_devices (
+      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      device_key TEXT NOT NULL,
+      label      TEXT NOT NULL,
+      first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
+      last_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, device_key)
+    )`)
+    await query(`CREATE TABLE IF NOT EXISTS signout_links (
+      token_hash TEXT PRIMARY KEY,
+      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL
+    )`)
+    await query('DELETE FROM signout_links WHERE expires_at < now()')
+  } catch (error) { console.error('sign-in alert tables failed:', error.message) }
   // Away-lock unlock PIN (#871): bcrypt hash, never the digits.
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_pin_hash TEXT') } catch {}
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}

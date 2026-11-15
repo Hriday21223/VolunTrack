@@ -3574,5 +3574,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "PINまたはパスワードが違います。残り {n} 回です。",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "続けるにはロック解除用PINを入力してください。ページは離れたときのままです。",
   "Use your password instead": "パスワードを使う",
-  "Use your PIN instead": "PINを使う"
+  "Use your PIN instead": "PINを使う",
+  "Every other device is signed out. You are still signed in here.": "ほかのすべての端末からサインアウトしました。この端末ではサインインしたままです。",
+  "Your data is downloading.": "データをダウンロードしています。",
+  "Devices and your data": "端末とデータ",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "共用のパソコンでVolunTrackにサインインしたままですか？ここからほかのすべての端末をサインアウトできます。新しい端末でサインインがあったときもメールでお知らせします。",
+  "Signing out…": "サインアウト中…",
+  "Sign out of all other devices": "ほかのすべての端末からサインアウト",
+  "Download my data": "自分のデータをダウンロード",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "「自分のデータをダウンロード」では、VolunTrackがあなたのアカウントについて保存しているすべてを1つのファイルで受け取れます。パスワード、PIN、コードは暗号化された形でのみ保存されているため含まれません。"
 }

@@ -56,6 +56,7 @@ import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
 import { LEGAL_VERSION } from '../legal.js'
 import { issueSignupCode, useSignupCode as spendSignupCode, hasPendingSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
 import { publicFetch } from '../publicHost.js'
+import { noteSignIn } from '../signInAlerts.js'
 const router = express.Router()
 
 // Closed-out events (#865): once an event is signed off (or 30 days old), the
@@ -296,6 +297,7 @@ async function registerSchool(req, res, { club }) {
     const user = { id: rows[0].id, role: rows[0].role, name: rows[0].name, email: rows[0].email, schoolId: rows[0].school_id, grade: rows[0].grade }
     await sendWelcomeEmail({ to: user.email, name: user.name, role: 'school', schoolPin: pin, plan, language: requestLang(req) })
     if (plan === 'club') checkClubDomain(email)
+    noteSignIn(req, user, { alert: false }) // new-device email (#886); not awaited
     return res.status(201).json({ token: signToken(user), user, referral })
   } catch (error) {
     await releaseCode(claimedCodeId).catch((e) => console.error('registration code release failed:', e.message))

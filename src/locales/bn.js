@@ -3574,5 +3574,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "ভুল PIN বা পাসওয়ার্ড। আর {n}টি চেষ্টা বাকি।",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "চালিয়ে যেতে আপনার আনলক PIN দিন। আপনার পেজ যেমন রেখে গিয়েছিলেন তেমনই আছে।",
   "Use your password instead": "পাসওয়ার্ড ব্যবহার করুন",
-  "Use your PIN instead": "PIN ব্যবহার করুন"
+  "Use your PIN instead": "PIN ব্যবহার করুন",
+  "Every other device is signed out. You are still signed in here.": "অন্য সব ডিভাইস থেকে সাইন আউট করা হয়েছে। আপনি এখানে সাইন ইন আছেন।",
+  "Your data is downloading.": "আপনার ডেটা ডাউনলোড হচ্ছে।",
+  "Devices and your data": "ডিভাইস ও আপনার ডেটা",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "শেয়ার করা কম্পিউটারে VolunTrack সাইন ইন রেখে এসেছেন? এখান থেকে অন্য সব ডিভাইস থেকে সাইন আউট করুন। নতুন ডিভাইসে আপনার অ্যাকাউন্টে সাইন ইন হলে আমরা ইমেলও পাঠাই।",
+  "Signing out…": "সাইন আউট হচ্ছে…",
+  "Sign out of all other devices": "অন্য সব ডিভাইস থেকে সাইন আউট করুন",
+  "Download my data": "আমার ডেটা ডাউনলোড করুন",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "আমার ডেটা ডাউনলোড করুন দিয়ে একটি ফাইল পাবেন, যাতে VolunTrack আপনার অ্যাকাউন্ট সম্পর্কে যা রাখে সব আছে। পাসওয়ার্ড, PIN ও কোড কেবল এলোমেলো রূপে রাখা হয়, তাই সেগুলো এতে নেই।"
 }

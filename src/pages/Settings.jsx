@@ -10,6 +10,7 @@ import { hashPin } from '@/api/index.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import UnlockPinCard from '@/components/UnlockPinCard.jsx'
+import AccountDataCard from '@/components/AccountDataCard.jsx'
 import Toast from '@/components/Toast.jsx'
 import QRCode from 'qrcode'
 import { format, parseISO } from 'date-fns'
@@ -1159,6 +1160,9 @@ export default function Settings() {
 
           {/* Away lock (#871): a quick way back in after 5 minutes away. */}
           {localStorage.getItem('voluntrack:auth_token') && <UnlockPinCard />}
+
+          {/* Every account (#886): sign other devices out, download my data. */}
+          {localStorage.getItem('voluntrack:auth_token') && <AccountDataCard />}
 
           {/* Device-only accounts: a server account has nowhere to store this PIN. */}
           {!hasServerAccount && <Card>

@@ -10,6 +10,7 @@
 // activity descriptions are the user's own words and stay as they are.
 
 import { EMAIL_VI, EMAIL_ZH } from './emailStringsViZh.js'
+import { ACCOUNT_EMAIL_STRINGS } from './emailStringsAccount.js'
 import { EMAIL_HI, EMAIL_AR, EMAIL_PT, EMAIL_FR, EMAIL_BN, EMAIL_RU, EMAIL_JA } from './emailStringsMore.js'
 
 // Every language the app can be set to (#637, #834) also gets translated
@@ -349,10 +350,14 @@ const ES = {
   "If you don't agree, don't share the PIN, and nothing is sent to the organizer.": "Si no estás de acuerdo, no compartas el PIN y no se enviará nada al organizador.",
 }
 
-const DICTIONARIES = {
+const BASE_DICTIONARIES = {
   es: ES, vi: EMAIL_VI, zh: EMAIL_ZH,
   hi: EMAIL_HI, ar: EMAIL_AR, pt: EMAIL_PT, fr: EMAIL_FR, bn: EMAIL_BN, ru: EMAIL_RU, ja: EMAIL_JA,
 }
+// Newer emails keep their strings in their own file, merged in here.
+const DICTIONARIES = Object.fromEntries(
+  Object.entries(BASE_DICTIONARIES).map(([lang, dict]) => [lang, { ...dict, ...(ACCOUNT_EMAIL_STRINGS[lang] || {}) }]),
+)
 
 /**
  * Translate one email string. `lang` is 'en' | 'es' (anything else → English).

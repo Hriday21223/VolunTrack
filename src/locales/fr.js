@@ -3574,5 +3574,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "PIN ou mot de passe incorrect. Il reste {n} essais.",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "Saisissez votre PIN de déverrouillage pour continuer. Votre page est restée telle quelle.",
   "Use your password instead": "Utiliser mon mot de passe",
-  "Use your PIN instead": "Utiliser mon PIN"
+  "Use your PIN instead": "Utiliser mon PIN",
+  "Every other device is signed out. You are still signed in here.": "Tous les autres appareils sont déconnectés. Vous restez connecté ici.",
+  "Your data is downloading.": "Vos données sont en cours de téléchargement.",
+  "Devices and your data": "Appareils et données",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "Vous avez laissé VolunTrack connecté sur un ordinateur partagé ? Déconnectez tous les autres appareils d’ici. Nous vous écrivons aussi quand votre compte se connecte sur un nouvel appareil.",
+  "Signing out…": "Déconnexion…",
+  "Sign out of all other devices": "Déconnecter tous les autres appareils",
+  "Download my data": "Télécharger mes données",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "« Télécharger mes données » vous donne un fichier avec tout ce que VolunTrack conserve sur votre compte. Les mots de passe, PIN et codes ne sont gardés que sous forme chiffrée, ils n’y figurent donc pas."
 }

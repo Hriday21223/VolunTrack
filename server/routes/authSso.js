@@ -10,6 +10,7 @@ import { isPublicHost, publicFetchAsFetch } from '../publicHost.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { publicUser, USER_WITH_SCHOOL_SELECT } from './auth.js'
 import { joinWithSeat } from '../plans.js'
+import { noteSignIn } from '../signInAlerts.js'
 
 const router = express.Router()
 
@@ -505,6 +506,7 @@ router.post('/exchange', ssoLimiter, requireDb, async (req, res) => {
     if (!found.rows[0]) return res.status(400).json({ error: 'Account no longer exists.' })
 
     const user = publicUser(found.rows[0])
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('sso exchange failed:', error)

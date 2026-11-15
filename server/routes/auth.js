@@ -10,6 +10,8 @@ import { query, hasDatabase } from '../db.js'
 import { uid, generateToken, generateNumericCode } from '../ids.js'
 import { issueSignupCode, useSignupCode, SIGNUP_CODE_TTL_MINUTES, SIGNUP_CODE_MAX_ATTEMPTS, SIGNUP_CODE_RESEND_SECONDS } from '../signupCodes.js'
 import { signupPlatform } from '../platform.js'
+import { escapeHtml } from '../html.js'
+import { noteSignIn, spendSignOutLink, signOutLinkUser } from '../signInAlerts.js'
 import { hashPassword, verifyPassword, signToken, signTempToken, verifyTempToken, requireAuth,
          signEnrollmentToken, requireAuthOrEnrollment, mfaRequiredForRole, endSessions } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE } from '../validate.js'
@@ -324,6 +326,7 @@ router.post('/register', authLimiter, requireDb, async (req, res) => {
       return res.status(201).json({ pendingParentalConsent: true })
     }
     await sendWelcomeEmail({ to: user.email, name: user.name, role: user.role, language: requestLang(req) })
+    noteSignIn(req, user, { alert: false }) // new-device email (#886); not awaited
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     console.error('register failed:', error)
@@ -459,6 +462,7 @@ router.post('/email-otp/challenge', authLimiter, requireDb, async (req, res) => 
     const problem = await useEmailOtp(row.id, 'login', req.body.code)
     if (problem) return res.status(problem.status).json({ error: problem.error })
     const user = publicUser(row)
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('email otp challenge failed:', error)
@@ -522,6 +526,112 @@ router.post('/email-otp/disable', authLimiter, requireDb, requireAuth(), async (
   } catch (error) {
     console.error('email otp disable failed:', error)
     return res.status(500).json({ error: 'Could not turn it off.' })
+  }
+})
+
+// --- Account: sign out everywhere, data download (#886) ---------------------
+
+// Signs every other device out and hands this one a fresh token, so the
+// person stays signed in here (a token from this second outlives the cutoff).
+router.post('/me/sign-out-everywhere', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    await endSessions(req.auth.sub)
+    const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [req.auth.sub])
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
+    const user = publicUser(rows[0])
+    return res.json({ ok: true, token: signToken(user), user })
+  } catch (error) {
+    console.error('sign out everywhere failed:', error)
+    return res.status(500).json({ error: 'Could not sign out your other devices.' })
+  }
+})
+
+// The link in a new-sign-in email. Two-step like the unsubscribe links: the
+// GET only shows a button (mail scanners open links), the POST acts.
+const SIGNOUT_PAGE_STYLE = 'font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5;color:#1f2937'
+const signOutPage = (body) => `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>VolunTrack</title><body style="${SIGNOUT_PAGE_STYLE}">${body}</body></html>`
+const signOutLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false })
+
+router.get('/sign-out-everywhere/:token', signOutLimiter, requireDb, async (req, res) => {
+  try {
+    const userId = await signOutLinkUser(req.params.token)
+    if (!userId) return res.status(404).type('html').send(signOutPage('<p>This link has expired or was already used. You can still sign out everywhere from Settings, or change your password with “Forgot password” on the sign-in page.</p>'))
+    return res.type('html').send(signOutPage(`<p><strong>Sign out of VolunTrack on every device?</strong></p><p>Everyone signed in to this account, including you, will need to sign in again.</p><form method="post" action="/api/auth/sign-out-everywhere/${escapeHtml(req.params.token)}"><button type="submit" style="font-size:1rem;padding:0.5rem 1rem">Sign out everywhere</button></form>`))
+  } catch (error) {
+    console.error('sign-out link (GET) failed:', error)
+    return res.status(500).type('html').send(signOutPage('<p>Something went wrong. Please try again later.</p>'))
+  }
+})
+
+router.post('/sign-out-everywhere/:token', signOutLimiter, requireDb, async (req, res) => {
+  try {
+    const ok = await spendSignOutLink(req.params.token)
+    if (!ok) return res.status(404).type('html').send(signOutPage('<p>This link has expired or was already used.</p>'))
+    const site = (process.env.FRONTEND_URL || '').split(',')[0].trim() || 'https://volunteer-track-two.vercel.app'
+    return res.type('html').send(signOutPage(`<p><strong>Done: every device is signed out.</strong></p><p>Now change your password so nobody can sign back in: use <a href="${escapeHtml(site)}/forgot-password">Forgot password</a>.</p>`))
+  } catch (error) {
+    console.error('sign-out link (POST) failed:', error)
+    return res.status(500).type('html').send(signOutPage('<p>Something went wrong. Please try again later.</p>'))
+  }
+})
+
+// Download my data: one JSON file with what VolunTrack keeps about this
+// account. Each source is (table, column that names the account). Rows about
+// other people that this account only touched — logs it signed, notes about
+// students, who blocked or follows them — are left out, and so is anything
+// secret (hashes, tokens, keys, codes) or bulky (drawn signatures, files).
+const EXPORT_SOURCES = [
+  ['logs', 'user_id'], ['goals', 'user_id'], ['reminders', 'user_id'], ['regular_shifts', 'user_id'],
+  ['saved_tasks', 'user_id'], ['public_task_signups', 'user_id'], ['task_ratings', 'user_id'],
+  ['task_questions', 'asker_id'], ['reference_requests', 'user_id'], ['portfolios', 'user_id'],
+  ['notifications', 'user_id'], ['parent_child_links', 'parent_id'], ['parent_child_links', 'child_id'],
+  ['family_weekly_goals', 'parent_id'], ['family_weekly_goals', 'child_id'], ['emergency_contacts', 'parent_id'],
+  ['log_cheers', 'parent_id'], ['organizer_follows', 'user_id'], ['user_blocks', 'blocker_id'],
+  ['club_members', 'user_id'], ['club_assignment_entries', 'user_id'], ['public_tasks', 'created_by'],
+  ['task_cohosts', 'user_id'], ['task_thanks', 'sender_id'], ['school_messages', 'sender_id'],
+  ['api_keys', 'created_by'], ['webhook_endpoints', 'created_by'], ['passkeys', 'user_id'],
+  ['push_devices', 'user_id'], ['user_social_logins', 'user_id'], ['wallet_cards', 'user_id'],
+  ['pdf_uploads', 'user_id'], ['school_transfers', 'user_id'], ['school_student_invites', 'user_id'],
+  ['requirement_completions', 'user_id'], ['known_devices', 'user_id'],
+]
+const EXPORT_DROP = /hash|token|secret|_enc$|password|otp|pin$|_pin|backup|^key$|_key$|credential|public_key|p256dh|^auth$|signature|proof_data|pdf_data|image_data|photo_data/i
+const EXPORT_MAX_CHARS = 20000
+
+function exportRow(row) {
+  const out = {}
+  for (const [k, v] of Object.entries(row)) {
+    if (EXPORT_DROP.test(k)) continue
+    out[k] = typeof v === 'string' && v.length > EXPORT_MAX_CHARS ? `[left out: ${v.length} characters]` : v
+  }
+  return out
+}
+
+router.get('/me/export', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const id = req.auth.sub
+    const { rows: me } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [id])
+    if (!me[0]) return res.status(404).json({ error: 'Account not found.' })
+    const data = {
+      about: 'Everything VolunTrack keeps about your account, as of the date below. Passwords, PINs, codes and keys are stored only in scrambled form and are left out. Questions: see the Privacy page.',
+      exportedAt: new Date().toISOString(),
+      account: exportRow(me[0]),
+    }
+    if (me[0].school_id && ['school', 'school_staff'].includes(me[0].role)) {
+      const { rows } = await query('SELECT * FROM schools WHERE id = $1', [me[0].school_id])
+      if (rows[0]) data.school = exportRow(rows[0])
+    }
+    for (const [table, column] of EXPORT_SOURCES) {
+      try {
+        const { rows } = await query(`SELECT * FROM ${table} WHERE ${column} = $1 LIMIT 5000`, [id])
+        if (rows.length) data[column === 'user_id' || column === 'created_by' ? table : `${table} (${column})`] = rows.map(exportRow)
+      } catch { /* a table this database doesn't have yet */ }
+    }
+    res.set('Cache-Control', 'no-store')
+    res.set('Content-Disposition', `attachment; filename="voluntrack-data-${new Date().toISOString().slice(0, 10)}.json"`)
+    return res.json(data)
+  } catch (error) {
+    console.error('data export failed:', error)
+    return res.status(500).json({ error: 'Could not prepare your data.' })
   }
 })
 
@@ -712,9 +822,11 @@ router.post('/login', authLimiter, requireDb, turnstileUnlessMonitor(), async (r
         })
       }
       // Still in the grace window — sign in, but tell the client to nag.
+      noteSignIn(req, user) // new-device email (#886); not awaited
       return res.json({ token: signToken(user), user, mfaEnrollmentDue: row.mfa_required_at })
     }
 
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('login failed:', error)
@@ -1074,6 +1186,7 @@ router.post('/sync-pin-auth', authLimiter, requireDb, async (req, res) => {
 
     const { rows: updated } = await query(SET_SYNC_PIN, [syncPin, rows[0].id])
     const user = publicUser(updated[0])
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('sync-pin-auth failed:', error)
@@ -1109,6 +1222,7 @@ router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req
     const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
 
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('sync-login failed:', error)
@@ -1303,6 +1417,7 @@ router.post('/totp/challenge', authLimiter, requireDb, async (req, res) => {
     ).catch((e) => console.error('totp counter reset failed:', e.message))
 
     const user = publicUser(row)
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('totp challenge failed:', error)
@@ -1429,6 +1544,7 @@ router.post('/totp/backup-recovery', authLimiter, requireDb, async (req, res) =>
     ).catch((e) => console.error('totp counter reset failed:', e.message))
 
     const user = publicUser(row)
+    noteSignIn(req, user) // new-device email (#886); not awaited
     return res.json({ token: signToken(user), user })
   } catch (error) {
     console.error('totp backup-recovery failed:', error)

@@ -3574,5 +3574,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "Неверный PIN или пароль. Осталось попыток: {n}.",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "Введите PIN для разблокировки, чтобы продолжить. Страница осталась такой, какой вы её оставили.",
   "Use your password instead": "Ввести пароль",
-  "Use your PIN instead": "Ввести PIN"
+  "Use your PIN instead": "Ввести PIN",
+  "Every other device is signed out. You are still signed in here.": "Все остальные устройства вышли из аккаунта. Здесь вы остаётесь в системе.",
+  "Your data is downloading.": "Ваши данные скачиваются.",
+  "Devices and your data": "Устройства и ваши данные",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "Оставили VolunTrack открытым на общем компьютере? Выйдите на всех остальных устройствах отсюда. Мы также пишем вам, когда в аккаунт входят с нового устройства.",
+  "Signing out…": "Выход…",
+  "Sign out of all other devices": "Выйти на всех остальных устройствах",
+  "Download my data": "Скачать мои данные",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "«Скачать мои данные» даёт один файл со всем, что VolunTrack хранит о вашем аккаунте. Пароли, PIN-коды и коды хранятся только в зашифрованном виде, поэтому их там нет."
 }

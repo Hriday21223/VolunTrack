@@ -3575,5 +3575,13 @@ export default {
   "Wrong PIN or password. {n} tries left.": "PIN 或密码错误。还可以尝试 {n} 次。",
   "Enter your unlock PIN to keep going. Your page is just as you left it.": "输入解锁 PIN 以继续。页面会保持你离开时的样子。",
   "Use your password instead": "改用密码",
-  "Use your PIN instead": "改用 PIN"
+  "Use your PIN instead": "改用 PIN",
+  "Every other device is signed out. You are still signed in here.": "已退出所有其他设备，你在这里仍保持登录。",
+  "Your data is downloading.": "你的数据正在下载。",
+  "Devices and your data": "设备和你的数据",
+  "Left VolunTrack signed in on a shared computer? Sign out every other device from here. We also email you when your account signs in on a new device.": "在公用电脑上忘了退出 VolunTrack？可以在这里退出所有其他设备。你的账号在新设备上登录时，我们也会给你发邮件。",
+  "Signing out…": "正在退出…",
+  "Sign out of all other devices": "退出所有其他设备",
+  "Download my data": "下载我的数据",
+  "Download my data gives you one file with everything VolunTrack keeps about your account. Passwords, PINs and codes are stored only in scrambled form, so they are not in it.": "“下载我的数据”会给你一个文件，包含 VolunTrack 保存的关于你账号的所有内容。密码、PIN 和验证码只以加密形式保存，因此不在其中。"
 }
