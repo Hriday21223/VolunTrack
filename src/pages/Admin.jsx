@@ -1600,7 +1600,8 @@ export default function Admin() {
                           {s.student_count} student{s.student_count === 1 ? '' : 's'} ·
                           Joined {new Date(s.created_at).toLocaleDateString()}
                         </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        {/* A free club never pays, so no payment badge for it. */}
+                        {s.plan !== 'club' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           s.payment_status === 'paid'
                             ? 'bg-emerald-500/10 text-emerald-400'
                             : s.payment_status === 'pending'
@@ -1610,7 +1611,7 @@ export default function Admin() {
                             : 'bg-amber-500/10 text-amber-400'
                         }`}>
                           {s.payment_status === 'paid' ? (s.trial_ends_at ? `Free trial until ${new Date(s.trial_ends_at).toLocaleDateString()}` : 'Paid') : s.payment_status === 'pending' ? 'Pending review' : s.payment_status === 'rejected' ? 'Rejected' : 'Unpaid'}
-                        </span>
+                        </span>}
                         {s.plan === 'club' && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-300" title="Free club plan: up to 50 students, never payment-locked">Free club</span>
                         )}
