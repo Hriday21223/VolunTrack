@@ -1,7 +1,7 @@
 import { query } from './db.js'
 import { uid } from './ids.js'
 import { clubStudentCount, CLUB_STUDENT_LIMIT } from './plans.js'
-import { sendTrialEndingEmail, sendTrialEndedEmail } from './email.js'
+import { sendTrialEndingEmail, sendTrialEndedEmail, sendAdminTrialEndedEmail } from './email.js'
 
 // Free trials (#892, #894). A school or organization on a trial has
 // payment_status 'paid' and a trial_ends_at. Marking it paid or unpaid by
@@ -64,7 +64,7 @@ export async function endExpiredTrials() {
   const ended = { schools: 0, organizations: 0, backToClub: 0 }
   for (const kind of KINDS) {
     const { rows } = await query(
-      `SELECT id, name, ${kind.entity === 'school' ? 'trial_from_club' : 'false AS trial_from_club'}
+      `SELECT id, name, contact_email, ${kind.entity === 'school' ? 'trial_from_club' : 'false AS trial_from_club'}
          FROM ${kind.table} WHERE trial_ends_at IS NOT NULL AND trial_ends_at <= now()`,
     )
     for (const row of rows) {
@@ -90,6 +90,11 @@ export async function endExpiredTrials() {
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, $2, $3, 'status_unpaid', $4)`,
         [uid('pev'), kind.entity, row.id, toClub ? 'Free trial ended: back to the free club plan' : 'Free trial ended'],
       ).catch((e) => console.error('trial end event failed:', e.message))
+      // And the admin, to follow up (#897); not for @test.com fixtures.
+      if (!String(row.contact_email || '').toLowerCase().endsWith('@test.com')) {
+        await sendAdminTrialEndedEmail({ accountName: row.name, entity: kind.entity, backToClub: toClub, contactEmail: row.contact_email })
+          .catch((e) => console.error('admin trial ended email failed:', e.message))
+      }
       for (const r of await recipients(kind, row.id)) {
         await sendTrialEndedEmail({ to: r.email, name: r.name, language: r.language, accountName: row.name, backToClub: toClub })
           .catch((e) => console.error('trial ended email failed:', e.message))
