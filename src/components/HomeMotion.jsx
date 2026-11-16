@@ -128,10 +128,15 @@ export function FloatingStart({ heroRef, hideNearRef }) {
   )
 }
 
+// Every kind of account, not just students. `role` matches DashboardGallery's
+// role ids, so picking Parent or Volunteer below jumps the phone there too.
 const PHONE_SCREENS = [
-  { file: 'dashboard-phone.webp', alt: 'The VolunTrack student dashboard on a phone: hours this year, progress toward a 40-hour goal, and badges.' },
-  { file: 'student-log-phone.webp', alt: 'Logging hours on a phone: activity, date and times, place and proof.' },
-  { file: 'student-opportunities-phone.webp', alt: 'Volunteer opportunities near you on a phone, each with its date, place and spots left.' },
+  { role: 'student', label: 'Student', file: 'dashboard-phone.webp', alt: 'The VolunTrack student dashboard on a phone: hours this year, progress toward a 40-hour goal, and badges.' },
+  { role: 'student', label: 'Student', file: 'student-log-phone.webp', alt: 'Logging hours on a phone: activity, date and times, place and proof.' },
+  { role: 'student', label: 'Student', file: 'student-opportunities-phone.webp', alt: 'Volunteer opportunities near you on a phone, each with its date, place and spots left.' },
+  { role: 'parent', label: 'Parent', file: 'parent-phone.webp', alt: 'The family dashboard on a phone: a child’s progress toward the school’s required hours.' },
+  { role: 'volunteer', label: 'Volunteer', file: 'volunteer-phone.webp', alt: 'A task organizer’s volunteer tasks on a phone, with dates, places and sign-ups.' },
+  { role: 'volunteer', label: 'Volunteer', file: 'volunteer-signups-phone.webp', alt: 'Volunteers signed up for a task on a phone, with Approve and Reject buttons.' },
 ]
 
 /**
@@ -139,8 +144,15 @@ const PHONE_SCREENS = [
  * every few seconds. Tablets and computers only: on a phone the gallery right
  * below already shows these screens full size. Sample data, never a real account.
  */
-export function PhonePreview() {
+export function PhonePreview({ role } = {}) {
   const [i, setI] = useState(0)
+  // Follow the role picked in the gallery below (not on first load).
+  const firstRole = useRef(true)
+  useEffect(() => {
+    if (firstRole.current) { firstRole.current = false; return }
+    const n = PHONE_SCREENS.findIndex((sc) => sc.role === role)
+    if (n >= 0) setI(n)
+  }, [role])
   // Tilted back at the top of the page; it stands up and comes forward as
   // the reader scrolls, and tips back again on the way up.
   const [tilt, setTilt] = useState(0)
@@ -180,7 +192,8 @@ export function PhonePreview() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#101a14] to-transparent" aria-hidden="true" />
       </div>
       </div>
-      <div className="mt-4 flex justify-center gap-1.5" aria-hidden="true">
+      <p className="mt-4 text-center text-xs font-medium text-brand-300" aria-hidden="true">{PHONE_SCREENS[i].label}</p>
+      <div className="mt-2 flex justify-center gap-1.5" aria-hidden="true">
         {PHONE_SCREENS.map((sc, n) => <span key={sc.file} className={`h-1.5 rounded-full transition-all ${n === i ? 'w-5 bg-brand-400' : 'w-1.5 bg-white/25'}`} />)}
       </div>
     </div>

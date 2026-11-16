@@ -303,7 +303,7 @@ export default function About() {
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Private by design</span>
               <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Export anytime</span>
             </div>
-            <PhonePreview />
+            <PhonePreview role={audience} />
           </section>
 
           {/* The product itself, for every kind of account — see DashboardGallery. */}
