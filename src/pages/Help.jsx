@@ -16,7 +16,9 @@ const TABS = [
   { id: 'school', label: tr('School'), icon: School },
   { id: 'school_staff', label: tr('Co-Admin'), icon: UserCheck },
   { id: 'organization', label: tr('Organization'), icon: Building2 },
-  { id: 'admin', label: tr('Admin'), icon: ShieldCheck },
+  // Only the VolunTrack admin can use the admin panel, so only they see its
+  // handbook; for everyone else it was a page they can never act on.
+  { id: 'admin', label: tr('Admin'), icon: ShieldCheck, adminOnly: true },
   { id: 'faq', label: tr('FAQ'), icon: HelpCircle },
 ]
 
@@ -747,14 +749,14 @@ const HELP_JSON_LD = [
 export default function Help() {
   useSeo({
     title: 'Help & Handbooks',
-    description: 'Guides, FAQs, and handbooks for students, parents, volunteers, schools, co-admins, organizations, and admins using VolunTrack.',
+    description: 'Guides, FAQs, and handbooks for students, parents, volunteers, schools, co-admins and organizations using VolunTrack.',
     path: '/help',
     jsonLd: HELP_JSON_LD,
   })
 
   const { user } = useAuth()
   const [tab, setTab] = useState('quickstart')
-  const Panel = PANELS[tab] || QuickStart
+  const Panel = (tab === 'admin' && user?.role !== 'admin' ? null : PANELS[tab]) || QuickStart
 
   const content = (
     <div className="max-w-5xl mx-auto lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
@@ -763,7 +765,7 @@ export default function Help() {
         className="flex gap-1 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:pb-0 lg:flex-col lg:overflow-visible lg:sticky lg:top-24 lg:self-start"
       >
         <p className="hidden lg:block px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-earth-500">{tr('Handbooks')}</p>
-        {TABS.map((t) => (
+        {TABS.filter((t) => !t.adminOnly || user?.role === 'admin').map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
