@@ -65,6 +65,7 @@ export const AUDIT = {
   ADMIN_INVITED: 'admin.invited',
   ADMIN_ADDED: 'admin.added',
   ADMIN_REMOVED: 'admin.removed',
+  ADMIN_PERMISSIONS_CHANGED: 'admin.permissions_changed',
   // A tenant's own hour-logging rules. Changing them retroactively decides
   // whose entries count, so the current value of the column is not enough of
   // an answer on its own.

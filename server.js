@@ -16,6 +16,7 @@ import authRoutes from './server/routes/auth.js'
 import testAccountRoutes from './server/routes/testAccounts.js'
 import adminTeamRoutes from './server/routes/adminTeam.js'
 import { adminActivityLogger } from './server/adminActivity.js'
+import { adminPermissionGuard } from './server/adminPermissions.js'
 import authSsoRoutes from './server/routes/authSso.js'
 import authSocialRoutes from './server/routes/authSocial.js'
 import passkeyRoutes from './server/routes/passkeys.js'
@@ -184,6 +185,8 @@ app.use((req, res, next) => {
 app.use(authenticate)
 // What every admin does, for the main admin's activity log (#909).
 app.use(adminActivityLogger)
+// Which parts of the admin panel each admin may use (#911).
+app.use(adminPermissionGuard)
 app.use(apiLimiter)
 
 // Server-backed accounts & (later) school dashboards.

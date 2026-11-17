@@ -190,6 +190,19 @@ export default function Admin() {
   const [sendingIds, setSendingIds] = useState(() => new Set())
   const [sendErrors, setSendErrors] = useState({})
   const tab = ADMIN_TABS.includes(tabParam) ? tabParam : 'inbox'
+  // What this admin may use (#911). The main admin and older admins get every
+  // tab; the server refuses the rest anyway (adminPermissionGuard).
+  const [access, setAccess] = useState(null)
+  useEffect(() => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    fetch(`${apiUrl}/admin/team/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setAccess(d) }).catch(() => {})
+  }, [])
+  const can = (t) => !access || access.tabs.includes(t)
+  const canArea = (a) => !access || access.permissions.includes(a)
+  useEffect(() => {
+    if (access && !access.tabs.includes(tab) && access.tabs[0]) nav(`/admin/${access.tabs[0]}`, { replace: true })
+  }, [access, tab, nav])
   const setTab = (t) => nav(`/admin/${t}`)
   const [schools, setSchools] = useState([])
   const [loadingSchools, setLoadingSchools] = useState(false)
@@ -1400,42 +1413,64 @@ export default function Admin() {
       actionWide
       action={
         <div className="flex gap-2">
+          {can('inbox') && (
           <button data-tour="admin-inbox" onClick={() => setTab('inbox')} className={`btn-sm ${tab === 'inbox' ? 'btn-primary' : 'btn-ghost'}`}>
             <MessageSquare className="w-3.5 h-3.5 mr-1" /> Inbox
           </button>
+          )}
+          {can('reviews') && (
           <button onClick={() => setTab('reviews')} className={`btn-sm ${tab === 'reviews' ? 'btn-primary' : 'btn-ghost'}`}>
             <Star className="w-3.5 h-3.5 mr-1" /> Reviews
           </button>
+          )}
+          {can('schools') && (
           <button data-tour="admin-schools" onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" /> Schools
           </button>
+          )}
+          {can('invites') && (
           <button onClick={() => setTab('invites')} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
+          )}
+          {can('organizations') && (
           <button onClick={() => setTab('organizations')} className={`btn-sm ${tab === 'organizations' ? 'btn-primary' : 'btn-ghost'}`}>
             <Building2 className="w-3.5 h-3.5 mr-1" /> Organizations
           </button>
+          )}
+          {can('incidents') && (
           <button data-tour="admin-incidents" onClick={() => { setTab('incidents'); loadIncidents() }} className={`btn-sm ${tab === 'incidents' ? 'btn-primary' : 'btn-ghost'} relative`}>
             <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Incidents
             {activeIncidentCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[0.5625rem] flex items-center justify-center font-bold">{activeIncidentCount > 9 ? '9+' : activeIncidentCount}</span>
             )}
           </button>
+          )}
+          {can('reports') && (
           <button onClick={() => setTab('reports')} className={`btn-sm ${tab === 'reports' ? 'btn-primary' : 'btn-ghost'}`}>
             <Flag className="w-3.5 h-3.5 mr-1" /> Reports
           </button>
+          )}
+          {can('settings') && (
           <button onClick={() => setTab('settings')} className={`btn-sm ${tab === 'settings' ? 'btn-primary' : 'btn-ghost'}`}>
             <Wrench className="w-3.5 h-3.5 mr-1" /> Settings
           </button>
+          )}
+          {can('users') && (
           <button onClick={() => setTab('users')} className={`btn-sm ${tab === 'users' ? 'btn-primary' : 'btn-ghost'}`}>
             <Users className="w-3.5 h-3.5 mr-1" /> Users
           </button>
+          )}
+          {can('api') && (
           <button onClick={() => { setTab('api'); loadApiInfo() }} className={`btn-sm ${tab === 'api' ? 'btn-primary' : 'btn-ghost'}`}>
             <Terminal className="w-3.5 h-3.5 mr-1" /> API
           </button>
+          )}
+          {can('blueprint') && (
           <button onClick={() => setTab('blueprint')} className={`btn-sm ${tab === 'blueprint' ? 'btn-primary' : 'btn-ghost'}`}>
             <Compass className="w-3.5 h-3.5 mr-1" /> Blueprint
           </button>
+          )}
         </div>
       }
     >
@@ -2444,7 +2479,7 @@ export default function Admin() {
       ) : tab === 'users' ? (
         <div className="space-y-6">
           <AdminTeamCard />
-          <TestAccountsCard />
+          {canArea('test_accounts') && <TestAccountsCard />}
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-earth-500 dark:text-earth-400">
               Accounts created on the website or in the apps. Someone using VolunTrack without an account isn’t counted.

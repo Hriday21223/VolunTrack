@@ -13,7 +13,7 @@ const when = (iso) => new Date(iso).toLocaleString([], { month: 'short', day: 'n
 export default function AdminTeamCard() {
   const [team, setTeam] = useState(null)
   const [err, setErr] = useState('')
-  const [form, setForm] = useState({ name: '', email: '' })
+  const [form, setForm] = useState({ name: '', email: '', permissions: [] })
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(null) // { emailSent, link }
   const [copied, setCopied] = useState(false)
@@ -53,7 +53,7 @@ export default function AdminTeamCard() {
       const res = await fetch(`${base}/invite`, { method: 'POST', headers: headers(), body: JSON.stringify(form) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Could not send the invite.')
-      setSent(d); setForm({ name: '', email: '' })
+      setSent(d); setForm({ name: '', email: '', permissions: [] })
       load()
     } catch (e2) { setErr(e2.message) } finally { setBusy(false) }
   }
@@ -65,6 +65,23 @@ export default function AdminTeamCard() {
     if (!res.ok) setErr(d.error || 'Could not remove the admin.')
     load()
   }
+
+  // Which parts of the panel an admin may use (#911). Saved at once.
+  const setPermissions = async (id, permissions) => {
+    setTeam((t) => ({ ...t, admins: t.admins.map((a) => (a.id === id ? { ...a, permissions } : a)) }))
+    const res = await fetch(`${base}/${id}/permissions`, { method: 'PUT', headers: headers(), body: JSON.stringify({ permissions }) })
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setErr(d.error || 'Could not save the access.'); load() }
+  }
+  const toggle = (list, area) => (list.includes(area) ? list.filter((a) => a !== area) : [...list, area])
+  const Areas = ({ value, onChange }) => (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+      {Object.entries(team.areas || {}).map(([id, label]) => (
+        <label key={id} className="flex items-center gap-1.5 text-xs text-earth-300">
+          <input type="checkbox" checked={value.includes(id)} onChange={() => onChange(toggle(value, id))} /> {label}
+        </label>
+      ))}
+    </div>
+  )
 
   const cancelInvite = async (id) => {
     await fetch(`${base}/invite/${id}`, { method: 'DELETE', headers: headers() })
@@ -87,7 +104,8 @@ export default function AdminTeamCard() {
           <li key={a.id} className="py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{a.name}{a.main && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-300">Main admin</span>}</p>
-              <p className="text-xs text-earth-500">{a.email} · {a.twoStep ? 'Two-step on' : 'Two-step not set up yet'}</p>
+              <p className="text-xs text-earth-500">{a.email} · {a.twoStep ? 'Two-step on' : 'Two-step not set up yet'}{a.main ? ' · Can use everything' : ''}</p>
+              {!a.main && <Areas value={a.permissions || []} onChange={(p) => setPermissions(a.id, p)} />}
             </div>
             {!a.main && (confirmRemove === a.id ? (
               <span className="flex gap-1">
@@ -119,7 +137,11 @@ export default function AdminTeamCard() {
           <label className="label" htmlFor="at-email">Email</label>
           <input id="at-email" type="email" className="input" maxLength={254} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
-        <button type="submit" disabled={busy || !form.name.trim() || !form.email.trim()} className="btn-primary btn-sm">
+        <div className="basis-full">
+          <p className="text-xs text-earth-400">What they can use:</p>
+          <Areas value={form.permissions} onChange={(p) => setForm({ ...form, permissions: p })} />
+        </div>
+        <button type="submit" disabled={busy || !form.name.trim() || !form.email.trim() || form.permissions.length === 0} className="btn-primary btn-sm">
           <UserPlus className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> {busy ? 'Inviting…' : 'Invite admin'}
         </button>
       </form>
