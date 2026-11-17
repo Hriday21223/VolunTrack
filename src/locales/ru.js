@@ -3648,5 +3648,8 @@ export default {
   "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "Администратор Microsoft 365 один раз даёт VolunTrack доступ только к этому сайту (PnP PowerShell) или выдаёт тот же доступ в центре администрирования SharePoint:",
   "Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.": "Администратор Microsoft 365 регистрирует приложение в вашем Microsoft Entra (разрешение приложения Microsoft Graph Sites.Selected с согласием администратора и секрет клиента), затем вставляет его данные сюда. VolunTrack получает доступ только к сайту, который вы разрешите ниже.",
   "Application (client) ID": "ID приложения (клиента)",
-  "Folder in the library (optional)": "Папка в библиотеке (необязательно)"
+  "Folder in the library (optional)": "Папка в библиотеке (необязательно)",
+  "Pick a colour": "Выбрать цвет",
+  "Quick colours": "Быстрые цвета",
+  "Pick a colour, choose one above, or type a hex value.": "Выберите цвет, один из цветов выше или введите hex-код."
 }

@@ -237,11 +237,20 @@ export default function TenantBrandingSettings() {
         <div>
           <label htmlFor="brandColor" className="mb-1 block text-sm font-medium">{tr('Accent colour')}</label>
           <div className="flex items-center gap-2">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 dark:border-slate-700">
+            {/* The square is a real colour picker: the system's picker opens on click. */}
+            <label className="relative grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-lg border border-slate-200 hover:border-brand-500 dark:border-slate-700" title={tr('Pick a colour')}>
               {HEX.test(color || '')
                 ? <span className="h-5 w-5 rounded" style={{ backgroundColor: color }} />
                 : <Palette className="h-4 w-4 text-slate-400" />}
-            </span>
+              <input
+                type="color"
+                aria-label={tr('Pick a colour')}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                value={HEX.test(color || '') && color.length === 7 ? color : '#2f855a'}
+                onChange={(e) => setColor(e.target.value)}
+                disabled={busy}
+              />
+            </label>
             <input
               id="brandColor"
               type="text"
@@ -251,8 +260,15 @@ export default function TenantBrandingSettings() {
               onChange={(e) => setColor(e.target.value)}
             />
           </div>
+          <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={tr('Quick colours')}>
+            {['#2f855a', '#1d4ed8', '#7c3aed', '#be123c', '#c2410c', '#0f766e', '#a16207', '#334155'].map((c) => (
+              <button key={c} type="button" onClick={() => setColor(c)} disabled={busy} aria-label={c} title={c}
+                className={`h-6 w-6 rounded-full border-2 ${color?.toLowerCase() === c ? 'border-white ring-2 ring-brand-500' : 'border-transparent'}`}
+                style={{ backgroundColor: c }} />
+            ))}
+          </div>
           <p className="mt-1 text-xs text-slate-500">
-            {tr('A hex value. Used for accents on your sign-in page — not for text or button backgrounds, so any colour stays readable. Leave blank for the VolunTrack green.')}
+            {tr('Pick a colour, choose one above, or type a hex value.')}{' '}{tr('A hex value. Used for accents on your sign-in page — not for text or button backgrounds, so any colour stays readable. Leave blank for the VolunTrack green.')}
           </p>
           {!colorValid && <p className="mt-1 text-xs text-red-500">{tr('Enter a hex value like #2f855a.')}</p>}
         </div>
