@@ -3648,5 +3648,8 @@ export default {
   "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "Votre administrateur Microsoft 365 donne une fois à VolunTrack l’accès à ce seul site (PnP PowerShell), ou accorde le même accès dans l’administration SharePoint :",
   "Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.": "Votre administrateur Microsoft 365 enregistre une application dans votre propre Microsoft Entra (autorisation d’application Microsoft Graph Sites.Selected, avec consentement administrateur, et un secret client), puis colle ses informations ici. VolunTrack n’accède qu’au site que vous autorisez ci-dessous.",
   "Application (client) ID": "ID d’application (client)",
-  "Folder in the library (optional)": "Dossier dans la bibliothèque (facultatif)"
+  "Folder in the library (optional)": "Dossier dans la bibliothèque (facultatif)",
+  "Pick a colour": "Choisir une couleur",
+  "Quick colours": "Couleurs rapides",
+  "Pick a colour, choose one above, or type a hex value.": "Choisissez une couleur, l’une de celles ci-dessus, ou saisissez une valeur hex."
 }

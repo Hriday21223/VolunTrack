@@ -3649,5 +3649,8 @@ export default {
   "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "你的 Microsoft 365 管理员只需操作一次，授予 VolunTrack 访问这一个网站的权限（PnP PowerShell），或在 SharePoint 管理中心做同样的授权：",
   "Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.": "你的 Microsoft 365 管理员在你们自己的 Microsoft Entra 中注册一个应用（Microsoft Graph 应用程序权限 Sites.Selected，经管理员同意，并创建客户端密码），然后把信息粘贴到这里。VolunTrack 只能访问你在下方授权的那个网站。",
   "Application (client) ID": "应用程序（客户端）ID",
-  "Folder in the library (optional)": "文档库中的文件夹（可选）"
+  "Folder in the library (optional)": "文档库中的文件夹（可选）",
+  "Pick a colour": "选择颜色",
+  "Quick colours": "快捷颜色",
+  "Pick a colour, choose one above, or type a hex value.": "选择颜色、点上面的色块，或输入十六进制值。"
 }
