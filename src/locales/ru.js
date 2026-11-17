@@ -3590,5 +3590,9 @@ export default {
   "Free trial until {date}": "Бесплатный период до {date}",
   "Your free trial ends on {date}.": "Ваш бесплатный период заканчивается {date}.",
   "After that, your school goes back to the free club plan (up to 50 students).": "После этого ваша школа вернётся на бесплатный тариф для клуба (до 50 учеников).",
-  "After that, your school is locked until payment is made.": "После этого школа будет заблокирована до оплаты."
+  "After that, your school is locked until payment is made.": "После этого школа будет заблокирована до оплаты.",
+  "since you linked on {date}": "с момента привязки {date}",
+  "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "Часы до {date} остаются личными для {name}. Вы видите то, что записано со дня привязки.",
+  "No hours logged since you linked on {date}.": "С момента привязки {date} часов не записано.",
+  "None yet": "Пока нет"
 }

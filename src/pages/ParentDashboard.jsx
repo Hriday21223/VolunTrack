@@ -274,6 +274,11 @@ function ChildCard({ child }) {
     logs: countedLogs(logs),
   }), [requirement?.goalHours, requirement?.deadline, stats.total, logs])
 
+  // A parent sees only hours logged from the day they linked (#298), so every
+  // number here is "since you linked" — say so, or a new link reads as 0 (#901).
+  const linkedOn = child.linkedAt ? fmtDate(format(new Date(child.linkedAt), 'yyyy-MM-dd')) : null
+  const firstName = String(child.name || '').split(/\s+/)[0] || child.name
+
   const visible = showAll ? filtered : filtered.slice(0, ROWS_BEFORE_FOLD)
   const filtering = Boolean(from || to || category)
 
@@ -296,7 +301,10 @@ function ChildCard({ child }) {
             {child.grade && <> · {gradeOptionLabel(child.grade)}</>}
           </p>
         </div>
-        <div className="text-sm font-medium text-brand-600">{fmtHours(stats.total)} total</div>
+        <div className="text-right">
+          <div className="text-sm font-medium text-brand-600">{fmtHours(stats.total)} total</div>
+          {linkedOn && <div className="text-xs text-earth-400">{tr('since you linked on {date}', { date: linkedOn })}</div>}
+        </div>
       </div>
 
       <ParentWeeklyGoal child={child} />
@@ -323,12 +331,17 @@ function ChildCard({ child }) {
             </p>
           )}
           {requirement.note && <p className="text-xs text-earth-400 mt-1">{requirement.note}</p>}
+          {linkedOn && (
+            <p className="text-xs text-earth-400 mt-1">
+              {tr('Hours from before {date} stay private to {name}. You see what they log from the day you linked.', { date: linkedOn, name: firstName })}
+            </p>
+          )}
         </div>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         <Stat label={tr('This month')} value={fmtHours(stats.thisMonth)} />
-        <Stat label={tr('Last logged')} value={stats.lastDate ? dayFromNow(stats.lastDate) : 'Never'} />
+        <Stat label={tr('Last logged')} value={stats.lastDate ? dayFromNow(stats.lastDate) : tr('None yet')} />
         <Stat label={tr('Approved')} value={fmtHours(stats.approved)} />
         <Stat
           label={tr('Awaiting review')}
@@ -349,7 +362,7 @@ function ChildCard({ child }) {
       <ChildTasks tasks={child.tasks} />
 
       {logs.length === 0 ? (
-        <p className="text-sm text-earth-500 dark:text-earth-400">{tr('No hours logged yet.')}</p>
+        <p className="text-sm text-earth-500 dark:text-earth-400">{linkedOn ? tr('No hours logged since you linked on {date}.', { date: linkedOn }) : tr('No hours logged yet.')}</p>
       ) : (
         <>
           <div className="flex flex-wrap items-end gap-2 mb-3">

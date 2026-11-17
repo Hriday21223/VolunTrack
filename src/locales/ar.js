@@ -3590,5 +3590,9 @@ export default {
   "Free trial until {date}": "تجربة مجانية حتى {date}",
   "Your free trial ends on {date}.": "تنتهي فترة تجربتك المجانية في {date}.",
   "After that, your school goes back to the free club plan (up to 50 students).": "بعد ذلك، تعود مدرستك إلى خطة النادي المجانية (حتى 50 طالبًا).",
-  "After that, your school is locked until payment is made.": "بعد ذلك، ستُقفل مدرستك حتى يتم الدفع."
+  "After that, your school is locked until payment is made.": "بعد ذلك، ستُقفل مدرستك حتى يتم الدفع.",
+  "since you linked on {date}": "منذ ربطك في {date}",
+  "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "تبقى الساعات المسجّلة قبل {date} خاصة بـ {name}. ترى ما يُسجَّل منذ يوم الربط.",
+  "No hours logged since you linked on {date}.": "لم تُسجَّل أي ساعات منذ ربطك في {date}.",
+  "None yet": "لا شيء بعد"
 }

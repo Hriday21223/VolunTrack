@@ -3591,5 +3591,9 @@ export default {
   "Free trial until {date}": "免费试用至 {date}",
   "Your free trial ends on {date}.": "你的免费试用将于 {date} 结束。",
   "After that, your school goes back to the free club plan (up to 50 students).": "之后，你的学校将回到免费社团方案（最多 50 名学生）。",
-  "After that, your school is locked until payment is made.": "之后，你的学校将被锁定，直到完成付款。"
+  "After that, your school is locked until payment is made.": "之后，你的学校将被锁定，直到完成付款。",
+  "since you linked on {date}": "自你于 {date} 关联以来",
+  "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "{date} 之前的时长仍对 {name} 保密。你能看到从关联当天起记录的内容。",
+  "No hours logged since you linked on {date}.": "自你于 {date} 关联以来，还没有记录任何时长。",
+  "None yet": "暂无"
 }
