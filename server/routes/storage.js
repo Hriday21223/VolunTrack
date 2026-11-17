@@ -237,7 +237,7 @@ router.post(
 
       let secretAccessKey
       try {
-        secretAccessKey = isSharepoint(row) ? null : decryptSecret(row.secret_encrypted)
+        secretAccessKey = isSharepoint(row) ? (row.secret_encrypted ? decryptSecret(row.secret_encrypted) : null) : decryptSecret(row.secret_encrypted)
       } catch {
         return res.status(500).json({
           error: 'The stored secret could not be read. Re-enter the secret access key.',
@@ -287,12 +287,16 @@ router.post(
 // SharePoint (#924)
 // ---------------------------------------------------------------------------
 async function saveSharepoint(req, res) {
-  if (!sharepointConfigured()) return res.status(503).json({ error: 'SharePoint isn’t set up on this server yet.' })
+  // Their own Entra app (#926): client id + secret from the school's tenant.
+  const clientId = String(req.body.clientId || '').trim()
+  const clientSecret = String(req.body.clientSecret || '').trim()
+  if (clientId && !validTenantId(clientId)) return res.status(400).json({ error: 'The application (client) ID looks like 00000000-0000-0000-0000-000000000000.' })
+  if (!clientId && !sharepointConfigured()) return res.status(400).json({ error: 'Add your Microsoft app’s client ID and secret.' })
   const tenant = String(req.body.tenantId || '').trim()
   const site = String(req.body.siteUrl || '').trim()
   const library = String(req.body.library || 'Documents').trim().slice(0, 100) || 'Documents'
   const rawPrefix = String(req.body.prefix || '').trim()
-  if (!validTenantId(tenant)) return res.status(400).json({ error: 'Approve VolunTrack for your Microsoft 365 first, so we know your tenant.' })
+  if (!validTenantId(tenant)) return res.status(400).json({ error: clientId ? 'Add your directory (tenant) ID.' : 'Approve VolunTrack for your Microsoft 365 first, so we know your tenant.' })
   if (!parseSiteUrl(site)) return res.status(400).json({ error: 'Enter your SharePoint site address, like https://yourschool.sharepoint.com/sites/Volunteering.' })
   if (rawPrefix.length > 200) return res.status(400).json({ error: 'The folder name is too long.' })
   const prefix = trimSlashes(rawPrefix)
@@ -300,17 +304,24 @@ async function saveSharepoint(req, res) {
     const owner = await ownerFor(req.auth)
     if (!owner) return res.status(403).json({ error: 'Not allowed.' })
     const existing = await loadConfig(owner)
+    // Keep a saved secret when only other fields change (same app).
+    let secretEnc = null
+    if (clientId) {
+      if (clientSecret) secretEnc = encryptSecret(clientSecret)
+      else if (existing?.provider === 'sharepoint' && existing.access_key_id === clientId && existing.secret_encrypted) secretEnc = existing.secret_encrypted
+      else return res.status(400).json({ error: 'Add your Microsoft app’s client secret.' })
+    }
     const other = owner.column === 'school_id' ? 'organization_id' : 'school_id'
     const { rows } = await query(
       `INSERT INTO tenant_storage
          (id, ${owner.column}, ${other}, provider, bucket, region, endpoint, prefix, access_key_id, secret_encrypted, status)
-       VALUES ($1,$2,NULL,'sharepoint',$3,$4,$5,$6,NULL,NULL,'unverified')
+       VALUES ($1,$2,NULL,'sharepoint',$3,$4,$5,$6,$7,$8,'unverified')
        ON CONFLICT (${owner.column}) WHERE ${owner.column} IS NOT NULL DO UPDATE SET
          provider = 'sharepoint', bucket = $3, region = $4, endpoint = $5, prefix = $6,
-         access_key_id = NULL, secret_encrypted = NULL,
+         access_key_id = $7, secret_encrypted = $8,
          status = 'unverified', last_test_at = NULL, last_test_ok = NULL, last_test_error = NULL, cors_ok = NULL
        RETURNING *`,
-      [existing?.id || uid('tsto'), owner.id, library, tenant, site, prefix],
+      [existing?.id || uid('tsto'), owner.id, library, tenant, site, prefix, clientId || null, secretEnc],
     )
     return res.json({ config: publicConfig(rows[0]) })
   } catch (error) {

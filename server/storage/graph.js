@@ -37,16 +37,22 @@ export function parseSiteUrl(raw) {
 
 export const validTenantId = (t) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(t || ''))
 
-const tokens = new Map() // tenant -> { token, until }
-async function appToken(tenant) {
-  const hit = tokens.get(tenant)
+// A school may use its OWN Entra app instead of ours (#926): then cfg carries
+// its client id and secret, and only that school's tenant is involved.
+const tokens = new Map() // tenant|client -> { token, until }
+async function appToken(tenant, cfg = {}) {
+  const clientId = cfg.clientId || process.env.MS_STORAGE_CLIENT_ID
+  const clientSecret = cfg.clientId ? cfg.clientSecret : process.env.MS_STORAGE_CLIENT_SECRET
+  if (!clientId || !clientSecret) throw new Error('No Microsoft app is set up for this storage.')
+  const cacheKey = `${tenant}|${clientId}`
+  const hit = tokens.get(cacheKey)
   if (hit && hit.until > Date.now() + 60_000) return hit.token
   const res = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: process.env.MS_STORAGE_CLIENT_ID,
-      client_secret: process.env.MS_STORAGE_CLIENT_SECRET,
+      client_id: clientId,
+      client_secret: clientSecret,
       scope: 'https://graph.microsoft.com/.default',
       grant_type: 'client_credentials',
     }),
@@ -56,12 +62,12 @@ async function appToken(tenant) {
   if (!res.ok || !d.access_token) {
     throw new Error(d.error_description ? String(d.error_description).split('\r\n')[0] : 'Microsoft sign-in for the app failed. Has your admin approved VolunTrack?')
   }
-  tokens.set(tenant, { token: d.access_token, until: Date.now() + (Number(d.expires_in) || 3600) * 1000 })
+  tokens.set(cacheKey, { token: d.access_token, until: Date.now() + (Number(d.expires_in) || 3600) * 1000 })
   return d.access_token
 }
 
-async function graph(tenant, path, init = {}) {
-  const token = await appToken(tenant)
+async function graph(tenant, path, init = {}, cfg = {}) {
+  const token = await appToken(tenant, cfg)
   const res = await fetch(`${GRAPH}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...(init.body && typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) },
@@ -86,10 +92,10 @@ async function driveId(cfg) {
   if (hit && hit.until > Date.now()) return hit.id
   const site = parseSiteUrl(cfg.site)
   if (!site) throw new Error('That isn’t a SharePoint site address.')
-  const s = await graph(cfg.tenant, `/sites/${site.host}:${site.path}?$select=id`)
+  const s = await graph(cfg.tenant, `/sites/${site.host}:${site.path}?$select=id`, {}, cfg)
   if (!s.ok) throw new Error(await graphError(s, 'Finding the site'))
   const siteId = (await s.json()).id
-  const d = await graph(cfg.tenant, `/sites/${encodeURIComponent(siteId)}/drives?$select=id,name`)
+  const d = await graph(cfg.tenant, `/sites/${encodeURIComponent(siteId)}/drives?$select=id,name`, {}, cfg)
   if (!d.ok) throw new Error(await graphError(d, 'Finding the document library'))
   const list = (await d.json()).value || []
   const want = String(cfg.library || 'Documents').toLowerCase()
@@ -108,7 +114,7 @@ export async function sharepointUploadUrl(cfg, key) {
   const r = await graph(cfg.tenant, `/drives/${d}/root:/${itemPath(key)}:/createUploadSession`, {
     method: 'POST',
     body: JSON.stringify({ item: { '@microsoft.graph.conflictBehavior': 'fail' } }),
-  })
+  }, cfg)
   if (!r.ok) throw new Error(await graphError(r, 'Preparing the upload'))
   return (await r.json()).uploadUrl
 }
@@ -116,7 +122,7 @@ export async function sharepointUploadUrl(cfg, key) {
 // Microsoft's short-lived download link (pre-authenticated, about an hour).
 export async function sharepointDownloadUrl(cfg, key) {
   const d = await driveId(cfg)
-  const r = await graph(cfg.tenant, `/drives/${d}/root:/${itemPath(key)}?$select=id,@microsoft.graph.downloadUrl`)
+  const r = await graph(cfg.tenant, `/drives/${d}/root:/${itemPath(key)}?$select=id,@microsoft.graph.downloadUrl`, {}, cfg)
   if (!r.ok) throw new Error(await graphError(r, 'Opening the file'))
   return (await r.json())['@microsoft.graph.downloadUrl'] || null
 }
@@ -130,7 +136,7 @@ export async function sharepointPut(cfg, key, body) {
 
 // The gate for status='active': write, read back, delete a small file.
 export async function sharepointRoundTrip(cfg) {
-  if (!sharepointConfigured()) return { ok: false, error: 'SharePoint isn’t set up on this server yet.' }
+  if (!sharepointConfigured() && !cfg.clientId) return { ok: false, error: 'SharePoint isn’t set up on this server yet.' }
   const key = `${cfg.prefix ? `${cfg.prefix}/` : ''}.voluntrack-probe-${Date.now()}.txt`
   const body = Buffer.from(`voluntrack storage check ${new Date().toISOString()}`)
   let written = false
@@ -142,7 +148,7 @@ export async function sharepointRoundTrip(cfg) {
     if (!got?.ok) return { ok: false, error: 'Could not read the test file back.' }
     if ((await got.text()) !== body.toString()) return { ok: false, error: 'The test file read back with different contents.' }
     const d = await driveId(cfg)
-    const del = await graph(cfg.tenant, `/drives/${d}/root:/${itemPath(key)}`, { method: 'DELETE' })
+    const del = await graph(cfg.tenant, `/drives/${d}/root:/${itemPath(key)}`, { method: 'DELETE' }, cfg)
     if (!del.ok && del.status !== 404) return { ok: false, error: await graphError(del, 'Deleting the test file') }
     written = false
     return { ok: true, error: null }
@@ -150,7 +156,7 @@ export async function sharepointRoundTrip(cfg) {
     return { ok: false, error: error.message }
   } finally {
     if (written) {
-      driveId(cfg).then((d) => graph(cfg.tenant, `/drives/${d}/root:/${itemPath(key)}`, { method: 'DELETE' })).catch(() => {})
+      driveId(cfg).then((d) => graph(cfg.tenant, `/drives/${d}/root:/${itemPath(key)}`, { method: 'DELETE' }, cfg)).catch(() => {})
     }
   }
 }

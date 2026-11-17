@@ -3645,5 +3645,7 @@ export default {
   "Approve in Microsoft": "Aprovar na Microsoft",
   "SharePoint site address": "Endereço do site do SharePoint",
   "Document library": "Biblioteca de documentos",
-  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "O administrador do Microsoft 365 dá ao VolunTrack acesso só a este site, uma vez (PnP PowerShell), ou concede o mesmo no admin do SharePoint:"
+  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "O administrador do Microsoft 365 dá ao VolunTrack acesso só a este site, uma vez (PnP PowerShell), ou concede o mesmo no admin do SharePoint:",
+  "Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.": "O administrador do Microsoft 365 registra um app no seu próprio Microsoft Entra (permissão de aplicativo do Microsoft Graph Sites.Selected, com consentimento do administrador, e um segredo do cliente) e cola os dados aqui. O VolunTrack só recebe o site que você liberar abaixo.",
+  "Application (client) ID": "ID do aplicativo (cliente)"
 }
