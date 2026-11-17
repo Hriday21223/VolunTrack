@@ -3647,5 +3647,6 @@ export default {
   "Document library": "ডকুমেন্ট লাইব্রেরি",
   "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "আপনার Microsoft 365 অ্যাডমিন একবার VolunTrack-কে শুধু এই সাইটে অ্যাক্সেস দেন (PnP PowerShell), অথবা SharePoint অ্যাডমিনে একই অনুমতি দেন:",
   "Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.": "আপনার Microsoft 365 অ্যাডমিন আপনাদের নিজের Microsoft Entra-তে একটি অ্যাপ রেজিস্টার করেন (Microsoft Graph অ্যাপ্লিকেশন অনুমতি Sites.Selected, অ্যাডমিন সম্মতিসহ, এবং একটি ক্লায়েন্ট সিক্রেট), তারপর তথ্যগুলো এখানে বসান। VolunTrack শুধু নিচে আপনার দেওয়া সাইটটিই পায়।",
-  "Application (client) ID": "অ্যাপ্লিকেশন (ক্লায়েন্ট) আইডি"
+  "Application (client) ID": "অ্যাপ্লিকেশন (ক্লায়েন্ট) আইডি",
+  "Folder in the library (optional)": "লাইব্রেরির ভেতরের ফোল্ডার (ঐচ্ছিক)"
 }

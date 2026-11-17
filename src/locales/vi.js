@@ -3648,5 +3648,6 @@ export default {
   "Document library": "Thư viện tài liệu",
   "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "Quản trị viên Microsoft 365 cấp cho VolunTrack quyền vào đúng một trang này, một lần (PnP PowerShell), hoặc cấp tương tự trong trang quản trị SharePoint:",
   "Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.": "Quản trị viên Microsoft 365 đăng ký một ứng dụng trong Microsoft Entra của bạn (quyền ứng dụng Microsoft Graph Sites.Selected, có chấp thuận của quản trị viên, và một client secret), rồi dán thông tin vào đây. VolunTrack chỉ được vào đúng trang bạn cấp bên dưới.",
-  "Application (client) ID": "ID ứng dụng (client)"
+  "Application (client) ID": "ID ứng dụng (client)",
+  "Folder in the library (optional)": "Thư mục trong thư viện (không bắt buộc)"
 }
