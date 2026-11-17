@@ -247,7 +247,7 @@ export default function OwnStorageCard({ canEdit = true }) {
                   <input id="sp-lib" className="input" value={spForm.library} onChange={(e) => setSpForm({ ...spForm, library: e.target.value })} />
                 </div>
                 <div>
-                  <label className="label" htmlFor="sp-prefix">{tr('Folder inside the bucket (optional)')}</label>
+                  <label className="label" htmlFor="sp-prefix">{tr('Folder in the library (optional)')}</label>
                   <input id="sp-prefix" className="input" placeholder="VolunTrack" value={spForm.prefix} onChange={(e) => setSpForm({ ...spForm, prefix: e.target.value })} />
                 </div>
               </div>
