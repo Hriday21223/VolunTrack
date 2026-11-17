@@ -3605,5 +3605,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "Les Réglages proposent Se déconnecter des autres appareils et Télécharger mes données, et nous vous écrivons quand votre compte se connecte sur un nouvel appareil.",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "Vous pouvez montrer à un parent les heures enregistrées avant sa liaison, dans Réglages → Famille.",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "Les heures de votre enfant comptent à partir du jour de la liaison ; il peut choisir de vous montrer les heures d’avant.",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Un club gratuit peut passer au plan école avec un code de VolunTrack, et un code peut inclure un essai gratuit."
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Un club gratuit peut passer au plan école avec un code de VolunTrack, et un code peut inclure un essai gratuit.",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "{n} de vos changements n’ont pas encore atteint votre compte, faute d’internet. Si vous vous déconnectez maintenant, ils seront perdus. Se déconnecter quand même ?",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "Vos {n} entrées sont enregistrées seulement sur cet appareil. Si vous vous déconnectez, elles seront supprimées. Se déconnecter quand même ?",
+  "Your hours are saved only on this device": "Vos heures sont enregistrées seulement sur cet appareil",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "Si ce téléphone est réinitialisé ou perdu, elles disparaissent. Enregistrez-les dans un compte gratuit pour qu’elles soient en sécurité et sur tous vos appareils.",
+  "Save my hours to an account": "Enregistrer mes heures dans un compte"
 }

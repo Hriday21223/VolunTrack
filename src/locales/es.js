@@ -3606,5 +3606,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "En Ajustes tienes Cerrar sesión en los demás dispositivos y Descargar mis datos, y te avisamos por correo cuando tu cuenta inicia sesión en un dispositivo nuevo.",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "Puedes dejar que un padre vea las horas que registraste antes de que se vinculara, en Ajustes → Familia.",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "Las horas de tu hijo se cuentan desde el día en que te vinculaste; puede elegir compartir contigo las horas anteriores.",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Un club gratis puede pasar a un plan de escuela con un código de VolunTrack, y un código puede incluir una prueba gratis."
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Un club gratis puede pasar a un plan de escuela con un código de VolunTrack, y un código puede incluir una prueba gratis.",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "{n} de tus cambios aún no llegaron a tu cuenta porque no hay internet. Si cierras sesión ahora, se perderán. ¿Cerrar sesión de todos modos?",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "Tus {n} registros están guardados solo en este dispositivo. Si cierras sesión, se borrarán. ¿Cerrar sesión de todos modos?",
+  "Your hours are saved only on this device": "Tus horas están guardadas solo en este dispositivo",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "Si este teléfono se restablece o se pierde, desaparecen. Guárdalas en una cuenta gratis para que estén seguras y en todos tus dispositivos.",
+  "Save my hours to an account": "Guardar mis horas en una cuenta"
 }

@@ -3605,5 +3605,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "في الإعدادات: تسجيل الخروج من كل الأجهزة الأخرى وتنزيل بياناتي، ونرسل إليك بريدًا عند تسجيل الدخول إلى حسابك من جهاز جديد.",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "يمكنك أن تسمح لولي أمرك برؤية الساعات التي سجّلتها قبل أن يرتبط بك، من الإعدادات ← العائلة.",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "تُحسب ساعات طفلك من يوم الربط؛ ويمكنه أن يختار مشاركة الساعات السابقة معك.",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "يمكن للنادي المجاني الترقية إلى خطة مدرسة برمز من VolunTrack، وقد يأتي الرمز مع تجربة مجانية."
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "يمكن للنادي المجاني الترقية إلى خطة مدرسة برمز من VolunTrack، وقد يأتي الرمز مع تجربة مجانية.",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "لم تصل {n} من تغييراتك إلى حسابك بعد لعدم وجود إنترنت. إذا سجّلت الخروج الآن فستضيع. هل تريد تسجيل الخروج على أي حال؟",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "{n} من إدخالاتك محفوظة على هذا الجهاز فقط. إذا سجّلت الخروج فستُحذف. هل تريد تسجيل الخروج على أي حال؟",
+  "Your hours are saved only on this device": "ساعاتك محفوظة على هذا الجهاز فقط",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "إذا أُعيد ضبط هذا الهاتف أو فُقد فستضيع. احفظها في حساب مجاني لتبقى آمنة وعلى كل أجهزتك.",
+  "Save my hours to an account": "احفظ ساعاتي في حساب"
 }

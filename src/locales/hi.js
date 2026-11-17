@@ -3605,5 +3605,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "सेटिंग्स में बाकी सभी डिवाइस से साइन आउट करें और मेरा डेटा डाउनलोड करें है, और नए डिवाइस पर साइन इन होने पर हम आपको ईमेल करते हैं।",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "सेटिंग्स → परिवार में आप माता-पिता को उनके जुड़ने से पहले दर्ज घंटे भी दिखा सकते हैं।",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "आपके बच्चे के घंटे आपके जुड़ने के दिन से गिने जाते हैं; वे पहले के घंटे भी आपके साथ साझा कर सकते हैं।",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "मुफ़्त क्लब VolunTrack के कोड से स्कूल प्लान पर अपग्रेड कर सकता है, और कोड के साथ मुफ़्त ट्रायल भी मिल सकता है।"
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "मुफ़्त क्लब VolunTrack के कोड से स्कूल प्लान पर अपग्रेड कर सकता है, और कोड के साथ मुफ़्त ट्रायल भी मिल सकता है।",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "इंटरनेट न होने से आपके {n} बदलाव अभी आपके खाते तक नहीं पहुँचे। अभी साइन आउट करने पर वे खो जाएँगे। फिर भी साइन आउट करें?",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "आपकी {n} एंट्री सिर्फ़ इसी डिवाइस पर सहेजी हैं। साइन आउट करने पर वे मिट जाएँगी। फिर भी साइन आउट करें?",
+  "Your hours are saved only on this device": "आपके घंटे सिर्फ़ इसी डिवाइस पर सहेजे हैं",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "अगर यह फ़ोन रीसेट हो जाए या खो जाए, तो वे चले जाएँगे। उन्हें मुफ़्त खाते में सहेजें ताकि वे सुरक्षित रहें और हर डिवाइस पर मिलें।",
+  "Save my hours to an account": "मेरे घंटे खाते में सहेजें"
 }

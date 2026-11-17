@@ -181,6 +181,9 @@ export async function flushLogOutbox() {
 export async function syncPullLogs(userId) {
   const headers = authHeaders()
   if (!headers || !userId) return 0
+  // A device-only account's entries go up first when the person asked (#917),
+  // so the pull below finds them by serverId instead of adding them twice.
+  await adoptLocalLogsIfAsked().catch(() => 0)
 
   let serverLogs
   try {
@@ -294,4 +297,30 @@ export async function syncPullLogs(userId) {
     return 0
   }
   return additions.length + updated.length + removed
+}
+
+// What hasn't reached the account yet (#917): entries made while offline,
+// and edits or deletes waiting in the outbox. With no account at all (a
+// device-only account), every entry is device-only.
+export function unsyncedCount() {
+  const logs = read(keys.logs, [])
+  if (!localStorage.getItem('voluntrack:auth_token')) return logs.length
+  const box = readOutbox()
+  return logs.filter((l) => l.syncPending && !l.serverId).length + box.deletes.length + Object.keys(box.edits).length
+}
+
+// A device-only account moving to a real one (#917): every entry this device
+// holds that the server doesn't is sent up, through the same retrying path
+// as an offline entry. Only after the person asked (ADOPT_KEY, set by the
+// "Save my hours to an account" button, good for a day).
+export const ADOPT_KEY = 'voluntrack:adopt-local-logs'
+export async function adoptLocalLogsIfAsked() {
+  let asked = 0
+  try { asked = Number(localStorage.getItem(ADOPT_KEY)) || 0 } catch { return 0 }
+  if (!asked || Date.now() - asked > 24 * 60 * 60 * 1000) { try { localStorage.removeItem(ADOPT_KEY) } catch { /* */ } return 0 }
+  const logs = read(keys.logs, [])
+  write(keys.logs, logs.map((l) => (l.serverId ? l : { ...l, syncPending: true })))
+  const changed = await flushLogOutbox()
+  try { localStorage.removeItem(ADOPT_KEY) } catch { /* */ }
+  return changed
 }

@@ -3605,5 +3605,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "設定に「他のすべての端末からサインアウト」と「データをダウンロード」があり、新しい端末でサインインするとメールでお知らせします。",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "設定 → 家族で、保護者がリンクする前に記録した時間も見せられます。",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "お子さんの時間はリンクした日から数えます。お子さんは以前の時間を共有することもできます。",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "無料のクラブは VolunTrack のコードで学校プランにアップグレードでき、コードには無料トライアルが付くこともあります。"
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "無料のクラブは VolunTrack のコードで学校プランにアップグレードでき、コードには無料トライアルが付くこともあります。",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "インターネットがないため、{n}件の変更がまだアカウントに届いていません。今サインアウトすると失われます。サインアウトしますか？",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "{n}件の記録はこの端末にだけ保存されています。サインアウトすると削除されます。サインアウトしますか？",
+  "Your hours are saved only on this device": "時間はこの端末にだけ保存されています",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "この端末をリセットしたりなくしたりすると消えてしまいます。無料アカウントに保存すれば、安全にすべての端末で使えます。",
+  "Save my hours to an account": "時間をアカウントに保存する"
 }

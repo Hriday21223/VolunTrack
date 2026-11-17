@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Moon, Sun, Plus, Trash2, Star, LogOut, Bell, ShieldCheck, Info, Lock, Shield, School, Building2, Hash, Copy, Eye, EyeOff, QrCode, Upload, CheckCircle2, ChevronDown, ChevronRight, Users, X, HelpCircle, Mail, Activity, FileText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { inTestSession, backToAdmin } from '@/lib/testSession.js'
+import { okToSignOut } from '@/lib/signOutGuard.js'
 import { canOpen } from '@/lib/roleAccess.js'
 import { useData } from '@/hooks/useData.jsx'
 import { useTheme } from '@/hooks/useTheme.js'
@@ -1780,7 +1781,7 @@ export default function Settings() {
 
           <Card>
             <button
-              onClick={() => { if (inTestSession(user)) backToAdmin({ adoptSession, logout }); else { logout(); nav('/login') } }}
+              onClick={async () => { if (inTestSession(user)) backToAdmin({ adoptSession, logout }); else if (await okToSignOut()) { logout(); nav('/login') } }}
               className="btn-danger w-full"
             >
               <LogOut className="w-4 h-4" />{' '}{tr('Sign out')}
