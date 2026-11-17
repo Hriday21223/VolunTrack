@@ -726,6 +726,42 @@ router.post('/reauth', authLimiter, requireDb, requireAuth(), async (req, res) =
   }
 })
 
+// Unlock with the authenticator app or a passkey alone (#913). The session is
+// live, so either one (something only this person has) stands in for the
+// password and second step, as the unlock PIN does. Not an emailed code:
+// whoever is at the unlocked computer may have the inbox open too.
+// GET → which of the two the account has; POST → those plus a 5-minute
+// tempToken for the usual /totp/challenge or passkey challenge routes, which
+// keep their own wrong-try limits.
+async function quickUnlockMethods(row) {
+  const methods = []
+  if (row.totp_enabled) methods.push('totp')
+  if (await hasPasskeys(row.id)) methods.push('passkey')
+  return methods
+}
+router.get('/reauth/second-step', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const row = await reauthAccount(req, res)
+    if (!row) return
+    return res.json({ methods: await quickUnlockMethods(row) })
+  } catch (error) {
+    console.error('reauth methods failed:', error)
+    return res.status(500).json({ error: 'Could not check your sign-in options.' })
+  }
+})
+router.post('/reauth/second-step', authLimiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const row = await reauthAccount(req, res)
+    if (!row) return
+    const methods = await quickUnlockMethods(row)
+    if (!methods.length) return res.status(400).json({ error: 'Set up an authenticator app or a passkey in Settings first.' })
+    return res.json({ methods, tempToken: signTempToken(publicUser(row)) })
+  } catch (error) {
+    console.error('reauth second step failed:', error)
+    return res.status(500).json({ error: 'Could not start the check.' })
+  }
+})
+
 // Unlock PIN (#871): stands in for the password and second step. It shares
 // the five-try limit, so 4 digits give a guesser 5 in 10,000.
 router.post('/reauth/pin', authLimiter, requireDb, requireAuth(), async (req, res) => {
