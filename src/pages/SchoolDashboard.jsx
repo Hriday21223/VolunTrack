@@ -114,9 +114,9 @@ function ClubPlanCard({ count, limit, canUpgrade, onUpgraded }) {
           <div className="flex flex-wrap gap-2">
             <input
               id="upgrade-code" className="input flex-1 min-w-[12rem] font-mono uppercase tracking-wider" autoComplete="off" spellCheck={false}
-              maxLength={14} placeholder="XXXXX-XXXXX" value={code} onChange={(e) => setCode(e.target.value)}
+              maxLength={20} placeholder="XXXXX-XXXXX" value={code} onChange={(e) => setCode(e.target.value)}
             />
-            <button type="submit" disabled={busy || code.replace(/[^a-z0-9]/gi, '').length !== 10} className="btn-primary btn-sm">{busy ? tr('Upgrading…') : tr('Upgrade')}</button>
+            <button type="submit" disabled={busy || code.replace(/[^a-z0-9]/gi, '').length < 6 || code.replace(/[^a-z0-9]/gi, '').length > 16} className="btn-primary btn-sm">{busy ? tr('Upgrading…') : tr('Upgrade')}</button>
           </div>
           {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
           <p className="text-xs text-earth-500 dark:text-earth-400">

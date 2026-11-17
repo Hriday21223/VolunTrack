@@ -5,4 +5,8 @@ export function formatRegistrationCode(value) {
   return raw.match(/.{1,4}/g)?.join('-') || ''
 }
 
-export const isCompleteRegistrationCode = (value) => String(value || '').replace(/[^A-Za-z0-9]/g, '').length === 16
+// 16 for a one-time registration code; an event code from our team (#907) is 6–16.
+export const isCompleteRegistrationCode = (value) => {
+  const n = String(value || '').replace(/[^A-Za-z0-9]/g, '').length
+  return n >= 6 && n <= 16
+}
