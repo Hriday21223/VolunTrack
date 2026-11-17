@@ -3651,5 +3651,7 @@ export default {
   "Folder in the library (optional)": "ライブラリ内のフォルダー（任意）",
   "Pick a colour": "色を選ぶ",
   "Quick colours": "クイックカラー",
-  "Pick a colour, choose one above, or type a hex value.": "色を選ぶか、上の色を選ぶか、16 進数の値を入力します。"
+  "Pick a colour, choose one above, or type a hex value.": "色を選ぶか、上の色を選ぶか、16 進数の値を入力します。",
+  "Your school’s own page": "学校専用のページ",
+  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "ロゴと色はここにすぐ表示されます。独自ドメインは不要です。学校のサイト、チラシ、Google Classroom で共有しましょう。"
 }

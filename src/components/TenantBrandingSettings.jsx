@@ -158,6 +158,10 @@ export default function TenantBrandingSettings() {
   const [name, setName] = useState('')
   const [scope, setScope] = useState('school')
   const [hostnames, setHostnames] = useState([])
+  // The school's own page on the shared site (#930).
+  const [schoolCode, setSchoolCode] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const siteOrigin = (import.meta.env.VITE_SITE_URL || window.location.origin).replace(/\/$/, '')
   const [logoUrl, setLogoUrl] = useState('')
   const [color, setColor] = useState('')
   const [busy, setBusy] = useState(false)
@@ -175,6 +179,7 @@ export default function TenantBrandingSettings() {
       setColor(data.branding?.color || '')
       setScope(data.scope || 'school')
       setHostnames(data.activeHostnames || [])
+      setSchoolCode(data.schoolCode || null)
       setErr('')
     } catch (e) {
       setErr(e.message)
@@ -220,7 +225,7 @@ export default function TenantBrandingSettings() {
       {err && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{err}</div>}
       {notice && <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">{notice}</div>}
 
-      {hostnames.length === 0 && (
+      {hostnames.length === 0 && !schoolCode && (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-200">
           {tr('Branding only appears on your own hostname. You don’t have a live domain yet — set one up under Custom domain first, then anything you save here shows on its sign-in page.')}
         </div>
@@ -229,6 +234,17 @@ export default function TenantBrandingSettings() {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {tr('Shown at sign-in on')}{' '}{hostnames.map((h) => <code key={h} className="mx-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs dark:bg-slate-800">{h}</code>)}
         </p>
+      )}
+
+      {schoolCode && (
+        <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-3 text-sm">
+          <p className="font-medium">{tr('Your school’s own page')}</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-0.5">{tr('Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.')}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="flex-1 truncate rounded bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800 select-all">{`${siteOrigin}/s/${schoolCode}`}</code>
+            <button type="button" className="btn-ghost btn-sm" onClick={() => { navigator.clipboard?.writeText(`${siteOrigin}/s/${schoolCode}`).then(() => setCopied(true)).catch(() => {}) }}>{copied ? tr('Copied') : tr('Copy')}</button>
+          </div>
+        </div>
       )}
 
       <form onSubmit={save} className="space-y-4">

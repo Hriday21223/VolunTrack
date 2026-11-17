@@ -3652,5 +3652,7 @@ export default {
   "Folder in the library (optional)": "Thư mục trong thư viện (không bắt buộc)",
   "Pick a colour": "Chọn màu",
   "Quick colours": "Màu nhanh",
-  "Pick a colour, choose one above, or type a hex value.": "Chọn màu, bấm một màu ở trên hoặc nhập mã hex."
+  "Pick a colour, choose one above, or type a hex value.": "Chọn màu, bấm một màu ở trên hoặc nhập mã hex.",
+  "Your school’s own page": "Trang riêng của trường bạn",
+  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "Logo và màu của bạn hiện ở đây ngay, không cần tên miền riêng. Chia sẻ trên trang web, tờ rơi và Google Classroom."
 }

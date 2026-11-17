@@ -75,6 +75,7 @@ const ParentWaiver = lazy(() => import('@/pages/ParentWaiver.jsx'))
 const WriteReference = lazy(() => import('@/pages/WriteReference.jsx'))
 const AccountHandover = lazy(() => import('@/pages/AccountHandover.jsx'))
 const AdminInvite = lazy(() => import('@/pages/AdminInvite.jsx'))
+const SchoolPage = lazy(() => import('@/pages/SchoolPage.jsx'))
 const VerifyTranscript = lazy(() => import('@/pages/VerifyTranscript.jsx'))
 const Portfolio = lazy(() => import('@/pages/Portfolio.jsx'))
 const ParentDashboard = lazy(() => import('@/pages/ParentDashboard.jsx'))
@@ -177,6 +178,7 @@ function Shell() {
           <Route path="/reference/:token" element={<WriteReference />} />
           <Route path="/handover" element={<AccountHandover />} />
           <Route path="/admin-invite" element={<AdminInvite />} />
+          <Route path="/s/:code" element={<SchoolPage />} />
           <Route path="/verify-transcript" element={<VerifyTranscript />} />
           {/* A student's opt-in public volunteer portfolio — open to anyone with the link. */}
           <Route path="/p/:slug"        element={<Portfolio />} />

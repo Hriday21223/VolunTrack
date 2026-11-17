@@ -9,6 +9,7 @@ Disallow: /join/
 Disallow: /invite/
 Disallow: /handover
 Disallow: /admin-invite
+Disallow: /s/
 Disallow: /sign-certificate/
 Disallow: /parent
 Disallow: /log
@@ -49,6 +50,7 @@ Disallow: /join/
 Disallow: /invite/
 Disallow: /handover
 Disallow: /admin-invite
+Disallow: /s/
 Disallow: /sign-certificate/
 Disallow: /parent
 Disallow: /log
