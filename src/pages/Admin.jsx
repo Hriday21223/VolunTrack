@@ -7,6 +7,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import RegistrationCodesPanel from '@/components/RegistrationCodesPanel.jsx'
 import UpgradeCodesPanel from '@/components/UpgradeCodesPanel.jsx'
+import EventCodesPanel from '@/components/EventCodesPanel.jsx'
 import AnnouncementComposer from '@/components/AnnouncementComposer.jsx'
 import LiveChecksCard from '@/components/LiveChecksCard.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -266,6 +267,8 @@ export default function Admin() {
   // from the server — { offer, isFirstInvoice, eligible, reason }.
   const [invoicePromo, setInvoicePromo] = useState(null)
   const [applyPromoToInvoice, setApplyPromoToInvoice] = useState(false)
+  // The event-code discount (#907), when this account has one left.
+  const [applyEventToInvoice, setApplyEventToInvoice] = useState(false)
   // A referral credit this customer has earned, chosen instead of the join
   // offer — the server rejects both on one invoice.
   const [selectedCreditId, setSelectedCreditId] = useState('')
@@ -774,9 +777,10 @@ export default function Admin() {
     if (!Number.isFinite(base) || base <= 0) return null
     const credit = (invoicePromo?.credits || []).find((c) => c.id === selectedCreditId)
     if (credit) return applyPromoAmount(base, Number(credit.percent_off))
+    if (applyEventToInvoice && invoicePromo?.eventOffer) return applyPromoAmount(base, invoicePromo.eventOffer.percentOff)
     if (!applyPromoToInvoice || !invoicePromoCheck.eligible) return null
     return applyPromoAmount(base, invoicePromo.offer.percentOff)
-  }, [invoiceAmountDraft, applyPromoToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
+  }, [invoiceAmountDraft, applyPromoToInvoice, applyEventToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
 
   const openInvoiceModal = (entityType, entity) => {
     const numericAmount = (entity.price_amount || '').replace(/[^0-9.]/g, '')
@@ -788,6 +792,7 @@ export default function Admin() {
     setInvoicePoNumberDraft('')
     setInvoicePromo(null)
     setApplyPromoToInvoice(false)
+    setApplyEventToInvoice(false)
     setSelectedCreditId('')
     ;(async () => {
       try {
@@ -802,6 +807,8 @@ export default function Admin() {
         // A customer with a credit waiting almost always means to spend it,
         // and it can't be combined with the join offer anyway.
         if (data.credits?.length) { setSelectedCreditId(data.credits[0].id); setApplyPromoToInvoice(false) }
+        // An account that came through an event code was promised its discount.
+        else if (data.eventOffer) { setApplyEventToInvoice(true); setApplyPromoToInvoice(false) }
       } catch {}
     })()
   }
@@ -822,14 +829,15 @@ export default function Admin() {
           description: invoiceDescriptionDraft.trim() || undefined,
           dueDate: invoiceDueDateDraft || undefined,
           poNumber: invoicePoNumberDraft.trim() || undefined,
-          applyPromo: !selectedCreditId && applyPromoToInvoice && invoicePromoCheck.eligible,
+          applyPromo: !selectedCreditId && !applyEventToInvoice && applyPromoToInvoice && invoicePromoCheck.eligible,
+          applyEventCode: !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
           referralCreditId: selectedCreditId || undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft(''); setInvoicePoNumberDraft('')
-      setInvoicePromo(null); setApplyPromoToInvoice(false); setSelectedCreditId('')
+      setInvoicePromo(null); setApplyPromoToInvoice(false); setApplyEventToInvoice(false); setSelectedCreditId('')
       if (data.invoice?.hasContactEmail === false) {
         setToastMessage('Invoice created — no contact email on file, nothing was emailed')
       } else if (data.invoice?.emailSent === false) {
@@ -1692,6 +1700,7 @@ export default function Admin() {
         <div className="space-y-6">
         <RegistrationCodesPanel />
         <UpgradeCodesPanel />
+        <EventCodesPanel />
         {loadingInvites ? (
           <Card><p className="text-center text-earth-400 py-8">Loading invites…</p></Card>
         ) : invites.length === 0 ? (
@@ -3288,7 +3297,30 @@ export default function Admin() {
                   </div>
                 </div>
               )}
-              {invoicePromo?.offer && !selectedCreditId && (
+              {invoicePromo?.eventOffer && !selectedCreditId && (
+                <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={applyEventToInvoice}
+                      onChange={(e) => { setApplyEventToInvoice(e.target.checked); if (e.target.checked) setApplyPromoToInvoice(false) }}
+                    />
+                    <span>
+                      <span className="font-medium">Apply the event code</span>
+                      {' — '}{invoicePromo.eventOffer.percentOff}% off
+                      <span className="text-earth-500"> · <span className="font-mono">{invoicePromo.eventOffer.code}</span> ({invoicePromo.eventOffer.teamMember}{invoicePromo.eventOffer.eventName ? `, ${invoicePromo.eventOffer.eventName}` : ''})</span>
+                    </span>
+                  </label>
+                  {applyEventToInvoice && invoiceTotals && (
+                    <p className="text-xs text-earth-600 dark:text-earth-300 mt-1.5 ml-6">
+                      ${invoiceTotals.subtotal.toFixed(2)} − ${invoiceTotals.discountAmount.toFixed(2)} ={' '}
+                      <strong>${invoiceTotals.total.toFixed(2)}</strong> due
+                    </p>
+                  )}
+                </div>
+              )}
+              {invoicePromo?.offer && !selectedCreditId && !applyEventToInvoice && (
                 <div className={`rounded-xl p-3 text-sm ${invoicePromoCheck.eligible ? 'bg-brand-500/10 border border-brand-500/30' : 'bg-earth-500/5'}`}>
                   <label className={`flex items-start gap-2 ${invoicePromoCheck.eligible ? '' : 'opacity-60'}`}>
                     <input

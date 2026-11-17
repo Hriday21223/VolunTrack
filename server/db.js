@@ -2360,6 +2360,38 @@ export async function initSchema() {
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
   try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
   try { await query('ALTER TABLE registration_codes ADD COLUMN IF NOT EXISTS trial_days INT') } catch {}
+  // Event codes (#907): one per team member, many uses (server/eventCodes.js).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS event_codes (
+        id            TEXT PRIMARY KEY,
+        code          TEXT UNIQUE NOT NULL,
+        team_member   TEXT NOT NULL,
+        event_name    TEXT,
+        audience      TEXT NOT NULL DEFAULT 'both' CHECK (audience IN ('school','organization','both')),
+        trial_days    INT,
+        percent_off   NUMERIC(5,2),
+        club_upgrade  BOOLEAN NOT NULL DEFAULT false,
+        max_uses      INT,
+        uses          INT NOT NULL DEFAULT 0,
+        expires_at    TIMESTAMPTZ,
+        active        BOOLEAN NOT NULL DEFAULT true,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS event_code_uses (
+        code_id     TEXT NOT NULL REFERENCES event_codes(id) ON DELETE CASCADE,
+        entity_type TEXT NOT NULL,
+        entity_id   TEXT NOT NULL,
+        kind        TEXT NOT NULL,
+        used_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (code_id, entity_type, entity_id)
+      )
+    `)
+  } catch (error) { console.error('event_codes tables failed:', error.message) }
+  try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS event_code_id TEXT') } catch {}
+  try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS event_code_id TEXT') } catch {}
   // Trial reminders (#894): the last one sent (7 or 1 days before), and
   // whether the school was a free club before its trial, so it can go back.
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_reminder_days INT') } catch {}

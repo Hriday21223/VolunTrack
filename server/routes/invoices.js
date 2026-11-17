@@ -57,6 +57,26 @@ function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber,
 }
 
 // Create and send an invoice to a school or organization (admin only).
+// The event-code discount (#907) an account can still use: its code has a
+// percent off and this would be its first (non-void) invoice. → null or
+// { code, percentOff, teamMember, eventName }.
+async function eventOfferFor(entityType, entityId) {
+  const table = ENTITY_TABLES[entityType]
+  if (!table) return null
+  const { rows } = await query(
+    `SELECT e.code, e.percent_off, e.team_member, e.event_name FROM ${table} t JOIN event_codes e ON e.id = t.event_code_id
+      WHERE t.id = $1 AND e.percent_off IS NOT NULL`,
+    [entityId],
+  )
+  if (!rows[0]) return null
+  const { rows: prior } = await query(
+    `SELECT 1 FROM invoices WHERE entity_type = $1 AND entity_id = $2 AND status <> 'void' LIMIT 1`,
+    [entityType, entityId],
+  )
+  if (prior.length) return null
+  return { code: rows[0].code, percentOff: Number(rows[0].percent_off), teamMember: rows[0].team_member, eventName: rows[0].event_name }
+}
+
 router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const entityType = String(req.body.entityType || '')
   const entityId = String(req.body.entityId || '')
@@ -66,6 +86,8 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
   const billingPeriod = req.body.billingPeriod ? String(req.body.billingPeriod).trim() : null
   const poNumber = req.body.poNumber ? String(req.body.poNumber).trim() : null
   const wantsPromo = req.body.applyPromo === true
+  // The discount of the event code this account signed up or upgraded with (#907).
+  const wantsEvent = req.body.applyEventCode === true
   // The referral credit this invoice spends, if any. Mutually exclusive with
   // the join offer: an invoice carries one discount, never two compounded.
   const referralCreditId = req.body.referralCreditId ? String(req.body.referralCreditId) : null
@@ -79,8 +101,8 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     return res.status(400).json({ error: 'Invalid billing period.' })
   }
   if (poNumber && poNumber.length > 64) return res.status(400).json({ error: 'Purchase order number is too long.' })
-  if (wantsPromo && referralCreditId) {
-    return res.status(400).json({ error: 'Apply the join offer or a referral credit, not both.' })
+  if ([wantsPromo, Boolean(referralCreditId), wantsEvent].filter(Boolean).length > 1) {
+    return res.status(400).json({ error: 'An invoice carries one discount: the join offer, a referral credit or the event code.' })
   }
 
   try {
@@ -132,6 +154,17 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
       discountPercent = offer.percentOff
       discountCode = offer.code || null
       discountLabel = offer.headline ? `${offer.headline} — ${promoLabel(offer)}` : promoLabel(offer)
+    }
+
+    if (wantsEvent) {
+      const ev = await eventOfferFor(entityType, entityId)
+      if (!ev) return res.status(409).json({ error: 'This account has no event-code discount, or it already had its first invoice.' })
+      const applied = applyPromoAmount(amount, ev.percentOff)
+      subtotal = applied.subtotal
+      total = applied.total
+      discountPercent = ev.percentOff
+      discountCode = ev.code
+      discountLabel = `${ev.eventName || 'Event'} offer — ${ev.percentOff}% off (code ${ev.code})`
     }
 
     const { rows: seqRows } = await query(`SELECT nextval('invoice_number_seq') AS n`)
@@ -219,6 +252,7 @@ router.get('/admin/:entityType/:entityId/promo', limiter, requireDb, requireAuth
       // Referral credits this customer has earned by sending someone else our
       // way, spendable on this invoice instead of the join offer.
       credits: await earnedCredits(entityType, entityId),
+      eventOffer: await eventOfferFor(entityType, entityId),
     })
   } catch (error) {
     console.error('promo eligibility failed:', error)
