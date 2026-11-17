@@ -61,6 +61,10 @@ export const AUDIT = {
   // The admin signed in as one of the five live test accounts (#890).
   TEST_ACCOUNT_SIGNIN: 'admin.test_account_signin',
   TEST_ACCOUNT_PIN_SET: 'admin.test_account_pin_set',
+  // The admin team (#909): who was invited, joined or removed.
+  ADMIN_INVITED: 'admin.invited',
+  ADMIN_ADDED: 'admin.added',
+  ADMIN_REMOVED: 'admin.removed',
   // A tenant's own hour-logging rules. Changing them retroactively decides
   // whose entries count, so the current value of the column is not enough of
   // an answer on its own.

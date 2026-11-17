@@ -42,6 +42,8 @@ import rosterSyncRouter from './rosterSync.js'
 import apiKeysRouter from './apiKeys.js'
 import webhooksRouter from './webhooks.js'
 import apiV1Router from './apiV1.js'
+import testAccountsRouter from './testAccounts.js'
+import adminTeamRouter from './adminTeam.js'
 
 function frontendUrl() {
   return process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -271,6 +273,8 @@ router.get('/health', pollLimiter, async (_req, res) => {
 // a mount's literal prefix string at runtime, only a compiled regexp.
 const MOUNTED_ROUTERS = [
   ['auth', '/api/auth', authRouter],
+  ['admin', '/api/admin/test-accounts', testAccountsRouter],
+  ['admin', '/api/admin/team', adminTeamRouter],
   ['school', '/api/school', schoolRouter],
   ['embed', '/api/embed', embedRouter],
   ['wallet', '/api/wallet', walletRouter],

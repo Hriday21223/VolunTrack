@@ -2395,6 +2395,32 @@ export async function initSchema() {
   } catch (error) { console.error('event_codes tables failed:', error.message) }
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS event_code_id TEXT') } catch {}
   try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS event_code_id TEXT') } catch {}
+  // Admin team (#909): invites for more admins, and what every admin did.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS admin_invites (
+        id          TEXT PRIMARY KEY,
+        email       TEXT NOT NULL,
+        name        TEXT NOT NULL,
+        token_hash  TEXT UNIQUE NOT NULL,
+        invited_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+        expires_at  TIMESTAMPTZ NOT NULL,
+        accepted_at TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query(`
+      CREATE TABLE IF NOT EXISTS admin_activity (
+        id         TEXT PRIMARY KEY,
+        admin_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+        method     TEXT NOT NULL,
+        path       TEXT NOT NULL,
+        status     INT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS idx_admin_activity_time ON admin_activity(created_at DESC)')
+  } catch (error) { console.error('admin team tables failed:', error.message) }
   // Trial reminders (#894): the last one sent (7 or 1 days before), and
   // whether the school was a free club before its trial, so it can go back.
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_reminder_days INT') } catch {}

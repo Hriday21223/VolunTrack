@@ -43,6 +43,7 @@ const DISALLOWED_PATHS = [
   // A student's personal invite link (#493).
   '/invite/',
   '/handover',
+  '/admin-invite',
   '/sign-certificate/',
   // Authenticated app pages, behind a login/admin guard.
   '/parent',
