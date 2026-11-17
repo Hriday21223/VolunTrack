@@ -1,4 +1,6 @@
 import { query, hasDatabase } from './db.js'
+import { sendEmail } from './email.js'
+import { escapeHtml } from './html.js'
 
 // What each admin may use (#911). The main admin (ADMIN_EMAIL) can use
 // everything and is never limited. Other admins have users.admin_permissions:
@@ -82,6 +84,37 @@ export async function adminAccess(userId) {
 }
 export function forgetAdminAccess(userId) { cache.delete(userId) }
 
+// Tells the main admin about the admin team (#915): someone joined, was
+// removed, or keeps trying areas they can't use. English, like other admin
+// mail. Never awaited by callers that answer a request.
+export async function emailMainAdmin(subject, html) {
+  const to = mainEmail()
+  if (!to || to.endsWith('@test.com')) return
+  await sendEmail({ to, subject, html }).catch((e) => console.error('main admin email failed:', e.message))
+}
+
+// More than REFUSED_ALERT refused tries in an hour → one email, then quiet for
+// the rest of that hour.
+const REFUSED_ALERT = 5
+const refused = new Map() // userId -> { n, since, alerted }
+function noteRefused(userId, area) {
+  const now = Date.now()
+  const r = refused.get(userId)
+  const cur = r && now - r.since < 60 * 60 * 1000 ? r : { n: 0, since: now, alerted: false }
+  cur.n += 1
+  refused.set(userId, cur)
+  if (cur.n > REFUSED_ALERT && !cur.alerted) {
+    cur.alerted = true
+    query('SELECT name, email FROM users WHERE id = $1', [userId]).then(({ rows }) => {
+      const who = rows[0] ? `${rows[0].name} (${rows[0].email})` : 'An admin'
+      return emailMainAdmin(
+        'An admin keeps trying parts of VolunTrack they can’t use',
+        `<p>${escapeHtml(who)} was refused more than ${REFUSED_ALERT} times in the last hour, most recently for <strong>${escapeHtml(AREAS[area] || area)}</strong>.</p><p>If they need it, tick it for them in Admin → Users → Admin team. If not, check What admins did, or remove them.</p>`,
+      )
+    }).catch(() => {})
+  }
+}
+
 export async function adminPermissionGuard(req, res, next) {
   if (!hasDatabase() || req.auth?.role !== 'admin') return next()
   const apiPath = String(req.originalUrl || '').split('?')[0].replace(/^\/api/, '')
@@ -90,6 +123,7 @@ export async function adminPermissionGuard(req, res, next) {
   try {
     const { permissions } = await adminAccess(req.auth.sub)
     if (permissions.includes(area)) return next()
+    noteRefused(req.auth.sub, area)
     return res.status(403).json({ error: 'You don’t have access to this part of the admin panel.', area })
   } catch (error) {
     // Fail closed: an unreadable permission list never opens an area.

@@ -3600,5 +3600,10 @@ export default {
   "The club's main adviser presses Upgrade to a school plan on the Students tab and types the 10-character upgrade code we send (ask for one through the Contact page). The club becomes a school plan right away, with no 50-student limit. A code can come with a free trial: your school counts as paid until it ends, and you get an email 7 days and 1 day before. When the trial ends, a club with 50 students or fewer goes back to the free club plan on its own; otherwise the school is locked until payment is made. Each school gets one free trial.": "クラブのメインの顧問が「生徒」タブで「学校プランにアップグレード」を押し、こちらからお送りする10文字のアップグレードコードを入力します（お問い合わせページからご依頼ください）。クラブはすぐに学校プランになり、生徒50人の上限がなくなります。コードには無料トライアルが付く場合があります。終了までは支払い済みとして扱われ、終了の7日前と1日前にメールが届きます。トライアル終了時、生徒が50人以下のクラブは自動で無料のクラブプランに戻り、それ以外はお支払いが完了するまで学校がロックされます。無料トライアルは各学校1回までです。",
   "Free trials: a code from VolunTrack can start a free trial. While it lasts, your school counts as paid and the top of the dashboard shows when it ends; you also get an email 7 days and 1 day before. When it ends, a club that upgraded and has 50 students or fewer goes back to the free club plan; otherwise the dashboard is locked until payment is verified. Each school gets one free trial.": "無料トライアル：VolunTrack のコードで無料トライアルを始められます。期間中は支払い済みとして扱われ、ダッシュボード上部に終了日が表示されます。終了の7日前と1日前にはメールも届きます。終了時、アップグレードした生徒50人以下のクラブは無料のクラブプランに戻り、それ以外はお支払いの確認までダッシュボードがロックされます。無料トライアルは各学校1回までです。",
   "Use my authenticator app": "認証アプリを使う",
-  "Use a passkey": "パスキーを使う"
+  "Use a passkey": "パスキーを使う",
+  "When the app locks after you step away, you can now unlock it with your authenticator app or a passkey.": "離席でアプリがロックされたとき、認証アプリやパスキーでも解除できるようになりました。",
+  "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "設定に「他のすべての端末からサインアウト」と「データをダウンロード」があり、新しい端末でサインインするとメールでお知らせします。",
+  "You can let a parent see the hours you logged before they linked, in Settings → Family.": "設定 → 家族で、保護者がリンクする前に記録した時間も見せられます。",
+  "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "お子さんの時間はリンクした日から数えます。お子さんは以前の時間を共有することもできます。",
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "無料のクラブは VolunTrack のコードで学校プランにアップグレードでき、コードには無料トライアルが付くこともあります。"
 }

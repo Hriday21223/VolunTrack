@@ -683,6 +683,24 @@ function AdminHandbook() {
       <Section title={tr('Blueprint')}>
         <p>{tr('How the app is built, end to end, with saved links to the services behind it.')}</p>
       </Section>
+
+      {/* Admin-only, so plain English like the admin dashboard (#915). */}
+      <Section title="Admin team and permissions">
+        <p>Users → <strong>Admin team</strong> is shown only to the main admin (the account at the server’s admin email). Invite someone by name and email, and tick what they can use: Inbox, Reviews, Schools &amp; billing, Invites &amp; codes, Incidents, Reports, Announcements, Settings, Users, test accounts, API and Blueprint. They choose their own password from the emailed link (it works once, for 7 days) and must set up two-step sign-in the first time they sign in.</p>
+        <p className="mt-2">Change anyone’s access with the tick boxes at any time; the server refuses anything they don’t have, even by typing an address. <strong>Remove</strong> signs them out everywhere at once. The main admin always has everything and can’t be removed. <strong>What admins did</strong> lists every tab each admin opened and every change they made, for a year, and you get an email when someone joins, is removed, or keeps trying areas they can’t use.</p>
+      </Section>
+
+      <Section title="Event codes">
+        <p>Invites → <strong>Event codes</strong>: one code per team member for an event, which many schools can use (set a limit and an expiry). A code can give a free trial, a discount on the first invoice, and a free club upgrade. Schools and organizations type it where the registration code goes; free clubs type it under Upgrade to a school plan. The list shows how many used each code and who. When you invoice one of those accounts, the invoice dialog offers the code’s discount.</p>
+      </Section>
+
+      <Section title="Club upgrades and free trials">
+        <p>Invites → <strong>Club upgrade codes</strong> makes a one-time 10-character code: with a free trial (14 days to 3 months) or “paid already”. Registration codes can carry a free trial too. A trial counts as paid; the adviser is emailed 7 days and 1 day before it ends, and you’re emailed when it ends. Then a club that upgraded with 50 students or fewer goes back to the free club, and anything else locks until you mark it paid. Each school gets one free trial.</p>
+      </Section>
+
+      <Section title="Sign in as a test account">
+        <p>Users → <strong>Sign in as a test account</strong> opens one of the five live test accounts (student, Task Maker, parent, school adviser, organization) for 2 hours, behind two-step sign-in and your own 6-digit PIN. It never opens a real person’s account. While you’re in one, any sign-out button takes you back to admin.</p>
+      </Section>
     </div>
   )
 }

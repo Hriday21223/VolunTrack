@@ -3601,5 +3601,10 @@ export default {
   "The club's main adviser presses Upgrade to a school plan on the Students tab and types the 10-character upgrade code we send (ask for one through the Contact page). The club becomes a school plan right away, with no 50-student limit. A code can come with a free trial: your school counts as paid until it ends, and you get an email 7 days and 1 day before. When the trial ends, a club with 50 students or fewer goes back to the free club plan on its own; otherwise the school is locked until payment is made. Each school gets one free trial.": "社团的主顾问在“学生”标签页点击“升级到学校方案”，输入我们发送的 10 位升级码（可通过联系页面索取）。社团会立即变为学校方案，不再有 50 名学生的限制。升级码可以附带免费试用：试用结束前学校视为已付款，并会在结束前 7 天和 1 天收到邮件。试用结束时，学生数不超过 50 名的社团会自动回到免费社团方案；否则学校将被锁定，直到完成付款。每所学校只能免费试用一次。",
   "Free trials: a code from VolunTrack can start a free trial. While it lasts, your school counts as paid and the top of the dashboard shows when it ends; you also get an email 7 days and 1 day before. When it ends, a club that upgraded and has 50 students or fewer goes back to the free club plan; otherwise the dashboard is locked until payment is verified. Each school gets one free trial.": "免费试用：VolunTrack 的升级码可以开启免费试用。试用期间，学校视为已付款，面板顶部会显示结束时间；结束前 7 天和 1 天你也会收到邮件。结束时，已升级且学生数不超过 50 名的社团会回到免费社团方案；否则面板将被锁定，直到付款得到确认。每所学校只能免费试用一次。",
   "Use my authenticator app": "使用我的身份验证器应用",
-  "Use a passkey": "使用通行密钥"
+  "Use a passkey": "使用通行密钥",
+  "When the app locks after you step away, you can now unlock it with your authenticator app or a passkey.": "应用因你离开而锁定时，现在可以用身份验证器应用或通行密钥解锁。",
+  "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "设置中有“退出所有其他设备”和“下载我的数据”，你的账号在新设备上登录时我们会发邮件通知你。",
+  "You can let a parent see the hours you logged before they linked, in Settings → Family.": "你可以在设置 → 家庭中，让家长看到他们关联之前你记录的时长。",
+  "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "你孩子的时长从你关联当天开始计算；孩子可以选择与你分享之前的时长。",
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "免费社团可以用 VolunTrack 的升级码升级为学校方案，升级码还可以附带免费试用。"
 }
