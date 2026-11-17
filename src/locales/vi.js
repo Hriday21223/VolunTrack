@@ -3639,5 +3639,12 @@ export default {
   "In the bucket’s CORS settings, allow PUT and GET from this address:": "Trong cài đặt CORS của bucket, cho phép PUT và GET từ địa chỉ này:",
   "Fill in the form above and press Test and turn on.": "Điền biểu mẫu ở trên và bấm Kiểm tra và bật.",
   "Guides:": "Hướng dẫn:",
-  "Storage": "Lưu trữ"
+  "Storage": "Lưu trữ",
+  "Approved by Microsoft 365.": "Đã được Microsoft 365 phê duyệt.",
+  "Microsoft approval didn’t finish. Try again, signed in as a Microsoft 365 admin.": "Việc phê duyệt của Microsoft chưa xong. Hãy thử lại khi đăng nhập bằng tài khoản quản trị Microsoft 365.",
+  "Microsoft SharePoint": "Microsoft SharePoint",
+  "Approve in Microsoft": "Phê duyệt trong Microsoft",
+  "SharePoint site address": "Địa chỉ trang SharePoint",
+  "Document library": "Thư viện tài liệu",
+  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "Quản trị viên Microsoft 365 cấp cho VolunTrack quyền vào đúng một trang này, một lần (PnP PowerShell), hoặc cấp tương tự trong trang quản trị SharePoint:"
 }

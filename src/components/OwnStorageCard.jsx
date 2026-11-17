@@ -31,6 +31,9 @@ export default function OwnStorageCard({ canEdit = true }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null) // { text, ok }
   const [confirmOff, setConfirmOff] = useState(false)
+  // SharePoint (#924): offered only when this server has the Microsoft app.
+  const [sp, setSp] = useState({ sharepoint: false, sharepointAppId: null })
+  const [spForm, setSpForm] = useState(null) // { tenantId, siteUrl, library, prefix }
 
   const load = useCallback(async () => {
     try {
@@ -42,6 +45,40 @@ export default function OwnStorageCard({ canEdit = true }) {
     } catch (e) { setConfig(null); setMsg({ text: e.message, ok: false }) }
   }, [])
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    fetch(`${apiUrl}/storage/providers`, { headers: headers() }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d) setSp(d) }).catch(() => {})
+    // Back from Microsoft's approval page.
+    const q = new URLSearchParams(window.location.search)
+    if (q.get('msTenant')) { setSpForm({ tenantId: q.get('msTenant'), siteUrl: '', library: 'Documents', prefix: '' }); setMsg({ text: tr('Approved by Microsoft 365.'), ok: true }) }
+    else if (q.get('msError')) setMsg({ text: tr('Microsoft approval didn’t finish. Try again, signed in as a Microsoft 365 admin.'), ok: false })
+    if (q.get('msTenant') || q.get('msError')) window.history.replaceState(null, '', window.location.pathname)
+  }, [])
+
+  const approveMicrosoft = async () => {
+    setBusy(true); setMsg(null)
+    try {
+      const r = await fetch(`${apiUrl}/storage/microsoft/consent-url`, { headers: headers() })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok || !d.url) throw new Error(d.error || tr('Something went wrong. Try again.'))
+      window.location.href = d.url
+    } catch (e) { setMsg({ text: e.message, ok: false }); setBusy(false) }
+  }
+
+  const saveSharepoint = async (e) => {
+    e.preventDefault()
+    setBusy(true); setMsg(null)
+    try {
+      const r = await fetch(`${apiUrl}/storage/config`, { method: 'PUT', headers: headers(), body: JSON.stringify({ provider: 'sharepoint', ...spForm }) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || tr('Something went wrong. Try again.'))
+      const t = await fetch(`${apiUrl}/storage/test`, { method: 'POST', headers: headers() })
+      const td = await t.json().catch(() => ({}))
+      if (!t.ok) throw new Error(td.error || tr('Something went wrong. Try again.'))
+      setConfig(td.config || d.config)
+      if (td.ok) { setSpForm(null); setMsg({ text: tr('Connected. Proof files now go straight to your storage.'), ok: true }) }
+      else setMsg({ text: tr('The test didn’t pass: {reason}', { reason: td.error || '' }), ok: false })
+    } catch (e2) { setMsg({ text: e2.message, ok: false }) } finally { setBusy(false) }
+  }
 
   const start = (key) => {
     const p = PRESETS[key]
@@ -104,12 +141,12 @@ export default function OwnStorageCard({ canEdit = true }) {
             {active ? <CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" /> : <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" />}
             {active ? tr('On') : tr('Not on yet: the last test didn’t pass')}
           </p>
-          <p className="text-earth-500">{config.bucket}{config.prefix ? `/${config.prefix}` : ''} · {config.endpoint || 'Amazon S3'} · {config.region}</p>
+          <p className="text-earth-500">{config.provider === 'sharepoint' ? `SharePoint · ${config.endpoint} · ${config.bucket}${config.prefix ? `/${config.prefix}` : ''}` : `${config.bucket}${config.prefix ? `/${config.prefix}` : ''} · ${config.endpoint || 'Amazon S3'} · ${config.region}`}</p>
           {config.lastTestError && !active && <p className="text-red-400">{config.lastTestError}</p>}
           {canEdit && (
             <div className="flex flex-wrap gap-2 pt-2">
               <button type="button" onClick={retest} disabled={busy} className="btn-secondary btn-sm">{busy ? tr('Testing…') : tr('Test again')}</button>
-              <button type="button" onClick={() => start(config.provider === 'r2' ? 'r2' : config.endpoint ? 'other' : 's3')} className="btn-ghost btn-sm">{tr('Change')}</button>
+              <button type="button" onClick={() => (config.provider === 'sharepoint' ? setSpForm({ tenantId: config.region, siteUrl: config.endpoint, library: config.bucket, prefix: config.prefix || '' }) : start(config.provider === 'r2' ? 'r2' : config.endpoint ? 'other' : 's3'))} className="btn-ghost btn-sm">{tr('Change')}</button>
               {confirmOff ? (
                 <span className="flex gap-1 items-center">
                   <span className="text-xs text-earth-400">{tr('Proof already in your storage stays there, but VolunTrack can’t open it after this.')}</span>
@@ -127,6 +164,9 @@ export default function OwnStorageCard({ canEdit = true }) {
           {Object.entries(PRESETS).map(([k, p]) => (
             <button key={k} type="button" onClick={() => start(k)} className="btn-secondary btn-sm">{k === 'other' ? tr('Other S3-compatible') : p.label}</button>
           ))}
+          {sp.sharepoint && (
+            <button type="button" onClick={approveMicrosoft} disabled={busy} className="btn-secondary btn-sm">{tr('Microsoft SharePoint')}</button>
+          )}
         </div>
       ) : null}
 
@@ -168,6 +208,40 @@ export default function OwnStorageCard({ canEdit = true }) {
             <button type="button" onClick={() => setForm(null)} className="btn-ghost btn-sm">{tr('Cancel')}</button>
           </div>
           <p className="text-xs text-earth-400">{tr('We save, read and delete one small test file. It only turns on if all three work. The secret key is stored encrypted and never shown again.')}</p>
+        </form>
+      )}
+
+      {spForm && canEdit && (
+        <form onSubmit={saveSharepoint} className="space-y-3 mb-3">
+          <p className="text-sm font-medium">{tr('Microsoft SharePoint')}</p>
+          {!spForm.tenantId ? (
+            <button type="button" onClick={approveMicrosoft} disabled={busy} className="btn-primary btn-sm">{tr('Approve in Microsoft')}</button>
+          ) : (
+            <>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="label" htmlFor="sp-site">{tr('SharePoint site address')}</label>
+                  <input id="sp-site" className="input" placeholder="https://yourschool.sharepoint.com/sites/Volunteering" value={spForm.siteUrl} onChange={(e) => setSpForm({ ...spForm, siteUrl: e.target.value.trim() })} />
+                </div>
+                <div>
+                  <label className="label" htmlFor="sp-lib">{tr('Document library')}</label>
+                  <input id="sp-lib" className="input" value={spForm.library} onChange={(e) => setSpForm({ ...spForm, library: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label" htmlFor="sp-prefix">{tr('Folder inside the bucket (optional)')}</label>
+                  <input id="sp-prefix" className="input" placeholder="VolunTrack" value={spForm.prefix} onChange={(e) => setSpForm({ ...spForm, prefix: e.target.value })} />
+                </div>
+              </div>
+              <div className="text-xs text-earth-400 space-y-1">
+                <p>{tr('Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:')}</p>
+                <code className="block break-all select-all bg-earth-900/40 rounded p-2">{`Grant-PnPAzureADAppSitePermission -AppId ${sp.sharepointAppId} -DisplayName "VolunTrack" -Site ${spForm.siteUrl || '<site address>'} -Permissions Write`}</code>
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" disabled={busy || !spForm.siteUrl} className="btn-primary btn-sm">{busy ? tr('Testing…') : tr('Test and turn on')}</button>
+                <button type="button" onClick={() => setSpForm(null)} className="btn-ghost btn-sm">{tr('Cancel')}</button>
+              </div>
+            </>
+          )}
         </form>
       )}
 

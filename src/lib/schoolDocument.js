@@ -56,9 +56,10 @@ export async function submitDocumentToSchool(file, { filename, fileType } = {}) 
   if (minted) {
     // content-length is signed into the URL, so the PUT must match the size
     // declared above exactly.
+    // SharePoint (#924) takes the whole file in one Content-Range PUT.
     const put = await fetch(minted.url, {
       method: 'PUT',
-      headers: { 'Content-Type': type },
+      headers: minted.kind === 'sharepoint' ? { 'Content-Range': `bytes 0-${file.size - 1}/${file.size}` } : { 'Content-Type': type },
       body: file,
     })
     if (!put.ok) throw new Error('Could not upload the file to your school’s storage.')

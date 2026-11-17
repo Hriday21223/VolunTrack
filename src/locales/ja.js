@@ -3638,5 +3638,12 @@ export default {
   "In the bucket’s CORS settings, allow PUT and GET from this address:": "バケットのCORS設定で、このアドレスからのPUTとGETを許可します：",
   "Fill in the form above and press Test and turn on.": "上のフォームに入力して「テストしてオンにする」を押します。",
   "Guides:": "ガイド：",
-  "Storage": "ストレージ"
+  "Storage": "ストレージ",
+  "Approved by Microsoft 365.": "Microsoft 365 で承認されました。",
+  "Microsoft approval didn’t finish. Try again, signed in as a Microsoft 365 admin.": "Microsoft の承認が完了しませんでした。Microsoft 365 管理者としてサインインしてもう一度お試しください。",
+  "Microsoft SharePoint": "Microsoft SharePoint",
+  "Approve in Microsoft": "Microsoft で承認する",
+  "SharePoint site address": "SharePoint サイトのアドレス",
+  "Document library": "ドキュメント ライブラリ",
+  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "Microsoft 365 管理者が一度だけ、このサイトだけへのアクセスを VolunTrack に付与します（PnP PowerShell）。SharePoint 管理センターで同じ権限を付与することもできます："
 }

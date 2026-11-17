@@ -3638,5 +3638,12 @@ export default {
   "In the bucket’s CORS settings, allow PUT and GET from this address:": "বাকেটের CORS সেটিংসে এই ঠিকানা থেকে PUT ও GET অনুমতি দিন:",
   "Fill in the form above and press Test and turn on.": "উপরের ফর্ম পূরণ করে টেস্ট করে চালু করুন চাপুন।",
   "Guides:": "গাইড:",
-  "Storage": "স্টোরেজ"
+  "Storage": "স্টোরেজ",
+  "Approved by Microsoft 365.": "Microsoft 365 অনুমোদন দিয়েছে।",
+  "Microsoft approval didn’t finish. Try again, signed in as a Microsoft 365 admin.": "Microsoft-এর অনুমোদন শেষ হয়নি। Microsoft 365 অ্যাডমিন হিসেবে সাইন ইন করে আবার চেষ্টা করুন।",
+  "Microsoft SharePoint": "Microsoft SharePoint",
+  "Approve in Microsoft": "Microsoft-এ অনুমোদন দিন",
+  "SharePoint site address": "SharePoint সাইটের ঠিকানা",
+  "Document library": "ডকুমেন্ট লাইব্রেরি",
+  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "আপনার Microsoft 365 অ্যাডমিন একবার VolunTrack-কে শুধু এই সাইটে অ্যাক্সেস দেন (PnP PowerShell), অথবা SharePoint অ্যাডমিনে একই অনুমতি দেন:"
 }

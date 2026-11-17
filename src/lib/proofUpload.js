@@ -50,7 +50,12 @@ export async function uploadProof(proof) {
     // { available: false } is the normal answer for a school with no bucket.
     if (!body.available || !body.url || !body.key) return null
 
-    const put = await fetch(body.url, { method: 'PUT', body: blob })
+    // SharePoint (#924) takes the whole file in one Content-Range PUT.
+    const put = await fetch(body.url, {
+      method: 'PUT',
+      ...(body.kind === 'sharepoint' ? { headers: { 'Content-Range': `bytes 0-${blob.size - 1}/${blob.size}` } } : {}),
+      body: blob,
+    })
     if (!put.ok) return null
 
     return { key: body.key, storageId: body.storageId, mime: blob.type, bytes: blob.size }

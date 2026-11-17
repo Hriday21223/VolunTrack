@@ -30,6 +30,7 @@ import { policyForSchool } from '../policy.js'
 import { placeApproved, emailAllowedBySignIn, goalHoursFor, gradeKey, gradeLabel, awardFor, requirementShortfall, schoolGrades, gradeAllowed, isYoungGrade, currentTerm } from '../requirements.js'
 import { decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { keyBelongsTo, presign, withPrefix } from '../storage/s3.js'
+import { mintDownload, putBytes } from '../storage/adapter.js'
 import { recordReferral } from './referral.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
@@ -2611,7 +2612,7 @@ router.get('/pdf/:id', limiter, requireDb, requireAuth(), async (req, res) => {
         return res.status(410).json({ error: 'The storage this document was written to is no longer configured.' })
       }
       const expiresIn = 300
-      const url = presign(usableStorage(cfgRows[0]), { method: 'GET', key: pdf.object_key, expiresIn })
+      const url = await mintDownload(cfgRows[0], pdf.object_key, expiresIn)
       return res.json({ pdf: { ...base, url, expiresIn } })
     }
 
@@ -8214,26 +8215,14 @@ router.post('/admin/drain-pdf-uploads', limiter, requireDb, requireAuth('admin')
         if (!base64) { result.skippedNoStorage += 1; continue }
         const body = Buffer.from(base64, 'base64')
 
-        const config = usableStorage(cfgRow)
+        const config = { prefix: cfgRow.prefix }
         const ext = (row.file_type || '').includes('pdf') ? 'pdf' : 'bin'
         // Same namespace the browser would have used, so keyBelongsTo() keeps
         // holding for these rows afterwards.
         const key = withPrefix(config.prefix, `students/${row.user_id}/${uid('doc')}.${ext}`)
-        const url = presign(config, {
-          method: 'PUT',
-          key,
-          expiresIn: 300,
-          headers: { 'content-length': String(body.length) },
-        })
-
-        // publicFetch: the bucket address is the school's own setting, so it's
-        // checked again at connect time (it may point somewhere else by now).
-        const put = await publicFetch(url, {
-          method: 'PUT',
-          headers: { 'Content-Type': row.file_type || 'application/pdf', 'Content-Length': String(body.length) },
-          body,
-        })
-        if (!put.ok) throw new Error(`bucket returned ${put.status}`)
+        // S3 or SharePoint (#924); for a bucket the address is checked again
+        // at connect time (publicFetch), since it may point elsewhere by now.
+        await putBytes(cfgRow, key, body, row.file_type || 'application/pdf')
 
         // Pointer written and bytes dropped in one statement, so a crash
         // between the two can't leave a row claiming a key it never got.
