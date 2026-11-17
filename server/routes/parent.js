@@ -258,7 +258,7 @@ router.delete('/my-parents/:parentId', limiter, requireDb, requireAuth('student'
 router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT u.id, u.name, u.email, u.grade, g.hours AS weekly_goal
+      `SELECT u.id, u.name, u.email, u.grade, g.hours AS weekly_goal, pcl.created_at AS linked_at
        FROM parent_child_links pcl
        JOIN users u ON u.id = pcl.child_id
        LEFT JOIN family_weekly_goals g ON g.parent_id = pcl.parent_id AND g.child_id = u.id
@@ -272,8 +272,10 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
     // deadline, not just a list of entries. Resolved per child because two
     // children can be at different schools — and per grade, since a school may
     // ask more of a senior than a freshman.
-    const children = await Promise.all(rows.map(async ({ weekly_goal: weeklyGoal, ...row }) => {
-      const child = { ...row, weeklyGoal: weeklyGoal == null ? null : Number(weeklyGoal) }
+    const children = await Promise.all(rows.map(async ({ weekly_goal: weeklyGoal, linked_at: linkedAt, ...row }) => {
+      // A parent sees only what was logged from this moment on (#298); the
+      // dashboard says so, or a new link reads as "0 hours" (#901).
+      const child = { ...row, weeklyGoal: weeklyGoal == null ? null : Number(weeklyGoal), linkedAt: linkedAt || null }
       try {
         const resolved = await policyForUser(child.id)
         if (!resolved) return { ...child, requirement: null }

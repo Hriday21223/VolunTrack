@@ -3590,5 +3590,9 @@ export default {
   "Free trial until {date}": "{date} तक मुफ़्त ट्रायल",
   "Your free trial ends on {date}.": "आपका मुफ़्त ट्रायल {date} को खत्म होगा।",
   "After that, your school goes back to the free club plan (up to 50 students).": "उसके बाद, आपका स्कूल फिर से मुफ़्त क्लब प्लान पर आ जाएगा (50 छात्रों तक)।",
-  "After that, your school is locked until payment is made.": "उसके बाद, भुगतान होने तक आपका स्कूल लॉक रहेगा।"
+  "After that, your school is locked until payment is made.": "उसके बाद, भुगतान होने तक आपका स्कूल लॉक रहेगा।",
+  "since you linked on {date}": "{date} को जुड़ने के बाद से",
+  "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "{date} से पहले के घंटे {name} के लिए निजी रहते हैं। आप वही देखते हैं जो जुड़ने के दिन से दर्ज किया गया।",
+  "No hours logged since you linked on {date}.": "{date} को जुड़ने के बाद से कोई घंटे दर्ज नहीं हुए।",
+  "None yet": "अभी कोई नहीं"
 }

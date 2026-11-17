@@ -3590,5 +3590,9 @@ export default {
   "Free trial until {date}": "{date} まで無料トライアル",
   "Your free trial ends on {date}.": "無料トライアルは {date} に終了します。",
   "After that, your school goes back to the free club plan (up to 50 students).": "その後、学校は無料のクラブプラン（生徒 50 人まで）に戻ります。",
-  "After that, your school is locked until payment is made.": "その後、お支払いが完了するまで学校はロックされます。"
+  "After that, your school is locked until payment is made.": "その後、お支払いが完了するまで学校はロックされます。",
+  "since you linked on {date}": "{date} にリンクしてから",
+  "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "{date} より前の時間は {name} さんの非公開のままです。リンクした日から記録された分が表示されます。",
+  "No hours logged since you linked on {date}.": "{date} にリンクしてから記録された時間はありません。",
+  "None yet": "まだありません"
 }

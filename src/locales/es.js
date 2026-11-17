@@ -3591,5 +3591,9 @@ export default {
   "Free trial until {date}": "Prueba gratis hasta el {date}",
   "Your free trial ends on {date}.": "Tu prueba gratis termina el {date}.",
   "After that, your school goes back to the free club plan (up to 50 students).": "Después, tu escuela vuelve al plan de club gratis (hasta 50 estudiantes).",
-  "After that, your school is locked until payment is made.": "Después, tu escuela quedará bloqueada hasta que se haga el pago."
+  "After that, your school is locked until payment is made.": "Después, tu escuela quedará bloqueada hasta que se haga el pago.",
+  "since you linked on {date}": "desde que te vinculaste el {date}",
+  "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "Las horas de antes del {date} siguen siendo privadas para {name}. Ves lo que registre desde el día en que te vinculaste.",
+  "No hours logged since you linked on {date}.": "No se han registrado horas desde que te vinculaste el {date}.",
+  "None yet": "Aún no"
 }
