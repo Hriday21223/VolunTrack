@@ -3606,5 +3606,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "设置中有“退出所有其他设备”和“下载我的数据”，你的账号在新设备上登录时我们会发邮件通知你。",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "你可以在设置 → 家庭中，让家长看到他们关联之前你记录的时长。",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "你孩子的时长从你关联当天开始计算；孩子可以选择与你分享之前的时长。",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "免费社团可以用 VolunTrack 的升级码升级为学校方案，升级码还可以附带免费试用。"
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "免费社团可以用 VolunTrack 的升级码升级为学校方案，升级码还可以附带免费试用。",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "因为没有网络，你有 {n} 项更改还没同步到账号。现在退出会丢失这些更改。仍要退出吗？",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "你的 {n} 条记录只保存在这台设备上。退出后它们会被删除。仍要退出吗？",
+  "Your hours are saved only on this device": "你的时长只保存在这台设备上",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "如果手机被重置或丢失，这些时长就没了。保存到免费账号，就能安全地在所有设备上使用。",
+  "Save my hours to an account": "把我的时长保存到账号"
 }

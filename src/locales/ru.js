@@ -3605,5 +3605,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "В настройках есть «Выйти на других устройствах» и «Скачать мои данные», а при входе с нового устройства мы присылаем письмо.",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "В Настройки → Семья можно показать родителю часы, записанные до привязки.",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "Часы ребёнка считаются со дня привязки; он может открыть вам и более ранние часы.",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Бесплатный клуб может перейти на тариф для школы по коду от VolunTrack, и код может включать бесплатный период."
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Бесплатный клуб может перейти на тариф для школы по коду от VolunTrack, и код может включать бесплатный период.",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "{n} ваших изменений ещё не попали в аккаунт: нет интернета. Если выйти сейчас, они пропадут. Всё равно выйти?",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "Ваши записи ({n}) сохранены только на этом устройстве. Если выйти, они удалятся. Всё равно выйти?",
+  "Your hours are saved only on this device": "Ваши часы сохранены только на этом устройстве",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "Если телефон сбросить или потерять, они пропадут. Сохраните их в бесплатный аккаунт, чтобы они были в безопасности и на всех устройствах.",
+  "Save my hours to an account": "Сохранить мои часы в аккаунт"
 }

@@ -3605,5 +3605,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "সেটিংসে অন্য সব ডিভাইস থেকে সাইন আউট ও আমার ডেটা ডাউনলোড আছে, আর নতুন ডিভাইসে আপনার অ্যাকাউন্টে সাইন ইন হলে আমরা ইমেইল করি।",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "সেটিংস → পরিবার থেকে অভিভাবককে তাদের যুক্ত হওয়ার আগের ঘণ্টাগুলোও দেখাতে পারেন।",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "আপনার সন্তানের ঘণ্টা আপনি যুক্ত হওয়ার দিন থেকে গোনা হয়; সে আগের ঘণ্টাগুলোও আপনার সাথে শেয়ার করতে পারে।",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "বিনামূল্যের ক্লাব VolunTrack-এর কোড দিয়ে স্কুল প্ল্যানে আপগ্রেড করতে পারে, আর কোডের সাথে বিনামূল্যে ট্রায়ালও থাকতে পারে।"
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "বিনামূল্যের ক্লাব VolunTrack-এর কোড দিয়ে স্কুল প্ল্যানে আপগ্রেড করতে পারে, আর কোডের সাথে বিনামূল্যে ট্রায়ালও থাকতে পারে।",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "ইন্টারনেট না থাকায় আপনার {n}টি পরিবর্তন এখনো অ্যাকাউন্টে পৌঁছায়নি। এখন সাইন আউট করলে সেগুলো হারিয়ে যাবে। তবুও সাইন আউট করবেন?",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "আপনার {n}টি এন্ট্রি শুধু এই ডিভাইসে সেভ আছে। সাইন আউট করলে সেগুলো মুছে যাবে। তবুও সাইন আউট করবেন?",
+  "Your hours are saved only on this device": "আপনার ঘণ্টাগুলো শুধু এই ডিভাইসে সেভ আছে",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "এই ফোন রিসেট হলে বা হারালে সেগুলো চলে যাবে। বিনামূল্যের অ্যাকাউন্টে সেভ করুন যাতে নিরাপদে সব ডিভাইসে থাকে।",
+  "Save my hours to an account": "আমার ঘণ্টা অ্যাকাউন্টে সেভ করুন"
 }

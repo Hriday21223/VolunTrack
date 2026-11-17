@@ -21,6 +21,7 @@ import BarChart from '@/components/BarChart.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
+import DeviceOnlyBanner from '@/components/DeviceOnlyBanner.jsx'
 import LeaderboardCard from '@/components/LeaderboardCard.jsx'
 import ChallengeCard from '@/components/ChallengeCard.jsx'
 import { StudentWeeklyGoal } from '@/components/WeeklyFamilyGoal.jsx'
@@ -438,6 +439,7 @@ export default function Dashboard() {
 
       {/* Admin announcements (#290); renders nothing for a local-only account. */}
       <AnnouncementBanner />
+      <DeviceOnlyBanner />
 
       {dashTab === 'volunteer' && user?.role === 'student' ? (
         <div className="max-w-2xl mx-auto space-y-4">

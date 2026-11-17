@@ -3,6 +3,7 @@ import { LogOut, Menu } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { inTestSession, backToAdmin } from '@/lib/testSession.js'
+import { okToSignOut } from '@/lib/signOutGuard.js'
 import { cn } from '@/utils/cn.js'
 import { isNativeApp } from '@/lib/platform.js'
 import Sidebar from './Sidebar.jsx'
@@ -105,7 +106,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
                 </div>
               </div>
               <button
-                onClick={() => { if (inTestSession(user)) backToAdmin({ adoptSession, logout }); else { logout(); navigate('/login') } }}
+                onClick={async () => { if (inTestSession(user)) backToAdmin({ adoptSession, logout }); else if (await okToSignOut()) { logout(); navigate('/login') } }}
                 className="p-2 rounded-lg text-earth-200 hover:text-red-400 hover:bg-red-500/10"
                 title={tr('Log out')}
                 aria-label={tr('Log out')}

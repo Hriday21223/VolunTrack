@@ -7,7 +7,7 @@ import {
   sendPasswordResetCode, isResetPasswordCodeValid, clearPasswordResetCode,
   findUserBySyncPin, updateSyncPin,
 } from '@/api/index.js'
-import { syncPullLogs } from '@/lib/logSync.js'
+import { syncPullLogs, ADOPT_KEY } from '@/lib/logSync.js'
 import { syncKeptSession } from '@/lib/appSession.js'
 import { signInWithPasskey } from '@/lib/passkey.js'
 import { syncNativeReminders } from '@/lib/nativeReminders.js'
@@ -443,6 +443,9 @@ export function AuthProvider({ children }) {
       // Store the token for future authenticated requests
       localStorage.setItem('voluntrack:auth_token', result.token)
 
+      // A device-only account that asked to keep its hours (#917): send them up.
+      await syncPullLogs(result.user.id)
+
       // Store user session
       write(SESSION_KEY, result.user)
       setUser(result.user)
@@ -518,6 +521,15 @@ export function AuthProvider({ children }) {
     syncNativeReminders([])
     // And the home-screen widget stops showing this account's hours.
     clearWidget()
+    setUser(null)
+  }, [])
+
+  // "Save my hours to an account" (#917): leave the device-only account
+  // without clearing its entries, so the sign-up or sign-in that follows can
+  // send them up (ADOPT_KEY, read by syncPullLogs).
+  const leaveDeviceAccountKeepingHours = useCallback(() => {
+    try { localStorage.setItem(ADOPT_KEY, String(Date.now())) } catch { /* */ }
+    remove(SESSION_KEY)
     setUser(null)
   }, [])
 
@@ -692,7 +704,7 @@ export function AuthProvider({ children }) {
   }, [user])
 
   return (
-    <AuthContext.Provider value={{ user, login, reauth, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, adoptSession, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
+    <AuthContext.Provider value={{ user, login, reauth, verifyTotp, verifyPasskey, sendEmailCode, verifyEmailCode, verifyBackupCode, setupTotp, verifyTotpSetup, disableTotp, adoptSession, leaveDeviceAccountKeepingHours, loginWithPin, loginWithSyncPin, sendSignupCode, register, logout, deleteAccount, updateProfile, requestPinReset, completePinReset, requestPasswordReset, completePasswordReset, setSyncPin, refreshUser, ssoDiscover, ssoStart, ssoExchange }}>
       {children}
     </AuthContext.Provider>
   )

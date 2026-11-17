@@ -3605,5 +3605,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "Em Configurações há Sair de todos os outros dispositivos e Baixar meus dados, e avisamos por e-mail quando sua conta entra em um dispositivo novo.",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "Você pode deixar um responsável ver as horas que registrou antes de ele se vincular, em Configurações → Família.",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "As horas do seu filho contam a partir do dia em que você se vinculou; ele pode escolher compartilhar as horas anteriores.",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Um clube grátis pode mudar para um plano de escola com um código da VolunTrack, e um código pode vir com teste grátis."
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Um clube grátis pode mudar para um plano de escola com um código da VolunTrack, e um código pode vir com teste grátis.",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "{n} das suas alterações ainda não chegaram à sua conta porque não há internet. Se sair agora, elas serão perdidas. Sair mesmo assim?",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "Seus {n} registros estão salvos só neste dispositivo. Se sair, eles serão apagados. Sair mesmo assim?",
+  "Your hours are saved only on this device": "Suas horas estão salvas só neste dispositivo",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "Se este celular for redefinido ou perdido, elas somem. Salve numa conta grátis para ficarem seguras e em todos os dispositivos.",
+  "Save my hours to an account": "Salvar minhas horas numa conta"
 }

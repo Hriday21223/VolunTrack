@@ -3606,5 +3606,10 @@ export default {
   "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device.": "Cài đặt có Đăng xuất khỏi các thiết bị khác và Tải dữ liệu của tôi, và chúng tôi gửi email khi tài khoản của bạn đăng nhập trên thiết bị mới.",
   "You can let a parent see the hours you logged before they linked, in Settings → Family.": "Bạn có thể cho phụ huynh xem số giờ bạn ghi trước khi họ liên kết, trong Cài đặt → Gia đình.",
   "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.": "Số giờ của con bạn được tính từ ngày bạn liên kết; con có thể chọn chia sẻ số giờ trước đó với bạn.",
-  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Câu lạc bộ miễn phí có thể nâng cấp lên gói trường bằng mã từ VolunTrack, và mã có thể kèm thời gian dùng thử miễn phí."
+  "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.": "Câu lạc bộ miễn phí có thể nâng cấp lên gói trường bằng mã từ VolunTrack, và mã có thể kèm thời gian dùng thử miễn phí.",
+  "{n} of your changes haven’t reached your account yet, because there’s no internet. If you sign out now, they’ll be lost. Sign out anyway?": "{n} thay đổi của bạn chưa lên tài khoản vì không có internet. Nếu đăng xuất bây giờ, chúng sẽ bị mất. Vẫn đăng xuất?",
+  "Your {n} entries are saved only on this device. If you sign out, they’ll be deleted. Sign out anyway?": "{n} mục của bạn chỉ được lưu trên thiết bị này. Nếu đăng xuất, chúng sẽ bị xóa. Vẫn đăng xuất?",
+  "Your hours are saved only on this device": "Số giờ của bạn chỉ được lưu trên thiết bị này",
+  "If this phone is reset or lost, they’re gone. Save them to a free account so they’re safe and on every device.": "Nếu điện thoại bị đặt lại hoặc bị mất, số giờ sẽ mất. Hãy lưu vào tài khoản miễn phí để an toàn và có trên mọi thiết bị.",
+  "Save my hours to an account": "Lưu giờ của tôi vào tài khoản"
 }
