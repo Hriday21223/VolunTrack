@@ -3,6 +3,19 @@
 // shows a dot until the viewer opens the page. `for` limits an item to roles.
 export const WHATS_NEW = [
   {
+    id: '2026-11-17',
+    date: '2026-11-17',
+    items: [
+      { text: "When the app locks after you step away, you can now unlock it with your authenticator app or a passkey." },
+      { text: "Settings has Sign out of all other devices and Download my data, and we email you when your account signs in on a new device." },
+      { text: "You can let a parent see the hours you logged before they linked, in Settings → Family.", for: ["student"] },
+      { text: "Your child’s hours are counted from the day you linked; they can choose to share earlier hours with you.", for: ["parent"] },
+      { text: "A free club can upgrade to a school plan with a code from VolunTrack, and a code can come with a free trial.", for: ["school", "school_staff"] },
+      { text: "Admin team: invite admins, choose what each one can use, and see what they did.", for: ["admin"] },
+      { text: "Event codes for your team, and club upgrade codes with free trials, under Invites.", for: ["admin"] },
+    ],
+  },
+  {
     id: '2026-11-05',
     date: '2026-11-05',
     items: [

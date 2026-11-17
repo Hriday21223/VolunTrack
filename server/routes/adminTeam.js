@@ -10,7 +10,7 @@ import { recordAudit, AUDIT } from '../audit.js'
 import { sendEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 import { activityLabel } from '../adminActivity.js'
-import { AREAS, AREA_IDS, TAB_AREA, cleanPermissions, adminAccess, forgetAdminAccess } from '../adminPermissions.js'
+import { AREAS, AREA_IDS, TAB_AREA, cleanPermissions, adminAccess, forgetAdminAccess, emailMainAdmin } from '../adminPermissions.js'
 
 // Admin team (#909). The main admin is the account at ADMIN_EMAIL (seeded on
 // boot). Only it can invite more admins, remove them and read the activity
@@ -147,6 +147,8 @@ router.delete('/:userId', limiter, requireDb, requireAuth('admin'), requireMainA
     await endSessions(target.id)
     forgetAdminAccess(target.id)
     recordAudit(req, { action: AUDIT.ADMIN_REMOVED, subjectUserId: target.id })
+    emailMainAdmin(`${target.email} was removed from the admin team`,
+      `<p><strong>${escapeHtml(target.email)}</strong> is no longer an admin and was signed out everywhere. Their past actions stay in What admins did.</p>`)
     return res.json({ ok: true })
   } catch (error) {
     console.error('admin remove failed:', error)
@@ -260,6 +262,9 @@ router.post('/invite/:token', inviteLimiter, requireDb, async (req, res) => {
       [id, invite.name, invite.email, await hashPassword(password), cleanPermissions(invite.permissions) || []],
     )
     recordAudit({ auth: { sub: id, role: 'admin' }, headers: req.headers, ip: req.ip }, { action: AUDIT.ADMIN_ADDED, subjectUserId: id })
+    const areas = (cleanPermissions(invite.permissions) || []).map((a) => AREAS[a]).join(', ') || 'nothing yet'
+    emailMainAdmin(`${invite.name} joined the VolunTrack admin team`,
+      `<p><strong>${escapeHtml(invite.name)}</strong> (${escapeHtml(invite.email)}) accepted your invite and is now an admin. They can use: ${escapeHtml(areas)}.</p><p>They’ll set up two-step sign-in the first time they sign in. Change their access or remove them in Admin → Users → Admin team.</p>`)
     return res.json({ ok: true, email: invite.email })
   } catch (error) {
     console.error('admin invite accept failed:', error)
