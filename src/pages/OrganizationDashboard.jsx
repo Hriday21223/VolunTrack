@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { orgTabFromPath, orgPathFor } from '@/lib/dashboardTabs.js'
 import { Building2, UserPlus, School, Users, Receipt, Download, Eye, ClipboardList, UserCog, Megaphone, Handshake } from 'lucide-react'
 import OrgPartners from '@/components/OrgPartners.jsx'
+import OwnStorageCard from '@/components/OwnStorageCard.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
 import OrgAnnouncementsCard from '@/components/OrgAnnouncementsCard.jsx'
 import ImpactReportCard from '@/components/ImpactReportCard.jsx'
@@ -187,6 +188,7 @@ export default function OrganizationDashboard() {
     >
       <AnnouncementBanner />
       {tab === 'requirements' && <OrgRequirements schools={schools} onSchoolsChange={loadSchools} />}
+      {tab === 'requirements' && <div className="mt-6"><OwnStorageCard /></div>}
       {tab === 'announcements' && <OrgAnnouncementsCard />}
       {tab === 'partners' && <><EmbedWidgetCard /><OrgPartners /></>}
 
