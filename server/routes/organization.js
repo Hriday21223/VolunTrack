@@ -26,6 +26,7 @@ import { notify } from '../notifications.js'
 import { emailLang, et } from '../emailStrings.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 import { startTrial, trialDaysOfRegistrationCode } from '../trials.js'
+import { spendEventCode, releaseEventCode, recordEventCodeUse } from '../eventCodes.js'
 
 import { LEGAL_VERSION } from '../legal.js'
 import { noteSignIn } from '../signInAlerts.js'
@@ -66,6 +67,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
   if (isWeakPassword(password)) return res.status(400).json({ error: WEAK_PASSWORD_MESSAGE })
 
   let claimedCodeId = null
+  let eventCode = null
   try {
     let invite = null
     if (inviteToken) {
@@ -82,7 +84,9 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     // Spent last, so a taken email doesn't cost the organization its code.
     if (registrationCode) {
       claimedCodeId = await claimCode('organization', registrationCode)
-      if (!claimedCodeId) return res.status(410).json({ error: CODE_REJECTED_MESSAGE })
+      // Or an event code from our team (#907).
+      if (!claimedCodeId) eventCode = await spendEventCode(registrationCode, { entity: 'organization', kind: 'register' })
+      if (!claimedCodeId && !eventCode) return res.status(410).json({ error: CODE_REJECTED_MESSAGE })
     }
 
     const orgId = uid('org')
@@ -102,6 +106,10 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     )
     await markCodeUser(claimedCodeId, userId)
     await startTrial('organization', orgId, await trialDaysOfRegistrationCode(claimedCodeId))
+    if (eventCode) {
+      await recordEventCodeUse(eventCode.id, { entity: 'organization', entityId: orgId, kind: 'register' })
+      await startTrial('organization', orgId, eventCode.trial_days)
+    }
 
     if (invite) {
       await query(`UPDATE organization_invites SET status = 'completed' WHERE id = $1`, [invite.id])
@@ -113,6 +121,7 @@ router.post('/register', limiter, requireDb, verifyTurnstile(), async (req, res)
     return res.status(201).json({ token: signToken(user), user })
   } catch (error) {
     await releaseCode(claimedCodeId).catch((e) => console.error('registration code release failed:', e.message))
+    await releaseEventCode(eventCode?.id).catch(() => {})
     console.error('organization register failed:', error)
     return res.status(500).json({ error: 'Could not register organization.' })
   }

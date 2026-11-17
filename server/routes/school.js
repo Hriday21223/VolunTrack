@@ -35,6 +35,7 @@ import { requireCronKey, cronLimiter } from '../cronAuth.js'
 import { claimCode, releaseCode, markCodeUser, CODE_REQUIRED_MESSAGE, CODE_REJECTED_MESSAGE } from '../registrationCodes.js'
 import { startTrial, trialDaysOfRegistrationCode, runTrialJob } from '../trials.js'
 import { claimUpgradeCode, releaseUpgradeCode, upgradeCodeTrialDays } from '../upgradeCodes.js'
+import { spendEventCode, releaseEventCode, recordEventCodeUse, findEventCode } from '../eventCodes.js'
 import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
@@ -238,6 +239,7 @@ async function registerSchool(req, res, { club }) {
     return res.status(400).json({ error: 'Ask for a sign-up code first, then enter it here.' })
   }
 
+  let eventCode = null
   let claimedCodeId = null
   try {
     let invite = null
@@ -266,7 +268,9 @@ async function registerSchool(req, res, { club }) {
     // school code doesn't cost the school its registration code.
     if (registrationCode) {
       claimedCodeId = await claimCode('school', registrationCode)
-      if (!claimedCodeId) return res.status(410).json({ error: CODE_REJECTED_MESSAGE })
+      // Or an event code from our team (#907), which works for many schools.
+      if (!claimedCodeId) eventCode = await spendEventCode(registrationCode, { entity: 'school', kind: 'register' })
+      if (!claimedCodeId && !eventCode) return res.status(410).json({ error: CODE_REJECTED_MESSAGE })
     }
 
     const schoolId = uid('sch')
@@ -286,6 +290,10 @@ async function registerSchool(req, res, { club }) {
     )
     await markCodeUser(claimedCodeId, userId)
     await startTrial('school', schoolId, await trialDaysOfRegistrationCode(claimedCodeId))
+    if (eventCode) {
+      await recordEventCodeUse(eventCode.id, { entity: 'school', entityId: schoolId, kind: 'register' })
+      await startTrial('school', schoolId, eventCode.trial_days)
+    }
 
     if (invite) {
       await query(`UPDATE school_invites SET status = 'completed' WHERE id = $1`, [invite.id])
@@ -304,6 +312,7 @@ async function registerSchool(req, res, { club }) {
     return res.status(201).json({ token: signToken(user), user, referral })
   } catch (error) {
     await releaseCode(claimedCodeId).catch((e) => console.error('registration code release failed:', e.message))
+    await releaseEventCode(eventCode?.id).catch(() => {})
     console.error('school register failed:', error)
     return res.status(500).json({ error: 'Could not register school.' })
   }
@@ -8069,6 +8078,17 @@ router.post('/upgrade-code', limiter, requireDb, requireAuth('school'), async (r
       return res.status(409).json({ error: 'This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.' })
     }
     claimed = await claimUpgradeCode(req.body?.code, school.id)
+    // Or an event code that includes a club upgrade (#907).
+    if (!claimed) {
+      const ev = await findEventCode(req.body?.code)
+      if (ev && ev.club_upgrade && ev.audience !== 'organization') {
+        if (school.had_trial_at && ev.trial_days) {
+          return res.status(409).json({ error: 'This club has already had a free trial. Ask VolunTrack for an upgrade code without a trial.' })
+        }
+        const used = await spendEventCode(req.body?.code, { entity: 'school', kind: 'upgrade' })
+        if (used) claimed = { id: null, trialDays: used.trial_days, event: used }
+      }
+    }
     if (!claimed) {
       const n = (fails ? fails.n : 0) + 1
       upgradeFails.set(school.id, { n, at: Date.now() })
@@ -8086,12 +8106,14 @@ router.post('/upgrade-code', limiter, requireDb, requireAuth('school'), async (r
     )
     await query(
       `INSERT INTO payment_events (id, entity_type, entity_id, event_type, notes) VALUES ($1, 'school', $2, 'status_paid', $3)`,
-      [uid('pev'), school.id, claimed.trialDays ? `Upgrade code: free trial (${claimed.trialDays} days)` : 'Upgrade code'],
+      [uid('pev'), school.id, `${claimed.event ? `Event code ${claimed.event.code} (${claimed.event.team_member})` : 'Upgrade code'}${claimed.trialDays ? `: free trial (${claimed.trialDays} days)` : ''}`],
     ).catch((e) => console.error('upgrade event failed:', e.message))
+    if (claimed.event) await recordEventCodeUse(claimed.event.id, { entity: 'school', entityId: school.id, kind: 'upgrade' })
     const { rows: after } = await query('SELECT trial_ends_at FROM schools WHERE id = $1', [school.id])
     return res.json({ ok: true, plan: 'school', trialEndsAt: after[0]?.trial_ends_at || null })
   } catch (error) {
     await releaseUpgradeCode(claimed?.id).catch(() => {})
+    await releaseEventCode(claimed?.event?.id).catch(() => {})
     console.error('upgrade code failed:', error)
     return res.status(500).json({ error: 'Could not upgrade your club.' })
   }
