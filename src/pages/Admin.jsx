@@ -24,6 +24,7 @@ import AppErrorsCard from '@/components/AppErrorsCard.jsx'
 import { generateDraft, replyLanguage, topicIn, DRAFT_LANGUAGES } from '@/lib/inboxDraft.js'
 import PasswordInput from '@/components/PasswordInput.jsx'
 import TestAccountsCard from '@/components/TestAccountsCard.jsx'
+import AdminTeamCard from '@/components/AdminTeamCard.jsx'
 
 // Opens Google Translate in a new tab (free, no key). Only on the admin's click.
 const googleTranslateUrl = (text, to) => `https://translate.google.com/?sl=auto&tl=${to}&op=translate&text=${encodeURIComponent(String(text || '').slice(0, 4500))}`
@@ -1117,6 +1118,14 @@ export default function Admin() {
       setLoadingOfficeHours(false)
     }
   }, [])
+
+  // The admin activity log (#909) records tab visits the admin actually made,
+  // not the background loads every tab does on start-up.
+  useEffect(() => {
+    const token = localStorage.getItem('voluntrack:auth_token')
+    if (!token || !tab) return
+    fetch(`${apiUrl}/admin/team/seen/${encodeURIComponent(tab)}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {})
+  }, [tab])
 
   // Loads whichever tab's data is lazy-fetched — runs on mount for a
   // deep link (e.g. /admin/schools) and again on every tab switch.
@@ -2434,6 +2443,7 @@ export default function Admin() {
         </div>
       ) : tab === 'users' ? (
         <div className="space-y-6">
+          <AdminTeamCard />
           <TestAccountsCard />
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-earth-500 dark:text-earth-400">
