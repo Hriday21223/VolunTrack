@@ -3639,5 +3639,12 @@ export default {
   "In the bucket’s CORS settings, allow PUT and GET from this address:": "在存储桶的 CORS 设置中，允许来自此地址的 PUT 和 GET：",
   "Fill in the form above and press Test and turn on.": "填写上面的表单，然后点“测试并开启”。",
   "Guides:": "指南：",
-  "Storage": "存储"
+  "Storage": "存储",
+  "Approved by Microsoft 365.": "已获 Microsoft 365 批准。",
+  "Microsoft approval didn’t finish. Try again, signed in as a Microsoft 365 admin.": "Microsoft 批准未完成。请用 Microsoft 365 管理员账号登录后重试。",
+  "Microsoft SharePoint": "Microsoft SharePoint",
+  "Approve in Microsoft": "在 Microsoft 中批准",
+  "SharePoint site address": "SharePoint 网站地址",
+  "Document library": "文档库",
+  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "你的 Microsoft 365 管理员只需操作一次，授予 VolunTrack 访问这一个网站的权限（PnP PowerShell），或在 SharePoint 管理中心做同样的授权："
 }

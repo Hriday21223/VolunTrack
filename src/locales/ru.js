@@ -3638,5 +3638,12 @@ export default {
   "In the bucket’s CORS settings, allow PUT and GET from this address:": "В настройках CORS бакета разрешите PUT и GET с этого адреса:",
   "Fill in the form above and press Test and turn on.": "Заполните форму выше и нажмите «Проверить и включить».",
   "Guides:": "Инструкции:",
-  "Storage": "Хранилище"
+  "Storage": "Хранилище",
+  "Approved by Microsoft 365.": "Одобрено в Microsoft 365.",
+  "Microsoft approval didn’t finish. Try again, signed in as a Microsoft 365 admin.": "Одобрение Microsoft не завершилось. Попробуйте снова, войдя как администратор Microsoft 365.",
+  "Microsoft SharePoint": "Microsoft SharePoint",
+  "Approve in Microsoft": "Одобрить в Microsoft",
+  "SharePoint site address": "Адрес сайта SharePoint",
+  "Document library": "Библиотека документов",
+  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "Администратор Microsoft 365 один раз даёт VolunTrack доступ только к этому сайту (PnP PowerShell) или выдаёт тот же доступ в центре администрирования SharePoint:"
 }

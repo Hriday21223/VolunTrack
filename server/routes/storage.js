@@ -7,6 +7,9 @@ import { requireAuth } from '../auth.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { uid } from '../ids.js'
 import { checkRoundTrip, checkCors, trimSlashes, presign, withPrefix } from '../storage/s3.js'
+import { mintUpload, mintDownload, roundTrip, isSharepoint } from '../storage/adapter.js'
+import { sharepointConfigured, sharepointClientId, parseSiteUrl, validTenantId } from '../storage/graph.js'
+import jwt from 'jsonwebtoken'
 import { recordAudit, AUDIT } from '../audit.js'
 import { isPublicHost } from '../publicHost.js'
 
@@ -146,6 +149,9 @@ router.put(
   requireAuth('school', 'org'),
   async (req, res) => {
     const provider = String(req.body.provider || 's3').trim().toLowerCase()
+    // SharePoint (#924): no keys of the school's; our Microsoft app, approved
+    // by the school's admin, writes to one site they granted it.
+    if (provider === 'sharepoint') return saveSharepoint(req, res)
     const bucket = String(req.body.bucket || '').trim().toLowerCase()
     const region = String(req.body.region || 'us-east-1').trim()
     // Length-checked before any stripping: the previous order ran a regex
@@ -231,7 +237,7 @@ router.post(
 
       let secretAccessKey
       try {
-        secretAccessKey = decryptSecret(row.secret_encrypted)
+        secretAccessKey = isSharepoint(row) ? null : decryptSecret(row.secret_encrypted)
       } catch {
         return res.status(500).json({
           error: 'The stored secret could not be read. Re-enter the secret access key.',
@@ -247,8 +253,10 @@ router.post(
         secretAccessKey,
       }
 
-      const result = await checkRoundTrip(config)
-      const cors = result.ok ? await checkCors(config, req.headers.origin || null) : { ok: null }
+      const result = isSharepoint(row) ? await roundTrip(row) : await checkRoundTrip(config)
+      // Microsoft's upload URLs allow browser uploads on their own; only a
+      // bucket needs its CORS rule checked.
+      const cors = result.ok && !isSharepoint(row) ? await checkCors(config, req.headers.origin || null) : { ok: null }
 
       // A disabled config stays disabled — a passing test is necessary to go
       // active, not sufficient to override someone turning it off.
@@ -274,6 +282,81 @@ router.post(
     }
   },
 )
+
+// ---------------------------------------------------------------------------
+// SharePoint (#924)
+// ---------------------------------------------------------------------------
+async function saveSharepoint(req, res) {
+  if (!sharepointConfigured()) return res.status(503).json({ error: 'SharePoint isn’t set up on this server yet.' })
+  const tenant = String(req.body.tenantId || '').trim()
+  const site = String(req.body.siteUrl || '').trim()
+  const library = String(req.body.library || 'Documents').trim().slice(0, 100) || 'Documents'
+  const rawPrefix = String(req.body.prefix || '').trim()
+  if (!validTenantId(tenant)) return res.status(400).json({ error: 'Approve VolunTrack for your Microsoft 365 first, so we know your tenant.' })
+  if (!parseSiteUrl(site)) return res.status(400).json({ error: 'Enter your SharePoint site address, like https://yourschool.sharepoint.com/sites/Volunteering.' })
+  if (rawPrefix.length > 200) return res.status(400).json({ error: 'The folder name is too long.' })
+  const prefix = trimSlashes(rawPrefix)
+  try {
+    const owner = await ownerFor(req.auth)
+    if (!owner) return res.status(403).json({ error: 'Not allowed.' })
+    const existing = await loadConfig(owner)
+    const other = owner.column === 'school_id' ? 'organization_id' : 'school_id'
+    const { rows } = await query(
+      `INSERT INTO tenant_storage
+         (id, ${owner.column}, ${other}, provider, bucket, region, endpoint, prefix, access_key_id, secret_encrypted, status)
+       VALUES ($1,$2,NULL,'sharepoint',$3,$4,$5,$6,NULL,NULL,'unverified')
+       ON CONFLICT (${owner.column}) WHERE ${owner.column} IS NOT NULL DO UPDATE SET
+         provider = 'sharepoint', bucket = $3, region = $4, endpoint = $5, prefix = $6,
+         access_key_id = NULL, secret_encrypted = NULL,
+         status = 'unverified', last_test_at = NULL, last_test_ok = NULL, last_test_error = NULL, cors_ok = NULL
+       RETURNING *`,
+      [existing?.id || uid('tsto'), owner.id, library, tenant, site, prefix],
+    )
+    return res.json({ config: publicConfig(rows[0]) })
+  } catch (error) {
+    console.error('save sharepoint config failed:', error)
+    return res.status(500).json({ error: 'Could not save the storage configuration.' })
+  }
+}
+
+// GET /api/storage/providers — which extra providers this server offers.
+router.get('/providers', limiter, requireAuth('school', 'org'), (_req, res) => {
+  return res.json({ sharepoint: sharepointConfigured(), sharepointAppId: sharepointConfigured() ? sharepointClientId() : null })
+})
+
+const consentState = (owner) => jwt.sign({ purpose: 'ms_storage_consent', owner }, process.env.JWT_SECRET, { expiresIn: '30m' })
+const apiBase = () => (process.env.PUBLIC_API_URL || '').replace(/\/$/, '')
+const siteBase = () => (process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app').split(',')[0].trim().replace(/\/$/, '')
+
+// GET /api/storage/microsoft/consent-url — the Microsoft admin-consent page,
+// where the school's Microsoft 365 admin approves VolunTrack once.
+router.get('/microsoft/consent-url', limiter, requireDb, requireAuth('school', 'org'), async (req, res) => {
+  if (!sharepointConfigured() || !apiBase()) return res.status(503).json({ error: 'SharePoint isn’t set up on this server yet.' })
+  const owner = await ownerFor(req.auth)
+  if (!owner) return res.status(403).json({ error: 'Not allowed.' })
+  const url = new URL('https://login.microsoftonline.com/organizations/v2.0/adminconsent')
+  url.searchParams.set('client_id', sharepointClientId())
+  url.searchParams.set('scope', 'https://graph.microsoft.com/.default')
+  url.searchParams.set('redirect_uri', `${apiBase()}/api/storage/microsoft/callback`)
+  url.searchParams.set('state', consentState({ column: owner.column, id: owner.id }))
+  return res.json({ url: url.toString() })
+})
+
+// Microsoft sends the admin back here with ?tenant=&admin_consent=True&state=.
+// Nothing is saved: the dashboard gets the tenant id to finish the form.
+router.get('/microsoft/callback', limiter, (req, res) => {
+  let page = '/school/dashboard/setup/storage'
+  const back = (q) => res.redirect(302, `${siteBase()}${page}?${new URLSearchParams(q)}`)
+  try {
+    const st = jwt.verify(String(req.query.state || ''), process.env.JWT_SECRET)
+    if (st?.purpose !== 'ms_storage_consent') throw new Error('bad state')
+    if (st.owner?.column === 'organization_id') page = '/organization/dashboard/requirements'
+  } catch { return back({ msError: 'expired' }) }
+  if (String(req.query.admin_consent || '').toLowerCase() !== 'true' || !validTenantId(req.query.tenant)) {
+    return back({ msError: String(req.query.error || 'declined').slice(0, 40) })
+  }
+  return back({ msTenant: String(req.query.tenant) })
+})
 
 // DELETE /api/storage/config — stop using the bucket. Objects already in it
 // belong to the tenant and are deliberately left untouched.
@@ -356,7 +439,7 @@ function usableConfig(row) {
     endpoint: row.endpoint,
     prefix: row.prefix,
     accessKeyId: row.access_key_id,
-    secretAccessKey: decryptSecret(row.secret_encrypted),
+    secretAccessKey: isSharepoint(row) ? null : decryptSecret(row.secret_encrypted),
   }
 }
 
@@ -398,14 +481,9 @@ router.post('/upload-url', mintLimiter, requireDb, requireKey, requireAuth(), as
     // content-length is signed, so the upload is pinned to exactly the size
     // declared here — a client that sends more fails the signature at S3
     // rather than filling the school's bucket.
-    const url = presign(config, {
-      method: 'PUT',
-      key,
-      expiresIn: 300,
-      headers: { 'content-length': String(bytes) },
-    })
+    const minted = await mintUpload(row, { key, bytes })
 
-    return res.json({ available: true, url, key, storageId: row.id, expiresIn: 300 })
+    return res.json({ available: true, url: minted.url, kind: minted.kind, key, storageId: row.id, expiresIn: 300 })
   } catch (error) {
     console.error('mint upload url failed:', error)
     return res.status(500).json({ error: 'Could not prepare the upload.' })
@@ -452,7 +530,7 @@ router.get('/download-url/:logId', mintLimiter, requireDb, requireKey, requireAu
     if (!configs[0]) return res.status(410).json({ error: 'The storage this file was written to is no longer configured.' })
 
     const expiresIn = 300
-    const url = presign(usableConfig(configs[0]), { method: 'GET', key: log.proof_key, expiresIn })
+    const url = await mintDownload(configs[0], log.proof_key, expiresIn)
 
     // Record the key and expiry — never the URL, which is itself a live grant.
     recordAudit(req, {
