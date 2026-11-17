@@ -490,7 +490,7 @@ async function canReadProof(auth, log) {
     // Only for an entry logged after the parent linked — the same cut-off as
     // reading the logs themselves (logReadScope in server/routes/logs.js).
     const { rows } = await query(
-      'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2 AND created_at <= $3',
+      'SELECT 1 FROM parent_child_links WHERE parent_id = $1 AND child_id = $2 AND COALESCE(visible_from, created_at) <= $3',
       [auth.sub, log.user_id, log.created_at],
     )
     return rows.length > 0

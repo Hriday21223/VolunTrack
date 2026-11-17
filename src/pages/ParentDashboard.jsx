@@ -276,7 +276,8 @@ function ChildCard({ child }) {
 
   // A parent sees only hours logged from the day they linked (#298), so every
   // number here is "since you linked" — say so, or a new link reads as 0 (#901).
-  const linkedOn = child.linkedAt ? fmtDate(format(new Date(child.linkedAt), 'yyyy-MM-dd')) : null
+  // Unless the child shared their earlier hours too (#905).
+  const linkedOn = child.linkedAt && !child.historyShared ? fmtDate(format(new Date(child.linkedAt), 'yyyy-MM-dd')) : null
   const firstName = String(child.name || '').split(/\s+/)[0] || child.name
 
   const visible = showAll ? filtered : filtered.slice(0, ROWS_BEFORE_FOLD)

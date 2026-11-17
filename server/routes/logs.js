@@ -432,13 +432,14 @@ router.delete('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
 // (server/routes/storage.js) and the weekly digest (server/digest.js) —
 // applies the same cut-off. Returns null when the caller may not read them.
 async function logReadScope(req, userId) {
-  if (req.auth.sub === userId) return { since: null }
+  if (req.auth.sub === userId) return { since: null, self: true }
   if (req.auth.role !== 'parent') return null
+  // From the link date, or earlier if the student chose to share (#905).
   const { rows } = await query(
-    'SELECT created_at FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
+    'SELECT COALESCE(visible_from, created_at) AS since FROM parent_child_links WHERE parent_id = $1 AND child_id = $2',
     [req.auth.sub, userId],
   )
-  return rows[0] ? { since: rows[0].created_at } : null
+  return rows[0] ? { since: rows[0].since, self: false } : null
 }
 
 // Read a user's logs — the caller themself, or a parent linked to them.
@@ -459,9 +460,9 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
                review_note,
                EXISTS (SELECT 1 FROM users v WHERE v.id = logs.verified_by AND v.role IN ('school', 'school_staff')) AS reviewed_by_school,
                -- Reflections are private to the student, never shown to a linked parent.
-               CASE WHEN $2::timestamptz IS NULL THEN reflection END AS reflection,
+               CASE WHEN $4::boolean THEN reflection END AS reflection,
                -- Skills (#605) are private to the student too.
-               CASE WHEN $2::timestamptz IS NULL THEN skills END AS skills,
+               CASE WHEN $4::boolean THEN skills END AS skills,
                (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
                student_signed, form_submitted, supervisor_signed_in_person,
                (organizer_signature IS NOT NULL) AS organizer_signed,
@@ -471,7 +472,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
                parent_confirmed_name, parent_confirmed_at
        FROM logs WHERE user_id = $1 AND ($2::timestamptz IS NULL OR created_at >= $2)
        ORDER BY logs.date DESC, created_at DESC`,
-      [userId, scope.since, req.auth.sub],
+      [userId, scope.since, req.auth.sub, scope.self],
     )
     return res.json({
       logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, cheered_by_me, review_note, reviewed_by_school, parent_confirmed_name, parent_confirmed_at, ...log }) => ({
