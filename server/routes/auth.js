@@ -145,6 +145,10 @@ export function publicUser(row) {
     schoolPaymentStatus: row.school_payment_status ?? null,
     // 'club' (free, never payment-locked) or 'school' (#506).
     schoolPlan: row.school_plan ?? null,
+    // The school's own logo and colour, shown in the app's side menu (#930).
+    schoolName: row.school_name ?? null,
+    schoolLogoUrl: row.school_logo_url ?? null,
+    schoolBrandColor: row.school_brand_color ?? null,
     grade: row.grade,
     studentIdNumber: row.student_id_number,
     // Self-declared at sign-up (parent-approved). The app keeps public-facing
@@ -178,7 +182,8 @@ export function publicUser(row) {
 }
 
 export const USER_WITH_SCHOOL_SELECT = `
-  SELECT u.*, s.payment_status AS school_payment_status, s.plan AS school_plan
+  SELECT u.*, s.payment_status AS school_payment_status, s.plan AS school_plan,
+         s.name AS school_name, s.brand_logo_url AS school_logo_url, s.brand_color AS school_brand_color
   FROM users u LEFT JOIN schools s ON s.id = u.school_id
 `
 

@@ -3652,5 +3652,7 @@ export default {
   "Folder in the library (optional)": "文档库中的文件夹（可选）",
   "Pick a colour": "选择颜色",
   "Quick colours": "快捷颜色",
-  "Pick a colour, choose one above, or type a hex value.": "选择颜色、点上面的色块，或输入十六进制值。"
+  "Pick a colour, choose one above, or type a hex value.": "选择颜色、点上面的色块，或输入十六进制值。",
+  "Your school’s own page": "你们学校的专属页面",
+  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "你的标志和颜色会立即显示在这里，无需自定义域名。可分享到学校网站、传单和 Google Classroom。"
 }

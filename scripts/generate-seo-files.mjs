@@ -44,6 +44,7 @@ const DISALLOWED_PATHS = [
   '/invite/',
   '/handover',
   '/admin-invite',
+  '/s/',
   '/sign-certificate/',
   // Authenticated app pages, behind a login/admin guard.
   '/parent',

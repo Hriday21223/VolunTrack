@@ -96,6 +96,21 @@ STORAGE_NOTE.school_staff = STORAGE_NOTE.school
 const ACCOUNT_STORAGE_NOTE = tr('Your hours are saved to your account and synced across your devices. A copy stays on this device so the app works offline.')
 const DEVICE_STORAGE_NOTE = tr('This account and its hours are stored only on this device.')
 
+// The school's own logo and colour (#930), from School setup → Branding, so
+// the app feels like theirs. Only logos the server accepted (http(s) or a
+// small data image) and plain hex colours are drawn.
+function SchoolBadge({ user }) {
+  if (!user?.schoolName || !(user.schoolLogoUrl || user.schoolBrandColor)) return null
+  const logo = /^(https?:\/\/|data:image\/(png|jpeg|webp);base64,)/i.test(user.schoolLogoUrl || '') ? user.schoolLogoUrl : null
+  const color = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(user.schoolBrandColor || '') ? user.schoolBrandColor : null
+  return (
+    <div className="mt-4 flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2" style={color ? { borderLeft: `4px solid ${color}` } : undefined}>
+      {logo && <img src={logo} alt="" className="h-7 w-7 rounded object-contain bg-white" />}
+      <span className="text-sm font-medium truncate">{user.schoolName}</span>
+    </div>
+  )
+}
+
 export default function Sidebar() {
   const { user } = useAuth()
   const unseen = useWhatsNewDot()
@@ -112,6 +127,7 @@ export default function Sidebar() {
             <div className="text-xs text-earth-400 mt-0.5">{tr('Volunteer hour tracker')}</div>
           </div>
         </div>
+        <SchoolBadge user={user} />
       </div>
 
       <nav className="px-4 py-3 flex-1 space-y-1">

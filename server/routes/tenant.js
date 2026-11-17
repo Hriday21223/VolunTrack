@@ -62,6 +62,37 @@ export function normalizeHostname(value) {
   return noTrailingDot
 }
 
+// GET /api/tenant/by-code/:code — a school's own page on the shared site
+// (#930), /s/<school code>, with the same shape as /by-host. School codes are
+// already public (students type them; /join/<code> shows the name), so this
+// reveals nothing new.
+router.get('/by-code/:code', tenantLimiter, requireDb, async (req, res) => {
+  const code = String(req.params.code || '').trim().toLowerCase()
+  if (!/^[a-z]+-?\d{3,5}$/.test(code)) return res.json({ tenant: null })
+  try {
+    const { rows } = await query('SELECT id, name, pin, brand_logo_url, brand_color FROM schools WHERE pin = $1 LIMIT 1', [code])
+    const s = rows[0]
+    if (!s) return res.json({ tenant: null })
+    const { rows: ssoRows } = await query(
+      `SELECT DISTINCT c.id, c.display_name
+         FROM sso_connections c
+         JOIN sso_email_domains d ON d.connection_id = c.id AND d.verified_at IS NOT NULL
+        WHERE c.enabled = true AND c.school_id = $1`,
+      [s.id],
+    )
+    return res.json({
+      tenant: {
+        kind: 'path', scope: 'school', schoolId: s.id, organizationId: null, name: s.name, schoolCode: s.pin,
+        branding: { logoUrl: s.brand_logo_url || null, color: s.brand_color || null },
+        sso: ssoRows.map((c) => ({ connectionId: c.id, displayName: c.display_name })),
+      },
+    })
+  } catch (error) {
+    console.error('tenant by code failed:', error)
+    return res.status(500).json({ error: 'Could not look up the school.' })
+  }
+})
+
 // GET /api/tenant/by-host?host=lincoln.voluntrack.app
 // Returns { tenant: null } for an unknown host — the app then behaves exactly
 // as it does today. A miss and a disabled/unprovisioned domain are
@@ -477,7 +508,7 @@ router.get('/branding', tenantAdminLimiter, requireDb, requireAuth('school', 'sc
 
     // Table name comes from brandingTarget's fixed pair, never from input.
     const { rows } = await query(
-      `SELECT name, brand_logo_url, brand_color FROM ${target.table} WHERE id = $1`,
+      `SELECT name, brand_logo_url, brand_color${target.scope === 'school' ? ', pin' : ''} FROM ${target.table} WHERE id = $1`,
       [target.id],
     )
     if (!rows[0]) return res.status(404).json({ error: 'Account not found.' })
@@ -499,6 +530,8 @@ router.get('/branding', tenantAdminLimiter, requireDb, requireAuth('school', 'sc
         color: rows[0].brand_color || null,
       },
       activeHostnames: hostRows.map((r) => r.hostname),
+      // The school's own page on the shared site (#930): /s/<school code>.
+      schoolCode: target.scope === 'school' ? rows[0].pin || null : null,
     })
   } catch (error) {
     console.error('get tenant branding failed:', error)

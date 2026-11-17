@@ -3652,5 +3652,7 @@ export default {
   "Folder in the library (optional)": "Carpeta en la biblioteca (opcional)",
   "Pick a colour": "Elegir un color",
   "Quick colours": "Colores rápidos",
-  "Pick a colour, choose one above, or type a hex value.": "Elige un color, toca uno de arriba o escribe un valor hex."
+  "Pick a colour, choose one above, or type a hex value.": "Elige un color, toca uno de arriba o escribe un valor hex.",
+  "Your school’s own page": "La página propia de tu escuela",
+  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "Tu logo y tu color aparecen aquí al instante, sin dominio propio. Compártela en tu web, folletos y Google Classroom."
 }

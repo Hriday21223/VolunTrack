@@ -41,9 +41,21 @@ function writeCache(host, tenant) {
  *   sso: Array<{ connectionId: string, displayName: string }>,
  * }>}
  */
+// A school's own page on the shared site (#930): /s/<school code> remembers
+// the code for this tab, so the sign-in page shows that school's branding.
+const CODE_KEY = 'voluntrack:tenant-code'
+export function setTenantCode(code) {
+  try { sessionStorage.setItem(CODE_KEY, String(code || '').toLowerCase()) } catch { /* optional */ }
+  clearTenantCache()
+}
+function tenantCode() {
+  try { return sessionStorage.getItem(CODE_KEY) || '' } catch { return '' }
+}
+
 export function resolveTenant() {
   if (typeof window === 'undefined') return Promise.resolve(null)
-  const host = window.location.host
+  const code = tenantCode()
+  const host = code ? `${window.location.host}#${code}` : window.location.host
 
   const cached = readCache(host)
   if (cached !== undefined) return Promise.resolve(cached)
@@ -51,8 +63,10 @@ export function resolveTenant() {
   // Several components may ask at once on first paint; only one request goes out.
   if (inflight) return inflight
 
-  inflight = fetch(`${apiUrl}/tenant/by-host?host=${encodeURIComponent(host)}`)
+  inflight = fetch(`${apiUrl}/tenant/by-host?host=${encodeURIComponent(window.location.host)}`)
     .then((res) => (res.ok ? res.json() : { tenant: null }))
+    // No school on this hostname: a school page's code, if one was opened.
+    .then((data) => (data?.tenant || !code ? data : fetch(`${apiUrl}/tenant/by-code/${encodeURIComponent(code)}`).then((r) => (r.ok ? r.json() : { tenant: null }))))
     .then((data) => {
       const tenant = data?.tenant ?? null
       writeCache(host, tenant)
