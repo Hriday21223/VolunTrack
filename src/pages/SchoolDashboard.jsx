@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useParams, useLocation } from 'react-router-dom'
 import { schoolTabsFromPath, schoolPathFor } from '@/lib/dashboardTabs.js'
-import { ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog, History } from 'lucide-react'
+import { HardDrive, ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog, History } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -20,6 +20,7 @@ import { gradeLabel, gradeKey, SCHOOL_GRADES } from '@policy'
 import { useMyRequirements } from '@/lib/requirements.js'
 import TenantDomainSettings from '@/components/TenantDomainSettings.jsx'
 import TenantBrandingSettings from '@/components/TenantBrandingSettings.jsx'
+import OwnStorageCard from '@/components/OwnStorageCard.jsx'
 import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import ClubsPanel from '@/components/ClubsPanel.jsx'
 import { askParentComing } from '@/lib/parentComing.js'
@@ -695,6 +696,9 @@ export default function SchoolDashboard() {
             <button onClick={() => setSetupTab('domain')} className={`btn-sm ${setupTab === 'domain' ? 'btn-primary' : 'btn-ghost'}`}>
               <Globe className="w-3.5 h-3.5 mr-1" />{' '}{tr('Domain')}
             </button>
+            <button onClick={() => setSetupTab('storage')} className={`btn-sm ${setupTab === 'storage' ? 'btn-primary' : 'btn-ghost'}`}>
+              <HardDrive className="w-3.5 h-3.5 mr-1" />{' '}{tr('Storage')}
+            </button>
             <button onClick={() => setSetupTab('branding')} className={`btn-sm ${setupTab === 'branding' ? 'btn-primary' : 'btn-ghost'}`}>
               <Palette className="w-3.5 h-3.5 mr-1" />{' '}{tr('Branding')}
             </button>
@@ -1082,6 +1086,8 @@ export default function SchoolDashboard() {
             <SsoSettings />
           </Card>
         )}
+
+        {tab === 'setup' && setupTab === 'storage' && user?.role === 'school' && <OwnStorageCard />}
 
         {tab === 'setup' && setupTab === 'domain' && user?.role === 'school' && (
           <Card>
