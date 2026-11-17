@@ -2420,6 +2420,9 @@ export async function initSchema() {
       )
     `)
     await query('CREATE INDEX IF NOT EXISTS idx_admin_activity_time ON admin_activity(created_at DESC)')
+    // Which parts of the admin panel an admin may use (#911); NULL = all.
+    await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_permissions TEXT[]')
+    await query('ALTER TABLE admin_invites ADD COLUMN IF NOT EXISTS permissions TEXT[]')
   } catch (error) { console.error('admin team tables failed:', error.message) }
   // Trial reminders (#894): the last one sent (7 or 1 days before), and
   // whether the school was a free club before its trial, so it can go back.

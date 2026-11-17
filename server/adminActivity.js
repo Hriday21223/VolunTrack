@@ -34,6 +34,7 @@ const LABELS = [
   ['GET', /^\/api\/registration-codes\//, 'Opened Invites & codes'],
   ['POST', /^\/api\/admin\/test-accounts\/sign-in/, 'Signed in as a test account'],
   [null, /^\/api\/admin\/test-accounts/, 'Opened test accounts'],
+  [null, /^\/api\/admin\/team\/[^/]+\/permissions/, 'Changed an admin’s access'],
   [null, /^\/api\/admin\/team/, 'Admin team'],
   ['GET', /^\/api\/stats\/admin/, 'Opened Users'],
   [null, /^\/api\/reports\//, 'Worked on reported tasks'],

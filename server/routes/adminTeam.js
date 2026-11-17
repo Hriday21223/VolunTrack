@@ -10,6 +10,7 @@ import { recordAudit, AUDIT } from '../audit.js'
 import { sendEmail } from '../email.js'
 import { escapeHtml } from '../html.js'
 import { activityLabel } from '../adminActivity.js'
+import { AREAS, AREA_IDS, TAB_AREA, cleanPermissions, adminAccess, forgetAdminAccess } from '../adminPermissions.js'
 
 // Admin team (#909). The main admin is the account at ADMIN_EMAIL (seeded on
 // boot). Only it can invite more admins, remove them and read the activity
@@ -58,7 +59,7 @@ router.get('/', limiter, requireDb, requireAuth('admin'), async (req, res) => {
     const isMain = String(me[0]?.email || '').toLowerCase() === mainEmail() && Boolean(mainEmail())
     if (!isMain) return res.json({ isMain: false })
     const { rows: admins } = await query(
-      `SELECT id, name, email, totp_enabled, created_at FROM users WHERE role = 'admin' ORDER BY created_at`,
+      `SELECT id, name, email, totp_enabled, created_at, admin_permissions FROM users WHERE role = 'admin' ORDER BY created_at`,
     )
     const { rows: invites } = await query(
       `SELECT id, name, email, expires_at, created_at FROM admin_invites
@@ -66,7 +67,11 @@ router.get('/', limiter, requireDb, requireAuth('admin'), async (req, res) => {
     )
     return res.json({
       isMain: true,
-      admins: admins.map((a) => ({ id: a.id, name: a.name, email: a.email, twoStep: a.totp_enabled, main: String(a.email).toLowerCase() === mainEmail(), since: a.created_at })),
+      admins: admins.map((a) => {
+        const main = String(a.email).toLowerCase() === mainEmail()
+        return { id: a.id, name: a.name, email: a.email, twoStep: a.totp_enabled, main, since: a.created_at, permissions: main || a.admin_permissions == null ? AREA_IDS : cleanPermissions(a.admin_permissions) }
+      }),
+      areas: AREAS,
       invites: invites.map((i) => ({ id: i.id, name: i.name, email: i.email, expiresAt: i.expires_at })),
     })
   } catch (error) {
@@ -78,6 +83,9 @@ router.get('/', limiter, requireDb, requireAuth('admin'), async (req, res) => {
 // POST /api/admin/team/invite { name, email }
 router.post('/invite', limiter, requireDb, requireAuth('admin'), requireMainAdmin, async (req, res) => {
   const name = String(req.body?.name || '').trim().slice(0, 100)
+  // What they may use (#911); at least one area.
+  const permissions = cleanPermissions(req.body?.permissions)
+  if (!permissions || permissions.length === 0) return res.status(400).json({ error: 'Tick at least one part of the admin panel they can use.' })
   const email = String(req.body?.email || '').trim().toLowerCase()
   if (!name) return res.status(400).json({ error: 'Add their name.' })
   if (!validator.isEmail(email) || email.length > 254) return res.status(400).json({ error: 'Add a valid email.' })
@@ -91,9 +99,9 @@ router.post('/invite', limiter, requireDb, requireAuth('admin'), requireMainAdmi
     const token = generateToken()
     const id = uid('ainv')
     await query(
-      `INSERT INTO admin_invites (id, email, name, token_hash, invited_by, expires_at)
-       VALUES ($1, $2, $3, $4, $5, now() + make_interval(days => $6))`,
-      [id, email, name, hashToken(token), req.auth.sub, INVITE_DAYS],
+      `INSERT INTO admin_invites (id, email, name, token_hash, invited_by, expires_at, permissions)
+       VALUES ($1, $2, $3, $4, $5, now() + make_interval(days => $6), $7)`,
+      [id, email, name, hashToken(token), req.auth.sub, INVITE_DAYS, permissions],
     )
     const link = `${siteUrl()}/admin-invite?token=${token}`
     let emailSent = false
@@ -137,11 +145,43 @@ router.delete('/:userId', limiter, requireDb, requireAuth('admin'), requireMainA
     if (String(target.email).toLowerCase() === mainEmail()) return res.status(400).json({ error: 'The main admin can’t be removed here.' })
     await query(`UPDATE users SET role = 'volunteer', test_login_pin_hash = NULL WHERE id = $1`, [target.id])
     await endSessions(target.id)
+    forgetAdminAccess(target.id)
     recordAudit(req, { action: AUDIT.ADMIN_REMOVED, subjectUserId: target.id })
     return res.json({ ok: true })
   } catch (error) {
     console.error('admin remove failed:', error)
     return res.status(500).json({ error: 'Could not remove the admin.' })
+  }
+})
+
+// GET /api/admin/team/me — what the signed-in admin may use, so the panel shows
+// only those tabs. The server still checks every request (adminPermissionGuard).
+router.get('/me', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { isMain, permissions } = await adminAccess(req.auth.sub)
+    return res.json({ isMain, permissions, tabs: Object.keys(TAB_AREA).filter((t) => permissions.includes(TAB_AREA[t])) })
+  } catch (error) {
+    console.error('admin me failed:', error)
+    return res.status(500).json({ error: 'Could not load your access.' })
+  }
+})
+
+// PUT /api/admin/team/:userId/permissions { permissions: [...] } — main admin only.
+router.put('/:userId/permissions', limiter, requireDb, requireAuth('admin'), requireMainAdmin, async (req, res) => {
+  const permissions = cleanPermissions(req.body?.permissions)
+  if (!permissions) return res.status(400).json({ error: 'Send a list of areas.' })
+  try {
+    const { rows } = await query(`SELECT id, email FROM users WHERE id = $1 AND role = 'admin'`, [req.params.userId])
+    const target = rows[0]
+    if (!target) return res.status(404).json({ error: 'That admin was not found.' })
+    if (String(target.email).toLowerCase() === mainEmail()) return res.status(400).json({ error: 'The main admin can always use everything.' })
+    await query('UPDATE users SET admin_permissions = $2 WHERE id = $1', [target.id, permissions])
+    forgetAdminAccess(target.id)
+    recordAudit(req, { action: AUDIT.ADMIN_PERMISSIONS_CHANGED, subjectUserId: target.id, meta: { permissions } })
+    return res.json({ ok: true, permissions })
+  } catch (error) {
+    console.error('admin permissions failed:', error)
+    return res.status(500).json({ error: 'Could not save the access.' })
   }
 })
 
@@ -204,7 +244,7 @@ router.post('/invite/:token', inviteLimiter, requireDb, async (req, res) => {
     const { rows } = await query(
       `UPDATE admin_invites SET accepted_at = now()
         WHERE token_hash = $1 AND accepted_at IS NULL AND expires_at > now()
-        RETURNING id, name, email`,
+        RETURNING id, name, email, permissions`,
       [hashToken(String(req.params.token))],
     )
     const invite = rows[0]
@@ -214,9 +254,10 @@ router.post('/invite/:token', inviteLimiter, requireDb, async (req, res) => {
     const id = uid('usr')
     // mfa_required_at = now(): the first sign-in goes straight to two-step setup.
     await query(
-      `INSERT INTO users (id, role, name, email, password_hash, mfa_required_at)
-       VALUES ($1, 'admin', $2, $3, $4, now())`,
-      [id, invite.name, invite.email, await hashPassword(password)],
+      `INSERT INTO users (id, role, name, email, password_hash, mfa_required_at, admin_permissions)
+       VALUES ($1, 'admin', $2, $3, $4, now(), $5)`,
+      // An invite from before permissions existed gets none, never all.
+      [id, invite.name, invite.email, await hashPassword(password), cleanPermissions(invite.permissions) || []],
     )
     recordAudit({ auth: { sub: id, role: 'admin' }, headers: req.headers, ip: req.ip }, { action: AUDIT.ADMIN_ADDED, subjectUserId: id })
     return res.json({ ok: true, email: invite.email })
