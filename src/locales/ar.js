@@ -3594,5 +3594,6 @@ export default {
   "since you linked on {date}": "منذ ربطك في {date}",
   "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "تبقى الساعات المسجّلة قبل {date} خاصة بـ {name}. ترى ما يُسجَّل منذ يوم الربط.",
   "No hours logged since you linked on {date}.": "لم تُسجَّل أي ساعات منذ ربطك في {date}.",
-  "None yet": "لا شيء بعد"
+  "None yet": "لا شيء بعد",
+  "Also show hours I logged before they linked": "أظهر أيضًا الساعات التي سجّلتها قبل أن يرتبطوا"
 }

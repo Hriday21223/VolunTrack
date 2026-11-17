@@ -3594,5 +3594,6 @@ export default {
   "since you linked on {date}": "с момента привязки {date}",
   "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "Часы до {date} остаются личными для {name}. Вы видите то, что записано со дня привязки.",
   "No hours logged since you linked on {date}.": "С момента привязки {date} часов не записано.",
-  "None yet": "Пока нет"
+  "None yet": "Пока нет",
+  "Also show hours I logged before they linked": "Показывать и часы, записанные до привязки"
 }

@@ -64,7 +64,7 @@ router.post('/cheer/:logId', cheerLimiter, requireDb, requireAuth('parent'), asy
     const { rows } = await query(
       `SELECT l.id, l.user_id, l.activity, p.name AS parent_name
          FROM logs l
-         JOIN parent_child_links k ON k.child_id = l.user_id AND k.parent_id = $2 AND l.created_at >= k.created_at
+         JOIN parent_child_links k ON k.child_id = l.user_id AND k.parent_id = $2 AND l.created_at >= COALESCE(k.visible_from, k.created_at)
          JOIN users p ON p.id = $2
         WHERE l.id = $1`,
       [req.params.logId, req.auth.sub],
@@ -102,7 +102,7 @@ router.post('/confirm/:logId', cheerLimiter, requireDb, requireAuth('parent'), a
     const { rows } = await query(
       `SELECT l.id, l.user_id, l.activity, l.verification_status, l.parent_confirmed_at, c.grade
          FROM logs l
-         JOIN parent_child_links k ON k.child_id = l.user_id AND k.parent_id = $2 AND l.created_at >= k.created_at
+         JOIN parent_child_links k ON k.child_id = l.user_id AND k.parent_id = $2 AND l.created_at >= COALESCE(k.visible_from, k.created_at)
          JOIN users c ON c.id = l.user_id
         WHERE l.id = $1`,
       [req.params.logId, req.auth.sub],
@@ -187,16 +187,36 @@ router.post('/link', limiter, requireDb, requireAuth('parent'), async (req, res)
 router.get('/my-parents', limiter, requireDb, requireAuth('student'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT u.id, u.name, u.email, l.created_at AS linked_at
+      `SELECT u.id, u.name, u.email, l.created_at AS linked_at, (l.visible_from IS NOT NULL) AS history_shared
          FROM parent_child_links l JOIN users u ON u.id = l.parent_id
         WHERE l.child_id = $1
         ORDER BY l.created_at`,
       [req.auth.sub],
     )
-    return res.json({ parents: rows.map((r) => ({ id: r.id, name: r.name, email: r.email, linkedAt: r.linked_at })) })
+    return res.json({ parents: rows.map((r) => ({ id: r.id, name: r.name, email: r.email, linkedAt: r.linked_at, historyShared: Boolean(r.history_shared) })) })
   } catch (error) {
     console.error('my-parents fetch failed:', error)
     return res.status(500).json({ error: 'Could not load linked parents.' })
+  }
+})
+
+// Share earlier hours (#905): PUT { share: true|false }. By default a parent
+// sees only what is logged after linking (#298); the student can open their
+// whole record to one linked parent, and close it again. Only the student
+// decides, never the parent.
+const SHARE_ALL_FROM = '1970-01-01T00:00:00Z'
+router.put('/my-parents/:parentId/share-history', limiter, requireDb, requireAuth('student'), async (req, res) => {
+  if (typeof req.body?.share !== 'boolean') return res.status(400).json({ error: 'Choose whether to share earlier hours.' })
+  try {
+    const { rowCount } = await query(
+      'UPDATE parent_child_links SET visible_from = $3 WHERE parent_id = $1 AND child_id = $2',
+      [req.params.parentId, req.auth.sub, req.body.share ? SHARE_ALL_FROM : null],
+    )
+    if (rowCount === 0) return res.status(404).json({ error: 'That parent is not linked to you.' })
+    return res.json({ ok: true, historyShared: req.body.share })
+  } catch (error) {
+    console.error('share history failed:', error)
+    return res.status(500).json({ error: 'Could not save that.' })
   }
 })
 
@@ -258,7 +278,7 @@ router.delete('/my-parents/:parentId', limiter, requireDb, requireAuth('student'
 router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT u.id, u.name, u.email, u.grade, g.hours AS weekly_goal, pcl.created_at AS linked_at
+      `SELECT u.id, u.name, u.email, u.grade, g.hours AS weekly_goal, pcl.created_at AS linked_at, (pcl.visible_from IS NOT NULL) AS history_shared
        FROM parent_child_links pcl
        JOIN users u ON u.id = pcl.child_id
        LEFT JOIN family_weekly_goals g ON g.parent_id = pcl.parent_id AND g.child_id = u.id
@@ -272,10 +292,10 @@ router.get('/children', limiter, requireDb, requireAuth('parent'), async (req, r
     // deadline, not just a list of entries. Resolved per child because two
     // children can be at different schools — and per grade, since a school may
     // ask more of a senior than a freshman.
-    const children = await Promise.all(rows.map(async ({ weekly_goal: weeklyGoal, linked_at: linkedAt, ...row }) => {
+    const children = await Promise.all(rows.map(async ({ weekly_goal: weeklyGoal, linked_at: linkedAt, history_shared: historyShared, ...row }) => {
       // A parent sees only what was logged from this moment on (#298); the
       // dashboard says so, or a new link reads as "0 hours" (#901).
-      const child = { ...row, weeklyGoal: weeklyGoal == null ? null : Number(weeklyGoal), linkedAt: linkedAt || null }
+      const child = { ...row, weeklyGoal: weeklyGoal == null ? null : Number(weeklyGoal), linkedAt: linkedAt || null, historyShared: Boolean(historyShared) }
       try {
         const resolved = await policyForUser(child.id)
         if (!resolved) return { ...child, requirement: null }

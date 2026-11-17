@@ -647,6 +647,19 @@ export default function Settings() {
     }
   }
 
+  // Share hours from before a parent linked (#905). Only the student decides.
+  const setShareHistory = async (parentId, share) => {
+    setLinkedParents((list) => list.map((p) => (p.id === parentId ? { ...p, historyShared: share } : p)))
+    try {
+      const res = await fetch(`${familyApiUrl}/parent/my-parents/${encodeURIComponent(parentId)}/share-history`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ share }) })
+      if (!res.ok) throw new Error()
+    } catch {
+      setLinkedParents((list) => list.map((p) => (p.id === parentId ? { ...p, historyShared: !share } : p)))
+      setToastMessage(tr('Something went wrong. Try again.'))
+      setToast(true)
+    }
+  }
+
   const loadLinkedChildren = async () => {
     try {
       const res = await fetch(`${familyApiUrl}/parent/children`, { headers: authHeaders() })
@@ -1619,6 +1632,10 @@ export default function Settings() {
                           <div className="min-w-0">
                             <div className="text-sm font-medium truncate">{p.name}</div>
                             <div className="text-xs text-earth-400 truncate">{p.email}</div>
+                            <label className="mt-1.5 flex items-center gap-2 text-xs text-earth-300 cursor-pointer">
+                              <input type="checkbox" className="w-3.5 h-3.5" checked={Boolean(p.historyShared)} onChange={(e) => setShareHistory(p.id, e.target.checked)} />
+                              {tr('Also show hours I logged before they linked')}
+                            </label>
                           </div>
                           {leavingParent?.id !== p.id && (
                             <button onClick={() => setLeavingParent({ id: p.id, pin: '', error: '', busy: false })} className="btn-ghost text-sm shrink-0">{tr('Remove')}</button>

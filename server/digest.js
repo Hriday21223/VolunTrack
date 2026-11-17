@@ -113,7 +113,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
          FROM logs l
          JOIN parent_child_links pcl ON pcl.child_id = l.user_id
          WHERE pcl.parent_id = $1 AND l.date >= $2::date AND l.date < $3::date
-           AND l.created_at >= pcl.created_at
+           AND l.created_at >= COALESCE(pcl.visible_from, pcl.created_at)
          LIMIT 1`,
         [parent.id, weekStart, weekEnd],
       )
@@ -128,7 +128,7 @@ export async function buildParentDigests({ weekStart, weekEnd, parentId = null, 
     }
 
     const { rows: children } = await query(
-      `SELECT u.id, u.name, pcl.created_at AS linked_at
+      `SELECT u.id, u.name, COALESCE(pcl.visible_from, pcl.created_at) AS linked_at
        FROM parent_child_links pcl
        JOIN users u ON u.id = pcl.child_id
        WHERE pcl.parent_id = $1

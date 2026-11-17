@@ -3594,5 +3594,6 @@ export default {
   "since you linked on {date}": "{date} にリンクしてから",
   "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "{date} より前の時間は {name} さんの非公開のままです。リンクした日から記録された分が表示されます。",
   "No hours logged since you linked on {date}.": "{date} にリンクしてから記録された時間はありません。",
-  "None yet": "まだありません"
+  "None yet": "まだありません",
+  "Also show hours I logged before they linked": "リンクする前に記録した時間も表示する"
 }

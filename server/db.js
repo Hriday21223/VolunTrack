@@ -2360,6 +2360,9 @@ export async function initSchema() {
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
   try { await query('ALTER TABLE organizations ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
   try { await query('ALTER TABLE registration_codes ADD COLUMN IF NOT EXISTS trial_days INT') } catch {}
+  // A student can share hours from before a parent linked (#905): the parent
+  // then sees entries from visible_from instead of the link date.
+  try { await query('ALTER TABLE parent_child_links ADD COLUMN IF NOT EXISTS visible_from TIMESTAMPTZ') } catch {}
   // Trial reminders (#894): the last one sent (7 or 1 days before), and
   // whether the school was a free club before its trial, so it can go back.
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_reminder_days INT') } catch {}

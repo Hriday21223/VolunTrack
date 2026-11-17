@@ -3595,5 +3595,6 @@ export default {
   "since you linked on {date}": "自你于 {date} 关联以来",
   "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "{date} 之前的时长仍对 {name} 保密。你能看到从关联当天起记录的内容。",
   "No hours logged since you linked on {date}.": "自你于 {date} 关联以来，还没有记录任何时长。",
-  "None yet": "暂无"
+  "None yet": "暂无",
+  "Also show hours I logged before they linked": "同时显示他们关联之前我记录的时长"
 }

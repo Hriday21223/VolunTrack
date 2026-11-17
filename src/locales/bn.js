@@ -3594,5 +3594,6 @@ export default {
   "since you linked on {date}": "{date} তারিখে যুক্ত হওয়ার পর থেকে",
   "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "{date}-এর আগের ঘণ্টাগুলো {name}-এর কাছে ব্যক্তিগত থাকে। যুক্ত হওয়ার দিন থেকে যা লেখা হয় আপনি তা দেখেন।",
   "No hours logged since you linked on {date}.": "{date} তারিখে যুক্ত হওয়ার পর থেকে কোনো ঘণ্টা লেখা হয়নি।",
-  "None yet": "এখনও নেই"
+  "None yet": "এখনও নেই",
+  "Also show hours I logged before they linked": "তারা যুক্ত হওয়ার আগে লেখা আমার ঘণ্টাগুলোও দেখাও"
 }

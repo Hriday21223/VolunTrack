@@ -3594,5 +3594,6 @@ export default {
   "since you linked on {date}": "depuis votre liaison le {date}",
   "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "Les heures d’avant le {date} restent privées pour {name}. Vous voyez ce qui est enregistré à partir du jour de la liaison.",
   "No hours logged since you linked on {date}.": "Aucune heure enregistrée depuis votre liaison le {date}.",
-  "None yet": "Pas encore"
+  "None yet": "Pas encore",
+  "Also show hours I logged before they linked": "Afficher aussi les heures enregistrées avant leur liaison"
 }

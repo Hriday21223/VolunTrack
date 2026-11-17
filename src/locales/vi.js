@@ -3595,5 +3595,6 @@ export default {
   "since you linked on {date}": "kể từ khi bạn liên kết vào {date}",
   "Hours from before {date} stay private to {name}. You see what they log from the day you linked.": "Số giờ trước {date} vẫn là riêng tư của {name}. Bạn thấy những gì con ghi lại kể từ ngày bạn liên kết.",
   "No hours logged since you linked on {date}.": "Chưa có giờ nào được ghi từ khi bạn liên kết vào {date}.",
-  "None yet": "Chưa có"
+  "None yet": "Chưa có",
+  "Also show hours I logged before they linked": "Cũng hiển thị số giờ tôi ghi trước khi họ liên kết"
 }
