@@ -7,6 +7,9 @@ import { loadKeptSession } from '@/lib/appSession.js'
 import PasswordInput from '@/components/PasswordInput.jsx'
 import { tr } from '@/lib/i18n.js'
 
+const apiUrl = import.meta.env.VITE_API_URL || '/api'
+const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
+
 // Away lock (#869). When every VolunTrack tab has been out of sight (another
 // tab or app, or the computer asleep) for AWAY_MS, the app covers itself and
 // asks for the password again, then the account's second step if it has one.
@@ -48,6 +51,8 @@ export default function AwayLock() {
   const [pin, setPin] = useState('')
   const [code, setCode] = useState('')
   const [second, setSecond] = useState(null) // { tempToken, methods, emailSent }
+  // Which of authenticator / passkey this account can unlock with (#913).
+  const [quick, setQuick] = useState([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const inputRef = useRef(null)
@@ -199,6 +204,37 @@ export default function AwayLock() {
     try { await sendEmailCode(second.tempToken); setSecond((s) => ({ ...s, emailSent: true })); setCode('') } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
+  useEffect(() => {
+    if (!locked) return
+    fetch(`${apiUrl}/auth/reauth/second-step`, { headers: authHeader() })
+      .then((r) => (r.ok ? r.json() : null)).then((d) => setQuick(d?.methods || [])).catch(() => setQuick([]))
+  }, [locked])
+
+  // Authenticator app or passkey on their own (#913), as quick as the PIN.
+  const startQuick = async (method) => {
+    setBusy(true); setError('')
+    try {
+      const r = await fetch(`${apiUrl}/auth/reauth/second-step`, { method: 'POST', headers: authHeader() })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok || !d.tempToken) throw new Error(d.error || tr('Something went wrong. Try again.'))
+      if (method === 'passkey') {
+        try { await verifyPasskey(d.tempToken); unlocked() } catch { setError(tr('Passkey check was cancelled.')) }
+      } else {
+        setSecond({ tempToken: d.tempToken, methods: ['totp'] }); setCode(''); setStep('second')
+      }
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+  const QuickButtons = () => (
+    <>
+      {quick.includes('totp') && (
+        <button type="button" onClick={() => startQuick('totp')} className="btn-ghost w-full" disabled={busy}>{tr('Use my authenticator app')}</button>
+      )}
+      {quick.includes('passkey') && (
+        <button type="button" onClick={() => startQuick('passkey')} className="btn-ghost w-full" disabled={busy}>{tr('Use a passkey')}</button>
+      )}
+    </>
+  )
+
   if (!enabled || !locked) return null
   const methods = second?.methods || []
 
@@ -220,6 +256,7 @@ export default function AwayLock() {
             <input id="away-lock-pin" type="password" inputMode="numeric" autoComplete="off" autoFocus maxLength={8} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="input text-center tracking-[0.5em]" />
             <button type="submit" className="btn-primary w-full py-3" disabled={busy || pin.length < 4}>{busy ? tr('Checking…') : tr('Unlock')}</button>
             <button type="button" onClick={() => { setStep('password'); setError('') }} className="btn-ghost w-full">{tr('Use your password instead')}</button>
+            <QuickButtons />
           </form>
         )}
 
@@ -232,6 +269,7 @@ export default function AwayLock() {
             {user?.hasUnlockPin && (
               <button type="button" onClick={() => { setStep('pin'); setError('') }} className="btn-ghost w-full">{tr('Use your PIN instead')}</button>
             )}
+            <QuickButtons />
           </form>
         )}
 
@@ -259,6 +297,7 @@ export default function AwayLock() {
         {step === 'noPassword' && (
           <div className="mt-5 space-y-3">
             <p className="text-sm text-earth-300">{tr("You signed in with Google, Apple or your school, so there's no password to enter here. Sign in again to keep going.")}</p>
+            <QuickButtons />
             <button type="button" onClick={signOut} className="btn-primary w-full py-3">{tr('Sign in again')}</button>
           </div>
         )}
