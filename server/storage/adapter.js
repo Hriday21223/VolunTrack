@@ -14,7 +14,12 @@ function s3Config(row) {
   }
 }
 function spConfig(row) {
-  return { tenant: row.region, site: row.endpoint, library: row.bucket, prefix: row.prefix }
+  // The school's own Entra app, when they gave one (#926); else ours.
+  const own = row.access_key_id && row.secret_encrypted
+  return {
+    tenant: row.region, site: row.endpoint, library: row.bucket, prefix: row.prefix,
+    ...(own ? { clientId: row.access_key_id, clientSecret: decryptSecret(row.secret_encrypted) } : {}),
+  }
 }
 
 // → { url, method: 'PUT', kind: 's3' | 'sharepoint' }. A SharePoint upload URL

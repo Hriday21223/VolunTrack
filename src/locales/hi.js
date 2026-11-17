@@ -3645,5 +3645,7 @@ export default {
   "Approve in Microsoft": "Microsoft में स्वीकृत करें",
   "SharePoint site address": "SharePoint साइट का पता",
   "Document library": "दस्तावेज़ लाइब्रेरी",
-  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "आपके Microsoft 365 एडमिन एक बार VolunTrack को सिर्फ़ इस साइट की पहुँच देते हैं (PnP PowerShell), या SharePoint एडमिन में वही अनुमति देते हैं:"
+  "Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:": "आपके Microsoft 365 एडमिन एक बार VolunTrack को सिर्फ़ इस साइट की पहुँच देते हैं (PnP PowerShell), या SharePoint एडमिन में वही अनुमति देते हैं:",
+  "Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.": "आपके Microsoft 365 एडमिन अपने Microsoft Entra में एक ऐप रजिस्टर करते हैं (Microsoft Graph एप्लिकेशन अनुमति Sites.Selected, एडमिन सहमति के साथ, और एक क्लाइंट सीक्रेट), फिर उसकी जानकारी यहाँ चिपकाते हैं। VolunTrack को सिर्फ़ वही साइट मिलती है जो आप नीचे देते हैं।",
+  "Application (client) ID": "एप्लिकेशन (क्लाइंट) ID"
 }

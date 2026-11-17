@@ -68,7 +68,7 @@ export default function OwnStorageCard({ canEdit = true }) {
     e.preventDefault()
     setBusy(true); setMsg(null)
     try {
-      const r = await fetch(`${apiUrl}/storage/config`, { method: 'PUT', headers: headers(), body: JSON.stringify({ provider: 'sharepoint', ...spForm }) })
+      const r = await fetch(`${apiUrl}/storage/config`, { method: 'PUT', headers: headers(), body: JSON.stringify({ provider: 'sharepoint', tenantId: spForm.tenantId, siteUrl: spForm.siteUrl, library: spForm.library, prefix: spForm.prefix, ...(spForm.own ? { clientId: spForm.clientId, clientSecret: spForm.clientSecret } : {}) }) })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || tr('Something went wrong. Try again.'))
       const t = await fetch(`${apiUrl}/storage/test`, { method: 'POST', headers: headers() })
@@ -146,7 +146,7 @@ export default function OwnStorageCard({ canEdit = true }) {
           {canEdit && (
             <div className="flex flex-wrap gap-2 pt-2">
               <button type="button" onClick={retest} disabled={busy} className="btn-secondary btn-sm">{busy ? tr('Testing…') : tr('Test again')}</button>
-              <button type="button" onClick={() => (config.provider === 'sharepoint' ? setSpForm({ tenantId: config.region, siteUrl: config.endpoint, library: config.bucket, prefix: config.prefix || '' }) : start(config.provider === 'r2' ? 'r2' : config.endpoint ? 'other' : 's3'))} className="btn-ghost btn-sm">{tr('Change')}</button>
+              <button type="button" onClick={() => (config.provider === 'sharepoint' ? setSpForm({ own: Boolean(config.accessKeyId), clientId: config.accessKeyId || '', clientSecret: '', tenantId: config.region, siteUrl: config.endpoint, library: config.bucket, prefix: config.prefix || '' }) : start(config.provider === 'r2' ? 'r2' : config.endpoint ? 'other' : 's3'))} className="btn-ghost btn-sm">{tr('Change')}</button>
               {confirmOff ? (
                 <span className="flex gap-1 items-center">
                   <span className="text-xs text-earth-400">{tr('Proof already in your storage stays there, but VolunTrack can’t open it after this.')}</span>
@@ -164,9 +164,7 @@ export default function OwnStorageCard({ canEdit = true }) {
           {Object.entries(PRESETS).map(([k, p]) => (
             <button key={k} type="button" onClick={() => start(k)} className="btn-secondary btn-sm">{k === 'other' ? tr('Other S3-compatible') : p.label}</button>
           ))}
-          {sp.sharepoint && (
-            <button type="button" onClick={approveMicrosoft} disabled={busy} className="btn-secondary btn-sm">{tr('Microsoft SharePoint')}</button>
-          )}
+          <button type="button" onClick={() => (sp.sharepoint ? approveMicrosoft() : setSpForm({ own: true, tenantId: '', clientId: '', clientSecret: '', siteUrl: '', library: 'Documents', prefix: '' }))} disabled={busy} className="btn-secondary btn-sm">{tr('Microsoft SharePoint')}</button>
         </div>
       ) : null}
 
@@ -214,10 +212,31 @@ export default function OwnStorageCard({ canEdit = true }) {
       {spForm && canEdit && (
         <form onSubmit={saveSharepoint} className="space-y-3 mb-3">
           <p className="text-sm font-medium">{tr('Microsoft SharePoint')}</p>
-          {!spForm.tenantId ? (
+          {!spForm.tenantId && !spForm.own ? (
             <button type="button" onClick={approveMicrosoft} disabled={busy} className="btn-primary btn-sm">{tr('Approve in Microsoft')}</button>
           ) : (
             <>
+              {spForm.own && (
+                <div className="space-y-3">
+                  <div className="text-xs text-earth-400 space-y-1">
+                    <p>{tr('Your Microsoft 365 admin registers an app in your own Microsoft Entra (Microsoft Graph application permission Sites.Selected, with admin consent, and a client secret), then pastes its details here. VolunTrack only gets the one site you grant below.')}</p>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="label" htmlFor="sp-tenant">{tr('Directory (tenant) ID')}</label>
+                      <input id="sp-tenant" className="input font-mono text-sm" autoComplete="off" value={spForm.tenantId} onChange={(e) => setSpForm({ ...spForm, tenantId: e.target.value.trim() })} />
+                    </div>
+                    <div>
+                      <label className="label" htmlFor="sp-client">{tr('Application (client) ID')}</label>
+                      <input id="sp-client" className="input font-mono text-sm" autoComplete="off" value={spForm.clientId} onChange={(e) => setSpForm({ ...spForm, clientId: e.target.value.trim() })} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="label" htmlFor="sp-secret">{tr('Client secret')}</label>
+                      <PasswordInput id="sp-secret" autoComplete="off" value={spForm.clientSecret} onChange={(e) => setSpForm({ ...spForm, clientSecret: e.target.value.trim() })} placeholder={config?.provider === 'sharepoint' && config.hasSecret ? '••••••••' : ''} />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
                   <label className="label" htmlFor="sp-site">{tr('SharePoint site address')}</label>
@@ -234,10 +253,10 @@ export default function OwnStorageCard({ canEdit = true }) {
               </div>
               <div className="text-xs text-earth-400 space-y-1">
                 <p>{tr('Your Microsoft 365 admin gives VolunTrack access to this one site, once (PnP PowerShell), or grants the same in SharePoint admin:')}</p>
-                <code className="block break-all select-all bg-earth-900/40 rounded p-2">{`Grant-PnPAzureADAppSitePermission -AppId ${sp.sharepointAppId} -DisplayName "VolunTrack" -Site ${spForm.siteUrl || '<site address>'} -Permissions Write`}</code>
+                <code className="block break-all select-all bg-earth-900/40 rounded p-2">{`Grant-PnPAzureADAppSitePermission -AppId ${(spForm.own ? spForm.clientId : sp.sharepointAppId) || '<application id>'} -DisplayName "VolunTrack" -Site ${spForm.siteUrl || '<site address>'} -Permissions Write`}</code>
               </div>
               <div className="flex gap-2">
-                <button type="submit" disabled={busy || !spForm.siteUrl} className="btn-primary btn-sm">{busy ? tr('Testing…') : tr('Test and turn on')}</button>
+                <button type="submit" disabled={busy || !spForm.siteUrl || (spForm.own && (!spForm.tenantId || !spForm.clientId))} className="btn-primary btn-sm">{busy ? tr('Testing…') : tr('Test and turn on')}</button>
                 <button type="button" onClick={() => setSpForm(null)} className="btn-ghost btn-sm">{tr('Cancel')}</button>
               </div>
             </>
