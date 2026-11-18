@@ -1,0 +1,49 @@
+name: Daily app errors email
+
+# Once a day: emails ADMIN_EMAIL the app errors (crashes in people's browsers
+# and the apps, Admin → Incidents → App errors) seen since the last note, and
+# nothing on a day without any (#938). The backend does the work and claims
+# each note in site_settings, so a repeated run sends nothing twice.
+#
+# Setup: repo secret CRON_SECRET (matching the backend's env var) and repo
+# variable PUBLIC_BACKEND_URL.
+
+on:
+  schedule:
+    # ~13:00 UTC (~8:00 US Central), before the school day.
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Count the errors on the backend instead of emailing them
+        type: boolean
+        default: false
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the app errors email endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ vars.PUBLIC_BACKEND_URL }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || false }}
+        run: |
+          set -uo pipefail
+          url="$BACKEND_URL/api/client-errors/internal/daily-email"
+          body="$(mktemp)"
+          attempt=1
+          while :; do
+            code=$(curl -sS -X POST --connect-timeout 30 --max-time 300 \
+              -o "$body" -w '%{http_code}' \
+              -H "x-cron-key: $CRON_SECRET" -H 'content-type: application/json' \
+              -d "{\"dryRun\": $DRY_RUN }" "$url") || code=000
+            echo "HTTP $code"; cat "$body"; echo
+            case "$code" in
+              2??) exit 0 ;;
+              000) : ;;
+              *) echo "::error::unexpected HTTP $code from the app errors email endpoint."; exit 1 ;;
+            esac
+            if [ "$attempt" -ge 3 ]; then echo "::error::backend unreachable after $attempt attempts."; exit 1; fi
+            attempt=$((attempt + 1)); sleep 30
+          done
