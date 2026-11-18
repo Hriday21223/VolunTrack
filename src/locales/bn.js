@@ -3653,5 +3653,6 @@ export default {
   "Quick colours": "দ্রুত রং",
   "Pick a colour, choose one above, or type a hex value.": "একটি রং বাছুন, উপরের একটি বেছে নিন, বা hex মান লিখুন।",
   "Your school’s own page": "আপনার স্কুলের নিজস্ব পেজ",
-  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "আপনার লোগো ও রং এখানে সঙ্গে সঙ্গে দেখায়, নিজস্ব ডোমেইন লাগে না। ওয়েবসাইট, লিফলেট ও Google Classroom-এ শেয়ার করুন।"
+  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "আপনার লোগো ও রং এখানে সঙ্গে সঙ্গে দেখায়, নিজস্ব ডোমেইন লাগে না। ওয়েবসাইট, লিফলেট ও Google Classroom-এ শেয়ার করুন।",
+  "Not from {school}?": "{school}-এর নন?"
 }

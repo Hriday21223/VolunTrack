@@ -82,3 +82,11 @@ export function resolveTenant() {
 export function clearTenantCache() {
   try { sessionStorage.removeItem(CACHE_KEY) } catch { /* nothing to clear */ }
 }
+
+// Forget a school page's school (#932): once someone signs in (the app then
+// shows their own school), when they sign out, or on "Not from <school>?".
+// Otherwise the next person at this computer saw that school's sign-in.
+export function forgetTenantCode() {
+  try { sessionStorage.removeItem(CODE_KEY) } catch { /* optional */ }
+  clearTenantCache()
+}

@@ -9,7 +9,7 @@ import Toast from '@/components/Toast.jsx'
 import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
-import { resolveTenant } from '@/lib/tenant.js'
+import { resolveTenant, forgetTenantCode } from '@/lib/tenant.js'
 import QRCode from 'qrcode'
 import { isNativeApp } from '@/lib/platform.js'
 import { deviceLockAvailable, setKeepSignedIn } from '@/lib/appSession.js'
@@ -704,6 +704,11 @@ export default function Login() {
                 {tr('New to VolunTrack?')}{' '}
                 <Link to={tenant?.schoolCode ? `/join/${tenant.schoolCode}` : '/register'} className="text-sky-200 font-semibold hover:text-white">{tenant?.schoolCode ? tr('Join {school}', { school: tenant.name }) : tr('Create an account')}</Link>
               </div>
+              {tenant?.kind === 'path' && (
+                <div className="mt-2 text-center text-sm text-slate-400">
+                  <button type="button" onClick={() => { forgetTenantCode(); setTenant(null) }} className="text-sky-200 hover:text-white underline">{tr('Not from {school}?', { school: tenant.name })}</button>
+                </div>
+              )}
 
               <div className="mt-4 text-center text-sm text-slate-400">
                 {isMobile ? tr('Syncing from laptop?') : tr('Syncing from mobile?')}{' '}
