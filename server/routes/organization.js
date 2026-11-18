@@ -9,7 +9,7 @@ import { signupPlatform } from '../platform.js'
 import { hashPassword, signToken, requireAuth } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeEmail } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { createHandoverInvite, confirmPassword, sendHandoverError } from '../handover.js'
@@ -312,10 +312,34 @@ router.patch('/admin/:id/payment', limiter, requireDb, requireAuth('admin'), asy
   }
 })
 
+const orgNotice = (entity, paymentInstructions, { message, amount, billingPeriod }) => paymentNoticeEmail({
+  entity, entityLabel: 'organization', includeDashboardLink: false, paymentInstructions, message, amount, billingPeriod,
+})
+
+// What the notice will look like (#942): nothing is saved or emailed.
+router.post('/admin/notify-org/:organizationId/preview', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const { message } = req.body
+  if (!message || typeof message !== 'string' || !message.trim()) return res.status(400).json({ error: 'Message is required.' })
+  try {
+    const { rows } = await query('SELECT name, account_code, contact_email, payment_due_date, price_amount, price_period FROM organizations WHERE id = $1', [req.params.organizationId])
+    if (!rows.length) return res.status(404).json({ error: 'Organization not found.' })
+    return res.json({
+      email: {
+        to: rows[0].contact_email || 'No contact email on file, so nothing would be emailed',
+        note: null,
+        ...orgNotice(rows[0], await getPaymentInstructions(), req.body),
+      },
+    })
+  } catch (error) {
+    console.error('notice preview failed:', error)
+    return res.status(500).json({ error: 'Could not preview the notice.' })
+  }
+})
+
 // Send a payment/general notice to a specific organization (admin only).
 // Mirrors POST /school/admin/notify-school/:schoolId.
 router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth('admin'), async (req, res) => {
-  const { message, amount, billingPeriod } = req.body
+  const { message } = req.body
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
     return res.status(400).json({ error: 'Message is required.' })
   }
@@ -333,18 +357,7 @@ router.post('/admin/notify-org/:organizationId', limiter, requireDb, requireAuth
     if (hasContactEmail) {
       const result = await sendEmail({
         to: rows[0].contact_email,
-        subject: 'Payment notice from VolunTrack',
-        html: paymentNoticeHtml({
-          recipientName: rows[0].name,
-          entityLabel: 'organization',
-          accountCode: rows[0].account_code,
-          paymentInstructions: await getPaymentInstructions(),
-          amount: amount || rows[0].price_amount,
-          billingPeriod: amount ? billingPeriod : rows[0].price_period,
-          dueDate: rows[0].payment_due_date,
-          message: message.trim(),
-          includeDashboardLink: false,
-        }),
+        ...orgNotice(rows[0], await getPaymentInstructions(), req.body),
       })
       emailSent = result.sent
     }

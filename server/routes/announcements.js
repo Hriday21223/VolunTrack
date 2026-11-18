@@ -102,13 +102,42 @@ async function sendInBackground(id, title, message, recipients, fromName = null)
     const batch = recipients.slice(i, i + SEND_BATCH)
     const results = await Promise.all(batch.map((r) => sendEmail({
       to: r.email,
-      subject: fromName ? `${fromName}: ${title}` : `VolunTrack: ${title}`,
-      html: announcementHtml({ recipientName: r.name, title, message, dashboardPath: r.dashboardPath, fromName }),
+      ...announcementEmail(r, title, message, fromName),
     }).catch(() => ({ sent: false }))))
     const sent = results.filter((r) => r.sent).length
     if (sent) await query('UPDATE announcements SET emails_sent = emails_sent + $1 WHERE id = $2', [sent, id])
   }
 }
+
+const announcementEmail = ({ name, dashboardPath }, title, message, fromName = null) => ({
+  subject: fromName ? `${fromName}: ${title}` : `VolunTrack: ${title}`,
+  html: announcementHtml({ recipientName: name, title, message, dashboardPath, fromName }),
+})
+
+// POST /api/announcements/admin/preview — the email one person would get
+// (#942). Nothing is saved, shown or sent.
+router.post('/admin/preview', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  const title = String(req.body.title || '').trim()
+  const message = String(req.body.message || '').trim()
+  const flags = Object.fromEntries(AUDIENCES.map((a) => [a.column, req.body[a.field] === true]))
+  if (!title || title.length > 120) return res.status(400).json({ error: 'A title of up to 120 characters is required.' })
+  if (!message || message.length > 2000) return res.status(400).json({ error: 'A message of up to 2000 characters is required.' })
+  if (!Object.values(flags).some(Boolean)) return res.status(400).json({ error: 'Choose at least one group to send to.' })
+  try {
+    const recipients = await recipientsFor(flags)
+    const sample = recipients[0] || { name: 'there', dashboardPath: '/' }
+    return res.json({
+      email: {
+        to: `${recipients.length} ${recipients.length === 1 ? 'person' : 'people'}, one separate email each`,
+        note: 'Each person sees their own name and dashboard link. It also shows as a banner on their dashboard.',
+        ...announcementEmail(sample, title, message),
+      },
+    })
+  } catch (error) {
+    console.error('announcement preview failed:', error)
+    return res.status(500).json({ error: 'Could not preview the announcement.' })
+  }
+})
 
 // POST /api/announcements/admin
 router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res) => {

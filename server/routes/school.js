@@ -19,7 +19,7 @@ import { saveRoster, rosterEntry, rosterGrade, applyRosterGrade } from '../roste
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeHtml, hasEmail, emailApiBase, sendHoursSignedEmail } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeEmail, hasEmail, emailApiBase, sendHoursSignedEmail } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { friendlyWhen } from '../when.js'
@@ -8487,6 +8487,34 @@ router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), as
   }
 })
 
+// What a payment notice will look like (#942): nothing is saved or emailed.
+// "All schools" shows the first school's copy, since the amount and due date
+// differ per school.
+const NOTICE_COLUMNS = 'name, account_code, contact_email, payment_due_date, price_amount, price_period'
+async function previewSchoolNotice(req, res, { schoolId = null }) {
+  const { message, amount, billingPeriod } = req.body
+  if (!message || typeof message !== 'string' || !message.trim()) return res.status(400).json({ error: 'Message is required.' })
+  try {
+    const { rows } = schoolId
+      ? await query(`SELECT ${NOTICE_COLUMNS} FROM schools WHERE id = $1`, [schoolId])
+      : await query(`SELECT ${NOTICE_COLUMNS} FROM schools WHERE contact_email IS NOT NULL ORDER BY name`)
+    if (!rows.length) return res.status(404).json({ error: schoolId ? 'School not found.' : 'No school has a contact email yet.' })
+    const entity = rows[0]
+    return res.json({
+      email: {
+        to: schoolId ? entity.contact_email || 'No contact email on file, so nothing would be emailed' : `All ${rows.length} school${rows.length === 1 ? '' : 's'} with a contact email`,
+        note: schoolId ? null : `This is the copy ${entity.name} would get. Each school sees its own amount and due date.`,
+        ...paymentNoticeEmail({ entity, paymentInstructions: await getPaymentInstructions(), message, amount, billingPeriod }),
+      },
+    })
+  } catch (error) {
+    console.error('notice preview failed:', error)
+    return res.status(500).json({ error: 'Could not preview the notice.' })
+  }
+}
+router.post('/admin/notify-payment/preview', limiter, requireDb, requireAuth('admin'), (req, res) => previewSchoolNotice(req, res, {}))
+router.post('/admin/notify-school/:schoolId/preview', limiter, requireDb, requireAuth('admin'), (req, res) => previewSchoolNotice(req, res, { schoolId: req.params.schoolId }))
+
 // Send payment notification to all schools (admin only)
 router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const { message, amount, billingPeriod } = req.body
@@ -8504,16 +8532,7 @@ router.post('/admin/notify-payment', limiter, requireDb, requireAuth('admin'), a
     const { rows: schools } = await query('SELECT id, name, account_code, contact_email, payment_due_date, price_amount, price_period FROM schools WHERE contact_email IS NOT NULL')
     const results = await Promise.all(schools.map((s) => sendEmail({
       to: s.contact_email,
-      subject: 'Payment notice from VolunTrack',
-      html: paymentNoticeHtml({
-        recipientName: s.name,
-        accountCode: s.account_code,
-        paymentInstructions,
-        amount: amount || s.price_amount,
-        billingPeriod: amount ? billingPeriod : s.price_period,
-        dueDate: s.payment_due_date,
-        message: message.trim(),
-      }),
+      ...paymentNoticeEmail({ entity: s, paymentInstructions, message, amount, billingPeriod }),
     })))
     const emailsSent = results.filter((r) => r.sent).length
 
@@ -8543,16 +8562,7 @@ router.post('/admin/notify-school/:schoolId', limiter, requireDb, requireAuth('a
     if (hasContactEmail) {
       const result = await sendEmail({
         to: rows[0].contact_email,
-        subject: 'Payment notice from VolunTrack',
-        html: paymentNoticeHtml({
-          recipientName: rows[0].name,
-          accountCode: rows[0].account_code,
-          paymentInstructions: await getPaymentInstructions(),
-          amount: amount || rows[0].price_amount,
-          billingPeriod: amount ? billingPeriod : rows[0].price_period,
-          dueDate: rows[0].payment_due_date,
-          message: message.trim(),
-        }),
+        ...paymentNoticeEmail({ entity: rows[0], paymentInstructions: await getPaymentInstructions(), message, amount, billingPeriod }),
       })
       emailSent = result.sent
     }

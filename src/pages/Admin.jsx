@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, ExternalLink, Megaphone, Flag } from 'lucide-react'
+import { UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, Eye, ExternalLink, Megaphone, Flag } from 'lucide-react'
 import HandoverForm from '@/components/HandoverForm.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -11,6 +11,8 @@ import EventCodesPanel from '@/components/EventCodesPanel.jsx'
 import AnnouncementComposer from '@/components/AnnouncementComposer.jsx'
 import LiveChecksCard from '@/components/LiveChecksCard.jsx'
 import Toast from '@/components/Toast.jsx'
+import PdfPreview from '@/components/PdfPreview.jsx'
+import EmailPreview from '@/components/EmailPreview.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, setIncidentPublished, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
@@ -253,6 +255,14 @@ export default function Admin() {
   const [invoiceDueDateDraft, setInvoiceDueDateDraft] = useState('')
   const [invoicePoNumberDraft, setInvoicePoNumberDraft] = useState('')
   const [sendingInvoice, setSendingInvoice] = useState(false)
+  // The PDF open in the preview (#942): a draft from the Send invoice window, or
+  // an invoice already sent, from Payment history.
+  const [invoicePdf, setInvoicePdf] = useState(null) // { title, filename, pdf }
+  const [previewingInvoice, setPreviewingInvoice] = useState(false)
+  const [invoicePreviewError, setInvoicePreviewError] = useState('')
+  const [emailPreview, setEmailPreview] = useState(null) // { to, subject, html, note }
+  const [previewingNotice, setPreviewingNotice] = useState(false)
+  const [noticePreviewError, setNoticePreviewError] = useState('')
   const [historyModal, setHistoryModal] = useState(null) // { entityType, entityId, entityName }
   const [historyEvents, setHistoryEvents] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
@@ -712,23 +722,43 @@ export default function Admin() {
     } catch { setToastMessage('Failed to save due date'); setToast(true) } finally { setSavingOrgDueDate(false) }
   }
 
+  const notifyUrl = () => (notifyOrgId
+    ? `${apiUrl}/organization/admin/notify-org/${notifyOrgId}`
+    : notifySchoolId
+      ? `${apiUrl}/school/admin/notify-school/${notifySchoolId}`
+      : `${apiUrl}/school/admin/notify-payment`)
+  const notifyBody = () => JSON.stringify({
+    message: notifyMsg.trim(),
+    amount: notifyAmount.trim() || undefined,
+    billingPeriod: notifyAmount.trim() ? notifyBillingPeriod : undefined,
+  })
+
+  // The email this notice would send (#942); nothing is saved or sent.
+  const previewNotify = async () => {
+    if (!notifyMsg.trim()) return
+    setPreviewingNotice(true)
+    setNoticePreviewError('')
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${notifyUrl()}/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: notifyBody(),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not preview the notice.')
+      setEmailPreview(data.email)
+    } catch (error) { setNoticePreviewError(error.message) } finally { setPreviewingNotice(false) }
+  }
+
   const sendNotify = async () => {
     if (!notifyMsg.trim()) return
     try {
       const token = localStorage.getItem('voluntrack:auth_token')
-      const url = notifyOrgId
-        ? `${apiUrl}/organization/admin/notify-org/${notifyOrgId}`
-        : notifySchoolId
-        ? `${apiUrl}/school/admin/notify-school/${notifySchoolId}`
-        : `${apiUrl}/school/admin/notify-payment`
-      const res = await fetch(url, {
+      const res = await fetch(notifyUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          message: notifyMsg.trim(),
-          amount: notifyAmount.trim() || undefined,
-          billingPeriod: notifyAmount.trim() ? notifyBillingPeriod : undefined,
-        }),
+        body: notifyBody(),
       })
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
@@ -823,6 +853,7 @@ export default function Admin() {
     setInvoiceDescriptionDraft('')
     setInvoiceDueDateDraft(entity.payment_due_date ? String(entity.payment_due_date).slice(0, 10) : '')
     setInvoicePoNumberDraft('')
+    setInvoicePreviewError('')
     setInvoicePromo(null)
     setApplyPromoToInvoice(false)
     setApplyEventToInvoice(false)
@@ -846,6 +877,46 @@ export default function Admin() {
     })()
   }
 
+  // What the form asks for: sent as is to both Preview and Send, so the two
+  // can't disagree.
+  const invoiceRequestBody = () => JSON.stringify({
+    entityType: invoiceModal.entityType,
+    entityId: invoiceModal.entityId,
+    amount: invoiceAmountDraft.trim(),
+    billingPeriod: invoiceBillingPeriodDraft,
+    description: invoiceDescriptionDraft.trim() || undefined,
+    dueDate: invoiceDueDateDraft || undefined,
+    poNumber: invoicePoNumberDraft.trim() || undefined,
+    applyPromo: !selectedCreditId && !applyEventToInvoice && applyPromoToInvoice && invoicePromoCheck.eligible,
+    applyEventCode: !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
+    referralCreditId: selectedCreditId || undefined,
+  })
+
+  // The server prices it (discounts are never worked out here); nothing is
+  // created or emailed.
+  const previewInvoice = async (kind) => {
+    if (!invoiceModal || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()) return
+    setPreviewingInvoice(true)
+    setInvoicePreviewError('')
+    try {
+      const token = localStorage.getItem('voluntrack:auth_token')
+      const res = await fetch(`${apiUrl}/invoices/admin/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: invoiceRequestBody(),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not preview the invoice.')
+      if (kind === 'email') { setEmailPreview(data.email); return }
+      const p = data.preview
+      setInvoicePdf({
+        title: `Preview: invoice to ${p.entityName}${p.contactEmail ? ` (will be emailed to ${p.contactEmail})` : ' (no contact email on file)'}`,
+        filename: 'invoice-preview.pdf',
+        pdf: { ...p, preview: true, invoiceNumber: 'PREVIEW' },
+      })
+    } catch (error) { setInvoicePreviewError(error.message) } finally { setPreviewingInvoice(false) }
+  }
+
   const sendInvoice = async () => {
     if (!invoiceModal || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()) return
     setSendingInvoice(true)
@@ -854,18 +925,7 @@ export default function Admin() {
       const res = await fetch(`${apiUrl}/invoices/admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          entityType: invoiceModal.entityType,
-          entityId: invoiceModal.entityId,
-          amount: invoiceAmountDraft.trim(),
-          billingPeriod: invoiceBillingPeriodDraft,
-          description: invoiceDescriptionDraft.trim() || undefined,
-          dueDate: invoiceDueDateDraft || undefined,
-          poNumber: invoicePoNumberDraft.trim() || undefined,
-          applyPromo: !selectedCreditId && !applyEventToInvoice && applyPromoToInvoice && invoicePromoCheck.eligible,
-          applyEventCode: !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
-          referralCreditId: selectedCreditId || undefined,
-        }),
+        body: invoiceRequestBody(),
       })
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
@@ -911,8 +971,7 @@ export default function Admin() {
     } catch { setToastMessage('Failed to update invoice'); setToast(true) } finally { setInvoiceActionId(null) }
   }
 
-  const downloadInvoicePdf = (event) => {
-    generateInvoicePDF({
+  const invoicePdfFields = (event) => ({
       invoiceNumber: event.invoice_number,
       poNumber: event.po_number,
       entityName: historyModal?.entityName,
@@ -924,8 +983,15 @@ export default function Admin() {
       description: event.description,
       dueDate: event.due_date,
       createdAt: event.created_at,
-    })
-  }
+  })
+
+  const downloadInvoicePdf = (event) => generateInvoicePDF(invoicePdfFields(event))
+
+  const viewInvoicePdf = (event) => setInvoicePdf({
+    title: `Invoice ${event.invoice_number} to ${historyModal?.entityName || ''}`,
+    filename: `${event.invoice_number}.pdf`,
+    pdf: invoicePdfFields(event),
+  })
 
   const loadPaymentInstructions = useCallback(async () => {
     try {
@@ -3258,6 +3324,10 @@ export default function Admin() {
                   value={notifyMsg} onChange={(e) => setNotifyMsg(e.target.value)}
                 />
               </div>
+              {noticePreviewError && <p role="alert" className="text-sm text-red-500">{noticePreviewError}</p>}
+              <button type="button" onClick={previewNotify} className="btn-ghost w-full" disabled={previewingNotice || !notifyMsg.trim()}>
+                <Eye className="w-4 h-4 mr-1.5" /> {previewingNotice ? 'Opening…' : 'Preview email'}
+              </button>
               <div className="flex gap-2">
                 <button onClick={() => { setShowNotifyModal(false); setNotifySchoolId(null); setNotifyOrgId(null); setNotifyAmount(''); setNotifyBillingPeriod('monthly') }} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={sendNotify} className="btn-primary flex-1" disabled={!notifyMsg.trim()}>Send</button>
@@ -3432,6 +3502,15 @@ export default function Admin() {
                   )}
                 </div>
               )}
+              {invoicePreviewError && <p role="alert" className="text-sm text-red-500">{invoicePreviewError}</p>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => previewInvoice('pdf')} className="btn-ghost flex-1" disabled={previewingInvoice || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()}>
+                  <Eye className="w-4 h-4 mr-1.5" /> Preview PDF
+                </button>
+                <button type="button" onClick={() => previewInvoice('email')} className="btn-ghost flex-1" disabled={previewingInvoice || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()}>
+                  <Mail className="w-4 h-4 mr-1.5" /> Preview email
+                </button>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => setInvoiceModal(null)} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={sendInvoice} className="btn-primary flex-1" disabled={sendingInvoice || !invoiceAmountDraft.trim() || !invoiceDescriptionDraft.trim()}>
@@ -3441,6 +3520,17 @@ export default function Admin() {
             </div>
           </Card>
         </div>
+      )}
+
+      {emailPreview && <EmailPreview email={emailPreview} onClose={() => setEmailPreview(null)} />}
+
+      {invoicePdf && (
+        <PdfPreview
+          title={invoicePdf.title}
+          filename={invoicePdf.filename}
+          getBlob={() => generateInvoicePDF({ ...invoicePdf.pdf, returnBlob: true })}
+          onClose={() => setInvoicePdf(null)}
+        />
       )}
 
       {historyModal && (
@@ -3471,6 +3561,9 @@ export default function Admin() {
                     {ev.notes && <p className="text-xs text-earth-500 mt-1">{ev.notes}</p>}
                     {ev.event_type === 'invoice_sent' && (
                       <div className="flex gap-1 mt-2">
+                        <button onClick={() => viewInvoicePdf(ev)} className="btn-sm btn-ghost">
+                          <Eye className="w-3.5 h-3.5 mr-1" /> View
+                        </button>
                         <button onClick={() => downloadInvoicePdf(ev)} className="btn-sm btn-ghost">
                           <Download className="w-3.5 h-3.5 mr-1" /> PDF
                         </button>
