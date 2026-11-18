@@ -3,6 +3,8 @@ import rateLimit from 'express-rate-limit'
 import { createHash } from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
+import { requireCronKey, cronLimiter } from '../cronAuth.js'
+import { sendAdminAppErrorsEmail } from '../email.js'
 
 // Error logging for the browser and the apps (src/lib/errorReporting.js): a
 // crash there used to leave no trace anywhere. Reports are grouped by
@@ -64,6 +66,45 @@ router.post('/', reportLimiter, requireDb, async (req, res) => {
   } catch (error) {
     console.error('client error report failed:', error.message)
     return res.status(500).json({ error: 'Could not record the error.' })
+  }
+})
+
+// POST /api/client-errors/internal/daily-email { dryRun? } (x-cron-key), from
+// .github/workflows/app-errors-email.yml (#938): emails ADMIN_EMAIL the error
+// groups seen since the last note, and nothing on a day without any. The time
+// of the last note is claimed in site_settings before sending, so a repeated
+// run (or two at once) can't send it twice; it answers counts only.
+const DIGEST_KEY = 'client_errors_emailed_at'
+const SHOW = 15
+router.post('/internal/daily-email', cronLimiter(), requireCronKey, requireDb, async (req, res) => {
+  const dryRun = req.body?.dryRun === true
+  try {
+    const { rows: [last] } = await query('SELECT value FROM site_settings WHERE key = $1', [DIGEST_KEY])
+    // First run: look back one day.
+    const since = last?.value || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { rows } = await query(
+      `SELECT message, path, count, first_seen > $1 AS "isNew"
+         FROM client_errors WHERE last_seen > $1
+        ORDER BY (first_seen > $1) DESC, last_seen DESC`,
+      [since],
+    )
+    if (!rows.length || dryRun) return res.json({ ok: true, dryRun, errors: rows.length, sent: false })
+    if (!process.env.ADMIN_EMAIL) return res.json({ ok: true, errors: rows.length, sent: false, reason: 'no ADMIN_EMAIL' })
+    // Claim: only the run that moves the marker from what it read sends.
+    const now = new Date().toISOString()
+    const claim = last
+      ? await query('UPDATE site_settings SET value = $1, updated_at = now() WHERE key = $2 AND value = $3', [now, DIGEST_KEY, last.value])
+      : await query('INSERT INTO site_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING', [DIGEST_KEY, now])
+    if (!claim.rowCount) return res.json({ ok: true, errors: rows.length, sent: false, reason: 'already sent' })
+    const result = await sendAdminAppErrorsEmail({ errors: rows.slice(0, SHOW), total: rows.length })
+    if (!result?.sent) {
+      // Hand the marker back so tomorrow's note still covers these.
+      await query('UPDATE site_settings SET value = $1 WHERE key = $2 AND value = $3', [last?.value || since, DIGEST_KEY, now]).catch(() => {})
+    }
+    return res.json({ ok: true, errors: rows.length, sent: Boolean(result?.sent) })
+  } catch (error) {
+    console.error('app errors email failed:', error.message)
+    return res.status(500).json({ error: 'Could not send the app errors email.' })
   }
 })
 

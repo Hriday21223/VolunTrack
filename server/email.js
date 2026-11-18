@@ -546,6 +546,29 @@ ${contactEmail ? `<p>Contact: ${escapeHtml(contactEmail)}</p>` : ''}
   })
 }
 
+// Daily note to the admin (ADMIN_EMAIL) listing app errors seen since the
+// last one (#938): crashes in people's browsers and apps otherwise wait in
+// Admin → Incidents until someone opens it. English, like the other admin
+// emails. `errors` rows come from client_errors (no user identity in them).
+export async function sendAdminAppErrorsEmail({ errors, total }) {
+  const to = process.env.ADMIN_EMAIL
+  if (!to || !errors.length) return { sent: false }
+  const fresh = errors.filter((e) => e.isNew).length
+  const rows = errors.map((e) => `<tr>
+<td style="padding:6px 8px;border-top:1px solid #ddd;vertical-align:top">${e.isNew ? '<strong>New</strong>' : 'Again'}</td>
+<td style="padding:6px 8px;border-top:1px solid #ddd;vertical-align:top">${escapeHtml(String(e.message).slice(0, 200))}<br><span style="color:#666">${escapeHtml(e.path || 'unknown page')} · ${Number(e.count)} time${Number(e.count) === 1 ? '' : 's'} in all</span></td>
+</tr>`).join('')
+  const more = total > errors.length ? `<p>…and ${total - errors.length} more.</p>` : ''
+  return sendEmail({
+    to,
+    subject: `VolunTrack app errors: ${total} since yesterday${fresh ? ` (${fresh} new)` : ''}`,
+    html: `<p>These errors happened in people's browsers or the app since the last note. Nobody's name or email is in them.</p>
+<table style="border-collapse:collapse;font-size:14px">${rows}</table>
+${more}
+<p><a href="${appLink()}/admin/incidents">Open Admin → Incidents</a> to see the details, and clear an error there once it's fixed.</p>`,
+  })
+}
+
 // Confirms a new address before an account moves to it (#464).
 export async function sendEmailChangeCodeEmail({ to, code, minutes, language }) {
   const lang = emailLang(language)
