@@ -3654,5 +3654,10 @@ export default {
   "Pick a colour, choose one above, or type a hex value.": "Выберите цвет, один из цветов выше или введите hex-код.",
   "Your school’s own page": "Собственная страница вашей школы",
   "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "Ваш логотип и цвет сразу видны здесь, свой домен не нужен. Делитесь ею на сайте, в листовках и в Google Classroom.",
-  "Not from {school}?": "Не из {school}?"
+  "Not from {school}?": "Не из {school}?",
+  "Put VolunTrack on your home screen": "Добавьте VolunTrack на главный экран",
+  "It opens like an app, full screen, and works without internet.": "Открывается как приложение, на весь экран, и работает без интернета.",
+  "Install": "Установить",
+  "Tap the Share button": "Нажмите кнопку «Поделиться»",
+  "Choose Add to Home Screen": "Выберите «На экран „Домой“»"
 }

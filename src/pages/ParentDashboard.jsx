@@ -7,6 +7,7 @@ import ProgressBar from '@/components/ProgressBar.jsx'
 import VerificationBadge from '@/components/VerificationBadge.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
+import InstallAppCard from '@/components/InstallAppCard.jsx'
 import EmergencyContactCard from '@/components/EmergencyContactCard.jsx'
 import { ParentWeeklyGoal } from '@/components/WeeklyFamilyGoal.jsx'
 import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
@@ -134,6 +135,7 @@ export default function ParentDashboard() {
       )}
 
       <AnnouncementBanner />
+      <InstallAppCard />
 
       <TaskApprovals onDecided={loadData} />
 
