@@ -9,6 +9,7 @@ import { applyNativeAppChrome, startNativeApp } from './lib/platform.js'
 import { startNativePush } from './lib/nativePush.js'
 import { installApiFetchGuard } from './lib/apiFetch.js'
 import { installTranslateGuard } from './lib/translateGuard.js'
+import { installInstallPromptCatcher } from './lib/installPrompt.js'
 
 // Offline support for the website (the native apps don't use a service
 // worker; vite.config.js turns it off for `--mode app`). Registration can be
@@ -52,6 +53,8 @@ import { installErrorReporting } from './lib/errorReporting.js'
 
 installErrorReporting()
 installTranslateGuard()
+// Catch Chrome's install offer early, for the Install card (#936).
+installInstallPromptCatcher()
 installApiFetchGuard()
 applyStoredTheme()
 applyStoredDisplay()

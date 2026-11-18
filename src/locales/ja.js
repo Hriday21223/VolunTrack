@@ -3654,5 +3654,10 @@ export default {
   "Pick a colour, choose one above, or type a hex value.": "色を選ぶか、上の色を選ぶか、16 進数の値を入力します。",
   "Your school’s own page": "学校専用のページ",
   "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "ロゴと色はここにすぐ表示されます。独自ドメインは不要です。学校のサイト、チラシ、Google Classroom で共有しましょう。",
-  "Not from {school}?": "{school} の方ではありませんか？"
+  "Not from {school}?": "{school} の方ではありませんか？",
+  "Put VolunTrack on your home screen": "VolunTrack をホーム画面に追加",
+  "It opens like an app, full screen, and works without internet.": "アプリのように全画面で開き、インターネットがなくても使えます。",
+  "Install": "インストール",
+  "Tap the Share button": "共有ボタンをタップ",
+  "Choose Add to Home Screen": "「ホーム画面に追加」を選ぶ"
 }

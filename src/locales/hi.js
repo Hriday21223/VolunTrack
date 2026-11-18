@@ -3654,5 +3654,10 @@ export default {
   "Pick a colour, choose one above, or type a hex value.": "रंग चुनें, ऊपर से कोई चुनें, या hex मान लिखें।",
   "Your school’s own page": "आपके स्कूल का अपना पेज",
   "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "आपका लोगो और रंग यहाँ तुरंत दिखते हैं, अपने डोमेन की ज़रूरत नहीं। इसे अपनी वेबसाइट, फ़्लायर और Google Classroom पर शेयर करें।",
-  "Not from {school}?": "{school} से नहीं हैं?"
+  "Not from {school}?": "{school} से नहीं हैं?",
+  "Put VolunTrack on your home screen": "VolunTrack को होम स्क्रीन पर रखें",
+  "It opens like an app, full screen, and works without internet.": "यह ऐप की तरह पूरी स्क्रीन पर खुलता है और बिना इंटरनेट के भी चलता है।",
+  "Install": "इंस्टॉल करें",
+  "Tap the Share button": "शेयर बटन दबाएँ",
+  "Choose Add to Home Screen": "होम स्क्रीन में जोड़ें चुनें"
 }

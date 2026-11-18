@@ -3655,5 +3655,10 @@ export default {
   "Pick a colour, choose one above, or type a hex value.": "Chọn màu, bấm một màu ở trên hoặc nhập mã hex.",
   "Your school’s own page": "Trang riêng của trường bạn",
   "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "Logo và màu của bạn hiện ở đây ngay, không cần tên miền riêng. Chia sẻ trên trang web, tờ rơi và Google Classroom.",
-  "Not from {school}?": "Không thuộc {school}?"
+  "Not from {school}?": "Không thuộc {school}?",
+  "Put VolunTrack on your home screen": "Đưa VolunTrack ra màn hình chính",
+  "It opens like an app, full screen, and works without internet.": "Mở như một ứng dụng, toàn màn hình, và dùng được khi không có internet.",
+  "Install": "Cài đặt",
+  "Tap the Share button": "Bấm nút Chia sẻ",
+  "Choose Add to Home Screen": "Chọn Thêm vào MH chính"
 }

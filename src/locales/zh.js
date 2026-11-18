@@ -3655,5 +3655,10 @@ export default {
   "Pick a colour, choose one above, or type a hex value.": "选择颜色、点上面的色块，或输入十六进制值。",
   "Your school’s own page": "你们学校的专属页面",
   "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "你的标志和颜色会立即显示在这里，无需自定义域名。可分享到学校网站、传单和 Google Classroom。",
-  "Not from {school}?": "不是 {school} 的？"
+  "Not from {school}?": "不是 {school} 的？",
+  "Put VolunTrack on your home screen": "把 VolunTrack 添加到主屏幕",
+  "It opens like an app, full screen, and works without internet.": "像应用一样全屏打开，没有网络也能用。",
+  "Install": "安装",
+  "Tap the Share button": "点“分享”按钮",
+  "Choose Add to Home Screen": "选择“添加到主屏幕”"
 }
