@@ -103,11 +103,9 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
 
 const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
 
-/** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
-export async function generateInvoicePDF({ preview = false, invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, returnBlob }) {
-  const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
-  const logo = await getLogoDataUrl()
-
+// Draws one invoice on the current page of `doc`. `stamp` is an optional
+// coloured word beside INVOICE: { text, color: [r, g, b] }.
+function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt }) {
   if (logo) {
     try { doc.addImage(logo, 'PNG', 40, 20, LOGO_W, LOGO_H) } catch { /* malformed data URL — skip logo, keep header text */ }
   }
@@ -116,10 +114,9 @@ export async function generateInvoicePDF({ preview = false, invoiceNumber, poNum
   doc.setFont('helvetica', 'normal').setFontSize(11)
   doc.setTextColor(90)
   doc.text('INVOICE', 40, 70)
-  // The admin's look before sending (#942): it must not pass for a real invoice.
-  if (preview) {
-    doc.setFont('helvetica', 'bold').setTextColor(190, 40, 40)
-    doc.text('PREVIEW - NOT SENT', 100, 70)
+  if (stamp) {
+    doc.setFont('helvetica', 'bold').setTextColor(...stamp.color)
+    doc.text(stamp.text, 100, 70)
     doc.setFont('helvetica', 'normal')
   }
   doc.setTextColor(0)
@@ -165,11 +162,33 @@ export async function generateInvoicePDF({ preview = false, invoiceNumber, poNum
   const finalY = doc.lastAutoTable.finalY + 24
   doc.setFont('helvetica', 'bold').setFontSize(12)
   doc.text(`Total: $${Number(amount).toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`, 400, finalY, { align: 'left' })
+}
 
-  if (returnBlob) {
-    return doc.output('blob')
-  }
-  doc.save(`${invoiceNumber}.pdf`)
+/** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
+export async function generateInvoicePDF({ preview = false, returnBlob = false, ...invoice }) {
+  const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
+  const logo = await getLogoDataUrl()
+  // The admin's look before sending (#942): it must not pass for a real invoice.
+  drawInvoice(doc, logo, { ...invoice, stamp: preview ? { text: 'PREVIEW - NOT SENT', color: [190, 40, 40] } : null })
+  if (returnBlob) return doc.output('blob')
+  doc.save(`${invoice.invoiceNumber}.pdf`)
+}
+
+const INVOICE_STATUS_STAMPS = {
+  paid: { text: 'PAID', color: [46, 125, 50] },
+  void: { text: 'VOID', color: [190, 40, 40] },
+  sent: { text: 'UNPAID', color: [180, 110, 0] },
+}
+
+/** Every invoice in one PDF, one per page, each marked with its status (#944). Returns a blob. */
+export async function generateInvoicesPDFBlob(invoices) {
+  const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
+  const logo = await getLogoDataUrl()
+  invoices.forEach(({ status, ...invoice }, i) => {
+    if (i > 0) doc.addPage()
+    drawInvoice(doc, logo, { ...invoice, stamp: INVOICE_STATUS_STAMPS[status] || null })
+  })
+  return doc.output('blob')
 }
 
 /** Build a CSV string from the user's logs. */
