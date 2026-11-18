@@ -104,7 +104,7 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
 const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
 
 /** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
-export async function generateInvoicePDF({ invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, returnBlob }) {
+export async function generateInvoicePDF({ preview = false, invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, returnBlob }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
 
@@ -116,6 +116,12 @@ export async function generateInvoicePDF({ invoiceNumber, poNumber, entityName, 
   doc.setFont('helvetica', 'normal').setFontSize(11)
   doc.setTextColor(90)
   doc.text('INVOICE', 40, 70)
+  // The admin's look before sending (#942): it must not pass for a real invoice.
+  if (preview) {
+    doc.setFont('helvetica', 'bold').setTextColor(190, 40, 40)
+    doc.text('PREVIEW - NOT SENT', 100, 70)
+    doc.setFont('helvetica', 'normal')
+  }
   doc.setTextColor(0)
 
   doc.setFont('helvetica', 'bold').setFontSize(13)

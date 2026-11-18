@@ -253,6 +253,26 @@ export function paymentNoticeHtml({ recipientName, entityLabel = 'school', accou
   ].join('')
 }
 
+// The payment notice for one school or organization, shared by sending it and
+// by the admin's preview (#942), so the two can't drift apart. `entity` is the
+// row; an amount typed by the admin overrides its saved price.
+export function paymentNoticeEmail({ entity, entityLabel, includeDashboardLink, paymentInstructions, message, amount, billingPeriod }) {
+  return {
+    subject: 'Payment notice from VolunTrack',
+    html: paymentNoticeHtml({
+      recipientName: entity.name,
+      entityLabel,
+      includeDashboardLink,
+      accountCode: entity.account_code,
+      paymentInstructions,
+      amount: amount || entity.price_amount,
+      billingPeriod: amount ? billingPeriod : entity.price_period,
+      dueDate: entity.payment_due_date,
+      message: message.trim(),
+    }),
+  }
+}
+
 // An admin announcement (#290) — deliberately not the payment template: no
 // amounts, bank details or "payment notice" wording.
 export function announcementHtml({ recipientName, title, message, dashboardPath, fromName }) {

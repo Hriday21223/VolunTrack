@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Megaphone } from 'lucide-react'
+import { Eye, Megaphone } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import useEscapeKey from '@/hooks/useEscapeKey.js'
+import EmailPreview from '@/components/EmailPreview.jsx'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` })
@@ -44,7 +45,10 @@ export default function AnnouncementComposer({ defaultAudience = 'schools', onCl
     ...Object.fromEntries(GROUPS.map(([key]) => [key, (PRESETS[defaultAudience] || []).includes(key)])),
   }))
   const [confirming, setConfirming] = useState(false)
-  useEscapeKey(onClose)
+  const [emailPreview, setEmailPreview] = useState(null)
+  const [previewing, setPreviewing] = useState(false)
+  // Escape closes the preview on top, not this window as well.
+  useEscapeKey(onClose, !emailPreview)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [sent, setSent] = useState(null)
@@ -70,6 +74,30 @@ export default function AnnouncementComposer({ defaultAudience = 'schools', onCl
   }, [sending, loadActive])
 
   const ready = draft.title.trim() && draft.message.trim() && GROUPS.some(([key]) => draft[key])
+
+  // The email one person would get (#942); nothing is saved or sent.
+  const preview = async () => {
+    setPreviewing(true)
+    setErr('')
+    try {
+      const res = await fetch(`${apiUrl}/announcements/admin/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({
+          title: draft.title.trim(),
+          message: draft.message.trim(),
+          ...Object.fromEntries(GROUPS.map(([key]) => [key, draft[key]])),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not preview the announcement.')
+      setEmailPreview(data.email)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setPreviewing(false)
+    }
+  }
 
   const send = async () => {
     setBusy(true)
@@ -145,6 +173,10 @@ export default function AnnouncementComposer({ defaultAudience = 'schools', onCl
             </select>
           </div>
 
+          <button type="button" onClick={preview} className="btn-ghost w-full" disabled={!ready || previewing}>
+            <Eye className="w-4 h-4 mr-1.5" /> {previewing ? 'Opening…' : 'Preview email'}
+          </button>
+
           {confirming ? (
             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm space-y-2">
               <p>This shows a banner to, and emails, all {listGroups(draft)} now. Send it?</p>
@@ -180,6 +212,8 @@ export default function AnnouncementComposer({ defaultAudience = 'schools', onCl
           </div>
         )}
       </Card>
+      {/* Clicks here must not reach the backdrop above, which closes this window. */}
+      {emailPreview && <div onClick={(e) => e.stopPropagation()}><EmailPreview email={emailPreview} onClose={() => setEmailPreview(null)} /></div>}
     </div>
   )
 }
