@@ -41,15 +41,16 @@ function writeCache(host, tenant) {
  *   sso: Array<{ connectionId: string, displayName: string }>,
  * }>}
  */
-// A school's own page on the shared site (#930): /s/<school code> remembers
-// the code for this tab, so the sign-in page shows that school's branding.
+// A school's own page on the shared site (#930): /s/<school code>, or the
+// school of whoever last signed in here, is remembered on this device (#934)
+// so every sign-in page shows that school, until "Not from <school>?".
 const CODE_KEY = 'voluntrack:tenant-code'
 export function setTenantCode(code) {
-  try { sessionStorage.setItem(CODE_KEY, String(code || '').toLowerCase()) } catch { /* optional */ }
+  try { localStorage.setItem(CODE_KEY, String(code || '').toLowerCase()) } catch { /* optional */ }
   clearTenantCache()
 }
 function tenantCode() {
-  try { return sessionStorage.getItem(CODE_KEY) || '' } catch { return '' }
+  try { return localStorage.getItem(CODE_KEY) || '' } catch { return '' }
 }
 
 export function resolveTenant() {
@@ -66,7 +67,10 @@ export function resolveTenant() {
   inflight = fetch(`${apiUrl}/tenant/by-host?host=${encodeURIComponent(window.location.host)}`)
     .then((res) => (res.ok ? res.json() : { tenant: null }))
     // No school on this hostname: a school page's code, if one was opened.
-    .then((data) => (data?.tenant || !code ? data : fetch(`${apiUrl}/tenant/by-code/${encodeURIComponent(code)}`).then((r) => (r.ok ? r.json() : { tenant: null }))))
+    .then((data) => (data?.tenant || !code ? data : fetch(`${apiUrl}/tenant/by-code/${encodeURIComponent(code)}`)
+      .then((r) => (r.ok ? r.json() : { tenant: undefined }))
+      // The school is gone or its code changed: stop asking.
+      .then((d) => { if (d && d.tenant === null) { try { localStorage.removeItem(CODE_KEY) } catch { /* */ } } return d })))
     .then((data) => {
       const tenant = data?.tenant ?? null
       writeCache(host, tenant)
@@ -83,10 +87,9 @@ export function clearTenantCache() {
   try { sessionStorage.removeItem(CACHE_KEY) } catch { /* nothing to clear */ }
 }
 
-// Forget a school page's school (#932): once someone signs in (the app then
-// shows their own school), when they sign out, or on "Not from <school>?".
-// Otherwise the next person at this computer saw that school's sign-in.
+// Forget the remembered school: "Not from <school>?" on the sign-in page, or
+// a code that no longer finds a school.
 export function forgetTenantCode() {
-  try { sessionStorage.removeItem(CODE_KEY) } catch { /* optional */ }
+  try { localStorage.removeItem(CODE_KEY) } catch { /* optional */ }
   clearTenantCache()
 }

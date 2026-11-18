@@ -149,6 +149,8 @@ export function publicUser(row) {
     schoolName: row.school_name ?? null,
     schoolLogoUrl: row.school_logo_url ?? null,
     schoolBrandColor: row.school_brand_color ?? null,
+    // So this device's sign-in page can show the school next time (#934).
+    schoolCode: row.school_code ?? null,
     grade: row.grade,
     studentIdNumber: row.student_id_number,
     // Self-declared at sign-up (parent-approved). The app keeps public-facing
@@ -183,7 +185,8 @@ export function publicUser(row) {
 
 export const USER_WITH_SCHOOL_SELECT = `
   SELECT u.*, s.payment_status AS school_payment_status, s.plan AS school_plan,
-         s.name AS school_name, s.brand_logo_url AS school_logo_url, s.brand_color AS school_brand_color
+         s.name AS school_name, s.brand_logo_url AS school_logo_url, s.brand_color AS school_brand_color,
+         s.pin AS school_code
   FROM users u LEFT JOIN schools s ON s.id = u.school_id
 `
 
