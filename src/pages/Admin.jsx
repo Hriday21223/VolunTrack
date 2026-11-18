@@ -13,7 +13,7 @@ import LiveChecksCard from '@/components/LiveChecksCard.jsx'
 import Toast from '@/components/Toast.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
+import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, setIncidentPublished, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
 import { fmtDate } from '@/utils/date.js'
@@ -170,6 +170,13 @@ function ApiHealthPill({ label, ok, detail }) {
   )
 }
 
+// Public = shown on /status; private = admins only (#940).
+function VisibilityBadge({ published }) {
+  return published
+    ? <span className="text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30">public</span>
+    : <span className="text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-earth-700 dark:text-earth-200 bg-earth-200 dark:bg-earth-700">private</span>
+}
+
 export default function Admin() {
   const nav = useNavigate()
   const { tab: tabParam } = useParams()
@@ -305,7 +312,8 @@ export default function Admin() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
   const [deletingAll, setDeletingAll] = useState(false)
-  const [newIncident, setNewIncident] = useState({ service: '', detail: '', issueUrl: '' })
+  const [newIncident, setNewIncident] = useState({ service: '', detail: '', issueUrl: '', published: true })
+  const [publishingId, setPublishingId] = useState(null)
   const [loggingIncident, setLoggingIncident] = useState(false)
 
   const loadIncidents = useCallback(async () => {
@@ -313,7 +321,7 @@ export default function Admin() {
     try {
       // null means the fetch told us nothing (rate-limited, offline) — leave
       // the list on screen rather than blanking it to "no incidents".
-      const result = await getIncidents()
+      const result = await getIncidents({ all: true })
       if (result) setIncidents(result)
     } finally { setLoadingIncidents(false) }
   }, [])
@@ -367,10 +375,21 @@ export default function Admin() {
     setLoggingIncident(true)
     try {
       await createIncident(newIncident)
-      setNewIncident({ service: '', detail: '', issueUrl: '' })
+      setNewIncident({ service: '', detail: '', issueUrl: '', published: true })
       await loadIncidents()
       setToastMessage('Incident logged'); setToast(true)
     } catch (error) { setToastMessage(error.message || 'Failed to log incident'); setToast(true) } finally { setLoggingIncident(false) }
+  }
+
+  // Automatic incidents start private (#940); the admin decides what the
+  // public /status page shows. Going public the first time emails subscribers.
+  const togglePublished = async (inc) => {
+    setPublishingId(inc.id)
+    try {
+      await setIncidentPublished(inc.id, !inc.published)
+      await loadIncidents()
+      setToastMessage(inc.published ? 'Now private: only admins see it' : 'Now public on the status page'); setToast(true)
+    } catch (error) { setToastMessage(error.message || 'Failed to change the incident'); setToast(true) } finally { setPublishingId(null) }
   }
 
   const resolveOne = async (id) => {
@@ -1963,6 +1982,7 @@ export default function Admin() {
                           {inc.source === 'admin' && (
                             <span className="text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-earth-600 dark:text-earth-300 bg-earth-100 dark:bg-earth-800">manual</span>
                           )}
+                          <VisibilityBadge published={inc.published} />
                         </div>
                         {inc.detail && <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">{inc.detail}</p>}
                         <p className="text-xs text-earth-400 dark:text-earth-500 mt-0.5">{new Date(inc.detectedAt).toLocaleString()}</p>
@@ -1971,7 +1991,11 @@ export default function Admin() {
                             GitHub issue ↗
                           </a>
                         )}
-                        <div className="flex gap-2 mt-2">
+                        {!inc.published && <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">Only admins can see this. Make it public if people should know; that also emails the status subscribers.</p>}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <button onClick={() => togglePublished(inc)} disabled={publishingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded border border-earth-300 dark:border-earth-700 text-earth-700 dark:text-earth-200 hover:bg-earth-100 dark:hover:bg-earth-800 disabled:opacity-50">
+                            {publishingId === inc.id ? 'Saving...' : inc.published ? 'Make private' : 'Make public'}
+                          </button>
                           <button onClick={() => resolveOne(inc.id)} disabled={resolvingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded bg-green-500 text-white hover:bg-green-600 disabled:opacity-50">
                             {resolvingId === inc.id ? 'Resolving...' : 'Resolve'}
                           </button>
@@ -1999,18 +2023,23 @@ export default function Admin() {
                 </button>
               </div>
               <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-                These are still listed publicly on /status. Resolving doesn't unpublish an incident — deleting does.
+                Public ones are still listed on /status after they're resolved. Make one private to hide it, or delete it.
               </p>
               <div className="space-y-2">
                 {incidents.filter((i) => i.status === 'resolved').map((inc) => (
                   <div key={inc.id} className="flex items-start justify-between gap-2 border-b border-earth-100 dark:border-earth-800 pb-2 last:border-0 last:pb-0">
                     <div className="min-w-0">
-                      <p className="text-sm text-earth-800 dark:text-earth-200 truncate">{inc.service}</p>
+                      <p className="text-sm text-earth-800 dark:text-earth-200 truncate flex items-center gap-2">{inc.service} <VisibilityBadge published={inc.published} /></p>
                       <p className="text-xs text-earth-400 dark:text-earth-500">{new Date(inc.detectedAt).toLocaleString()}</p>
                     </div>
+                    <div className="flex gap-2 shrink-0">
+                    <button onClick={() => togglePublished(inc)} disabled={publishingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded border border-earth-300 dark:border-earth-700 text-earth-700 dark:text-earth-200 hover:bg-earth-100 dark:hover:bg-earth-800 disabled:opacity-50">
+                      {publishingId === inc.id ? 'Saving...' : inc.published ? 'Make private' : 'Make public'}
+                    </button>
                     <button onClick={() => deleteOne(inc.id)} disabled={deletingId === inc.id} className="text-xs font-semibold px-2.5 py-1 rounded shrink-0 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50">
                       {deletingId === inc.id ? 'Deleting...' : confirmDeleteId === inc.id ? 'Confirm delete?' : 'Delete'}
                     </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2022,7 +2051,7 @@ export default function Admin() {
               <AlertTriangle className="w-4 h-4 text-brand-600" /> Log an incident
             </h3>
             <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-              Database and email failures, and backend outages, are logged automatically. Use this for anything else (e.g. a third-party outage or planned maintenance).
+              Database and email failures, and backend outages, are logged automatically and start private: you decide whether the public status page shows them. Use this for anything else (e.g. a third-party outage or planned maintenance).
             </p>
             <div className="space-y-3 max-w-sm">
               <div>
@@ -2055,6 +2084,10 @@ export default function Admin() {
                   className="input mt-1"
                 />
               </div>
+              <label className="flex items-center gap-2 text-sm text-earth-700 dark:text-earth-300">
+                <input type="checkbox" checked={newIncident.published} onChange={(e) => setNewIncident({ ...newIncident, published: e.target.checked })} />
+                Show it on the public status page (and email subscribers)
+              </label>
               <button onClick={submitIncident} disabled={loggingIncident || !newIncident.service.trim()} className="btn-primary btn-sm">
                 {loggingIncident ? 'Logging…' : 'Log incident'}
               </button>

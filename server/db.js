@@ -1760,6 +1760,11 @@ export async function initSchema() {
   } catch {}
   try { await query(`CREATE INDEX IF NOT EXISTS idx_incidents_detected ON incidents(detected_at DESC)`) } catch {}
   try { await query(`ALTER TABLE incidents ADD COLUMN IF NOT EXISTS issue_url TEXT`) } catch {}
+  // Automatic incidents start private (#940): only admins see them until one
+  // makes them public, which is when subscribers are emailed. Rows from before
+  // this stay public (the default), as they already were.
+  try { await query(`ALTER TABLE incidents ADD COLUMN IF NOT EXISTS published BOOLEAN NOT NULL DEFAULT true`) } catch {}
+  try { await query(`ALTER TABLE incidents ADD COLUMN IF NOT EXISTS subscribers_notified_at TIMESTAMPTZ`) } catch {}
   // /api/status/health auto-logs a 'Database' incident, and concurrent health
   // checks used to race between its SELECT and its INSERT, opening duplicate
   // incidents and double-sending the notification email. This index makes
