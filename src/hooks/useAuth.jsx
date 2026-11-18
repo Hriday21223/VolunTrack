@@ -8,7 +8,7 @@ import {
   findUserBySyncPin, updateSyncPin,
 } from '@/api/index.js'
 import { syncPullLogs, ADOPT_KEY } from '@/lib/logSync.js'
-import { forgetTenantCode } from '@/lib/tenant.js'
+import { setTenantCode } from '@/lib/tenant.js'
 import { syncKeptSession } from '@/lib/appSession.js'
 import { signInWithPasskey } from '@/lib/passkey.js'
 import { syncNativeReminders } from '@/lib/nativeReminders.js'
@@ -506,12 +506,12 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  // A school page's branding is for signing in only (#932): forget it once
-  // anyone is signed in, so the next sign-in page is the normal one.
-  useEffect(() => { if (user?.id) forgetTenantCode() }, [user?.id])
+  // This device remembers the school of whoever signs in (#934), so the next
+  // sign-in page shows it; "Not from <school>?" there forgets it. No school
+  // (parent, Task Maker, organization): whatever was remembered stays.
+  useEffect(() => { if (user?.schoolCode) setTenantCode(user.schoolCode) }, [user?.schoolCode])
 
   const logout = useCallback(() => {
-    forgetTenantCode()
     // Phone push (#603): forget this install's token while the session still works.
     forgetNativePushOnSignOut()
     remove(SESSION_KEY)

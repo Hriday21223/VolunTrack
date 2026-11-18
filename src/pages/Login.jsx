@@ -376,6 +376,11 @@ export default function Login() {
                 <div>
                   <p className="text-sm text-brand-200 uppercase tracking-[0.3em]" style={tenantColor ? { color: tenantColor } : undefined}>{tr('Sign in')}</p>
                   <h2 className="text-3xl font-bold text-white">{tr('Welcome back')}</h2>
+                  {tenant && <p className="mt-1 text-sm font-medium text-slate-200">{tenant.name}</p>}
+                  {/* A remembered school (#934): one tap back to the normal sign-in. */}
+                  {tenant?.kind === 'path' && (
+                    <button type="button" onClick={() => { forgetTenantCode(); setTenant(null) }} className="mt-0.5 text-xs text-sky-200 hover:text-white underline">{tr('Not from {school}?', { school: tenant.name })}</button>
+                  )}
                 </div>
                 <img src={logoSrc} alt={logoAlt} className="w-12 h-12 object-contain" />
               </div>
@@ -704,11 +709,7 @@ export default function Login() {
                 {tr('New to VolunTrack?')}{' '}
                 <Link to={tenant?.schoolCode ? `/join/${tenant.schoolCode}` : '/register'} className="text-sky-200 font-semibold hover:text-white">{tenant?.schoolCode ? tr('Join {school}', { school: tenant.name }) : tr('Create an account')}</Link>
               </div>
-              {tenant?.kind === 'path' && (
-                <div className="mt-2 text-center text-sm text-slate-400">
-                  <button type="button" onClick={() => { forgetTenantCode(); setTenant(null) }} className="text-sky-200 hover:text-white underline">{tr('Not from {school}?', { school: tenant.name })}</button>
-                </div>
-              )}
+
 
               <div className="mt-4 text-center text-sm text-slate-400">
                 {isMobile ? tr('Syncing from laptop?') : tr('Syncing from mobile?')}{' '}
