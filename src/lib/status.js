@@ -34,9 +34,13 @@ export async function getHealth() {
 // per-browser localStorage list. Returns null when the fetch didn't produce a
 // list, so a rate-limited poll leaves the incidents already on screen alone
 // instead of blanking them to "no incidents".
-export async function getIncidents() {
+// `{ all: true }` is the admin panel's list: private incidents too (#940).
+export async function getIncidents({ all = false } = {}) {
   try {
-    const res = await fetch(`${apiUrl()}/status/incidents`, { signal: AbortSignal.timeout(5000) })
+    const res = await fetch(`${apiUrl()}/status/incidents${all ? '?all=1' : ''}`, {
+      signal: AbortSignal.timeout(5000),
+      headers: all ? authHeaders() : {},
+    })
     if (!res.ok) return null
     const data = await res.json()
     return Array.isArray(data) ? data : null
@@ -45,11 +49,11 @@ export async function getIncidents() {
   }
 }
 
-export async function createIncident({ service, detail, issueUrl }) {
+export async function createIncident({ service, detail, issueUrl, published = true }) {
   const res = await fetch(`${apiUrl()}/status/incidents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ service, detail, issueUrl }),
+    body: JSON.stringify({ service, detail, issueUrl, published }),
   })
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Failed to create incident')
   return res.json()
@@ -62,6 +66,17 @@ export async function resolveIncident(id, status = 'resolved') {
     body: JSON.stringify({ status }),
   })
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Failed to update incident')
+  return res.json()
+}
+
+// Show an incident on the public /status page, or hide it again (#940).
+export async function setIncidentPublished(id, published) {
+  const res = await fetch(`${apiUrl()}/status/incidents/${id}/visibility`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ published }),
+  })
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Failed to change the incident')
   return res.json()
 }
 

@@ -59,7 +59,9 @@ function notifyRecipient() {
 // Fires once per incident (on creation only, not on every health poll) —
 // unlike the old system, which emailed on every visitor's browser quirk.
 // Notifies both the admin and every visitor who opted in on /status.
-async function notifyIncident({ service, detail, source, skipAdmin = false }) {
+// `published: false` (#940) emails only the admin, saying the incident is
+// private until they make it public; subscribers hear when it's published.
+async function notifyIncident({ service, detail, source, skipAdmin = false, published = true }) {
   const when = new Date().toLocaleString()
   const safeService = escapeHtml(service)
   const bodyHtml = `<p><strong>${safeService}</strong> was flagged ${source === 'admin' ? 'by an admin' : 'automatically'} at ${when}.</p>`
@@ -67,10 +69,15 @@ async function notifyIncident({ service, detail, source, skipAdmin = false }) {
 
   const admin = skipAdmin ? null : notifyRecipient()
   if (admin) {
-    sendEmail({ to: admin, subject: `VolunTrack incident: ${service}`, html: bodyHtml }).catch(() => {})
+    const privateNote = published ? '' : `<p><strong>It's private:</strong> only admins can see it. If people should know, make it public in <a href="${frontendUrl()}/admin/incidents">Admin → Incidents</a>; that also emails the status subscribers.</p>`
+    sendEmail({ to: admin, subject: `VolunTrack incident${published ? '' : ' (private)'}: ${service}`, html: bodyHtml + privateNote }).catch(() => {})
   }
 
-  if (!hasDatabase()) return
+  if (!hasDatabase() || !published) return
+  await notifySubscribers({ service, bodyHtml })
+}
+
+async function notifySubscribers({ service, bodyHtml }) {
   try {
     const { rows } = await query('SELECT email, token FROM status_subscribers WHERE confirmed = true')
     rows.forEach((sub) => {
@@ -142,13 +149,13 @@ async function syncAutoIncident(service, serviceOk, detail) {
       // insert a row, and only that one notifies.
       const incidentId = uid('inc')
       const { rowCount } = await query(
-        `INSERT INTO incidents (id, service, detail, status, source)
-         VALUES ($1, $2, $3, 'detected', 'auto')
+        `INSERT INTO incidents (id, service, detail, status, source, published)
+         VALUES ($1, $2, $3, 'detected', 'auto', false)
          ON CONFLICT DO NOTHING`,
         [incidentId, service, detail],
       )
       if (rowCount > 0) {
-        await notifyIncident({ service, detail, source: 'auto' })
+        await notifyIncident({ service, detail, source: 'auto', published: false })
         // The Email incident is raised precisely when email is broken, so the
         // notification above cannot arrive — the issue is the channel that
         // still works. Fire-and-forget; see fileIncidentIssue.
@@ -436,8 +443,8 @@ function publicServiceFor(checkName) {
 
 // Opens a public incident for each service with a check that just reached the
 // alert threshold, and resolves the robot's open incidents for services whose
-// checks all passed this run. Subscribers hear about new ones the usual way;
-// the admin doesn't, having had the live-check alert already.
+// checks all passed this run. New ones are private until an admin makes them
+// public (#940), which is when subscribers hear about them.
 async function syncLiveCheckIncidents({ results, broken }) {
   const services = new Map()
   for (const r of results) {
@@ -453,11 +460,13 @@ async function syncLiveCheckIncidents({ results, broken }) {
     if (newlyBroken) {
       // idx_incidents_one_open_auto keeps this to one open incident per service.
       const { rowCount } = await query(
-        `INSERT INTO incidents (id, service, detail, status, source) VALUES ($1, $2, $3, 'detected', 'auto')
+        `INSERT INTO incidents (id, service, detail, status, source, published) VALUES ($1, $2, $3, 'detected', 'auto', false)
          ON CONFLICT DO NOTHING`,
         [uid('inc'), service, detail],
       )
-      if (rowCount > 0) await notifyIncident({ service, detail, source: 'auto', skipAdmin: true })
+      // Private until an admin publishes it (#940), so the admin gets this
+      // email too, beside the live-check alert, to decide.
+      if (rowCount > 0) await notifyIncident({ service, detail, source: 'auto', published: false })
     } else if (allOk) {
       await query(
         `UPDATE incidents SET status = 'resolved', resolved_at = now()
@@ -518,9 +527,14 @@ router.get('/live-checks', limiter, requireDb, requireAuth('admin'), async (_req
 })
 
 // Public: real, shared incident history (not per-browser localStorage).
-router.get('/incidents', pollLimiter, requireDb, async (_req, res) => {
+// ?all=1 from an admin also lists private incidents (#940), with `published`;
+// everyone else, the /status page included, sees only public ones.
+router.get('/incidents', pollLimiter, requireDb, async (req, res) => {
+  const all = req.query.all === '1' && req.auth?.role === 'admin'
   try {
-    const { rows } = await query('SELECT * FROM incidents ORDER BY detected_at DESC LIMIT 50')
+    const { rows } = await query(
+      `SELECT * FROM incidents ${all ? '' : 'WHERE published'} ORDER BY detected_at DESC LIMIT ${all ? 100 : 50}`,
+    )
     return res.json(rows.map((r) => ({
       id: r.id,
       service: r.service,
@@ -537,6 +551,7 @@ router.get('/incidents', pollLimiter, requireDb, async (_req, res) => {
       detectedAt: r.detected_at,
       resolvedAt: r.resolved_at,
       issueUrl: r.issue_url,
+      ...(all ? { published: r.published } : {}),
     })))
   } catch (error) {
     console.error('list incidents failed:', error)
@@ -550,6 +565,7 @@ router.post('/incidents', limiter, requireDb, requireAuth('admin'), async (req, 
   const service = String(req.body.service || '').trim()
   const detail = String(req.body.detail || '').trim()
   const issueUrl = String(req.body.issueUrl || '').trim()
+  const published = req.body.published !== false
 
   if (!service || service.length > 200) return res.status(400).json({ error: 'Invalid service.' })
   if (detail.length > 1000) return res.status(400).json({ error: 'Invalid detail.' })
@@ -560,10 +576,11 @@ router.post('/incidents', limiter, requireDb, requireAuth('admin'), async (req, 
   try {
     const id = uid('inc')
     await query(
-      `INSERT INTO incidents (id, service, detail, status, source, issue_url) VALUES ($1, $2, $3, 'detected', 'admin', $4)`,
-      [id, service, detail || null, issueUrl || null],
+      `INSERT INTO incidents (id, service, detail, status, source, issue_url, published, subscribers_notified_at)
+       VALUES ($1, $2, $3, 'detected', 'admin', $4, $5, ${published ? 'now()' : 'NULL'})`,
+      [id, service, detail || null, issueUrl || null, published],
     )
-    await notifyIncident({ service, detail, source: 'admin' })
+    await notifyIncident({ service, detail, source: 'admin', published })
     return res.status(201).json({ id })
   } catch (error) {
     console.error('create incident failed:', error)
@@ -588,6 +605,37 @@ router.patch('/incidents/:id', limiter, requireDb, requireAuth('admin'), async (
   } catch (error) {
     console.error('update incident failed:', error)
     return res.status(500).json({ error: 'Could not update incident.' })
+  }
+})
+
+// Admin-only (#940): make an incident public (shown on /status) or private
+// again. Subscribers are emailed the first time an open incident goes public,
+// claimed by subscribers_notified_at so flipping it back and forth sends once.
+router.patch('/incidents/:id/visibility', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  if (typeof req.body?.published !== 'boolean') return res.status(400).json({ error: 'Say whether it should be public.' })
+  const published = req.body.published
+  try {
+    const { rows } = await query(
+      'UPDATE incidents SET published = $1 WHERE id = $2 RETURNING service, detail, source, status, subscribers_notified_at',
+      [published, req.params.id],
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Incident not found.' })
+    const inc = rows[0]
+    if (published && inc.status === 'detected' && !inc.subscribers_notified_at) {
+      const { rowCount } = await query(
+        'UPDATE incidents SET subscribers_notified_at = now() WHERE id = $1 AND subscribers_notified_at IS NULL',
+        [req.params.id],
+      )
+      if (rowCount) {
+        const bodyHtml = `<p><strong>${escapeHtml(inc.service)}</strong> is having problems, and we're looking into it.</p>`
+          + (inc.source !== 'github' && inc.detail ? `<p>${escapeHtml(inc.detail)}</p>` : '')
+        notifySubscribers({ service: inc.service, bodyHtml }).catch(() => {})
+      }
+    }
+    return res.json({ ok: true, published })
+  } catch (error) {
+    console.error('incident visibility failed:', error)
+    return res.status(500).json({ error: 'Could not change the incident.' })
   }
 })
 
@@ -786,10 +834,10 @@ export async function handleGithubWebhook(req, res) {
       if (rows.length === 0) {
         const service = String(issue.title || 'GitHub issue').slice(0, 200)
         await query(
-          `INSERT INTO incidents (id, service, status, source, issue_url) VALUES ($1, $2, 'detected', 'github', $3)`,
+          `INSERT INTO incidents (id, service, status, source, issue_url, published) VALUES ($1, $2, 'detected', 'github', $3, false)`,
           [uid('inc'), service, issue.html_url],
         )
-        await notifyIncident({ service, source: 'github' })
+        await notifyIncident({ service, source: 'github', published: false })
       }
     } else if (action === 'closed') {
       const { rowCount } = await query(
@@ -805,8 +853,8 @@ export async function handleGithubWebhook(req, res) {
         if (rows.length === 0) {
           const validTime = (value) => (value && !Number.isNaN(Date.parse(value)) ? value : null)
           await query(
-            `INSERT INTO incidents (id, service, status, source, issue_url, detected_at, resolved_at)
-             VALUES ($1, $2, 'resolved', 'github', $3, COALESCE($4::timestamptz, now()), COALESCE($5::timestamptz, now()))`,
+            `INSERT INTO incidents (id, service, status, source, issue_url, detected_at, resolved_at, published)
+             VALUES ($1, $2, 'resolved', 'github', $3, COALESCE($4::timestamptz, now()), COALESCE($5::timestamptz, now()), false)`,
             [
               uid('inc'),
               String(issue.title || 'Outage').slice(0, 200),
