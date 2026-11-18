@@ -16,7 +16,7 @@ import EmailPreview from '@/components/EmailPreview.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, setIncidentPublished, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
-import { generateInvoicePDF, poLabel } from '@/lib/export.js'
+import { generateInvoicePDF, generateInvoicesPDFBlob, poLabel } from '@/lib/export.js'
 import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
 import { fmtDate } from '@/utils/date.js'
 import { parseISO, format } from 'date-fns'
@@ -991,6 +991,14 @@ export default function Admin() {
     title: `Invoice ${event.invoice_number} to ${historyModal?.entityName || ''}`,
     filename: `${event.invoice_number}.pdf`,
     pdf: invoicePdfFields(event),
+  })
+
+  // Every invoice on this account in one document, newest first (#944).
+  const sentInvoices = historyEvents.filter((ev) => ev.event_type === 'invoice_sent' && ev.invoice_number)
+  const viewAllInvoices = () => setInvoicePdf({
+    title: `All ${sentInvoices.length} invoice${sentInvoices.length === 1 ? '' : 's'} for ${historyModal?.entityName || ''}`,
+    filename: 'invoices.pdf',
+    all: sentInvoices.map((ev) => ({ ...invoicePdfFields(ev), status: ev.invoice_status })),
   })
 
   const loadPaymentInstructions = useCallback(async () => {
@@ -3528,7 +3536,9 @@ export default function Admin() {
         <PdfPreview
           title={invoicePdf.title}
           filename={invoicePdf.filename}
-          getBlob={() => generateInvoicePDF({ ...invoicePdf.pdf, returnBlob: true })}
+          getBlob={() => (invoicePdf.all
+            ? generateInvoicesPDFBlob(invoicePdf.all)
+            : generateInvoicePDF({ ...invoicePdf.pdf, returnBlob: true }))}
           onClose={() => setInvoicePdf(null)}
         />
       )}
@@ -3538,6 +3548,11 @@ export default function Admin() {
           <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold mb-2 flex items-center gap-2"><History className="w-4 h-4 text-earth-400" /> Payment history</h3>
             <p className="text-sm text-earth-400 mb-4">{historyModal.entityName}</p>
+            {!loadingHistory && sentInvoices.length > 0 && (
+              <button type="button" onClick={viewAllInvoices} className="btn-primary w-full mb-3">
+                <Eye className="w-4 h-4 mr-1.5" /> See all {sentInvoices.length} invoice{sentInvoices.length === 1 ? '' : 's'}
+              </button>
+            )}
             {loadingHistory ? (
               <p className="text-sm text-earth-400 py-4 text-center">Loading…</p>
             ) : historyEvents.length === 0 ? (
