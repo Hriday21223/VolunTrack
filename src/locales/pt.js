@@ -3653,5 +3653,6 @@ export default {
   "Quick colours": "Cores rápidas",
   "Pick a colour, choose one above, or type a hex value.": "Escolha uma cor, toque em uma acima ou digite um valor hex.",
   "Your school’s own page": "A página da sua escola",
-  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "Seu logo e sua cor aparecem aqui na hora, sem domínio próprio. Compartilhe no site, em folhetos e no Google Classroom."
+  "Your logo and colour show here right away, no custom domain needed. Share it on your website, flyers and Google Classroom.": "Seu logo e sua cor aparecem aqui na hora, sem domínio próprio. Compartilhe no site, em folhetos e no Google Classroom.",
+  "Not from {school}?": "Não é de {school}?"
 }
