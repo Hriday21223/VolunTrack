@@ -13,6 +13,7 @@ import LiveChecksCard from '@/components/LiveChecksCard.jsx'
 import Toast from '@/components/Toast.jsx'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import EmailPreview from '@/components/EmailPreview.jsx'
+import SentNotices from '@/components/SentNotices.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, setIncidentPublished, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
@@ -261,6 +262,7 @@ export default function Admin() {
   const [previewingInvoice, setPreviewingInvoice] = useState(false)
   const [invoicePreviewError, setInvoicePreviewError] = useState('')
   const [emailPreview, setEmailPreview] = useState(null) // { to, subject, html, note }
+  const [showSentNotices, setShowSentNotices] = useState(false)
   const [previewingNotice, setPreviewingNotice] = useState(false)
   const [noticePreviewError, setNoticePreviewError] = useState('')
   const [historyModal, setHistoryModal] = useState(null) // { entityType, entityId, entityName }
@@ -1708,6 +1710,9 @@ export default function Admin() {
               <button onClick={() => { setNotifySchoolId(null); setShowNotifyModal(true) }} className="btn-sm btn-ghost">
                 <Bell className="w-3.5 h-3.5 mr-1" /> Notify all schools
               </button>
+              <button onClick={() => setShowSentNotices(true)} className="btn-sm btn-ghost">
+                <History className="w-3.5 h-3.5 mr-1" /> Sent notices
+              </button>
               <button onClick={() => setAnnounceAudience('schools')} className="btn-sm btn-ghost">
                 <Megaphone className="w-3.5 h-3.5 mr-1" /> Announcement
               </button>
@@ -1930,6 +1935,9 @@ export default function Admin() {
                 value={customerSearch}
                 onChange={(e) => setCustomerSearch(e.target.value)}
               />
+              <button onClick={() => setShowSentNotices(true)} className="btn-sm btn-ghost shrink-0">
+                <History className="w-3.5 h-3.5 mr-1" /> Sent notices
+              </button>
               <button onClick={() => setAnnounceAudience('orgs')} className="btn-sm btn-ghost shrink-0">
                 <Megaphone className="w-3.5 h-3.5 mr-1" /> Announcement
               </button>
@@ -3531,6 +3539,7 @@ export default function Admin() {
       )}
 
       {emailPreview && <EmailPreview email={emailPreview} onClose={() => setEmailPreview(null)} />}
+      {showSentNotices && <SentNotices onClose={() => setShowSentNotices(false)} />}
 
       {invoicePdf && (
         <PdfPreview

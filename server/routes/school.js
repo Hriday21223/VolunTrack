@@ -8487,6 +8487,43 @@ router.patch('/admin/:id/due-date', limiter, requireDb, requireAuth('admin'), as
   }
 })
 
+// Every payment notice sent, for the admin's Sent notices list (#946).
+router.get('/admin/notices', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT n.id, n.message, n.created_at, n.school_id, n.organization_id, s.name AS school_name, o.name AS org_name
+         FROM admin_notifications n
+         LEFT JOIN schools s ON s.id = n.school_id
+         LEFT JOIN organizations o ON o.id = n.organization_id
+        ORDER BY n.created_at DESC LIMIT 200`,
+    )
+    return res.json({
+      notices: rows.map((n) => ({
+        id: n.id,
+        message: n.message,
+        createdAt: n.created_at,
+        audience: n.school_id ? 'school' : n.organization_id ? 'organization' : 'all',
+        name: n.school_name || n.org_name || null,
+      })),
+    })
+  } catch (error) {
+    console.error('list notices failed:', error)
+    return res.status(500).json({ error: 'Could not load the notices.' })
+  }
+})
+
+// Takes a notice off the dashboards. Emails already sent are not affected.
+router.delete('/admin/notices/:id', limiter, requireDb, requireAuth('admin'), async (req, res) => {
+  try {
+    const { rowCount } = await query('DELETE FROM admin_notifications WHERE id = $1', [req.params.id])
+    if (!rowCount) return res.status(404).json({ error: 'Notice not found.' })
+    return res.json({ ok: true })
+  } catch (error) {
+    console.error('delete notice failed:', error)
+    return res.status(500).json({ error: 'Could not delete the notice.' })
+  }
+})
+
 // What a payment notice will look like (#942): nothing is saved or emailed.
 // "All schools" shows the first school's copy, since the amount and due date
 // differ per school.
@@ -8585,7 +8622,11 @@ router.get('/admin/notifications', limiter, requireDb, requireAuth('school', 'sc
     const { rows: userRows } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
     const schoolId = userRows[0]?.school_id || null
     const { rows } = await query(
-      'SELECT id, message, created_at FROM admin_notifications WHERE school_id IS NULL OR school_id = $1 ORDER BY created_at DESC LIMIT 50',
+      // No school and no organization means "all schools". A notice to one
+      // organization also has no school, and must not show here (#946).
+      `SELECT id, message, created_at FROM admin_notifications
+        WHERE (school_id IS NULL AND organization_id IS NULL) OR school_id = $1
+        ORDER BY created_at DESC LIMIT 50`,
       [schoolId],
     )
     return res.json({ notifications: rows })
