@@ -164,7 +164,7 @@ export default function OrganizationDashboard() {
           : tr('Export hours across your schools')
       }
       action={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 md:hidden">
           <button data-tour="org-schools-tab" onClick={() => setTab('schools')} className={`btn-sm ${tab === 'schools' ? 'btn-primary' : 'btn-ghost'}`}>
             <School className="w-3.5 h-3.5 mr-1" />{' '}{tr('Schools')}
           </button>

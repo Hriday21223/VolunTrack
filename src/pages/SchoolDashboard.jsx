@@ -630,7 +630,8 @@ export default function SchoolDashboard() {
         </span>
       }
       action={
-        <div className="flex flex-wrap gap-2">
+        // Students reach this page too and have no section menu.
+        <div className={`flex flex-wrap gap-2 ${isSchoolAdmin ? 'md:hidden' : ''}`}>
           {isSchoolAdmin && (
             <button data-tour="tab-students" onClick={() => { setTab('students'); setSubTab('list') }} className={`btn-sm ${tab === 'students' ? 'btn-primary' : 'btn-ghost'}`}>{tr('Students')}</button>
           )}
