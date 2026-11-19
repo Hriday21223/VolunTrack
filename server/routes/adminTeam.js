@@ -59,7 +59,9 @@ router.get('/', limiter, requireDb, requireAuth('admin'), async (req, res) => {
     const isMain = String(me[0]?.email || '').toLowerCase() === mainEmail() && Boolean(mainEmail())
     if (!isMain) return res.json({ isMain: false })
     const { rows: admins } = await query(
-      `SELECT id, name, email, totp_enabled, created_at, admin_permissions FROM users WHERE role = 'admin' ORDER BY created_at`,
+      `SELECT u.id, u.name, u.email, u.created_at, u.admin_permissions,
+              (u.totp_enabled OR EXISTS (SELECT 1 FROM passkeys p WHERE p.user_id = u.id)) AS two_step
+         FROM users u WHERE u.role = 'admin' ORDER BY u.created_at`,
     )
     const { rows: invites } = await query(
       `SELECT id, name, email, expires_at, created_at FROM admin_invites
@@ -69,7 +71,7 @@ router.get('/', limiter, requireDb, requireAuth('admin'), async (req, res) => {
       isMain: true,
       admins: admins.map((a) => {
         const main = String(a.email).toLowerCase() === mainEmail()
-        return { id: a.id, name: a.name, email: a.email, twoStep: a.totp_enabled, main, since: a.created_at, permissions: main || a.admin_permissions == null ? AREA_IDS : cleanPermissions(a.admin_permissions) }
+        return { id: a.id, name: a.name, email: a.email, twoStep: a.two_step, main, since: a.created_at, permissions: main || a.admin_permissions == null ? AREA_IDS : cleanPermissions(a.admin_permissions) }
       }),
       areas: AREAS,
       invites: invites.map((i) => ({ id: i.id, name: i.name, email: i.email, expiresAt: i.expires_at })),

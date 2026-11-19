@@ -3660,5 +3660,14 @@ export default {
   "It opens like an app, full screen, and works without internet.": "像应用一样全屏打开，没有网络也能用。",
   "Install": "安装",
   "Tap the Share button": "点“分享”按钮",
-  "Choose Add to Home Screen": "选择“添加到主屏幕”"
+  "Choose Add to Home Screen": "选择“添加到主屏幕”",
+  "Attendance for the events you run is on My Tasks.": "你举办的活动的出勤情况在“我的任务”中查看。",
+  "Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.": "点击“记录时长”（手机上点 + 按钮）。填写你做了什么、时间、地点和监督人，并添加证明。点击保存后，你的时长会立即显示在仪表板、日历和报告中。",
+  "Start and end time": "开始和结束时间",
+  "When you started and finished. We work out the hours.": "你开始和结束的时间。我们会算出时长。",
+  "Where you volunteered.": "你做志愿服务的地点。",
+  "Supervisor name and email": "监督人姓名和邮箱",
+  "They get a link to verify these hours.": "他们会收到用于核实这些时长的链接。",
+  "A photo of a sign-in sheet, a thank-you email or another document.": "签到表照片、感谢邮件或其他文件。",
+  "Your school can change which of these it asks for.": "你的学校可以更改需要填写的项目。"
 }

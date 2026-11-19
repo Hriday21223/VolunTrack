@@ -3659,5 +3659,14 @@ export default {
   "It opens like an app, full screen, and works without internet.": "アプリのように全画面で開き、インターネットがなくても使えます。",
   "Install": "インストール",
   "Tap the Share button": "共有ボタンをタップ",
-  "Choose Add to Home Screen": "「ホーム画面に追加」を選ぶ"
+  "Choose Add to Home Screen": "「ホーム画面に追加」を選ぶ",
+  "Attendance for the events you run is on My Tasks.": "主催するイベントの出欠は「マイタスク」で確認できます。",
+  "Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.": "「時間を記録」(スマートフォンでは + ボタン)をクリックします。活動内容、日時、場所、監督者を入力し、証明を追加します。保存すると、時間はすぐにダッシュボード、カレンダー、レポートに表示されます。",
+  "Start and end time": "開始時刻と終了時刻",
+  "When you started and finished. We work out the hours.": "開始と終了の時刻です。時間数は自動で計算します。",
+  "Where you volunteered.": "ボランティアをした場所です。",
+  "Supervisor name and email": "監督者の名前とメールアドレス",
+  "They get a link to verify these hours.": "この時間を確認するためのリンクが届きます。",
+  "A photo of a sign-in sheet, a thank-you email or another document.": "出席表の写真、お礼のメール、その他の書類。",
+  "Your school can change which of these it asks for.": "学校によって、求められる項目が変わることがあります。"
 }

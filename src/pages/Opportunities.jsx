@@ -9,7 +9,7 @@ import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { isNativeApp } from '@/lib/platform.js'
-import { fmtDate } from '@/utils/date.js'
+import { fmtClock, fmtDate } from '@/utils/date.js'
 import ReportTaskDialog from '@/components/ReportTaskDialog.jsx'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
@@ -673,7 +673,7 @@ export default function Opportunities() {
                         <MapPin className="w-3 h-3" /> {t.location}
                       </a>
                     )}
-                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
+                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${fmtClock(t.time)}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total}{' '}{tr('slots')}</span>
                   </div>
                   <p className="text-xs text-earth-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">

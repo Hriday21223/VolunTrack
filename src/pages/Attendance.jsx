@@ -3,7 +3,8 @@ import { MapPin, Calendar as CalIcon, CheckCircle, XCircle, MinusCircle, Clock3,
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { format } from 'date-fns'
-import { fmtDate } from '@/utils/date.js'
+import { Link } from 'react-router-dom'
+import { fmtClock, fmtDate } from '@/utils/date.js'
 import CancelSignup from '@/components/CancelSignup.jsx'
 import InviteFriends from '@/components/InviteFriends.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -111,7 +112,7 @@ function SignupRow({ s, onChanged, canRate }) {
           {s.creator_name && <p className="text-xs text-earth-500 mt-0.5">{tr('Posted by')}{' '}{s.creator_name}</p>}
           <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.location}</span>
-            <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{myShift ? ` · ${shiftText(myShift)}` : s.time ? ` · ${s.time}` : ''}</span>
+            <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(dayOf(s.date))}{myShift ? ` · ${shiftText(myShift)}` : s.time ? ` · ${fmtClock(s.time)}` : ''}</span>
           </div>
           {!['rejected', 'parent_declined'].includes(s.signup_status) && <WeatherChip task={s} className="mt-2" />}
           {!cancelled && !isPast && ['pending', 'approved'].includes(s.signup_status) && <AddToCalendar task={s} className="mt-2" />}
@@ -211,7 +212,7 @@ export default function Attendance() {
   const past = signups.filter((s) => !isUpcoming(s))
 
   return (
-    <AppLayout title={tr('Attendance')} subtitle={tr('Your signup and attendance status across tasks')} action={<ScanCheckinButton />}>
+    <AppLayout title={tr('Attendance')} subtitle={tr('Your signup and attendance status across tasks')} action={canRate ? <ScanCheckinButton /> : undefined}>
       <div className="max-w-3xl mx-auto space-y-6">
         {loading ? (
           <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
@@ -220,7 +221,15 @@ export default function Attendance() {
             <div className="text-center py-12 text-earth-500">
               <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p className="font-medium text-earth-900 dark:text-earth-100">{tr('No signups yet')}</p>
-              <p className="text-sm mt-1">{tr('Sign up for a volunteer opportunity from the dashboard to see your attendance here.')}</p>
+              {/* Only students can open Opportunities and the check-in page. */}
+              {canRate ? (
+                <p className="text-sm mt-1">{tr('Sign up for a volunteer opportunity from the dashboard to see your attendance here.')}</p>
+              ) : (
+                <>
+                  <p className="text-sm mt-1">{tr('Attendance for the events you run is on My Tasks.')}</p>
+                  <Link to="/my-tasks" className="btn-primary btn-sm mt-4 inline-flex">{tr('My Tasks')}</Link>
+                </>
+              )}
             </div>
           </Card>
         ) : (

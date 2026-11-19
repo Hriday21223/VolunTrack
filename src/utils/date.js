@@ -17,6 +17,13 @@ const pattern = PATTERNS[language] || { short: 'MMM d, yyyy', long: 'MMMM d, yyy
 
 export const fmtDate = (iso) => (iso ? format(parseISO(iso), pattern.short) : '—')
 export const fmtDateLong = (iso) => (iso ? format(parseISO(iso), pattern.long) : '')
+// "14:30" (how a task stores its time) → "2:30 PM".
+export function fmtClock(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || ''))
+  if (!m) return String(hhmm || '')
+  const h = Number(m[1])
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`
+}
 export const fmtTime = (iso) => (iso ? format(parseISO(iso), 'h:mm a') : '—')
 export const fmtDateTime = (iso) => (iso ? format(parseISO(iso), pattern.time) : '—')
 export const fromNow = (iso) => (iso ? formatDistanceToNow(parseISO(iso), { addSuffix: true }) : '')

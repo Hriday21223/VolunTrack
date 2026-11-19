@@ -3659,5 +3659,14 @@ export default {
   "It opens like an app, full screen, and works without internet.": "يفتح كتطبيق بملء الشاشة ويعمل دون إنترنت.",
   "Install": "تثبيت",
   "Tap the Share button": "اضغط زر المشاركة",
-  "Choose Add to Home Screen": "اختر إضافة إلى الشاشة الرئيسية"
+  "Choose Add to Home Screen": "اختر إضافة إلى الشاشة الرئيسية",
+  "Attendance for the events you run is on My Tasks.": "الحضور للفعاليات التي تنظمها موجود في مهامي.",
+  "Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.": "انقر على تسجيل الساعات (أو زر + على الهاتف). اكتب ما فعلته ومتى وأين ومن أشرف عليك، وأضف إثباتًا. انقر على حفظ وستظهر ساعاتك فورًا في لوحة التحكم والتقويم والتقارير.",
+  "Start and end time": "وقت البدء والانتهاء",
+  "When you started and finished. We work out the hours.": "متى بدأت ومتى انتهيت. سنحسب نحن الساعات.",
+  "Where you volunteered.": "المكان الذي تطوعت فيه.",
+  "Supervisor name and email": "اسم المشرف وبريده الإلكتروني",
+  "They get a link to verify these hours.": "يصله رابط للتحقق من هذه الساعات.",
+  "A photo of a sign-in sheet, a thank-you email or another document.": "صورة لورقة الحضور أو رسالة شكر أو مستند آخر.",
+  "Your school can change which of these it asks for.": "يمكن لمدرستك تغيير ما تطلبه من هذه البيانات."
 }

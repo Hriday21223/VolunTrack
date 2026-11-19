@@ -3659,5 +3659,14 @@ export default {
   "It opens like an app, full screen, and works without internet.": "यह ऐप की तरह पूरी स्क्रीन पर खुलता है और बिना इंटरनेट के भी चलता है।",
   "Install": "इंस्टॉल करें",
   "Tap the Share button": "शेयर बटन दबाएँ",
-  "Choose Add to Home Screen": "होम स्क्रीन में जोड़ें चुनें"
+  "Choose Add to Home Screen": "होम स्क्रीन में जोड़ें चुनें",
+  "Attendance for the events you run is on My Tasks.": "आपके आयोजनों की उपस्थिति मेरे कार्य में है।",
+  "Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.": "घंटे दर्ज करें पर क्लिक करें (या मोबाइल पर + बटन)। बताएं कि आपने क्या किया, कब, कहां और किसकी देखरेख में, और प्रमाण जोड़ें। सहेजें पर क्लिक करें: आपके घंटे तुरंत डैशबोर्ड, कैलेंडर और रिपोर्ट में दिखेंगे।",
+  "Start and end time": "शुरू और खत्म होने का समय",
+  "When you started and finished. We work out the hours.": "आपने कब शुरू और कब खत्म किया। घंटे हम निकाल लेंगे।",
+  "Where you volunteered.": "आपने कहां स्वयंसेवा की।",
+  "Supervisor name and email": "पर्यवेक्षक का नाम और ईमेल",
+  "They get a link to verify these hours.": "उन्हें इन घंटों की पुष्टि के लिए एक लिंक मिलता है।",
+  "A photo of a sign-in sheet, a thank-you email or another document.": "उपस्थिति शीट की फोटो, धन्यवाद ईमेल या कोई अन्य दस्तावेज़।",
+  "Your school can change which of these it asks for.": "आपका स्कूल बदल सकता है कि इनमें से क्या मांगा जाए।"
 }

@@ -10,7 +10,7 @@ import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
 import InstallAppCard from '@/components/InstallAppCard.jsx'
 import EmergencyContactCard from '@/components/EmergencyContactCard.jsx'
 import { ParentWeeklyGoal } from '@/components/WeeklyFamilyGoal.jsx'
-import { fmtDate, fmtHours, fromNow } from '@/utils/date.js'
+import { fmtClock, fmtDate, fmtHours, fromNow } from '@/utils/date.js'
 import { goalPace, paceSummary, paceStanding } from '@/lib/pace.js'
 import { gradeOptionLabel, isYoungGrade } from '@policy'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
@@ -606,7 +606,7 @@ function TaskRow({ task }) {
         <p className="text-sm font-medium break-words">{task.title}</p>
         <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
           {task.date === localToday() ? tr('Today') : fmtDate(task.date)}
-          {task.time && <> · {task.time}</>}
+          {task.time && <> · {fmtClock(task.time)}</>}
         </p>
         <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5 flex items-start gap-1">
           <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
@@ -694,7 +694,7 @@ function TaskApprovals({ onDecided }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium break-words">{item.childName} · {item.title}</p>
                 <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5">
-                  {fmtDate(item.date)}{item.time && <> · {item.time}</>}
+                  {fmtDate(item.date)}{item.time && <> · {fmtClock(item.time)}</>}
                 </p>
                 <p className="text-xs text-earth-500 dark:text-earth-400 mt-0.5 flex items-start gap-1">
                   <MapPin className="w-3 h-3 mt-0.5 shrink-0" />

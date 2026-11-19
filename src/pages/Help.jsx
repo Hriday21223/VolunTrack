@@ -117,7 +117,7 @@ const FAQ_ITEMS = [
 const QUICKSTART_STEPS = [
   { name: 'Create your account', text: tr('Go to the Sign Up page and pick a role: Student if you\'re logging your own hours, Volunteer Task Maker if you\'re organizing events for others, or Parent if you want to follow a student\'s hours. Enter your date of birth, then the 6-digit code we email you to confirm your address. If you\'re under 13, a parent or guardian approves the account by email first. Schools and multi-school organizations have their own signup pages.') },
   { name: 'Join your school (optional)', text: tr('If your school uses VolunTrack, ask an administrator for a school code. Open Settings, find \"Join school,\" and enter the code. Your school can also invite you by email; accept it in Settings.') },
-  { name: 'Log your first hours', text: tr('Click Log Hours (or the + button on mobile). Fill in the date, hours, activity, and category, and optionally a supervisor email so they can verify the hours. Click Save — your hours appear on the dashboard, calendar, and reports instantly.') },
+  { name: 'Log your first hours', text: tr('Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.') },
   { name: 'Set a goal', text: tr('Go to Settings and scroll to Goals. Set a target (e.g. \"50 hours by June\") to track your progress with a visual ring on the dashboard.') },
   { name: 'Explore your dashboard', text: tr('Return to Home to see your total hours, goal progress, weekly chart, recent activity, and earned badges — all in one place.') },
 ]
@@ -188,11 +188,14 @@ function QuickStart() {
         <p>{tr('Click')}{' '}<Link to="/log" className="text-brand-400 hover:underline">{tr('Log Hours')}</Link>{' '}{tr('(or the')}{' '}<strong>+</strong>{' '}{tr('button on mobile). Fill in:')}</p>
         <div className="mt-3 space-y-2">
           <Step icon={Calendar} label={tr('Date')} description={tr('When you volunteered.')} />
-          <Step icon={Clock} label={tr('Hours')} description={tr('How long you volunteered.')} />
+          <Step icon={Clock} label={tr('Start and end time')} description={tr('When you started and finished. We work out the hours.')} />
           <Step icon={ClipboardList} label={tr('Activity')} description={tr('What you did (e.g. \'Food bank sorting\').')} />
           <Step icon={BookOpen} label={tr('Category')} description={tr('Education, Environment, Health, Community, and more.')} />
-          <Step icon={UserCheck} label={tr('Supervisor email (optional)')} description={tr('Add one and they\'ll get a link to verify these hours.')} />
+          <Step icon={MapPin} label={tr('Location')} description={tr('Where you volunteered.')} />
+          <Step icon={UserCheck} label={tr('Supervisor name and email')} description={tr('They get a link to verify these hours.')} />
+          <Step icon={FileText} label={tr('Proof')} description={tr('A photo of a sign-in sheet, a thank-you email or another document.')} />
         </div>
+        <p className="mt-3 text-sm">{tr('Your school can change which of these it asks for.')}</p>
         <p className="mt-3">{tr('Click Save and you\'re done. Your hours appear on the dashboard, calendar, and reports instantly.')}</p>
       </Section>
 

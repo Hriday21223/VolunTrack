@@ -6,7 +6,7 @@ import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
 import { categoryColor } from '@/lib/categories.js'
 import { isNativeApp } from '@/lib/platform.js'
-import { fmtDate } from '@/utils/date.js'
+import { fmtClock, fmtDate } from '@/utils/date.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { fetchOrganizer, setFollowOrganizer, organizerShareUrl } from '@/lib/organizerProfile.js'
@@ -172,7 +172,7 @@ export default function OrganizerProfile() {
                         >
                           <span className="font-medium break-words">{t.title}</span>
                           <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-earth-500">
-                            <span className="inline-flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
+                            <span className="inline-flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${fmtClock(t.time)}` : ''}</span>
                             <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {t.slots_filled}/{t.slots_total}{' '}{tr('slots')}</span>
                             {t.category && <span className={`px-2 rounded-full ${categoryColor(t.category)}`}>{tr(t.category)}</span>}
                           </span>

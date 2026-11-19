@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarHeart } from 'lucide-react'
 import Card from '@/components/Card.jsx'
-import { fmtDate } from '@/utils/date.js'
+import { fmtClock, fmtDate } from '@/utils/date.js'
 import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
@@ -35,7 +35,7 @@ export default function ServiceDaysCard({ className = '' }) {
           <li key={d.id} className="py-2 flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="font-medium truncate">{d.title}</p>
-              <p className="text-xs text-earth-500">{fmtDate(d.date)}{d.time ? ` · ${d.time}` : ''}{d.location ? ` · ${d.location}` : ''}</p>
+              <p className="text-xs text-earth-500">{fmtDate(d.date)}{d.time ? ` · ${fmtClock(d.time)}` : ''}{d.location ? ` · ${d.location}` : ''}</p>
             </div>
             {STATUS[d.myStatus]
               ? <span className="text-xs text-emerald-500 dark:text-emerald-300">{STATUS[d.myStatus]()}</span>

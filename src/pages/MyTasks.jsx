@@ -10,7 +10,7 @@ import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { csvCell } from '@/lib/csv.js'
-import { todayLocal, fmtDate } from '@/utils/date.js'
+import { todayLocal, fmtClock, fmtDate } from '@/utils/date.js'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import CheckinQrModal from '@/components/CheckinQrModal.jsx'
 import TaskJobsPanel from '@/components/TaskJobsPanel.jsx'
@@ -76,7 +76,6 @@ function TaskLogHours({ log, canSign, onSign }) {
 // Dashboard until My Tasks became their home (#867).
 const ORGANIZER_TOUR_STEPS = [
   { selector: '[data-tour="nav-my-tasks"], [data-tour="nav-more"]', title: tr('Run your events'), description: tr('Post events on My Tasks. On the day, use the check-in QR code, the kiosk, a check-out PIN or the paper sheet. Everyone\'s hours come to you to sign at once.') },
-  { selector: '[data-tour="nav-attendance"], [data-tour="nav-more"]', title: tr('Events you joined'), description: tr('Events you signed up for yourself, with check-in on the day.') },
   { selector: '[data-tour="nav-whats-new"], [data-tour="nav-more"]', title: tr("What's new"), description: tr('New features show up here, with a dot when there is something you haven\'t seen.') },
 ]
 
@@ -646,8 +645,8 @@ export default function MyTasks() {
               <p className="text-xs text-earth-500 -mt-2 mb-3">Copied from “{postAgainFrom}”. Pick a new date, check the details and post.</p>
             )}
             <form onSubmit={handlePostTask} className="space-y-3">
-              <input className="input" maxLength={200} placeholder={tr('Task title')} value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
-              <textarea className="input" rows={2} maxLength={5000} placeholder={tr('Description — what volunteers will do')} value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
+              <input className="input" maxLength={200} placeholder={`${tr('Task title')} *`} value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
+              <textarea className="input" rows={2} maxLength={5000} placeholder={`${tr('Description — what volunteers will do')} *`} value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
               <TaskPhotoPicker value={taskPhoto} onChange={setTaskPhoto} />
               <OnlineToggle checked={taskForm.isOnline} onChange={(isOnline) => setTaskForm((f) => ({ ...f, isOnline }))} />
               {taskForm.isOnline ? (
@@ -665,7 +664,7 @@ export default function MyTasks() {
               </div>
               )}
               <textarea className="input" rows={2} maxLength={2000} placeholder={tr('Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)')} value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
-              <input className="input" type="tel" maxLength={30} placeholder={tr('Phone number — shown to approved volunteers')} value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
+              <input className="input" type="tel" maxLength={30} placeholder={`${tr('Phone number — shown to approved volunteers')} *`} value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
               <div>
                 <label className="label text-xs" htmlFor="task-category">{tr('Category')}</label>
                 <select id="task-category" className="input" value={taskForm.category} onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })}>
@@ -832,7 +831,7 @@ export default function MyTasks() {
                   <p className="text-sm text-earth-400 mt-1">{t.description}</p>
                   <div className="flex flex-wrap gap-3 mt-2 text-xs text-earth-500">
                     {!(t.is_online && t.location === 'Online') && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {t.location}</span>}
-                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${t.time}` : ''}</span>
+                    <span className="flex items-center gap-1"><CalIcon className="w-3 h-3" /> {fmtDate(t.date)}{t.time ? ` · ${fmtClock(t.time)}` : ''}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {filled}/{total} signed up</span>
                     {shifts.map((sh) => (
                       <span key={sh.id} className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5">
@@ -992,7 +991,7 @@ export default function MyTasks() {
 
                   {editingId === t.id && editForm && (
                     <div className="mb-4 p-3 rounded-xl border border-white/10 space-y-2">
-                      <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder={tr('Task title')} />
+                      <input className="input" maxLength={200} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder={`${tr('Task title')} *`} />
                       <textarea className="input" rows={2} maxLength={5000} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description" />
                       <TaskPhotoPicker taskId={t.id} photoId={t.cover_photo_id} onSaved={(id) => setTasks((ts) => ts.map((x) => (x.id === t.id ? { ...x, cover_photo_id: id } : x)))} />
                       <OnlineToggle checked={editForm.isOnline} onChange={(isOnline) => setEditForm((f) => ({ ...f, isOnline, ...(isOnline || f.location !== 'Online' ? {} : { location: '' }) }))} />
