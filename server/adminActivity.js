@@ -20,6 +20,7 @@ const LABELS = [
   [null, /^\/api\/reviews\//, 'Changed a review'],
   ['POST', /^\/api\/(school|organization)\/admin\/notify-[^/]+(\/[^/]+)?\/preview$/, 'Previewed a payment notice'],
   ['POST', /^\/api\/announcements\/admin\/preview$/, 'Previewed an announcement'],
+  ['DELETE', /^\/api\/school\/admin\/notices\//, 'Deleted a payment notice'],
   ['GET', /^\/api\/school\/admin\/list/, 'Opened Schools'],
   ['PATCH', /^\/api\/school\/admin\/[^/]+\/payment/, 'Changed a school’s payment status'],
   ['PATCH', /^\/api\/school\/admin\/[^/]+\/plan/, 'Changed a school’s plan'],
