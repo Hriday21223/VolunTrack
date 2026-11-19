@@ -1,11 +1,46 @@
-import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, Sparkles, Star, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin } from 'lucide-react'
-import { NavLink, Link } from 'react-router-dom'
+import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, Sparkles, Star, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin, ShieldCheck, Megaphone, Download, Handshake, UserPlus } from 'lucide-react'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { tr } from '@/lib/i18n.js'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import { OPERATOR_NAME } from '@/lib/business.js'
 import { useWhatsNewDot } from '@/hooks/useWhatsNewDot.js'
+
+// The sections of the school and organization dashboards, each its own menu
+// entry like a student's pages. The address picks the tab (dashboardTabs.js);
+// `home` also counts the dashboard's plain address, and `tour` is what their
+// welcome tours point at on a computer.
+const SCHOOL_BASE = '/school/dashboard'
+const ORG_BASE = '/organization/dashboard'
+const SCHOOL_SECTIONS = [
+  { to: SCHOOL_BASE, section: `${SCHOOL_BASE}/reports`, home: true, label: 'Reports', icon: FileText, tour: 'tab-reports' },
+  { to: `${SCHOOL_BASE}/students`, section: `${SCHOOL_BASE}/students`, label: 'Students', icon: Users, tour: 'tab-students' },
+  { to: `${SCHOOL_BASE}/volunteer`, section: `${SCHOOL_BASE}/volunteer`, label: 'Volunteer', icon: ClipboardList },
+  { to: `${SCHOOL_BASE}/setup`, section: `${SCHOOL_BASE}/setup`, label: 'School setup', icon: ShieldCheck, tour: 'tab-staff', mainAdminOnly: true },
+  { to: `${SCHOOL_BASE}/messages`, section: `${SCHOOL_BASE}/messages`, label: 'Announcements', icon: Megaphone, tour: 'tab-chat' },
+]
+const ORG_SECTIONS = [
+  { to: ORG_BASE, section: `${ORG_BASE}/schools`, home: true, label: 'Schools', icon: School, tour: 'org-schools-tab' },
+  { to: `${ORG_BASE}/hours`, section: `${ORG_BASE}/hours`, label: 'Hours', icon: Download },
+  { to: `${ORG_BASE}/requirements`, section: `${ORG_BASE}/requirements`, label: 'Requirements', icon: ClipboardList },
+  { to: `${ORG_BASE}/partners`, section: `${ORG_BASE}/partners`, label: 'Partners', icon: Handshake, tour: 'org-partners-tab' },
+  { to: `${ORG_BASE}/announcements`, section: `${ORG_BASE}/announcements`, label: 'Announcements', icon: Megaphone },
+  { to: `${ORG_BASE}/invites`, section: `${ORG_BASE}/invites`, label: 'Invites', icon: UserPlus, tour: 'org-invites-tab' },
+]
+
+// A locked school sees only the payment screen, so it keeps the single entry.
+function menuFor(user, role) {
+  const items = ROLE_ITEMS[role] || ROLE_ITEMS.student
+  if (role === 'org') return [...ORG_SECTIONS, ...items.filter((i) => i.to !== ORG_BASE)]
+  if (role !== 'school' && role !== 'school_staff') return items
+  const locked = user?.schoolPlan !== 'club' && user?.schoolPaymentStatus && user.schoolPaymentStatus !== 'paid'
+  if (locked) return items
+  return [
+    ...SCHOOL_SECTIONS.filter((i) => !i.mainAdminOnly || role === 'school'),
+    ...items.filter((i) => i.to !== SCHOOL_BASE),
+  ]
+}
 
 const ROLE_ITEMS = {
   student: [
@@ -114,7 +149,8 @@ export default function Sidebar() {
   const { user } = useAuth()
   const unseen = useWhatsNewDot()
   const role = user?.role || 'student'
-  const items = ROLE_ITEMS[role] || ROLE_ITEMS.student
+  const items = menuFor(user, role)
+  const { pathname } = useLocation()
 
   return (
     <aside className="hidden md:flex md:flex-col w-72 shrink-0 border-r border-earth-900/80 bg-[#06141a] text-earth-200 sticky top-[var(--test-banner,0px)] h-[calc(100vh-var(--test-banner,0px))]">
@@ -130,16 +166,16 @@ export default function Sidebar() {
       </div>
 
       <nav className="px-4 py-3 flex-1 space-y-1">
-        {items.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label, icon: Icon, section, home, tour }) => (
           <NavLink
             key={to}
             to={to}
-            data-tour={`nav${to.replace(/\//g, '-')}`}
+            data-tour={tour || `nav${to.replace(/\//g, '-')}`}
             end={to === '/'}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition',
-                isActive
+                (section ? (home && pathname === to) || pathname.startsWith(section) : isActive)
                   ? 'bg-brand-700/10 text-white shadow-sm shadow-brand-500/10'
                   : 'text-earth-300 hover:bg-white/5 hover:text-white',
               )
