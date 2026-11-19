@@ -14,6 +14,15 @@ const recent = new Map()
 const TAB_NAMES = { inbox: 'Inbox', reviews: 'Reviews', schools: 'Schools', invites: 'Invites', organizations: 'Organizations', incidents: 'Incidents', reports: 'Reports', settings: 'Settings', users: 'Users', api: 'API', blueprint: 'Blueprint' }
 
 const LABELS = [
+  [null, /^\/api\/auth\/reauth/, 'Unlocked the screen'],
+  [null, /^\/api\/auth\/me\/unlock-pin/, 'Changed the unlock PIN'],
+  [null, /^\/api\/auth\/me\/legal/, 'Accepted the Terms and Privacy Policy'],
+  [null, /^\/api\/auth\/me\/language/, 'Changed language'],
+  [null, /^\/api\/auth\/me\/tour/, 'Finished the welcome tour'],
+  [null, /^\/api\/auth\/me\/sign-out-everywhere/, 'Signed out of other devices'],
+  [null, /^\/api\/auth\/passkey/, 'Used or changed a passkey'],
+  [null, /^\/api\/auth\/totp/, 'Used or changed two-step sign-in'],
+  [null, /^\/api\/auth\/profile/, 'Changed their profile'],
   ['GET', /^\/api\/contact\/admin/, 'Opened the Inbox'],
   [null, /^\/api\/contact\//, 'Worked in the Inbox'],
   ['GET', /^\/api\/reviews\/admin/, 'Opened Reviews'],

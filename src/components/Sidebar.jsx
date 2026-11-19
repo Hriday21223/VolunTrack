@@ -28,7 +28,6 @@ const ROLE_ITEMS = {
   // Calendar, Achievements and Reports are student pages (roleAccess.js).
   volunteer: [
     { to: '/my-tasks',     label: 'My Tasks',    icon: ClipboardList },
-    { to: '/attendance',   label: 'Attendance',  icon: ClipboardCheck },
     { to: '/profile',      label: 'Profile',     icon: User },
     { to: '/settings',     label: 'Settings',    icon: Settings },
     { to: '/help',         label: 'Help',             icon: HelpCircle },
@@ -118,7 +117,7 @@ export default function Sidebar() {
   const items = ROLE_ITEMS[role] || ROLE_ITEMS.student
 
   return (
-    <aside className="hidden md:flex md:flex-col w-72 shrink-0 border-r border-earth-900/80 bg-[#06141a] text-earth-200 sticky top-0 h-screen">
+    <aside className="hidden md:flex md:flex-col w-72 shrink-0 border-r border-earth-900/80 bg-[#06141a] text-earth-200 sticky top-[var(--test-banner,0px)] h-[calc(100vh-var(--test-banner,0px))]">
       <div className="px-6 py-6">
         <div className="flex items-center gap-3">
           <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-11 h-11 object-contain" />

@@ -3660,5 +3660,14 @@ export default {
   "It opens like an app, full screen, and works without internet.": "Mở như một ứng dụng, toàn màn hình, và dùng được khi không có internet.",
   "Install": "Cài đặt",
   "Tap the Share button": "Bấm nút Chia sẻ",
-  "Choose Add to Home Screen": "Chọn Thêm vào MH chính"
+  "Choose Add to Home Screen": "Chọn Thêm vào MH chính",
+  "Attendance for the events you run is on My Tasks.": "Điểm danh cho các sự kiện bạn tổ chức nằm trong Nhiệm vụ của tôi.",
+  "Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.": "Nhấn Ghi giờ (hoặc nút + trên điện thoại). Điền việc bạn đã làm, thời gian, địa điểm, người giám sát và thêm minh chứng. Nhấn Lưu: số giờ của bạn sẽ hiện ngay trên bảng điều khiển, lịch và báo cáo.",
+  "Start and end time": "Giờ bắt đầu và kết thúc",
+  "When you started and finished. We work out the hours.": "Khi bạn bắt đầu và kết thúc. Chúng tôi sẽ tính số giờ.",
+  "Where you volunteered.": "Nơi bạn làm tình nguyện.",
+  "Supervisor name and email": "Tên và email người giám sát",
+  "They get a link to verify these hours.": "Họ sẽ nhận được liên kết để xác minh số giờ này.",
+  "A photo of a sign-in sheet, a thank-you email or another document.": "Ảnh tờ điểm danh, email cảm ơn hoặc tài liệu khác.",
+  "Your school can change which of these it asks for.": "Trường của bạn có thể thay đổi những mục được yêu cầu."
 }

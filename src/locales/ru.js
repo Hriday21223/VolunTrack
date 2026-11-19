@@ -3659,5 +3659,14 @@ export default {
   "It opens like an app, full screen, and works without internet.": "Открывается как приложение, на весь экран, и работает без интернета.",
   "Install": "Установить",
   "Tap the Share button": "Нажмите кнопку «Поделиться»",
-  "Choose Add to Home Screen": "Выберите «На экран „Домой“»"
+  "Choose Add to Home Screen": "Выберите «На экран „Домой“»",
+  "Attendance for the events you run is on My Tasks.": "Посещаемость ваших мероприятий находится в разделе «Мои задачи».",
+  "Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.": "Нажмите «Записать часы» (или кнопку + на телефоне). Укажите, что вы делали, когда, где и кто был руководителем, и добавьте подтверждение. Нажмите «Сохранить»: часы сразу появятся на панели, в календаре и в отчётах.",
+  "Start and end time": "Время начала и окончания",
+  "When you started and finished. We work out the hours.": "Когда вы начали и закончили. Часы мы посчитаем сами.",
+  "Where you volunteered.": "Где вы были волонтёром.",
+  "Supervisor name and email": "Имя и email руководителя",
+  "They get a link to verify these hours.": "Он получит ссылку для подтверждения этих часов.",
+  "A photo of a sign-in sheet, a thank-you email or another document.": "Фото листа регистрации, письмо с благодарностью или другой документ.",
+  "Your school can change which of these it asks for.": "Ваша школа может изменить, что из этого требуется."
 }

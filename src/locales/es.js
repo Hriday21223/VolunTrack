@@ -3660,5 +3660,14 @@ export default {
   "It opens like an app, full screen, and works without internet.": "Se abre como una app, a pantalla completa, y funciona sin internet.",
   "Install": "Instalar",
   "Tap the Share button": "Toca el botón Compartir",
-  "Choose Add to Home Screen": "Elige Agregar a inicio"
+  "Choose Add to Home Screen": "Elige Agregar a inicio",
+  "Attendance for the events you run is on My Tasks.": "La asistencia de los eventos que organizas está en Mis tareas.",
+  "Click Log Hours (or the + button on mobile). Fill in what you did, when, where and who supervised you, and add proof. Click Save — your hours appear on the dashboard, calendar, and reports instantly.": "Haz clic en Registrar horas (o en el botón + en el móvil). Indica qué hiciste, cuándo, dónde y quién te supervisó, y agrega un comprobante. Haz clic en Guardar: tus horas aparecen al instante en el panel, el calendario y los informes.",
+  "Start and end time": "Hora de inicio y de fin",
+  "When you started and finished. We work out the hours.": "Cuándo empezaste y terminaste. Nosotros calculamos las horas.",
+  "Where you volunteered.": "Dónde hiciste el voluntariado.",
+  "Supervisor name and email": "Nombre y correo del supervisor",
+  "They get a link to verify these hours.": "Recibe un enlace para verificar estas horas.",
+  "A photo of a sign-in sheet, a thank-you email or another document.": "Una foto de una hoja de asistencia, un correo de agradecimiento u otro documento.",
+  "Your school can change which of these it asks for.": "Tu escuela puede cambiar cuáles de estos datos pide."
 }

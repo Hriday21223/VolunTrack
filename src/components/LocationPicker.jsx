@@ -80,7 +80,8 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
 
   const search = useCallback((text) => {
     clearTimeout(debounceRef.current)
-    if (!text || text.trim().length < 3) {
+    // "Online" is a fine answer, not a place to look up on the map.
+    if (!text || text.trim().length < 3 || /^(online|remote|virtual)$/i.test(text.trim())) {
       setSuggestions([])
       setNoMatches(false)
       return
@@ -150,6 +151,7 @@ export default function LocationPicker({ address, lat, lng, onChange, placeholde
             value={query}
             onChange={onInputChange}
             onFocus={() => setOpen(true)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
             onBlur={() => { blurTimeoutRef.current = setTimeout(() => setOpen(false), 150) }}
             autoComplete="off"
             name="voluntrack-location-search"

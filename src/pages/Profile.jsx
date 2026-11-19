@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Camera, Save, School, GraduationCap, User as UserIcon, Mail, Hash, Lock, Copy, Check } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { roleLabel } from '@/lib/roleLabels.js'
 import { SCHOOL_GRADES, gradeKey, gradeOptionLabel } from '@policy'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -147,7 +148,7 @@ export default function Profile() {
           <div className="mt-3 font-display font-semibold text-lg">{form.name || tr('Volunteer')}</div>
           {isVolunteerProfile ? (
             <>
-              <div className="text-sm text-earth-500 dark:text-earth-400">{linkedSchoolName || form.school || tr('No school set')}</div>
+              <div className="text-sm text-earth-500 dark:text-earth-400">{linkedSchoolName || form.school || (isStudent ? tr('No school set') : roleLabel(user?.role))}</div>
               <div className="text-xs text-earth-500 dark:text-earth-400">{form.grade}</div>
             </>
           ) : (
@@ -168,7 +169,9 @@ export default function Profile() {
                 ) : (
                   <Field icon={GraduationCap} label={tr('Role')} value={form.grade} onChange={onChange('grade')} placeholder={tr('Volunteer lead')} />
                 )}
-                <Field icon={Hash}          label={tr('Student ID number')}    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder={tr('For school verification forms')} />
+                {isStudent && (
+                  <Field icon={Hash}          label={tr('Student ID number')}    value={form.studentIdNumber} onChange={onChange('studentIdNumber')} placeholder={tr('For school verification forms')} />
+                )}
               </>
             )}
             {accountCode && (
@@ -197,8 +200,9 @@ export default function Profile() {
         <Card className="lg:col-span-3">
           <h3 className="font-display font-semibold mb-3">{tr('Your stats at a glance')}</h3>
           <div className="grid sm:grid-cols-3 gap-3">
-            <Stat label={tr('Total hours')} value={fmtHours(total)} />
-            <Stat label={tr('Sessions')}    value={sessions} />
+            {/* Only students log their own hours. */}
+            {isStudent && <Stat label={tr('Total hours')} value={fmtHours(total)} />}
+            {isStudent && <Stat label={tr('Sessions')}    value={sessions} />}
             <Stat label={tr('Member since')} value={new Date(user?.createdAt || Date.now()).getFullYear()} />
           </div>
         </Card>

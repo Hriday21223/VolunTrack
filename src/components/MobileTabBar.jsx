@@ -60,7 +60,6 @@ const MORE_ITEMS = {
     { to: '/status',       label: 'System Status', icon: Activity },
   ],
   volunteer: [
-    { to: '/attendance',   label: 'Attendance',    icon: ClipboardCheck },
     { to: '/profile',      label: 'Profile',       icon: User },
     { to: '/settings',     label: 'Settings',      icon: Settings },
     { to: '/help',         label: 'Help',          icon: HelpCircle },

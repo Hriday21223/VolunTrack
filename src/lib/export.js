@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { fmtDate, fmtDateTime, fmtHours, hoursBetween } from '@/utils/date.js'
+import { fmtClock, fmtDate, fmtDateTime, fmtHours, hoursBetween } from '@/utils/date.js'
 import { csvCell } from '@/lib/csv.js'
 import { countedLogs } from '@/lib/achievements.js'
 import { guestSheetRows } from '@/lib/guests.js'
@@ -635,14 +635,6 @@ function drawAnyText(doc, text, x, y, { size, bold = false, gray = 0, maxWidth }
   }
   const safe = isWinAnsi(value) ? value : winAnsiFallback(value)
   doc.text(maxWidth ? doc.splitTextToSize(safe, maxWidth)[0] || '' : safe, x, y)
-}
-
-// "14:30" (how a task stores its time) → "2:30 PM".
-function fmtClock(hhmm) {
-  const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || ''))
-  if (!m) return String(hhmm || '')
-  const h = Number(m[1])
-  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`
 }
 
 const SHEET_ROW_H = 26 // tall enough to handwrite a time and sign
