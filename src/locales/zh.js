@@ -3683,5 +3683,8 @@ export default {
   "Use a link that starts with https://.": "请使用以 https:// 开头的链接。",
   "That link can't be used.": "无法使用该链接。",
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "请使用来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box 的链接。",
-  "Join your school to add proof as a link. Until then, upload the file.": "加入你的学校后才能以链接形式添加证明。在此之前，请上传文件。"
+  "Join your school to add proof as a link. Until then, upload the file.": "加入你的学校后才能以链接形式添加证明。在此之前，请上传文件。",
+  "View proof": "查看证明",
+  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "来自 Google Drive。如果无法显示，说明学生还没有与你共享。",
+  "Open in Google Drive instead": "改为在 Google Drive 中打开"
 }

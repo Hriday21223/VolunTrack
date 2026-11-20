@@ -3682,5 +3682,8 @@ export default {
   "Use a link that starts with https://.": "https:// দিয়ে শুরু হওয়া লিংক ব্যবহার করুন।",
   "That link can't be used.": "এই লিংকটি ব্যবহার করা যাবে না।",
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google Drive, OneDrive, Dropbox, iCloud বা Box-এর লিংক ব্যবহার করুন।",
-  "Join your school to add proof as a link. Until then, upload the file.": "প্রমাণ লিংক হিসেবে যোগ করতে আপনার স্কুলে যোগ দিন। ততক্ষণ ফাইলটি আপলোড করুন।"
+  "Join your school to add proof as a link. Until then, upload the file.": "প্রমাণ লিংক হিসেবে যোগ করতে আপনার স্কুলে যোগ দিন। ততক্ষণ ফাইলটি আপলোড করুন।",
+  "View proof": "প্রমাণ দেখুন",
+  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Google Drive থেকে। না দেখালে, শিক্ষার্থী এখনো আপনার সাথে শেয়ার করেনি।",
+  "Open in Google Drive instead": "বদলে Google Drive-এ খুলুন"
 }

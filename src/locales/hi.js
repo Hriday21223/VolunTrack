@@ -3682,5 +3682,8 @@ export default {
   "Use a link that starts with https://.": "ऐसा लिंक इस्तेमाल करें जो https:// से शुरू हो।",
   "That link can't be used.": "वह लिंक इस्तेमाल नहीं किया जा सकता।",
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google Drive, OneDrive, Dropbox, iCloud या Box का लिंक इस्तेमाल करें।",
-  "Join your school to add proof as a link. Until then, upload the file.": "प्रमाण को लिंक के रूप में जोड़ने के लिए अपने स्कूल से जुड़ें। तब तक फ़ाइल अपलोड करें।"
+  "Join your school to add proof as a link. Until then, upload the file.": "प्रमाण को लिंक के रूप में जोड़ने के लिए अपने स्कूल से जुड़ें। तब तक फ़ाइल अपलोड करें।",
+  "View proof": "प्रमाण देखें",
+  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Google Drive से। अगर यह नहीं दिखता, तो छात्र ने अभी इसे आपके साथ शेयर नहीं किया है।",
+  "Open in Google Drive instead": "इसके बजाय Google Drive में खोलें"
 }

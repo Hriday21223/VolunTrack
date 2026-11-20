@@ -3682,5 +3682,8 @@ export default {
   "Use a link that starts with https://.": "Utilisez un lien qui commence par https://.",
   "That link can't be used.": "Ce lien ne peut pas être utilisé.",
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Utilisez un lien Google Drive, OneDrive, Dropbox, iCloud ou Box.",
-  "Join your school to add proof as a link. Until then, upload the file.": "Rejoignez votre école pour ajouter un justificatif sous forme de lien. En attendant, téléversez le fichier."
+  "Join your school to add proof as a link. Until then, upload the file.": "Rejoignez votre école pour ajouter un justificatif sous forme de lien. En attendant, téléversez le fichier.",
+  "View proof": "Voir le justificatif",
+  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Depuis Google Drive. S’il ne s’affiche pas, l’élève ne l’a pas encore partagé avec vous.",
+  "Open in Google Drive instead": "Ouvrir dans Google Drive à la place"
 }
