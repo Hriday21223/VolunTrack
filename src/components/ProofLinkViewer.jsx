@@ -26,7 +26,7 @@ export default function ProofLinkViewer({ link, title, onClose }) {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0 text-sm">
             <p className="font-semibold break-words">{title || tr('Proof')}</p>
-            <p className="text-xs text-earth-400">{tr('From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.')}</p>
+            <p className="text-xs text-earth-400">{tr('From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.')}</p>
           </div>
           <button type="button" onClick={onClose} aria-label={tr('Close')} className="p-1 text-earth-400 hover:text-white transition-colors shrink-0">
             <X className="w-5 h-5" />

@@ -3674,7 +3674,7 @@ export default {
   "Staff, rules, sign-in and billing": "Équipe, règles, connexion et facturation",
   "Messages to all your students": "Messages à tous vos élèves",
   "Or paste a link to your proof": "Ou collez un lien vers votre justificatif",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Depuis Google Drive, OneDrive, Dropbox, iCloud ou Box. Réglez le partage sur « Tous les utilisateurs disposant du lien » (ou toute personne de votre école), sinon votre école ne pourra pas l’ouvrir.",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "Depuis Google Drive, OneDrive, Dropbox, iCloud ou Box. Dans Partager, réglez l’Accès général sur « Tous les utilisateurs disposant du lien » pour qu’il indique « Tous les internautes disposant du lien peuvent consulter ». Sinon, votre école ne pourra pas l’ouvrir.",
   "Check that it opens": "Vérifier qu’il s’ouvre",
   "Open proof link": "Ouvrir le lien du justificatif",
   "That link is too long.": "Ce lien est trop long.",
@@ -3684,6 +3684,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Utilisez un lien Google Drive, OneDrive, Dropbox, iCloud ou Box.",
   "Join your school to add proof as a link. Until then, upload the file.": "Rejoignez votre école pour ajouter un justificatif sous forme de lien. En attendant, téléversez le fichier.",
   "View proof": "Voir le justificatif",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Depuis Google Drive. S’il ne s’affiche pas, l’élève ne l’a pas encore partagé avec vous.",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Depuis Google Drive. S’il ne s’affiche pas, demandez à l’élève de régler le partage sur « Tous les internautes disposant du lien peuvent consulter ».",
   "Open in Google Drive instead": "Ouvrir dans Google Drive à la place"
 }

@@ -3675,7 +3675,7 @@ export default {
   "Staff, rules, sign-in and billing": "工作人员、规则、登录和账单",
   "Messages to all your students": "发给你所有学生的消息",
   "Or paste a link to your proof": "或粘贴证明材料的链接",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box。请将共享设置为“知道链接的任何人”（或你学校的任何人），否则学校无法打开。",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box。在“共享”中把“一般访问权限”设为“知道链接的任何人”，显示为“互联网上知道此链接的任何人都可以查看”。否则学校无法打开。",
   "Check that it opens": "检查能否打开",
   "Open proof link": "打开证明链接",
   "That link is too long.": "该链接太长。",
@@ -3685,6 +3685,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "请使用来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box 的链接。",
   "Join your school to add proof as a link. Until then, upload the file.": "加入你的学校后才能以链接形式添加证明。在此之前，请上传文件。",
   "View proof": "查看证明",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "来自 Google Drive。如果无法显示，说明学生还没有与你共享。",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "来自 Google Drive。如果无法显示，请让学生把共享设为“互联网上知道此链接的任何人都可以查看”。",
   "Open in Google Drive instead": "改为在 Google Drive 中打开"
 }

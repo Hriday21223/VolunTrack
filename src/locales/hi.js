@@ -3674,7 +3674,7 @@ export default {
   "Staff, rules, sign-in and billing": "स्टाफ़, नियम, साइन-इन और बिलिंग",
   "Messages to all your students": "आपके सभी छात्रों के लिए संदेश",
   "Or paste a link to your proof": "या अपने प्रमाण का लिंक पेस्ट करें",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Google Drive, OneDrive, Dropbox, iCloud या Box से। शेयरिंग को “लिंक वाला कोई भी व्यक्ति” (या आपके स्कूल का कोई भी व्यक्ति) पर सेट करें, नहीं तो आपका स्कूल इसे खोल नहीं पाएगा।",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "Google Drive, OneDrive, Dropbox, iCloud या Box से। शेयर में सामान्य ऐक्सेस को “लिंक वाला कोई भी व्यक्ति” पर सेट करें, ताकि लिखा आए “इंटरनेट पर लिंक वाला कोई भी व्यक्ति देख सकता है”। नहीं तो आपका स्कूल इसे खोल नहीं पाएगा।",
   "Check that it opens": "जाँचें कि यह खुलता है",
   "Open proof link": "प्रमाण लिंक खोलें",
   "That link is too long.": "वह लिंक बहुत लंबा है।",
@@ -3684,6 +3684,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google Drive, OneDrive, Dropbox, iCloud या Box का लिंक इस्तेमाल करें।",
   "Join your school to add proof as a link. Until then, upload the file.": "प्रमाण को लिंक के रूप में जोड़ने के लिए अपने स्कूल से जुड़ें। तब तक फ़ाइल अपलोड करें।",
   "View proof": "प्रमाण देखें",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Google Drive से। अगर यह नहीं दिखता, तो छात्र ने अभी इसे आपके साथ शेयर नहीं किया है।",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Google Drive से। अगर यह नहीं दिखता, तो छात्र से शेयरिंग को “इंटरनेट पर लिंक वाला कोई भी व्यक्ति देख सकता है” पर सेट करने को कहें।",
   "Open in Google Drive instead": "इसके बजाय Google Drive में खोलें"
 }
