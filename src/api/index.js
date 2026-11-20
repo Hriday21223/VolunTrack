@@ -8,8 +8,8 @@ export function getUsers() {
   if (users.length === 0) {
     const demoUser = {
       id: uid('usr'),
-      name: 'Hriday K.',
-      email: 'karnatamhriday@gmail.com',
+      name: 'Demo Student',
+      email: 'demo@test.com',
       school: 'Demo School',
       grade: '12',
       passwordHash: hashPassword('test123'),

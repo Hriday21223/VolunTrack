@@ -47,7 +47,7 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          NOTIFY_TO: karnatamhriday@gmail.com
+          NOTIFY_TO: volunteertrackinfo@gmail.com
           SCAN_SUBJECT: ${{ github.event.client_payload.subject || github.event.inputs.subject }}
           SCAN_SUMMARY: ${{ github.event.client_payload.summary || github.event.inputs.summary }}
           SCAN_ISSUE_URL: ${{ github.event.client_payload.issue_url || github.event.inputs.issue_url }}
