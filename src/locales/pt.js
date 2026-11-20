@@ -3674,7 +3674,7 @@ export default {
   "Staff, rules, sign-in and billing": "Equipe, regras, login e cobrança",
   "Messages to all your students": "Mensagens para todos os seus alunos",
   "Or paste a link to your proof": "Ou cole um link para o seu comprovante",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Do Google Drive, OneDrive, Dropbox, iCloud ou Box. Defina o compartilhamento como “Qualquer pessoa com o link” (ou qualquer pessoa da sua escola), senão sua escola não conseguirá abrir.",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "Do Google Drive, OneDrive, Dropbox, iCloud ou Box. Em Compartilhar, mude o Acesso geral para “Qualquer pessoa com o link” para aparecer “Qualquer pessoa na Internet com o link pode ver”. Senão, sua escola não conseguirá abrir.",
   "Check that it opens": "Verifique se abre",
   "Open proof link": "Abrir link do comprovante",
   "That link is too long.": "Esse link é longo demais.",
@@ -3684,6 +3684,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Use um link do Google Drive, OneDrive, Dropbox, iCloud ou Box.",
   "Join your school to add proof as a link. Until then, upload the file.": "Entre na sua escola para adicionar o comprovante como link. Até lá, envie o arquivo.",
   "View proof": "Ver comprovante",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Do Google Drive. Se não aparecer, o aluno ainda não compartilhou com você.",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Do Google Drive. Se não aparecer, peça ao aluno para mudar o compartilhamento para “Qualquer pessoa na Internet com o link pode ver”.",
   "Open in Google Drive instead": "Abrir no Google Drive"
 }

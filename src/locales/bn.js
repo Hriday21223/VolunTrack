@@ -3674,7 +3674,7 @@ export default {
   "Staff, rules, sign-in and billing": "কর্মী, নিয়ম, সাইন-ইন এবং বিলিং",
   "Messages to all your students": "আপনার সব শিক্ষার্থীর জন্য বার্তা",
   "Or paste a link to your proof": "অথবা আপনার প্রমাণের একটি লিংক পেস্ট করুন",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Google Drive, OneDrive, Dropbox, iCloud বা Box থেকে। শেয়ারিং “লিংক আছে এমন যে কেউ” (বা আপনার স্কুলের যে কেউ) এ সেট করুন, নইলে আপনার স্কুল এটি খুলতে পারবে না।",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "Google Drive, OneDrive, Dropbox, iCloud বা Box থেকে। শেয়ারে সাধারণ অ্যাক্সেস “লিংক আছে এমন যে কেউ” করুন, যাতে লেখা থাকে “ইন্টারনেটে লিংক আছে এমন যে কেউ দেখতে পারবেন”। নইলে আপনার স্কুল এটি খুলতে পারবে না।",
   "Check that it opens": "খোলে কিনা দেখুন",
   "Open proof link": "প্রমাণের লিংক খুলুন",
   "That link is too long.": "লিংকটি অনেক লম্বা।",
@@ -3684,6 +3684,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google Drive, OneDrive, Dropbox, iCloud বা Box-এর লিংক ব্যবহার করুন।",
   "Join your school to add proof as a link. Until then, upload the file.": "প্রমাণ লিংক হিসেবে যোগ করতে আপনার স্কুলে যোগ দিন। ততক্ষণ ফাইলটি আপলোড করুন।",
   "View proof": "প্রমাণ দেখুন",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Google Drive থেকে। না দেখালে, শিক্ষার্থী এখনো আপনার সাথে শেয়ার করেনি।",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Google Drive থেকে। না দেখালে, শিক্ষার্থীকে শেয়ারিং “ইন্টারনেটে লিংক আছে এমন যে কেউ দেখতে পারবেন” করতে বলুন।",
   "Open in Google Drive instead": "বদলে Google Drive-এ খুলুন"
 }

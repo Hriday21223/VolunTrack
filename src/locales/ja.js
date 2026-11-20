@@ -3674,7 +3674,7 @@ export default {
   "Staff, rules, sign-in and billing": "スタッフ、ルール、サインイン、請求",
   "Messages to all your students": "すべての生徒へのメッセージ",
   "Or paste a link to your proof": "または証明のリンクを貼り付け",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Google ドライブ、OneDrive、Dropbox、iCloud、Box から。共有を「リンクを知っている全員」（または学校の全員）に設定してください。そうしないと学校が開けません。",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "Google ドライブ、OneDrive、Dropbox、iCloud、Box から。共有の「一般的なアクセス」を「リンクを知っている全員」にして、「インターネット上でこのリンクを知っている人なら誰でも閲覧できます」と表示されるようにしてください。そうしないと学校が開けません。",
   "Check that it opens": "開けるか確認",
   "Open proof link": "証明のリンクを開く",
   "That link is too long.": "リンクが長すぎます。",
@@ -3684,6 +3684,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google ドライブ、OneDrive、Dropbox、iCloud、Box のリンクを使ってください。",
   "Join your school to add proof as a link. Until then, upload the file.": "証明をリンクで追加するには学校に参加してください。それまではファイルをアップロードしてください。",
   "View proof": "証明を見る",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Google ドライブから。表示されない場合は、生徒がまだ共有していません。",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Google ドライブから。表示されない場合は、共有を「インターネット上でこのリンクを知っている人なら誰でも閲覧できます」にするよう生徒に頼んでください。",
   "Open in Google Drive instead": "代わりに Google ドライブで開く"
 }

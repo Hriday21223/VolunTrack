@@ -3674,7 +3674,7 @@ export default {
   "Staff, rules, sign-in and billing": "الموظفون والقواعد وتسجيل الدخول والفوترة",
   "Messages to all your students": "رسائل إلى جميع طلابك",
   "Or paste a link to your proof": "أو الصق رابطًا إلى إثباتك",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "من Google Drive أو OneDrive أو Dropbox أو iCloud أو Box. اضبط المشاركة على “أي شخص لديه الرابط” (أو أي شخص في مدرستك)، وإلا فلن تتمكن مدرستك من فتحه.",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "من Google Drive أو OneDrive أو Dropbox أو iCloud أو Box. في المشاركة، اضبط الوصول العام على “أي شخص لديه الرابط” ليظهر “يمكن لأي شخص على الإنترنت لديه الرابط العرض”. وإلا فلن تتمكن مدرستك من فتحه.",
   "Check that it opens": "تحقّق من أنه يفتح",
   "Open proof link": "افتح رابط الإثبات",
   "That link is too long.": "هذا الرابط طويل جدًا.",
@@ -3684,6 +3684,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "استخدم رابطًا من Google Drive أو OneDrive أو Dropbox أو iCloud أو Box.",
   "Join your school to add proof as a link. Until then, upload the file.": "انضم إلى مدرستك لإضافة الإثبات كرابط. حتى ذلك الحين، ارفع الملف.",
   "View proof": "عرض الإثبات",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "من Google Drive. إذا لم يظهر، فالطالب لم يشاركه معك بعد.",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "من Google Drive. إذا لم يظهر، فاطلب من الطالب ضبط المشاركة على “يمكن لأي شخص على الإنترنت لديه الرابط العرض”.",
   "Open in Google Drive instead": "افتحه في Google Drive بدلًا من ذلك"
 }

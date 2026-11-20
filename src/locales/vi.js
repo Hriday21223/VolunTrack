@@ -3675,7 +3675,7 @@ export default {
   "Staff, rules, sign-in and billing": "Nhân viên, quy định, đăng nhập và thanh toán",
   "Messages to all your students": "Tin nhắn gửi đến tất cả học sinh của bạn",
   "Or paste a link to your proof": "Hoặc dán liên kết đến bằng chứng của bạn",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box. Đặt chia sẻ thành “Bất kỳ ai có đường liên kết” (hoặc bất kỳ ai ở trường bạn), nếu không trường sẽ không mở được.",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "Từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box. Trong Chia sẻ, đặt Quyền truy cập chung thành “Bất kỳ ai có đường liên kết” để hiện “Bất kỳ ai trên Internet có đường liên kết đều có thể xem”. Nếu không, trường bạn sẽ không mở được.",
   "Check that it opens": "Kiểm tra xem có mở được không",
   "Open proof link": "Mở liên kết bằng chứng",
   "That link is too long.": "Liên kết đó quá dài.",
@@ -3685,6 +3685,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Hãy dùng liên kết từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box.",
   "Join your school to add proof as a link. Until then, upload the file.": "Hãy tham gia trường của bạn để thêm bằng chứng dạng liên kết. Trước đó, hãy tải tệp lên.",
   "View proof": "Xem bằng chứng",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Từ Google Drive. Nếu không hiện, học sinh chưa chia sẻ với bạn.",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Từ Google Drive. Nếu không hiện, hãy nhờ học sinh đặt chia sẻ thành “Bất kỳ ai trên Internet có đường liên kết đều có thể xem”.",
   "Open in Google Drive instead": "Mở trong Google Drive"
 }

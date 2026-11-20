@@ -899,7 +899,7 @@ export default function LogHours({ editId, onCloseEdit }) {
                 onChange={(e) => setForm((s) => ({ ...s, proofLink: e.target.value }))}
               />
               <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
-                {tr('From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.')}
+                {tr('From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.')}
               </p>
               {cleanProofLink(form.proofLink).url && (
                 <a href={cleanProofLink(form.proofLink).url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1 mt-1">

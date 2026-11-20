@@ -3675,7 +3675,7 @@ export default {
   "Staff, rules, sign-in and billing": "Personal, reglas, inicio de sesión y facturación",
   "Messages to all your students": "Mensajes para todos tus estudiantes",
   "Or paste a link to your proof": "O pega un enlace a tu comprobante",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "De Google Drive, OneDrive, Dropbox, iCloud o Box. Cambia el uso compartido a “Cualquier persona con el enlace” (o cualquier persona de tu escuela); si no, tu escuela no podrá abrirlo.",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "De Google Drive, OneDrive, Dropbox, iCloud o Box. En Compartir, cambia el Acceso general a “Cualquier persona con el enlace” para que diga “Cualquier persona de Internet que tenga el enlace puede ver”. Si no, tu escuela no podrá abrirlo.",
   "Check that it opens": "Comprueba que se abre",
   "Open proof link": "Abrir enlace del comprobante",
   "That link is too long.": "Ese enlace es demasiado largo.",
@@ -3685,6 +3685,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Usa un enlace de Google Drive, OneDrive, Dropbox, iCloud o Box.",
   "Join your school to add proof as a link. Until then, upload the file.": "Únete a tu escuela para añadir el comprobante como enlace. Mientras tanto, sube el archivo.",
   "View proof": "Ver comprobante",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "De Google Drive. Si no se ve, el estudiante aún no lo ha compartido contigo.",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "De Google Drive. Si no se ve, pide al estudiante que cambie el uso compartido a “Cualquier persona de Internet que tenga el enlace puede ver”.",
   "Open in Google Drive instead": "Abrir en Google Drive"
 }

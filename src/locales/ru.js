@@ -3674,7 +3674,7 @@ export default {
   "Staff, rules, sign-in and billing": "Сотрудники, правила, вход и оплата",
   "Messages to all your students": "Сообщения всем вашим ученикам",
   "Or paste a link to your proof": "Или вставьте ссылку на подтверждение",
-  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Из Google Диска, OneDrive, Dropbox, iCloud или Box. Включите доступ «Все, у кого есть ссылка» (или все в вашей школе), иначе школа не сможет его открыть.",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. In Share, set General access to “Anyone with the link” so it says “Anyone on the internet with the link can view”. Otherwise your school can’t open it.": "Из Google Диска, OneDrive, Dropbox, iCloud или Box. В настройках доступа выберите «Все, у кого есть ссылка», чтобы было написано «Просматривать могут все в интернете, у кого есть ссылка». Иначе школа не сможет его открыть.",
   "Check that it opens": "Проверить, что открывается",
   "Open proof link": "Открыть ссылку на подтверждение",
   "That link is too long.": "Ссылка слишком длинная.",
@@ -3684,6 +3684,6 @@ export default {
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Используйте ссылку из Google Диска, OneDrive, Dropbox, iCloud или Box.",
   "Join your school to add proof as a link. Until then, upload the file.": "Присоединитесь к своей школе, чтобы добавлять подтверждение ссылкой. А пока загрузите файл.",
   "View proof": "Посмотреть подтверждение",
-  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Из Google Диска. Если не отображается, ученик ещё не открыл вам доступ.",
+  "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Из Google Диска. Если не отображается, попросите ученика выбрать доступ «Просматривать могут все в интернете, у кого есть ссылка».",
   "Open in Google Drive instead": "Открыть в Google Диске"
 }
