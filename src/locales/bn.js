@@ -3685,5 +3685,14 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "প্রমাণ লিংক হিসেবে যোগ করতে আপনার স্কুলে যোগ দিন। ততক্ষণ ফাইলটি আপলোড করুন।",
   "View proof": "প্রমাণ দেখুন",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Google Drive থেকে। না দেখালে, শিক্ষার্থীকে শেয়ারিং “ইন্টারনেটে লিংক আছে এমন যে কেউ দেখতে পারবেন” করতে বলুন।",
-  "Open in Google Drive instead": "বদলে Google Drive-এ খুলুন"
+  "Open in Google Drive instead": "বদলে Google Drive-এ খুলুন",
+  "Your schools are locked until we receive your payment": "আপনার পেমেন্ট না পাওয়া পর্যন্ত আপনার স্কুলগুলো লক থাকবে",
+  "Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.": "আপনার সংগঠন তার স্কুলগুলোর জন্য পেমেন্ট করে। পেমেন্ট যাচাই না হওয়া পর্যন্ত উপদেষ্টারা শিক্ষার্থী পরিচালনা করতে পারবেন না এবং শিক্ষার্থীরা ফাইল পাঠাতে পারবে না। যাচাই হলেই সেগুলো নিজে থেকে খুলে যাবে। পেমেন্টের নিয়ম নিচে আছে।",
+  "Waiting for your organization": "আপনার সংগঠনের অপেক্ষায়",
+  "Your school unlocks when your organization pays": "আপনার সংগঠন পেমেন্ট করলে আপনার স্কুল খুলে যাবে",
+  "{org} hasn’t paid yet": "{org} এখনো পেমেন্ট করেনি",
+  "Your organization": "আপনার সংগঠন",
+  "Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.": "আপনার স্কুল {org}-এর অংশ, যা তার স্কুলগুলোর জন্য পেমেন্ট করে। তাদের পেমেন্ট যাচাই না হওয়া পর্যন্ত শিক্ষার্থীদের ফাইল পাঠানো ও স্কুল পরিচালনা বন্ধ থাকবে। কিছুই হারাবে না, পেমেন্ট হলেই সব নিজে থেকে খুলে যাবে।",
+  "your organization": "আপনার সংগঠন",
+  "If you think this is a mistake, contact the person who runs {org}.": "ভুল মনে হলে {org} যিনি চালান তার সাথে যোগাযোগ করুন।"
 }

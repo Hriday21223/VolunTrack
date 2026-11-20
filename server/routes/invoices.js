@@ -395,7 +395,7 @@ router.get('/mine', limiter, requireDb, requireAuth('school', 'school_staff', 'o
     const entityId = userRows[0]?.[column]
     if (!entityId) return res.json({ invoices: [], entityName: null, accountCode: null })
 
-    const { rows: entityRows } = await query(`SELECT name, account_code FROM ${table} WHERE id = $1`, [entityId])
+    const { rows: entityRows } = await query(`SELECT name, account_code, payment_status FROM ${table} WHERE id = $1`, [entityId])
     const { rows } = await query(
       `SELECT id, invoice_number, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, created_at, paid_at
        FROM invoices WHERE entity_type = $1 AND entity_id = $2 ORDER BY created_at DESC LIMIT 50`,
@@ -405,6 +405,8 @@ router.get('/mine', limiter, requireDb, requireAuth('school', 'school_staff', 'o
       invoices: rows,
       entityName: entityRows[0]?.name || null,
       accountCode: entityRows[0]?.account_code || null,
+      // An organization's schools are locked until it has paid (#962).
+      paymentStatus: entityRows[0]?.payment_status || null,
     })
   } catch (error) {
     console.error('list own invoices failed:', error)

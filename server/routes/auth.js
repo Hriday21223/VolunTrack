@@ -145,6 +145,9 @@ export function publicUser(row) {
     schoolPaymentStatus: row.school_payment_status ?? null,
     // 'club' (free, never payment-locked) or 'school' (#506).
     schoolPlan: row.school_plan ?? null,
+    // Set when the school belongs to an organization, which pays for it (#962).
+    schoolOrgName: row.school_org_name ?? null,
+    schoolOrgPaymentStatus: row.school_org_payment_status ?? null,
     // The school's own logo and colour, shown in the app's side menu (#930).
     schoolName: row.school_name ?? null,
     schoolLogoUrl: row.school_logo_url ?? null,
@@ -186,8 +189,11 @@ export function publicUser(row) {
 export const USER_WITH_SCHOOL_SELECT = `
   SELECT u.*, s.payment_status AS school_payment_status, s.plan AS school_plan,
          s.name AS school_name, s.brand_logo_url AS school_logo_url, s.brand_color AS school_brand_color,
-         s.pin AS school_code
+         s.pin AS school_code,
+         -- A school in an organization is paid for by it (#962).
+         so.name AS school_org_name, so.payment_status AS school_org_payment_status
   FROM users u LEFT JOIN schools s ON s.id = u.school_id
+               LEFT JOIN organizations so ON so.id = s.organization_id
 `
 
 function requireDb(_req, res, next) {

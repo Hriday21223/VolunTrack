@@ -3686,5 +3686,14 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "加入你的学校后才能以链接形式添加证明。在此之前，请上传文件。",
   "View proof": "查看证明",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "来自 Google Drive。如果无法显示，请让学生把共享设为“互联网上知道此链接的任何人都可以查看”。",
-  "Open in Google Drive instead": "改为在 Google Drive 中打开"
+  "Open in Google Drive instead": "改为在 Google Drive 中打开",
+  "Your schools are locked until we receive your payment": "在收到你的付款之前，你的学校处于锁定状态",
+  "Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.": "你的组织为其学校付费。在付款核实之前，学校顾问无法管理学生，学生也无法上传文件。核实后会自动解锁。付款方式见下方。",
+  "Waiting for your organization": "正在等待你的组织",
+  "Your school unlocks when your organization pays": "你的组织付款后，你的学校就会解锁",
+  "{org} hasn’t paid yet": "{org} 尚未付款",
+  "Your organization": "你的组织",
+  "Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.": "你的学校隶属于 {org}，由它为学校付费。在其付款核实之前，学生上传和学校管理已暂停。不会丢失任何内容，一旦付款，一切都会自动解锁。",
+  "your organization": "你的组织",
+  "If you think this is a mistake, contact the person who runs {org}.": "如果你认为这是错误，请联系 {org} 的负责人。"
 }

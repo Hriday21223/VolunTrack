@@ -14,7 +14,7 @@
 import crypto from 'node:crypto'
 import { query } from './db.js'
 import { uid } from './ids.js'
-import { schoolIsActive } from './plans.js'
+import { schoolIsActive, schoolActiveCols } from './plans.js'
 
 export const MAX_KEYS_PER_OWNER = 10
 export const OWNER_TYPES = ['school', 'organization', 'organizer']
@@ -139,7 +139,7 @@ export async function authenticateApiKey(req, res, next) {
     }
     if (row.revoked_at) return apiError(res, 401, 'revoked_key', 'That API key was revoked.')
     if (row.owner_type === 'school' && row.mode === 'live') {
-      const { rows: s } = await query('SELECT plan, payment_status FROM schools WHERE id = $1', [row.owner_id])
+      const { rows: s } = await query(`SELECT ${schoolActiveCols('schools')} FROM schools WHERE id = $1`, [row.owner_id])
       if (!s[0]) return apiError(res, 401, 'invalid_key', 'That API key is not valid.')
       if (!schoolIsActive(s[0])) return apiError(res, 402, 'payment_required', 'This school’s account isn’t active, so its API keys are paused until payment is verified.')
     }

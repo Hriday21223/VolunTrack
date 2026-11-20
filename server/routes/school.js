@@ -42,7 +42,7 @@ import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
 import { displayName } from './portfolio.js'
 import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, CLOSED_OUT_SQL, CLOSED_OUT_ERROR, taskClosedOut, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
-import { schoolIsActive, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_STUDENT_LIMIT, CLUB_MAX_CO_ADMINS, PLANS } from '../plans.js'
+import { schoolIsActive, schoolInactiveMessage, schoolActiveCols, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_STUDENT_LIMIT, CLUB_MAX_CO_ADMINS, PLANS } from '../plans.js'
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
 import { readWaiverText, readWaiverAgreement, saveWaiverAgreement, hashWaiverToken, WAIVER_STATUS_SQL } from '../taskWaivers.js'
 import { readShifts, saveShifts, chooseShift, capacityFor, taskShifts, SHIFTS_JSON_SQL, shiftText } from '../taskShifts.js'
@@ -130,11 +130,12 @@ async function requirePaidSchool(req, res, next) {
     const schoolId = rows[0]?.school_id
     if (!schoolId) return res.status(400).json({ error: 'No school linked to your account.' })
 
-    const { rows: schoolRows } = await query('SELECT payment_status, plan FROM schools WHERE id = $1', [schoolId])
+    const { rows: schoolRows } = await query(`SELECT ${schoolActiveCols('s')} FROM schools s WHERE s.id = $1`, [schoolId])
     if (schoolRows.length === 0) return res.status(404).json({ error: 'School not found.' })
-    // A free club (#506) is never payment-locked.
+    // A free club (#506) is never payment-locked on its own; a school in an
+    // organization follows the organization's payment (#962).
     if (!schoolIsActive(schoolRows[0])) {
-      return res.status(403).json({ error: 'This school has not completed payment yet. Submissions are paused until payment is verified.' })
+      return res.status(403).json({ error: schoolInactiveMessage(schoolRows[0]) })
     }
     next()
   } catch (error) {
@@ -952,7 +953,7 @@ router.get('/my-spotlight', limiter, requireDb, requireAuth('student'), async (r
 router.get('/challenge', limiter, requireDb, requireAuth('student', 'school', 'school_staff'), async (req, res) => {
   try {
     const { rows: me } = await query(
-      `SELECT u.school_id, s.plan, s.payment_status FROM users u LEFT JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
+      `SELECT u.school_id, ${schoolActiveCols('s')} FROM users u LEFT JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
       [req.auth.sub],
     )
     if (!me[0]?.school_id || !schoolIsActive(me[0])) return res.json({ challenge: null })
@@ -8712,7 +8713,7 @@ async function reportScope(auth, body) {
     if (!schoolId) return null
     // Mirrors requirePaidSchool, which can't be used as middleware here
     // because org/admin callers have no school of their own.
-    const { rows: paid } = await query('SELECT payment_status, plan FROM schools WHERE id = $1', [schoolId])
+    const { rows: paid } = await query(`SELECT ${schoolActiveCols('s')} FROM schools s WHERE s.id = $1`, [schoolId])
     if (!schoolIsActive(paid[0])) return { unpaid: true }
     return { schoolIds: [schoolId] }
   }

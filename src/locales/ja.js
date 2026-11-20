@@ -3685,5 +3685,14 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "証明をリンクで追加するには学校に参加してください。それまではファイルをアップロードしてください。",
   "View proof": "証明を見る",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Google ドライブから。表示されない場合は、共有を「インターネット上でこのリンクを知っている人なら誰でも閲覧できます」にするよう生徒に頼んでください。",
-  "Open in Google Drive instead": "代わりに Google ドライブで開く"
+  "Open in Google Drive instead": "代わりに Google ドライブで開く",
+  "Your schools are locked until we receive your payment": "お支払いを受け取るまで、学校はロックされています",
+  "Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.": "組織が所属校の料金を支払います。お支払いが確認されるまで、顧問は生徒を管理できず、生徒はファイルを送れません。確認されると自動でロックが解除されます。支払い方法は下にあります。",
+  "Waiting for your organization": "組織の支払い待ち",
+  "Your school unlocks when your organization pays": "組織が支払うと学校のロックが解除されます",
+  "{org} hasn’t paid yet": "{org} はまだ支払っていません",
+  "Your organization": "あなたの組織",
+  "Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.": "あなたの学校は {org} に所属しており、料金は組織が支払います。支払いが確認されるまで、生徒のアップロードと学校の管理は一時停止しています。何も失われず、支払いが済めばすべて自動で解除されます。",
+  "your organization": "あなたの組織",
+  "If you think this is a mistake, contact the person who runs {org}.": "間違いだと思う場合は、{org} の担当者に連絡してください。"
 }

@@ -3686,5 +3686,14 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Únete a tu escuela para añadir el comprobante como enlace. Mientras tanto, sube el archivo.",
   "View proof": "Ver comprobante",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "De Google Drive. Si no se ve, pide al estudiante que cambie el uso compartido a “Cualquier persona de Internet que tenga el enlace puede ver”.",
-  "Open in Google Drive instead": "Abrir en Google Drive"
+  "Open in Google Drive instead": "Abrir en Google Drive",
+  "Your schools are locked until we receive your payment": "Tus escuelas están bloqueadas hasta que recibamos tu pago",
+  "Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.": "Tu organización paga por sus escuelas. Hasta que se verifique tu pago, sus asesores no pueden gestionar estudiantes y los estudiantes no pueden enviar archivos. Se desbloquean solas en cuanto se verifique. Abajo verás cómo pagar.",
+  "Waiting for your organization": "Esperando a tu organización",
+  "Your school unlocks when your organization pays": "Tu escuela se desbloquea cuando tu organización pague",
+  "{org} hasn’t paid yet": "{org} aún no ha pagado",
+  "Your organization": "Tu organización",
+  "Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.": "Tu escuela forma parte de {org}, que paga por sus escuelas. Hasta que se verifique su pago, los archivos de los estudiantes y la gestión de la escuela están en pausa. No se pierde nada, y todo se desbloquea solo en cuanto pague.",
+  "your organization": "tu organización",
+  "If you think this is a mistake, contact the person who runs {org}.": "Si crees que es un error, contacta a la persona a cargo de {org}."
 }

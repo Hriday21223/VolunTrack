@@ -3685,5 +3685,14 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Присоединитесь к своей школе, чтобы добавлять подтверждение ссылкой. А пока загрузите файл.",
   "View proof": "Посмотреть подтверждение",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Из Google Диска. Если не отображается, попросите ученика выбрать доступ «Просматривать могут все в интернете, у кого есть ссылка».",
-  "Open in Google Drive instead": "Открыть в Google Диске"
+  "Open in Google Drive instead": "Открыть в Google Диске",
+  "Your schools are locked until we receive your payment": "Ваши школы заблокированы, пока мы не получим оплату",
+  "Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.": "Ваша организация платит за свои школы. Пока оплата не подтверждена, их кураторы не могут управлять учениками, а ученики не могут отправлять файлы. После подтверждения всё разблокируется само. Как оплатить — ниже.",
+  "Waiting for your organization": "Ждём вашу организацию",
+  "Your school unlocks when your organization pays": "Школа разблокируется, когда организация оплатит",
+  "{org} hasn’t paid yet": "{org} ещё не оплатила",
+  "Your organization": "Ваша организация",
+  "Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.": "Ваша школа входит в {org}, которая платит за свои школы. Пока её оплата не подтверждена, отправка файлов учениками и управление школой приостановлены. Ничего не теряется, и всё разблокируется само, как только она оплатит.",
+  "your organization": "ваша организация",
+  "If you think this is a mistake, contact the person who runs {org}.": "Если вы считаете, что это ошибка, свяжитесь с тем, кто управляет {org}."
 }

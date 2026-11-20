@@ -73,3 +73,26 @@ test('publicPromo hides invite-only and fully-claimed offers', () => {
   assert.ok(live && live.percentOff === 10)
   assert.equal(live.enabled, undefined, 'internal fields are stripped from the public view')
 })
+
+// An organization pays for its schools (#962).
+test('a school in an organization follows the organization’s payment', async () => {
+  const { schoolIsActive } = await import('../server/schoolActive.js')
+  // No organization: a club is free, a school plan must pay.
+  assert.equal(schoolIsActive({ plan: 'club', payment_status: 'unpaid', organization_id: null }), true)
+  assert.equal(schoolIsActive({ plan: 'school', payment_status: 'unpaid', organization_id: null }), false)
+  assert.equal(schoolIsActive({ plan: 'school', payment_status: 'paid', organization_id: null }), true)
+  // In an organization: only the organization's payment counts, clubs too.
+  assert.equal(schoolIsActive({ plan: 'club', payment_status: 'unpaid', organization_id: 'org1', org_payment_status: 'unpaid' }), false)
+  assert.equal(schoolIsActive({ plan: 'school', payment_status: 'paid', organization_id: 'org1', org_payment_status: 'unpaid' }), false)
+  assert.equal(schoolIsActive({ plan: 'school', payment_status: 'unpaid', organization_id: 'org1', org_payment_status: 'paid' }), true)
+  assert.equal(schoolIsActive(null), false)
+})
+
+test('the app shows the matching lock', async () => {
+  const { schoolLock } = await import('../src/lib/schoolLock.js')
+  assert.equal(schoolLock({ schoolId: 's', schoolPlan: 'club', schoolPaymentStatus: 'unpaid', schoolOrgPaymentStatus: null }), null)
+  assert.equal(schoolLock({ schoolId: 's', schoolPlan: 'school', schoolPaymentStatus: 'unpaid', schoolOrgPaymentStatus: null }), 'school')
+  assert.equal(schoolLock({ schoolId: 's', schoolPlan: 'club', schoolPaymentStatus: 'unpaid', schoolOrgPaymentStatus: 'unpaid' }), 'organization')
+  assert.equal(schoolLock({ schoolId: 's', schoolPlan: 'school', schoolPaymentStatus: 'unpaid', schoolOrgPaymentStatus: 'paid' }), null)
+  assert.equal(schoolLock({ schoolId: null }), null)
+})

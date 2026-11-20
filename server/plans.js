@@ -12,11 +12,9 @@ export const CLUB_STUDENT_LIMIT = 50
 export const CLUB_MAX_CO_ADMINS = 1
 export const PLANS = ['club', 'school']
 
-// Whether a school row may use the school features. Needs `plan` and
-// `payment_status` from the row.
-export function schoolIsActive(row) {
-  return row?.plan === 'club' || row?.payment_status === 'paid'
-}
+// Whether a school row may use the school features, including the
+// organization rule (#962): see server/schoolActive.js.
+export { schoolIsActive, schoolInactiveMessage, schoolActiveCols, schoolActiveSql } from './schoolActive.js'
 
 export function clubFullMessage(name) {
   return `${name || 'This club'} is full: a free club can have up to ${CLUB_STUDENT_LIMIT} students. Ask your adviser to upgrade to a school plan.`
