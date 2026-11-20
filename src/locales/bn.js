@@ -3672,5 +3672,15 @@ export default {
   "Hours, progress and your student list": "ঘণ্টা, অগ্রগতি এবং আপনার শিক্ষার্থী তালিকা",
   "Post tasks for your students": "আপনার শিক্ষার্থীদের জন্য কাজ পোস্ট করুন",
   "Staff, rules, sign-in and billing": "কর্মী, নিয়ম, সাইন-ইন এবং বিলিং",
-  "Messages to all your students": "আপনার সব শিক্ষার্থীর জন্য বার্তা"
+  "Messages to all your students": "আপনার সব শিক্ষার্থীর জন্য বার্তা",
+  "Or paste a link to your proof": "অথবা আপনার প্রমাণের একটি লিংক পেস্ট করুন",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Google Drive, OneDrive, Dropbox, iCloud বা Box থেকে। শেয়ারিং “লিংক আছে এমন যে কেউ” (বা আপনার স্কুলের যে কেউ) এ সেট করুন, নইলে আপনার স্কুল এটি খুলতে পারবে না।",
+  "Check that it opens": "খোলে কিনা দেখুন",
+  "Open proof link": "প্রমাণের লিংক খুলুন",
+  "That link is too long.": "লিংকটি অনেক লম্বা।",
+  "That doesn't look like a link. Copy it from the Share button in Google Drive, OneDrive or Dropbox.": "এটি লিংকের মতো মনে হচ্ছে না। Google Drive, OneDrive বা Dropbox-এর শেয়ার বোতাম থেকে কপি করুন।",
+  "Use a link that starts with https://.": "https:// দিয়ে শুরু হওয়া লিংক ব্যবহার করুন।",
+  "That link can't be used.": "এই লিংকটি ব্যবহার করা যাবে না।",
+  "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google Drive, OneDrive, Dropbox, iCloud বা Box-এর লিংক ব্যবহার করুন।",
+  "Join your school to add proof as a link. Until then, upload the file.": "প্রমাণ লিংক হিসেবে যোগ করতে আপনার স্কুলে যোগ দিন। ততক্ষণ ফাইলটি আপলোড করুন।"
 }

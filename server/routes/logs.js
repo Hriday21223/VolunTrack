@@ -6,6 +6,7 @@ import { perPersonKey } from '../rateKey.js'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { isValidDateString, logDateRangeError, logTextError, MAX_HOURS_PER_ENTRY } from '../validate.js'
+import { cleanProofLink } from '../proofLink.js'
 import { uid } from '../ids.js'
 import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
@@ -158,6 +159,11 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
   }
   const textError = logTextError(req.body)
   if (textError) return res.status(400).json({ error: textError })
+  const proofLink = cleanProofLink(req.body.proofLink)
+  if (proofLink.error) return res.status(400).json({ error: proofLink.error })
+  if (proofLink.url && !(await inASchool(req.auth.sub))) {
+    return res.status(400).json({ error: 'Join your school to add proof as a link. Until then, upload the file.' })
+  }
   // org address/phone, the supervisor's signature image and the supervisor's
   // plaintext email are deliberately not read off the body here: nothing
   // server-side consumes them, so we no longer keep third-party PII for a
@@ -202,7 +208,7 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
     const policyCheck = await checkPolicy(req, {
       date, activity, category, hours: hoursNum, notes, location, orgName,
       supervisorName, supervisorEmail,
-      hasProof: Boolean(storageKey) || hasLocalProof === true,
+      hasProof: Boolean(storageKey) || Boolean(proofLink.url) || hasLocalProof === true,
       // Like hasLocalProof, the client's word: the signature image never
       // leaves the device, and a Google Form's answers go to the school.
       ...signoff,
@@ -220,9 +226,9 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
 
     const id = uid('log')
     await query(
-      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, reflection, skills)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
-      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, String(reflection || '').trim() || null, skills.length ? skills : null],
+      `INSERT INTO logs (id, user_id, date, activity, category, hours, notes, location, org_name, supervisor_name, supervisor_email_hash, task_id, proof_storage_id, proof_key, proof_mime, proof_bytes, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, reflection, skills, proof_link)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+      [id, req.auth.sub, date, activity, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, storageId, storageKey, storageKey ? (proofMime || null) : null, storageKey && Number.isInteger(proofBytes) ? proofBytes : null, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, String(reflection || '').trim() || null, skills.length ? skills : null, proofLink.url],
     )
     emitHours('hours.created', id)
     const autoApproved = await applyAutoApprove(policyCheck.policy, id).catch(() => false)
@@ -232,6 +238,13 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
     return res.status(500).json({ error: 'Could not save log.' })
   }
 })
+
+// Proof as a link (#955) is only for students at a school: the link is for
+// the school's advisers to open, so without one there is nobody to open it.
+async function inASchool(userId) {
+  const { rows } = await query('SELECT school_id FROM users WHERE id = $1', [userId])
+  return Boolean(rows[0]?.school_id)
+}
 
 // [request field, column] for the optional text PATCH lets a student clear.
 const CLEARABLE_FIELDS = [
@@ -250,7 +263,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     const { rows } = await query(
       `SELECT user_id, to_char(date, 'YYYY-MM-DD') AS date, activity, category, hours, notes,
               location, org_name, supervisor_name, supervisor_email_hash,
-              (proof_key IS NOT NULL) AS has_proof, custom_fields, student_signed, form_submitted,
+              (proof_key IS NOT NULL) AS has_proof_file, proof_link, custom_fields, student_signed, form_submitted,
               supervisor_signed_in_person, task_id, verification_status
          FROM logs WHERE id = $1`,
       [req.params.id],
@@ -294,6 +307,13 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     if (date && logDateRangeError(date)) return res.status(400).json({ error: logDateRangeError(date) })
     const textError = logTextError(req.body)
     if (textError) return res.status(400).json({ error: textError })
+    // A proof link (#955) is replaced only when sent; sent empty, it's removed.
+    const proofLinkSent = Object.hasOwn(req.body, 'proofLink')
+    const proofLink = proofLinkSent ? cleanProofLink(req.body.proofLink) : { url: null }
+    if (proofLink.error) return res.status(400).json({ error: proofLink.error })
+    if (proofLink.url && !(await inASchool(req.auth.sub))) {
+      return res.status(400).json({ error: 'Join your school to add proof as a link. Until then, upload the file.' })
+    }
     if (taskId) {
       const { rows: signupRows } = await query(
         "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND user_id = $2 AND status = 'approved'",
@@ -318,7 +338,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
       // here — enough for a "supervisor required" rule, which asks whether one
       // was named, not who.
       supervisorEmail: isCleared('supervisor_email_hash') ? '' : (supervisorEmail || (existing.supervisor_email_hash ? 'on-file' : '')),
-      hasProof: existing.has_proof || hasLocalProof === true,
+      hasProof: existing.has_proof_file || Boolean(proofLinkSent ? proofLink.url : existing.proof_link) || hasLocalProof === true,
       hasStudentSignature: existing.student_signed || signoff.hasStudentSignature,
       formSubmitted: existing.form_submitted || signoff.formSubmitted,
       supervisorSignedInPerson: existing.supervisor_signed_in_person || signoff.supervisorSignedInPerson,
@@ -366,6 +386,10 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          -- Skills (#605): replaced only when sent; like the reflection they're
          -- the student's own description, so they never reset verification.
          skills = CASE WHEN $19::boolean THEN $20::text[] ELSE skills END,
+         -- A proof link (#955): replaced or removed only when sent. It's
+         -- evidence for the school, not a fact a supervisor signed, so it never
+         -- resets verification.
+         proof_link = CASE WHEN $21::boolean THEN $22 ELSE proof_link END,
          location = CASE WHEN 'location' = ANY($17::text[]) THEN NULL ELSE COALESCE($6, location) END,
          org_name = CASE WHEN 'org_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($7, org_name) END,
          supervisor_name = CASE WHEN 'supervisor_name' = ANY($17::text[]) THEN NULL ELSE COALESCE($8, supervisor_name) END,
@@ -384,7 +408,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
          import_attestation  = CASE WHEN ${VERIFICATION_STALE} THEN NULL ELSE import_attestation END
        WHERE id = $11
        RETURNING verification_status`,
-      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared, String(reflection || '').trim() || null, Object.hasOwn(req.body, 'skills'), patchSkills.length ? patchSkills : null],
+      [date || null, activity || null, category || null, hoursNum, notes || null, location || null, orgName || null, supervisorName || null, emailHash(supervisorEmail), taskId || null, req.params.id, customFields !== undefined, customFieldValues ? JSON.stringify(customFieldValues) : null, signoff.hasStudentSignature, signoff.formSubmitted, signoff.supervisorSignedInPerson, cleared, String(reflection || '').trim() || null, Object.hasOwn(req.body, 'skills'), patchSkills.length ? patchSkills : null, proofLinkSent, proofLink.url],
     )
     // An edit that undid an approval or a send-back goes in the history (#638).
     if (['approved', 'rejected'].includes(existing.verification_status) && updated[0]?.verification_status === 'none') {
@@ -463,7 +487,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
                CASE WHEN $4::boolean THEN reflection END AS reflection,
                -- Skills (#605) are private to the student too.
                CASE WHEN $4::boolean THEN skills END AS skills,
-               (proof_key IS NOT NULL) AS has_proof, proof_mime, imported_transcript_id, custom_fields,
+               (proof_key IS NOT NULL OR proof_link IS NOT NULL) AS has_proof, proof_mime, proof_link, imported_transcript_id, custom_fields,
                student_signed, form_submitted, supervisor_signed_in_person,
                (organizer_signature IS NOT NULL) AS organizer_signed,
                -- Whether the caller (a linked parent) already cheered this one (#514).
@@ -475,7 +499,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
       [userId, scope.since, req.auth.sub, scope.self],
     )
     return res.json({
-      logs: rows.map(({ has_proof, proof_mime, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, cheered_by_me, review_note, reviewed_by_school, parent_confirmed_name, parent_confirmed_at, ...log }) => ({
+      logs: rows.map(({ has_proof, proof_mime, proof_link, imported_transcript_id, custom_fields, student_signed, form_submitted, supervisor_signed_in_person, organizer_signed, cheered_by_me, review_note, reviewed_by_school, parent_confirmed_name, parent_confirmed_at, ...log }) => ({
         ...log,
         reviewNote: review_note || null,
         reviewedBySchool: reviewed_by_school,
@@ -490,6 +514,7 @@ router.get('/:userId', limiter, requireDb, requireAuth(), async (req, res) => {
         studentSigned: student_signed,
         formSubmitted: form_submitted,
         proofMime: proof_mime,
+        proofLink: proof_link || null,
         importedTranscriptId: imported_transcript_id,
         customFields: custom_fields || null,
       })),

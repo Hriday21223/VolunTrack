@@ -162,6 +162,8 @@ export default defineConfig(({ mode }) => {
         // Sign-up age rules: the form explains them, POST /api/auth/register
         // enforces them. Same single-pure-module alias as above.
         { find: '@ageRules', replacement: resolve('./server/ageRules.js') },
+        // Which proof links Log Hours and POST|PATCH /api/logs accept (#955).
+        { find: '@proofLink', replacement: resolve('./server/proofLink.js') },
       ],
     },
 

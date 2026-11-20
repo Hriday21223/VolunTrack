@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle, XCircle, MapPin, AlertTriangle, ClipboardCheck } from 'lucide-react'
+import { CheckCircle, XCircle, MapPin, AlertTriangle, ClipboardCheck, ExternalLink } from 'lucide-react'
+import { cleanProofLink } from '@proofLink'
 import Card from '@/components/Card.jsx'
 import { fmtDate } from '@/utils/date.js'
 import { tr } from '@/lib/i18n.js'
@@ -159,6 +160,13 @@ export default function HoursReviewPanel({ onSetPlaces }) {
                       {e.verification_status === 'pending' ? `Waiting on supervisor${e.supervisor_name ? ` ${e.supervisor_name}` : ''}` : e.supervisor_name ? `Supervisor: ${e.supervisor_name} (not asked to confirm)` : tr('No supervisor given')}
                       {e.has_proof ? ` · ${tr('proof attached')}` : ''}
                     </p>
+                    {/* Proof as a link (#955), checked again before it becomes a link. */}
+                    {cleanProofLink(e.proof_link).url && (
+                      <a href={cleanProofLink(e.proof_link).url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline mt-1">
+                        <ExternalLink className="w-3 h-3" />{' '}{tr('Open proof link')}
+                        <span className="text-earth-400">({new URL(cleanProofLink(e.proof_link).url).hostname})</span>
+                      </a>
+                    )}
                   </div>
                 </div>
                 {rejecting?.id === e.id ? (
