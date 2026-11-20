@@ -1747,7 +1747,7 @@ export default function Admin() {
                       <div className="flex flex-wrap gap-2 mt-1">
                         <span className="text-xs text-earth-500">
                           <Users className="w-3 h-3 inline mr-1" />
-                          {s.student_count} student{s.student_count === 1 ? '' : 's'} ·
+                          {Number(s.student_count) || 0} student{Number(s.student_count) === 1 ? '' : 's'} ·
                           Joined {new Date(s.created_at).toLocaleDateString()}
                         </span>
                         {/* A free club never pays, so no payment badge for it. */}
