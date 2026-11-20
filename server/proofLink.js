@@ -53,3 +53,34 @@ export function cleanProofLink(raw) {
   }
   return { url: parsed.href }
 }
+
+// Google's own preview page for a shared Drive file or Google Doc/Sheet/Slides
+// (#957), which VolunTrack can show in a frame so staff stay in the app. Built
+// from the file's id only, never by trusting the rest of the pasted address.
+// Null for anything else (other sites still open in a new tab). The file
+// still follows its Google sharing: "Anyone with the link", or the viewer
+// signed in to a Google account that has access.
+const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
+const DOC_KINDS = ['document', 'spreadsheets', 'presentation']
+
+export function drivePreviewUrl(link) {
+  const { url } = cleanProofLink(link)
+  if (!url) return null
+  const u = new URL(url)
+  const host = u.hostname.toLowerCase()
+  const parts = u.pathname.split('/').filter(Boolean)
+  if (host === 'drive.google.com') {
+    // /file/d/<id>/view, /file/u/0/d/<id>/view, or /open?id=<id>
+    const d = parts.indexOf('d')
+    const id = parts[0] === 'file' && d > 0 ? parts[d + 1] : (parts[0] === 'open' ? u.searchParams.get('id') : null)
+    return id && DRIVE_ID.test(id) ? `https://drive.google.com/file/d/${id}/preview` : null
+  }
+  if (host === 'docs.google.com') {
+    // /document/d/<id>/edit (also /document/u/0/d/<id>/edit)
+    const kind = parts[0]
+    const d = parts.indexOf('d')
+    const id = DOC_KINDS.includes(kind) && d > 0 ? parts[d + 1] : null
+    return id && DRIVE_ID.test(id) ? `https://docs.google.com/${kind}/d/${id}/preview` : null
+  }
+  return null
+}

@@ -3683,5 +3683,8 @@ export default {
   "Use a link that starts with https://.": "Hãy dùng liên kết bắt đầu bằng https://.",
   "That link can't be used.": "Không thể dùng liên kết đó.",
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Hãy dùng liên kết từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box.",
-  "Join your school to add proof as a link. Until then, upload the file.": "Hãy tham gia trường của bạn để thêm bằng chứng dạng liên kết. Trước đó, hãy tải tệp lên."
+  "Join your school to add proof as a link. Until then, upload the file.": "Hãy tham gia trường của bạn để thêm bằng chứng dạng liên kết. Trước đó, hãy tải tệp lên.",
+  "View proof": "Xem bằng chứng",
+  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Từ Google Drive. Nếu không hiện, học sinh chưa chia sẻ với bạn.",
+  "Open in Google Drive instead": "Mở trong Google Drive"
 }

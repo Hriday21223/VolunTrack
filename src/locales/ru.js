@@ -3682,5 +3682,8 @@ export default {
   "Use a link that starts with https://.": "Используйте ссылку, которая начинается с https://.",
   "That link can't be used.": "Эту ссылку нельзя использовать.",
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Используйте ссылку из Google Диска, OneDrive, Dropbox, iCloud или Box.",
-  "Join your school to add proof as a link. Until then, upload the file.": "Присоединитесь к своей школе, чтобы добавлять подтверждение ссылкой. А пока загрузите файл."
+  "Join your school to add proof as a link. Until then, upload the file.": "Присоединитесь к своей школе, чтобы добавлять подтверждение ссылкой. А пока загрузите файл.",
+  "View proof": "Посмотреть подтверждение",
+  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Из Google Диска. Если не отображается, ученик ещё не открыл вам доступ.",
+  "Open in Google Drive instead": "Открыть в Google Диске"
 }

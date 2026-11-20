@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle, XCircle, MapPin, AlertTriangle, ClipboardCheck, ExternalLink } from 'lucide-react'
-import { cleanProofLink } from '@proofLink'
+import { CheckCircle, XCircle, MapPin, AlertTriangle, ClipboardCheck, ExternalLink, Eye } from 'lucide-react'
+import { cleanProofLink, drivePreviewUrl } from '@proofLink'
+import ProofLinkViewer from '@/components/ProofLinkViewer.jsx'
 import Card from '@/components/Card.jsx'
 import { fmtDate } from '@/utils/date.js'
 import { tr } from '@/lib/i18n.js'
@@ -24,6 +25,8 @@ export default function HoursReviewPanel({ onSetPlaces }) {
   const [show, setShow] = useState('all')
   const [error, setError] = useState('')
   const [picked, setPicked] = useState(() => new Set())
+  // The entry whose Google Drive proof is open in the viewer (#957).
+  const [viewing, setViewing] = useState(null)
   const [busy, setBusy] = useState(false)
   const [rejecting, setRejecting] = useState(null)
   const [reason, setReason] = useState('')
@@ -160,8 +163,13 @@ export default function HoursReviewPanel({ onSetPlaces }) {
                       {e.verification_status === 'pending' ? `Waiting on supervisor${e.supervisor_name ? ` ${e.supervisor_name}` : ''}` : e.supervisor_name ? `Supervisor: ${e.supervisor_name} (not asked to confirm)` : tr('No supervisor given')}
                       {e.has_proof ? ` · ${tr('proof attached')}` : ''}
                     </p>
-                    {/* Proof as a link (#955), checked again before it becomes a link. */}
-                    {cleanProofLink(e.proof_link).url && (
+                    {/* Proof as a link (#955), checked again before it becomes a link.
+                        A Google Drive or Docs link opens inside VolunTrack (#957). */}
+                    {drivePreviewUrl(e.proof_link) ? (
+                      <button type="button" onClick={() => setViewing(e)} className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline mt-1">
+                        <Eye className="w-3 h-3" />{' '}{tr('View proof')}
+                      </button>
+                    ) : cleanProofLink(e.proof_link).url && (
                       <a href={cleanProofLink(e.proof_link).url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline mt-1">
                         <ExternalLink className="w-3 h-3" />{' '}{tr('Open proof link')}
                         <span className="text-earth-400">({new URL(cleanProofLink(e.proof_link).url).hostname})</span>
@@ -197,6 +205,13 @@ export default function HoursReviewPanel({ onSetPlaces }) {
           </ul>
           {data.truncated && <p className="text-xs text-earth-400 mt-2">{tr('Showing the first 200. Approve or send back some to see more.')}</p>}
         </>
+      )}
+      {viewing && (
+        <ProofLinkViewer
+          link={viewing.proof_link}
+          title={`${viewing.student_name} · ${viewing.activity || tr('Untitled')} · ${fmtDate(viewing.date)}`}
+          onClose={() => setViewing(null)}
+        />
       )}
     </Card>
   )

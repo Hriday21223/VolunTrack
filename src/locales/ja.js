@@ -3682,5 +3682,8 @@ export default {
   "Use a link that starts with https://.": "https:// で始まるリンクを使ってください。",
   "That link can't be used.": "そのリンクは使えません。",
   "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google ドライブ、OneDrive、Dropbox、iCloud、Box のリンクを使ってください。",
-  "Join your school to add proof as a link. Until then, upload the file.": "証明をリンクで追加するには学校に参加してください。それまではファイルをアップロードしてください。"
+  "Join your school to add proof as a link. Until then, upload the file.": "証明をリンクで追加するには学校に参加してください。それまではファイルをアップロードしてください。",
+  "View proof": "証明を見る",
+  "From Google Drive. If it doesn’t show, the student hasn’t shared it with you yet.": "Google ドライブから。表示されない場合は、生徒がまだ共有していません。",
+  "Open in Google Drive instead": "代わりに Google ドライブで開く"
 }
