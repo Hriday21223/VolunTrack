@@ -3668,5 +3668,9 @@ export default {
   "Supervisor name and email": "पर्यवेक्षक का नाम और ईमेल",
   "They get a link to verify these hours.": "उन्हें इन घंटों की पुष्टि के लिए एक लिंक मिलता है।",
   "A photo of a sign-in sheet, a thank-you email or another document.": "उपस्थिति शीट की फोटो, धन्यवाद ईमेल या कोई अन्य दस्तावेज़।",
-  "Your school can change which of these it asks for.": "आपका स्कूल बदल सकता है कि इनमें से क्या मांगा जाए।"
+  "Your school can change which of these it asks for.": "आपका स्कूल बदल सकता है कि इनमें से क्या मांगा जाए।",
+  "Hours, progress and your student list": "घंटे, प्रगति और आपकी छात्र सूची",
+  "Post tasks for your students": "अपने छात्रों के लिए काम पोस्ट करें",
+  "Staff, rules, sign-in and billing": "स्टाफ़, नियम, साइन-इन और बिलिंग",
+  "Messages to all your students": "आपके सभी छात्रों के लिए संदेश"
 }

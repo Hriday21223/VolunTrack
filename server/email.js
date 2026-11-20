@@ -412,7 +412,7 @@ export function welcomeEmailContent({ name, role, schoolPin = null, plan = null,
 <p>${schoolPin
     ? t('Your dashboard has a <strong>starter kit</strong>: a join link (students can also type the code <strong>{code}</strong>), a QR code, a printable flyer in English and Spanish, and messages ready to paste into email or Google Classroom.', { code: escapeHtml(schoolPin) })
     : t('Your dashboard has a <strong>starter kit</strong>: a join link, a QR code, a printable flyer in English and Spanish, and messages ready to paste into email or Google Classroom.')}</p>
-${button(`${site}/school/dashboard/students`, t('Open your starter kit'))}
+${button(`${site}/school/dashboard/students/add`, t('Open your starter kit'))}
 <p>${t('Then set your hour requirement under School setup → Requirements, so students can see how close they are.')}${club ? ` ${t('A free club can have up to 50 students. For more, use <strong>Upgrade to a school plan</strong> on your dashboard or <a href="{link}">contact us</a>.', { link: `${site}/contact?topic=school` })}` : ''}</p>
 ${sign}`,
     }

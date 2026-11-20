@@ -3669,5 +3669,9 @@ export default {
   "Supervisor name and email": "Tên và email người giám sát",
   "They get a link to verify these hours.": "Họ sẽ nhận được liên kết để xác minh số giờ này.",
   "A photo of a sign-in sheet, a thank-you email or another document.": "Ảnh tờ điểm danh, email cảm ơn hoặc tài liệu khác.",
-  "Your school can change which of these it asks for.": "Trường của bạn có thể thay đổi những mục được yêu cầu."
+  "Your school can change which of these it asks for.": "Trường của bạn có thể thay đổi những mục được yêu cầu.",
+  "Hours, progress and your student list": "Giờ, tiến độ và danh sách học sinh của bạn",
+  "Post tasks for your students": "Đăng công việc cho học sinh của bạn",
+  "Staff, rules, sign-in and billing": "Nhân viên, quy định, đăng nhập và thanh toán",
+  "Messages to all your students": "Tin nhắn gửi đến tất cả học sinh của bạn"
 }

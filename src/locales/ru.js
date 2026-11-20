@@ -3668,5 +3668,9 @@ export default {
   "Supervisor name and email": "Имя и email руководителя",
   "They get a link to verify these hours.": "Он получит ссылку для подтверждения этих часов.",
   "A photo of a sign-in sheet, a thank-you email or another document.": "Фото листа регистрации, письмо с благодарностью или другой документ.",
-  "Your school can change which of these it asks for.": "Ваша школа может изменить, что из этого требуется."
+  "Your school can change which of these it asks for.": "Ваша школа может изменить, что из этого требуется.",
+  "Hours, progress and your student list": "Часы, прогресс и список учеников",
+  "Post tasks for your students": "Публикуйте задания для своих учеников",
+  "Staff, rules, sign-in and billing": "Сотрудники, правила, вход и оплата",
+  "Messages to all your students": "Сообщения всем вашим ученикам"
 }

@@ -3668,5 +3668,9 @@ export default {
   "Supervisor name and email": "Nom et e-mail du responsable",
   "They get a link to verify these hours.": "Cette personne reçoit un lien pour vérifier ces heures.",
   "A photo of a sign-in sheet, a thank-you email or another document.": "Une photo d’une feuille de présence, un e-mail de remerciement ou un autre document.",
-  "Your school can change which of these it asks for.": "Votre école peut modifier les informations demandées."
+  "Your school can change which of these it asks for.": "Votre école peut modifier les informations demandées.",
+  "Hours, progress and your student list": "Heures, progression et votre liste d’élèves",
+  "Post tasks for your students": "Publiez des missions pour vos élèves",
+  "Staff, rules, sign-in and billing": "Équipe, règles, connexion et facturation",
+  "Messages to all your students": "Messages à tous vos élèves"
 }

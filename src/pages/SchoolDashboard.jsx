@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useParams, useLocation } from 'react-router-dom'
 import { schoolTabsFromPath, schoolPathFor } from '@/lib/dashboardTabs.js'
-import { HardDrive, ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog, History } from 'lucide-react'
+import { HardDrive, Trophy, ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog, History } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -63,6 +63,15 @@ const SCHOOL_TOUR_STEPS = [
 
 // School setup is only rendered for the primary school-admin role, not
 // school_staff — so its tour step only applies there too.
+// Each section's own page header (#952), like the organization dashboard's.
+const SCHOOL_TAB_HEADERS = {
+  pdfs: { title: tr('Reports'), subtitle: tr('Review student uploads') },
+  students: { title: tr('Students'), subtitle: tr('Hours, progress and your student list') },
+  volunteer: { title: tr('Volunteer tasks'), subtitle: tr('Post tasks for your students') },
+  setup: { title: tr('School setup'), subtitle: tr('Staff, rules, sign-in and billing') },
+  chat: { title: tr('Announcements'), subtitle: tr('Messages to all your students') },
+}
+
 const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: tr('School setup'), description: tr('Add co-admins, let students sign in with your school\'s Google or Microsoft account, and serve VolunTrack on your own domain.') }
 
 // How full a free club is, and how to upgrade (#506). The club's own adviser
@@ -612,10 +621,10 @@ export default function SchoolDashboard() {
 
   return (
     <AppLayout
-      title={isSchoolAdmin ? tr('School Dashboard') : tr('My Documents')}
+      title={isSchoolAdmin ? (SCHOOL_TAB_HEADERS[tab] || SCHOOL_TAB_HEADERS.pdfs).title : tr('My Documents')}
       subtitle={
         <span className="flex items-center gap-2">
-          {isSchoolAdmin ? tr('Review student uploads') : tr('Upload verification documents')}
+          {isSchoolAdmin ? (SCHOOL_TAB_HEADERS[tab] || SCHOOL_TAB_HEADERS.pdfs).subtitle : tr('Upload verification documents')}
           {schoolInfo?.plan === 'club' ? (
             <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-700 dark:text-brand-300">{tr('Free club')}</span>
           ) : schoolInfo?.paymentStatus && (
@@ -735,7 +744,12 @@ export default function SchoolDashboard() {
           return null
         })()}
         {billingTab && <ReferralCard />}
+        {/* How to pay only when something is owed (#952): a free club never pays. */}
         {billingTab && accountCode && (
+          invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void')
+          || adminNotifs.length > 0
+          || (!isClub && paymentStatus !== 'paid')
+        ) && (
           <Card>
             <PaymentDetails accountCode={accountCode} />
           </Card>
@@ -855,46 +869,6 @@ export default function SchoolDashboard() {
 
         {tab === 'students' && isSchoolAdmin && (
           <>
-            {schoolInfo?.pin && (
-              <Card className="mb-4">
-                <h3 className="font-semibold mb-1 flex items-center gap-2"><Hash className="w-4 h-4 text-brand-600" />{' '}{tr('School code')}</h3>
-                <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
-                  {tr('Students enter this in Settings → Join school to link themselves to you, or use the join link in the starter kit below.')}
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 overflow-x-auto rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{schoolInfo.pin}</code>
-                  <button type="button" onClick={copyCode} className="btn-sm btn-ghost shrink-0" title={tr('Copy school code')}>
-                    {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-                {user?.role === 'school' && (
-                  <p className="text-xs text-earth-500 dark:text-earth-400 mt-2">
-                    {tr('To change it, go to')}{' '}<Link to="/settings" className="text-brand-400 hover:underline">{tr('Settings')}</Link>.
-                  </p>
-                )}
-              </Card>
-            )}
-
-            {schoolInfo?.plan === 'club' && <ClubPlanCard count={schoolInfo.studentCount} limit={schoolInfo.studentLimit} canUpgrade={user?.role === 'school'} onUpgraded={() => { refreshUser?.(); loadData() }} />}
-
-            {schoolInfo?.pin && (
-              <SchoolStarterKit
-                pin={schoolInfo.pin}
-                schoolName={schoolInfo.name}
-                onOpenSetup={user?.role === 'school' ? (t) => { setTab('setup'); setSetupTab(t) } : null}
-              />
-            )}
-
-            <EmbedWidgetCard />
-            <GroupHoursCard students={students} onDone={loadData} />
-            <ImportHoursCard onDone={loadData} />
-
-            <ChallengeCard manage />
-            <SpotlightPickCard />
-            <SchoolVsSchoolCard />
-
-            <LeaderboardSettingsCard canEdit={user?.role === 'school'} />
-
             {/* Students at another school asking to move here. Accepting is
                 what actually moves them; their hours and approvals come with
                 the account rather than being re-entered (#143 step 5). */}
@@ -951,6 +925,9 @@ export default function SchoolDashboard() {
               <button onClick={() => setSubTab('clubs')} className={`btn-sm ${subTab === 'clubs' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Users className="w-3.5 h-3.5 mr-1" />{' '}{tr('Clubs')}
               </button>
+              <button onClick={() => setSubTab('activities')} className={`btn-sm ${subTab === 'activities' ? 'btn-primary' : 'btn-ghost'}`}>
+                <Trophy className="w-3.5 h-3.5 mr-1" />{' '}{tr('Activities')}
+              </button>
               <button onClick={() => setSubTab('progress')} className={`btn-sm ${subTab === 'progress' ? 'btn-primary' : 'btn-ghost'}`}>
                 <Clock className="w-3.5 h-3.5 mr-1" />{' '}{tr('Hours progress')}
               </button>
@@ -981,6 +958,57 @@ export default function SchoolDashboard() {
                 {user?.role === 'school' && (
                   <GradeRolloverCard onChanged={loadData} onOpenGraduationReport={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
                 )}
+              </>
+            )}
+
+            {/* Sub-page content comes first; these cards used to sit above the
+                sub-page buttons and pushed every page ~2,700px down (#952). */}
+            {subTab === 'activities' && (
+              <>
+              <GroupHoursCard students={students} onDone={loadData} />
+              <ImportHoursCard onDone={loadData} />
+
+              <ChallengeCard manage />
+              <SpotlightPickCard />
+              <SchoolVsSchoolCard />
+
+              <LeaderboardSettingsCard canEdit={user?.role === 'school'} />
+              </>
+            )}
+
+            {subTab === 'add' && (
+              <>
+              {schoolInfo?.pin && (
+                <Card className="mb-4">
+                  <h3 className="font-semibold mb-1 flex items-center gap-2"><Hash className="w-4 h-4 text-brand-600" />{' '}{tr('School code')}</h3>
+                  <p className="text-sm text-earth-500 dark:text-earth-400 mb-3">
+                    {tr('Students enter this in Settings → Join school to link themselves to you, or use the join link in the starter kit below.')}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 overflow-x-auto rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{schoolInfo.pin}</code>
+                    <button type="button" onClick={copyCode} className="btn-sm btn-ghost shrink-0" title={tr('Copy school code')}>
+                      {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  {user?.role === 'school' && (
+                    <p className="text-xs text-earth-500 dark:text-earth-400 mt-2">
+                      {tr('To change it, go to')}{' '}<Link to="/settings" className="text-brand-400 hover:underline">{tr('Settings')}</Link>.
+                    </p>
+                  )}
+                </Card>
+              )}
+
+              {schoolInfo?.plan === 'club' && <ClubPlanCard count={schoolInfo.studentCount} limit={schoolInfo.studentLimit} canUpgrade={user?.role === 'school'} onUpgraded={() => { refreshUser?.(); loadData() }} />}
+
+              {schoolInfo?.pin && (
+                <SchoolStarterKit
+                  pin={schoolInfo.pin}
+                  schoolName={schoolInfo.name}
+                  onOpenSetup={user?.role === 'school' ? (t) => { setTab('setup'); setSetupTab(t) } : null}
+                />
+              )}
+
+              <EmbedWidgetCard />
               </>
             )}
 
@@ -1215,11 +1243,11 @@ export default function SchoolDashboard() {
                   setToastMsg(tr('Task posted!')); setToast(true); loadData()
                 } catch (e) { setToastMsg(e.message); setToast(true) } finally { setTaskBusy(false) }
               }} className="space-y-3">
-                <input className="input" maxLength={200} placeholder={tr('Task title')} value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
-                <textarea className="input" rows={2} maxLength={5000} placeholder={tr('Description — what volunteers will do')} value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
-                <input className="input" maxLength={300} placeholder={tr('Location — where it happens')} value={taskForm.location} onChange={(e) => setTaskForm({...taskForm, location: e.target.value})} required />
+                <input className="input" maxLength={200} placeholder={`${tr('Task title')} *`} value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} required />
+                <textarea className="input" rows={2} maxLength={5000} placeholder={`${tr('Description — what volunteers will do')} *`} value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} required />
+                <input className="input" maxLength={300} placeholder={`${tr('Location — where it happens')} *`} value={taskForm.location} onChange={(e) => setTaskForm({...taskForm, location: e.target.value})} required />
                 <textarea className="input" rows={2} maxLength={2000} placeholder={tr('Important info — only shown to approved volunteers (e.g. what to bring, parking, contact details)')} value={taskForm.importantInfo} onChange={(e) => setTaskForm({...taskForm, importantInfo: e.target.value})} />
-                <input className="input" type="tel" maxLength={30} placeholder={tr('Phone number — shown to approved volunteers')} value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
+                <input className="input" type="tel" maxLength={30} placeholder={`${tr('Phone number — shown to approved volunteers')} *`} value={taskForm.phone} onChange={(e) => setTaskForm({...taskForm, phone: e.target.value})} required />
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="label text-xs">{tr('Date *')}</label>
