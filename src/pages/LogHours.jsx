@@ -25,6 +25,7 @@ import { listLogs } from '@/api/index.js'
 import { addDays, format, parseISO } from 'date-fns'
 import { hapticSuccess } from '@/lib/platform.js'
 import { tr } from '@/lib/i18n.js'
+import { cleanProofLink } from '@proofLink'
 
 // Rotating appreciation notes for the student once a supervisor approves.
 // Built as opener x closer combinations (10 x 10 = 100 unique notes) rather
@@ -84,6 +85,8 @@ const blank = () => ({
   supervisorPhone: '',
   supervisorSignature: '',
   proof: null,
+  // Or a link to the proof in the student's own Drive/OneDrive/Dropbox (#955).
+  proofLink: '',
   // The school's signatures rule. The image stays on this device; the server
   // is only told that one exists — studentSigned is that fact, for an entry
   // pulled back from the server without its image.
@@ -329,7 +332,10 @@ export default function LogHours({ editId, onCloseEdit }) {
       return
     }
     if (signsInPerson && !form.supervisorSignature) { setError(tr('Have your supervisor sign in the box under Signatures.')); return }
-    if (required.proofRequired && !form.proof) {
+    const proofLink = cleanProofLink(form.proofLink)
+    if (proofLink.error) { setError(tr(proofLink.error)); return }
+    if (proofLink.url && !user?.schoolId) { setError(tr('Join your school to add proof as a link. Until then, upload the file.')); return }
+    if (required.proofRequired && !form.proof && !proofLink.url) {
       setError(signing.signedFormUpload
         ? tr('Please upload a photo or scan of your signed school form.')
         : tr('Please upload proof — a sign-in sheet, thank-you email, or other supporting document.'))
@@ -347,7 +353,7 @@ export default function LogHours({ editId, onCloseEdit }) {
     const violations = validateLogAgainstPolicy(policy, {
       ...form,
       hours,
-      hasProof: Boolean(form.proof),
+      hasProof: Boolean(form.proof) || Boolean(proofLink.url),
       hasStudentSignature,
       supervisorSignedInPerson: signedInPerson,
       sameDayHours,
@@ -378,6 +384,7 @@ export default function LogHours({ editId, onCloseEdit }) {
         ...form,
         hours,
         hasLocalProof: Boolean(form.proof),
+        proofLink: proofLink.url || '',
         studentSigned: hasStudentSignature,
         supervisorSignedInPerson: signedInPerson,
         // A drawing from "not next to me" was never theirs to keep.
@@ -877,6 +884,30 @@ export default function LogHours({ editId, onCloseEdit }) {
               onFile={(f) => setForm((s) => ({ ...s, proof: f }))}
               onClear={() => setForm((s) => ({ ...s, proof: null }))}
             />
+            {/* Only students at a school can give a link (#955): it's for the school to open. */}
+            {(user?.schoolId || form.proofLink) && (
+            <div className="mt-4">
+              <label htmlFor="proofLink" className="label">{tr('Or paste a link to your proof')}</label>
+              <input
+                id="proofLink"
+                type="url"
+                inputMode="url"
+                className="input"
+                maxLength={1000}
+                placeholder="https://drive.google.com/…"
+                value={form.proofLink || ''}
+                onChange={(e) => setForm((s) => ({ ...s, proofLink: e.target.value }))}
+              />
+              <p className="text-xs text-earth-500 dark:text-earth-400 mt-1">
+                {tr('From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.')}
+              </p>
+              {cleanProofLink(form.proofLink).url && (
+                <a href={cleanProofLink(form.proofLink).url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1 mt-1">
+                  <ExternalLink className="w-3 h-3" />{' '}{tr('Check that it opens')}
+                </a>
+              )}
+            </div>
+            )}
           </Card>
 
           <Card>

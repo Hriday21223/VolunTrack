@@ -2071,6 +2071,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_key TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_mime TEXT`) } catch {}
   try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_bytes INTEGER`) } catch {}
+  // Proof as a link (#955): an https address on a file-sharing site the
+  // student uses (checked by server/proofLink.js). Only the address is kept.
+  try { await query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS proof_link TEXT`) } catch {}
 
   // Logs brought in from a signed transcript (#143 Part B,
   // server/routes/transcript.js). import_source_id is the id the log had where

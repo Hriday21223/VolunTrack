@@ -3672,5 +3672,15 @@ export default {
   "Hours, progress and your student list": "時間、進み具合、生徒の一覧",
   "Post tasks for your students": "生徒向けにタスクを投稿",
   "Staff, rules, sign-in and billing": "スタッフ、ルール、サインイン、請求",
-  "Messages to all your students": "すべての生徒へのメッセージ"
+  "Messages to all your students": "すべての生徒へのメッセージ",
+  "Or paste a link to your proof": "または証明のリンクを貼り付け",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Google ドライブ、OneDrive、Dropbox、iCloud、Box から。共有を「リンクを知っている全員」（または学校の全員）に設定してください。そうしないと学校が開けません。",
+  "Check that it opens": "開けるか確認",
+  "Open proof link": "証明のリンクを開く",
+  "That link is too long.": "リンクが長すぎます。",
+  "That doesn't look like a link. Copy it from the Share button in Google Drive, OneDrive or Dropbox.": "リンクではないようです。Google ドライブ、OneDrive、Dropbox の共有ボタンからコピーしてください。",
+  "Use a link that starts with https://.": "https:// で始まるリンクを使ってください。",
+  "That link can't be used.": "そのリンクは使えません。",
+  "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Google ドライブ、OneDrive、Dropbox、iCloud、Box のリンクを使ってください。",
+  "Join your school to add proof as a link. Until then, upload the file.": "証明をリンクで追加するには学校に参加してください。それまではファイルをアップロードしてください。"
 }

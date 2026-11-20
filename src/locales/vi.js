@@ -3673,5 +3673,15 @@ export default {
   "Hours, progress and your student list": "Giờ, tiến độ và danh sách học sinh của bạn",
   "Post tasks for your students": "Đăng công việc cho học sinh của bạn",
   "Staff, rules, sign-in and billing": "Nhân viên, quy định, đăng nhập và thanh toán",
-  "Messages to all your students": "Tin nhắn gửi đến tất cả học sinh của bạn"
+  "Messages to all your students": "Tin nhắn gửi đến tất cả học sinh của bạn",
+  "Or paste a link to your proof": "Hoặc dán liên kết đến bằng chứng của bạn",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box. Đặt chia sẻ thành “Bất kỳ ai có đường liên kết” (hoặc bất kỳ ai ở trường bạn), nếu không trường sẽ không mở được.",
+  "Check that it opens": "Kiểm tra xem có mở được không",
+  "Open proof link": "Mở liên kết bằng chứng",
+  "That link is too long.": "Liên kết đó quá dài.",
+  "That doesn't look like a link. Copy it from the Share button in Google Drive, OneDrive or Dropbox.": "Đó không giống một liên kết. Hãy sao chép nó từ nút Chia sẻ trong Google Drive, OneDrive hoặc Dropbox.",
+  "Use a link that starts with https://.": "Hãy dùng liên kết bắt đầu bằng https://.",
+  "That link can't be used.": "Không thể dùng liên kết đó.",
+  "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Hãy dùng liên kết từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box.",
+  "Join your school to add proof as a link. Until then, upload the file.": "Hãy tham gia trường của bạn để thêm bằng chứng dạng liên kết. Trước đó, hãy tải tệp lên."
 }

@@ -3673,5 +3673,15 @@ export default {
   "Hours, progress and your student list": "时数、进度和你的学生名单",
   "Post tasks for your students": "为你的学生发布任务",
   "Staff, rules, sign-in and billing": "工作人员、规则、登录和账单",
-  "Messages to all your students": "发给你所有学生的消息"
+  "Messages to all your students": "发给你所有学生的消息",
+  "Or paste a link to your proof": "或粘贴证明材料的链接",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box。请将共享设置为“知道链接的任何人”（或你学校的任何人），否则学校无法打开。",
+  "Check that it opens": "检查能否打开",
+  "Open proof link": "打开证明链接",
+  "That link is too long.": "该链接太长。",
+  "That doesn't look like a link. Copy it from the Share button in Google Drive, OneDrive or Dropbox.": "这看起来不像链接。请在 Google Drive、OneDrive 或 Dropbox 中通过“共享”按钮复制。",
+  "Use a link that starts with https://.": "请使用以 https:// 开头的链接。",
+  "That link can't be used.": "无法使用该链接。",
+  "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "请使用来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box 的链接。",
+  "Join your school to add proof as a link. Until then, upload the file.": "加入你的学校后才能以链接形式添加证明。在此之前，请上传文件。"
 }

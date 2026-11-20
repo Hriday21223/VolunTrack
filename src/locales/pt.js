@@ -3672,5 +3672,15 @@ export default {
   "Hours, progress and your student list": "Horas, progresso e sua lista de alunos",
   "Post tasks for your students": "Publique tarefas para seus alunos",
   "Staff, rules, sign-in and billing": "Equipe, regras, login e cobrança",
-  "Messages to all your students": "Mensagens para todos os seus alunos"
+  "Messages to all your students": "Mensagens para todos os seus alunos",
+  "Or paste a link to your proof": "Ou cole um link para o seu comprovante",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "Do Google Drive, OneDrive, Dropbox, iCloud ou Box. Defina o compartilhamento como “Qualquer pessoa com o link” (ou qualquer pessoa da sua escola), senão sua escola não conseguirá abrir.",
+  "Check that it opens": "Verifique se abre",
+  "Open proof link": "Abrir link do comprovante",
+  "That link is too long.": "Esse link é longo demais.",
+  "That doesn't look like a link. Copy it from the Share button in Google Drive, OneDrive or Dropbox.": "Isso não parece um link. Copie-o pelo botão Compartilhar no Google Drive, OneDrive ou Dropbox.",
+  "Use a link that starts with https://.": "Use um link que comece com https://.",
+  "That link can't be used.": "Esse link não pode ser usado.",
+  "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "Use um link do Google Drive, OneDrive, Dropbox, iCloud ou Box.",
+  "Join your school to add proof as a link. Until then, upload the file.": "Entre na sua escola para adicionar o comprovante como link. Até lá, envie o arquivo."
 }

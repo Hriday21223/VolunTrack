@@ -3672,5 +3672,15 @@ export default {
   "Hours, progress and your student list": "الساعات والتقدّم وقائمة طلابك",
   "Post tasks for your students": "انشر مهام لطلابك",
   "Staff, rules, sign-in and billing": "الموظفون والقواعد وتسجيل الدخول والفوترة",
-  "Messages to all your students": "رسائل إلى جميع طلابك"
+  "Messages to all your students": "رسائل إلى جميع طلابك",
+  "Or paste a link to your proof": "أو الصق رابطًا إلى إثباتك",
+  "From Google Drive, OneDrive, Dropbox, iCloud or Box. Set sharing to “Anyone with the link” (or anyone at your school), or your school won’t be able to open it.": "من Google Drive أو OneDrive أو Dropbox أو iCloud أو Box. اضبط المشاركة على “أي شخص لديه الرابط” (أو أي شخص في مدرستك)، وإلا فلن تتمكن مدرستك من فتحه.",
+  "Check that it opens": "تحقّق من أنه يفتح",
+  "Open proof link": "افتح رابط الإثبات",
+  "That link is too long.": "هذا الرابط طويل جدًا.",
+  "That doesn't look like a link. Copy it from the Share button in Google Drive, OneDrive or Dropbox.": "لا يبدو هذا رابطًا. انسخه من زر المشاركة في Google Drive أو OneDrive أو Dropbox.",
+  "Use a link that starts with https://.": "استخدم رابطًا يبدأ بـ https://.",
+  "That link can't be used.": "لا يمكن استخدام هذا الرابط.",
+  "Use a link from Google Drive, OneDrive, Dropbox, iCloud or Box.": "استخدم رابطًا من Google Drive أو OneDrive أو Dropbox أو iCloud أو Box.",
+  "Join your school to add proof as a link. Until then, upload the file.": "انضم إلى مدرستك لإضافة الإثبات كرابط. حتى ذلك الحين، ارفع الملف."
 }

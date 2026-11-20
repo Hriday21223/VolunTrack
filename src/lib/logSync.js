@@ -46,6 +46,8 @@ const SERVER_FIELDS = [
   ['proofStorageId', ['proofStorageId'], (l) => l.proofStorageId || null],
   ['proofMime', ['proofMime'], (l) => l.proofMime || null],
   ['proofBytes', ['proofBytes'], (l) => (Number.isInteger(l.proofBytes) ? l.proofBytes : null)],
+  // A link to the proof in the student's own file-sharing (#955); '' removes it.
+  ['proofLink', ['proofLink'], (l) => l.proofLink || ''],
   // Answers to the school's own questions.
   ['customFields', ['customFields'], (l) => l.customFields || null],
   // Whether a proof file exists at all — without tenant storage the file
@@ -263,6 +265,7 @@ export async function syncPullLogs(userId) {
       reviewedBySchool: Boolean(row.reviewedBySchool),
       taskId: row.task_id ?? '',
       customFields: row.customFields ?? {},
+      proofLink: row.proofLink || '',
       // The image isn't restorable either, but that the entry was signed is.
       studentSignature: '',
       studentSigned: Boolean(row.studentSigned),

@@ -129,6 +129,7 @@ export default function Privacy() {
           <Section title="Proof Files and Documents">
             <p>Where your school or organization has connected its own storage, both the proof you attach to an entry and the reports you submit to your school upload straight from your device to <em>their</em> storage. We keep only a reference to the file and never hold the file itself. Those files are then controlled by that school, under their own policies, and we cannot delete them for you.</p>
             <p className="mt-2">Where no such storage is connected, a proof file you attach stays on your device, and a report you submit to your school is stored by us until you or the school deletes it.</p>
+            <p className="mt-2">Once you have joined your school, instead of attaching a file you can paste a link to your proof in Google Drive, OneDrive, Dropbox, iCloud or Box. We store only the link, with the entry, and show it to the advisers at your school who check your hours. The file stays where you keep it, under that service&apos;s sharing settings: if you set it to &ldquo;Anyone with the link&rdquo;, anyone who has the link can open it, so share it only as widely as your school needs (for example, with &ldquo;anyone at your school&rdquo;). Removing the link from the entry deletes it from VolunTrack.</p>
           </Section>
 
           <Section title="Analytics">
