@@ -53,7 +53,7 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          NOTIFY_TO: karnatamhriday@gmail.com
+          NOTIFY_TO: volunteertrackinfo@gmail.com
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
           IS_PR: ${{ github.event.issue.pull_request != null }}

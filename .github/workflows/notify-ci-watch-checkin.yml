@@ -43,7 +43,7 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          NOTIFY_TO: karnatamhriday@gmail.com
+          NOTIFY_TO: volunteertrackinfo@gmail.com
           CHECKIN_SUBJECT: ${{ github.event.client_payload.subject || github.event.inputs.subject }}
           CHECKIN_SUMMARY: ${{ github.event.client_payload.summary || github.event.inputs.summary }}
         run: node scripts/notify-ci-watch-checkin.mjs
