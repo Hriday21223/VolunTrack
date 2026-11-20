@@ -3685,5 +3685,14 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Entre na sua escola para adicionar o comprovante como link. Até lá, envie o arquivo.",
   "View proof": "Ver comprovante",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Do Google Drive. Se não aparecer, peça ao aluno para mudar o compartilhamento para “Qualquer pessoa na Internet com o link pode ver”.",
-  "Open in Google Drive instead": "Abrir no Google Drive"
+  "Open in Google Drive instead": "Abrir no Google Drive",
+  "Your schools are locked until we receive your payment": "Suas escolas estão bloqueadas até recebermos seu pagamento",
+  "Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.": "Sua organização paga pelas escolas dela. Até o pagamento ser verificado, os orientadores não podem gerenciar alunos e os alunos não podem enviar arquivos. Elas se desbloqueiam sozinhas quando for verificado. Como pagar está abaixo.",
+  "Waiting for your organization": "Aguardando sua organização",
+  "Your school unlocks when your organization pays": "Sua escola é desbloqueada quando sua organização pagar",
+  "{org} hasn’t paid yet": "{org} ainda não pagou",
+  "Your organization": "Sua organização",
+  "Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.": "Sua escola faz parte de {org}, que paga pelas escolas dela. Até o pagamento ser verificado, os envios dos alunos e a gestão da escola ficam pausados. Nada se perde, e tudo é desbloqueado sozinho assim que ela pagar.",
+  "your organization": "sua organização",
+  "If you think this is a mistake, contact the person who runs {org}.": "Se você acha que é um erro, fale com a pessoa responsável por {org}."
 }

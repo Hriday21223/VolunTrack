@@ -12,6 +12,7 @@
 // honors the monthly progress opt-out: both are "your hours progress" emails,
 // and its unsubscribe link turns both off.
 import { query } from './db.js'
+import { schoolActiveSql } from './schoolActive.js'
 import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
 import { et, emailLang, DATE_LOCALES } from './emailStrings.js'
 import { escapeHtml } from './html.js'
@@ -69,7 +70,7 @@ async function claim(userId, deadline, stage) {
 /** One daily run. dryRun reports counts and ids only. */
 export async function runDeadlineReminders({ dryRun = false, now = new Date() } = {}) {
   const { rows: schools } = await query(
-    `SELECT id FROM schools WHERE plan = 'club' OR payment_status = 'paid'`,
+    `SELECT s.id FROM schools s WHERE ${schoolActiveSql('s')}`,
   )
   const due = []
   for (const { id } of schools) {

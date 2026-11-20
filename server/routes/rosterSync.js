@@ -7,7 +7,7 @@ import { query, hasDatabase } from '../db.js'
 import { requireAuth } from '../auth.js'
 import { recordAudit, AUDIT } from '../audit.js'
 import { requireCronKey, cronLimiter } from '../cronAuth.js'
-import { schoolIsActive } from '../plans.js'
+import { schoolIsActive, schoolInactiveMessage, schoolActiveCols, schoolActiveSql } from '../plans.js'
 import { inviteStudentsToSchool } from './school.js'
 import {
   googleConfigured, cleverConfigured, googleAuthUrl, googleCallback, googleCourses, cleverSections, syncSection, RosterError,
@@ -48,12 +48,12 @@ function frontendUrl() {
 // The adviser's school, active (paid, or a free club), or an error response.
 async function adviserSchool(req, res) {
   const { rows } = await query(
-    'SELECT u.email, u.school_id, s.plan, s.payment_status FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1',
+    `SELECT u.email, u.school_id, ${schoolActiveCols('s')} FROM users u JOIN schools s ON s.id = u.school_id WHERE u.id = $1`,
     [req.auth.sub],
   )
   const me = rows[0]
   if (!me) { res.status(400).json({ error: 'No school linked to your account.' }); return null }
-  if (!schoolIsActive(me)) { res.status(403).json({ error: 'This school has not completed payment yet. Submissions are paused until payment is verified.' }); return null }
+  if (!schoolIsActive(me)) { res.status(403).json({ error: schoolInactiveMessage(me) }); return null }
   return me
 }
 
@@ -164,7 +164,7 @@ router.post('/internal/run', cronLimiter(), requireCronKey, requireDb, async (re
       `SELECT r.school_id, r.provider, r.section_id, r.name, r.user_id, u.email
          FROM roster_sync_sections r
          JOIN users u ON u.id = r.user_id AND u.school_id = r.school_id AND u.role IN ('school', 'school_staff')
-         JOIN schools s ON s.id = r.school_id AND (s.plan = 'club' OR s.payment_status = 'paid')
+         JOIN schools s ON s.id = r.school_id AND ${schoolActiveSql('s')}
         WHERE r.last_synced_at < now() - interval '20 hours'
           AND (r.provider = 'clever' OR EXISTS (SELECT 1 FROM roster_connections c WHERE c.user_id = r.user_id AND c.provider = 'google'))
         ORDER BY r.last_synced_at

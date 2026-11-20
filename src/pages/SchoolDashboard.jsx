@@ -38,6 +38,7 @@ import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
+import { schoolLock } from '@/lib/schoolLock.js'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
@@ -561,10 +562,29 @@ export default function SchoolDashboard() {
   // That fetch can fail (network error, rate limit) and must never fail the
   // gate open; schoolInfo is only used below for supplementary display.
   const billingTab = tab === 'setup' && setupTab === 'billing' && user?.role === 'school'
-  // A free club (#506) is never locked, whatever its payment status.
+  // A free club (#506) is never locked on its own, whatever its payment status.
   const isClub = user?.schoolPlan === 'club'
   const paymentStatus = isClub ? 'paid' : user?.schoolPaymentStatus
-  if (isSchoolAdmin && paymentStatus && paymentStatus !== 'paid') {
+  const lock = schoolLock(user)
+  // A school in an organization is paid for by it (#962): until the
+  // organization pays, the school waits, and there's nothing for it to pay.
+  if (isSchoolAdmin && lock === 'organization') {
+    return (
+      <AppLayout title={tr('Waiting for your organization')} subtitle={tr('Your school unlocks when your organization pays')}>
+        <div className="max-w-lg mx-auto space-y-4">
+          <AnnouncementBanner />
+          <Card>
+            <h3 className="font-semibold mb-2">{tr('{org} hasn’t paid yet', { org: user?.schoolOrgName || tr('Your organization') })}</h3>
+            <p className="text-sm text-earth-500 dark:text-earth-400">
+              {tr('Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.', { org: user?.schoolOrgName || tr('your organization') })}
+            </p>
+            <p className="text-sm text-earth-500 dark:text-earth-400 mt-2">{tr('If you think this is a mistake, contact the person who runs {org}.', { org: user?.schoolOrgName || tr('your organization') })}</p>
+          </Card>
+        </div>
+      </AppLayout>
+    )
+  }
+  if (isSchoolAdmin && lock === 'school') {
     return (
       <AppLayout title={tr('Payment Required')} subtitle={tr('Your school\'s account is locked until payment is verified')}>
         <div className="max-w-lg mx-auto space-y-4">

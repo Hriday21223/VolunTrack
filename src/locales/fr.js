@@ -3685,5 +3685,14 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Rejoignez votre école pour ajouter un justificatif sous forme de lien. En attendant, téléversez le fichier.",
   "View proof": "Voir le justificatif",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Depuis Google Drive. S’il ne s’affiche pas, demandez à l’élève de régler le partage sur « Tous les internautes disposant du lien peuvent consulter ».",
-  "Open in Google Drive instead": "Ouvrir dans Google Drive à la place"
+  "Open in Google Drive instead": "Ouvrir dans Google Drive à la place",
+  "Your schools are locked until we receive your payment": "Vos écoles sont bloquées jusqu’à réception de votre paiement",
+  "Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.": "Votre organisation paie pour ses écoles. Tant que votre paiement n’est pas vérifié, leurs conseillers ne peuvent pas gérer les élèves et les élèves ne peuvent pas envoyer de fichiers. Elles se débloquent d’elles-mêmes dès qu’il l’est. Le mode de paiement est indiqué ci-dessous.",
+  "Waiting for your organization": "En attente de votre organisation",
+  "Your school unlocks when your organization pays": "Votre école se débloque quand votre organisation paie",
+  "{org} hasn’t paid yet": "{org} n’a pas encore payé",
+  "Your organization": "Votre organisation",
+  "Your school is part of {org}, which pays for its schools. Until its payment is verified, student uploads and school management are paused. Nothing is lost, and everything unlocks by itself as soon as it pays.": "Votre école fait partie de {org}, qui paie pour ses écoles. Tant que son paiement n’est pas vérifié, les envois des élèves et la gestion de l’école sont en pause. Rien n’est perdu, et tout se débloque de lui-même dès qu’elle paie.",
+  "your organization": "votre organisation",
+  "If you think this is a mistake, contact the person who runs {org}.": "Si vous pensez qu’il s’agit d’une erreur, contactez la personne qui gère {org}."
 }
