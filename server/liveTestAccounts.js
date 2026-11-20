@@ -36,6 +36,14 @@ export async function ensureLiveTestAccounts({ password = null } = {}) {
      ON CONFLICT (id) DO NOTHING`,
     [LIVE_TEST_ORG_ID],
   )
+  // The test school belongs to the test organization, so the organization's
+  // features that span its schools (hours, compare, announcements, events,
+  // partners) can be tried with real data. Only while it has no organization,
+  // so a deliberate change is never undone.
+  await query(
+    `UPDATE schools SET organization_id = $2 WHERE id = $1 AND organization_id IS NULL`,
+    [LIVE_TEST_SCHOOL_ID, LIVE_TEST_ORG_ID],
+  )
 
   const hash = await hashPassword(password || randomBytes(24).toString('base64url'))
   for (const a of LIVE_TEST_ACCOUNTS) {
