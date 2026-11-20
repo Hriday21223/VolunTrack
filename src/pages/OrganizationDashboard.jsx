@@ -318,9 +318,13 @@ export default function OrganizationDashboard() {
                     <div className="flex flex-wrap gap-2 mt-1">
                       <span className="text-xs text-earth-500">
                         <Users className="w-3 h-3 inline mr-1" />
-                        {s.student_count === 1 ? tr('1 student') : tr('{n} students', { n: s.student_count })}{' · '}
+                        {Number(s.student_count) === 1 ? tr('1 student') : tr('{n} students', { n: Number(s.student_count) || 0 })}{' · '}
                         {tr('Added {date}', { date: new Date(s.created_at).toLocaleDateString() })}
                       </span>
+                      {/* A free club never pays, so it shows its plan, not a payment state. */}
+                      {s.plan === 'club' ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/15 text-brand-700 dark:text-brand-300">{tr('Free club')}</span>
+                      ) : (
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         s.payment_status === 'paid'
                           ? 'bg-emerald-500/10 text-emerald-400'
@@ -332,6 +336,7 @@ export default function OrganizationDashboard() {
                       }`}>
                         {s.payment_status === 'paid' ? tr('Paid') : s.payment_status === 'pending' ? tr('Pending review') : s.payment_status === 'rejected' ? tr('Rejected') : tr('Unpaid')}
                       </span>
+                      )}
                     </div>
                   </div>
                   <button
