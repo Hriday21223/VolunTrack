@@ -3669,5 +3669,9 @@ export default {
   "Supervisor name and email": "监督人姓名和邮箱",
   "They get a link to verify these hours.": "他们会收到用于核实这些时长的链接。",
   "A photo of a sign-in sheet, a thank-you email or another document.": "签到表照片、感谢邮件或其他文件。",
-  "Your school can change which of these it asks for.": "你的学校可以更改需要填写的项目。"
+  "Your school can change which of these it asks for.": "你的学校可以更改需要填写的项目。",
+  "Hours, progress and your student list": "时数、进度和你的学生名单",
+  "Post tasks for your students": "为你的学生发布任务",
+  "Staff, rules, sign-in and billing": "工作人员、规则、登录和账单",
+  "Messages to all your students": "发给你所有学生的消息"
 }

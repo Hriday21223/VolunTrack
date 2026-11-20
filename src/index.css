@@ -52,7 +52,9 @@ html[data-font='easy'] :is(body, .font-sans, .font-display) {
   html { -webkit-text-size-adjust: 100%; }
   /* Safety net: nothing should force page-wide horizontal scroll on a
      narrow phone screen even if a specific element overflows. */
-  html, body { @apply overflow-x-hidden; }
+  /* clip, not hidden: overflow-x: hidden makes the box a scroll container,
+     which breaks position: sticky on the side menu and page headers (#952). */
+  html, body { overflow-x: clip; }
   body {
     @apply bg-earth-50 text-earth-900 font-sans antialiased;
     /* index.html asks for viewport-fit=cover, so on a notched iPhone — the

@@ -3668,5 +3668,9 @@ export default {
   "Supervisor name and email": "اسم المشرف وبريده الإلكتروني",
   "They get a link to verify these hours.": "يصله رابط للتحقق من هذه الساعات.",
   "A photo of a sign-in sheet, a thank-you email or another document.": "صورة لورقة الحضور أو رسالة شكر أو مستند آخر.",
-  "Your school can change which of these it asks for.": "يمكن لمدرستك تغيير ما تطلبه من هذه البيانات."
+  "Your school can change which of these it asks for.": "يمكن لمدرستك تغيير ما تطلبه من هذه البيانات.",
+  "Hours, progress and your student list": "الساعات والتقدّم وقائمة طلابك",
+  "Post tasks for your students": "انشر مهام لطلابك",
+  "Staff, rules, sign-in and billing": "الموظفون والقواعد وتسجيل الدخول والفوترة",
+  "Messages to all your students": "رسائل إلى جميع طلابك"
 }

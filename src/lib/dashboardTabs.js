@@ -7,7 +7,7 @@
 
 const SCHOOL_TABS = {
   reports: { key: 'pdfs', sub: 'reportTab', subs: ['documents', 'hours'] },
-  students: { key: 'students', sub: 'subTab', subs: ['list', 'review', 'history', 'clubs', 'progress', 'graduation', 'add'] },
+  students: { key: 'students', sub: 'subTab', subs: ['list', 'review', 'history', 'clubs', 'activities', 'progress', 'graduation', 'add'] },
   volunteer: { key: 'volunteer' },
   setup: { key: 'setup', sub: 'setupTab', subs: ['staff', 'requirements', 'sso', 'domain', 'storage', 'branding', 'billing'] },
   messages: { key: 'chat' },

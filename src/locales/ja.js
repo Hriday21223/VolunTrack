@@ -3668,5 +3668,9 @@ export default {
   "Supervisor name and email": "監督者の名前とメールアドレス",
   "They get a link to verify these hours.": "この時間を確認するためのリンクが届きます。",
   "A photo of a sign-in sheet, a thank-you email or another document.": "出席表の写真、お礼のメール、その他の書類。",
-  "Your school can change which of these it asks for.": "学校によって、求められる項目が変わることがあります。"
+  "Your school can change which of these it asks for.": "学校によって、求められる項目が変わることがあります。",
+  "Hours, progress and your student list": "時間、進み具合、生徒の一覧",
+  "Post tasks for your students": "生徒向けにタスクを投稿",
+  "Staff, rules, sign-in and billing": "スタッフ、ルール、サインイン、請求",
+  "Messages to all your students": "すべての生徒へのメッセージ"
 }
