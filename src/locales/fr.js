@@ -3928,5 +3928,12 @@ export default {
   "Approve volunteers, then sign off their hours right in VolunTrack.": "Approuvez les bénévoles, puis signez leurs heures directement dans VolunTrack.",
   "A task opened to show four volunteers signed up: two approved, two waiting with Approve and Reject buttons.": "Une mission ouverte avec quatre bénévoles inscrits : deux approuvés et deux en attente avec les boutons Approuver et Refuser.",
   "{role} screens": "Écrans {role}",
-  "Click the screens above to look around. This is a preview with sample data.": "Cliquez sur les écrans ci-dessus pour explorer. C’est un aperçu avec des données d’exemple."
+  "Click the screens above to look around. This is a preview with sample data.": "Cliquez sur les écrans ci-dessus pour explorer. C’est un aperçu avec des données d’exemple.",
+  "Could not start the card payment. Please try again.": "Impossible de lancer le paiement par carte. Veuillez réessayer.",
+  "Opening secure checkout…": "Ouverture du paiement sécurisé…",
+  "Pay by card": "Payer par carte",
+  "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "Merci ! Votre paiement par carte est passé. La facture passera à Payée d’ici une minute.",
+  "Payment cancelled. Nothing was charged.": "Paiement annulé. Rien n’a été débité.",
+  "Card payments are handled by Stripe. VolunTrack never sees your card number.": "Les paiements par carte sont gérés par Stripe. VolunTrack ne voit jamais votre numéro de carte.",
+  "Paid by card": "Payée par carte"
 }

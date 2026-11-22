@@ -3928,5 +3928,12 @@ export default {
   "Approve volunteers, then sign off their hours right in VolunTrack.": "وافق على المتطوعين، ثم وقّع ساعاتهم مباشرة في VolunTrack.",
   "A task opened to show four volunteers signed up: two approved, two waiting with Approve and Reject buttons.": "مهمة مفتوحة تُظهر أربعة متطوعين مسجّلين: اثنان مقبولان واثنان ينتظران مع زرّي قبول ورفض.",
   "{role} screens": "شاشات {role}",
-  "Click the screens above to look around. This is a preview with sample data.": "انقر على الشاشات أعلاه لتتجوّل. هذه معاينة ببيانات تجريبية."
+  "Click the screens above to look around. This is a preview with sample data.": "انقر على الشاشات أعلاه لتتجوّل. هذه معاينة ببيانات تجريبية.",
+  "Could not start the card payment. Please try again.": "تعذّر بدء الدفع بالبطاقة. حاول مرة أخرى.",
+  "Opening secure checkout…": "جارٍ فتح صفحة الدفع الآمنة…",
+  "Pay by card": "ادفع بالبطاقة",
+  "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "شكرًا! تمّ الدفع بالبطاقة. ستصبح الفاتورة مدفوعة خلال دقيقة.",
+  "Payment cancelled. Nothing was charged.": "أُلغي الدفع. لم يُخصم أي مبلغ.",
+  "Card payments are handled by Stripe. VolunTrack never sees your card number.": "تتولى Stripe الدفع بالبطاقة. لا يرى VolunTrack رقم بطاقتك أبدًا.",
+  "Paid by card": "مدفوعة بالبطاقة"
 }

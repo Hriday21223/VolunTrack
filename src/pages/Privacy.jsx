@@ -65,7 +65,7 @@ export default function Privacy() {
               <li><strong>Task organizer contact</strong> — when you create a volunteer task, the email you give is shown to the volunteers you approve, so they can ask you to sign off their hours.</li>
               <li><strong>Proof of service</strong> — photos or documents you attach to an entry. See <em>Proof files</em> below for where these are held.</li>
               <li><strong>Access records</strong> — when a school or organization staff member opens a student&apos;s record, we record who did it and when, along with the IP address and browser, so that access to a minor&apos;s record can be accounted for.</li>
-              <li><strong>Billing details</strong> — for school and organization accounts only: invoices, payment confirmations you submit, and any discount or referral code used.</li>
+              <li><strong>Billing details</strong> — for school and organization accounts only: invoices, payment confirmations you submit, and any discount or referral code used. If you pay an invoice by card, Stripe takes the card on its own page; we only learn that the invoice was paid, never the card number.</li>
               <li><strong>Your location</strong> — only with your permission, to fill in where you volunteered and to show volunteer tasks near you. In the mobile apps it is asked for only when you tap <em>Use current location</em> or turn on nearby tasks. You can always edit or clear a filled-in location.</li>
               <li><strong>Error reports</strong> — when something breaks in the website or the app, the error message, technical details, the page it happened on, your browser or device type and the app version are sent to us so we can fix it. Your name, email and account are not attached, and nothing you typed is included. We keep the most recent few hundred.</li>
               <li><strong>Reports and blocks</strong> — if you report a volunteer task, the reason and any details you add, and who sent it, so we can review it; the organizer isn't told who reported. If you block an organizer, we keep that so their tasks stay hidden from you and their messages don't reach you.</li>
@@ -194,6 +194,7 @@ export default function Privacy() {
                     ['Twilio', 'A supervisor’s mobile number and the sign-off link, if you add a number', 'Text messages to supervisors'],
                     ['Google Firebase and Apple', 'A device token and the notification text, if you turn notifications on', 'Phone notifications'],
                     ['Google Classroom and Clever', 'Read access to an adviser’s class lists, if they connect one', 'Importing a class'],
+                    ['Stripe', 'The card details a school or organization enters on Stripe’s page, the invoice number and amount, and the payer’s email', 'Card payments for invoices'],
                   ].map(([name, what, why]) => (
                     <tr key={name} className="border-b border-earth-100 dark:border-white/5"><td className="py-2 pr-3 font-medium">{name}</td><td className="py-2 pr-3">{what}</td><td className="py-2">{why}</td></tr>
                   ))}

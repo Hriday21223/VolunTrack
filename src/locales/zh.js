@@ -3929,5 +3929,12 @@ export default {
   "Approve volunteers, then sign off their hours right in VolunTrack.": "批准志愿者，然后直接在 VolunTrack 里为他们的时长签名。",
   "A task opened to show four volunteers signed up: two approved, two waiting with Approve and Reject buttons.": "展开的任务显示四名报名志愿者：两名已批准，两名等待中，带有批准和拒绝按钮。",
   "{role} screens": "{role}页面",
-  "Click the screens above to look around. This is a preview with sample data.": "点击上方的页面看看。这是使用示例数据的预览。"
+  "Click the screens above to look around. This is a preview with sample data.": "点击上方的页面看看。这是使用示例数据的预览。",
+  "Could not start the card payment. Please try again.": "无法开始刷卡付款，请重试。",
+  "Opening secure checkout…": "正在打开安全付款页面…",
+  "Pay by card": "刷卡付款",
+  "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "谢谢！你的刷卡付款已成功。发票将在一分钟内变为已付款。",
+  "Payment cancelled. Nothing was charged.": "付款已取消，没有扣款。",
+  "Card payments are handled by Stripe. VolunTrack never sees your card number.": "刷卡付款由 Stripe 处理。VolunTrack 永远看不到你的卡号。",
+  "Paid by card": "已刷卡付款"
 }

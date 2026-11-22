@@ -3929,5 +3929,12 @@ export default {
   "Approve volunteers, then sign off their hours right in VolunTrack.": "Duyệt tình nguyện viên, rồi ký xác nhận giờ của họ ngay trong VolunTrack.",
   "A task opened to show four volunteers signed up: two approved, two waiting with Approve and Reject buttons.": "Một nhiệm vụ đang mở với bốn tình nguyện viên đã đăng ký: hai đã duyệt, hai đang chờ với nút Duyệt và Từ chối.",
   "{role} screens": "Màn hình {role}",
-  "Click the screens above to look around. This is a preview with sample data.": "Bấm vào các màn hình ở trên để xem thử. Đây là bản xem trước với dữ liệu mẫu."
+  "Click the screens above to look around. This is a preview with sample data.": "Bấm vào các màn hình ở trên để xem thử. Đây là bản xem trước với dữ liệu mẫu.",
+  "Could not start the card payment. Please try again.": "Không thể bắt đầu thanh toán bằng thẻ. Vui lòng thử lại.",
+  "Opening secure checkout…": "Đang mở trang thanh toán an toàn…",
+  "Pay by card": "Thanh toán bằng thẻ",
+  "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "Cảm ơn! Thanh toán bằng thẻ đã thành công. Hóa đơn sẽ chuyển sang Đã thanh toán trong vòng một phút.",
+  "Payment cancelled. Nothing was charged.": "Đã hủy thanh toán. Không bị trừ tiền.",
+  "Card payments are handled by Stripe. VolunTrack never sees your card number.": "Thanh toán bằng thẻ do Stripe xử lý. VolunTrack không bao giờ thấy số thẻ của bạn.",
+  "Paid by card": "Đã thanh toán bằng thẻ"
 }
