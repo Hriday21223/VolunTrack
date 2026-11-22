@@ -1,4 +1,5 @@
 import { Home, Clock, Calendar, Trophy, FileText, User, Settings, Shield, HelpCircle, Sparkles, Star, ClipboardList, ClipboardCheck, School, Activity, Users, MapPin, ShieldCheck, Megaphone, Download, Handshake, UserPlus } from 'lucide-react'
+import { schoolLock } from '@/lib/schoolLock.js'
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import { cn } from '@/utils/cn.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
@@ -34,7 +35,7 @@ function menuFor(user, role) {
   const items = ROLE_ITEMS[role] || ROLE_ITEMS.student
   if (role === 'org') return [...ORG_SECTIONS, ...items.filter((i) => i.to !== ORG_BASE)]
   if (role !== 'school' && role !== 'school_staff') return items
-  const locked = user?.schoolPlan !== 'club' && user?.schoolPaymentStatus && user.schoolPaymentStatus !== 'paid'
+  const locked = Boolean(schoolLock(user))
   if (locked) return items
   return [
     ...SCHOOL_SECTIONS.filter((i) => !i.mainAdminOnly || role === 'school'),

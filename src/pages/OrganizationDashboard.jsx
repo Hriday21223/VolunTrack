@@ -83,6 +83,8 @@ export default function OrganizationDashboard() {
   const [previewInvoice, setPreviewInvoice] = useState(null)
   const [orgName, setOrgName] = useState('')
   const [accountCode, setAccountCode] = useState(null)
+  // 'paid' or 'unpaid': its schools are locked until it pays (#962).
+  const [orgPaymentStatus, setOrgPaymentStatus] = useState(null)
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -93,6 +95,7 @@ export default function OrganizationDashboard() {
       setInvoices(data.invoices || [])
       if (data.entityName) setOrgName(data.entityName)
       setAccountCode(data.accountCode || null)
+      setOrgPaymentStatus(data.paymentStatus || null)
     } catch {}
   }, [])
 
@@ -217,10 +220,16 @@ export default function OrganizationDashboard() {
       {tab === 'schools' && !loadingSchools && (
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
       )}
+      {tab === 'schools' && orgPaymentStatus && orgPaymentStatus !== 'paid' && schools.length > 0 && (
+        <div role="status" className="mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm">
+          <p className="font-semibold text-amber-700 dark:text-amber-300">{tr('Your schools are locked until we receive your payment')}</p>
+          <p className="text-earth-600 dark:text-earth-300 mt-1">{tr('Your organization pays for its schools. Until your payment is verified, their advisers can’t manage students and students can’t send uploads. They unlock by themselves once it is. How to pay is below.')}</p>
+        </div>
+      )}
       {tab === 'schools' && <ReferralCard className="mb-4" />}
       {tab === 'schools' && <CouponCard className="mb-4" onRedeemed={loadInvoices} />}
-      {/* How to pay only while an invoice is open (#952). */}
-      {tab === 'schools' && accountCode && invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void') && (
+      {/* How to pay while an invoice is open (#952), or while its schools are locked (#962). */}
+      {tab === 'schools' && accountCode && (invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void') || (orgPaymentStatus && orgPaymentStatus !== 'paid' && schools.length > 0)) && (
         <Card className="mb-4">
           <PaymentDetails accountCode={accountCode} />
         </Card>

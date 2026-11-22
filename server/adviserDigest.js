@@ -9,6 +9,7 @@
 // week_start) is claimed before sending. Skips adviser_digest_opt_out and
 // @test.com. Names of students are never in the email — only counts.
 import { query } from './db.js'
+import { schoolActiveSql } from './schoolActive.js'
 import { sendEmail, emailFooterHtml, emailApiBase } from './email.js'
 import { escapeHtml } from './html.js'
 import { ensureDigestUnsubToken } from './digest.js'
@@ -128,7 +129,7 @@ export async function findAdvisers(week, { only = null } = {}) {
       WHERE u.role IN ('school', 'school_staff') AND u.email IS NOT NULL
         AND NOT u.adviser_digest_opt_out
         AND LOWER(u.email) NOT LIKE '%@test.com'
-        AND (s.plan = 'club' OR s.payment_status = 'paid')
+        AND ${schoolActiveSql('s')}
         AND EXISTS (SELECT 1 FROM users st WHERE st.school_id = s.id AND st.role = 'student')
         AND NOT EXISTS (SELECT 1 FROM adviser_digest_sends d WHERE d.user_id = u.id AND d.week_start = $1)
         ${onlyClause}
@@ -155,7 +156,7 @@ async function claim(userId, week) {
 export async function orgSummary(orgId) {
   const { rows: schools } = await query(
     `SELECT s.id, s.name FROM schools s
-      WHERE s.organization_id = $1 AND (s.plan = 'club' OR s.payment_status = 'paid')
+      WHERE s.organization_id = $1 AND ${schoolActiveSql('s')}
         AND EXISTS (SELECT 1 FROM users st WHERE st.school_id = s.id AND st.role = 'student')
       ORDER BY s.name`,
     [orgId],
