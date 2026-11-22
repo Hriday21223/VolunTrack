@@ -191,13 +191,21 @@ function contactLink() {
 
 // `lang` ('en' | 'es', see server/emailStrings.js) is for emails that are
 // rendered in the recipient's language; everything else gets English.
+// Every email ends with a sign-off ("Thanks, / The VolunTrack team"), in the
+// reader's language when the footer knows it. SIGNOFF_MARK lets sendEmail()
+// tell whether an email already has one and add the English one if not.
+const SIGNOFF_MARK = '<!--vt-signoff-->'
+export function emailSignoffHtml(lang = 'en') {
+  return `${SIGNOFF_MARK}<p>${et(lang, 'Thanks,')}<br>${et(lang, 'The VolunTrack team')}</p>`
+}
+
 export function emailFooterHtml(lang = 'en') {
   const link = contactLink()
-  return `<p>${et(lang, "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}", { link: `<a href="${link}">${link}</a>` })}</p>`
+  return `${emailSignoffHtml(lang)}<p>${et(lang, "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}", { link: `<a href="${link}">${link}</a>` })}</p>`
 }
 
 export function emailFooterText() {
-  return `This is an automated message — please don't reply to this email. Contact us if you run into any problems: ${contactLink()}`
+  return `Thanks,\nThe VolunTrack team\n\nThis is an automated message — please don't reply to this email. Contact us if you run into any problems: ${contactLink()}`
 }
 
 const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
@@ -323,6 +331,8 @@ export function withTextDirection(html) {
 }
 
 export async function sendEmail({ to, subject, html, unsubscribeUrl, attachments, priority = 'normal' }) {
+  // An email built without the standard footer still signs off.
+  if (typeof html === 'string' && !html.includes(SIGNOFF_MARK)) html = `${html}${emailSignoffHtml('en')}`
   html = withTextDirection(html)
   const from = fromAddress()
   const key = brevoKey()
@@ -401,7 +411,8 @@ export function welcomeEmailContent({ name, role, schoolPin = null, plan = null,
   const site = (process.env.FRONTEND_URL || 'https://volunteer-track-two.vercel.app').split(',')[0].trim().replace(/\/$/, '')
   const button = (href, label) => `<p><a href="${href}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#2e7d32;color:#ffffff;text-decoration:none;font-weight:600">${escapeHtml(label)}</a></p>`
   const hi = `<p>${name ? t('Hi {name},', { name: escapeHtml(name) }) : t('Hi there,')}</p>`
-  const sign = `<p>${t('— The VolunTrack Team')}</p>`
+  // The sign-off comes from the footer sendWelcomeEmail adds (emailSignoffHtml).
+  const sign = ''
 
   if (role === 'school') {
     const club = plan === 'club'

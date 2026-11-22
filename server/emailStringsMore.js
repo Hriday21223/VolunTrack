@@ -5,6 +5,8 @@
 export const EMAIL_HI = {
   "Hi {name},": "नमस्ते {name},",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "यह एक स्वचालित संदेश है — कृपया इस ईमेल का जवाब न दें। कोई समस्या हो तो हमसे संपर्क करें: {link}",
+  "Thanks,": "धन्यवाद,",
+  "The VolunTrack team": "VolunTrack टीम",
   "Weekly volunteer summary: {start} – {end}": "साप्ताहिक स्वयंसेवा सारांश: {start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "आपके साथ अभी कोई छात्र जुड़ा नहीं है — किसी को जोड़ते ही यह साप्ताहिक सारांश उसके दर्ज घंटे दिखाएगा।",
   "Here's what your student logged from {start} to {end}:": "{start} से {end} तक आपके बच्चे ने यह दर्ज किया:",
@@ -261,6 +263,8 @@ export const EMAIL_HI = {
 export const EMAIL_AR = {
   "Hi {name},": "مرحبًا {name}،",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "هذه رسالة تلقائية — يرجى عدم الرد على هذا البريد. إذا واجهتك أي مشكلة فتواصل معنا: {link}",
+  "Thanks,": "شكرًا،",
+  "The VolunTrack team": "فريق VolunTrack",
   "Weekly volunteer summary: {start} – {end}": "الملخص الأسبوعي للتطوع: {start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "لا يوجد لديك طلاب مرتبطون بعد — بمجرد ربط طالب سيعرض هذا الملخص الأسبوعي ساعاته المسجّلة.",
   "Here's what your student logged from {start} to {end}:": "هذا ما سجّله طفلك من {start} إلى {end}:",
@@ -517,6 +521,8 @@ export const EMAIL_AR = {
 export const EMAIL_PT = {
   "Hi {name},": "Olá, {name},",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "Esta é uma mensagem automática; por favor, não responda a este e-mail. Se tiver algum problema, fale com a gente: {link}",
+  "Thanks,": "Obrigado,",
+  "The VolunTrack team": "Equipe VolunTrack",
   "Weekly volunteer summary: {start} – {end}": "Resumo semanal de voluntariado: {start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "Você ainda não tem alunos vinculados. Quando vincular um, este resumo semanal mostrará as horas registradas.",
   "Here's what your student logged from {start} to {end}:": "Veja o que seu aluno registrou de {start} a {end}:",
@@ -773,6 +779,8 @@ export const EMAIL_PT = {
 export const EMAIL_FR = {
   "Hi {name},": "Bonjour {name},",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "Ceci est un message automatique, merci de ne pas y répondre. En cas de problème, contactez-nous : {link}",
+  "Thanks,": "Merci,",
+  "The VolunTrack team": "L’équipe VolunTrack",
   "Weekly volunteer summary: {start} – {end}": "Résumé hebdomadaire de bénévolat : {start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "Vous n’avez encore aucun élève lié. Dès que vous en liez un, ce résumé hebdomadaire affichera ses heures enregistrées.",
   "Here's what your student logged from {start} to {end}:": "Voici ce que votre élève a enregistré du {start} au {end} :",
@@ -1029,6 +1037,8 @@ export const EMAIL_FR = {
 export const EMAIL_BN = {
   "Hi {name},": "নমস্কার {name},",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "এটি একটি স্বয়ংক্রিয় বার্তা — অনুগ্রহ করে এই ইমেলের উত্তর দেবেন না। কোনো সমস্যা হলে আমাদের সাথে যোগাযোগ করুন: {link}",
+  "Thanks,": "ধন্যবাদ,",
+  "The VolunTrack team": "VolunTrack টিম",
   "Weekly volunteer summary: {start} – {end}": "সাপ্তাহিক স্বেচ্ছাসেবা সারাংশ: {start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "আপনার সাথে এখনও কোনো শিক্ষার্থী যুক্ত নেই — কাউকে যুক্ত করলেই এই সাপ্তাহিক সারাংশে তার লেখা ঘণ্টা দেখাবে।",
   "Here's what your student logged from {start} to {end}:": "{start} থেকে {end} পর্যন্ত আপনার সন্তান যা লিখেছে:",
@@ -1285,6 +1295,8 @@ export const EMAIL_BN = {
 export const EMAIL_RU = {
   "Hi {name},": "Здравствуйте, {name}!",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "Это автоматическое сообщение, пожалуйста, не отвечайте на него. Если возникли проблемы, напишите нам: {link}",
+  "Thanks,": "Спасибо,",
+  "The VolunTrack team": "Команда VolunTrack",
   "Weekly volunteer summary: {start} – {end}": "Еженедельная сводка волонтёрства: {start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "У вас пока нет привязанных учеников. Когда вы привяжете ученика, эта сводка будет показывать записанные им часы.",
   "Here's what your student logged from {start} to {end}:": "Вот что ваш ребёнок записал с {start} по {end}:",
@@ -1541,6 +1553,8 @@ export const EMAIL_RU = {
 export const EMAIL_JA = {
   "Hi {name},": "{name} さん",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "このメールは自動送信です。返信はしないでください。問題があればこちらからご連絡ください：{link}",
+  "Thanks,": "よろしくお願いします。",
+  "The VolunTrack team": "VolunTrack チーム",
   "Weekly volunteer summary: {start} – {end}": "週間ボランティアまとめ：{start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "まだ連携している生徒がいません。連携すると、この週間まとめに記録された時間が表示されます。",
   "Here's what your student logged from {start} to {end}:": "{start}～{end} にお子さんが記録した内容です：",

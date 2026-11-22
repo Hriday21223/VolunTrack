@@ -3,6 +3,8 @@
 export const EMAIL_VI = {
   "Hi {name},": "Chào {name},",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "Đây là tin nhắn tự động, vui lòng không trả lời email này. Nếu gặp vấn đề gì, hãy liên hệ chúng tôi: {link}",
+  "Thanks,": "Cảm ơn,",
+  "The VolunTrack team": "Đội ngũ VolunTrack",
   "Weekly volunteer summary: {start} – {end}": "Tóm tắt tình nguyện hằng tuần: {start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "Bạn chưa liên kết với học sinh nào. Khi liên kết, bản tóm tắt hằng tuần này sẽ hiện số giờ các em đã ghi.",
   "Here's what your student logged from {start} to {end}:": "Đây là những gì học sinh của bạn đã ghi từ {start} đến {end}:",
@@ -259,6 +261,8 @@ export const EMAIL_VI = {
 export const EMAIL_ZH = {
   "Hi {name},": "{name}，你好：",
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}": "这是一封自动发送的邮件，请勿回复。如遇任何问题，请联系我们：{link}",
+  "Thanks,": "谢谢，",
+  "The VolunTrack team": "VolunTrack 团队",
   "Weekly volunteer summary: {start} – {end}": "每周志愿摘要：{start} – {end}",
   "You don't have any linked students yet — once you link one, this weekly summary will show their logged hours.": "你还没有关联任何学生。关联后，这份每周摘要会显示他们记录的时长。",
   "Here's what your student logged from {start} to {end}:": "以下是你的学生在 {start} 至 {end} 期间记录的内容：",
