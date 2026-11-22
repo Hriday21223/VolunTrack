@@ -18,6 +18,7 @@ import { policyForSchool } from './policy.js'
 import { placeApproved } from './requirements.js'
 import { completionsThisWeek } from './goalReached.js'
 import { withPartnerPlaces } from './partners.js'
+import { clubScope } from './clubScope.js'
 
 export const SEND_BATCH = 5
 
@@ -35,21 +36,31 @@ export function weekStart(now = new Date()) {
   return d.toISOString().slice(0, 10)
 }
 
-/** Counts for one school. */
-export async function schoolSummary(schoolId) {
+/**
+ * Counts for one school. `scope` (from clubScope) limits them to a co-admin's
+ * own students (#980): a counselor with a caseload, or club-only adviser, gets
+ * the numbers their dashboard shows, not the whole school's. Transfer
+ * requests stay school-wide, as they are in the app.
+ */
+export async function schoolSummary(schoolId, scope = null) {
+  const ids = scope ? [...scope] : null
+  const mine = (col) => (ids ? ` AND ${col} = ANY($2::text[])` : '')
+  const args = (extra = []) => (ids ? [schoolId, ids, ...extra] : [schoolId, ...extra])
   const [{ rows: docs }, { rows: transfers }, { rows: week }, progress, finished] = await Promise.all([
-    query(`SELECT COUNT(*)::int AS n FROM pdf_uploads WHERE school_id = $1 AND status = 'pending'`, [schoolId]),
+    query(`SELECT COUNT(*)::int AS n FROM pdf_uploads WHERE school_id = $1 AND status = 'pending'${mine('user_id')}`, args()),
     query(`SELECT COUNT(*)::int AS n FROM school_transfers WHERE to_school_id = $1 AND status = 'pending'`, [schoolId]),
     query(
       `SELECT COALESCE(SUM(l.hours), 0)::float AS hours, COUNT(DISTINCT l.user_id)::int AS students
          FROM logs l JOIN users u ON u.id = l.user_id
         WHERE u.school_id = $1 AND u.role = 'student'
           AND COALESCE(l.verification_status, 'none') <> 'rejected'
-          AND l.created_at >= now() - interval '7 days'`,
-      [schoolId],
+          AND l.created_at >= now() - interval '7 days'${mine('l.user_id')}`,
+      args(),
     ),
     schoolProgress(schoolId),
-    completionsThisWeek(schoolId),
+    ids
+      ? query(`SELECT COUNT(*)::int AS n FROM requirement_completions WHERE school_id = $1 AND user_id = ANY($2::text[]) AND reached_at >= now() - interval '7 days'`, [schoolId, ids]).then((r) => r.rows[0]?.n || 0)
+      : completionsThisWeek(schoolId),
   ])
   // Entries from places off the school's approved list (#591), not yet checked.
   let offList = 0
@@ -58,12 +69,12 @@ export async function schoolSummary(schoolId) {
   if (target?.policy?.logRules?.approvedPlaces?.length) {
     const { rows } = await query(
       `SELECT l.org_name FROM logs l JOIN users u ON u.id = l.user_id
-        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')`,
-      [schoolId],
+        WHERE u.school_id = $1 AND u.role = 'student' AND l.verification_status IN ('none', 'pending')${mine('l.user_id')}`,
+      args(),
     )
     offList = rows.filter((r) => !placeApproved(target.policy, r.org_name)).length
   }
-  const students = progress.students
+  const students = scope ? progress.students.filter((st) => scope.has(String(st.id))) : progress.students
   const withGoal = students.filter((s) => s.target)
   return {
     pendingDocs: docs[0].n,
@@ -77,6 +88,7 @@ export async function schoolSummary(schoolId) {
     // Students who first met the requirement in the past 7 days (#607).
     finished,
     deadline: progress.deadline,
+    scoped: Boolean(scope),
   }
 }
 
@@ -92,7 +104,7 @@ export function renderAdviserEmail({ name, schoolName, summary: s, unsubToken })
 
   const lines = [
     `<p>${name ? `Hi ${escapeHtml(name)},` : 'Hi there,'}</p>`,
-    `<p>Here's ${escapeHtml(schoolName)} this week.</p>`,
+    `<p>${s.scoped ? `Here's your students at ${escapeHtml(schoolName)} this week.` : `Here's ${escapeHtml(schoolName)} this week.`}</p>`,
     '<ul>',
     ...todo.map((t) => `<li><strong>${escapeHtml(t)}</strong></li>`),
     `<li>${s.weekStudents} student${s.weekStudents === 1 ? '' : 's'} logged ${s.weekHours} hour${s.weekHours === 1 ? '' : 's'} in the past 7 days.</li>`,
@@ -273,8 +285,15 @@ export async function runAdviserDigest({ dryRun = false, only = null, now = new 
     const results = await Promise.all(batch.map(async (a) => {
       try {
         if (!(await claim(a.id, week))) return { status: 'skipped' }
-        if (!summaries.has(a.school_id)) summaries.set(a.school_id, schoolSummary(a.school_id))
-        const summary = await summaries.get(a.school_id)
+        // A co-admin limited to some students gets their own numbers (#980);
+        // everyone else shares the school's, worked out once.
+        const scope = await clubScope(a.id)
+        let summary
+        if (scope) summary = await schoolSummary(a.school_id, scope)
+        else {
+          if (!summaries.has(a.school_id)) summaries.set(a.school_id, schoolSummary(a.school_id))
+          summary = await summaries.get(a.school_id)
+        }
         const unsubToken = await ensureDigestUnsubToken(a.id)
         const { subject, html } = renderAdviserEmail({ name: a.name, schoolName: a.school_name, summary, unsubToken })
         const unsubscribeUrl = `${emailApiBase()}/api/adviser-digest/unsubscribe/${unsubToken}`
