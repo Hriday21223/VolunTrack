@@ -421,7 +421,7 @@ export default function Dashboard() {
       action={
         <div className="flex flex-wrap gap-2">
           {user?.role === 'student' && (
-            <button onClick={() => setDashTab(dashTab === 'volunteer' ? 'home' : 'volunteer')} className={`btn-sm ${dashTab === 'volunteer' ? 'btn-primary' : 'btn-ghost'}`}>
+            <button onClick={() => setDashTab(dashTab === 'volunteer' ? 'home' : 'volunteer')} aria-label={tr('Volunteer')} aria-pressed={dashTab === 'volunteer'} className={`btn-sm ${dashTab === 'volunteer' ? 'btn-primary' : 'btn-ghost'}`}>
               <Hand className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">{tr('Volunteer')}</span>
             </button>
           )}

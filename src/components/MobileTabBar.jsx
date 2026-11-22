@@ -367,9 +367,10 @@ export default function MobileTabBar() {
         {showLogFab && (
           <Link
             to="/log"
+            aria-label={tr('Log hours')}
             className="absolute -top-10 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/40 flex items-center justify-center active:scale-90 transition-transform"
           >
-            <Plus className="w-6 h-6" strokeWidth={3} />
+            <Plus className="w-6 h-6" strokeWidth={3} aria-hidden="true" />
           </Link>
         )}
       </nav>

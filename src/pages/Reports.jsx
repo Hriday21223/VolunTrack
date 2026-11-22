@@ -125,18 +125,18 @@ export default function Reports() {
           <div className="space-y-3">
             <div>
               <label className="label">{tr('Category')}</label>
-              <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <select aria-label={tr('Category')} className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
                 {categories.map((c) => <option key={c} value={c}>{c === 'all' ? tr('All categories') : c}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="label">{tr('From')}</label>
-                <input type="date" className="input min-w-0" value={from} onChange={(e) => setFrom(e.target.value)} />
+                <input aria-label={tr('From')} type="date" className="input min-w-0" value={from} onChange={(e) => setFrom(e.target.value)} />
               </div>
               <div>
                 <label className="label">{tr('To')}</label>
-                <input type="date" className="input min-w-0" value={to} onChange={(e) => setTo(e.target.value)} />
+                <input aria-label={tr('To')} type="date" className="input min-w-0" value={to} onChange={(e) => setTo(e.target.value)} />
               </div>
             </div>
             <div className="pt-2 space-y-2">

@@ -33,7 +33,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
             <NotificationBell className="self-center" />
           </div>
         </header>
-        <main key={title} className="app-page-enter px-4 pt-2 pb-32 w-full">
+        <main id="main" key={title} className="app-page-enter px-4 pt-2 pb-32 w-full">
           {children}
         </main>
         <ReviewPopup />
@@ -116,7 +116,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
             </div>
           </header>
 
-          <main className="app-shell-bg flex-1 px-4 md:px-8 py-8 pb-24 w-full mx-auto">
+          <main id="main" className="app-shell-bg flex-1 px-4 md:px-8 py-8 pb-24 w-full mx-auto">
             {children}
           </main>
         </div>

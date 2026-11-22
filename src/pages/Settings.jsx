@@ -1006,15 +1006,15 @@ export default function Settings() {
             <form onSubmit={onChangePassword} className="grid sm:grid-cols-3 gap-4">
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('Current password')}</label>
-                <PasswordInput className="input" autoComplete="current-password" value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))} required />
+                <PasswordInput aria-label={tr('Current password')} className="input" autoComplete="current-password" value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))} required />
               </div>
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('New password')}</label>
-                <PasswordInput className="input" autoComplete="new-password" value={pwForm.newPw} onChange={(e) => setPwForm((f) => ({ ...f, newPw: e.target.value }))} required minLength={8} />
+                <PasswordInput aria-label={tr('New password')} className="input" autoComplete="new-password" value={pwForm.newPw} onChange={(e) => setPwForm((f) => ({ ...f, newPw: e.target.value }))} required minLength={8} />
               </div>
               <div>
                 <label className="label flex items-center gap-1.5"><Lock className="w-4 h-4" />{' '}{tr('Confirm new')}</label>
-                <PasswordInput className="input" autoComplete="new-password" value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))} required />
+                <PasswordInput aria-label={tr('Confirm new')} className="input" autoComplete="new-password" value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))} required />
               </div>
               {pwError && <div className="sm:col-span-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-3 py-2 rounded-lg">{pwError}</div>}
               {pwDone && <div className="sm:col-span-3 text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300 px-3 py-2 rounded-lg flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />{' '}{tr('Password updated')}</div>}
@@ -1092,7 +1092,7 @@ export default function Settings() {
 
                 <form onSubmit={handleVerifyTotpSetup} className="space-y-3">
                   <label className="label">{tr('Enter the 6-digit code from your app to confirm')}</label>
-                  <input
+                  <input aria-label={tr('Enter the 6-digit code from your app to confirm')}
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"

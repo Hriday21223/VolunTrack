@@ -29,7 +29,7 @@ export default function Privacy() {
         <Link to="/login" className="btn-ghost"><ArrowLeft className="w-4 h-4" /> Back to sign in</Link>
       </PublicHeader>
 
-      <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
+      <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
         <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 22, 2026</p>
 
