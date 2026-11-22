@@ -160,11 +160,11 @@ export default function Reminders() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <label className="label">{tr('Title')}</label>
-              <input className="input" placeholder={tr('Log your hours')} value={form.title} onChange={(e) => onChange('title', e.target.value)} required />
+              <input aria-label={tr('Title')} className="input" placeholder={tr('Log your hours')} value={form.title} onChange={(e) => onChange('title', e.target.value)} required />
             </div>
             <div>
               <label className="label">{tr('Note (optional)')}</label>
-              <input className="input" placeholder={tr('Take a moment to record this week.')} value={form.body} onChange={(e) => onChange('body', e.target.value)} />
+              <input aria-label={tr('Note (optional)')} className="input" placeholder={tr('Take a moment to record this week.')} value={form.body} onChange={(e) => onChange('body', e.target.value)} />
             </div>
 
             <div>
@@ -208,14 +208,14 @@ export default function Reminders() {
             {form.kind === 'monthly' && (
               <div>
                 <label className="label">{tr('Day of month')}</label>
-                <input type="number" min="1" max="31" className="input" value={form.dayOfMonth} onChange={(e) => onChange('dayOfMonth', Number(e.target.value))} />
+                <input aria-label={tr('Day of month')} type="number" min="1" max="31" className="input" value={form.dayOfMonth} onChange={(e) => onChange('dayOfMonth', Number(e.target.value))} />
               </div>
             )}
 
             {form.kind !== 'one-off' && (
               <div>
                 <label className="label">{tr('Time of day')}</label>
-                <input type="time" className="input" value={form.time} onChange={(e) => onChange('time', e.target.value)} />
+                <input aria-label={tr('Time of day')} type="time" className="input" value={form.time} onChange={(e) => onChange('time', e.target.value)} />
               </div>
             )}
 

@@ -49,7 +49,7 @@ export default function InviteLanding() {
   return (
     <div className="min-h-screen page-shell flex flex-col">
       <PublicHeader />
-      <main className="flex-1 max-w-xl w-full mx-auto px-4 pb-16">
+      <main id="main" className="flex-1 max-w-xl w-full mx-auto px-4 pb-16">
         <Card className="text-center py-10">
           <div className="mx-auto mb-4 w-12 h-12 rounded-2xl bg-brand-500/15 grid place-items-center">
             <Gift className="w-6 h-6 text-brand-500" />

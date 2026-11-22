@@ -1383,11 +1383,11 @@ export default function MyTasks() {
             <form onSubmit={handleLogHours} className="space-y-3">
               <div>
                 <label className="label">{tr('Hours')}</label>
-                <input type="number" step="0.5" min="0.5" className="input" placeholder="e.g. 2" value={logForm.hours} onChange={(e) => setLogForm({...logForm, hours: e.target.value})} required />
+                <input aria-label={tr('Hours')} type="number" step="0.5" min="0.5" className="input" placeholder="e.g. 2" value={logForm.hours} onChange={(e) => setLogForm({...logForm, hours: e.target.value})} required />
               </div>
               <div>
                 <label className="label">{tr('Date')}</label>
-                <input type="date" className="input" value={logForm.date} onChange={(e) => setLogForm({...logForm, date: e.target.value})} />
+                <input aria-label={tr('Date')} type="date" className="input" value={logForm.date} onChange={(e) => setLogForm({...logForm, date: e.target.value})} />
               </div>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setShowLogForm(false)} className="btn-ghost flex-1">{tr('Cancel')}</button>

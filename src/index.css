@@ -426,3 +426,20 @@ html[data-contrast='high'] a:is([class*='text-sky-'], [class*='text-brand-']):no
 [dir="rtl"] .pl-9.pr-11 { padding-right: 2.25rem; padding-left: 2.75rem; }
 [dir="rtl"] .left-0.w-72 { left: auto; right: 0; }
 [dir="rtl"] .w-72.-translate-x-full { --tw-translate-x: 100%; }
+
+/* Muted text contrast (#986). earth-500 (#a07c44) is under 4.5:1 on the dark
+   cards (3.8:1) and on white (3.85:1). In the dark theme, text that is
+   earth-500 (or a plain earth-600) there becomes earth-400 (5.2:1 or more); in the light theme, on
+   cards and white boxes it becomes earth-600 (5.4:1). High contrast still
+   overrides both. */
+html.dark:not([data-contrast='high']) :is([class~='text-earth-500']:not([class*='dark:text-']), [class~='text-earth-600']:not([class*='dark:text-']), [class~='dark:text-earth-500']) {
+  color: #b8955d;
+}
+html:not(.dark):not([data-contrast='high']) :is(.card, [class~='bg-white']) [class~='text-earth-500'] {
+  color: #856536;
+}
+/* Same for green links and labels left at brand-500 in the dark theme
+   (#3f8344, 3.6:1 on a dark card): brand-400 reads at 5:1 or more. */
+html.dark:not([data-contrast='high']) [class~='text-brand-500']:not([class*='dark:text-']) {
+  color: #5fa062;
+}

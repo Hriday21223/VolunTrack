@@ -831,7 +831,7 @@ export default function Help() {
         <Link to="/login" className="btn-ghost">{tr('Sign in')}</Link>
         <Link to="/register" className="btn-primary">{tr('Get started')}</Link>
       </PublicHeader>
-      <main className="px-4 md:px-8 pb-20">
+      <main id="main" className="px-4 md:px-8 pb-20">
         <div className="max-w-5xl mx-auto mb-6">
           <h1 className="text-3xl md:text-4xl font-bold">{tr('Help & Handbooks')}</h1>
           <p className="text-earth-500 dark:text-earth-400 mt-1">{tr('Guides, FAQs, and handbooks for every role')}</p>

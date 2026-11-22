@@ -297,7 +297,7 @@ export default function Status() {
         <Link to={user ? '/' : '/login'} className="btn-ghost"><ArrowLeft className="w-4 h-4" /> {user ? 'Back to dashboard' : 'Back to sign in'}</Link>
       </PublicHeader>
 
-      <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
+      <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <div className={`text-center p-6 rounded-2xl mb-6 ${allOk ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>
           <div className="text-4xl mb-2">{allOk ? '✅' : '⚠️'}</div>
           <h1 className="text-2xl font-bold text-earth-800 dark:text-earth-100">

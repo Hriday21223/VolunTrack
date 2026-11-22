@@ -549,7 +549,7 @@ export default function LogHours({ editId, onCloseEdit }) {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">{tr('What did you do? *')}</label>
-                <input
+                <input aria-label={tr('What did you do? *')}
                   className="input"
                   placeholder={tr('Park cleanup, food drive, tutoring…')}
                   value={form.activity} onChange={onChange('activity')} required
@@ -557,7 +557,7 @@ export default function LogHours({ editId, onCloseEdit }) {
               </div>
               <div>
                 <label className="label">{tr('Category')}</label>
-                <select className="input" value={form.category} onChange={onChange('category')}>
+                <select aria-label={tr('Category')} className="input" value={form.category} onChange={onChange('category')}>
                   {categories.map((c) => <option key={c} value={c}>{tr(c)}</option>)}
                 </select>
                 <div className="mt-2">
@@ -568,7 +568,7 @@ export default function LogHours({ editId, onCloseEdit }) {
             {myTasks.length > 0 && (
               <div className="mt-4">
                 <label className="label">{tr("Link to a task you're approved for (optional)")}</label>
-                <select
+                <select aria-label={tr("Link to a task you're approved for (optional)")}
                   className="input"
                   value={form.taskId}
                   onChange={(e) => linkTask(e.target.value)}
@@ -590,15 +590,15 @@ export default function LogHours({ editId, onCloseEdit }) {
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
                 <label className="label">{tr('Date *')}</label>
-                <input className="input" type="date" required max={format(new Date(), 'yyyy-MM-dd')} value={form.date} onChange={onChange('date')} />
+                <input aria-label={tr('Date *')} className="input" type="date" required max={format(new Date(), 'yyyy-MM-dd')} value={form.date} onChange={onChange('date')} />
               </div>
               <div>
                 <label className="label">{tr('Start time *')}</label>
-                <input className="input" type="time" required value={form.startTime} onChange={onChange('startTime')} />
+                <input aria-label={tr('Start time *')} className="input" type="time" required value={form.startTime} onChange={onChange('startTime')} />
               </div>
               <div>
                 <label className="label">{tr('End time *')}</label>
-                <input className="input" type="time" required value={form.endTime} onChange={onChange('endTime')} />
+                <input aria-label={tr('End time *')} className="input" type="time" required value={form.endTime} onChange={onChange('endTime')} />
               </div>
             </div>
             <div className="mt-4 text-sm text-earth-600 dark:text-earth-300">
@@ -625,7 +625,7 @@ export default function LogHours({ editId, onCloseEdit }) {
               </div>
               <div>
                 <label className="label">{tr('Notes')}</label>
-                <textarea className="input min-h-[100px] resize-y" placeholder={tr('Anything worth remembering…')} value={form.notes} onChange={onChange('notes')} />
+                <textarea aria-label={tr('Notes')} className="input min-h-[100px] resize-y" placeholder={tr('Anything worth remembering…')} value={form.notes} onChange={onChange('notes')} />
               </div>
               <div className="sm:col-span-2">
                 <label className="label">{tr('What did you learn?')} <span className="text-earth-400 font-normal">{tr('(optional, only you see this)')}</span></label>
@@ -1125,15 +1125,15 @@ function SigningEmailCard({ draft, onChange, onClose, onSendForMe }) {
       <div className="space-y-3">
         <div>
           <label className="label">{tr('To')}</label>
-          <input className="input" type="email" value={draft.to || ''} onChange={(e) => onChange({ ...draft, to: e.target.value })} />
+          <input aria-label={tr('To')} className="input" type="email" value={draft.to || ''} onChange={(e) => onChange({ ...draft, to: e.target.value })} />
         </div>
         <div>
           <label className="label">{tr('Subject')}</label>
-          <input className="input" value={draft.subject} onChange={(e) => onChange({ ...draft, subject: e.target.value })} />
+          <input aria-label={tr('Subject')} className="input" value={draft.subject} onChange={(e) => onChange({ ...draft, subject: e.target.value })} />
         </div>
         <div>
           <label className="label">{tr('Message')}</label>
-          <textarea className="input min-h-[220px] resize-y font-mono text-xs" value={draft.body} onChange={(e) => onChange({ ...draft, body: e.target.value })} />
+          <textarea aria-label={tr('Message')} className="input min-h-[220px] resize-y font-mono text-xs" value={draft.body} onChange={(e) => onChange({ ...draft, body: e.target.value })} />
         </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-4">

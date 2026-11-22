@@ -27,7 +27,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen page-shell flex flex-col">
       <PublicHeader />
-      <main className="flex-1 grid place-items-center px-4 pb-20">
+      <main id="main" className="flex-1 grid place-items-center px-4 pb-20">
         <Card className="max-w-md w-full text-center">
           <div className="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/30 grid place-items-center text-brand-700 dark:text-brand-300 mx-auto">
             <Compass className="w-6 h-6" />

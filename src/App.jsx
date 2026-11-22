@@ -248,9 +248,19 @@ export default function App() {
 
 // Keyboard users: the first Tab shows "Skip to content", which jumps past the
 // header and sidebar to the page's <main>.
+// Pages without a <main> (sign-in, sign-up, the home page) skip to their first
+// heading instead, so the link always lands somewhere.
+const skipTarget = () => document.querySelector('main') || document.querySelector('h1')
+
 function SkipToContent() {
+  // Give the target the id the link points at as soon as the link is reached,
+  // so following it by keyboard (or without this script) works everywhere.
+  const mark = () => {
+    const t = skipTarget()
+    if (t && !document.getElementById('main')) t.id = 'main'
+  }
   const skip = (e) => {
-    const main = document.querySelector('main')
+    const main = skipTarget()
     if (!main) return
     e.preventDefault()
     if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1')
@@ -258,7 +268,7 @@ function SkipToContent() {
     main.scrollIntoView()
   }
   return (
-    <a href="#main" onClick={skip} className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg">
+    <a href="#main" onFocus={mark} onClick={skip} className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[200] focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white focus:shadow-lg">
       {tr('Skip to content')}
     </a>
   )

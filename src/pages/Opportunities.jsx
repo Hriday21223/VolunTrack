@@ -414,8 +414,9 @@ export default function Opportunities() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-earth-400">{tr('Radius:')}</label>
+            <label htmlFor="nearby-radius" className="text-xs text-earth-400">{tr('Radius:')}</label>
             <select
+              id="nearby-radius"
               value={nearbyRadius}
               onChange={(e) => setNearbyRadius(Number(e.target.value))}
               className="input py-1 px-2 text-sm w-24"

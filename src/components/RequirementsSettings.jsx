@@ -272,7 +272,7 @@ function LogRulesEditor({ value, onChange }) {
         <NumberBox label={tr('Minimum description length')} value={value.notesMinLength || null} onChange={(v) => onChange({ notesMinLength: v || 0 })} step="1" placeholder={tr('No minimum')} />
         <div>
           <label className="label">{tr('Lock entries before')}</label>
-          <input className="input" type="date" value={value.lockedBefore || ''} onChange={(e) => onChange({ lockedBefore: e.target.value || null })} />
+          <input aria-label={tr('Lock entries before')} className="input" type="date" value={value.lockedBefore || ''} onChange={(e) => onChange({ lockedBefore: e.target.value || null })} />
           <p className="text-xs text-earth-400 mt-1">{tr('Students can’t add, edit or delete entries dated before this, e.g. once a semester’s report is done. You can still add hours for them.')}</p>
         </div>
       </div>
@@ -358,7 +358,7 @@ function GoalsEditor({ value, onChange }) {
         <NumberBox label={tr('Total hours required')} value={value.totalHours} onChange={(v) => onChange({ totalHours: v })} placeholder={tr('None')} />
         <div>
           <label className="label">{tr('Deadline')}</label>
-          <input className="input" type="date" value={value.deadline || ''} onChange={(e) => onChange({ deadline: e.target.value || null })} />
+          <input aria-label={tr('Deadline')} className="input" type="date" value={value.deadline || ''} onChange={(e) => onChange({ deadline: e.target.value || null })} />
         </div>
       </div>
       <div>
@@ -385,7 +385,7 @@ function GoalsEditor({ value, onChange }) {
       </div>
       <div>
         <label className="label">{tr('Note to students')}</label>
-        <input className="input" maxLength={300} value={value.note || ''} onChange={(e) => onChange({ note: e.target.value })} placeholder={tr('Due before senior year begins.')} />
+        <input aria-label={tr('Note to students')} className="input" maxLength={300} value={value.note || ''} onChange={(e) => onChange({ note: e.target.value })} placeholder={tr('Due before senior year begins.')} />
       </div>
       <div>
         <label className="label">{tr('Per-grade overrides')}</label>
@@ -634,7 +634,7 @@ function CertificatesEditor({ value, onChange }) {
   const field = (key, label, placeholder, max) => (
     <div>
       <label className="label">{tr(label)}</label>
-      <input
+      <input aria-label={tr(label)}
         className="input"
         value={value[key] || ''}
         maxLength={max}
@@ -760,7 +760,7 @@ function SignaturesEditor({ value, onChange }) {
       {value.mode === 'paperForm' && (
         <div>
           <label className="label">{tr('Link to your form')}</label>
-          <input
+          <input aria-label={tr('Link to your form')}
             className="input"
             type="url"
             value={value.formUrl || ''}
@@ -788,7 +788,7 @@ function SignaturesEditor({ value, onChange }) {
       {value.mode !== 'none' && (
         <div>
           <label className="label">{tr('Note to students (optional)')}</label>
-          <input
+          <input aria-label={tr('Note to students (optional)')}
             className="input"
             maxLength={300}
             value={value.note || ''}
@@ -816,7 +816,7 @@ function CustomFieldsEditor({ value, onChange }) {
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label className="label">{tr('Question')}</label>
-                <input
+                <input aria-label={tr('Question')}
                   className="input"
                   maxLength={80}
                   value={field.label}
@@ -826,7 +826,7 @@ function CustomFieldsEditor({ value, onChange }) {
               </div>
               <div>
                 <label className="label">{tr('Answer type')}</label>
-                <select className="input" value={field.type} onChange={(e) => update(index, { type: e.target.value })}>
+                <select aria-label={tr('Answer type')} className="input" value={field.type} onChange={(e) => update(index, { type: e.target.value })}>
                   {CUSTOM_FIELD_TYPES.map((t) => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
                 </select>
               </div>
@@ -834,7 +834,7 @@ function CustomFieldsEditor({ value, onChange }) {
             {field.type === 'select' && (
               <div>
                 <label className="label">{tr('Choices')}</label>
-                <input
+                <input aria-label={tr('Choices')}
                   className="input"
                   value={(field.options || []).join(', ')}
                   onChange={(e) => update(index, { options: e.target.value.split(',').map((o) => o.trim()).filter(Boolean) })}
@@ -845,7 +845,7 @@ function CustomFieldsEditor({ value, onChange }) {
             )}
             <div>
               <label className="label">{tr('Helper text (optional)')}</label>
-              <input className="input" maxLength={200} value={field.help || ''} onChange={(e) => update(index, { help: e.target.value })} />
+              <input aria-label={tr('Helper text (optional)')} className="input" maxLength={200} value={field.help || ''} onChange={(e) => update(index, { help: e.target.value })} />
             </div>
             <div className="flex items-center justify-between">
               <Check label={tr('Required')} checked={field.required} onChange={(v) => update(index, { required: v })} />

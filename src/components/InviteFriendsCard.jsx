@@ -49,7 +49,7 @@ export default function InviteFriendsCard({ className }) {
       </div>
 
       <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
-        <code className="flex-1 min-w-0 overflow-x-auto whitespace-nowrap rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{url}</code>
+        <code tabIndex={0} className="flex-1 min-w-0 overflow-x-auto whitespace-nowrap rounded-lg bg-earth-100 dark:bg-earth-800 px-3 py-2 font-mono text-sm">{url}</code>
         <div className="flex gap-2 shrink-0">
           <button type="button" className="btn-sm btn-ghost" onClick={copy}>
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? tr('Copied') : tr('Copy')}

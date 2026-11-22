@@ -62,7 +62,8 @@ export function HoursStory() {
   return (
     <section ref={ref} className="mt-24 md:mt-32 text-center max-w-4xl mx-auto" aria-label="Why track your hours">
       <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-600 dark:text-brand-300/80">Service hours, added up</p>
-      <p className="mt-4 flex items-baseline justify-center gap-3 md:gap-5 leading-none" aria-label="100 hours" style={{ transform: `scale(${grow})` }}>
+      <p className="mt-4 flex items-baseline justify-center gap-3 md:gap-5 leading-none" style={{ transform: `scale(${grow})` }}>
+        <span className="sr-only">100 hours</span>
         <span aria-hidden="true" className="font-display font-extrabold text-earth-950 dark:text-white text-[6rem] md:text-[10rem] tracking-tight tabular-nums">
           {count}
         </span>

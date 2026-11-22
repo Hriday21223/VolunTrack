@@ -244,7 +244,7 @@ export default function Contact() {
               )}
               <div>
                 <label className="label">{tr('Message')}</label>
-                <textarea
+                <textarea aria-label={tr('Message')}
                   className="input min-h-[140px] resize-y" required
                   value={form.message} onChange={onChange('message')}
                   placeholder={tr('Tell us a little about what you need…')}
