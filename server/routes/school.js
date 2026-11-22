@@ -413,7 +413,7 @@ router.post('/join', limiter, requireDb, requireAuth('student'), async (req, res
       const joined = await joinWithSeat(target.id, (client) => client.query('UPDATE users SET school_id = $1 WHERE id = $2', [target.id, req.auth.sub]), { userId: req.auth.sub })
       if (joined.error) return res.status(409).json({ error: joined.error })
       const grade = await applyRosterGrade(target.id, req.auth.sub)
-      return res.json({ ok: true, schoolId: target.id, ...(grade ? { grade } : {}) })
+      return res.json({ ok: true, schoolId: target.id, schoolName: target.name, ...(grade ? { grade } : {}) })
     }
 
     // A transfer is different: it hands this student's whole record to a

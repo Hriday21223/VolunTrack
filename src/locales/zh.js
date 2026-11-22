@@ -3751,5 +3751,15 @@ export default {
   "If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.": "如果你的学校属于某个组织，由组织为学校付费；组织未付款期间，你的学校会被暂停。此时你无需付款。",
   "Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.": "你的组织为其学校付费，有时按学校数量定价。在付款核实之前，你的学校会被暂停。此时“学校”标签页会显示付款方式、你的发票和优惠券输入框。",
   "Can I add a link instead of uploading my proof?": "我可以添加链接而不上传证明吗？",
-  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "可以，前提是你已加入学校。在“记录时数”的“证明”下粘贴来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box 的链接，并将文件共享设置为“互联网上知道此链接的任何人都可以查看”，否则学校无法打开。"
+  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "可以，前提是你已加入学校。在“记录时数”的“证明”下粘贴来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box 的链接，并将文件共享设置为“互联网上知道此链接的任何人都可以查看”，否则学校无法打开。",
+  "Your tasks and sign-ups are saved to your account and synced across your devices.": "你的任务和报名会保存到你的账户，并在你的设备间同步。",
+  "Follow your child's volunteer hours, cheer them on and say yes to event sign-ups. Ask your child for a link code in Settings → Family to get started.": "关注孩子的志愿时数，为他们加油，并批准活动报名。请让孩子在“设置 → 家庭”中给你一个关联码即可开始。",
+  "No school uses that school code. Check it, or leave the box empty and add it later in Settings.": "没有学校使用这个代码。请检查，或留空稍后在设置中添加。",
+  "Signing up a club or school?": "要为社团或学校注册吗？",
+  "Start a free club or register your school": "创建免费社团或注册你的学校",
+  "A district or organization?": "是学区或组织吗？",
+  "✓ {school}": "✓ {school}",
+  "No school uses that code. Check it with your teacher, or leave it empty and add it later.": "没有学校使用这个代码。请向老师确认，或留空稍后再添加。",
+  "Make up a short code for your students to type, letters then numbers, like keyclub-2026.": "自己设一个简短的代码供学生输入，先字母后数字，例如 keyclub-2026。",
+  "You're linked to {school}. Hours you log will show up for your coordinator to review.": "你已关联到 {school}。你记录的时数会显示给协调员审核。"
 }

@@ -124,7 +124,9 @@ function Home() {
   // dashboard rather than the personal hour-tracking one, same as org/parent.
   if (user.role === 'school' || user.role === 'school_staff') return <Navigate to="/school/dashboard" replace />
   // Just signed up in this tab (see src/lib/welcome.js).
-  if ((user.role === 'student' || user.role === 'volunteer') && readWelcomePending()) return <Navigate to="/welcome" replace />
+  // Only students get the welcome steps (a goal, their school); a Task Maker
+  // doesn't log hours, so they go straight to My Tasks below.
+  if (user.role === 'student' && readWelcomePending()) return <Navigate to="/welcome" replace />
   // A Task Maker runs events and doesn't log hours of their own, so their home
   // is My Tasks, not the student dashboard (#867).
   if (user.role === 'volunteer') return <Navigate to="/my-tasks" replace />

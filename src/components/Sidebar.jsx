@@ -125,6 +125,8 @@ const STORAGE_NOTE = {
   parent: tr("Your linked children's hour records are stored on our servers so you can follow their progress."),
 }
 STORAGE_NOTE.school_staff = STORAGE_NOTE.school
+// A Task Maker doesn't log hours; their account holds tasks and sign-ups.
+STORAGE_NOTE.volunteer = tr('Your tasks and sign-ups are saved to your account and synced across your devices.')
 // Students and volunteers: a signed-in account keeps its hours on our servers
 // (synced to every device); an account that exists only on this device
 // (no server connection when it was made) keeps them here.

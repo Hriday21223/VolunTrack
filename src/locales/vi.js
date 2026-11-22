@@ -3751,5 +3751,15 @@ export default {
   "If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.": "Nếu trường bạn thuộc một tổ chức, tổ chức sẽ trả tiền, và trường bị tạm dừng khi tổ chức chưa thanh toán. Khi đó bạn không phải trả gì.",
   "Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.": "Tổ chức của bạn trả tiền cho các trường, đôi khi theo giá từng trường. Cho đến khi thanh toán được xác minh, các trường bị tạm dừng. Khi đó thẻ Trường hiển thị Cách thanh toán, hóa đơn và ô nhập phiếu giảm giá.",
   "Can I add a link instead of uploading my proof?": "Tôi có thể thêm liên kết thay vì tải bằng chứng lên không?",
-  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "Có, sau khi bạn tham gia trường. Trong mục Bằng chứng ở Ghi giờ, dán liên kết từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box, và đặt chia sẻ tệp để hiện “Bất kỳ ai trên Internet có đường liên kết đều có thể xem”, nếu không trường sẽ không mở được."
+  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "Có, sau khi bạn tham gia trường. Trong mục Bằng chứng ở Ghi giờ, dán liên kết từ Google Drive, OneDrive, Dropbox, iCloud hoặc Box, và đặt chia sẻ tệp để hiện “Bất kỳ ai trên Internet có đường liên kết đều có thể xem”, nếu không trường sẽ không mở được.",
+  "Your tasks and sign-ups are saved to your account and synced across your devices.": "Công việc và lượt đăng ký của bạn được lưu vào tài khoản và đồng bộ trên các thiết bị.",
+  "Follow your child's volunteer hours, cheer them on and say yes to event sign-ups. Ask your child for a link code in Settings → Family to get started.": "Theo dõi giờ tình nguyện của con, cổ vũ con và đồng ý cho con đăng ký sự kiện. Hãy xin con mã liên kết trong Cài đặt → Gia đình để bắt đầu.",
+  "No school uses that school code. Check it, or leave the box empty and add it later in Settings.": "Không trường nào dùng mã đó. Hãy kiểm tra, hoặc để trống và thêm sau trong Cài đặt.",
+  "Signing up a club or school?": "Đăng ký cho câu lạc bộ hoặc trường?",
+  "Start a free club or register your school": "Lập câu lạc bộ miễn phí hoặc đăng ký trường",
+  "A district or organization?": "Học khu hoặc tổ chức?",
+  "✓ {school}": "✓ {school}",
+  "No school uses that code. Check it with your teacher, or leave it empty and add it later.": "Không trường nào dùng mã đó. Hãy hỏi lại giáo viên, hoặc để trống và thêm sau.",
+  "Make up a short code for your students to type, letters then numbers, like keyclub-2026.": "Tự đặt một mã ngắn để học sinh gõ, chữ rồi số, ví dụ keyclub-2026.",
+  "You're linked to {school}. Hours you log will show up for your coordinator to review.": "Bạn đã liên kết với {school}. Giờ bạn ghi sẽ hiện để cố vấn xem xét."
 }

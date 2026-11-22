@@ -119,7 +119,9 @@ export default function SchoolRegister() {
     localStorage.setItem('voluntrack:auth_token', data.token)
     await refreshUser()
     setToast(true)
-    setTimeout(() => nav('/school/dashboard', { replace: true }), 600)
+    // A new account's first job is getting students in, so it opens on
+    // Students → Invite student: the code, join link and starter kit.
+    setTimeout(() => nav('/school/dashboard/students/add', { replace: true }), 600)
   }
 
   return (
@@ -220,7 +222,7 @@ export default function SchoolRegister() {
                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-earth-400" />
                 <input type="text" className="input pl-9" placeholder="cisd-12345" value={form.pin} onChange={onChange('pin')} required />
               </div>
-              <p className="text-xs text-earth-400 mt-1">{tr('Students will use this code to link their accounts.')}</p>
+              <p className="text-xs text-earth-400 mt-1">{tr('Students will use this code to link their accounts.')}{' '}{tr('Make up a short code for your students to type, letters then numbers, like keyclub-2026.')}</p>
             </div>
             <div>
               <p className="label">{isClub ? tr('Which grades are in your club?') : tr('Which grades does your school have?')} <span className="text-earth-400 font-normal">{tr('(optional)')}</span></p>

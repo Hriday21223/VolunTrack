@@ -227,7 +227,8 @@ export default function OrganizationDashboard() {
         </div>
       )}
       {tab === 'schools' && <ReferralCard className="mb-4" />}
-      {tab === 'schools' && <CouponCard className="mb-4" onRedeemed={loadInvoices} />}
+      {/* Tucked away until a new organization has schools or an invoice: a coupon is rare. */}
+      {tab === 'schools' && (schools.length > 0 || invoices.length > 0) && <CouponCard className="mb-4" onRedeemed={loadInvoices} compact />}
       {/* How to pay while an invoice is open (#952), or while its schools are locked (#962). */}
       {tab === 'schools' && accountCode && (invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void') || (orgPaymentStatus && orgPaymentStatus !== 'paid' && schools.length > 0)) && (
         <Card className="mb-4">
@@ -433,11 +434,14 @@ export default function OrganizationDashboard() {
 
       {tab === 'schools' && !loadingSchools && (
         <Card className="mt-4">
-          <h3 className="font-semibold mb-1 flex items-center gap-2"><UserCog className="w-4 h-4 text-brand-600" />{' '}{tr('Someone new running the organization?')}</h3>
-          <p className="text-sm text-earth-500 mb-3">
-            {tr('Hand this organization’s account to them. They get an email to accept and set their own password. When they do, this login is removed from the organization and signed out.')}
-          </p>
-          <HandoverForm path={HANDOVER_ENDPOINTS.org()} role="director" />
+          {/* Folded: it's for the day the director changes, not day one. */}
+          <details>
+            <summary className="cursor-pointer font-semibold flex items-center gap-2"><UserCog className="w-4 h-4 text-brand-600" />{' '}{tr('Someone new running the organization?')}</summary>
+            <p className="text-sm text-earth-500 mt-2 mb-3">
+              {tr('Hand this organization’s account to them. They get an email to accept and set their own password. When they do, this login is removed from the organization and signed out.')}
+            </p>
+            <HandoverForm path={HANDOVER_ENDPOINTS.org()} role="director" />
+          </details>
         </Card>
       )}
 

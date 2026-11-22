@@ -3750,5 +3750,15 @@ export default {
   "If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.": "আপনার স্কুল কোনো সংগঠনের অংশ হলে সংগঠন পেমেন্ট করে, এবং সংগঠন পেমেন্ট না করা পর্যন্ত আপনার স্কুল বন্ধ থাকে। তখন আপনাকে কিছু দিতে হয় না।",
   "Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.": "আপনার সংগঠন তার স্কুলগুলোর জন্য পেমেন্ট করে, কখনো প্রতি স্কুল দামে। পেমেন্ট যাচাই না হওয়া পর্যন্ত আপনার স্কুলগুলো বন্ধ থাকে। তখন স্কুল ট্যাবে পেমেন্টের নিয়ম, আপনার ইনভয়েস ও কুপনের ঘর দেখায়।",
   "Can I add a link instead of uploading my proof?": "প্রমাণ আপলোডের বদলে কি লিংক যোগ করতে পারি?",
-  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "হ্যাঁ, স্কুলে যোগ দেওয়ার পর। ঘণ্টা লগ করুন-এ প্রমাণের নিচে Google Drive, OneDrive, Dropbox, iCloud বা Box-এর লিংক পেস্ট করুন, এবং ফাইলের শেয়ারিং এমন করুন যাতে লেখা থাকে “ইন্টারনেটে লিংক আছে এমন যে কেউ দেখতে পারবেন”, নইলে আপনার স্কুল এটি খুলতে পারবে না।"
+  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "হ্যাঁ, স্কুলে যোগ দেওয়ার পর। ঘণ্টা লগ করুন-এ প্রমাণের নিচে Google Drive, OneDrive, Dropbox, iCloud বা Box-এর লিংক পেস্ট করুন, এবং ফাইলের শেয়ারিং এমন করুন যাতে লেখা থাকে “ইন্টারনেটে লিংক আছে এমন যে কেউ দেখতে পারবেন”, নইলে আপনার স্কুল এটি খুলতে পারবে না।",
+  "Your tasks and sign-ups are saved to your account and synced across your devices.": "আপনার কাজ ও সাইন-আপ আপনার অ্যাকাউন্টে সংরক্ষিত থাকে এবং ডিভাইসগুলোতে সিঙ্ক হয়।",
+  "Follow your child's volunteer hours, cheer them on and say yes to event sign-ups. Ask your child for a link code in Settings → Family to get started.": "আপনার সন্তানের স্বেচ্ছাসেবা ঘণ্টা দেখুন, উৎসাহ দিন এবং ইভেন্টে সাইন-আপে সম্মতি দিন। শুরু করতে সন্তানের কাছে সেটিংস → পরিবার থেকে লিংক কোড চান।",
+  "No school uses that school code. Check it, or leave the box empty and add it later in Settings.": "কোনো স্কুল এই কোড ব্যবহার করে না। দেখে নিন, অথবা খালি রেখে পরে সেটিংসে যোগ করুন।",
+  "Signing up a club or school?": "কোনো ক্লাব বা স্কুলের জন্য সাইন আপ করছেন?",
+  "Start a free club or register your school": "ফ্রি ক্লাব শুরু করুন বা আপনার স্কুল নিবন্ধন করুন",
+  "A district or organization?": "কোনো জেলা বা সংগঠন?",
+  "✓ {school}": "✓ {school}",
+  "No school uses that code. Check it with your teacher, or leave it empty and add it later.": "কোনো স্কুল এই কোড ব্যবহার করে না। শিক্ষকের কাছে জেনে নিন, অথবা খালি রেখে পরে যোগ করুন।",
+  "Make up a short code for your students to type, letters then numbers, like keyclub-2026.": "শিক্ষার্থীদের টাইপ করার জন্য একটি ছোট কোড বানান, আগে অক্ষর পরে সংখ্যা, যেমন keyclub-2026।",
+  "You're linked to {school}. Hours you log will show up for your coordinator to review.": "আপনি {school}-এর সাথে যুক্ত। আপনার লগ করা ঘণ্টা আপনার সমন্বয়কারী পর্যালোচনার জন্য দেখবেন।"
 }
