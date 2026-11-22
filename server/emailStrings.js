@@ -51,6 +51,8 @@ const ES = {
   'Hi {name},': 'Hola, {name}:',
   "This is an automated message — please don't reply to this email. Contact us if you run into any problems: {link}":
     'Este es un mensaje automático; por favor, no respondas a este correo. Si tienes algún problema, escríbenos: {link}',
+  "Thanks,": "Gracias,",
+  "The VolunTrack team": "El equipo de VolunTrack",
 
   // Parent weekly digest (server/digest.js)
   'Weekly volunteer summary: {start} – {end}': 'Resumen semanal de voluntariado: {start} – {end}',
