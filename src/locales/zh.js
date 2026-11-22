@@ -3732,5 +3732,9 @@ export default {
   "Can a counselor see only their own students?": "辅导员可以只看自己的学生吗？",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "可以。共同管理员加入后会被问是否是辅导员、负责哪些姓氏（和年级），例如 A 到 Chaw。之后他们只看到并审批这些学生。主管理员可随时在“学校设置 → 共同管理员”中点该共同管理员旁的“负责的学生”修改，并可给一位辅导员设置多个范围。",
   "Add the last names (or grades) you help with.": "请添加你负责的姓氏（或年级）。",
-  "This student isn’t one of yours.": "这名学生不归你负责。"
+  "This student isn’t one of yours.": "这名学生不归你负责。",
+  "Which grades are in your club?": "你的社团有哪些年级？",
+  "Which grades does your school have?": "你的学校有哪些年级？",
+  "Grades": "年级",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "例如只有 9 年级和 10 年级。学生只能选择这些年级，辅导员也从中选择。留空表示所有年级；之后可在“学校设置 → 要求”中更改。"
 }

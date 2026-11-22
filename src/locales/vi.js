@@ -3732,5 +3732,9 @@ export default {
   "Can a counselor see only their own students?": "Cố vấn có thể chỉ xem học sinh của mình không?",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "Có. Sau khi tham gia, mỗi đồng quản trị được hỏi có phải là cố vấn không và phụ trách họ nào (và lớp nào), ví dụ từ A đến Chaw. Sau đó họ chỉ thấy và duyệt những học sinh đó. Quản trị chính có thể đổi bất cứ lúc nào bằng Học sinh của họ bên cạnh đồng quản trị trong Thiết lập trường → Đồng quản trị, và có thể cho một cố vấn nhiều khoảng.",
   "Add the last names (or grades) you help with.": "Hãy thêm họ (hoặc lớp) bạn phụ trách.",
-  "This student isn’t one of yours.": "Học sinh này không thuộc nhóm của bạn."
+  "This student isn’t one of yours.": "Học sinh này không thuộc nhóm của bạn.",
+  "Which grades are in your club?": "Câu lạc bộ của bạn có những lớp nào?",
+  "Which grades does your school have?": "Trường của bạn có những lớp nào?",
+  "Grades": "Lớp",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "Ví dụ chỉ lớp 9 và 10. Học sinh chỉ chọn được các lớp này, và cố vấn chọn trong số đó. Để trống nghĩa là mọi lớp; bạn có thể đổi sau trong Thiết lập trường → Yêu cầu."
 }

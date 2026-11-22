@@ -551,7 +551,7 @@ export function normalizePolicy(input) {
  * from — the UI says "inherited from <org>" rather than leaving an admin
  * guessing why a rule they never set is being enforced.
  */
-export function resolvePolicy({ schoolPolicy, templatePolicy, orgPolicy, orgName, templateName } = {}) {
+export function resolvePolicy({ schoolPolicy, templatePolicy, orgPolicy, orgName, templateName, schoolGradesList } = {}) {
   const school = normalizePolicy(schoolPolicy)
   // An org's named rule set the school was assigned to (#577), between the
   // school's own sections and the org's defaults.
@@ -573,6 +573,14 @@ export function resolvePolicy({ schoolPolicy, templatePolicy, orgPolicy, orgName
       policy[section] = NORMALIZERS[section](DEFAULTS[section])
       sources[section] = 'default'
     }
+  }
+  // The grades a school said it has when it signed up (#976, schools.grades).
+  // Kept apart from its requirements so an organization's school still
+  // inherits the rest of the organization's goals; they stand in for the
+  // inherited grade list until the school sets its own goals.
+  if (sources.goals !== 'school' && Array.isArray(schoolGradesList) && schoolGradesList.length) {
+    const own = normalizeGoals({ grades: schoolGradesList }).grades
+    if (own.length) policy.goals = { ...policy.goals, grades: own }
   }
   return { policy, sources, orgName: orgName || null, templateName: templateName || null }
 }

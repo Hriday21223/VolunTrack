@@ -58,6 +58,7 @@ function taskMinStay(v) {
 
 import { clubScope, inScope, OUT_OF_SCOPE, readGrades } from '../clubScope.js'
 import { readRanges } from '../nameRange.js'
+import { normalizePolicy } from '../requirements.js'
 import { LEGAL_VERSION } from '../legal.js'
 import { issueSignupCode, useSignupCode as spendSignupCode, hasPendingSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
 import { publicFetch } from '../publicHost.js'
@@ -277,9 +278,20 @@ async function registerSchool(req, res, { club }) {
     }
 
     const schoolId = uid('sch')
+    // The grades the school has, asked at sign-up (#976), so students can pick
+    // only those grades and a counselor's grade choices match. A school on its
+    // own gets them as its "Grades at your school" rule (shown in its
+    // requirements editor). An organization's school keeps them in
+    // schools.grades instead, so it still inherits the organization's goals.
+    const ownGrades = Array.isArray(req.body.grades)
+      ? normalizePolicy({ goals: { grades: req.body.grades.slice(0, 20) } }).goals.grades
+      : []
+    const inOrg = Boolean(invite?.organization_id)
     await query(
-      'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code, plan) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [schoolId, name, pin, email, invite?.organization_id || null, await nextAccountCode('schools'), plan],
+      'INSERT INTO schools (id, name, pin, contact_email, organization_id, account_code, plan, requirements, grades) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+      [schoolId, name, pin, email, invite?.organization_id || null, await nextAccountCode('schools'), plan,
+        !inOrg && ownGrades.length ? JSON.stringify(normalizePolicy({ goals: { grades: ownGrades } })) : null,
+        inOrg && ownGrades.length ? ownGrades : null],
     )
     await assignReferralCode('schools', schoolId, name).catch((e) => console.error('referral code failed:', e.message))
 

@@ -35,3 +35,15 @@ test('ranges from a request are checked and cleaned', () => {
   assert.ok(readRanges('a-z').error)
   assert.equal(rangesLabel([{ from: 'a', to: 'chaw' }, { from: 'ro', to: '' }]), 'A–Chaw, Ro–Z')
 })
+
+// A school's sign-up grades (#976) stand in for inherited grades.
+test('sign-up grades apply unless the school set its own goals', async () => {
+  const { resolvePolicy } = await import('../server/requirements.js')
+  const org = { goals: { totalHours: 40, grades: [] } }
+  const r = resolvePolicy({ orgPolicy: org, schoolGradesList: ['9th', '10'] })
+  assert.deepEqual(r.policy.goals.grades, ['9', '10'])
+  assert.equal(r.policy.goals.totalHours, 40) // the organization's goals still apply
+  const own = resolvePolicy({ schoolPolicy: { goals: { grades: ['12'] } }, orgPolicy: org, schoolGradesList: ['9'] })
+  assert.deepEqual(own.policy.goals.grades, ['12'])
+  assert.deepEqual(resolvePolicy({}).policy.goals.grades, [])
+})

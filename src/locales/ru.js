@@ -3731,5 +3731,9 @@ export default {
   "Can a counselor see only their own students?": "Может ли консультант видеть только своих учеников?",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "Да. После присоединения каждого соадминистратора спрашивают, консультант ли он и с какими фамилиями (и классами) работает, например от A до Chaw. Тогда он видит и подтверждает только этих учеников. Главный администратор может изменить это в любое время кнопкой «Их ученики» рядом с соадминистратором в разделе «Настройки школы → Соадминистраторы» и может дать одному консультанту несколько диапазонов.",
   "Add the last names (or grades) you help with.": "Добавьте фамилии (или классы), с которыми вы работаете.",
-  "This student isn’t one of yours.": "Этот ученик не из ваших."
+  "This student isn’t one of yours.": "Этот ученик не из ваших.",
+  "Which grades are in your club?": "Какие классы в вашем клубе?",
+  "Which grades does your school have?": "Какие классы есть в вашей школе?",
+  "Grades": "Классы",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "Например, только 9-й и 10-й. Ученики смогут выбрать только эти классы, а консультанты — выбирать из них. Оставьте пустым для всех классов; изменить можно позже в разделе «Настройки школы → Требования»."
 }

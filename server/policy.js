@@ -16,7 +16,7 @@ import { withPartnerPlaces } from './partners.js'
  */
 export async function policyForUser(userId) {
   const { rows } = await query(
-    `SELECT u.school_id, u.grade, s.name AS school_name, s.requirements AS school_requirements,
+    `SELECT u.school_id, u.grade, s.name AS school_name, s.requirements AS school_requirements, s.grades AS school_grades,
             o.id AS organization_id, o.name AS organization_name, o.requirements AS org_requirements,
             t.name AS template_name, t.requirements AS template_requirements
        FROM users u
@@ -31,6 +31,7 @@ export async function policyForUser(userId) {
   const resolved = resolvePolicy({
     schoolPolicy: row.school_requirements,
     templatePolicy: row.template_requirements,
+    schoolGradesList: row.school_grades,
     orgPolicy: row.org_requirements,
     orgName: row.organization_name,
     templateName: row.template_name,
@@ -49,7 +50,7 @@ export async function policyForUser(userId) {
 /** Effective policy for a school, as its own admins see it. */
 export async function policyForSchool(schoolId) {
   const { rows } = await query(
-    `SELECT s.name AS school_name, s.requirements AS school_requirements,
+    `SELECT s.name AS school_name, s.requirements AS school_requirements, s.grades AS school_grades,
             o.id AS organization_id, o.name AS organization_name, o.requirements AS org_requirements,
             t.name AS template_name, t.requirements AS template_requirements
        FROM schools s
@@ -73,6 +74,7 @@ export async function policyForSchool(schoolId) {
     ...resolvePolicy({
       schoolPolicy: row.school_requirements,
       templatePolicy: row.template_requirements,
+    schoolGradesList: row.school_grades,
       orgPolicy: row.org_requirements,
       orgName: row.organization_name,
       templateName: row.template_name,
@@ -83,7 +85,7 @@ export async function policyForSchool(schoolId) {
 /** Policy that applies at sign-in time, resolved from the account's email. */
 export async function signInPolicyForEmail(email) {
   const { rows } = await query(
-    `SELECT s.requirements AS school_requirements, o.requirements AS org_requirements,
+    `SELECT s.requirements AS school_requirements, s.grades AS school_grades, o.requirements AS org_requirements,
             t.requirements AS template_requirements, s.name AS school_name
        FROM users u
        LEFT JOIN schools s ON s.id = u.school_id
@@ -97,6 +99,7 @@ export async function signInPolicyForEmail(email) {
   const { policy } = resolvePolicy({
     schoolPolicy: row.school_requirements,
     templatePolicy: row.template_requirements,
+    schoolGradesList: row.school_grades,
     orgPolicy: row.org_requirements,
   })
   return { policy, schoolName: row.school_name || null }

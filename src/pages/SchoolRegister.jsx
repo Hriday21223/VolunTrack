@@ -14,6 +14,7 @@ import LegalSummary from '@/components/LegalSummary.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import { tr } from '@/lib/i18n.js'
 import PasswordInput from '@/components/PasswordInput.jsx'
+import { SCHOOL_GRADES, gradeLabel } from '@policy'
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 export default function SchoolRegister() {
@@ -43,6 +44,8 @@ export default function SchoolRegister() {
   // A free club proves its email with a 6-digit code first (#817).
   const [codeSent, setCodeSent] = useState(false)
   const [emailCode, setEmailCode] = useState('')
+  // The grades the school has (#976); none picked = every grade.
+  const [grades, setGrades] = useState([])
 
   useEffect(() => {
     if (!inviteToken) return
@@ -87,7 +90,7 @@ export default function SchoolRegister() {
     }
   }
 
-  const body = () => ({ ...form, referralCode: isClub ? undefined : form.referralCode, pin: form.pin.toLowerCase(), plan: isClub ? 'club' : 'school', inviteToken: inviteToken || undefined, registrationCode: inviteToken || isClub ? undefined : form.registrationCode, turnstileToken: captchaToken })
+  const body = () => ({ ...form, referralCode: isClub ? undefined : form.referralCode, pin: form.pin.toLowerCase(), plan: isClub ? 'club' : 'school', inviteToken: inviteToken || undefined, registrationCode: inviteToken || isClub ? undefined : form.registrationCode, turnstileToken: captchaToken, grades })
 
   const sendClubCode = async () => {
     const res = await fetch(`${apiUrl}/school/register/send-code`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body()) })
@@ -218,6 +221,19 @@ export default function SchoolRegister() {
                 <input type="text" className="input pl-9" placeholder="cisd-12345" value={form.pin} onChange={onChange('pin')} required />
               </div>
               <p className="text-xs text-earth-400 mt-1">{tr('Students will use this code to link their accounts.')}</p>
+            </div>
+            <div>
+              <p className="label">{isClub ? tr('Which grades are in your club?') : tr('Which grades does your school have?')} <span className="text-earth-400 font-normal">{tr('(optional)')}</span></p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label={tr('Grades')}>
+                {SCHOOL_GRADES.map((g) => (
+                  <button key={g} type="button" aria-pressed={grades.includes(g)}
+                    onClick={() => setGrades((list) => (list.includes(g) ? list.filter((x) => x !== g) : [...list, g]))}
+                    className={`text-xs rounded-full border px-2.5 py-1 ${grades.includes(g) ? 'border-brand-400 bg-brand-500/15' : 'border-earth-300 dark:border-white/15'}`}>
+                    {gradeLabel(g)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-earth-400 mt-1">{tr('For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.')}</p>
             </div>
             {!isClub && (
             <div>

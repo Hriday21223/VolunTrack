@@ -3731,5 +3731,9 @@ export default {
   "Can a counselor see only their own students?": "カウンセラーは担当の生徒だけを見られますか？",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "はい。共同管理者は参加後に、カウンセラーかどうかと担当の名字（と学年）を聞かれます（例：A から Chaw）。その後はその生徒だけを表示・承認します。メイン管理者は「学校の設定 → 共同管理者」で共同管理者の横の「担当の生徒」からいつでも変更でき、1人のカウンセラーに複数の範囲を設定できます。",
   "Add the last names (or grades) you help with.": "担当の名字（または学年）を追加してください。",
-  "This student isn’t one of yours.": "この生徒はあなたの担当ではありません。"
+  "This student isn’t one of yours.": "この生徒はあなたの担当ではありません。",
+  "Which grades are in your club?": "クラブにはどの学年がいますか？",
+  "Which grades does your school have?": "学校にはどの学年がありますか？",
+  "Grades": "学年",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "例：9年生と10年生だけ。生徒はこれらの学年だけを選べ、カウンセラーもこの中から選びます。すべての学年なら空欄のままに。あとで「学校の設定 → 要件」で変更できます。"
 }

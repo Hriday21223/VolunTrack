@@ -3731,5 +3731,9 @@ export default {
   "Can a counselor see only their own students?": "क्या काउंसलर सिर्फ़ अपने छात्र देख सकता है?",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "हाँ। जुड़ने के बाद हर सह-एडमिन से पूछा जाता है कि क्या वे काउंसलर हैं और किन उपनामों (और कक्षाओं) की मदद करते हैं, जैसे A से Chaw। फिर वे सिर्फ़ उन्हीं छात्रों को देखते और मंज़ूर करते हैं। मुख्य एडमिन स्कूल सेटअप → सह-एडमिन में सह-एडमिन के पास उनके छात्र से इसे कभी भी बदल सकते हैं, और एक काउंसलर को कई सीमाएँ दे सकते हैं।",
   "Add the last names (or grades) you help with.": "जिन उपनामों (या कक्षाओं) की आप मदद करते हैं उन्हें जोड़ें।",
-  "This student isn’t one of yours.": "यह छात्र आपके छात्रों में नहीं है।"
+  "This student isn’t one of yours.": "यह छात्र आपके छात्रों में नहीं है।",
+  "Which grades are in your club?": "आपके क्लब में कौन-सी कक्षाएँ हैं?",
+  "Which grades does your school have?": "आपके स्कूल में कौन-सी कक्षाएँ हैं?",
+  "Grades": "कक्षाएँ",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "जैसे सिर्फ़ 9वीं और 10वीं। छात्र सिर्फ़ यही कक्षाएँ चुन पाएँगे, और काउंसलर इन्हीं में से चुनेंगे। सभी कक्षाओं के लिए खाली छोड़ें; बाद में स्कूल सेटअप → ज़रूरतें में बदल सकते हैं।"
 }

@@ -3731,5 +3731,9 @@ export default {
   "Can a counselor see only their own students?": "Un conseiller peut-il ne voir que ses élèves ?",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "Oui. Après avoir rejoint l’école, chaque co-administrateur indique s’il est conseiller et quels noms de famille (et niveaux) il suit, par exemple de A à Chaw. Il ne voit et n’approuve alors que ces élèves. L’administrateur principal peut le changer à tout moment avec Ses élèves à côté du co-administrateur dans Configuration de l’école → Co-administrateurs, et peut donner plusieurs plages à un conseiller.",
   "Add the last names (or grades) you help with.": "Ajoutez les noms de famille (ou niveaux) que vous suivez.",
-  "This student isn’t one of yours.": "Cet élève ne fait pas partie des vôtres."
+  "This student isn’t one of yours.": "Cet élève ne fait pas partie des vôtres.",
+  "Which grades are in your club?": "Quels niveaux compte votre club ?",
+  "Which grades does your school have?": "Quels niveaux compte votre école ?",
+  "Grades": "Niveaux",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "Par exemple seulement la 9e et la 10e année. Les élèves ne pourront choisir que ces niveaux, et les conseillers choisissent parmi eux. Laissez vide pour tous les niveaux ; vous pourrez le changer dans Configuration de l’école → Exigences."
 }
