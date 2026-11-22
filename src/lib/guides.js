@@ -13,7 +13,7 @@ export const GUIDES = [
     title: 'How to Track National Honor Society (NHS) Service Hours',
     short: 'NHS service hours',
     description: 'A step-by-step way to log NHS service hours so they count: what to record, getting them approved, and staying on pace for your chapter’s deadline.',
-    updated: '2026-10-24',
+    updated: '2026-11-22',
     intro: 'National Honor Society members are expected to do service, and most chapters ask for a set number of hours each year with proof. Losing track of a few sessions can mean scrambling before a deadline. Here is a simple routine that keeps your hours organized and easy to verify.',
     sections: [
       {
@@ -23,7 +23,7 @@ export const GUIDES = [
           [
             'How many hours you need, and by when (per semester or per year).',
             'What counts as service. Many chapters exclude paid work and helping family; some count tutoring or chapter projects differently.',
-            'What proof they accept: a supervisor’s signature, an email, a sign-in sheet or a photo.',
+            'What proof they accept: a supervisor’s signature, an email, a sign-in sheet, a photo, or a link to a shared file such as a Google Drive document.',
             'Whether hours from summer or from before you joined count.',
           ],
           'Write the answers down. They decide how you log every hour after this.',
@@ -58,7 +58,7 @@ export const GUIDES = [
         body: [
           [
             'Set your chapter’s goal and deadline; the dashboard shows hours to go and the weekly pace you need.',
-            'Log a session in about a minute, with location, supervisor and a photo of your proof.',
+            'Log a session in about a minute, with location, supervisor and a photo of your proof, or a link to it in Google Drive once you have joined your school.',
             'Supervisors and organizers can approve hours, so you have a clear record of what is verified.',
             'Download a PDF or spreadsheet of your hours for your adviser, or share a picture of your progress.',
           ],
@@ -71,7 +71,7 @@ export const GUIDES = [
     title: 'Community Service Hours for High School: How to Log Them So They Count',
     short: 'Community service hours',
     description: 'How high school students can find, log and verify community service hours for graduation, clubs or scholarships, without a last-minute scramble.',
-    updated: '2026-10-24',
+    updated: '2026-11-22',
     intro: 'Many high schools, districts and clubs ask students to complete community service, whether for graduation, a diploma seal, a club or a scholarship. The hours only help if you can show them. This guide covers finding service, keeping records your school will accept, and staying on track.',
     sections: [
       {
@@ -122,7 +122,7 @@ export const GUIDES = [
     title: 'Volunteer Hours for College Applications: What to Track and How to Show It',
     short: 'Volunteer hours for college',
     description: 'What to record about your volunteering so it reads well on college applications and in recommendation letters, and how to keep it organized from freshman year.',
-    updated: '2026-10-24',
+    updated: '2026-11-22',
     intro: 'Colleges see a lot of volunteering on applications. What stands out is commitment and impact you can describe clearly, and that depends on the records you keep along the way. Here’s what to track so the activities section and your essays are easy to write.',
     sections: [
       {

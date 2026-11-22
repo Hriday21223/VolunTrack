@@ -25,7 +25,7 @@ const FEATURES = [
   { icon: QrCode, title: 'QR check-in at events', text: 'Put a code on screen at your event. Students scan in and out, and their hours fill in on their own.' },
   { icon: FileSpreadsheet, title: 'Reports when they are due', text: 'Download hours as CSV, print a graduation report for your seniors, and hand out a verified report students can share.' },
   { icon: GraduationCap, title: 'A new school year in one click', text: 'Move every student up a grade at the start of the year, with an undo if you change your mind.' },
-  { icon: Users, title: 'Co-advisers and parents', text: 'Add co-advisers to share the approving. Parents can follow their child’s hours with their own account.' },
+  { icon: Users, title: 'Co-advisers, counselors and parents', text: 'Add co-advisers to share the approving. A counselor can see only their own students, by last name or grade. Parents can follow their child’s hours with their own account.' },
   { icon: ShieldCheck, title: 'Built for student privacy', text: 'Parent approval for students under 13, school sign-in (SSO) if you use it, and two-step sign-in for staff.' },
   { icon: Languages, title: 'Eleven languages', text: 'Students and families can use VolunTrack in English, Spanish, Vietnamese, Chinese, Hindi, Arabic, Portuguese, French, Bengali, Russian or Japanese. The flyer and messages to share come in English and Spanish.' },
 ]
@@ -38,7 +38,9 @@ const STEPS = [
 ]
 
 const FAQS = [
-  { q: 'What does it cost?', a: 'VolunTrack is free for students, volunteers and parents. One club or class with up to 50 students is free too, with every feature. A whole school, or a club with more students, is paid: send us a message and we will reply with a quote. If another school referred you, you both get a discount.' },
+  { q: 'What does it cost?', a: 'VolunTrack is free for students, volunteers and parents. One club or class with up to 50 students is free too, with every feature. A whole school, or a club with more students, is paid: send us a message and we will reply with a quote. A district pays per school, on one invoice for all its schools. If another school referred you, you both get a discount.' },
+  { q: 'Can each counselor see only their own students?', a: 'Yes. Add each counselor as a co-adviser. They are asked which last names (and grades) they look after, for example A to Chaw, and then see and approve only those students. You can change it any time in School setup.' },
+  { q: 'Can students send proof without uploading a file?', a: 'Yes. A student at your school can paste a link to a file in Google Drive, OneDrive, Dropbox, iCloud or Box. A Google Drive file opens right inside your Hours to check list.' },
   { q: 'Do students need to download an app?', a: 'No. VolunTrack works in any web browser on a phone or computer, so students can sign up the moment they scan your flyer.' },
   { q: 'Can one club use it, not the whole school?', a: 'Yes, and it is free for up to 50 students. Many schools start with one adviser: NHS, Key Club, a service club or a class. The club gets its own account, code and roster, and can move to a school plan later without losing anything.' },
   { q: 'How do students join?', a: 'They open your join link or scan the QR code on your flyer, then create an account or sign in. The code is filled in for them. Students can also type the school code in Settings.' },
