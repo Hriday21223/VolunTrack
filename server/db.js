@@ -894,6 +894,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_amount TEXT`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_period TEXT`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS payment_due_date DATE`) } catch {}
+  // price_amount is per school when set (#964): the invoice is it times the
+  // organization's schools.
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_per_school BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_price_period_check`) } catch {}
   try { await query(`ALTER TABLE organizations ADD CONSTRAINT organizations_price_period_check CHECK (price_period IS NULL OR price_period IN ('monthly','yearly','one_time'))`) } catch {}
 

@@ -180,6 +180,18 @@ function VisibilityBadge({ published }) {
     : <span className="text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-earth-700 dark:text-earth-200 bg-earth-200 dark:bg-earth-700">private</span>
 }
 
+// An organization priced per school (#964): its price times every school in it,
+// e.g. { total: '720.00', label: '8 schools × $90.00 = $720.00' }. Null when the
+// price isn't per school or isn't a number.
+function orgPerSchoolTotal(org) {
+  if (!org?.price_per_school) return null
+  const each = Number(String(org.price_amount || '').replace(/[^0-9.]/g, ''))
+  if (!Number.isFinite(each) || each <= 0) return null
+  const n = Number(org.school_count) || 0
+  const total = (Math.round(each * n * 100) / 100).toFixed(2)
+  return { total, label: `${n} school${n === 1 ? '' : 's'} × $${each.toFixed(2)} = $${total}` }
+}
+
 export default function Admin() {
   const nav = useNavigate()
   const { tab: tabParam } = useParams()
@@ -236,6 +248,8 @@ export default function Admin() {
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [orgPriceModal, setOrgPriceModal] = useState(null) // org id
   const [orgPriceAmountDraft, setOrgPriceAmountDraft] = useState('')
+  // The amount is per school (#964): invoices multiply it by the organization's schools.
+  const [orgPricePerSchoolDraft, setOrgPricePerSchoolDraft] = useState(false)
   const [orgPricePeriodDraft, setOrgPricePeriodDraft] = useState('monthly')
   const [savingOrgPrice, setSavingOrgPrice] = useState(false)
   const [orgDueDateModal, setOrgDueDateModal] = useState(null) // org id
@@ -701,10 +715,10 @@ export default function Admin() {
       const res = await fetch(`${apiUrl}/organization/admin/${id}/price`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount: orgPriceAmountDraft.trim(), period: orgPricePeriodDraft }),
+        body: JSON.stringify({ amount: orgPriceAmountDraft.trim(), period: orgPricePeriodDraft, perSchool: orgPricePerSchoolDraft }),
       })
       if (!res.ok) throw new Error('Failed')
-      setOrgPriceModal(null); setOrgPriceAmountDraft(''); setOrgPricePeriodDraft('monthly'); loadOrganizations()
+      setOrgPriceModal(null); setOrgPriceAmountDraft(''); setOrgPricePeriodDraft('monthly'); setOrgPricePerSchoolDraft(false); loadOrganizations()
       setToastMessage('Price saved'); setToast(true)
     } catch { setToastMessage('Failed to save price'); setToast(true) } finally { setSavingOrgPrice(false) }
   }
@@ -848,11 +862,12 @@ export default function Admin() {
   }, [invoiceAmountDraft, applyPromoToInvoice, applyEventToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
 
   const openInvoiceModal = (entityType, entity) => {
-    const numericAmount = (entity.price_amount || '').replace(/[^0-9.]/g, '')
+    const perSchool = entityType === 'organization' ? orgPerSchoolTotal(entity) : null
+    const numericAmount = perSchool ? perSchool.total : (entity.price_amount || '').replace(/[^0-9.]/g, '')
     setInvoiceModal({ entityType, entityId: entity.id, entityName: entity.name, accountCode: entity.account_code })
     setInvoiceAmountDraft(numericAmount)
     setInvoiceBillingPeriodDraft(entity.price_period || 'monthly')
-    setInvoiceDescriptionDraft('')
+    setInvoiceDescriptionDraft(perSchool ? perSchool.label : '')
     setInvoiceDueDateDraft(entity.payment_due_date ? String(entity.payment_due_date).slice(0, 10) : '')
     setInvoicePoNumberDraft('')
     setInvoicePreviewError('')
@@ -1964,7 +1979,8 @@ export default function Admin() {
                         </span>
                         {org.price_amount && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-400">
-                            {org.price_amount}{org.price_period === 'monthly' ? ' / month' : org.price_period === 'yearly' ? ' / year' : org.price_period === 'one_time' ? ' one-time' : ''}
+                            {org.price_amount}{org.price_per_school ? ' per school' : ''}{org.price_period === 'monthly' ? ' / month' : org.price_period === 'yearly' ? ' / year' : org.price_period === 'one_time' ? ' one-time' : ''}
+                            {orgPerSchoolTotal(org) && ` · ${orgPerSchoolTotal(org).label}`}
                           </span>
                         )}
                         {org.payment_due_date && (
@@ -1993,7 +2009,7 @@ export default function Admin() {
                     <button onClick={() => { setOrgNoteModal(org.id); setOrgNoteDraft(org.admin_notes || '') }} className={`p-2 ${org.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
                       <ShieldCheck className="w-4 h-4" />
                     </button>
-                    <button onClick={() => { setOrgPriceModal(org.id); setOrgPriceAmountDraft(org.price_amount || ''); setOrgPricePeriodDraft(org.price_period || 'monthly') }} className={`p-2 ${org.price_amount ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's price">
+                    <button onClick={() => { setOrgPriceModal(org.id); setOrgPriceAmountDraft(org.price_amount || ''); setOrgPricePeriodDraft(org.price_period || 'monthly'); setOrgPricePerSchoolDraft(Boolean(org.price_per_school)) }} className={`p-2 ${org.price_amount ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's price">
                       <DollarSign className="w-4 h-4" />
                     </button>
                     <button onClick={() => { setOrgDueDateModal(org.id); setOrgDueDateDraft(org.payment_due_date ? String(org.payment_due_date).slice(0, 10) : '') }} className={`p-2 ${org.payment_due_date ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's payment due date">
@@ -2008,7 +2024,7 @@ export default function Admin() {
                         <CreditCard className="w-4 h-4" />
                       </button>
                     )}
-                    <button onClick={() => { setNotifyOrgId(org.id); setNotifyAmount(org.price_amount || ''); setNotifyBillingPeriod(org.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this organization">
+                    <button onClick={() => { setNotifyOrgId(org.id); setNotifyAmount(orgPerSchoolTotal(org)?.total || org.price_amount || ''); setNotifyBillingPeriod(org.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this organization">
                       <Bell className="w-4 h-4" />
                     </button>
                     <button onClick={() => openInvoiceModal('organization', org)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
@@ -3265,6 +3281,15 @@ export default function Admin() {
                   </select>
                 </div>
               </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={orgPricePerSchoolDraft} onChange={(e) => setOrgPricePerSchoolDraft(e.target.checked)} disabled={!orgPriceAmountDraft.trim()} />
+                <span>Price per school<span className="block text-xs text-earth-400">The invoice is this amount times every school in the organization when you send it.</span></span>
+              </label>
+              {orgPricePerSchoolDraft && (() => {
+                const org = organizations.find((o) => o.id === orgPriceModal)
+                const t = org && orgPerSchoolTotal({ ...org, price_amount: orgPriceAmountDraft, price_per_school: true })
+                return t ? <p className="text-xs text-brand-400">Today: {t.label}</p> : null
+              })()}
               <div className="flex gap-2">
                 <button onClick={() => setOrgPriceModal(null)} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={() => saveOrgPrice(orgPriceModal)} className="btn-primary flex-1" disabled={savingOrgPrice}>{savingOrgPrice ? 'Saving…' : 'Save price'}</button>

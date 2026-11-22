@@ -237,7 +237,9 @@ router.delete('/admin/invite/:id', limiter, requireDb, requireAuth('admin'), asy
 })
 
 // Set an organization's custom price (e.g. amount "$2000" billed "monthly"
-// or "yearly"). Mirrors PATCH /school/admin/:id/price.
+// or "yearly"). Mirrors PATCH /school/admin/:id/price. With `perSchool` (#964)
+// the amount is per school, and the admin's invoice multiplies it by the
+// organization's schools.
 router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   const amount = String(req.body.amount ?? '').trim().replace(/^\$/, '').replace(/,/g, '')
   // Shown to the customer and used to pre-fill their invoices, so a typo is
@@ -250,7 +252,10 @@ router.patch('/admin/:id/price', limiter, requireDb, requireAuth('admin'), async
     return res.status(400).json({ error: 'Invalid billing period.' })
   }
   try {
-    await query('UPDATE organizations SET price_amount = $1, price_period = $2 WHERE id = $3', [amount || null, amount ? period : null, req.params.id])
+    await query(
+      'UPDATE organizations SET price_amount = $1, price_period = $2, price_per_school = $3 WHERE id = $4',
+      [amount || null, amount ? period : null, Boolean(amount) && req.body.perSchool === true, req.params.id],
+    )
     return res.json({ ok: true })
   } catch (error) {
     console.error('admin organization price update failed:', error)
