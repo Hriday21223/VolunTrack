@@ -3936,5 +3936,10 @@ export default {
   "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "Cảm ơn! Thanh toán bằng thẻ đã thành công. Hóa đơn sẽ chuyển sang Đã thanh toán trong vòng một phút.",
   "Payment cancelled. Nothing was charged.": "Đã hủy thanh toán. Không bị trừ tiền.",
   "Card payments are handled by Stripe. VolunTrack never sees your card number.": "Thanh toán bằng thẻ do Stripe xử lý. VolunTrack không bao giờ thấy số thẻ của bạn.",
-  "Paid by card": "Đã thanh toán bằng thẻ"
+  "Paid by card": "Đã thanh toán bằng thẻ",
+  "Google Drive": "Google Drive",
+  "Connected to Google Drive. Testing it now…": "Đã kết nối Google Drive. Đang kiểm tra…",
+  "Google Drive didn’t connect. Try again, and allow VolunTrack to add files.": "Không kết nối được Google Drive. Hãy thử lại và cho phép VolunTrack thêm tệp.",
+  "Google Drive · {account} · folder “VolunTrack proof files”": "Google Drive · {account} · thư mục “VolunTrack proof files”",
+  "Proof files go into a “VolunTrack proof files” folder in the Google account you pick. VolunTrack can only see files it put there, and school staff open them inside VolunTrack, so they don’t need access to the folder.": "Tệp bằng chứng được lưu vào thư mục “VolunTrack proof files” trong tài khoản Google bạn chọn. VolunTrack chỉ thấy các tệp nó đã đặt vào đó, và nhân viên trường mở tệp ngay trong VolunTrack nên không cần quyền vào thư mục."
 }

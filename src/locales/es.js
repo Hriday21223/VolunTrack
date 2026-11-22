@@ -3936,5 +3936,10 @@ export default {
   "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "¡Gracias! Tu pago con tarjeta se realizó. La factura pasará a Pagada en un minuto.",
   "Payment cancelled. Nothing was charged.": "Pago cancelado. No se cobró nada.",
   "Card payments are handled by Stripe. VolunTrack never sees your card number.": "Los pagos con tarjeta los gestiona Stripe. VolunTrack nunca ve el número de tu tarjeta.",
-  "Paid by card": "Pagada con tarjeta"
+  "Paid by card": "Pagada con tarjeta",
+  "Google Drive": "Google Drive",
+  "Connected to Google Drive. Testing it now…": "Conectado a Google Drive. Probándolo ahora…",
+  "Google Drive didn’t connect. Try again, and allow VolunTrack to add files.": "Google Drive no se conectó. Inténtalo de nuevo y permite que VolunTrack agregue archivos.",
+  "Google Drive · {account} · folder “VolunTrack proof files”": "Google Drive · {account} · carpeta “VolunTrack proof files”",
+  "Proof files go into a “VolunTrack proof files” folder in the Google account you pick. VolunTrack can only see files it put there, and school staff open them inside VolunTrack, so they don’t need access to the folder.": "Los archivos de prueba van a una carpeta “VolunTrack proof files” en la cuenta de Google que elijas. VolunTrack solo puede ver los archivos que puso ahí, y el personal de la escuela los abre dentro de VolunTrack, así que no necesita acceso a la carpeta."
 }

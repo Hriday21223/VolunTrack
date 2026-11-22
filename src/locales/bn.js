@@ -3935,5 +3935,10 @@ export default {
   "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "ধন্যবাদ! আপনার কার্ড পেমেন্ট সফল হয়েছে। এক মিনিটের মধ্যে ইনভয়েসটি পরিশোধিত দেখাবে।",
   "Payment cancelled. Nothing was charged.": "পেমেন্ট বাতিল হয়েছে। কোনো টাকা কাটা হয়নি।",
   "Card payments are handled by Stripe. VolunTrack never sees your card number.": "কার্ড পেমেন্ট Stripe সামলায়। VolunTrack কখনো আপনার কার্ড নম্বর দেখে না।",
-  "Paid by card": "কার্ডে পরিশোধিত"
+  "Paid by card": "কার্ডে পরিশোধিত",
+  "Google Drive": "Google Drive",
+  "Connected to Google Drive. Testing it now…": "Google Drive-এ যুক্ত হয়েছে। এখন পরীক্ষা চলছে…",
+  "Google Drive didn’t connect. Try again, and allow VolunTrack to add files.": "Google Drive যুক্ত হয়নি। আবার চেষ্টা করুন, আর VolunTrack-কে ফাইল যোগ করার অনুমতি দিন।",
+  "Google Drive · {account} · folder “VolunTrack proof files”": "Google Drive · {account} · ফোল্ডার “VolunTrack proof files”",
+  "Proof files go into a “VolunTrack proof files” folder in the Google account you pick. VolunTrack can only see files it put there, and school staff open them inside VolunTrack, so they don’t need access to the folder.": "প্রমাণের ফাইলগুলো আপনার বেছে নেওয়া Google অ্যাকাউন্টের “VolunTrack proof files” ফোল্ডারে যায়। VolunTrack শুধু নিজের রাখা ফাইলগুলোই দেখতে পায়, আর স্কুলের কর্মীরা সেগুলো VolunTrack-এর ভেতরেই খোলেন, তাই ফোল্ডারে তাঁদের অ্যাক্সেস লাগে না।"
 }

@@ -32,7 +32,7 @@ export default function OwnStorageCard({ canEdit = true }) {
   const [msg, setMsg] = useState(null) // { text, ok }
   const [confirmOff, setConfirmOff] = useState(false)
   // SharePoint (#924): offered only when this server has the Microsoft app.
-  const [sp, setSp] = useState({ sharepoint: false, sharepointAppId: null })
+  const [sp, setSp] = useState({ sharepoint: false, sharepointAppId: null, googleDrive: false })
   const [spForm, setSpForm] = useState(null) // { tenantId, siteUrl, library, prefix }
 
   const load = useCallback(async () => {
@@ -52,7 +52,35 @@ export default function OwnStorageCard({ canEdit = true }) {
     if (q.get('msTenant')) { setSpForm({ tenantId: q.get('msTenant'), siteUrl: '', library: 'Documents', prefix: '' }); setMsg({ text: tr('Approved by Microsoft 365.'), ok: true }) }
     else if (q.get('msError')) setMsg({ text: tr('Microsoft approval didn’t finish. Try again, signed in as a Microsoft 365 admin.'), ok: false })
     if (q.get('msTenant') || q.get('msError')) window.history.replaceState(null, '', window.location.pathname)
+    // Back from Google (#919): the Drive is saved; run the usual test now.
+    if (q.get('gdConnected')) {
+      window.history.replaceState(null, '', window.location.pathname)
+      setMsg({ text: tr('Connected to Google Drive. Testing it now…'), ok: true })
+      setBusy(true)
+      fetch(`${apiUrl}/storage/test`, { method: 'POST', headers: headers() })
+        .then(async (t) => {
+          const td = await t.json().catch(() => ({}))
+          if (!t.ok) throw new Error(td.error || tr('Something went wrong. Try again.'))
+          setConfig(td.config)
+          setMsg(td.ok ? { text: tr('Connected. Proof files now go straight to your storage.'), ok: true } : { text: tr('The test didn’t pass: {reason}', { reason: td.error || '' }), ok: false })
+        })
+        .catch((e) => setMsg({ text: e.message, ok: false }))
+        .finally(() => setBusy(false))
+    } else if (q.get('gdError')) {
+      window.history.replaceState(null, '', window.location.pathname)
+      setMsg({ text: tr('Google Drive didn’t connect. Try again, and allow VolunTrack to add files.'), ok: false })
+    }
   }, [])
+
+  const connectGoogle = async () => {
+    setBusy(true); setMsg(null)
+    try {
+      const r = await fetch(`${apiUrl}/storage/google/connect-url`, { headers: headers() })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok || !d.url) throw new Error(d.error || tr('Something went wrong. Try again.'))
+      window.location.href = d.url
+    } catch (e) { setMsg({ text: e.message, ok: false }); setBusy(false) }
+  }
 
   const approveMicrosoft = async () => {
     setBusy(true); setMsg(null)
@@ -141,12 +169,12 @@ export default function OwnStorageCard({ canEdit = true }) {
             {active ? <CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" /> : <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" />}
             {active ? tr('On') : tr('Not on yet: the last test didn’t pass')}
           </p>
-          <p className="text-earth-500">{config.provider === 'sharepoint' ? `SharePoint · ${config.endpoint} · ${config.bucket}${config.prefix ? `/${config.prefix}` : ''}` : `${config.bucket}${config.prefix ? `/${config.prefix}` : ''} · ${config.endpoint || 'Amazon S3'} · ${config.region}`}</p>
+          <p className="text-earth-500">{config.provider === 'gdrive' ? tr('Google Drive · {account} · folder “VolunTrack proof files”', { account: config.accessKeyId || '' }) : config.provider === 'sharepoint' ? `SharePoint · ${config.endpoint} · ${config.bucket}${config.prefix ? `/${config.prefix}` : ''}` : `${config.bucket}${config.prefix ? `/${config.prefix}` : ''} · ${config.endpoint || 'Amazon S3'} · ${config.region}`}</p>
           {config.lastTestError && !active && <p className="text-red-400">{config.lastTestError}</p>}
           {canEdit && (
             <div className="flex flex-wrap gap-2 pt-2">
               <button type="button" onClick={retest} disabled={busy} className="btn-secondary btn-sm">{busy ? tr('Testing…') : tr('Test again')}</button>
-              <button type="button" onClick={() => (config.provider === 'sharepoint' ? setSpForm({ own: Boolean(config.accessKeyId), clientId: config.accessKeyId || '', clientSecret: '', tenantId: config.region, siteUrl: config.endpoint, library: config.bucket, prefix: config.prefix || '' }) : start(config.provider === 'r2' ? 'r2' : config.endpoint ? 'other' : 's3'))} className="btn-ghost btn-sm">{tr('Change')}</button>
+              <button type="button" onClick={() => (config.provider === 'gdrive' ? connectGoogle() : config.provider === 'sharepoint' ? setSpForm({ own: Boolean(config.accessKeyId), clientId: config.accessKeyId || '', clientSecret: '', tenantId: config.region, siteUrl: config.endpoint, library: config.bucket, prefix: config.prefix || '' }) : start(config.provider === 'r2' ? 'r2' : config.endpoint ? 'other' : 's3'))} className="btn-ghost btn-sm">{tr('Change')}</button>
               {confirmOff ? (
                 <span className="flex gap-1 items-center">
                   <span className="text-xs text-earth-400">{tr('Proof already in your storage stays there, but VolunTrack can’t open it after this.')}</span>
@@ -165,8 +193,13 @@ export default function OwnStorageCard({ canEdit = true }) {
             <button key={k} type="button" onClick={() => start(k)} className="btn-secondary btn-sm">{k === 'other' ? tr('Other S3-compatible') : p.label}</button>
           ))}
           <button type="button" onClick={() => (sp.sharepoint ? approveMicrosoft() : setSpForm({ own: true, tenantId: '', clientId: '', clientSecret: '', siteUrl: '', library: 'Documents', prefix: '' }))} disabled={busy} className="btn-secondary btn-sm">{tr('Microsoft SharePoint')}</button>
+          {sp.googleDrive && <button type="button" onClick={connectGoogle} disabled={busy} className="btn-secondary btn-sm">{tr('Google Drive')}</button>}
         </div>
       ) : null}
+
+      {sp.googleDrive && canEdit && !form && !spForm && (!config || config.provider === 'gdrive') && (
+        <p className="text-xs text-earth-400 mb-3">{tr('Proof files go into a “VolunTrack proof files” folder in the Google account you pick. VolunTrack can only see files it put there, and school staff open them inside VolunTrack, so they don’t need access to the folder.')}</p>
+      )}
 
       {!canEdit && !config && <p className="text-sm text-earth-400">{tr('Only your school’s main admin can connect storage.')}</p>}
 
