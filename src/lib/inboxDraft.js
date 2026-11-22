@@ -4,8 +4,10 @@
 //
 // Replies go out in the sender's language (#757): the language the message is
 // written in, else the one they used the site in (`contact_messages.language`).
-// Every sentence below exists in English, Spanish, Vietnamese and Chinese, so
-// nothing is machine-translated and nothing is sent to a translation service.
+// Every sentence exists in all 11 of the app's languages (English, Spanish,
+// Vietnamese and Chinese below; the other seven in inboxDraftMore.js, #984),
+// so nothing is sent to a translation service.
+import { DRAFTS_MORE, TOPICS_MORE } from './inboxDraftMore.js'
 
 const NOT_A_NAME = /^(hi+|hey+|hello+|yo|sup|test(ing)?|asdf\w*|qwerty|n\/?a|none|no|idk|admin|user|me|anonymous|school|teacher|mr|mrs|ms|mx|dr|miss|.)$/i
 
@@ -29,31 +31,42 @@ export function greetingName(raw) {
 export function readIntent(text) {
   const t = String(text ?? '').toLowerCase()
   return {
-    asksCost: /\b(cost|costs|price|pricing|priced|how much|fee|fees|pay|paid|charge|free|quote|budget|precio|cuesta|cuánto|cuanto|gratis|costo|cotización)\b|\$|bao nhiêu|giá|多少钱|价格|费用|免费/.test(t),
-    severalSchools: /\b(district|several schools|multiple schools|many schools|\d+\s+schools|all (of )?(our|the) schools|network of schools|distrito|varias escuelas|\d+\s+escuelas)\b|nhiều trường|学区|多所学校/.test(t),
+    asksCost: /\b(cost|costs|price|pricing|priced|how much|fee|fees|pay|paid|charge|free|quote|budget|precio|cuesta|cuánto|cuanto|gratis|costo|cotización|preço|quanto custa|gratuito|orçamento|prix|combien|gratuit|tarif|devis)\b|\$|bao nhiêu|giá|多少钱|价格|费用|免费|料金|価格|無料|見積|цен|стоимост|бесплатн|сколько стоит|कीमत|मुफ़्त|शुल्क|السعر|التكلفة|مجان|দাম|খরচ|বিনামূল্যে/.test(t),
+    severalSchools: /\b(district|several schools|multiple schools|many schools|\d+\s+schools|all (of )?(our|the) schools|network of schools|distrito|varias escuelas|\d+\s+escuelas|várias escolas|\d+\s+escolas|plusieurs écoles|\d+\s+écoles)\b|nhiều trường|学区|多所学校|複数の学校|округ|несколько школ|ज़िला|जिला|कई स्कूल|منطقة تعليمية|عدة مدارس|জেলা|একাধিক স্কুল/.test(t),
     club: /\b(nhs|national honor society|key club|club|chapter|adviser|advisor|sponsor|asesor)\b|câu lạc bộ|社团/.test(t),
     saidRole: /\b(i am|i'm|im|soy)\b.{0,40}\b(adviser|advisor|sponsor|counselor|counsellor|teacher|principal|coordinator|director|superintendent|asesora?|consejera?|consejero|maestr[oa]|profesora?|directora?)\b/.test(t),
     asksStudents: /\b(student|students|kids|download|app|estudiantes)\b/.test(t),
   }
 }
 
-export const DRAFT_LANGUAGES = { en: 'English', es: 'Español', vi: 'Tiếng Việt', zh: '中文' }
+export const DRAFT_LANGUAGES = { en: 'English', es: 'Español', vi: 'Tiếng Việt', zh: '中文', hi: 'हिन्दी', ar: 'العربية', pt: 'Português', fr: 'Français', bn: 'বাংলা', ru: 'Русский', ja: '日本語' }
 
 /**
- * The language a message is written in: 'zh', 'vi', 'es', 'en', or null when
- * it can't tell (short or mixed text).
+ * The language a message is written in (any of DRAFT_LANGUAGES), or null when
+ * it can't tell (short or mixed text). Scripts first: kana means Japanese even
+ * with Chinese characters around it.
  */
 export function detectLanguage(text) {
   const t = String(text ?? '')
+  if (/[\u3040-\u30ff]/.test(t)) return 'ja'
   if (/[\u4e00-\u9fff]/.test(t)) return 'zh'
+  if (/[\u0600-\u06ff]/.test(t)) return 'ar'
+  if (/[\u0980-\u09ff]/.test(t)) return 'bn'
+  if (/[\u0900-\u097f]/.test(t)) return 'hi'
+  if (/[\u0400-\u04ff]/.test(t)) return 'ru'
   if (/[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(t)) return 'vi'
   const words = t.toLowerCase().match(/[\p{L}']+/gu) || []
   const count = (re) => words.filter((w) => re.test(w)).length
   const es = count(/^(hola|gracias|para|que|qué|como|cómo|nuestra|nuestro|nuestros|escuela|escuelas|estudiantes|horas|quiero|queremos|cuánto|cuanto|por|favor|una|los|las|del|tengo|tenemos|puedo|soy|somos|está|esta|necesito|ayuda|también|pero|con|el|la|es|y)$/)
   const en = count(/^(the|and|is|are|we|our|my|i|you|how|what|for|with|this|that|to|of|in|can|do|does|have|school|students|hours|thanks|hello|hi)$/)
+  const pt = count(/^(olá|obrigado|obrigada|nossa|nosso|escola|escolas|alunos|horas|quero|queremos|quanto|você|vocês|não|também|uma|um|os|as|da|do|das|dos|com|para|tenho|temos|sou|somos|está|preciso|ajuda|mas|é|e)$/)
+  const fr = count(/^(bonjour|merci|notre|nos|école|écoles|élèves|heures|je|nous|vous|combien|est|sont|avec|pour|une|un|les|des|du|de|la|le|et|mais|aussi|besoin|aide|suis|sommes|voudrais|pouvez)$/)
   if (/[ñ¿¡]/.test(t) && es >= 1) return 'es'
-  if (es >= 3 && es > en) return 'es'
-  if (en >= 3 && en >= es) return 'en'
+  if (/[ãõ]/.test(t) && pt >= 1) return 'pt'
+  if (/[èêëîïûœ]/.test(t) && fr >= 1) return 'fr'
+  const best = [['es', es], ['pt', pt], ['fr', fr]].sort((a, b) => b[1] - a[1])[0]
+  if (best[1] >= 3 && best[1] > en) return best[0]
+  if (en >= 3 && en >= best[1]) return 'en'
   return null
 }
 
@@ -73,7 +86,7 @@ const S = {
     costOne: 'On cost: VolunTrack is always free for students and parents. One club or class with up to 50 students is free too. A whole-school account is paid, and the price depends on how many students will use it, so I\'ll send you a quote once I know a little more. If another school referred you, you both get a discount.',
     several: 'Since you have more than one school, an organization account fits best. You manage every school from one login, and each school still gets its own dashboard, student roster and school code.',
     featuresClub: 'With a school account, your club gets:', featuresSchool: 'With a school account, your school gets:',
-    features: '- A dashboard where you approve or send back students\' hours, or approve them automatically by your own rules\n- Hour requirements, so students see how close they are and you see who\'s behind\n- QR check-in at events, so hours fill in on their own\n- Clubs inside your school (NHS, Key Club and others), each with its own advisers and goals\n- A join link, QR code and printable flyer to get students signed up\n- Reports and CSV downloads when hours are due\n- Co-adviser accounts if more than one person approves hours\n- English, Spanish, Vietnamese and Chinese for students and families',
+    features: '- A dashboard where you approve or send back students\' hours, or approve them automatically by your own rules\n- Hour requirements, so students see how close they are and you see who\'s behind\n- QR check-in at events, so hours fill in on their own\n- Clubs inside your school (NHS, Key Club and others), each with its own advisers and goals\n- A join link, QR code and printable flyer to get students signed up\n- Reports and CSV downloads when hours are due\n- Co-adviser accounts if more than one person approves hours\n- VolunTrack in 11 languages for students and families',
     askQuote: 'To send your quote, could you reply with:', askSetup: 'To send a quote and get you set up, could you reply with:',
     askSchools: '- How many schools, and about how many students in total', askClubName: '- Your club and school\'s name', askSchoolName: '- Your school\'s name',
     askStudents: '- About how many students will use it', askRole: '- Your role (for example NHS adviser or counselor)',
@@ -90,7 +103,7 @@ const S = {
     costOne: 'Sobre el precio: VolunTrack siempre es gratis para estudiantes y padres. Un club o una clase de hasta 50 estudiantes también es gratis. La cuenta para toda la escuela es de pago, y el precio depende de cuántos estudiantes la usarán, así que te enviaré una cotización cuando sepa un poco más. Si otra escuela te recomendó, las dos reciben un descuento.',
     several: 'Como tienen más de una escuela, lo mejor es una cuenta de organización. Administras todas las escuelas con un solo inicio de sesión, y cada escuela sigue teniendo su propio panel, lista de estudiantes y código de escuela.',
     featuresClub: 'Con una cuenta de escuela, tu club tiene:', featuresSchool: 'Con una cuenta de escuela, tu escuela tiene:',
-    features: '- Un panel donde apruebas o devuelves las horas de los estudiantes, o las apruebas automáticamente con tus propias reglas\n- Requisitos de horas, para que los estudiantes vean cuánto les falta y tú veas quién va atrasado\n- Registro de entrada con QR en los eventos, para que las horas se llenen solas\n- Clubes dentro de tu escuela (NHS, Key Club y otros), cada uno con sus asesores y metas\n- Un enlace para unirse, un código QR y un volante para imprimir, para que los estudiantes se registren\n- Informes y descargas en CSV cuando las horas se entregan\n- Cuentas de coasesor si más de una persona aprueba horas\n- Inglés, español, vietnamita y chino para estudiantes y familias',
+    features: '- Un panel donde apruebas o devuelves las horas de los estudiantes, o las apruebas automáticamente con tus propias reglas\n- Requisitos de horas, para que los estudiantes vean cuánto les falta y tú veas quién va atrasado\n- Registro de entrada con QR en los eventos, para que las horas se llenen solas\n- Clubes dentro de tu escuela (NHS, Key Club y otros), cada uno con sus asesores y metas\n- Un enlace para unirse, un código QR y un volante para imprimir, para que los estudiantes se registren\n- Informes y descargas en CSV cuando las horas se entregan\n- Cuentas de coasesor si más de una persona aprueba horas\n- VolunTrack en 11 idiomas para estudiantes y familias',
     askQuote: 'Para enviarte la cotización, ¿podrías responder con:', askSetup: 'Para enviarte una cotización y ayudarte a empezar, ¿podrías responder con:',
     askSchools: '- Cuántas escuelas y, aproximadamente, cuántos estudiantes en total', askClubName: '- El nombre de tu club y de tu escuela', askSchoolName: '- El nombre de tu escuela',
     askStudents: '- Aproximadamente cuántos estudiantes la usarán', askRole: '- Tu cargo (por ejemplo, asesor de NHS o consejero)',
@@ -107,7 +120,7 @@ const S = {
     costOne: 'Về chi phí: VolunTrack luôn miễn phí cho học sinh và phụ huynh. Một câu lạc bộ hoặc một lớp tối đa 50 học sinh cũng miễn phí. Tài khoản cho cả trường là trả phí, và giá tùy vào số học sinh sử dụng, nên tôi sẽ gửi báo giá khi biết thêm một chút. Nếu một trường khác giới thiệu bạn, cả hai đều được giảm giá.',
     several: 'Vì bạn có nhiều hơn một trường, tài khoản tổ chức là phù hợp nhất. Bạn quản lý mọi trường bằng một lần đăng nhập, và mỗi trường vẫn có bảng điều khiển, danh sách học sinh và mã trường riêng.',
     featuresClub: 'Với tài khoản trường, câu lạc bộ của bạn có:', featuresSchool: 'Với tài khoản trường, trường của bạn có:',
-    features: '- Bảng điều khiển để duyệt hoặc trả lại giờ của học sinh, hoặc tự động duyệt theo quy định của bạn\n- Yêu cầu số giờ, để học sinh thấy mình còn bao xa và bạn thấy ai đang chậm\n- Điểm danh bằng QR tại sự kiện, để giờ tự được điền\n- Câu lạc bộ trong trường (NHS, Key Club và các nhóm khác), mỗi nhóm có cố vấn và mục tiêu riêng\n- Liên kết tham gia, mã QR và tờ rơi in được để học sinh đăng ký\n- Báo cáo và tải CSV khi đến hạn nộp giờ\n- Tài khoản đồng cố vấn nếu có nhiều người duyệt giờ\n- Tiếng Anh, Tây Ban Nha, Việt và Trung cho học sinh và gia đình',
+    features: '- Bảng điều khiển để duyệt hoặc trả lại giờ của học sinh, hoặc tự động duyệt theo quy định của bạn\n- Yêu cầu số giờ, để học sinh thấy mình còn bao xa và bạn thấy ai đang chậm\n- Điểm danh bằng QR tại sự kiện, để giờ tự được điền\n- Câu lạc bộ trong trường (NHS, Key Club và các nhóm khác), mỗi nhóm có cố vấn và mục tiêu riêng\n- Liên kết tham gia, mã QR và tờ rơi in được để học sinh đăng ký\n- Báo cáo và tải CSV khi đến hạn nộp giờ\n- Tài khoản đồng cố vấn nếu có nhiều người duyệt giờ\n- VolunTrack bằng 11 ngôn ngữ cho học sinh và gia đình',
     askQuote: 'Để gửi báo giá, bạn có thể trả lời giúp tôi:', askSetup: 'Để gửi báo giá và giúp bạn thiết lập, bạn có thể trả lời giúp tôi:',
     askSchools: '- Có bao nhiêu trường, và tổng cộng khoảng bao nhiêu học sinh', askClubName: '- Tên câu lạc bộ và trường của bạn', askSchoolName: '- Tên trường của bạn',
     askStudents: '- Khoảng bao nhiêu học sinh sẽ sử dụng', askRole: '- Vai trò của bạn (ví dụ: cố vấn NHS hoặc tư vấn viên)',
@@ -124,7 +137,7 @@ const S = {
     costOne: '关于费用：VolunTrack 对学生和家长始终免费。一个社团或班级（最多 50 名学生）也免费。全校账户需要付费，价格取决于使用的学生人数，等我多了解一些情况后会把报价发给你。如果是其他学校推荐你来的，双方都能获得折扣。',
     several: '你们有不止一所学校，机构账户最合适。你可以用一个账号管理所有学校，每所学校仍有自己的仪表板、学生名单和学校代码。',
     featuresClub: '使用学校账户，你的社团可以获得：', featuresSchool: '使用学校账户，你的学校可以获得：',
-    features: '- 一个仪表板：批准或退回学生的时数，或按你的规则自动批准\n- 时数要求：学生能看到自己还差多少，你能看到谁落后了\n- 活动二维码签到：时数自动填写\n- 校内社团（NHS、Key Club 等），各有自己的指导老师和目标\n- 加入链接、二维码和可打印传单，方便学生注册\n- 到期时可下载报告和 CSV\n- 多人审核时可添加协同指导老师账户\n- 为学生和家庭提供英语、西班牙语、越南语和中文',
+    features: '- 一个仪表板：批准或退回学生的时数，或按你的规则自动批准\n- 时数要求：学生能看到自己还差多少，你能看到谁落后了\n- 活动二维码签到：时数自动填写\n- 校内社团（NHS、Key Club 等），各有自己的指导老师和目标\n- 加入链接、二维码和可打印传单，方便学生注册\n- 到期时可下载报告和 CSV\n- 多人审核时可添加协同指导老师账户\n- 为学生和家庭提供 11 种语言',
     askQuote: '为了给你报价，能否回复以下信息：', askSetup: '为了给你报价并帮你开通，能否回复以下信息：',
     askSchools: '- 有几所学校，总共大约多少名学生', askClubName: '- 你的社团和学校名称', askSchoolName: '- 你的学校名称',
     askStudents: '- 大约多少名学生会使用', askRole: '- 你的职务（例如 NHS 指导老师或辅导员）',
@@ -135,6 +148,7 @@ const S = {
     bug: '很抱歉你遇到了这个问题，谢谢你告诉我们。为了尽快找到原因，能否发给我们：\n- 浏览器和设备（例如 Mac 上的 Chrome、iPhone 上的 Safari）\n- 出问题前你正在做什么\n- 如有错误提示或截图，也请一并发送\n\n收到回复后我会马上处理。',
     feature: '谢谢你的建议。这样的反馈决定了我们接下来要做什么。\n\n能否多说说你会怎么使用它？我会把它加入列表，上线时通知你。',
   },
+  ...DRAFTS_MORE,
 }
 
 // Topic names as the sender saw them, for the reply's subject line.
@@ -142,6 +156,7 @@ const TOPICS = {
   es: { 'General question': 'Pregunta general', 'Bug report': 'Reportar un error', 'Feature request': 'Sugerir una función', 'School or organization partnership': 'Alianza con una escuela u organización' },
   vi: { 'General question': 'Câu hỏi chung', 'Bug report': 'Báo lỗi', 'Feature request': 'Đề xuất tính năng', 'School or organization partnership': 'Hợp tác với trường hoặc tổ chức' },
   zh: { 'General question': '一般问题', 'Bug report': '报告问题', 'Feature request': '功能建议', 'School or organization partnership': '学校或机构合作' },
+  ...TOPICS_MORE,
 }
 /** The topic in the reply's language (unknown or English topics pass through). */
 export function topicIn(lang, subject) {
