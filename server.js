@@ -32,7 +32,7 @@ import logsRoutes from './server/routes/logs.js'
 import parentRoutes from './server/routes/parent.js'
 import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
 import reviewsRoutes from './server/routes/reviews.js'
-import invoicesRoutes from './server/routes/invoices.js'
+import invoicesRoutes, { handleStripeWebhook } from './server/routes/invoices.js'
 import couponsRoutes from './server/routes/coupons.js'
 import settingsRoutes from './server/routes/settings.js'
 import statusRoutes, { handleGithubWebhook } from './server/routes/status.js'
@@ -165,6 +165,9 @@ app.post('/api/contact/inbound', webhookLimiter, express.raw({ type: 'applicatio
 // Real GitHub Issues sync (see handleGithubWebhook) — also needs the raw
 // body for HMAC signature verification, so it's registered here too.
 app.post('/api/status/github-webhook', webhookLimiter, express.raw({ type: 'application/json' }), handleGithubWebhook)
+
+// Stripe card payments (#899): the signature covers the raw body too.
+app.post('/api/invoices/stripe-webhook', webhookLimiter, express.raw({ type: 'application/json' }), handleStripeWebhook)
 
 app.use(express.json({ limit: '1mb' }))
 // Error messages in the app's language (#604): rewrites `error` in JSON
