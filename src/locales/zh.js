@@ -3686,5 +3686,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "加入你的学校后才能以链接形式添加证明。在此之前，请上传文件。",
   "View proof": "查看证明",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "来自 Google Drive。如果无法显示，请让学生把共享设为“互联网上知道此链接的任何人都可以查看”。",
-  "Open in Google Drive instead": "改为在 Google Drive 中打开"
+  "Open in Google Drive instead": "改为在 Google Drive 中打开",
+  "Could not use the coupon.": "无法使用优惠券。",
+  "Done! Your next invoice will be free.": "完成！你的下一张发票将免费。",
+  "Done! Your next invoice will be {n}% off.": "完成！你的下一张发票将享受 {n}% 折扣。",
+  "Done! {n} free months: your next payment is now due {date}.": "完成！{n} 个月免费：你的下次付款截止日期为 {date}。",
+  "Done! {n} free months: you’re paid until {date}.": "完成！{n} 个月免费：你已付费至 {date}。",
+  "a free invoice": "一张免费发票",
+  "{n}% off": "{n}% 折扣",
+  "Have a coupon?": "有优惠券吗？",
+  "Enter a coupon code VolunTrack gave you.": "输入 VolunTrack 给你的优惠券代码。",
+  "Waiting for your next invoice: {what}.": "等待你的下一张发票：{what}。",
+  "Use coupon": "使用优惠券",
+  "Enter your coupon code.": "请输入你的优惠券代码。",
+  "That coupon code isn’t valid for your account.": "该优惠券代码对你的账户无效。",
+  "That coupon has already been used.": "该优惠券已被使用。",
+  "That coupon was cancelled.": "该优惠券已被取消。",
+  "That coupon has expired.": "该优惠券已过期。",
+  "Too many coupon tries. Please wait an hour and try again.": "尝试次数过多。请等一小时后再试。"
 }

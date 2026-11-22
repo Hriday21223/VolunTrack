@@ -3685,5 +3685,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "প্রমাণ লিংক হিসেবে যোগ করতে আপনার স্কুলে যোগ দিন। ততক্ষণ ফাইলটি আপলোড করুন।",
   "View proof": "প্রমাণ দেখুন",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Google Drive থেকে। না দেখালে, শিক্ষার্থীকে শেয়ারিং “ইন্টারনেটে লিংক আছে এমন যে কেউ দেখতে পারবেন” করতে বলুন।",
-  "Open in Google Drive instead": "বদলে Google Drive-এ খুলুন"
+  "Open in Google Drive instead": "বদলে Google Drive-এ খুলুন",
+  "Could not use the coupon.": "কুপন ব্যবহার করা যায়নি।",
+  "Done! Your next invoice will be free.": "হয়ে গেছে! আপনার পরের ইনভয়েস ফ্রি হবে।",
+  "Done! Your next invoice will be {n}% off.": "হয়ে গেছে! আপনার পরের ইনভয়েসে {n}% ছাড় থাকবে।",
+  "Done! {n} free months: your next payment is now due {date}.": "হয়ে গেছে! {n} মাস ফ্রি: আপনার পরের পেমেন্টের তারিখ এখন {date}।",
+  "Done! {n} free months: you’re paid until {date}.": "হয়ে গেছে! {n} মাস ফ্রি: {date} পর্যন্ত আপনার পেমেন্ট করা আছে।",
+  "a free invoice": "একটি ফ্রি ইনভয়েস",
+  "{n}% off": "{n}% ছাড়",
+  "Have a coupon?": "কুপন আছে?",
+  "Enter a coupon code VolunTrack gave you.": "VolunTrack আপনাকে যে কুপন কোড দিয়েছে তা লিখুন।",
+  "Waiting for your next invoice: {what}.": "আপনার পরের ইনভয়েসের অপেক্ষায়: {what}।",
+  "Use coupon": "কুপন ব্যবহার করুন",
+  "Enter your coupon code.": "আপনার কুপন কোড লিখুন।",
+  "That coupon code isn’t valid for your account.": "এই কুপন কোড আপনার অ্যাকাউন্টের জন্য বৈধ নয়।",
+  "That coupon has already been used.": "এই কুপন আগেই ব্যবহার হয়েছে।",
+  "That coupon was cancelled.": "এই কুপন বাতিল করা হয়েছে।",
+  "That coupon has expired.": "এই কুপনের মেয়াদ শেষ।",
+  "Too many coupon tries. Please wait an hour and try again.": "অনেকবার চেষ্টা হয়েছে। এক ঘণ্টা পরে আবার চেষ্টা করুন।"
 }

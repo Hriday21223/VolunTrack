@@ -3685,5 +3685,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "証明をリンクで追加するには学校に参加してください。それまではファイルをアップロードしてください。",
   "View proof": "証明を見る",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Google ドライブから。表示されない場合は、共有を「インターネット上でこのリンクを知っている人なら誰でも閲覧できます」にするよう生徒に頼んでください。",
-  "Open in Google Drive instead": "代わりに Google ドライブで開く"
+  "Open in Google Drive instead": "代わりに Google ドライブで開く",
+  "Could not use the coupon.": "クーポンを使えませんでした。",
+  "Done! Your next invoice will be free.": "完了！次の請求書は無料になります。",
+  "Done! Your next invoice will be {n}% off.": "完了！次の請求書が {n}% 割引になります。",
+  "Done! {n} free months: your next payment is now due {date}.": "完了！{n} か月無料：次回のお支払い期限は {date} になりました。",
+  "Done! {n} free months: you’re paid until {date}.": "完了！{n} か月無料：{date} まで支払い済みです。",
+  "a free invoice": "無料の請求書",
+  "{n}% off": "{n}% 割引",
+  "Have a coupon?": "クーポンをお持ちですか？",
+  "Enter a coupon code VolunTrack gave you.": "VolunTrack から受け取ったクーポンコードを入力してください。",
+  "Waiting for your next invoice: {what}.": "次の請求書で適用予定：{what}。",
+  "Use coupon": "クーポンを使う",
+  "Enter your coupon code.": "クーポンコードを入力してください。",
+  "That coupon code isn’t valid for your account.": "このクーポンコードはお使いのアカウントでは使えません。",
+  "That coupon has already been used.": "このクーポンはすでに使用されています。",
+  "That coupon was cancelled.": "このクーポンは取り消されました。",
+  "That coupon has expired.": "このクーポンは有効期限切れです。",
+  "Too many coupon tries. Please wait an hour and try again.": "試行回数が多すぎます。1時間待ってからもう一度お試しください。"
 }

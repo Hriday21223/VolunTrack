@@ -102,6 +102,8 @@ async function priceInvoice(body) {
   // The referral credit this invoice spends, if any. Mutually exclusive with
   // the join offer: an invoice carries one discount, never two compounded.
   const referralCreditId = body.referralCreditId ? String(body.referralCreditId) : null
+  // A percent coupon this account redeemed and hasn't spent yet (#966).
+  const wantsCoupon = body.applyCoupon === true
 
   const table = ENTITY_TABLES[entityType]
   if (!table) throw new InvoiceProblem(400, 'entityType must be school or organization.')
@@ -112,8 +114,8 @@ async function priceInvoice(body) {
     throw new InvoiceProblem(400, 'Invalid billing period.')
   }
   if (poNumber && poNumber.length > 64) throw new InvoiceProblem(400, 'Purchase order number is too long.')
-  if ([wantsPromo, Boolean(referralCreditId), wantsEvent].filter(Boolean).length > 1) {
-    throw new InvoiceProblem(400, 'An invoice carries one discount: the join offer, a referral credit or the event code.')
+  if ([wantsPromo, Boolean(referralCreditId), wantsEvent, wantsCoupon].filter(Boolean).length > 1) {
+    throw new InvoiceProblem(400, 'An invoice carries one discount: the join offer, a referral credit, the event code or a coupon.')
   }
 
   const { rows: entityRows } = await query(`SELECT name, contact_email, account_code FROM ${table} WHERE id = $1`, [entityId])
@@ -177,10 +179,35 @@ async function priceInvoice(body) {
     discountLabel = `${ev.eventName || 'Event'} offer — ${ev.percentOff}% off (code ${ev.code})`
   }
 
+  let couponId = null
+  if (wantsCoupon) {
+    // Re-resolved here, never taken from the request (#966).
+    const coupon = await waitingCoupon(entityType, entityId)
+    if (!coupon) throw new InvoiceProblem(409, 'This account has no coupon waiting for an invoice.')
+    const percent = Number(coupon.percent_off)
+    const applied = applyPromoAmount(amount, percent)
+    subtotal = applied.subtotal
+    total = applied.total
+    discountPercent = percent
+    discountLabel = `Coupon — ${percent >= 100 ? 'free' : `${percent}% off`}${coupon.note ? ` (${coupon.note})` : ''}`
+    couponId = coupon.id
+  }
+
   return {
     entityType, entityId, entity, amount, description, dueDate, billingPeriod, poNumber,
-    total, subtotal, discountPercent, discountLabel, discountCode, referralId,
+    total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId,
   }
+}
+
+// The oldest percent coupon this account redeemed that no invoice has used (#966).
+async function waitingCoupon(entityType, entityId) {
+  const { rows } = await query(
+    `SELECT id, percent_off, note, code_hint FROM customer_coupons
+      WHERE entity_type = $1 AND entity_id = $2 AND kind = 'percent' AND status = 'redeemed' AND applied_invoice_id IS NULL
+      ORDER BY redeemed_at LIMIT 1`,
+    [entityType, entityId],
+  )
+  return rows[0] ? { ...rows[0], percent_off: Number(rows[0].percent_off) } : null
 }
 
 function invoiceFailed(res, error, what) {
@@ -244,7 +271,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     const priced = await priceInvoice(req.body)
     const {
       entityType, entityId, entity, description, dueDate, billingPeriod, poNumber,
-      total, subtotal, discountPercent, discountLabel, discountCode, referralId,
+      total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId,
     } = priced
 
     const { rows: seqRows } = await query(`SELECT nextval('invoice_number_seq') AS n`)
@@ -267,6 +294,10 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
         `UPDATE referrals SET status = 'redeemed', redeemed_invoice_id = $1 WHERE id = $2 AND status = 'earned'`,
         [id, referralId],
       )
+    }
+    if (couponId) {
+      // Guarded so a double-submit can't spend the same coupon on two invoices.
+      await query(`UPDATE customer_coupons SET applied_invoice_id = $1 WHERE id = $2 AND applied_invoice_id IS NULL`, [id, couponId])
     }
     // Being invoiced is what turns whoever referred this customer from a signup
     // into a real reward — until now their credit was only pending.
@@ -318,6 +349,8 @@ router.get('/admin/:entityType/:entityId/promo', limiter, requireDb, requireAuth
       // way, spendable on this invoice instead of the join offer.
       credits: await earnedCredits(entityType, entityId),
       eventOffer: await eventOfferFor(entityType, entityId),
+      // A percent coupon the account redeemed, waiting for this invoice (#966).
+      coupon: await waitingCoupon(entityType, entityId),
     })
   } catch (error) {
     console.error('promo eligibility failed:', error)
@@ -372,6 +405,8 @@ router.patch('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req,
       }
     } else {
       await query(`UPDATE invoices SET status = 'void' WHERE id = $1`, [invoice.id])
+      // A coupon spent on a voided invoice goes back to waiting (#966).
+      await query(`UPDATE customer_coupons SET applied_invoice_id = NULL WHERE applied_invoice_id = $1`, [invoice.id])
       await query(
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, invoice_id) VALUES ($1, $2, $3, 'invoice_void', $4)`,
         [uid('pev'), invoice.entity_type, invoice.entity_id, invoice.id],

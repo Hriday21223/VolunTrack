@@ -3685,5 +3685,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Entre na sua escola para adicionar o comprovante como link. Até lá, envie o arquivo.",
   "View proof": "Ver comprovante",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Do Google Drive. Se não aparecer, peça ao aluno para mudar o compartilhamento para “Qualquer pessoa na Internet com o link pode ver”.",
-  "Open in Google Drive instead": "Abrir no Google Drive"
+  "Open in Google Drive instead": "Abrir no Google Drive",
+  "Could not use the coupon.": "Não foi possível usar o cupom.",
+  "Done! Your next invoice will be free.": "Pronto! Sua próxima fatura será grátis.",
+  "Done! Your next invoice will be {n}% off.": "Pronto! Sua próxima fatura terá {n}% de desconto.",
+  "Done! {n} free months: your next payment is now due {date}.": "Pronto! {n} meses grátis: seu próximo pagamento vence em {date}.",
+  "Done! {n} free months: you’re paid until {date}.": "Pronto! {n} meses grátis: você está pago até {date}.",
+  "a free invoice": "uma fatura grátis",
+  "{n}% off": "{n}% de desconto",
+  "Have a coupon?": "Tem um cupom?",
+  "Enter a coupon code VolunTrack gave you.": "Digite o código de cupom que a VolunTrack lhe deu.",
+  "Waiting for your next invoice: {what}.": "Aguardando sua próxima fatura: {what}.",
+  "Use coupon": "Usar cupom",
+  "Enter your coupon code.": "Digite seu código de cupom.",
+  "That coupon code isn’t valid for your account.": "Esse código de cupom não é válido para sua conta.",
+  "That coupon has already been used.": "Esse cupom já foi usado.",
+  "That coupon was cancelled.": "Esse cupom foi cancelado.",
+  "That coupon has expired.": "Esse cupom expirou.",
+  "Too many coupon tries. Please wait an hour and try again.": "Muitas tentativas. Aguarde uma hora e tente de novo."
 }
