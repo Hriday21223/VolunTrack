@@ -2496,6 +2496,12 @@ export async function initSchema() {
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}
+  // Counselor caseloads (#972): last-name ranges [{ from, to }] and grades a
+  // co-admin is limited to (server/nameRange.js), and when they answered the
+  // first-time "Are you a counselor?" question.
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS scope_ranges JSONB') } catch {}
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS scope_grades TEXT[]') } catch {}
+  try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS caseload_asked_at TIMESTAMPTZ') } catch {}
   // Club assignments (#675): a teacher asks a club for hours by a date; students
   // attach their entries to it.
   try {

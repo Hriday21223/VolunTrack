@@ -50,6 +50,9 @@ import GroupHoursCard from '@/components/GroupHoursCard.jsx'
 import ImportHoursCard from '@/components/ImportHoursCard.jsx'
 import RejectReportDialog from '@/components/RejectReportDialog.jsx'
 import { tr } from '@/lib/i18n.js'
+import CaseloadEditor from '@/components/CaseloadEditor.jsx'
+import { caseloadSummary } from '@/lib/caseload.js'
+import CaseloadPrompt from '@/components/CaseloadPrompt.jsx'
 
 import EmbedWidgetCard from '@/components/EmbedWidgetCard.jsx'
 import PasswordInput from '@/components/PasswordInput.jsx'
@@ -221,6 +224,10 @@ export default function SchoolDashboard() {
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [staff, setStaff] = useState([])
   const [handoverStaffId, setHandoverStaffId] = useState(null)
+  // The co-admin whose caseload is being edited (#972), and the draft.
+  const [caseloadFor, setCaseloadFor] = useState(null)
+  const [caseloadDraft, setCaseloadDraft] = useState({ ranges: [], grades: [] })
+  const [caseloadError, setCaseloadError] = useState('')
   // Private adviser notes (#567): which student's are open, and how many each has.
   const [notesFor, setNotesFor] = useState(null)
   // A student's grade, set by the adviser (#581), from the school's own grades.
@@ -713,6 +720,10 @@ export default function SchoolDashboard() {
       <div className="max-w-4xl mx-auto space-y-4">
         {isSchoolAdmin && <AnnouncementBanner />}
         {isSchoolAdmin && <TrialEndingNotice info={schoolInfo} />}
+        {/* Asked once after a co-admin joins (#972). */}
+        {user?.role === 'school_staff' && user?.caseloadAsked === false && (
+          <CaseloadPrompt gradeOptions={schoolInfo?.grades} onDone={() => { refreshUser?.(); loadData() }} />
+        )}
         {/* Billing used to render on every tab, which buried whichever tab you
             were actually on. It lives under School setup -> Billing now. */}
         {/* Each sub-tab bar sits at the top of the tab it belongs to. */}
@@ -1213,6 +1224,9 @@ export default function SchoolDashboard() {
                         <div>
                           <p className="font-medium text-sm">{m.name}</p>
                           <p className="text-xs text-earth-400">{m.email}</p>
+                          {caseloadSummary(m.scope_ranges, m.scope_grades) && (
+                            <p className="text-xs text-brand-600 dark:text-brand-400">{caseloadSummary(m.scope_ranges, m.scope_grades)}</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           {user?.role === 'school' && (
@@ -1235,6 +1249,20 @@ export default function SchoolDashboard() {
                               {tr('Only their clubs')}
                             </label>
                           )}
+                          {user?.role === 'school' && (
+                            <button
+                              onClick={() => {
+                                if (caseloadFor === m.id) { setCaseloadFor(null); return }
+                                setCaseloadFor(m.id)
+                                setCaseloadError('')
+                                const cap = (v) => (v ? v[0].toUpperCase() + v.slice(1) : '')
+                                setCaseloadDraft({ ranges: m.scope_ranges?.length ? m.scope_ranges.map((r) => ({ from: cap(r.from), to: cap(r.to) })) : [{ from: '', to: '' }], grades: m.scope_grades || [] })
+                              }}
+                              className="btn-ghost btn-sm"
+                            >
+                              {tr('Their students')}
+                            </button>
+                          )}
                           <button onClick={() => setHandoverStaffId(handoverStaffId === m.id ? null : m.id)} className="btn-ghost btn-sm">
                             {tr('Make main admin')}
                           </button>
@@ -1243,6 +1271,36 @@ export default function SchoolDashboard() {
                           </button>
                         </div>
                       </div>
+                      {caseloadFor === m.id && (
+                        <div className="pb-4 space-y-3">
+                          <p className="text-sm text-earth-500 dark:text-earth-400">{tr('Limit {name} to the students they help, such as a counselor’s last names. Leave it empty and they see every student.', { name: m.name })}</p>
+                          <CaseloadEditor value={caseloadDraft} onChange={setCaseloadDraft} gradeOptions={schoolInfo?.grades} idPrefix={`caseload-${m.id}`} />
+                          {caseloadError && <p className="text-sm text-red-500">{tr(caseloadError)}</p>}
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className="btn-primary btn-sm"
+                              onClick={async () => {
+                                setCaseloadError('')
+                                try {
+                                  const res = await fetch(`${apiUrl}/school/staff/${m.id}/club-scope`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+                                    body: JSON.stringify({ ranges: caseloadDraft.ranges, grades: caseloadDraft.grades }),
+                                  })
+                                  const data = await res.json().catch(() => ({}))
+                                  if (!res.ok) { setCaseloadError(data.error || tr('Could not save that.')); return }
+                                  setStaff((list) => list.map((x) => (x.id === m.id ? { ...x, scope_ranges: data.ranges, scope_grades: data.grades } : x)))
+                                  setCaseloadFor(null)
+                                } catch { setCaseloadError(tr('Could not save that.')) }
+                              }}
+                            >
+                              {tr('Save')}
+                            </button>
+                            <button type="button" className="btn-ghost btn-sm" onClick={() => setCaseloadFor(null)}>{tr('Cancel')}</button>
+                          </div>
+                        </div>
+                      )}
                       {handoverStaffId === m.id && (
                         <div className="pb-3">
                           <HandoverForm path={HANDOVER_ENDPOINTS.school()} preset={m} onCancel={() => setHandoverStaffId(null)} />

@@ -56,7 +56,8 @@ function taskMinStay(v) {
   return Number.isInteger(n) && n >= 15 && n <= 480 ? { ok: true, value: n } : { ok: false, error: 'Minimum stay must be between 15 minutes and 8 hours.' }
 }
 
-import { clubScope, inScope, OUT_OF_SCOPE } from '../clubScope.js'
+import { clubScope, inScope, OUT_OF_SCOPE, readGrades } from '../clubScope.js'
+import { readRanges } from '../nameRange.js'
 import { LEGAL_VERSION } from '../legal.js'
 import { issueSignupCode, useSignupCode as spendSignupCode, hasPendingSignupCode, SIGNUP_CODE_TTL_MINUTES } from '../signupCodes.js'
 import { publicFetch } from '../publicHost.js'
@@ -2122,7 +2123,7 @@ router.get('/staff', limiter, requireDb, requireAuth('school', 'school_staff'), 
     if (userRows.length === 0 || !userRows[0].school_id) return res.status(404).json({ error: 'School not found.' })
 
     const { rows } = await query(
-      `SELECT id, name, email, created_at, club_scoped FROM users
+      `SELECT id, name, email, created_at, club_scoped, scope_ranges, scope_grades FROM users
        WHERE school_id = $1 AND role = 'school_staff'
        ORDER BY created_at DESC`,
       [userRows[0].school_id],
@@ -2134,22 +2135,77 @@ router.get('/staff', limiter, requireDb, requireAuth('school', 'school_staff'), 
   }
 })
 
-// PUT /staff/:id/club-scope { clubScoped } — the main admin limits a co-admin
-// to the students in the clubs they advise (#674), or lifts it.
+// A caseload from a request (#972): { ranges, grades } cleaned, or { error }.
+function readCaseload(body) {
+  const r = readRanges(body?.ranges)
+  if (r.error) return { error: r.error }
+  const g = readGrades(body?.grades)
+  if (g.error) return { error: g.error }
+  return { ranges: r.ranges.length ? r.ranges : null, grades: g.grades.length ? g.grades : null }
+}
+
+// PUT /staff/:id/club-scope { clubScoped?, ranges?, grades? } — the main admin
+// limits a co-admin to the students in the clubs they advise (#674) and/or a
+// caseload of last-name ranges and grades (#972), or lifts either. Fields left
+// out keep their value.
 router.put('/staff/:id/club-scope', limiter, requireDb, requireAuth('school'), requirePaidSchool, async (req, res) => {
-  if (typeof req.body?.clubScoped !== 'boolean') return res.status(400).json({ error: 'clubScoped must be true or false.' })
+  const body = req.body || {}
+  if (body.clubScoped !== undefined && typeof body.clubScoped !== 'boolean') return res.status(400).json({ error: 'clubScoped must be true or false.' })
+  const setCaseload = body.ranges !== undefined || body.grades !== undefined
+  if (body.clubScoped === undefined && !setCaseload) return res.status(400).json({ error: 'Nothing to change.' })
+  const caseload = setCaseload ? readCaseload(body) : null
+  if (caseload?.error) return res.status(400).json({ error: caseload.error })
   try {
     const { rows: me } = await query('SELECT school_id FROM users WHERE id = $1', [req.auth.sub])
-    const { rowCount } = await query(
-      "UPDATE users SET club_scoped = $3 WHERE id = $1 AND school_id = $2 AND role = 'school_staff'",
-      [req.params.id, me[0]?.school_id, req.body.clubScoped],
+    const { rows } = await query(
+      `UPDATE users SET club_scoped = COALESCE($3, club_scoped),
+              scope_ranges = CASE WHEN $4::boolean THEN $5::jsonb ELSE scope_ranges END,
+              scope_grades = CASE WHEN $4::boolean THEN $6::text[] ELSE scope_grades END
+        WHERE id = $1 AND school_id = $2 AND role = 'school_staff'
+        RETURNING club_scoped, scope_ranges, scope_grades`,
+      [req.params.id, me[0]?.school_id, body.clubScoped ?? null, setCaseload, caseload?.ranges ? JSON.stringify(caseload.ranges) : null, caseload?.grades || null],
     )
-    if (rowCount === 0) return res.status(404).json({ error: 'Co-admin not found.' })
-    recordAudit(req, { action: AUDIT.STAFF_SCOPE_CHANGED, schoolId: me[0]?.school_id, objectType: 'user', objectId: req.params.id, meta: { clubScoped: req.body.clubScoped } })
-    return res.json({ ok: true, clubScoped: req.body.clubScoped })
+    if (!rows.length) return res.status(404).json({ error: 'Co-admin not found.' })
+    recordAudit(req, { action: AUDIT.STAFF_SCOPE_CHANGED, schoolId: me[0]?.school_id, objectType: 'user', objectId: req.params.id, meta: { clubScoped: rows[0].club_scoped, ranges: rows[0].scope_ranges, grades: rows[0].scope_grades } })
+    return res.json({ ok: true, clubScoped: rows[0].club_scoped, ranges: rows[0].scope_ranges || [], grades: rows[0].scope_grades || [] })
   } catch (error) {
     console.error('staff club scope failed:', error)
     return res.status(500).json({ error: 'Could not change that.' })
+  }
+})
+
+// GET|PUT /staff/me/caseload — a co-admin's own caseload (#972), asked once
+// after they join: "Are you a counselor?" It can only narrow what they see.
+router.get('/staff/me/caseload', limiter, requireDb, requireAuth('school_staff'), async (req, res) => {
+  try {
+    const { rows } = await query('SELECT caseload_asked_at, scope_ranges, scope_grades FROM users WHERE id = $1', [req.auth.sub])
+    const me = rows[0] || {}
+    return res.json({ asked: Boolean(me.caseload_asked_at), ranges: me.scope_ranges || [], grades: me.scope_grades || [] })
+  } catch (error) {
+    console.error('my caseload failed:', error)
+    return res.status(500).json({ error: 'Could not load that.' })
+  }
+})
+
+router.put('/staff/me/caseload', limiter, requireDb, requireAuth('school_staff'), async (req, res) => {
+  const counselor = req.body?.counselor === true
+  const caseload = counselor ? readCaseload(req.body) : { ranges: null, grades: null }
+  if (caseload.error) return res.status(400).json({ error: caseload.error })
+  if (counselor && !caseload.ranges && !caseload.grades) return res.status(400).json({ error: 'Add the last names (or grades) you help with.' })
+  try {
+    const { rows } = await query(
+      counselor
+        ? `UPDATE users SET caseload_asked_at = now(), scope_ranges = $2::jsonb, scope_grades = $3::text[] WHERE id = $1 RETURNING school_id`
+        : `UPDATE users SET caseload_asked_at = now() WHERE id = $1 RETURNING school_id`,
+      counselor ? [req.auth.sub, caseload.ranges ? JSON.stringify(caseload.ranges) : null, caseload.grades || null] : [req.auth.sub],
+    )
+    if (counselor) {
+      recordAudit(req, { action: AUDIT.STAFF_SCOPE_CHANGED, schoolId: rows[0]?.school_id, objectType: 'user', objectId: req.auth.sub, meta: { self: true, ranges: caseload.ranges, grades: caseload.grades } })
+    }
+    return res.json({ ok: true, ranges: caseload.ranges || [], grades: caseload.grades || [] })
+  } catch (error) {
+    console.error('save my caseload failed:', error)
+    return res.status(500).json({ error: 'Could not save that.' })
   }
 })
 
