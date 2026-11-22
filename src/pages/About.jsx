@@ -4,31 +4,33 @@ import { ArrowRight, Target, Trophy, FileText, Calendar, ShieldCheck, Users, Clo
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
+import LanguagePicker from '@/components/LanguagePicker.jsx'
 import DashboardGallery from '@/components/DashboardGallery.jsx'
 import { HoursStory, FloatingStart, PhonePreview } from '@/components/HomeMotion.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 import { roleLabel, anonymousReviewerName } from '@/lib/reviewerLabel.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
 
 const FEATURES = [
-  { icon: Calendar,  title: 'Simple hour logging', body: 'Log activity, time, location, and proof so your volunteer work is always ready to share.' },
-  { icon: Target,    title: 'Goal progress', body: 'Set a target and watch the progress ring fill as your hours add up.' },
-  { icon: Trophy,    title: 'Achievements', body: 'Earn badges for consistency, milestones, and service across categories.' },
-  { icon: FileText,  title: 'Reports & certificates', body: 'Download a PDF or CSV, or print a certificate of service.' },
+  { icon: Calendar,  title: tr('Simple hour logging'), body: tr('Log activity, time, location, and proof so your volunteer work is always ready to share.') },
+  { icon: Target,    title: tr('Goal progress'), body: tr('Set a target and watch the progress ring fill as your hours add up.') },
+  { icon: Trophy,    title: tr('Achievements'), body: tr('Earn badges for consistency, milestones, and service across categories.') },
+  { icon: FileText,  title: tr('Reports & certificates'), body: tr('Download a PDF or CSV, or print a certificate of service.') },
 ]
 
 const DETAILED_FEATURES = [
-  { icon: FileSignature, title: 'Signed, verifiable hours', body: 'Supervisors approve your hours with a signature: in person on your phone, from a link you email them, or from their own VolunTrack account if they posted the task. On a laptop, they can scan a QR code and sign on their phone instead.' },
-  { icon: Download, title: 'Export ready for anything', body: 'Download PDF reports with signatures, CSV data exports, and printable certificates for NHS, honor societies, scholarships, and school requirements.' },
-  { icon: Lock, title: 'Private by design', body: 'Your hours sync securely so your school can review them, and only you, your school and parents you invite can see them. Signature drawings stay on your device. We never sell your data or show ads.' },
-  { icon: Bell, title: 'Reminders', body: 'Set recurring reminders so you never forget to log a session. Turn on notifications and they reach you even when VolunTrack isn\'t open.' },
-  { icon: Smartphone, title: 'Works on any device', body: 'Log hours from your phone, tablet, or laptop. Add it to your home screen and it keeps working offline.' },
-  { icon: TrendingUp, title: 'Visual progress tracking', body: 'Monitor your monthly trends with bar charts, watch goal rings fill up, and see your all-time totals on one dashboard.' },
-  { icon: QrCode, title: 'Event check-in and check-out', body: 'Volunteers check in and out at events with a QR code, a kiosk and their own private PIN, or a check-out PIN from the organizer. Their hours are worked out from the times and sent to the organizer to sign.' },
-  { icon: CalendarClock, title: 'Find events when you\'re free', body: 'Tell VolunTrack the days and times you\'re usually free, and Opportunities shows only the events that fit.' },
-  { icon: ClipboardCheck, title: 'Clubs and assignments', body: 'Advisers group students into clubs, give a club an hours assignment with a due date, and see who has finished. Students attach their entries to it.' },
+  { icon: FileSignature, title: tr('Signed, verifiable hours'), body: tr('Supervisors approve your hours with a signature: in person on your phone, from a link you email them, or from their own VolunTrack account if they posted the task. On a laptop, they can scan a QR code and sign on their phone instead.') },
+  { icon: Download, title: tr('Export ready for anything'), body: tr('Download PDF reports with signatures, CSV data exports, and printable certificates for NHS, honor societies, scholarships, and school requirements.') },
+  { icon: Lock, title: tr('Private by design'), body: tr('Your hours sync securely so your school can review them, and only you, your school and parents you invite can see them. Signature drawings stay on your device. We never sell your data or show ads.') },
+  { icon: Bell, title: tr('Reminders'), body: tr('Set recurring reminders so you never forget to log a session. Turn on notifications and they reach you even when VolunTrack isn\'t open.') },
+  { icon: Smartphone, title: tr('Works on any device'), body: tr('Log hours from your phone, tablet, or laptop. Add it to your home screen and it keeps working offline.') },
+  { icon: TrendingUp, title: tr('Visual progress tracking'), body: tr('Monitor your monthly trends with bar charts, watch goal rings fill up, and see your all-time totals on one dashboard.') },
+  { icon: QrCode, title: tr('Event check-in and check-out'), body: tr('Volunteers check in and out at events with a QR code, a kiosk and their own private PIN, or a check-out PIN from the organizer. Their hours are worked out from the times and sent to the organizer to sign.') },
+  { icon: CalendarClock, title: tr('Find events when you\'re free'), body: tr('Tell VolunTrack the days and times you\'re usually free, and Opportunities shows only the events that fit.') },
+  { icon: ClipboardCheck, title: tr('Clubs and assignments'), body: tr('Advisers group students into clubs, give a club an hours assignment with a due date, and see who has finished. Students attach their entries to it.') },
 ]
 
 // "How it works" (and the line under Categories) for whichever account the
@@ -37,89 +39,89 @@ const DETAILED_FEATURES = [
 // than ones about logging hours and earning badges.
 const HOW_IT_WORKS = {
   student: {
-    heading: 'How do you start tracking volunteer hours?',
-    intro: 'Create a free account, log your hours, track progress toward a goal, and export a report. No credit card, and it takes under five minutes.',
-    categories: 'VolunTrack supports a wide range of volunteer categories so you can log whatever service you do.',
+    heading: tr('How do you start tracking volunteer hours?'),
+    intro: tr('Create a free account, log your hours, track progress toward a goal, and export a report. No credit card, and it takes under five minutes.'),
+    categories: tr('VolunTrack supports a wide range of volunteer categories so you can log whatever service you do.'),
     steps: [
-      { icon: Users, title: 'Create your account', body: 'Sign up free and confirm your email with a 6-digit code. No credit card needed.' },
-      { icon: Clock, title: 'Log your hours', body: 'Record activity, duration, location, and supervisor details on the go.' },
-      { icon: BarChart3, title: 'Track progress', body: 'Watch your monthly totals, goal rings, and achievements fill up.' },
-      { icon: Trophy, title: 'Earn & export', body: 'Earn badges along the way, then download a report for school or a scholarship.' },
+      { icon: Users, title: tr('Create your account'), body: tr('Sign up free and confirm your email with a 6-digit code. No credit card needed.') },
+      { icon: Clock, title: tr('Log your hours'), body: tr('Record activity, duration, location, and supervisor details on the go.') },
+      { icon: BarChart3, title: tr('Track progress'), body: tr('Watch your monthly totals, goal rings, and achievements fill up.') },
+      { icon: Trophy, title: tr('Earn & export'), body: tr('Earn badges along the way, then download a report for school or a scholarship.') },
     ],
   },
   parent: {
-    heading: 'How do you follow your child’s hours?',
-    intro: 'A free parent account shows what your child has logged and how close they are to their goal. It’s read only, so the record stays theirs.',
-    categories: 'Whatever kind of service your child does, it counts, and you’ll see each entry with its category.',
+    heading: tr('How do you follow your child’s hours?'),
+    intro: tr('A free parent account shows what your child has logged and how close they are to their goal. It’s read only, so the record stays theirs.'),
+    categories: tr('Whatever kind of service your child does, it counts, and you’ll see each entry with its category.'),
     steps: [
-      { icon: UserPlus, title: 'Create a parent account', body: 'Sign up free and choose “I’m a Parent.” No credit card needed.' },
-      { icon: Link2, title: 'Link to your child', body: 'Your child finds their link code in Settings → Family. Enter it once to connect.' },
-      { icon: TrendingUp, title: 'Follow their progress', body: 'See every entry, what’s approved or still waiting, and whether they’re on pace for their school’s requirement.' },
-      { icon: Mail, title: 'Get a weekly summary', body: 'Every Monday, an email with what they logged last week. Turn it off any time.' },
+      { icon: UserPlus, title: tr('Create a parent account'), body: tr('Sign up free and choose “I’m a Parent.” No credit card needed.') },
+      { icon: Link2, title: tr('Link to your child'), body: tr('Your child finds their link code in Settings → Family. Enter it once to connect.') },
+      { icon: TrendingUp, title: tr('Follow their progress'), body: tr('See every entry, what’s approved or still waiting, and whether they’re on pace for their school’s requirement.') },
+      { icon: Mail, title: tr('Get a weekly summary'), body: tr('Every Monday, an email with what they logged last week. Turn it off any time.') },
     ],
   },
   volunteer: {
-    heading: 'How do you find volunteers?',
-    intro: 'Post an opportunity, approve who signs up, and sign off their hours in VolunTrack. No paperwork for you or the students.',
-    categories: 'A food bank, a park cleanup, tutoring, an animal shelter: whatever your cause, the students who help can log it.',
+    heading: tr('How do you find volunteers?'),
+    intro: tr('Post an opportunity, approve who signs up, and sign off their hours in VolunTrack. No paperwork for you or the students.'),
+    categories: tr('A food bank, a park cleanup, tutoring, an animal shelter: whatever your cause, the students who help can log it.'),
     steps: [
-      { icon: Users, title: 'Create your account', body: 'Sign up free and choose “I’m a Volunteer Task Maker.”' },
-      { icon: ClipboardList, title: 'Post a task', body: 'Add what, where, when, and how many volunteers you need. Students find it on their Opportunities page.' },
-      { icon: CheckCircle, title: 'Approve sign-ups', body: 'Approve or decline each volunteer who signs up, and message them all at once.' },
-      { icon: FileSignature, title: 'Sign off their hours', body: 'Volunteers check in and out, and their hours come to you to sign in one go. See the impact your events add up to.' },
+      { icon: Users, title: tr('Create your account'), body: tr('Sign up free and choose “I’m a Volunteer Task Maker.”') },
+      { icon: ClipboardList, title: tr('Post a task'), body: tr('Add what, where, when, and how many volunteers you need. Students find it on their Opportunities page.') },
+      { icon: CheckCircle, title: tr('Approve sign-ups'), body: tr('Approve or decline each volunteer who signs up, and message them all at once.') },
+      { icon: FileSignature, title: tr('Sign off their hours'), body: tr('Volunteers check in and out, and their hours come to you to sign in one go. See the impact your events add up to.') },
     ],
   },
 }
 
 const CATEGORIES = [
-  { icon: Heart,     label: 'Community Service', color: 'bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200' },
-  { icon: TreePine,  label: 'Environmental', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' },
-  { icon: Book,      label: 'Education & Tutoring', color: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200' },
-  { icon: Stethoscope, label: 'Health & Wellness', color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200' },
-  { icon: PawPrint,  label: 'Animal Welfare', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
-  { icon: Palette,   label: 'Arts & Culture', color: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-200' },
-  { icon: Dumbbell,  label: 'Sports & Coaching', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200' },
-  { icon: Church,    label: 'Religious & Faith', color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200' },
-  { icon: Megaphone, label: 'Political & Advocacy', color: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200' },
-  { icon: Ambulance, label: 'Disaster Relief', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200' },
+  { icon: Heart,     label: tr('Community Service'), color: 'bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-200' },
+  { icon: TreePine,  label: tr('Environmental'), color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' },
+  { icon: Book,      label: tr('Education & Tutoring'), color: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200' },
+  { icon: Stethoscope, label: tr('Health & Wellness'), color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200' },
+  { icon: PawPrint,  label: tr('Animal Welfare'), color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
+  { icon: Palette,   label: tr('Arts & Culture'), color: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-200' },
+  { icon: Dumbbell,  label: tr('Sports & Coaching'), color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200' },
+  { icon: Church,    label: tr('Religious & Faith'), color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200' },
+  { icon: Megaphone, label: tr('Political & Advocacy'), color: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200' },
+  { icon: Ambulance, label: tr('Disaster Relief'), color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200' },
 ]
 
 const AUDIENCES = [
   {
-    icon: GraduationCap, title: 'Students',
-    body: 'Track required service hours for NHS, honor societies, scholarships, and college applications. Download a signed report when it’s due.',
-    perks: ['Goal-based hour tracking', 'Signed supervisor approval', 'PDF & CSV exports'],
+    icon: GraduationCap, title: tr('Students'),
+    body: tr('Track required service hours for NHS, honor societies, scholarships, and college applications. Download a signed report when it’s due.'),
+    perks: [tr('Goal-based hour tracking'), tr('Signed supervisor approval'), tr('PDF & CSV exports')],
   },
   {
-    icon: School, title: 'School clubs & organizations',
-    body: 'Manage group service requirements, monitor member participation, and generate reports for advisors and administrators.',
-    perks: ['Member oversight', 'Club assignments', 'Bulk reporting'],
+    icon: School, title: tr('School clubs & organizations'),
+    body: tr('Manage group service requirements, monitor member participation, and generate reports for advisors and administrators.'),
+    perks: [tr('Member oversight'), tr('Club assignments'), tr('Bulk reporting')],
   },
   {
-    icon: Building, title: 'Schools & districts',
-    body: 'Adopt VolunTrack across your entire school or district. Set your own rules (required fields, hour goals, and whether entries must be signed or carry your own form), and every student logs the same way.',
-    perks: ['Your own requirements', 'Signatures & school forms', 'Admin & co-admin dashboards'],
+    icon: Building, title: tr('Schools & districts'),
+    body: tr('Adopt VolunTrack across your entire school or district. Set your own rules (required fields, hour goals, and whether entries must be signed or carry your own form), and every student logs the same way.'),
+    perks: [tr('Your own requirements'), tr('Signatures & school forms'), tr('Admin & co-admin dashboards')],
   },
   {
-    icon: Globe, title: 'Nonprofits & community groups',
-    body: 'Post volunteer tasks, approve sign-ups, sign off volunteers\' hours right in VolunTrack, and print impact reports for grants and your board.',
-    perks: ['Check-in and check-out', 'Sign off hours in-app', 'Impact reporting'],
+    icon: Globe, title: tr('Nonprofits & community groups'),
+    body: tr('Post volunteer tasks, approve sign-ups, sign off volunteers\' hours right in VolunTrack, and print impact reports for grants and your board.'),
+    perks: [tr('Check-in and check-out'), tr('Sign off hours in-app'), tr('Impact reporting')],
   },
 ]
 
 const FAQS = [
-  { q: 'Is VolunTrack free?', a: 'Yes, for individuals. Students, volunteers, and parents get every feature (logging, goals, badges, reminders, reports, supervisor sign-off) at no cost, with no paid tiers, ads, or hidden fees. Schools and organizations are on custom pricing; contact us for a quote.' },
-  { q: 'Can I export my hours for school requirements?', a: 'Yes. From the Reports page you can download a formatted PDF, export a CSV for spreadsheets, or print a certificate of service. Every entry carries its date, hours, activity, category, supervisor, and verification status. If you\'re linked to a school, you can also submit a report to them directly and track whether it\'s approved.' },
-  { q: 'How does supervisor verification work?', a: 'Your supervisor approves the entry with a signature, or rejects it. If they\'re next to you, they can sign right on your phone. If not, add their email: VolunTrack can email them a one-time review link, or give you a ready-made email to send yourself. They don’t need an account, and on a laptop they can scan a QR code to sign on their phone. For tasks from the Opportunities page, the organizer signs it off from their own VolunTrack account. The entry then shows as Pending, Approved, or Rejected, and your school can see how each one was signed.' },
-  { q: 'Is my data private?', a: "Yes. Your hours are stored in a secure database, protected by your password and, if you turn them on, two-factor authentication or a passkey. They're visible only to you, the school you join, and parents you invite. Signature drawings stay on your device; the server only records that an entry was signed. We never sell your data or show ads. See the Privacy Policy for the details." },
-  { q: 'Can schools and organizations use VolunTrack?', a: 'Yes. One club or class with up to 50 students can start free right away from the school sign-up page. For a whole school, contact us for a quote and we\'ll send a one-time registration code to set up its account. The school then shares a join code so students link their hours to the school for review and approval, with dashboards for reports, students, and announcements. A school sets its own requirements: which fields an entry needs, extra questions, the hour goal, and whether each entry must be signed (by the supervisor, the student, or both) or come with the school\'s own form, including a Google Form students fill in without leaving VolunTrack. Up to 10 co-admins can share a school\'s dashboard. Organization accounts (for managing multiple schools) are set up the same way, with an invite or a one-time code from us, on custom pricing.' },
-  { q: 'Can a parent follow my hours?', a: 'Only if you invite them. In Settings, generate a family link code and share it with your parent, who enters it in their own account. Each code works once, and you can see and remove linked parents at any time. They get a read-only view of hours you log from the moment they link. Earlier entries stay private, and they can\'t edit or delete anything. They can also get an optional weekly progress email they can unsubscribe from at any time.' },
-  { q: 'Where can I find volunteer opportunities?', a: 'The Opportunities page lists public tasks posted by schools and organizations, sorted by distance if you share your location. Sign up in one click; once the organizer approves you, link your hours to the task when you log them and the organizer signs them off from their own account, so there’s nothing to email.' },
-  { q: 'What if I forget to log a session?', a: 'You can log past sessions anytime. Just set the date when you add the entry. The Reminders page also lets you schedule recurring nudges so sessions don\'t pile up unrecorded.' },
-  { q: 'Does VolunTrack work offline?', a: 'Yes. VolunTrack is a Progressive Web App. After your first visit, it keeps working without an internet connection, and the hours already on your device stay available. Anything that needs the server, like syncing or school submissions, catches up once you\'re back online.' },
-  { q: 'What if I switch devices?', a: 'Sign in on the new device with your email and password and your hours come with you. To skip typing your password, go to Settings on a signed-in device and generate a sync PIN (the card is called Mobile sync PIN on a computer, Laptop sync PIN on a phone). On the new device, choose Use sync PIN on the login page and enter the 5-digit code, or scan its QR code. A sync PIN works once and expires after 15 minutes.' },
-  { q: 'Do I need to create an account?', a: "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first." },
-  { q: 'Is there a mobile app?', a: 'Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone\'s browser and tap "Add to Home Screen" for an app-like experience that works offline.' },
+  { q: tr('Is VolunTrack free?'), a: tr('Yes, for individuals. Students, volunteers, and parents get every feature (logging, goals, badges, reminders, reports, supervisor sign-off) at no cost, with no paid tiers, ads, or hidden fees. Schools and organizations are on custom pricing; contact us for a quote.') },
+  { q: tr('Can I export my hours for school requirements?'), a: tr('Yes. From the Reports page you can download a formatted PDF, export a CSV for spreadsheets, or print a certificate of service. Every entry carries its date, hours, activity, category, supervisor, and verification status. If you\'re linked to a school, you can also submit a report to them directly and track whether it\'s approved.') },
+  { q: tr('How does supervisor verification work?'), a: tr('Your supervisor approves the entry with a signature, or rejects it. If they\'re next to you, they can sign right on your phone. If not, add their email: VolunTrack can email them a one-time review link, or give you a ready-made email to send yourself. They don’t need an account, and on a laptop they can scan a QR code to sign on their phone. For tasks from the Opportunities page, the organizer signs it off from their own VolunTrack account. The entry then shows as Pending, Approved, or Rejected, and your school can see how each one was signed.') },
+  { q: tr('Is my data private?'), a: tr("Yes. Your hours are stored in a secure database, protected by your password and, if you turn them on, two-factor authentication or a passkey. They're visible only to you, the school you join, and parents you invite. Signature drawings stay on your device; the server only records that an entry was signed. We never sell your data or show ads. See the Privacy Policy for the details.") },
+  { q: tr('Can schools and organizations use VolunTrack?'), a: tr('Yes. One club or class with up to 50 students can start free right away from the school sign-up page. For a whole school, contact us for a quote and we\'ll send a one-time registration code to set up its account. The school then shares a join code so students link their hours to the school for review and approval, with dashboards for reports, students, and announcements. A school sets its own requirements: which fields an entry needs, extra questions, the hour goal, and whether each entry must be signed (by the supervisor, the student, or both) or come with the school\'s own form, including a Google Form students fill in without leaving VolunTrack. Up to 10 co-admins can share a school\'s dashboard. Organization accounts (for managing multiple schools) are set up the same way, with an invite or a one-time code from us, on custom pricing.') },
+  { q: tr('Can a parent follow my hours?'), a: tr('Only if you invite them. In Settings, generate a family link code and share it with your parent, who enters it in their own account. Each code works once, and you can see and remove linked parents at any time. They get a read-only view of hours you log from the moment they link. Earlier entries stay private, and they can\'t edit or delete anything. They can also get an optional weekly progress email they can unsubscribe from at any time.') },
+  { q: tr('Where can I find volunteer opportunities?'), a: tr('The Opportunities page lists public tasks posted by schools and organizations, sorted by distance if you share your location. Sign up in one click; once the organizer approves you, link your hours to the task when you log them and the organizer signs them off from their own account, so there’s nothing to email.') },
+  { q: tr('What if I forget to log a session?'), a: tr('You can log past sessions anytime. Just set the date when you add the entry. The Reminders page also lets you schedule recurring nudges so sessions don\'t pile up unrecorded.') },
+  { q: tr('Does VolunTrack work offline?'), a: tr('Yes. VolunTrack is a Progressive Web App. After your first visit, it keeps working without an internet connection, and the hours already on your device stay available. Anything that needs the server, like syncing or school submissions, catches up once you\'re back online.') },
+  { q: tr('What if I switch devices?'), a: tr('Sign in on the new device with your email and password and your hours come with you. To skip typing your password, go to Settings on a signed-in device and generate a sync PIN (the card is called Mobile sync PIN on a computer, Laptop sync PIN on a phone). On the new device, choose Use sync PIN on the login page and enter the 5-digit code, or scan its QR code. A sync PIN works once and expires after 15 minutes.') },
+  { q: tr('Do I need to create an account?'), a: tr("Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.") },
+  { q: tr('Is there a mobile app?'), a: tr('Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone\'s browser and tap "Add to Home Screen" for an app-like experience that works offline.') },
 ]
 
 
@@ -193,8 +195,8 @@ export default function About() {
   // Rendered at both "/" and "/about" for logged-out visitors — canonicalize
   // to "/" so search engines don't treat them as duplicate pages.
   useSeo({
-    title: 'Volunteer Hour Tracker for Students & Schools',
-    description: 'Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.',
+    title: tr('Volunteer Hour Tracker for Students & Schools'),
+    description: tr('Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.'),
     canonicalPath: '/',
     jsonLd: faqJsonLd,
   })
@@ -236,23 +238,23 @@ export default function About() {
             <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-11 h-11 object-contain" />
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-earth-500 dark:text-earth-400">VolunTrack</p>
-              <p className="font-display font-bold text-lg text-earth-900 dark:text-earth-100">Volunteer hour tracking</p>
+              <p className="font-display font-bold text-lg text-earth-900 dark:text-earth-100">{tr('Volunteer hour tracking')}</p>
             </div>
           </Link>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/" className="btn-ghost">Home</Link>
-            <Link to="/for-schools" className="btn-ghost">For schools</Link>
-            <Link to="/contact" className="btn-ghost">Contact</Link>
-            <Link to="/status" className="btn-ghost">Status</Link>
-            <Link to="/login" className="btn-ghost">Sign in</Link>
-            <Link to="/register" className="btn-primary">Get started</Link>
+            <Link to="/" className="btn-ghost">{tr('Home')}</Link>
+            <Link to="/for-schools" className="btn-ghost">{tr('For schools')}</Link>
+            <Link to="/contact" className="btn-ghost">{tr('Contact')}</Link>
+            <Link to="/status" className="btn-ghost">{tr('Status')}</Link>
+            <Link to="/login" className="btn-ghost">{tr('Sign in')}</Link>
+            <Link to="/register" className="btn-primary">{tr('Get started')}</Link>
           </div>
 
           <button
             onClick={() => setNavOpen((v) => !v)}
             className="md:hidden btn-ghost p-2"
-            aria-label={navOpen ? 'Close menu' : 'Open menu'}
+            aria-label={navOpen ? tr('Close menu') : tr('Open menu')}
             aria-expanded={navOpen}
           >
             {navOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -260,12 +262,12 @@ export default function About() {
 
           {navOpen && (
             <div className="md:hidden absolute top-full right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#0a1a14] shadow-xl z-50 flex flex-col p-2 gap-1">
-              <Link to="/" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Home</Link>
-              <Link to="/for-schools" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>For schools</Link>
-              <Link to="/contact" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Contact</Link>
-              <Link to="/status" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Status</Link>
-              <Link to="/login" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>Sign in</Link>
-              <Link to="/register" className="btn-primary w-full justify-center" onClick={() => setNavOpen(false)}>Get started</Link>
+              <Link to="/" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>{tr('Home')}</Link>
+              <Link to="/for-schools" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>{tr('For schools')}</Link>
+              <Link to="/contact" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>{tr('Contact')}</Link>
+              <Link to="/status" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>{tr('Status')}</Link>
+              <Link to="/login" className="btn-ghost w-full justify-start" onClick={() => setNavOpen(false)}>{tr('Sign in')}</Link>
+              <Link to="/register" className="btn-primary w-full justify-center" onClick={() => setNavOpen(false)}>{tr('Get started')}</Link>
             </div>
           )}
         </header>
@@ -280,29 +282,31 @@ export default function About() {
               className="inline-block text-left mb-6 max-w-md"
               fallback={(
                 <div className="inline-flex items-center gap-2 rounded-full border border-brand-700/30 bg-brand-900/20 px-4 py-1.5 text-xs font-medium text-brand-300 mb-6">
-                  <Zap className="w-3.5 h-3.5 animate-float" /> Free for students, no credit card
+                  <Zap className="w-3.5 h-3.5 animate-float" /> {tr('Free for students, no credit card')}
                 </div>
               )}
             />
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white leading-tight">
-              Your volunteer hours, logged, signed and ready when school asks.
+              {tr('Your volunteer hours, logged, signed and ready when school asks.')}
             </h1>
             <p className="mt-5 text-lg md:text-xl text-earth-300 max-w-2xl mx-auto leading-8">
-              Log a session in about a minute, get your supervisor to sign it on your phone, and print a report when NHS, a scholarship or graduation asks for your hours. Free for students.
+              {tr('Log a session in about a minute, get your supervisor to sign it on your phone, and print a report when NHS, a scholarship or graduation asks for your hours. Free for students.')}
             </p>
             <div ref={heroCtaRef} className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/register" className="btn-primary inline-flex items-center gap-2 justify-center px-8 py-3.5 rounded-xl text-base font-semibold">
-                Create your free account <ArrowRight className="w-4 h-4" />
+                {tr('Create your free account')} <ArrowRight className="w-4 h-4" />
               </Link>
               <Link to="/login" className="btn-secondary inline-flex justify-center px-8 py-3.5 rounded-xl text-base font-semibold">
-                Sign in
+                {tr('Sign in')}
               </Link>
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-5 text-sm text-earth-400">
-              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> No credit card</span>
-              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Private by design</span>
-              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> Export anytime</span>
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> {tr('No credit card')}</span>
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> {tr('Private by design')}</span>
+              <span className="flex items-center gap-1.5"><CheckCircle className="w-4 h-4 text-brand-400" /> {tr('Export anytime')}</span>
             </div>
+            {/* The page is translated (#988); let visitors switch here too. */}
+            <div className="mt-6 flex justify-center"><LanguagePicker compact /></div>
             <PhonePreview role={audience} />
           </section>
 
@@ -312,7 +316,7 @@ export default function About() {
           <HoursStory />
 
           <section data-animate className="mt-16 text-center" aria-live="polite">
-            <p className="text-sm uppercase tracking-[0.35em] text-brand-600">How it works</p>
+            <p className="text-sm uppercase tracking-[0.35em] text-brand-600">{tr('How it works')}</p>
             <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{howItWorks.heading}</h2>
             <p className="mt-3 text-earth-300 max-w-xl mx-auto font-semibold">
               {howItWorks.intro}
@@ -335,8 +339,8 @@ export default function About() {
 
           <section data-animate className="mt-20">
             <div className="text-center">
-              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Categories</p>
-              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">Track every type of service.</h2>
+              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">{tr('Categories')}</p>
+              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{tr('Track every type of service.')}</h2>
               <p className="mt-3 text-earth-400 max-w-xl mx-auto">
                 {howItWorks.categories}
               </p>
@@ -354,16 +358,16 @@ export default function About() {
           <section data-animate className="mt-20">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Core features</p>
-                <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">What can you do with VolunTrack?</h2>
+                <p className="text-sm uppercase tracking-[0.35em] text-brand-600">{tr('Core features')}</p>
+                <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{tr('What can you do with VolunTrack?')}</h2>
                 <p className="mt-3 text-earth-300 font-semibold max-w-xl">
-                  Log hours with proof, track progress toward a goal, earn achievement badges, and download PDF or CSV reports and certificates.
+                  {tr('Log hours with proof, track progress toward a goal, earn achievement badges, and download PDF or CSV reports and certificates.')}
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300"><ShieldCheck className="w-4 h-4" /> Private: no ads, never sold</span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-earth-100 px-4 py-2 text-sm font-semibold text-earth-700 dark:bg-white/5 dark:text-earth-300"><Users className="w-4 h-4" /> Volunteer Task Maker: post opportunities</span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-earth-100 px-4 py-2 text-sm font-semibold text-earth-700 dark:bg-white/5 dark:text-earth-300"><FileSignature className="w-4 h-4" /> Signed supervisor approval</span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300"><ShieldCheck className="w-4 h-4" /> {tr('Private: no ads, never sold')}</span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-earth-100 px-4 py-2 text-sm font-semibold text-earth-700 dark:bg-white/5 dark:text-earth-300"><Users className="w-4 h-4" /> {tr('Volunteer Task Maker: post opportunities')}</span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-earth-100 px-4 py-2 text-sm font-semibold text-earth-700 dark:bg-white/5 dark:text-earth-300"><FileSignature className="w-4 h-4" /> {tr('Signed supervisor approval')}</span>
               </div>
             </div>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -381,10 +385,10 @@ export default function About() {
 
           <section data-animate className="mt-20">
             <div className="text-center">
-              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Everything included</p>
-              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">A deeper look at what you get.</h2>
+              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">{tr('Everything included')}</p>
+              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{tr('A deeper look at what you get.')}</h2>
               <p className="mt-3 text-earth-400 max-w-xl mx-auto">
-                VolunTrack is packed with tools designed to make service tracking simple, motivating, and professional.
+                {tr('VolunTrack is packed with tools designed to make service tracking simple, motivating, and professional.')}
               </p>
             </div>
             <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -402,10 +406,10 @@ export default function About() {
 
           <section data-animate className="mt-20">
             <div className="text-center">
-              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Who it&rsquo;s for</p>
-              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">Built for everyone who serves.</h2>
+              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">{tr('Who it’s for')}</p>
+              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{tr('Built for everyone who serves.')}</h2>
               <p className="mt-3 text-earth-400 max-w-xl mx-auto">
-                Whether you&rsquo;re a student tracking NHS hours or a nonprofit coordinating volunteers, VolunTrack adapts to your needs.
+                {tr('Whether you’re a student tracking NHS hours or a nonprofit coordinating volunteers, VolunTrack adapts to your needs.')}
               </p>
             </div>
             <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -435,8 +439,8 @@ export default function About() {
           {testimonials.length > 0 && (
             <section data-animate className="mt-20">
               <div className="text-center">
-                <p className="text-sm uppercase tracking-[0.35em] text-brand-600">Testimonials</p>
-                <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">What people are saying.</h2>
+                <p className="text-sm uppercase tracking-[0.35em] text-brand-600">{tr('Testimonials')}</p>
+                <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{tr('What people are saying.')}</h2>
               </div>
               <div className="mt-10 grid gap-6 md:grid-cols-3">
                 {testimonials.map(({ id, rating, comment, name, role }, i) => (
@@ -460,8 +464,8 @@ export default function About() {
 
           <section data-animate className="mt-20">
             <div className="text-center">
-              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">FAQ</p>
-              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">Frequently asked questions.</h2>
+              <p className="text-sm uppercase tracking-[0.35em] text-brand-600">{tr('FAQ')}</p>
+              <h2 className="mt-3 text-3xl font-bold text-earth-950 dark:text-white">{tr('Frequently asked questions.')}</h2>
             </div>
             <div className="mt-8 max-w-2xl mx-auto">
               <Card className="border border-white/10 bg-slate-900/70 text-white p-6 md:p-8">
@@ -473,41 +477,41 @@ export default function About() {
           </section>
 
           <section ref={endCtaRef} data-animate className="mt-20 rounded-[2rem] bg-gradient-to-br from-brand-600 to-brand-700 p-10 md:p-16 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-white">Log your first hours today.</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white">{tr('Log your first hours today.')}</h2>
             <p className="mt-3 text-brand-100 max-w-lg mx-auto leading-7">
-              Log your first hours in minutes. It&rsquo;s free for students, with no credit card and no ads.
+              {tr('Log your first hours in minutes. It’s free for students, with no credit card and no ads.')}
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/register" className="btn-secondary inline-flex items-center gap-2 justify-center bg-white text-brand-700 hover:bg-white/90 px-8 py-3 rounded-xl font-semibold">
-                Create your free account <ArrowRight className="w-4 h-4" />
+                {tr('Create your free account')} <ArrowRight className="w-4 h-4" />
               </Link>
               <Link to="/contact" className="inline-flex items-center gap-2 justify-center border border-white/30 text-white hover:bg-white/10 px-8 py-3 rounded-xl font-semibold transition-colors">
-                Talk to us
+                {tr('Talk to us')}
               </Link>
             </div>
           </section>
 
           <section data-animate className="mt-16 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <Card className="p-8">
-              <h3 className="text-2xl font-semibold text-earth-950 dark:text-white">Built for fast volunteering workflows</h3>
+              <h3 className="text-2xl font-semibold text-earth-950 dark:text-white">{tr('Built for fast volunteering workflows')}</h3>
               <p className="mt-4 text-earth-700 dark:text-earth-300 leading-7">
-                From your first log to your first service certificate, VolunTrack keeps the experience smooth and distraction-free. It helps learners, clubs, and service coordinators keep reliable records without complicated setup.
+                {tr('From your first log to your first service certificate, VolunTrack keeps the experience smooth and distraction-free. It helps learners, clubs, and service coordinators keep reliable records without complicated setup.')}
               </p>
               <ul className="mt-6 space-y-3 text-sm text-earth-700 dark:text-earth-300">
-                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Save each session with location, category, and supervisor details</li>
-                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Watch your month and goal progress in one dashboard</li>
-                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Get each entry signed in person, by email, or by the task organizer</li>
-                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> Export proofs instantly for school or community review</li>
+                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> {tr('Save each session with location, category, and supervisor details')}</li>
+                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> {tr('Watch your month and goal progress in one dashboard')}</li>
+                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> {tr('Get each entry signed in person, by email, or by the task organizer')}</li>
+                <li className="flex items-start gap-3"><CheckCircle className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" /> {tr('Export proofs instantly for school or community review')}</li>
               </ul>
             </Card>
             <Card className="p-8 bg-gradient-to-br from-brand-600 to-brand-700 text-white">
               <div className="space-y-4">
-                <div className="text-sm uppercase tracking-[0.35em] text-brand-200">What&rsquo;s new</div>
-                <div className="text-3xl font-bold">Hours your school can trust</div>
+                <div className="text-sm uppercase tracking-[0.35em] text-brand-200">{tr('What’s new')}</div>
+                <div className="text-3xl font-bold">{tr('Hours your school can trust')}</div>
                 <p className="leading-7 text-brand-100">
-                  Schools can now require signatures on every entry, or their own form. Supervisors sign in person, from a link, or by scanning a QR code on their phone, and task organizers sign off right in VolunTrack. Android and iPhone apps are coming next.
+                  {tr('Schools can now require signatures on every entry, or their own form. Supervisors sign in person, from a link, or by scanning a QR code on their phone, and task organizers sign off right in VolunTrack. Android and iPhone apps are coming next.')}
                 </p>
-                <Link to="/register" className="btn-secondary inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-white/90">Join now</Link>
+                <Link to="/register" className="btn-secondary inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-white/90">{tr('Join now')}</Link>
               </div>
             </Card>
           </section>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
+import { tr } from '@/lib/i18n.js'
 
 // Light motion for the public home page, tied to scrolling: a phone that
 // stands up as you scroll, a number that counts up and lines that light up as
@@ -44,10 +45,10 @@ function useScrollProgress(from = 0.95, to = 0.6) {
 const easeOut = (t) => 1 - (1 - t) ** 3
 
 const LINES = [
-  'Paper sign-in sheets get lost.',
-  'Hours go unsigned.',
-  'Seniors scramble in May.',
-  'VolunTrack counts every one.',
+  tr('Paper sign-in sheets get lost.'),
+  tr('Hours go unsigned.'),
+  tr('Seniors scramble in May.'),
+  tr('VolunTrack counts every one.'),
 ]
 
 /**
@@ -60,16 +61,16 @@ export function HoursStory() {
   const count = Math.round(100 * easeOut(clamp(p / 0.6)))
   const grow = 0.85 + 0.15 * easeOut(clamp(p / 0.6))
   return (
-    <section ref={ref} className="mt-24 md:mt-32 text-center max-w-4xl mx-auto" aria-label="Why track your hours">
-      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-600 dark:text-brand-300/80">Service hours, added up</p>
+    <section ref={ref} className="mt-24 md:mt-32 text-center max-w-4xl mx-auto" aria-label={tr('Why track your hours')}>
+      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-600 dark:text-brand-300/80">{tr('Service hours, added up')}</p>
       <p className="mt-4 flex items-baseline justify-center gap-3 md:gap-5 leading-none" style={{ transform: `scale(${grow})` }}>
-        <span className="sr-only">100 hours</span>
+        <span className="sr-only">{tr('{n} hours', { n: 100 })}</span>
         <span aria-hidden="true" className="font-display font-extrabold text-earth-950 dark:text-white text-[6rem] md:text-[10rem] tracking-tight tabular-nums">
           {count}
         </span>
-        <span aria-hidden="true" className="font-display italic font-semibold text-brand-600 dark:text-brand-300 text-4xl md:text-6xl">hours</span>
+        <span aria-hidden="true" className="font-display italic font-semibold text-brand-600 dark:text-brand-300 text-4xl md:text-6xl">{tr('hours')}</span>
       </p>
-      <p className="mt-4 text-lg md:text-xl text-earth-600 dark:text-earth-300">Graduation, NHS and scholarships can ask for this many, or more.</p>
+      <p className="mt-4 text-lg md:text-xl text-earth-600 dark:text-earth-300">{tr('Graduation, NHS and scholarships can ask for this many, or more.')}</p>
       <div className="mt-12 space-y-2 md:space-y-3">
         {LINES.map((line, i) => (
           <p
@@ -119,10 +120,10 @@ export function FloatingStart({ heroRef, hideNearRef }) {
       >
         <img src={`${import.meta.env.BASE_URL}logo-icon.webp`} alt="" className="w-8 h-8 rounded-full object-contain" />
         <span className="text-sm text-white font-semibold leading-tight text-left">
-          VolunTrack<span className="block text-[0.6875rem] font-normal text-earth-400">Free for students</span>
+          VolunTrack<span className="block text-[0.6875rem] font-normal text-earth-400">{tr('Free for students')}</span>
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white">
-          Get started <ArrowRight className="w-4 h-4" />
+          {tr('Get started')} <ArrowRight className="w-4 h-4" />
         </span>
       </Link>
     </div>
@@ -132,12 +133,12 @@ export function FloatingStart({ heroRef, hideNearRef }) {
 // Every kind of account, not just students. `role` matches DashboardGallery's
 // role ids, so picking Parent or Volunteer below jumps the phone there too.
 const PHONE_SCREENS = [
-  { role: 'student', label: 'Student', file: 'dashboard-phone.webp', alt: 'The VolunTrack student dashboard on a phone: hours this year, progress toward a 40-hour goal, and badges.' },
-  { role: 'student', label: 'Student', file: 'student-log-phone.webp', alt: 'Logging hours on a phone: activity, date and times, place and proof.' },
-  { role: 'student', label: 'Student', file: 'student-opportunities-phone.webp', alt: 'Volunteer opportunities near you on a phone, each with its date, place and spots left.' },
-  { role: 'parent', label: 'Parent', file: 'parent-phone.webp', alt: 'The family dashboard on a phone: a child’s progress toward the school’s required hours.' },
-  { role: 'volunteer', label: 'Volunteer', file: 'volunteer-phone.webp', alt: 'A task organizer’s volunteer tasks on a phone, with dates, places and sign-ups.' },
-  { role: 'volunteer', label: 'Volunteer', file: 'volunteer-signups-phone.webp', alt: 'Volunteers signed up for a task on a phone, with Approve and Reject buttons.' },
+  { role: 'student', label: tr('Student'), file: 'dashboard-phone.webp', alt: tr('The VolunTrack student dashboard on a phone: hours this year, progress toward a 40-hour goal, and badges.') },
+  { role: 'student', label: tr('Student'), file: 'student-log-phone.webp', alt: tr('Logging hours on a phone: activity, date and times, place and proof.') },
+  { role: 'student', label: tr('Student'), file: 'student-opportunities-phone.webp', alt: tr('Volunteer opportunities near you on a phone, each with its date, place and spots left.') },
+  { role: 'parent', label: tr('Parent'), file: 'parent-phone.webp', alt: tr('The family dashboard on a phone: a child’s progress toward the school’s required hours.') },
+  { role: 'volunteer', label: tr('Volunteer'), file: 'volunteer-phone.webp', alt: tr('A task organizer’s volunteer tasks on a phone, with dates, places and sign-ups.') },
+  { role: 'volunteer', label: tr('Volunteer'), file: 'volunteer-signups-phone.webp', alt: tr('Volunteers signed up for a task on a phone, with Approve and Reject buttons.') },
 ]
 
 /**
@@ -172,7 +173,7 @@ export function PhonePreview({ role } = {}) {
     return () => clearInterval(id)
   }, [])
   return (
-    <div className="hidden md:block home-rise relative mx-auto mt-14 w-[300px] [perspective:1200px]" aria-label="A preview of the VolunTrack app on a phone" role="img">
+    <div className="hidden md:block home-rise relative mx-auto mt-14 w-[300px] [perspective:1200px]" aria-label={tr('A preview of the VolunTrack app on a phone')} role="img">
       <div
         className="relative rounded-[2.75rem] will-change-transform"
         style={{ transform: `rotateX(${(1 - tilt) * 24}deg) scale(${0.9 + tilt * 0.1})`, transformOrigin: '50% 100%' }}
