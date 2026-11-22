@@ -145,6 +145,8 @@ export function publicUser(row) {
     schoolPaymentStatus: row.school_payment_status ?? null,
     // 'club' (free, never payment-locked) or 'school' (#506).
     schoolPlan: row.school_plan ?? null,
+    // A co-admin is asked once whether they're a counselor (#972).
+    caseloadAsked: row.role === 'school_staff' ? Boolean(row.caseload_asked_at) : true,
     // Set when the school belongs to an organization, which pays for it (#962).
     schoolOrgName: row.school_org_name ?? null,
     schoolOrgPaymentStatus: row.school_org_payment_status ?? null,
