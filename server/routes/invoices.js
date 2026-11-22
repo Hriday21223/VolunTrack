@@ -6,7 +6,7 @@ import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
 import { sendEmail, emailFooterHtml, paymentInstructionsHtml } from '../email.js'
 import { getPaymentInstructions, getPromoOffer, countPromoRedemptions } from './settings.js'
-import { promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining } from '../promo.js'
+import { promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, readCharges, invoiceCharges } from '../promo.js'
 import { markReferralEarned, earnedCredits } from './referral.js'
 import { escapeHtml } from '../html.js'
 
@@ -33,7 +33,7 @@ const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 
 
 // Mirrors paymentNoticeHtml in server/routes/school.js, but for a single
 // numbered invoice rather than a free-text payment notice.
-function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, poNumber, amount, subtotal, discountLabel, billingPeriod, dueDate, description, paymentInstructions }) {
+function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, poNumber, amount, subtotal, discountLabel, billingPeriod, dueDate, description, paymentInstructions, charges }) {
   const dashboardLink = `${process.env.FRONTEND_URL || ''}${entityType === 'organization' ? '/organization/dashboard' : '/school/dashboard/setup/billing'}`
   const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : null
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
@@ -45,8 +45,12 @@ function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber,
     accountCode ? `<tr><td><strong>Account ID</strong></td><td>${escapeHtml(accountCode)}</td></tr>` : '',
     poNumber ? `<tr><td><strong>Purchase order</strong></td><td>${escapeHtml(poNumber)}</td></tr>` : '',
     discountLabel ? `<tr><td><strong>Subtotal</strong></td><td>$${Number(subtotal).toFixed(2)}</td></tr>` : '',
-    discountLabel ? `<tr><td><strong>Discount</strong></td><td>−$${(Number(subtotal) - Number(amount)).toFixed(2)} (${escapeHtml(discountLabel)})</td></tr>` : '',
-    `<tr><td><strong>${discountLabel ? 'Total due' : 'Amount'}</strong></td><td>$${Number(amount).toFixed(2)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>`,
+    discountLabel ? `<tr><td><strong>Discount</strong></td><td>−$${(Number(subtotal) - Number(charges?.priceTotal ?? amount)).toFixed(2)} (${escapeHtml(discountLabel)})</td></tr>` : '',
+    // Fee lines and tax (#968).
+    charges && !discountLabel ? `<tr><td><strong>Price</strong></td><td>$${Number(charges.priceTotal).toFixed(2)}</td></tr>` : '',
+    ...(charges?.fees || []).map((f) => `<tr><td><strong>${escapeHtml(f.label)}</strong></td><td>$${Number(f.amount).toFixed(2)}</td></tr>`),
+    charges?.taxPercent ? `<tr><td><strong>Tax (${Number(charges.taxPercent)}%)</strong></td><td>$${Number(charges.taxAmount).toFixed(2)}</td></tr>` : '',
+    `<tr><td><strong>${discountLabel || charges ? 'Total due' : 'Amount'}</strong></td><td>$${Number(amount).toFixed(2)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>`,
     dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
     `</table>`,
     description ? `<p>${escapeHtml(description).replace(/\n/g, '<br>')}</p>` : '',
@@ -193,9 +197,20 @@ async function priceInvoice(body) {
     couponId = coupon.id
   }
 
+  // Fee lines and tax (#968), after the discount: tax is on the discounted
+  // price plus the fees.
+  const asked = readCharges(body.fees, body.taxPercent)
+  if (asked.error) throw new InvoiceProblem(400, asked.error)
+  let charges = null
+  if (asked.fees.length || asked.taxPercent) {
+    const c = invoiceCharges(total, asked.fees, asked.taxPercent)
+    charges = { priceTotal: c.priceTotal, fees: c.fees, taxPercent: c.taxPercent, taxAmount: c.taxAmount }
+    total = c.total
+  }
+
   return {
     entityType, entityId, entity, amount, description, dueDate, billingPeriod, poNumber,
-    total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId,
+    total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId, charges,
   }
 }
 
@@ -233,6 +248,7 @@ function invoiceEmail(p, invoiceNumber, paymentInstructions) {
       dueDate: p.dueDate,
       description: p.description,
       paymentInstructions,
+      charges: p.charges,
     }),
   }
 }
@@ -254,6 +270,7 @@ router.post('/admin/preview', limiter, requireDb, requireAuth('admin'), async (r
         description: p.description,
         dueDate: p.dueDate,
         poNumber: p.poNumber,
+        charges: p.charges,
       },
       email: {
         to: p.entity.contact_email || 'No contact email on file, so nothing would be emailed',
@@ -271,7 +288,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     const priced = await priceInvoice(req.body)
     const {
       entityType, entityId, entity, description, dueDate, billingPeriod, poNumber,
-      total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId,
+      total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId, charges,
     } = priced
 
     const { rows: seqRows } = await query(`SELECT nextval('invoice_number_seq') AS n`)
@@ -279,9 +296,9 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     const id = uid('invc')
 
     await query(
-      `INSERT INTO invoices (id, invoice_number, entity_type, entity_id, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'sent')`,
-      [id, invoiceNumber, entityType, entityId, total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate || null, poNumber],
+      `INSERT INTO invoices (id, invoice_number, entity_type, entity_id, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, charges)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'sent', $15)`,
+      [id, invoiceNumber, entityType, entityId, total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate || null, poNumber, charges ? JSON.stringify(charges) : null],
     )
     await query(
       `INSERT INTO payment_events (id, entity_type, entity_id, event_type, amount, invoice_id) VALUES ($1, $2, $3, 'invoice_sent', $4, $5)`,
@@ -314,7 +331,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     }
 
     return res.status(201).json({
-      invoice: { id, invoiceNumber, entityType, entityId, amount: total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate, poNumber, status: 'sent', emailSent, hasContactEmail },
+      invoice: { id, invoiceNumber, entityType, entityId, amount: total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate, poNumber, charges, status: 'sent', emailSent, hasContactEmail },
     })
   } catch (error) {
     return invoiceFailed(res, error, 'create invoice')
@@ -366,7 +383,7 @@ router.get('/admin/:entityType/:entityId/history', limiter, requireDb, requireAu
     const { rows } = await query(
       `SELECT e.id, e.event_type, e.amount, e.notes, e.created_at,
               i.id AS invoice_id, i.invoice_number, i.status AS invoice_status, i.due_date, i.description, i.billing_period,
-              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id, i.po_number
+              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id, i.po_number, i.charges
        FROM payment_events e
        LEFT JOIN invoices i ON i.id = e.invoice_id
        WHERE e.entity_type = $1 AND e.entity_id = $2
@@ -432,7 +449,7 @@ router.get('/mine', limiter, requireDb, requireAuth('school', 'school_staff', 'o
 
     const { rows: entityRows } = await query(`SELECT name, account_code FROM ${table} WHERE id = $1`, [entityId])
     const { rows } = await query(
-      `SELECT id, invoice_number, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, created_at, paid_at
+      `SELECT id, invoice_number, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, created_at, paid_at, charges
        FROM invoices WHERE entity_type = $1 AND entity_id = $2 ORDER BY created_at DESC LIMIT 50`,
       [entityType, entityId],
     )

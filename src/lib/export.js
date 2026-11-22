@@ -105,7 +105,7 @@ const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 
 
 // Draws one invoice on the current page of `doc`. `stamp` is an optional
 // coloured word beside INVOICE: { text, color: [r, g, b] }.
-function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt }) {
+function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, charges }) {
   if (logo) {
     try { doc.addImage(logo, 'PNG', 40, 20, LOGO_W, LOGO_H) } catch { /* malformed data URL — skip logo, keep header text */ }
   }
@@ -144,12 +144,17 @@ function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, ac
   // A discounted invoice has to show its own arithmetic: list price, what came
   // off, and what is owed. Without a discount the table stays the single line
   // it has always been.
-  const discounted = Boolean(discountLabel) && Number(subtotal) > Number(amount)
-  const listPrice = discounted ? Number(subtotal) : Number(amount)
+  // Fee lines and tax (#968) come after the price; the discount is on the
+  // price alone, so it's measured against priceTotal, not the total owed.
+  const priceTotal = charges ? Number(charges.priceTotal) : Number(amount)
+  const discounted = Boolean(discountLabel) && Number(subtotal) > priceTotal
+  const listPrice = discounted ? Number(subtotal) : priceTotal
   const body = [[description || 'VolunTrack subscription', `$${listPrice.toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`]]
   if (discounted) {
-    body.push([discountLabel, `-$${(Number(subtotal) - Number(amount)).toFixed(2)}`])
+    body.push([discountLabel, `-$${(Number(subtotal) - priceTotal).toFixed(2)}`])
   }
+  for (const f of charges?.fees || []) body.push([f.label, `$${Number(f.amount).toFixed(2)}`])
+  if (charges?.taxPercent) body.push([`Tax (${Number(charges.taxPercent)}%)`, `$${Number(charges.taxAmount).toFixed(2)}`])
   autoTable(doc, {
     startY: accountCode ? 164 : 150,
     head: [['Description', 'Amount']],

@@ -269,6 +269,7 @@ export default function OrganizationDashboard() {
                       description: inv.description,
                       dueDate: inv.due_date,
                       createdAt: inv.created_at,
+                      charges: inv.charges || null,
                     })}
                     className="p-1.5 text-earth-400 hover:text-earth-300"
                     title={tr('Download PDF')}
@@ -464,6 +465,7 @@ export default function OrganizationDashboard() {
             description: previewInvoice.description,
             dueDate: previewInvoice.due_date,
             createdAt: previewInvoice.created_at,
+            charges: previewInvoice.charges || null,
             returnBlob: true,
           })}
           onClose={() => setPreviewInvoice(null)}

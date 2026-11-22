@@ -1632,6 +1632,9 @@ export async function initSchema() {
   // office matches an invoice to the PO it approved, and often will not pay
   // one that doesn't quote it.
   try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS po_number TEXT`) } catch {}
+  // Fee lines and tax (#968): { priceTotal, fees: [{ label, amount }], taxPercent,
+  // taxAmount }. NULL on an invoice with neither; amount stays the total owed.
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS charges JSONB`) } catch {}
 
   // Referral programme (see server/routes/referral.js). Every school/org gets a
   // shareable code; a new customer that quotes one creates a `referrals` row.
