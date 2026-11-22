@@ -3928,5 +3928,12 @@ export default {
   "Approve volunteers, then sign off their hours right in VolunTrack.": "Одобряйте волонтёров, а затем подписывайте их часы прямо в VolunTrack.",
   "A task opened to show four volunteers signed up: two approved, two waiting with Approve and Reject buttons.": "Открытое задание с четырьмя записавшимися волонтёрами: двое одобрены, двое ждут, с кнопками «Одобрить» и «Отклонить».",
   "{role} screens": "Экраны: {role}",
-  "Click the screens above to look around. This is a preview with sample data.": "Нажимайте на экраны выше, чтобы осмотреться. Это предпросмотр с примерными данными."
+  "Click the screens above to look around. This is a preview with sample data.": "Нажимайте на экраны выше, чтобы осмотреться. Это предпросмотр с примерными данными.",
+  "Could not start the card payment. Please try again.": "Не удалось начать оплату картой. Попробуйте ещё раз.",
+  "Opening secure checkout…": "Открываем безопасную оплату…",
+  "Pay by card": "Оплатить картой",
+  "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "Спасибо! Оплата картой прошла. Счёт станет оплаченным в течение минуты.",
+  "Payment cancelled. Nothing was charged.": "Оплата отменена. Деньги не списаны.",
+  "Card payments are handled by Stripe. VolunTrack never sees your card number.": "Оплату картой обрабатывает Stripe. VolunTrack никогда не видит номер вашей карты.",
+  "Paid by card": "Оплачено картой"
 }

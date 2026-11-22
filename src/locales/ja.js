@@ -3928,5 +3928,12 @@ export default {
   "Approve volunteers, then sign off their hours right in VolunTrack.": "ボランティアを承認し、VolunTrack の中で時間に署名できます。",
   "A task opened to show four volunteers signed up: two approved, two waiting with Approve and Reject buttons.": "開いた募集に 4 人の申し込み：2 人は承認済み、2 人は承認と却下のボタンつきで確認待ち。",
   "{role} screens": "{role}の画面",
-  "Click the screens above to look around. This is a preview with sample data.": "上の画面をクリックして見て回れます。これはサンプルデータを使ったプレビューです。"
+  "Click the screens above to look around. This is a preview with sample data.": "上の画面をクリックして見て回れます。これはサンプルデータを使ったプレビューです。",
+  "Could not start the card payment. Please try again.": "カード決済を開始できませんでした。もう一度お試しください。",
+  "Opening secure checkout…": "安全な決済ページを開いています…",
+  "Pay by card": "カードで支払う",
+  "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "ありがとうございます。カード決済が完了しました。1 分以内に請求書が支払い済みになります。",
+  "Payment cancelled. Nothing was charged.": "支払いをキャンセルしました。請求はされていません。",
+  "Card payments are handled by Stripe. VolunTrack never sees your card number.": "カード決済は Stripe が処理します。VolunTrack がカード番号を見ることはありません。",
+  "Paid by card": "カードで支払い済み"
 }

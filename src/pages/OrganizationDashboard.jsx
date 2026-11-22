@@ -18,6 +18,7 @@ import HoursReportPanel from '@/components/HoursReportPanel.jsx'
 import YearEndPacketCard from '@/components/YearEndPacketCard.jsx'
 import ImpactMapCard from '@/components/ImpactMapCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
+import { PayByCardButton, CardPaymentReturn, CardPaymentNote } from '@/components/PayByCard.jsx'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import CouponCard from '@/components/CouponCard.jsx'
@@ -238,6 +239,7 @@ export default function OrganizationDashboard() {
       {tab === 'schools' && invoices.length > 0 && (
         <Card className="mb-4">
           <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" />{' '}{tr('Invoices')}</h3>
+          <CardPaymentReturn onPaid={loadInvoices} />
           <div className="space-y-2">
             {invoices.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between gap-3 text-sm p-3 rounded-xl bg-earth-500/5">
@@ -265,8 +267,9 @@ export default function OrganizationDashboard() {
                       ? 'bg-earth-500/20 text-earth-500'
                       : 'bg-amber-500/20 text-amber-600'
                   }`}>
-                    {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Not paid yet')}
+                    {inv.status === 'paid' ? (inv.paid_via === 'card' ? tr('Paid by card') : tr('Paid')) : inv.status === 'void' ? tr('Void') : tr('Not paid yet')}
                   </span>
+                  <PayByCardButton invoice={inv} />
                   <button
                     onClick={() => setPreviewInvoice(inv)}
                     className="p-1.5 text-earth-400 hover:text-earth-300"
@@ -300,6 +303,7 @@ export default function OrganizationDashboard() {
               </div>
             ))}
           </div>
+          <CardPaymentNote invoices={invoices} />
         </Card>
       )}
       {/* This used to be a plain schools/else ternary, so every tab added

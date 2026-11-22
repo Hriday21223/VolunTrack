@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useParams, useLocation } from 'react-router-dom'
 import { schoolTabsFromPath, schoolPathFor } from '@/lib/dashboardTabs.js'
 import { HardDrive, Trophy, ArrowLeft, Upload, CheckCircle, XCircle, Clock, FileText, Download, Eye, Search, Users, MapPin, Calendar, MessageSquare, Bell, ShieldCheck, Trash2, Receipt, KeyRound, Globe, Palette, Hash, Copy, Check, ClipboardList, GraduationCap, UserCog, History } from 'lucide-react'
@@ -34,6 +34,7 @@ import LeaderboardSettingsCard from '@/components/LeaderboardSettingsCard.jsx'
 import SpotlightPickCard from '@/components/SpotlightPickCard.jsx'
 import ChallengeCard from '@/components/ChallengeCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
+import { PayByCardButton, CardPaymentReturn, CardPaymentNote } from '@/components/PayByCard.jsx'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
@@ -256,18 +257,18 @@ export default function SchoolDashboard() {
   const [invoices, setInvoices] = useState([])
   // Coming back to the tab re-reads the invoices, so one VolunTrack has marked
   // paid in the meantime shows Paid (#970).
+  const reloadInvoices = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/invoices/mine`, { headers: { Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` } })
+      if (res.ok) setInvoices((await res.json()).invoices || [])
+    } catch { /* offline: keep what's shown */ }
+  }, [])
   useEffect(() => {
     if (user?.role !== 'school') return undefined
-    const onVisible = async () => {
-      if (document.visibilityState !== 'visible') return
-      try {
-        const res = await fetch(`${apiUrl}/invoices/mine`, { headers: { Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` } })
-        if (res.ok) setInvoices((await res.json()).invoices || [])
-      } catch { /* offline: keep what's shown */ }
-    }
+    const onVisible = () => { if (document.visibilityState === 'visible') reloadInvoices() }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [user?.role])
+  }, [user?.role, reloadInvoices])
   const [accountCode, setAccountCode] = useState(null)
   // Invoice currently open in the preview overlay, or null.
   const [previewInvoice, setPreviewInvoice] = useState(null)
@@ -804,6 +805,7 @@ export default function SchoolDashboard() {
         {billingTab && invoices.length > 0 && (
           <Card>
             <h3 className="font-semibold text-sm flex items-center gap-2 mb-3"><Receipt className="w-4 h-4 text-brand-600" />{' '}{tr('Invoices')}</h3>
+            <CardPaymentReturn onPaid={reloadInvoices} />
             <div className="space-y-2">
               {invoices.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between gap-3 text-sm p-3 rounded-xl bg-earth-500/5">
@@ -831,8 +833,9 @@ export default function SchoolDashboard() {
                         ? 'bg-earth-500/20 text-earth-500'
                         : 'bg-amber-500/20 text-amber-600'
                     }`}>
-                      {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Not paid yet')}
+                      {inv.status === 'paid' ? (inv.paid_via === 'card' ? tr('Paid by card') : tr('Paid')) : inv.status === 'void' ? tr('Void') : tr('Not paid yet')}
                     </span>
+                    <PayByCardButton invoice={inv} canPay={user?.role === 'school'} />
                     <button
                       onClick={() => setPreviewInvoice(inv)}
                       className="p-1.5 text-earth-400 hover:text-earth-300"
@@ -866,6 +869,7 @@ export default function SchoolDashboard() {
                 </div>
               ))}
             </div>
+            <CardPaymentNote invoices={invoices} />
           </Card>
         )}
         {tab === 'chat' && isSchoolAdmin && (

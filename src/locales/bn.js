@@ -3928,5 +3928,12 @@ export default {
   "Approve volunteers, then sign off their hours right in VolunTrack.": "স্বেচ্ছাসেবকদের অনুমোদন দিন, তারপর VolunTrack-এই তাদের ঘণ্টায় স্বাক্ষর দিন।",
   "A task opened to show four volunteers signed up: two approved, two waiting with Approve and Reject buttons.": "খোলা একটি কাজ, যাতে চারজন স্বেচ্ছাসেবক সাইন আপ করেছে: দুজন অনুমোদিত, দুজন অপেক্ষায়, অনুমোদন ও প্রত্যাখ্যান বোতামসহ।",
   "{role} screens": "{role} স্ক্রিন",
-  "Click the screens above to look around. This is a preview with sample data.": "ঘুরে দেখতে উপরের স্ক্রিনগুলোতে ক্লিক করুন। এটি নমুনা ডেটাসহ একটি প্রিভিউ।"
+  "Click the screens above to look around. This is a preview with sample data.": "ঘুরে দেখতে উপরের স্ক্রিনগুলোতে ক্লিক করুন। এটি নমুনা ডেটাসহ একটি প্রিভিউ।",
+  "Could not start the card payment. Please try again.": "কার্ডে পেমেন্ট শুরু করা যায়নি। আবার চেষ্টা করুন।",
+  "Opening secure checkout…": "নিরাপদ পেমেন্ট পেজ খুলছে…",
+  "Pay by card": "কার্ডে পেমেন্ট করুন",
+  "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "ধন্যবাদ! আপনার কার্ড পেমেন্ট সফল হয়েছে। এক মিনিটের মধ্যে ইনভয়েসটি পরিশোধিত দেখাবে।",
+  "Payment cancelled. Nothing was charged.": "পেমেন্ট বাতিল হয়েছে। কোনো টাকা কাটা হয়নি।",
+  "Card payments are handled by Stripe. VolunTrack never sees your card number.": "কার্ড পেমেন্ট Stripe সামলায়। VolunTrack কখনো আপনার কার্ড নম্বর দেখে না।",
+  "Paid by card": "কার্ডে পরিশোধিত"
 }

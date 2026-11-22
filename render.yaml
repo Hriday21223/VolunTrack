@@ -46,3 +46,12 @@ services:
       # named CRON_SECRET; leave unset to disable the endpoint.
       - key: CRON_SECRET
         sync: false
+      # Card payments for invoices through Stripe Checkout (#899, server/stripe.js).
+      # Off until both are set: the secret key (sk_live_… / sk_test_…) and the
+      # signing secret (whsec_…) of a webhook pointed at
+      # /api/invoices/stripe-webhook with checkout.session.completed and
+      # checkout.session.async_payment_succeeded.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

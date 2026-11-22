@@ -1628,6 +1628,9 @@ export async function initSchema() {
   // instead of discount_code, never alongside it: an invoice carries the join
   // offer or a referral credit, not both compounded.
   try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS referral_id TEXT`) } catch {}
+  // Card payments (#899): how it was paid ('manual' | 'card') and Stripe's checkout id.
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paid_via TEXT`) } catch {}
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS card_session_id TEXT`) } catch {}
   // The customer's own purchase order number. A school's accounts-payable
   // office matches an invoice to the PO it approved, and often will not pay
   // one that doesn't quote it.
