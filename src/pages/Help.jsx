@@ -91,6 +91,7 @@ const FAQ_ITEMS = [
   { q: tr('As a task maker, can I approve many volunteers\' hours at once?'), a: tr('Yes. On My Tasks, under My Students, tick the hours waiting for you, or tick Select all pending. Tap Approve selected, sign once, and confirm: your signature goes on every entry you picked. Reject selected works the same way without a signature. Each entry is checked on its own, so if one can\'t be changed (for example, a supervisor already rejected it), the rest still go through and a summary such as "Approved 8, 1 failed" tells you what happened. Each volunteer gets a notification, just as when you approve one at a time.') },
   { q: tr('Can I ask an organizer a question before I sign up?'), a: tr('Yes. On Opportunities, open Questions under a task, type your question (up to 300 characters) and tap Ask. The organizer gets a notification and answers on My Tasks, and you get a notification when they do. Until it\'s answered, only you and the organizer can see your question. Once answered, the question and answer are shown to everyone who can see the task, but never your name: only the organizer sees your first name and last initial. You can have up to 3 questions waiting on one task, and delete your own question at any time. Organizers can edit their answer, hide a question or delete it. Cancelled tasks are read-only.') },
   { q: tr('My school requires signatures — what do I do?'), a: tr('Log Hours shows a Signatures section with exactly what your school asks for: your own signature, your supervisor\'s (in person or by a link you email), or your school\'s form. If it\'s a Google Form, fill it in right on the page and tick the box; for any other form, download it, get it signed, and upload a photo or scan.') },
+  { q: tr('Can I add a link instead of uploading my proof?'), a: tr('Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.') },
   { q: tr('I volunteer at the same place every week. Do I have to type it all again?'), a: tr('No. Log Hours shows a Log again card with your last few regular activities. Tap one and the activity, times, location, organization and supervisor are copied into a new entry dated today. Check the times and save. Signatures and proof files aren\'t copied, because each visit needs its own.') },
   { q: tr('Can I log hours for a past date?'), a: tr('Yes. Set any past date when you add the entry — there\'s no cutoff. If you tend to forget, the Reminders page lets you schedule recurring nudges, delivered as browser notifications and in-app toasts.') },
   { q: tr('How do I sync across devices?'), a: tr('Sign in on the new device with your email and password and your hours come with you. To skip typing your password, go to Settings on a signed-in device and generate a sync PIN (the card is called Mobile sync PIN on a computer, Laptop sync PIN on a phone). On the new device, choose Use sync PIN on the login page and enter the 5-digit code, or scan its QR code. A sync PIN works once and expires after 15 minutes.') },
@@ -194,7 +195,7 @@ function QuickStart() {
           <Step icon={BookOpen} label={tr('Category')} description={tr('Education, Environment, Health, Community, and more.')} />
           <Step icon={MapPin} label={tr('Location')} description={tr('Where you volunteered.')} />
           <Step icon={UserCheck} label={tr('Supervisor name and email')} description={tr('They get a link to verify these hours.')} />
-          <Step icon={FileText} label={tr('Proof')} description={tr('A photo of a sign-in sheet, a thank-you email or another document.')} />
+          <Step icon={FileText} label={tr('Proof')} description={tr('A photo of a sign-in sheet, a thank-you email or another document. At a school, you can paste a link instead, such as a Google Drive file shared with “Anyone with the link”.')} />
         </div>
         <p className="mt-3 text-sm">{tr('Your school can change which of these it asks for.')}</p>
         <p className="mt-3">{tr('Click Save and you\'re done. Your hours appear on the dashboard, calendar, and reports instantly.')}</p>
@@ -529,10 +530,12 @@ function SchoolHandbook() {
         <p>{tr('Your payment status is shown at the top of the dashboard. Pricing is set by the VolunTrack admin based on your school\'s size and usage.')}</p>
         <div className="mt-3 space-y-2">
           <Step icon={Bell} label={tr('Payment notices')} description={tr('The admin may send notices with an amount and due date.')} />
-          <Step icon={CreditCard} label={tr('Invoices')} description={tr('Invoices arrive by email; download each as a PDF from the dashboard.')} />
+          <Step icon={CreditCard} label={tr('Invoices')} description={tr('Invoices arrive by email and stay on the dashboard. The PDF says Not paid yet until your payment is recorded, then Paid; it lists any fees and tax on their own lines.')} />
+          <Step icon={CreditCard} label={tr('Coupons')} description={tr('A code from VolunTrack for your account only: money off your next invoice, or free months. Type it under Have a coupon? in School setup → Billing.')} />
           <Step icon={Calendar} label={tr('Due-date countdown')} description={tr('A banner appears within 10 days of a set deadline.')} />
         </div>
         <p className="mt-3">{tr('If an account is unpaid and locked, the dashboard stays restricted until the admin verifies payment.')}</p>
+        <p className="mt-3">{tr('If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.')}</p>
         <p className="mt-3">{tr("Free trials: a code from VolunTrack can start a free trial. While it lasts, your school counts as paid and the top of the dashboard shows when it ends; you also get an email 7 days and 1 day before. When it ends, a club that upgraded and has 50 students or fewer goes back to the free club plan; otherwise the dashboard is locked until payment is verified. Each school gets one free trial.")}</p>
       </Section>
     </div>
@@ -609,6 +612,7 @@ function OrganizationHandbook() {
           <Step icon={CreditCard} label={tr('Unpaid / Pending review / Paid / Rejected')} description={tr('Payment status is managed by the VolunTrack admin, not the organization.')} />
           <Step icon={Users} label={tr('Student count')} description={tr('How many students have linked to that school so far.')} />
         </div>
+        <p className="mt-3">{tr('Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.')}</p>
       </Section>
 
       <Section title={tr('Invites Tab')}>

@@ -25,7 +25,7 @@ export default function Terms() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Terms of Service</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 10, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 22, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Acceptance of Terms">
@@ -48,13 +48,15 @@ export default function Terms() {
 
           <Section title="School and Organization Accounts">
             <p>Schools and organizations may access student-submitted logs, proof uploads, and hour totals for the purpose of review and verification. Parents may link to a student account, in read-only form, with the student's consent via a link code.</p>
+            <p className="mt-2">A school may limit what each of its co-admins can see, for example to the students a counselor looks after, by last name or grade. A co-admin may narrow their own view the same way, but never widen it.</p>
             <p className="mt-2">A school or organization may set its own rules for how its students log hours — for example, required fields, signatures or its own forms, or allowed sign-in methods — and may connect its own file storage, in which case files uploaded there are held and governed by that school. A student can move to another school; their record transfers only once the receiving school accepts.</p>
             <p className="mt-2">An organization may send a partner on its partner list a link to confirm students&apos; hours logged at that partner. It must send links only to the partner&apos;s real contact, and the partner may use the link only to confirm or send back those hours. A school may limit a co-admin to the students in the clubs they advise.</p>
           </Section>
 
           <Section title="Fees and Payment">
-            <p>Student, volunteer, and parent accounts are free. A free club, for one club or class with an adviser, one co-adviser and up to 50 students, is also free and is never billed. Whole-school and organization accounts are paid: we send an invoice by email showing the amount, the billing period, and the due date, along with how to pay. Until a paid school&apos;s payment is verified, its students&apos; submissions and its management tools may be paused; a free club is never paused for payment.</p>
-            <p className="mt-2">We may offer discounts, such as a promotional code or a referral credit for recommending VolunTrack to another school. An offer applies only on the terms stated when it is made, may be limited in number or time, and cannot be combined with another offer on the same invoice or exchanged for cash. The price and any discount on an invoice are fixed once that invoice is sent. Questions about an invoice go to the contact email address below.</p>
+            <p>Student, volunteer, and parent accounts are free. A free club, for one club or class with an adviser, one co-adviser and up to 50 students, is also free and is never billed. Whole-school and organization accounts are paid: we send an invoice by email showing the amount, the billing period, and the due date, along with how to pay, and the same invoice is on the account&apos;s dashboard, marked as not paid yet until we record the payment. An invoice may list fees, such as a sign-up fee, and taxes where they apply, each on its own line.</p>
+            <p className="mt-2">Until a paid school&apos;s payment is verified, its students&apos; submissions and its management tools may be paused. An organization pays for the schools that belong to it, which may be priced per school. Until the organization&apos;s payment is verified, every school in it, including a free club, may be paused the same way. A free club that doesn&apos;t belong to an organization is never paused for payment.</p>
+            <p className="mt-2">We may offer discounts, such as a promotional code, a referral credit for recommending VolunTrack to another school, or a coupon we give to a particular school or organization. An offer applies only on the terms stated when it is made, may be limited in number or time, and cannot be combined with another offer on the same invoice, transferred, or exchanged for cash. A coupon made for one account works only for that account, once, and before any expiry date it carries. The price and any discount on an invoice are fixed once that invoice is sent. Questions about an invoice go to the contact email address below.</p>
           </Section>
 
           <Section id="refunds" title="Cancellation and Refunds">

@@ -3735,5 +3735,20 @@ export default {
   "Which grades are in your club?": "クラブにはどの学年がいますか？",
   "Which grades does your school have?": "学校にはどの学年がありますか？",
   "Grades": "学年",
-  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "例：9年生と10年生だけ。生徒はこれらの学年だけを選べ、カウンセラーもこの中から選びます。すべての学年なら空欄のままに。あとで「学校の設定 → 要件」で変更できます。"
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "例：9年生と10年生だけ。生徒はこれらの学年だけを選べ、カウンセラーもこの中から選びます。すべての学年なら空欄のままに。あとで「学校の設定 → 要件」で変更できます。",
+  "An organization pays for its schools. If it hasn’t paid, its schools, including free clubs, can be paused until it does.": "組織は所属校の料金を支払います。未払いの場合、所属校（無料クラブを含む）は支払いまで一時停止されることがあります。",
+  "Invoices can list fees (such as a sign-up fee) and taxes, each on its own line, and show on your dashboard as not paid yet until we record the payment.": "請求書には手数料（登録料など）や税金がそれぞれ別の行で記載されることがあり、支払いを記録するまでダッシュボードに未払いと表示されます。",
+  "We may give a school or organization a coupon that only it can use, once, before any expiry date.": "学校や組織に、その学校・組織だけが有効期限前に1回だけ使えるクーポンを差し上げることがあります。",
+  "A school can limit a co-admin, such as a counselor, to some students by last name or grade; we keep only those ranges.": "学校は共同管理者（カウンセラーなど）を名字や学年で一部の生徒に限定できます。保存するのはその範囲だけです。",
+  "Students at a school can add a link to their proof (for example a Google Drive file) that their school opens; anyone with the link can open the file if it’s shared that way.": "学校の生徒は、学校が開く証明のリンク（Google ドライブのファイルなど）を追加できます。リンクで共有されている場合、リンクを知っている人は誰でもファイルを開けます。",
+  "Organization accounts are billed by invoice, which can be priced per school; until a payment is verified, your schools may be paused.": "組織アカウントは請求書で請求され、学校ごとの料金になることがあります。支払いが確認されるまで、所属校が一時停止されることがあります。",
+  "Paid school and organization accounts are billed by invoice; until a payment is verified, some tools may be paused. A free club stays free, but a school or club in an organization is paused while the organization hasn’t paid.": "有料の学校・組織アカウントは請求書で請求されます。支払いが確認されるまで一部の機能が停止されることがあります。無料クラブは無料のままですが、組織に所属する学校やクラブは組織が未払いの間は停止されます。",
+  "A photo of a sign-in sheet, a thank-you email or another document. At a school, you can paste a link instead, such as a Google Drive file shared with “Anyone with the link”.": "出席表の写真、お礼のメール、その他の書類。学校に参加していれば、代わりにリンクを貼ることもできます（「リンクを知っている全員」と共有した Google ドライブのファイルなど）。",
+  "Invoices arrive by email and stay on the dashboard. The PDF says Not paid yet until your payment is recorded, then Paid; it lists any fees and tax on their own lines.": "請求書はメールで届き、ダッシュボードにも残ります。支払いが記録されるまで PDF には「未払い」、その後は「支払い済み」と表示され、手数料や税金は別の行に記載されます。",
+  "Coupons": "クーポン",
+  "A code from VolunTrack for your account only: money off your next invoice, or free months. Type it under Have a coupon? in School setup → Billing.": "あなたのアカウント専用の VolunTrack のコード：次の請求書の割引、または無料の月数。「学校の設定 → 請求」の「クーポンをお持ちですか？」に入力してください。",
+  "If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.": "学校が組織に所属している場合は組織が支払い、組織が未払いの間は学校が一時停止されます。その場合、学校側が支払うものはありません。",
+  "Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.": "組織は所属校の料金を支払います（学校ごとの料金の場合もあります）。支払いが確認されるまで所属校は一時停止されます。その間、「学校」タブに支払い方法、請求書、クーポン入力欄が表示されます。",
+  "Can I add a link instead of uploading my proof?": "証明をアップロードする代わりにリンクを追加できますか？",
+  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "はい、学校に参加した後なら可能です。「時間を記録」の「証明」に Google ドライブ、OneDrive、Dropbox、iCloud、Box のリンクを貼り、ファイルの共有を「インターネット上でこのリンクを知っている人なら誰でも閲覧できます」にしてください。そうしないと学校が開けません。"
 }

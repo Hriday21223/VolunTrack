@@ -9,15 +9,17 @@
 // applies, and Privacy lists the new languages; nothing new to agree to either.
 // 2026-11-11: Privacy says an under-13's review keeps no name and needs a
 // parent's code to be featured (more protective; nothing new to agree to).
-export const LEGAL_VERSION = '2026-11-03'
+// 2026-11-22: billing (an organization pays for its schools, which can be
+// paused, clubs included; fees and taxes on invoices; coupons), counselor
+// caseloads and proof links. People are asked to agree again.
+export const LEGAL_VERSION = '2026-11-22'
 
 export const LEGAL_CHANGES = [
-  'Event check-in and check-out: we keep your check-in and check-out times, and kiosk and check-out PINs are stored scrambled.',
-  'If you tick when you are usually free, only you see it.',
-  "Parents can confirm a young child's hours (kindergarten to 5th grade); schools see who confirmed.",
-  'Clubs and assignments: advisers see your hours and only whether you wrote a reflection, never what it says.',
-  "Partner sign-off: a district's partner nonprofit can confirm hours logged with them and sees only your first name, last initial, school, activity, date and hours.",
-  "Don't check in or out for someone else or share a PIN; parents and partners confirm only what they know happened.",
+  "An organization pays for its schools. If it hasn’t paid, its schools, including free clubs, can be paused until it does.",
+  "Invoices can list fees (such as a sign-up fee) and taxes, each on its own line, and show on your dashboard as not paid yet until we record the payment.",
+  "We may give a school or organization a coupon that only it can use, once, before any expiry date.",
+  "A school can limit a co-admin, such as a counselor, to some students by last name or grade; we keep only those ranges.",
+  "Students at a school can add a link to their proof (for example a Google Drive file) that their school opens; anyone with the link can open the file if it’s shared that way.",
 ]
 
 // "The short version" shown above the "I agree" box at sign-up (#689), so the
@@ -63,7 +65,7 @@ export const LEGAL_SUMMARY_ORGANIZER = [
 
 export const LEGAL_SUMMARY_ORG = [
   "You see your schools' students' hours and progress only to review and verify their service. Keep them private and use them for nothing else.",
-  'Organization accounts are billed by invoice; until a payment is verified, some tools may be paused.',
+  "Organization accounts are billed by invoice, which can be priced per school; until a payment is verified, your schools may be paused.",
   "Send partner sign-off links only to a partner's real contact, and approve or sign hours only when you believe they are right.",
   "We never sell anyone's data or show ads. Students, parents and volunteers keep their own free accounts.",
   'If these terms change, we will show you what changed and ask you to agree again.',
@@ -71,7 +73,7 @@ export const LEGAL_SUMMARY_ORG = [
 
 export const LEGAL_SUMMARY_SCHOOL = [
   "You see students' hours, documents and progress only to review and verify their service. Keep them private and use them for nothing else.",
-  'Paid school and organization accounts are billed by invoice; until a payment is verified, some tools may be paused. A free club stays free.',
+  "Paid school and organization accounts are billed by invoice; until a payment is verified, some tools may be paused. A free club stays free, but a school or club in an organization is paused while the organization hasn’t paid.",
   'Approve or sign hours only when you believe they are right.',
   'We never sell anyone\'s data or show ads. Students, parents and volunteers keep their own free accounts.',
   'If these terms change, we will show you what changed and ask you to agree again.',

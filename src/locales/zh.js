@@ -3736,5 +3736,20 @@ export default {
   "Which grades are in your club?": "你的社团有哪些年级？",
   "Which grades does your school have?": "你的学校有哪些年级？",
   "Grades": "年级",
-  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "例如只有 9 年级和 10 年级。学生只能选择这些年级，辅导员也从中选择。留空表示所有年级；之后可在“学校设置 → 要求”中更改。"
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "例如只有 9 年级和 10 年级。学生只能选择这些年级，辅导员也从中选择。留空表示所有年级；之后可在“学校设置 → 要求”中更改。",
+  "An organization pays for its schools. If it hasn’t paid, its schools, including free clubs, can be paused until it does.": "组织为其学校付费。如果尚未付款，其学校（包括免费社团）可能会被暂停，直到付款为止。",
+  "Invoices can list fees (such as a sign-up fee) and taxes, each on its own line, and show on your dashboard as not paid yet until we record the payment.": "发票可能列出费用（例如注册费）和税款，每项单独一行，并在你的面板上显示为尚未付款，直到我们记录付款。",
+  "We may give a school or organization a coupon that only it can use, once, before any expiry date.": "我们可能会给某所学校或组织一张只有它能使用的优惠券，只能用一次，并须在到期日前使用。",
+  "A school can limit a co-admin, such as a counselor, to some students by last name or grade; we keep only those ranges.": "学校可以将共同管理员（如辅导员）限定为按姓氏或年级划分的部分学生；我们只保存这些范围。",
+  "Students at a school can add a link to their proof (for example a Google Drive file) that their school opens; anyone with the link can open the file if it’s shared that way.": "学校的学生可以添加证明材料的链接（例如 Google Drive 文件）供学校打开；如果这样共享，任何拥有链接的人都能打开该文件。",
+  "Organization accounts are billed by invoice, which can be priced per school; until a payment is verified, your schools may be paused.": "组织账户按发票计费，可按学校数量定价；在付款核实之前，你的学校可能会被暂停。",
+  "Paid school and organization accounts are billed by invoice; until a payment is verified, some tools may be paused. A free club stays free, but a school or club in an organization is paused while the organization hasn’t paid.": "付费的学校和组织账户按发票计费；在付款核实之前，部分工具可能会被暂停。免费社团仍然免费，但属于某个组织的学校或社团会在该组织未付款期间被暂停。",
+  "A photo of a sign-in sheet, a thank-you email or another document. At a school, you can paste a link instead, such as a Google Drive file shared with “Anyone with the link”.": "签到表照片、感谢邮件或其他文件。加入学校后，也可以改为粘贴链接，例如以“知道链接的任何人”方式共享的 Google Drive 文件。",
+  "Invoices arrive by email and stay on the dashboard. The PDF says Not paid yet until your payment is recorded, then Paid; it lists any fees and tax on their own lines.": "发票通过电子邮件发送，并保留在面板中。在记录你的付款之前，PDF 显示“尚未付款”，之后显示“已付款”；任何费用和税款都会单独列出。",
+  "Coupons": "优惠券",
+  "A code from VolunTrack for your account only: money off your next invoice, or free months. Type it under Have a coupon? in School setup → Billing.": "VolunTrack 专为你的账户提供的代码：下一张发票减免金额或免费月份。在“学校设置 → 账单”的“有优惠券吗？”中输入。",
+  "If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.": "如果你的学校属于某个组织，由组织为学校付费；组织未付款期间，你的学校会被暂停。此时你无需付款。",
+  "Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.": "你的组织为其学校付费，有时按学校数量定价。在付款核实之前，你的学校会被暂停。此时“学校”标签页会显示付款方式、你的发票和优惠券输入框。",
+  "Can I add a link instead of uploading my proof?": "我可以添加链接而不上传证明吗？",
+  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "可以，前提是你已加入学校。在“记录时数”的“证明”下粘贴来自 Google Drive、OneDrive、Dropbox、iCloud 或 Box 的链接，并将文件共享设置为“互联网上知道此链接的任何人都可以查看”，否则学校无法打开。"
 }

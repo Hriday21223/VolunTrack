@@ -31,7 +31,7 @@ export default function Privacy() {
 
       <main className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 11, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 22, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -130,6 +130,9 @@ export default function Privacy() {
             <p>Where your school or organization has connected its own storage, both the proof you attach to an entry and the reports you submit to your school upload straight from your device to <em>their</em> storage. We keep only a reference to the file and never hold the file itself. Those files are then controlled by that school, under their own policies, and we cannot delete them for you.</p>
             <p className="mt-2">Where no such storage is connected, a proof file you attach stays on your device, and a report you submit to your school is stored by us until you or the school deletes it.</p>
             <p className="mt-2">Once you have joined your school, instead of attaching a file you can paste a link to your proof in Google Drive, OneDrive, Dropbox, iCloud or Box. We store only the link, with the entry, and show it to the advisers at your school who check your hours. The file stays where you keep it, under that service&apos;s sharing settings. For your school to open it, it has to be shared as &ldquo;Anyone on the internet with the link can view&rdquo;, which means anyone who has the link can open it. Put the link only on your entry, and don&apos;t post it anywhere else. Removing the link from the entry deletes it from VolunTrack.</p>
+            <p className="mt-2"><strong>Counselors and other co-admins.</strong> A school can limit a co-admin to some of its students, for example a counselor&apos;s students by last name or grade, and a co-admin can narrow their own view the same way. We store only the last-name ranges and grades, on the co-admin&apos;s account. It never lets anyone see more than they could before.</p>
+            <p className="mt-2"><strong>School grades.</strong> When a school or club signs up, it can say which grades it has. We keep that list with the school, and students joining can pick only those grades.</p>
+            <p className="mt-2"><strong>Coupons.</strong> When we give a school or organization a coupon, we store a scrambled copy of the code (only its last four characters in readable form), what it gives, and when and by which account it was used, so it can be used only once.</p>
           </Section>
 
           <Section title="Analytics">
