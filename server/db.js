@@ -2500,6 +2500,9 @@ export async function initSchema() {
   // co-admin is limited to (server/nameRange.js), and when they answered the
   // first-time "Are you a counselor?" question.
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS scope_ranges JSONB') } catch {}
+  // The grades a school said it has at sign-up, when an organization invited
+  // it (#976); see resolvePolicy's schoolGradesList.
+  try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS grades TEXT[]') } catch {}
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS scope_grades TEXT[]') } catch {}
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS caseload_asked_at TIMESTAMPTZ') } catch {}
   // Club assignments (#675): a teacher asks a club for hours by a date; students

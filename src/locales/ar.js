@@ -3731,5 +3731,9 @@ export default {
   "Can a counselor see only their own students?": "هل يمكن للمرشد رؤية طلابه فقط؟",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "نعم. يُسأل كل مسؤول مشارك بعد انضمامه إن كان مرشدًا وأي أسماء عائلة (وصفوف) يساعد، مثل من A إلى Chaw. بعدها يرى ويوافق على هؤلاء الطلاب فقط. يمكن للمسؤول الرئيسي تغيير ذلك في أي وقت عبر طلابه بجانب المسؤول المشارك في إعداد المدرسة ← المسؤولون المشاركون، ويمكنه إعطاء المرشد عدة نطاقات.",
   "Add the last names (or grades) you help with.": "أضف أسماء العائلة (أو الصفوف) التي تساعدها.",
-  "This student isn’t one of yours.": "هذا الطالب ليس من طلابك."
+  "This student isn’t one of yours.": "هذا الطالب ليس من طلابك.",
+  "Which grades are in your club?": "ما الصفوف في ناديك؟",
+  "Which grades does your school have?": "ما الصفوف في مدرستك؟",
+  "Grades": "الصفوف",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "مثلًا الصفان التاسع والعاشر فقط. لن يختار الطلاب إلا هذه الصفوف، ويختار المرشدون منها. اتركه فارغًا لكل الصفوف؛ يمكنك تغييره لاحقًا في إعداد المدرسة ← المتطلبات."
 }

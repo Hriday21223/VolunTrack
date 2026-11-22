@@ -3731,5 +3731,9 @@ export default {
   "Can a counselor see only their own students?": "Um orientador pode ver só os próprios alunos?",
   "Yes. A co-admin is asked after joining whether they're a counselor and which last names (and grades) they help, for example A to Chaw. They then see and approve only those students. The school's main admin can change it any time with Their students next to the co-admin in School setup → Co-admins, and can give one counselor several ranges.": "Sim. Depois de entrar, cada coadministrador é perguntado se é orientador e quais sobrenomes (e séries) atende, por exemplo de A a Chaw. Ele passa a ver e aprovar só esses alunos. O administrador principal pode mudar isso quando quiser em Alunos dele(a), ao lado do coadministrador em Configuração da escola → Coadministradores, e pode dar vários intervalos a um orientador.",
   "Add the last names (or grades) you help with.": "Adicione os sobrenomes (ou séries) que você atende.",
-  "This student isn’t one of yours.": "Este aluno não é um dos seus."
+  "This student isn’t one of yours.": "Este aluno não é um dos seus.",
+  "Which grades are in your club?": "Quais séries há no seu clube?",
+  "Which grades does your school have?": "Quais séries sua escola tem?",
+  "Grades": "Séries",
+  "For example only 9th and 10th. Students can pick only these grades, and counselors pick from them. Leave it empty for every grade; you can change it later in School setup → Requirements.": "Por exemplo, só 9º e 10º. Os alunos só poderão escolher essas séries, e os orientadores escolhem entre elas. Deixe vazio para todas as séries; você pode mudar depois em Configuração da escola → Requisitos."
 }
