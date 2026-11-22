@@ -105,7 +105,7 @@ const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 
 
 // Draws one invoice on the current page of `doc`. `stamp` is an optional
 // coloured word beside INVOICE: { text, color: [r, g, b] }.
-function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt }) {
+function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, accountCode, amount, subtotal, discountLabel, billingPeriod, description, dueDate, createdAt, charges }) {
   if (logo) {
     try { doc.addImage(logo, 'PNG', 40, 20, LOGO_W, LOGO_H) } catch { /* malformed data URL — skip logo, keep header text */ }
   }
@@ -115,9 +115,16 @@ function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, ac
   doc.setTextColor(90)
   doc.text('INVOICE', 40, 70)
   if (stamp) {
-    doc.setFont('helvetica', 'bold').setTextColor(...stamp.color)
+    // The invoice's status as of the moment it's drawn (#970): NOT PAID YET,
+    // PAID on <date>, VOID, or PREVIEW - NOT SENT.
+    doc.setFont('helvetica', 'bold').setFontSize(13).setTextColor(...stamp.color)
     doc.text(stamp.text, 100, 70)
-    doc.setFont('helvetica', 'normal')
+    if (stamp.detail) {
+      const x = 100 + doc.getTextWidth(stamp.text) + 6
+      doc.setFont('helvetica', 'normal').setFontSize(10)
+      doc.text(stamp.detail, x, 70)
+    }
+    doc.setFont('helvetica', 'normal').setFontSize(11)
   }
   doc.setTextColor(0)
 
@@ -144,12 +151,17 @@ function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, ac
   // A discounted invoice has to show its own arithmetic: list price, what came
   // off, and what is owed. Without a discount the table stays the single line
   // it has always been.
-  const discounted = Boolean(discountLabel) && Number(subtotal) > Number(amount)
-  const listPrice = discounted ? Number(subtotal) : Number(amount)
+  // Fee lines and tax (#968) come after the price; the discount is on the
+  // price alone, so it's measured against priceTotal, not the total owed.
+  const priceTotal = charges ? Number(charges.priceTotal) : Number(amount)
+  const discounted = Boolean(discountLabel) && Number(subtotal) > priceTotal
+  const listPrice = discounted ? Number(subtotal) : priceTotal
   const body = [[description || 'VolunTrack subscription', `$${listPrice.toFixed(2)}${periodLabel ? ' ' + periodLabel : ''}`]]
   if (discounted) {
-    body.push([discountLabel, `-$${(Number(subtotal) - Number(amount)).toFixed(2)}`])
+    body.push([discountLabel, `-$${(Number(subtotal) - priceTotal).toFixed(2)}`])
   }
+  for (const f of charges?.fees || []) body.push([f.label, `$${Number(f.amount).toFixed(2)}`])
+  if (charges?.taxPercent) body.push([`Tax (${Number(charges.taxPercent)}%)`, `$${Number(charges.taxAmount).toFixed(2)}`])
   autoTable(doc, {
     startY: accountCode ? 164 : 150,
     head: [['Description', 'Amount']],
@@ -169,7 +181,7 @@ export async function generateInvoicePDF({ preview = false, returnBlob = false, 
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
   // The admin's look before sending (#942): it must not pass for a real invoice.
-  drawInvoice(doc, logo, { ...invoice, stamp: preview ? { text: 'PREVIEW - NOT SENT', color: [190, 40, 40] } : null })
+  drawInvoice(doc, logo, { ...invoice, stamp: preview ? { text: 'PREVIEW - NOT SENT', color: [190, 40, 40] } : statusStamp(invoice) })
   if (returnBlob) return doc.output('blob')
   doc.save(`${invoice.invoiceNumber}.pdf`)
 }
@@ -177,16 +189,28 @@ export async function generateInvoicePDF({ preview = false, returnBlob = false, 
 const INVOICE_STATUS_STAMPS = {
   paid: { text: 'PAID', color: [46, 125, 50] },
   void: { text: 'VOID', color: [190, 40, 40] },
-  sent: { text: 'UNPAID', color: [180, 110, 0] },
+  sent: { text: 'NOT PAID YET', color: [180, 110, 0] },
+}
+
+// The status line for an invoice row (#970). The PDF is drawn when it's opened,
+// so it always shows the status VolunTrack has now: after the payment is
+// recorded, the same invoice opens as PAID. Null when there's no status.
+function statusStamp({ status, paidAt, dueDate }) {
+  const base = INVOICE_STATUS_STAMPS[status]
+  if (!base) return null
+  const day = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  if (status === 'paid' && paidAt) return { ...base, detail: `on ${day(paidAt)}` }
+  if (status === 'sent' && dueDate) return { ...base, detail: `· due ${fmtDate(String(dueDate).slice(0, 10))}` }
+  return base
 }
 
 /** Every invoice in one PDF, one per page, each marked with its status (#944). Returns a blob. */
 export async function generateInvoicesPDFBlob(invoices) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
-  invoices.forEach(({ status, ...invoice }, i) => {
+  invoices.forEach((invoice, i) => {
     if (i > 0) doc.addPage()
-    drawInvoice(doc, logo, { ...invoice, stamp: INVOICE_STATUS_STAMPS[status] || null })
+    drawInvoice(doc, logo, { ...invoice, stamp: statusStamp(invoice) })
   })
   return doc.output('blob')
 }

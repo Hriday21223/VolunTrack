@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, Eye, ExternalLink, Megaphone, Flag } from 'lucide-react'
+import { Ticket, UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, Eye, ExternalLink, Megaphone, Flag } from 'lucide-react'
+import CouponsDialog from '@/components/CouponsDialog.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -18,7 +19,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, setIncidentPublished, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
 import { generateInvoicePDF, generateInvoicesPDFBlob, poLabel } from '@/lib/export.js'
-import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
+import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES, readCharges, invoiceCharges, MAX_FEE_LINES } from '@promo'
 import { fmtDate } from '@/utils/date.js'
 import { parseISO, format } from 'date-fns'
 import { csvCell } from '@/lib/csv.js'
@@ -180,6 +181,18 @@ function VisibilityBadge({ published }) {
     : <span className="text-[0.625rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-earth-700 dark:text-earth-200 bg-earth-200 dark:bg-earth-700">private</span>
 }
 
+// An organization priced per school (#964): its price times every school in it,
+// e.g. { total: '720.00', label: '8 schools × $90.00 = $720.00' }. Null when the
+// price isn't per school or isn't a number.
+function orgPerSchoolTotal(org) {
+  if (!org?.price_per_school) return null
+  const each = Number(String(org.price_amount || '').replace(/[^0-9.]/g, ''))
+  if (!Number.isFinite(each) || each <= 0) return null
+  const n = Number(org.school_count) || 0
+  const total = (Math.round(each * n * 100) / 100).toFixed(2)
+  return { total, label: `${n} school${n === 1 ? '' : 's'} × $${each.toFixed(2)} = $${total}` }
+}
+
 export default function Admin() {
   const nav = useNavigate()
   const { tab: tabParam } = useParams()
@@ -236,6 +249,8 @@ export default function Admin() {
   const [showNotifyModal, setShowNotifyModal] = useState(false)
   const [orgPriceModal, setOrgPriceModal] = useState(null) // org id
   const [orgPriceAmountDraft, setOrgPriceAmountDraft] = useState('')
+  // The amount is per school (#964): invoices multiply it by the organization's schools.
+  const [orgPricePerSchoolDraft, setOrgPricePerSchoolDraft] = useState(false)
   const [orgPricePeriodDraft, setOrgPricePeriodDraft] = useState('monthly')
   const [savingOrgPrice, setSavingOrgPrice] = useState(false)
   const [orgDueDateModal, setOrgDueDateModal] = useState(null) // org id
@@ -255,6 +270,9 @@ export default function Admin() {
   const [invoiceDescriptionDraft, setInvoiceDescriptionDraft] = useState('')
   const [invoiceDueDateDraft, setInvoiceDueDateDraft] = useState('')
   const [invoicePoNumberDraft, setInvoicePoNumberDraft] = useState('')
+  // Fee lines ({ label, amount }) and a tax rate for this invoice (#968).
+  const [invoiceFeesDraft, setInvoiceFeesDraft] = useState([])
+  const [invoiceTaxDraft, setInvoiceTaxDraft] = useState('')
   const [sendingInvoice, setSendingInvoice] = useState(false)
   // The PDF open in the preview (#942): a draft from the Send invoice window, or
   // an invoice already sent, from Payment history.
@@ -302,6 +320,10 @@ export default function Admin() {
   const [applyPromoToInvoice, setApplyPromoToInvoice] = useState(false)
   // The event-code discount (#907), when this account has one left.
   const [applyEventToInvoice, setApplyEventToInvoice] = useState(false)
+  // A percent coupon the account redeemed, waiting for this invoice (#966).
+  const [applyCouponToInvoice, setApplyCouponToInvoice] = useState(false)
+  // { entityType, entity } whose Coupons dialog is open (#966).
+  const [couponsFor, setCouponsFor] = useState(null)
   // A referral credit this customer has earned, chosen instead of the join
   // offer — the server rejects both on one invoice.
   const [selectedCreditId, setSelectedCreditId] = useState('')
@@ -701,10 +723,10 @@ export default function Admin() {
       const res = await fetch(`${apiUrl}/organization/admin/${id}/price`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount: orgPriceAmountDraft.trim(), period: orgPricePeriodDraft }),
+        body: JSON.stringify({ amount: orgPriceAmountDraft.trim(), period: orgPricePeriodDraft, perSchool: orgPricePerSchoolDraft }),
       })
       if (!res.ok) throw new Error('Failed')
-      setOrgPriceModal(null); setOrgPriceAmountDraft(''); setOrgPricePeriodDraft('monthly'); loadOrganizations()
+      setOrgPriceModal(null); setOrgPriceAmountDraft(''); setOrgPricePeriodDraft('monthly'); setOrgPricePerSchoolDraft(false); loadOrganizations()
       setToastMessage('Price saved'); setToast(true)
     } catch { setToastMessage('Failed to save price'); setToast(true) } finally { setSavingOrgPrice(false) }
   }
@@ -840,25 +862,30 @@ export default function Admin() {
   const invoiceTotals = useMemo(() => {
     const base = Number(invoiceAmountDraft)
     if (!Number.isFinite(base) || base <= 0) return null
+    if (applyCouponToInvoice && invoicePromo?.coupon) return applyPromoAmount(base, Number(invoicePromo.coupon.percent_off))
     const credit = (invoicePromo?.credits || []).find((c) => c.id === selectedCreditId)
     if (credit) return applyPromoAmount(base, Number(credit.percent_off))
     if (applyEventToInvoice && invoicePromo?.eventOffer) return applyPromoAmount(base, invoicePromo.eventOffer.percentOff)
     if (!applyPromoToInvoice || !invoicePromoCheck.eligible) return null
     return applyPromoAmount(base, invoicePromo.offer.percentOff)
-  }, [invoiceAmountDraft, applyPromoToInvoice, applyEventToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
+  }, [invoiceAmountDraft, applyPromoToInvoice, applyEventToInvoice, applyCouponToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
 
   const openInvoiceModal = (entityType, entity) => {
-    const numericAmount = (entity.price_amount || '').replace(/[^0-9.]/g, '')
+    const perSchool = entityType === 'organization' ? orgPerSchoolTotal(entity) : null
+    const numericAmount = perSchool ? perSchool.total : (entity.price_amount || '').replace(/[^0-9.]/g, '')
     setInvoiceModal({ entityType, entityId: entity.id, entityName: entity.name, accountCode: entity.account_code })
     setInvoiceAmountDraft(numericAmount)
     setInvoiceBillingPeriodDraft(entity.price_period || 'monthly')
-    setInvoiceDescriptionDraft('')
+    setInvoiceDescriptionDraft(perSchool ? perSchool.label : '')
     setInvoiceDueDateDraft(entity.payment_due_date ? String(entity.payment_due_date).slice(0, 10) : '')
     setInvoicePoNumberDraft('')
+    setInvoiceFeesDraft([])
+    setInvoiceTaxDraft('')
     setInvoicePreviewError('')
     setInvoicePromo(null)
     setApplyPromoToInvoice(false)
     setApplyEventToInvoice(false)
+    setApplyCouponToInvoice(false)
     setSelectedCreditId('')
     ;(async () => {
       try {
@@ -875,6 +902,9 @@ export default function Admin() {
         if (data.credits?.length) { setSelectedCreditId(data.credits[0].id); setApplyPromoToInvoice(false) }
         // An account that came through an event code was promised its discount.
         else if (data.eventOffer) { setApplyEventToInvoice(true); setApplyPromoToInvoice(false) }
+        // A coupon the customer already used is what they were promised: it
+        // goes on this invoice, instead of any other discount.
+        if (data.coupon) { setApplyCouponToInvoice(true); setApplyPromoToInvoice(false); setApplyEventToInvoice(false); setSelectedCreditId('') }
       } catch {}
     })()
   }
@@ -889,9 +919,12 @@ export default function Admin() {
     description: invoiceDescriptionDraft.trim() || undefined,
     dueDate: invoiceDueDateDraft || undefined,
     poNumber: invoicePoNumberDraft.trim() || undefined,
-    applyPromo: !selectedCreditId && !applyEventToInvoice && applyPromoToInvoice && invoicePromoCheck.eligible,
-    applyEventCode: !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
-    referralCreditId: selectedCreditId || undefined,
+    applyPromo: !applyCouponToInvoice && !selectedCreditId && !applyEventToInvoice && applyPromoToInvoice && invoicePromoCheck.eligible,
+    applyEventCode: !applyCouponToInvoice && !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
+    referralCreditId: (!applyCouponToInvoice && selectedCreditId) || undefined,
+    applyCoupon: applyCouponToInvoice && Boolean(invoicePromo?.coupon),
+    fees: invoiceFeesDraft,
+    taxPercent: invoiceTaxDraft.trim() || undefined,
   })
 
   // The server prices it (discounts are never worked out here); nothing is
@@ -932,7 +965,7 @@ export default function Admin() {
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft(''); setInvoicePoNumberDraft('')
-      setInvoicePromo(null); setApplyPromoToInvoice(false); setApplyEventToInvoice(false); setSelectedCreditId('')
+      setInvoicePromo(null); setApplyPromoToInvoice(false); setApplyEventToInvoice(false); setApplyCouponToInvoice(false); setSelectedCreditId('')
       if (data.invoice?.hasContactEmail === false) {
         setToastMessage('Invoice created — no contact email on file, nothing was emailed')
       } else if (data.invoice?.emailSent === false) {
@@ -985,6 +1018,9 @@ export default function Admin() {
       description: event.description,
       dueDate: event.due_date,
       createdAt: event.created_at,
+      charges: event.charges || null,
+      status: event.invoice_status,
+      paidAt: event.paid_at || null,
   })
 
   const downloadInvoicePdf = (event) => generateInvoicePDF(invoicePdfFields(event))
@@ -1000,7 +1036,7 @@ export default function Admin() {
   const viewAllInvoices = () => setInvoicePdf({
     title: `All ${sentInvoices.length} invoice${sentInvoices.length === 1 ? '' : 's'} for ${historyModal?.entityName || ''}`,
     filename: 'invoices.pdf',
-    all: sentInvoices.map((ev) => ({ ...invoicePdfFields(ev), status: ev.invoice_status })),
+    all: sentInvoices.map((ev) => invoicePdfFields(ev)),
   })
 
   const loadPaymentInstructions = useCallback(async () => {
@@ -1823,6 +1859,9 @@ export default function Admin() {
                     <button onClick={() => { setNotifySchoolId(s.id); setNotifyAmount(s.price_amount || ''); setNotifyBillingPeriod(s.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this school">
                       <Bell className="w-4 h-4" />
                     </button>
+                    <button onClick={() => setCouponsFor({ entityType: 'school', entity: s })} className="text-brand-400 hover:text-brand-300 p-2" title="Coupons">
+                      <Ticket className="w-4 h-4" />
+                    </button>
                     <button onClick={() => openInvoiceModal('school', s)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
                       <Receipt className="w-4 h-4" />
                     </button>
@@ -1964,7 +2003,8 @@ export default function Admin() {
                         </span>
                         {org.price_amount && (
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-brand-500/10 text-brand-400">
-                            {org.price_amount}{org.price_period === 'monthly' ? ' / month' : org.price_period === 'yearly' ? ' / year' : org.price_period === 'one_time' ? ' one-time' : ''}
+                            {org.price_amount}{org.price_per_school ? ' per school' : ''}{org.price_period === 'monthly' ? ' / month' : org.price_period === 'yearly' ? ' / year' : org.price_period === 'one_time' ? ' one-time' : ''}
+                            {orgPerSchoolTotal(org) && ` · ${orgPerSchoolTotal(org).label}`}
                           </span>
                         )}
                         {org.payment_due_date && (
@@ -1993,7 +2033,7 @@ export default function Admin() {
                     <button onClick={() => { setOrgNoteModal(org.id); setOrgNoteDraft(org.admin_notes || '') }} className={`p-2 ${org.admin_notes ? 'text-amber-400 hover:text-amber-300' : 'text-earth-400 hover:text-earth-300'}`} title="Internal note (visible to admins only)">
                       <ShieldCheck className="w-4 h-4" />
                     </button>
-                    <button onClick={() => { setOrgPriceModal(org.id); setOrgPriceAmountDraft(org.price_amount || ''); setOrgPricePeriodDraft(org.price_period || 'monthly') }} className={`p-2 ${org.price_amount ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's price">
+                    <button onClick={() => { setOrgPriceModal(org.id); setOrgPriceAmountDraft(org.price_amount || ''); setOrgPricePeriodDraft(org.price_period || 'monthly'); setOrgPricePerSchoolDraft(Boolean(org.price_per_school)) }} className={`p-2 ${org.price_amount ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's price">
                       <DollarSign className="w-4 h-4" />
                     </button>
                     <button onClick={() => { setOrgDueDateModal(org.id); setOrgDueDateDraft(org.payment_due_date ? String(org.payment_due_date).slice(0, 10) : '') }} className={`p-2 ${org.payment_due_date ? 'text-brand-400 hover:text-brand-300' : 'text-earth-400 hover:text-earth-300'}`} title="Set this organization's payment due date">
@@ -2008,8 +2048,11 @@ export default function Admin() {
                         <CreditCard className="w-4 h-4" />
                       </button>
                     )}
-                    <button onClick={() => { setNotifyOrgId(org.id); setNotifyAmount(org.price_amount || ''); setNotifyBillingPeriod(org.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this organization">
+                    <button onClick={() => { setNotifyOrgId(org.id); setNotifyAmount(orgPerSchoolTotal(org)?.total || org.price_amount || ''); setNotifyBillingPeriod(org.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this organization">
                       <Bell className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setCouponsFor({ entityType: 'organization', entity: org })} className="text-brand-400 hover:text-brand-300 p-2" title="Coupons">
+                      <Ticket className="w-4 h-4" />
                     </button>
                     <button onClick={() => openInvoiceModal('organization', org)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
                       <Receipt className="w-4 h-4" />
@@ -3237,6 +3280,8 @@ export default function Admin() {
         </div>
       )}
 
+      {couponsFor && <CouponsDialog entityType={couponsFor.entityType} entity={couponsFor.entity} onClose={() => setCouponsFor(null)} />}
+
       {orgPriceModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOrgPriceModal(null)}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -3265,6 +3310,15 @@ export default function Admin() {
                   </select>
                 </div>
               </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={orgPricePerSchoolDraft} onChange={(e) => setOrgPricePerSchoolDraft(e.target.checked)} disabled={!orgPriceAmountDraft.trim()} />
+                <span>Price per school<span className="block text-xs text-earth-400">The invoice is this amount times every school in the organization when you send it.</span></span>
+              </label>
+              {orgPricePerSchoolDraft && (() => {
+                const org = organizations.find((o) => o.id === orgPriceModal)
+                const t = org && orgPerSchoolTotal({ ...org, price_amount: orgPriceAmountDraft, price_per_school: true })
+                return t ? <p className="text-xs text-brand-400">Today: {t.label}</p> : null
+              })()}
               <div className="flex gap-2">
                 <button onClick={() => setOrgPriceModal(null)} className="btn-ghost flex-1">Cancel</button>
                 <button onClick={() => saveOrgPrice(orgPriceModal)} className="btn-primary flex-1" disabled={savingOrgPrice}>{savingOrgPrice ? 'Saving…' : 'Save price'}</button>
@@ -3432,7 +3486,40 @@ export default function Admin() {
                   value={invoicePoNumberDraft} onChange={(e) => setInvoicePoNumberDraft(e.target.value)}
                 />
               </div>
-              {invoicePromo?.credits?.length > 0 && (
+              {/* Fee lines and tax (#968): tax is on the price after any discount plus the fees. */}
+              <div className="rounded-xl p-3 text-sm border border-white/10 space-y-2">
+                <p className="font-medium">Fees and tax (optional)</p>
+                {invoiceFeesDraft.map((f, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input className="input flex-1" maxLength={80} placeholder="e.g. Sign-up fee" aria-label="Fee name" value={f.label}
+                      onChange={(e) => setInvoiceFeesDraft((rows) => rows.map((r, j) => (j === i ? { ...r, label: e.target.value } : r)))} />
+                    <input className="input w-28" inputMode="decimal" placeholder="$" aria-label="Fee amount" value={f.amount}
+                      onChange={(e) => setInvoiceFeesDraft((rows) => rows.map((r, j) => (j === i ? { ...r, amount: e.target.value } : r)))} />
+                    <button type="button" className="btn-ghost btn-sm" aria-label="Remove fee" onClick={() => setInvoiceFeesDraft((rows) => rows.filter((_, j) => j !== i))}>✕</button>
+                  </div>
+                ))}
+                {invoiceFeesDraft.length < MAX_FEE_LINES && (
+                  <button type="button" className="btn-ghost btn-sm" onClick={() => setInvoiceFeesDraft((rows) => [...rows, { label: '', amount: '' }])}>+ Add a fee</button>
+                )}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="invoice-tax" className="text-earth-400">Tax %</label>
+                  <input id="invoice-tax" className="input w-24" inputMode="decimal" placeholder="0" value={invoiceTaxDraft} onChange={(e) => setInvoiceTaxDraft(e.target.value)} />
+                </div>
+                {(() => {
+                  const base = Number(invoiceAmountDraft)
+                  if (!Number.isFinite(base) || base <= 0) return null
+                  const asked = readCharges(invoiceFeesDraft, invoiceTaxDraft)
+                  if (asked.error) return <p className="text-xs text-red-400">{asked.error}</p>
+                  if (!asked.fees.length && !asked.taxPercent) return null
+                  const c = invoiceCharges(invoiceTotals ? invoiceTotals.total : base, asked.fees, asked.taxPercent)
+                  return (
+                    <p className="text-xs text-earth-300">
+                      Price ${c.priceTotal.toFixed(2)}{c.feesTotal ? ` + fees $${c.feesTotal.toFixed(2)}` : ''}{c.taxPercent ? ` + tax $${c.taxAmount.toFixed(2)}` : ''} = <strong>${c.total.toFixed(2)}</strong>
+                    </p>
+                  )
+                })()}
+              </div>
+              {invoicePromo?.credits?.length > 0 && !applyCouponToInvoice && (
                 <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
                   <p className="font-medium flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 text-brand-400" /> Referral credits</p>
                   <div className="mt-2 space-y-1.5">
@@ -3461,7 +3548,22 @@ export default function Admin() {
                   </div>
                 </div>
               )}
-              {invoicePromo?.eventOffer && !selectedCreditId && (
+              {invoicePromo?.coupon && (
+                <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
+                  <label className="flex items-start gap-2">
+                    <input type="checkbox" className="mt-0.5" checked={applyCouponToInvoice} onChange={(e) => setApplyCouponToInvoice(e.target.checked)} />
+                    <span>
+                      <span className="font-medium">Apply their coupon</span>
+                      {' — '}{Number(invoicePromo.coupon.percent_off) >= 100 ? 'free' : `${Number(invoicePromo.coupon.percent_off)}% off`}
+                      <span className="text-earth-500"> · <span className="font-mono">…{invoicePromo.coupon.code_hint}</span>{invoicePromo.coupon.note ? ` (${invoicePromo.coupon.note})` : ''}</span>
+                    </span>
+                  </label>
+                  {applyCouponToInvoice && invoiceTotals && (
+                    <p className="text-xs text-earth-600 dark:text-earth-300 mt-1.5 ml-6">They pay ${invoiceTotals.total.toFixed(2)} instead of ${invoiceTotals.subtotal.toFixed(2)}.</p>
+                  )}
+                </div>
+              )}
+              {invoicePromo?.eventOffer && !selectedCreditId && !applyCouponToInvoice && (
                 <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
                   <label className="flex items-start gap-2">
                     <input
@@ -3484,7 +3586,7 @@ export default function Admin() {
                   )}
                 </div>
               )}
-              {invoicePromo?.offer && !selectedCreditId && !applyEventToInvoice && (
+              {invoicePromo?.offer && !selectedCreditId && !applyEventToInvoice && !applyCouponToInvoice && (
                 <div className={`rounded-xl p-3 text-sm ${invoicePromoCheck.eligible ? 'bg-brand-500/10 border border-brand-500/30' : 'bg-earth-500/5'}`}>
                   <label className={`flex items-start gap-2 ${invoicePromoCheck.eligible ? '' : 'opacity-60'}`}>
                     <input

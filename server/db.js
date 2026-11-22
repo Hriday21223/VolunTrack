@@ -894,6 +894,9 @@ export async function initSchema() {
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_amount TEXT`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_period TEXT`) } catch {}
   try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS payment_due_date DATE`) } catch {}
+  // price_amount is per school when set (#964): the invoice is it times the
+  // organization's schools.
+  try { await query(`ALTER TABLE organizations ADD COLUMN IF NOT EXISTS price_per_school BOOLEAN NOT NULL DEFAULT false`) } catch {}
   try { await query(`ALTER TABLE organizations DROP CONSTRAINT IF EXISTS organizations_price_period_check`) } catch {}
   try { await query(`ALTER TABLE organizations ADD CONSTRAINT organizations_price_period_check CHECK (price_period IS NULL OR price_period IN ('monthly','yearly','one_time'))`) } catch {}
 
@@ -1629,6 +1632,9 @@ export async function initSchema() {
   // office matches an invoice to the PO it approved, and often will not pay
   // one that doesn't quote it.
   try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS po_number TEXT`) } catch {}
+  // Fee lines and tax (#968): { priceTotal, fees: [{ label, amount }], taxPercent,
+  // taxAmount }. NULL on an invoice with neither; amount stays the total owed.
+  try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS charges JSONB`) } catch {}
 
   // Referral programme (see server/routes/referral.js). Every school/org gets a
   // shareable code; a new customer that quotes one creates a `referrals` row.
@@ -2461,6 +2467,32 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('upgrade_codes table failed:', error.message) }
+  // Coupons for one named school or organization (#966, server/coupons.js).
+  // Only the hash is kept. A percent coupon is redeemed first and applied to
+  // the next invoice (applied_invoice_id); voiding that invoice hands it back.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS customer_coupons (
+        id                 TEXT PRIMARY KEY,
+        code_hash          TEXT UNIQUE NOT NULL,
+        code_hint          TEXT NOT NULL,
+        entity_type        TEXT NOT NULL CHECK (entity_type IN ('school','organization')),
+        entity_id          TEXT NOT NULL,
+        kind               TEXT NOT NULL CHECK (kind IN ('percent','months')),
+        percent_off        NUMERIC(5,2) CHECK (percent_off IS NULL OR (percent_off > 0 AND percent_off <= 100)),
+        free_months        INT CHECK (free_months IS NULL OR (free_months BETWEEN 1 AND 36)),
+        note               TEXT,
+        expires_at         TIMESTAMPTZ,
+        status             TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','redeemed','void')),
+        redeemed_at        TIMESTAMPTZ,
+        redeemed_by        TEXT REFERENCES users(id) ON DELETE SET NULL,
+        applied_invoice_id TEXT REFERENCES invoices(id) ON DELETE SET NULL,
+        created_by         TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS customer_coupons_entity_idx ON customer_coupons (entity_type, entity_id)')
+  } catch (error) { console.error('customer_coupons table failed:', error.message) }
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}

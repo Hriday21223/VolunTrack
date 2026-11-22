@@ -96,3 +96,42 @@ test('the app shows the matching lock', async () => {
   assert.equal(schoolLock({ schoolId: 's', schoolPlan: 'school', schoolPaymentStatus: 'unpaid', schoolOrgPaymentStatus: 'paid' }), null)
   assert.equal(schoolLock({ schoolId: null }), null)
 })
+
+// Coupons for one named customer (#966).
+test('coupon requests are checked before a code is made', async () => {
+  const { readCouponRequest, normalizeCoupon, hashCoupon, couponLabel } = await import('../server/coupons.js')
+  const now = new Date('2026-11-22T12:00:00Z')
+  assert.equal(readCouponRequest({ kind: 'percent', percentOff: 100 }, now).percentOff, 100)
+  assert.equal(readCouponRequest({ kind: 'months', freeMonths: 3 }, now).freeMonths, 3)
+  assert.ok(readCouponRequest({ kind: 'percent', percentOff: 0 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'percent', percentOff: 101 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'months', freeMonths: 0 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'months', freeMonths: 2.5 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'gift' }, now).error)
+  assert.ok(readCouponRequest({ kind: 'percent', percentOff: 10, expiresAt: '2026-11-01' }, now).error)
+  assert.equal(readCouponRequest({ kind: 'percent', percentOff: 10, expiresAt: '2026-12-31' }, now).expiresAt, '2026-12-31T23:59:59.000Z')
+  assert.equal(readCouponRequest({ kind: 'percent', percentOff: 10 }, now).expiresAt, null)
+  // Typed with spaces, dashes or lower case, it's the same code.
+  assert.equal(normalizeCoupon('abcde-fgh2j '), 'ABCDEFGH2J')
+  assert.equal(hashCoupon('abcde-fgh2j'), hashCoupon('ABCDEFGH2J'))
+  assert.equal(couponLabel({ kind: 'percent', percent_off: '100.00' }), 'Next invoice free')
+  assert.equal(couponLabel({ kind: 'months', free_months: 1 }), '1 month free')
+})
+
+// Fee lines and tax on an invoice (#968).
+test('fees are added after the discount and taxed with the price', async () => {
+  const { readCharges, invoiceCharges } = await import('../server/promo.js')
+  const asked = readCharges([{ label: 'Sign-up fee', amount: '50' }, { label: '', amount: '' }], '8.25')
+  assert.deepEqual(asked, { fees: [{ label: 'Sign-up fee', amount: 50 }], taxPercent: 8.25 })
+  // $500 with 10% off = $450, + $50 fee = $500, + 8.25% tax = $41.25 → $541.25
+  const c = invoiceCharges(450, asked.fees, asked.taxPercent)
+  assert.equal(c.feesTotal, 50)
+  assert.equal(c.taxAmount, 41.25)
+  assert.equal(c.total, 541.25)
+  assert.equal(invoiceCharges(100, [], null).total, 100)
+  assert.ok(readCharges([{ label: 'Fee', amount: -5 }]).error)
+  assert.ok(readCharges([{ label: '', amount: 5 }]).error)
+  assert.ok(readCharges([], '120').error)
+  assert.equal(readCharges([], '0').taxPercent, null)
+  assert.ok(readCharges(Array.from({ length: 11 }, () => ({ label: 'x', amount: 1 }))).error)
+})

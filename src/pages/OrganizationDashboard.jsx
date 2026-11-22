@@ -20,6 +20,7 @@ import ImpactMapCard from '@/components/ImpactMapCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
+import CouponCard from '@/components/CouponCard.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import OrgRequirements from '@/components/OrgRequirements.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
@@ -136,6 +137,14 @@ export default function OrganizationDashboard() {
     loadInvoices()
   }, [user, loadSchools, loadInvoices])
 
+  // Coming back to the tab re-reads the invoices, so one VolunTrack has marked
+  // paid in the meantime shows Paid (#970).
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') loadInvoices() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadInvoices])
+
   const sendInvite = async () => {
     if (!inviteName.trim() || !inviteEmail.trim()) return
     setSendingInvite(true)
@@ -218,6 +227,7 @@ export default function OrganizationDashboard() {
         </div>
       )}
       {tab === 'schools' && <ReferralCard className="mb-4" />}
+      {tab === 'schools' && <CouponCard className="mb-4" onRedeemed={loadInvoices} />}
       {/* How to pay while an invoice is open (#952), or while its schools are locked (#962). */}
       {tab === 'schools' && accountCode && (invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void') || (orgPaymentStatus && orgPaymentStatus !== 'paid' && schools.length > 0)) && (
         <Card className="mb-4">
@@ -254,7 +264,7 @@ export default function OrganizationDashboard() {
                       ? 'bg-earth-500/20 text-earth-500'
                       : 'bg-amber-500/20 text-amber-600'
                   }`}>
-                    {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Sent')}
+                    {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Not paid yet')}
                   </span>
                   <button
                     onClick={() => setPreviewInvoice(inv)}
@@ -276,6 +286,9 @@ export default function OrganizationDashboard() {
                       description: inv.description,
                       dueDate: inv.due_date,
                       createdAt: inv.created_at,
+                      charges: inv.charges || null,
+                      status: inv.status,
+                      paidAt: inv.paid_at || null,
                     })}
                     className="p-1.5 text-earth-400 hover:text-earth-300"
                     title={tr('Download PDF')}
@@ -471,6 +484,9 @@ export default function OrganizationDashboard() {
             description: previewInvoice.description,
             dueDate: previewInvoice.due_date,
             createdAt: previewInvoice.created_at,
+            charges: previewInvoice.charges || null,
+            status: previewInvoice.status,
+            paidAt: previewInvoice.paid_at || null,
             returnBlob: true,
           })}
           onClose={() => setPreviewInvoice(null)}

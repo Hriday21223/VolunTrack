@@ -7982,9 +7982,9 @@ router.get('/admin/list', limiter, requireDb, requireAuth('admin'), async (req, 
 router.get('/admin/organizations', limiter, requireDb, requireAuth('admin'), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT o.id, o.name, o.account_code, o.contact_email, o.created_at, o.price_amount, o.price_period, o.payment_due_date,
+      `SELECT o.id, o.name, o.account_code, o.contact_email, o.created_at, o.price_amount, o.price_period, o.price_per_school, o.payment_due_date,
         o.admin_notes, o.payment_status, o.payment_notes, o.paid_at, o.trial_ends_at,
-        COUNT(s.id) AS school_count
+        COUNT(s.id)::int AS school_count
        FROM organizations o
        LEFT JOIN schools s ON s.organization_id = o.id
        GROUP BY o.id

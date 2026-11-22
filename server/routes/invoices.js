@@ -6,7 +6,7 @@ import { uid } from '../ids.js'
 import { requireAuth } from '../auth.js'
 import { sendEmail, emailFooterHtml, paymentInstructionsHtml } from '../email.js'
 import { getPaymentInstructions, getPromoOffer, countPromoRedemptions } from './settings.js'
-import { promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining } from '../promo.js'
+import { promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, readCharges, invoiceCharges } from '../promo.js'
 import { markReferralEarned, earnedCredits } from './referral.js'
 import { escapeHtml } from '../html.js'
 
@@ -33,7 +33,7 @@ const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 
 
 // Mirrors paymentNoticeHtml in server/routes/school.js, but for a single
 // numbered invoice rather than a free-text payment notice.
-function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, poNumber, amount, subtotal, discountLabel, billingPeriod, dueDate, description, paymentInstructions }) {
+function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber, poNumber, amount, subtotal, discountLabel, billingPeriod, dueDate, description, paymentInstructions, charges }) {
   const dashboardLink = `${process.env.FRONTEND_URL || ''}${entityType === 'organization' ? '/organization/dashboard' : '/school/dashboard/setup/billing'}`
   const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : null
   const periodLabel = BILLING_PERIOD_LABELS[billingPeriod] || ''
@@ -45,8 +45,12 @@ function invoiceNoticeHtml({ entityType, entityName, accountCode, invoiceNumber,
     accountCode ? `<tr><td><strong>Account ID</strong></td><td>${escapeHtml(accountCode)}</td></tr>` : '',
     poNumber ? `<tr><td><strong>Purchase order</strong></td><td>${escapeHtml(poNumber)}</td></tr>` : '',
     discountLabel ? `<tr><td><strong>Subtotal</strong></td><td>$${Number(subtotal).toFixed(2)}</td></tr>` : '',
-    discountLabel ? `<tr><td><strong>Discount</strong></td><td>−$${(Number(subtotal) - Number(amount)).toFixed(2)} (${escapeHtml(discountLabel)})</td></tr>` : '',
-    `<tr><td><strong>${discountLabel ? 'Total due' : 'Amount'}</strong></td><td>$${Number(amount).toFixed(2)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>`,
+    discountLabel ? `<tr><td><strong>Discount</strong></td><td>−$${(Number(subtotal) - Number(charges?.priceTotal ?? amount)).toFixed(2)} (${escapeHtml(discountLabel)})</td></tr>` : '',
+    // Fee lines and tax (#968).
+    charges && !discountLabel ? `<tr><td><strong>Price</strong></td><td>$${Number(charges.priceTotal).toFixed(2)}</td></tr>` : '',
+    ...(charges?.fees || []).map((f) => `<tr><td><strong>${escapeHtml(f.label)}</strong></td><td>$${Number(f.amount).toFixed(2)}</td></tr>`),
+    charges?.taxPercent ? `<tr><td><strong>Tax (${Number(charges.taxPercent)}%)</strong></td><td>$${Number(charges.taxAmount).toFixed(2)}</td></tr>` : '',
+    `<tr><td><strong>${discountLabel || charges ? 'Total due' : 'Amount'}</strong></td><td>$${Number(amount).toFixed(2)}${periodLabel ? ' ' + escapeHtml(periodLabel) : ''}</td></tr>`,
     dueDateStr ? `<tr><td><strong>Due date</strong></td><td>${dueDateStr}</td></tr>` : '',
     `</table>`,
     description ? `<p>${escapeHtml(description).replace(/\n/g, '<br>')}</p>` : '',
@@ -102,6 +106,8 @@ async function priceInvoice(body) {
   // The referral credit this invoice spends, if any. Mutually exclusive with
   // the join offer: an invoice carries one discount, never two compounded.
   const referralCreditId = body.referralCreditId ? String(body.referralCreditId) : null
+  // A percent coupon this account redeemed and hasn't spent yet (#966).
+  const wantsCoupon = body.applyCoupon === true
 
   const table = ENTITY_TABLES[entityType]
   if (!table) throw new InvoiceProblem(400, 'entityType must be school or organization.')
@@ -112,8 +118,8 @@ async function priceInvoice(body) {
     throw new InvoiceProblem(400, 'Invalid billing period.')
   }
   if (poNumber && poNumber.length > 64) throw new InvoiceProblem(400, 'Purchase order number is too long.')
-  if ([wantsPromo, Boolean(referralCreditId), wantsEvent].filter(Boolean).length > 1) {
-    throw new InvoiceProblem(400, 'An invoice carries one discount: the join offer, a referral credit or the event code.')
+  if ([wantsPromo, Boolean(referralCreditId), wantsEvent, wantsCoupon].filter(Boolean).length > 1) {
+    throw new InvoiceProblem(400, 'An invoice carries one discount: the join offer, a referral credit, the event code or a coupon.')
   }
 
   const { rows: entityRows } = await query(`SELECT name, contact_email, account_code FROM ${table} WHERE id = $1`, [entityId])
@@ -177,10 +183,46 @@ async function priceInvoice(body) {
     discountLabel = `${ev.eventName || 'Event'} offer — ${ev.percentOff}% off (code ${ev.code})`
   }
 
+  let couponId = null
+  if (wantsCoupon) {
+    // Re-resolved here, never taken from the request (#966).
+    const coupon = await waitingCoupon(entityType, entityId)
+    if (!coupon) throw new InvoiceProblem(409, 'This account has no coupon waiting for an invoice.')
+    const percent = Number(coupon.percent_off)
+    const applied = applyPromoAmount(amount, percent)
+    subtotal = applied.subtotal
+    total = applied.total
+    discountPercent = percent
+    discountLabel = `Coupon — ${percent >= 100 ? 'free' : `${percent}% off`}${coupon.note ? ` (${coupon.note})` : ''}`
+    couponId = coupon.id
+  }
+
+  // Fee lines and tax (#968), after the discount: tax is on the discounted
+  // price plus the fees.
+  const asked = readCharges(body.fees, body.taxPercent)
+  if (asked.error) throw new InvoiceProblem(400, asked.error)
+  let charges = null
+  if (asked.fees.length || asked.taxPercent) {
+    const c = invoiceCharges(total, asked.fees, asked.taxPercent)
+    charges = { priceTotal: c.priceTotal, fees: c.fees, taxPercent: c.taxPercent, taxAmount: c.taxAmount }
+    total = c.total
+  }
+
   return {
     entityType, entityId, entity, amount, description, dueDate, billingPeriod, poNumber,
-    total, subtotal, discountPercent, discountLabel, discountCode, referralId,
+    total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId, charges,
   }
+}
+
+// The oldest percent coupon this account redeemed that no invoice has used (#966).
+async function waitingCoupon(entityType, entityId) {
+  const { rows } = await query(
+    `SELECT id, percent_off, note, code_hint FROM customer_coupons
+      WHERE entity_type = $1 AND entity_id = $2 AND kind = 'percent' AND status = 'redeemed' AND applied_invoice_id IS NULL
+      ORDER BY redeemed_at LIMIT 1`,
+    [entityType, entityId],
+  )
+  return rows[0] ? { ...rows[0], percent_off: Number(rows[0].percent_off) } : null
 }
 
 function invoiceFailed(res, error, what) {
@@ -206,6 +248,7 @@ function invoiceEmail(p, invoiceNumber, paymentInstructions) {
       dueDate: p.dueDate,
       description: p.description,
       paymentInstructions,
+      charges: p.charges,
     }),
   }
 }
@@ -227,6 +270,7 @@ router.post('/admin/preview', limiter, requireDb, requireAuth('admin'), async (r
         description: p.description,
         dueDate: p.dueDate,
         poNumber: p.poNumber,
+        charges: p.charges,
       },
       email: {
         to: p.entity.contact_email || 'No contact email on file, so nothing would be emailed',
@@ -244,7 +288,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     const priced = await priceInvoice(req.body)
     const {
       entityType, entityId, entity, description, dueDate, billingPeriod, poNumber,
-      total, subtotal, discountPercent, discountLabel, discountCode, referralId,
+      total, subtotal, discountPercent, discountLabel, discountCode, referralId, couponId, charges,
     } = priced
 
     const { rows: seqRows } = await query(`SELECT nextval('invoice_number_seq') AS n`)
@@ -252,9 +296,9 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     const id = uid('invc')
 
     await query(
-      `INSERT INTO invoices (id, invoice_number, entity_type, entity_id, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'sent')`,
-      [id, invoiceNumber, entityType, entityId, total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate || null, poNumber],
+      `INSERT INTO invoices (id, invoice_number, entity_type, entity_id, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, charges)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'sent', $15)`,
+      [id, invoiceNumber, entityType, entityId, total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate || null, poNumber, charges ? JSON.stringify(charges) : null],
     )
     await query(
       `INSERT INTO payment_events (id, entity_type, entity_id, event_type, amount, invoice_id) VALUES ($1, $2, $3, 'invoice_sent', $4, $5)`,
@@ -267,6 +311,10 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
         `UPDATE referrals SET status = 'redeemed', redeemed_invoice_id = $1 WHERE id = $2 AND status = 'earned'`,
         [id, referralId],
       )
+    }
+    if (couponId) {
+      // Guarded so a double-submit can't spend the same coupon on two invoices.
+      await query(`UPDATE customer_coupons SET applied_invoice_id = $1 WHERE id = $2 AND applied_invoice_id IS NULL`, [id, couponId])
     }
     // Being invoiced is what turns whoever referred this customer from a signup
     // into a real reward — until now their credit was only pending.
@@ -283,7 +331,7 @@ router.post('/admin', limiter, requireDb, requireAuth('admin'), async (req, res)
     }
 
     return res.status(201).json({
-      invoice: { id, invoiceNumber, entityType, entityId, amount: total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate, poNumber, status: 'sent', emailSent, hasContactEmail },
+      invoice: { id, invoiceNumber, entityType, entityId, amount: total, subtotal, discountPercent, discountLabel, discountCode, referralId, billingPeriod, description, dueDate, poNumber, charges, status: 'sent', emailSent, hasContactEmail },
     })
   } catch (error) {
     return invoiceFailed(res, error, 'create invoice')
@@ -318,6 +366,8 @@ router.get('/admin/:entityType/:entityId/promo', limiter, requireDb, requireAuth
       // way, spendable on this invoice instead of the join offer.
       credits: await earnedCredits(entityType, entityId),
       eventOffer: await eventOfferFor(entityType, entityId),
+      // A percent coupon the account redeemed, waiting for this invoice (#966).
+      coupon: await waitingCoupon(entityType, entityId),
     })
   } catch (error) {
     console.error('promo eligibility failed:', error)
@@ -333,7 +383,7 @@ router.get('/admin/:entityType/:entityId/history', limiter, requireDb, requireAu
     const { rows } = await query(
       `SELECT e.id, e.event_type, e.amount, e.notes, e.created_at,
               i.id AS invoice_id, i.invoice_number, i.status AS invoice_status, i.due_date, i.description, i.billing_period,
-              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id, i.po_number
+              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id, i.po_number, i.charges, i.paid_at
        FROM payment_events e
        LEFT JOIN invoices i ON i.id = e.invoice_id
        WHERE e.entity_type = $1 AND e.entity_id = $2
@@ -372,6 +422,8 @@ router.patch('/admin/:id', limiter, requireDb, requireAuth('admin'), async (req,
       }
     } else {
       await query(`UPDATE invoices SET status = 'void' WHERE id = $1`, [invoice.id])
+      // A coupon spent on a voided invoice goes back to waiting (#966).
+      await query(`UPDATE customer_coupons SET applied_invoice_id = NULL WHERE applied_invoice_id = $1`, [invoice.id])
       await query(
         `INSERT INTO payment_events (id, entity_type, entity_id, event_type, invoice_id) VALUES ($1, $2, $3, 'invoice_void', $4)`,
         [uid('pev'), invoice.entity_type, invoice.entity_id, invoice.id],
@@ -397,7 +449,7 @@ router.get('/mine', limiter, requireDb, requireAuth('school', 'school_staff', 'o
 
     const { rows: entityRows } = await query(`SELECT name, account_code, payment_status FROM ${table} WHERE id = $1`, [entityId])
     const { rows } = await query(
-      `SELECT id, invoice_number, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, created_at, paid_at
+      `SELECT id, invoice_number, amount, subtotal, discount_percent, discount_label, discount_code, referral_id, billing_period, description, due_date, po_number, status, created_at, paid_at, charges
        FROM invoices WHERE entity_type = $1 AND entity_id = $2 ORDER BY created_at DESC LIMIT 50`,
       [entityType, entityId],
     )

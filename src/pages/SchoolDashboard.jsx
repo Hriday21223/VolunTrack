@@ -39,6 +39,7 @@ import SubmittedDocument from '@/components/SubmittedDocument.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
 import { schoolLock } from '@/lib/schoolLock.js'
+import CouponCard from '@/components/CouponCard.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
@@ -246,6 +247,20 @@ export default function SchoolDashboard() {
   const [addingStaff, setAddingStaff] = useState(false)
   const [staffErr, setStaffErr] = useState('')
   const [invoices, setInvoices] = useState([])
+  // Coming back to the tab re-reads the invoices, so one VolunTrack has marked
+  // paid in the meantime shows Paid (#970).
+  useEffect(() => {
+    if (user?.role !== 'school') return undefined
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const res = await fetch(`${apiUrl}/invoices/mine`, { headers: { Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` } })
+        if (res.ok) setInvoices((await res.json()).invoices || [])
+      } catch { /* offline: keep what's shown */ }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [user?.role])
   const [accountCode, setAccountCode] = useState(null)
   // Invoice currently open in the preview overlay, or null.
   const [previewInvoice, setPreviewInvoice] = useState(null)
@@ -764,6 +779,7 @@ export default function SchoolDashboard() {
           return null
         })()}
         {billingTab && <ReferralCard />}
+        {billingTab && <CouponCard onRedeemed={() => { refreshUser?.(); loadData() }} />}
         {/* How to pay only when something is owed (#952): a free club never pays. */}
         {billingTab && accountCode && (
           invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void')
@@ -804,7 +820,7 @@ export default function SchoolDashboard() {
                         ? 'bg-earth-500/20 text-earth-500'
                         : 'bg-amber-500/20 text-amber-600'
                     }`}>
-                      {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Sent')}
+                      {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Not paid yet')}
                     </span>
                     <button
                       onClick={() => setPreviewInvoice(inv)}
@@ -826,6 +842,9 @@ export default function SchoolDashboard() {
                         description: inv.description,
                         dueDate: inv.due_date,
                         createdAt: inv.created_at,
+                        charges: inv.charges || null,
+                        status: inv.status,
+                        paidAt: inv.paid_at || null,
                       })}
                       className="p-1.5 text-earth-400 hover:text-earth-300"
                       title={tr('Download PDF')}
@@ -1430,6 +1449,9 @@ export default function SchoolDashboard() {
             description: previewInvoice.description,
             dueDate: previewInvoice.due_date,
             createdAt: previewInvoice.created_at,
+            charges: previewInvoice.charges || null,
+            status: previewInvoice.status,
+            paidAt: previewInvoice.paid_at || null,
             returnBlob: true,
           })}
           onClose={() => setPreviewInvoice(null)}

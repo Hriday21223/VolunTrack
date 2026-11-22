@@ -38,6 +38,7 @@ const RULES = [
   [/^\/registration-codes\/admin/, 'invites'],
   [/^\/(school|organization)\/admin/, 'schools'],
   [/^\/invoices\/admin/, 'schools'],
+  [/^\/coupons\/admin/, 'schools'],
   [/^\/referral\/admin/, 'schools'],
   [/^\/settings\/(promo|payment-instructions)/, 'schools'],
   [/^\/status\/(incidents|live-checks)/, 'incidents'],

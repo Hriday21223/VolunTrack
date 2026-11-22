@@ -33,6 +33,7 @@ import parentRoutes from './server/routes/parent.js'
 import contactRoutes, { handleInboundWebhook } from './server/routes/contact.js'
 import reviewsRoutes from './server/routes/reviews.js'
 import invoicesRoutes from './server/routes/invoices.js'
+import couponsRoutes from './server/routes/coupons.js'
 import settingsRoutes from './server/routes/settings.js'
 import statusRoutes, { handleGithubWebhook } from './server/routes/status.js'
 import tenantRoutes from './server/routes/tenant.js'
@@ -212,6 +213,7 @@ app.use('/api/parent', parentRoutes)
 app.use('/api/contact', contactRoutes)
 app.use('/api/reviews', reviewsRoutes)
 app.use('/api/invoices', invoicesRoutes)
+app.use('/api/coupons', couponsRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/status', statusRoutes)
 app.use('/api/tenant', tenantRoutes)
