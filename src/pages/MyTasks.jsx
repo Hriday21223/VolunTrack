@@ -804,7 +804,12 @@ export default function MyTasks() {
           <Card><p className="text-center text-earth-500 py-8">{tr('Loading…')}</p></Card>
         ) : tasks.length === 0 ? (
           <Card>
-            <p className="text-center text-earth-500 py-8">{tr("You haven't posted any tasks yet.")}</p>
+            <div className="text-center py-8">
+              <p className="text-earth-500">{tr("You haven't posted any tasks yet.")}</p>
+              {!showPostTask && (
+                <button type="button" className="btn-primary mt-4" onClick={() => { setShowPostTask(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>{tr('Post your first task')}</button>
+              )}
+            </div>
           </Card>
         ) : tasks.map((t) => {
           const filled = Number(t.slots_filled)

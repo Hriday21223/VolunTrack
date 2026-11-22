@@ -3750,5 +3750,15 @@ export default {
   "If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.": "إذا كانت مدرستك تابعة لمنظمة، فالمنظمة تدفع عنها، وتتوقف مدرستك ما دامت المنظمة لم تدفع. ولا يلزمك دفع شيء حينها.",
   "Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.": "تدفع منظمتك عن مدارسها، وأحيانًا بسعر لكل مدرسة. وحتى يتم التحقق من دفعك، تتوقف مدارسك. وتعرض حينها علامة تبويب المدارس طريقة الدفع وفواتيرك وخانة للقسيمة.",
   "Can I add a link instead of uploading my proof?": "هل يمكنني إضافة رابط بدل رفع الإثبات؟",
-  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "نعم، بعد انضمامك إلى مدرستك. تحت الإثبات في تسجيل الساعات، الصق رابطًا من Google Drive أو OneDrive أو Dropbox أو iCloud أو Box، واضبط مشاركة الملف ليظهر “يمكن لأي شخص على الإنترنت لديه الرابط العرض”، وإلا فلن تتمكن مدرستك من فتحه."
+  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "نعم، بعد انضمامك إلى مدرستك. تحت الإثبات في تسجيل الساعات، الصق رابطًا من Google Drive أو OneDrive أو Dropbox أو iCloud أو Box، واضبط مشاركة الملف ليظهر “يمكن لأي شخص على الإنترنت لديه الرابط العرض”، وإلا فلن تتمكن مدرستك من فتحه.",
+  "Your tasks and sign-ups are saved to your account and synced across your devices.": "تُحفظ مهامك وتسجيلاتك في حسابك وتتزامن عبر أجهزتك.",
+  "Follow your child's volunteer hours, cheer them on and say yes to event sign-ups. Ask your child for a link code in Settings → Family to get started.": "تابع ساعات تطوع طفلك وشجّعه ووافق على تسجيله في الفعاليات. اطلب من طفلك رمز ربط من الإعدادات ← العائلة للبدء.",
+  "No school uses that school code. Check it, or leave the box empty and add it later in Settings.": "لا تستخدم أي مدرسة هذا الرمز. تحقق منه، أو اترك الخانة فارغة وأضفه لاحقًا في الإعدادات.",
+  "Signing up a club or school?": "تسجّل ناديًا أو مدرسة؟",
+  "Start a free club or register your school": "أنشئ ناديًا مجانيًا أو سجّل مدرستك",
+  "A district or organization?": "منطقة تعليمية أو منظمة؟",
+  "✓ {school}": "✓ {school}",
+  "No school uses that code. Check it with your teacher, or leave it empty and add it later.": "لا تستخدم أي مدرسة هذا الرمز. تحقق منه مع معلمك، أو اتركه فارغًا وأضفه لاحقًا.",
+  "Make up a short code for your students to type, letters then numbers, like keyclub-2026.": "اختر رمزًا قصيرًا يكتبه طلابك، حروف ثم أرقام، مثل keyclub-2026.",
+  "You're linked to {school}. Hours you log will show up for your coordinator to review.": "أنت مرتبط بـ {school}. ستظهر الساعات التي تسجلها لمنسقك لمراجعتها."
 }

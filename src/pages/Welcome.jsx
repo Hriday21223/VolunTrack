@@ -24,6 +24,9 @@ export default function Welcome() {
   const { user, refreshUser } = useAuth()
   const { goals, saveGoal } = useData()
   const nav = useNavigate()
+  // The goal and school steps are for students; a Task Maker who lands here
+  // goes to My Tasks.
+  useEffect(() => { if (user?.role === 'volunteer') nav('/my-tasks', { replace: true }) }, [user?.role, nav])
   const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
   // Read once, then clear, so Home() stops sending this tab here — leaving
@@ -64,10 +67,10 @@ export default function Welcome() {
       setGradeAsk(null)
       // 409 means this account is already on that school's roster — the
       // outcome the student wanted, so it reads as success.
-      if (res.status === 409) { setJoin({ status: 'linked', message: '' }); return }
+      if (res.status === 409) { setJoin({ status: 'linked', message: '', schoolName: data.schoolName || '' }); return }
       if (!res.ok) throw new Error(data.error || 'Could not join that school.')
       if (data.pending) { setJoin({ status: 'transfer', message: data.message || '' }); return }
-      setJoin({ status: 'linked', message: '' })
+      setJoin({ status: 'linked', message: '', schoolName: data.schoolName || '' })
       refreshUser()
     } catch (e) {
       setJoin({ status: 'error', message: e.message })
@@ -206,7 +209,7 @@ export default function Welcome() {
               {join.status === 'linked' ? (
                 <div className="flex items-start gap-3 rounded-2xl border border-brand-500/40 bg-brand-500/10 p-4 text-sm">
                   <Check className="w-5 h-5 text-brand-500 shrink-0" />
-                  <span>{tr("You're linked to your school. Hours you log will show up for your coordinator to review.")}</span>
+                  <span>{join.schoolName ? tr("You're linked to {school}. Hours you log will show up for your coordinator to review.", { school: join.schoolName }) : tr("You're linked to your school. Hours you log will show up for your coordinator to review.")}</span>
                 </div>
               ) : join.status === 'transfer' ? (
                 <div className="flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">

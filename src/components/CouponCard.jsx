@@ -9,7 +9,7 @@ const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('voluntrack:
 
 // "Have a coupon?" on a school's Billing tab and an organization's Schools tab
 // (#966). A coupon is made by VolunTrack for this one account and works once.
-export default function CouponCard({ className = '', onRedeemed }) {
+export default function CouponCard({ className = '', onRedeemed, compact = false }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -52,8 +52,19 @@ export default function CouponCard({ className = '', onRedeemed }) {
   }
 
   const waiting = mine.filter((c) => c.waiting)
+  // Compact: just a link until opened (the organization's first page).
+  const [open, setOpen] = useState(!compact)
   const label = (c) => (c.percentOff >= 100 ? tr('a free invoice') : tr('{n}% off', { n: c.percentOff }))
 
+  if (!open && waiting.length === 0) {
+    return (
+      <p className={`text-sm ${className}`}>
+        <button type="button" className="text-brand-700 dark:text-brand-300 hover:underline inline-flex items-center gap-1" onClick={() => setOpen(true)}>
+          <Ticket className="w-4 h-4" />{' '}{tr('Have a coupon?')}
+        </button>
+      </p>
+    )
+  }
   return (
     <Card className={className}>
       <h3 className="font-semibold text-sm flex items-center gap-2 mb-1"><Ticket className="w-4 h-4 text-brand-600" />{' '}{tr('Have a coupon?')}</h3>

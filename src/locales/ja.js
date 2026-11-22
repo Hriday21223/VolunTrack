@@ -3750,5 +3750,15 @@ export default {
   "If your school belongs to an organization, the organization pays for it, and your school is paused while the organization hasn’t paid. There’s nothing for you to pay then.": "学校が組織に所属している場合は組織が支払い、組織が未払いの間は学校が一時停止されます。その場合、学校側が支払うものはありません。",
   "Your organization pays for its schools, sometimes priced per school. Until your payment is verified, your schools are paused. Your Schools tab then shows How to pay, your invoices and a box for a coupon.": "組織は所属校の料金を支払います（学校ごとの料金の場合もあります）。支払いが確認されるまで所属校は一時停止されます。その間、「学校」タブに支払い方法、請求書、クーポン入力欄が表示されます。",
   "Can I add a link instead of uploading my proof?": "証明をアップロードする代わりにリンクを追加できますか？",
-  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "はい、学校に参加した後なら可能です。「時間を記録」の「証明」に Google ドライブ、OneDrive、Dropbox、iCloud、Box のリンクを貼り、ファイルの共有を「インターネット上でこのリンクを知っている人なら誰でも閲覧できます」にしてください。そうしないと学校が開けません。"
+  "Yes, once you have joined your school. Under Proof on Log Hours, paste a link from Google Drive, OneDrive, Dropbox, iCloud or Box, and set the file’s sharing so it says “Anyone on the internet with the link can view”, or your school can’t open it.": "はい、学校に参加した後なら可能です。「時間を記録」の「証明」に Google ドライブ、OneDrive、Dropbox、iCloud、Box のリンクを貼り、ファイルの共有を「インターネット上でこのリンクを知っている人なら誰でも閲覧できます」にしてください。そうしないと学校が開けません。",
+  "Your tasks and sign-ups are saved to your account and synced across your devices.": "タスクと申し込みはアカウントに保存され、デバイス間で同期されます。",
+  "Follow your child's volunteer hours, cheer them on and say yes to event sign-ups. Ask your child for a link code in Settings → Family to get started.": "お子さんのボランティア時間を見守り、応援し、イベントへの申し込みを承認できます。始めるには、お子さんに「設定 → 家族」でリンクコードをもらってください。",
+  "No school uses that school code. Check it, or leave the box empty and add it later in Settings.": "そのコードを使っている学校はありません。確認するか、空欄のままにして後で設定から追加してください。",
+  "Signing up a club or school?": "クラブや学校として登録しますか？",
+  "Start a free club or register your school": "無料クラブを作成、または学校を登録",
+  "A district or organization?": "学区や組織ですか？",
+  "✓ {school}": "✓ {school}",
+  "No school uses that code. Check it with your teacher, or leave it empty and add it later.": "そのコードを使っている学校はありません。先生に確認するか、空欄のままにして後で追加してください。",
+  "Make up a short code for your students to type, letters then numbers, like keyclub-2026.": "生徒が入力する短いコードを決めてください（文字の後に数字、例：keyclub-2026）。",
+  "You're linked to {school}. Hours you log will show up for your coordinator to review.": "{school} にリンクしました。記録した時間はコーディネーターが確認できるように表示されます。"
 }

@@ -69,7 +69,7 @@ const ROLES = [
   {
     id: 'parent',
     label: tr("I'm a Parent"),
-    description: tr("Follow your child's logged volunteer hours and verification status — read only. Ask your child for their link code in Settings → Family to get started."),
+    description: tr("Follow your child's volunteer hours, cheer them on and say yes to event sign-ups. Ask your child for a link code in Settings → Family to get started."),
     icon: Users,
   },
 ]
@@ -158,15 +158,27 @@ export default function Register({ who } = {}) {
   // The grades the school behind the code has (#581), so the picker offers
   // only those. Looked up once the code looks complete.
   const [codeGrades, setCodeGrades] = useState([])
+  // Whether the code finds a school, shown under the box as it's typed:
+  // { status: 'idle' | 'found' | 'missing', name }. A wrong code used to pass
+  // silently and only fail after the account was made.
+  const [codeSchool, setCodeSchool] = useState({ status: 'idle', name: '' })
   useEffect(() => {
     const pin = String(form.schoolCode || '').trim().toLowerCase()
-    if (pin.length < 4) { setCodeGrades([]); return undefined }
+    if (pin.length < 4) { setCodeGrades([]); setCodeSchool({ status: 'idle', name: '' }); return undefined }
     let live = true
     const t = setTimeout(() => {
       fetch(`${import.meta.env.VITE_API_URL || '/api'}/school/info?pin=${encodeURIComponent(pin)}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => { if (live) setCodeGrades(d?.school?.grades || []) })
-        .catch(() => { if (live) setCodeGrades([]) })
+        .then((r) => (r.ok ? r.json() : r.status === 404 ? { missing: true } : null))
+        .then((d) => {
+          if (!live) return
+          setCodeGrades(d?.school?.grades || [])
+          if (d?.school?.name) {
+            setCodeSchool({ status: 'found', name: d.school.name })
+            // Fill in the school's name for them when they left it empty.
+            setForm((f) => (f.school ? f : { ...f, school: d.school.name }))
+          } else setCodeSchool({ status: d?.missing ? 'missing' : 'idle', name: '' })
+        })
+        .catch(() => { if (live) { setCodeGrades([]); setCodeSchool({ status: 'idle', name: '' }) } })
     }, 400)
     return () => { live = false; clearTimeout(t) }
   }, [form.schoolCode])
@@ -238,6 +250,7 @@ export default function Register({ who } = {}) {
     if (ageGated && role !== 'student') { setErr(AGE_GATED_MESSAGE); return }
     if (under13) recordAgeGate('student')
     if (under13 && !form.parentEmail.trim()) { setErr(tr("Enter your parent or guardian's email address.")); return }
+    if (role === 'student' && codeSchool.status === 'missing') { setErr(tr('No school uses that school code. Check it, or leave the box empty and add it later in Settings.')); return }
     if (!agreed) { setErr(tr('Please agree to the Terms of Service and Privacy Policy.')); return }
     if (!socialTicket && turnstileEnabled && !captchaToken) { setErr(tr('Please complete the CAPTCHA below.')); return }
     const signup = { ...form, role, under13, parentEmail: under13 ? form.parentEmail.trim() : '', inviteCode: inviteCode || undefined }
@@ -268,7 +281,7 @@ export default function Register({ who } = {}) {
     // PublicOnly redirect straight to "/", and Home() reads this note to send
     // a new student or volunteer on to /welcome — which also joins the school
     // code and shows whether it worked. Withdrawn below if no session results.
-    const wantsWelcome = signup.role === 'student' || signup.role === 'volunteer'
+    const wantsWelcome = signup.role === 'student'
     if (wantsWelcome) markWelcomePending({ schoolCode: signup.role === 'student' ? signup.schoolCode : '' })
     try {
       const user = await register({ ...signup, emailCode: code })
@@ -441,6 +454,11 @@ export default function Register({ who } = {}) {
                   </button>
                 ))}
               </div>
+              {/* Schools, clubs and districts sign up on their own pages. */}
+              <div className="mt-5 space-y-1.5 text-sm text-center text-earth-500 dark:text-earth-400">
+                <p>{tr('Signing up a club or school?')}{' '}<Link to="/school/register" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Start a free club or register your school')}</Link></p>
+                <p>{tr('A district or organization?')}{' '}<Link to="/organization/register" className="text-brand-700 dark:text-brand-300 font-medium hover:underline">{tr('Register your organization')}</Link></p>
+              </div>
             </>
           ) : (
             <>
@@ -509,6 +527,8 @@ export default function Register({ who } = {}) {
                   </div>
                   <div className="animate-fade-in-up" style={{ animationDelay: '700ms' }}>
                     <Field icon={Hash}          label={tr('School code (optional)')} value={form.schoolCode} onChange={onChange('schoolCode')} placeholder={tr('cisd-12345')} />
+                    {codeSchool.status === 'found' && <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">{tr('✓ {school}', { school: codeSchool.name })}</p>}
+                    {codeSchool.status === 'missing' && <p className="text-xs text-red-500 mt-1">{tr('No school uses that code. Check it with your teacher, or leave it empty and add it later.')}</p>}
                   </div>
                   <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
                     <label className="label" htmlFor="register-grade">{codeGrades.length ? tr('Grade') : tr('Grade (optional)')}</label>
