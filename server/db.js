@@ -2464,6 +2464,32 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('upgrade_codes table failed:', error.message) }
+  // Coupons for one named school or organization (#966, server/coupons.js).
+  // Only the hash is kept. A percent coupon is redeemed first and applied to
+  // the next invoice (applied_invoice_id); voiding that invoice hands it back.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS customer_coupons (
+        id                 TEXT PRIMARY KEY,
+        code_hash          TEXT UNIQUE NOT NULL,
+        code_hint          TEXT NOT NULL,
+        entity_type        TEXT NOT NULL CHECK (entity_type IN ('school','organization')),
+        entity_id          TEXT NOT NULL,
+        kind               TEXT NOT NULL CHECK (kind IN ('percent','months')),
+        percent_off        NUMERIC(5,2) CHECK (percent_off IS NULL OR (percent_off > 0 AND percent_off <= 100)),
+        free_months        INT CHECK (free_months IS NULL OR (free_months BETWEEN 1 AND 36)),
+        note               TEXT,
+        expires_at         TIMESTAMPTZ,
+        status             TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','redeemed','void')),
+        redeemed_at        TIMESTAMPTZ,
+        redeemed_by        TEXT REFERENCES users(id) ON DELETE SET NULL,
+        applied_invoice_id TEXT REFERENCES invoices(id) ON DELETE SET NULL,
+        created_by         TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+    await query('CREATE INDEX IF NOT EXISTS customer_coupons_entity_idx ON customer_coupons (entity_type, entity_id)')
+  } catch (error) { console.error('customer_coupons table failed:', error.message) }
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS legal_accepted_at TIMESTAMPTZ') } catch {}
   // A co-admin limited to their clubs' students (#674).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS club_scoped BOOLEAN NOT NULL DEFAULT false') } catch {}

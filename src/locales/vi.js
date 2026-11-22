@@ -3686,5 +3686,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Hãy tham gia trường của bạn để thêm bằng chứng dạng liên kết. Trước đó, hãy tải tệp lên.",
   "View proof": "Xem bằng chứng",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Từ Google Drive. Nếu không hiện, hãy nhờ học sinh đặt chia sẻ thành “Bất kỳ ai trên Internet có đường liên kết đều có thể xem”.",
-  "Open in Google Drive instead": "Mở trong Google Drive"
+  "Open in Google Drive instead": "Mở trong Google Drive",
+  "Could not use the coupon.": "Không thể dùng phiếu giảm giá.",
+  "Done! Your next invoice will be free.": "Xong! Hóa đơn tiếp theo của bạn sẽ miễn phí.",
+  "Done! Your next invoice will be {n}% off.": "Xong! Hóa đơn tiếp theo của bạn được giảm {n}%.",
+  "Done! {n} free months: your next payment is now due {date}.": "Xong! {n} tháng miễn phí: lần thanh toán tiếp theo đến hạn vào {date}.",
+  "Done! {n} free months: you’re paid until {date}.": "Xong! {n} tháng miễn phí: bạn đã được thanh toán đến {date}.",
+  "a free invoice": "một hóa đơn miễn phí",
+  "{n}% off": "giảm {n}%",
+  "Have a coupon?": "Bạn có phiếu giảm giá?",
+  "Enter a coupon code VolunTrack gave you.": "Nhập mã phiếu giảm giá VolunTrack đã gửi cho bạn.",
+  "Waiting for your next invoice: {what}.": "Đang chờ hóa đơn tiếp theo: {what}.",
+  "Use coupon": "Dùng phiếu",
+  "Enter your coupon code.": "Nhập mã phiếu giảm giá của bạn.",
+  "That coupon code isn’t valid for your account.": "Mã phiếu này không hợp lệ cho tài khoản của bạn.",
+  "That coupon has already been used.": "Phiếu này đã được dùng.",
+  "That coupon was cancelled.": "Phiếu này đã bị hủy.",
+  "That coupon has expired.": "Phiếu này đã hết hạn.",
+  "Too many coupon tries. Please wait an hour and try again.": "Thử mã quá nhiều lần. Vui lòng đợi một giờ rồi thử lại."
 }

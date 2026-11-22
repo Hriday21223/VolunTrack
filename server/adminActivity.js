@@ -41,6 +41,8 @@ const LABELS = [
   ['POST', /^\/api\/invoices\/admin\/preview$/, 'Previewed an invoice'],
   ['POST', /^\/api\/invoices\/admin$/, 'Sent an invoice'],
   [null, /^\/api\/invoices\//, 'Worked on invoices'],
+  ['POST', /^\/api\/coupons\/admin\/[^/]+\/void$/, 'Cancelled a coupon'],
+  ['POST', /^\/api\/coupons\/admin$/, 'Made a coupon'],
   ['POST', /^\/api\/registration-codes\/admin\/event/, 'Made or changed an event code'],
   ['POST', /^\/api\/registration-codes\/admin\/upgrade/, 'Made or revoked a club upgrade code'],
   ['POST', /^\/api\/registration-codes\/admin/, 'Made or revoked a registration code'],

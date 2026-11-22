@@ -3685,5 +3685,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "انضم إلى مدرستك لإضافة الإثبات كرابط. حتى ذلك الحين، ارفع الملف.",
   "View proof": "عرض الإثبات",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "من Google Drive. إذا لم يظهر، فاطلب من الطالب ضبط المشاركة على “يمكن لأي شخص على الإنترنت لديه الرابط العرض”.",
-  "Open in Google Drive instead": "افتحه في Google Drive بدلًا من ذلك"
+  "Open in Google Drive instead": "افتحه في Google Drive بدلًا من ذلك",
+  "Could not use the coupon.": "تعذّر استخدام القسيمة.",
+  "Done! Your next invoice will be free.": "تم! ستكون فاتورتك القادمة مجانية.",
+  "Done! Your next invoice will be {n}% off.": "تم! ستحصل فاتورتك القادمة على خصم {n}%.",
+  "Done! {n} free months: your next payment is now due {date}.": "تم! {n} أشهر مجانية: موعد دفعتك القادمة الآن {date}.",
+  "Done! {n} free months: you’re paid until {date}.": "تم! {n} أشهر مجانية: حسابك مدفوع حتى {date}.",
+  "a free invoice": "فاتورة مجانية",
+  "{n}% off": "خصم {n}%",
+  "Have a coupon?": "لديك قسيمة؟",
+  "Enter a coupon code VolunTrack gave you.": "أدخل رمز القسيمة الذي أعطتك إياه VolunTrack.",
+  "Waiting for your next invoice: {what}.": "في انتظار فاتورتك القادمة: {what}.",
+  "Use coupon": "استخدم القسيمة",
+  "Enter your coupon code.": "أدخل رمز القسيمة.",
+  "That coupon code isn’t valid for your account.": "رمز القسيمة هذا غير صالح لحسابك.",
+  "That coupon has already been used.": "تم استخدام هذه القسيمة من قبل.",
+  "That coupon was cancelled.": "تم إلغاء هذه القسيمة.",
+  "That coupon has expired.": "انتهت صلاحية هذه القسيمة.",
+  "Too many coupon tries. Please wait an hour and try again.": "محاولات كثيرة جدًا. انتظر ساعة ثم حاول مرة أخرى."
 }

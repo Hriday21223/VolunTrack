@@ -19,6 +19,7 @@ import parentRouter from './parent.js'
 import contactRouter from './contact.js'
 import reviewsRouter from './reviews.js'
 import invoicesRouter from './invoices.js'
+import couponsRouter from './coupons.js'
 import settingsRouter from './settings.js'
 import statsRouter from './stats.js'
 import registrationCodesRouter from './registrationCodes.js'
@@ -292,6 +293,7 @@ const MOUNTED_ROUTERS = [
   ['contact', '/api/contact', contactRouter],
   ['reviews', '/api/reviews', reviewsRouter],
   ['invoices', '/api/invoices', invoicesRouter],
+  ['coupons', '/api/coupons', couponsRouter],
   ['settings', '/api/settings', settingsRouter],
   ['stats', '/api/stats', statsRouter],
   ['registration-codes', '/api/registration-codes', registrationCodesRouter],

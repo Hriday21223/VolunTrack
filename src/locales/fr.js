@@ -3685,5 +3685,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Rejoignez votre école pour ajouter un justificatif sous forme de lien. En attendant, téléversez le fichier.",
   "View proof": "Voir le justificatif",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Depuis Google Drive. S’il ne s’affiche pas, demandez à l’élève de régler le partage sur « Tous les internautes disposant du lien peuvent consulter ».",
-  "Open in Google Drive instead": "Ouvrir dans Google Drive à la place"
+  "Open in Google Drive instead": "Ouvrir dans Google Drive à la place",
+  "Could not use the coupon.": "Impossible d’utiliser le coupon.",
+  "Done! Your next invoice will be free.": "C’est fait ! Votre prochaine facture sera gratuite.",
+  "Done! Your next invoice will be {n}% off.": "C’est fait ! Votre prochaine facture aura {n} % de réduction.",
+  "Done! {n} free months: your next payment is now due {date}.": "C’est fait ! {n} mois gratuits : votre prochain paiement est maintenant dû le {date}.",
+  "Done! {n} free months: you’re paid until {date}.": "C’est fait ! {n} mois gratuits : vous êtes à jour jusqu’au {date}.",
+  "a free invoice": "une facture gratuite",
+  "{n}% off": "{n} % de réduction",
+  "Have a coupon?": "Vous avez un coupon ?",
+  "Enter a coupon code VolunTrack gave you.": "Saisissez le code de coupon que VolunTrack vous a donné.",
+  "Waiting for your next invoice: {what}.": "En attente de votre prochaine facture : {what}.",
+  "Use coupon": "Utiliser le coupon",
+  "Enter your coupon code.": "Saisissez votre code de coupon.",
+  "That coupon code isn’t valid for your account.": "Ce code de coupon n’est pas valable pour votre compte.",
+  "That coupon has already been used.": "Ce coupon a déjà été utilisé.",
+  "That coupon was cancelled.": "Ce coupon a été annulé.",
+  "That coupon has expired.": "Ce coupon a expiré.",
+  "Too many coupon tries. Please wait an hour and try again.": "Trop d’essais. Attendez une heure et réessayez."
 }

@@ -73,3 +73,24 @@ test('publicPromo hides invite-only and fully-claimed offers', () => {
   assert.ok(live && live.percentOff === 10)
   assert.equal(live.enabled, undefined, 'internal fields are stripped from the public view')
 })
+
+// Coupons for one named customer (#966).
+test('coupon requests are checked before a code is made', async () => {
+  const { readCouponRequest, normalizeCoupon, hashCoupon, couponLabel } = await import('../server/coupons.js')
+  const now = new Date('2026-11-22T12:00:00Z')
+  assert.equal(readCouponRequest({ kind: 'percent', percentOff: 100 }, now).percentOff, 100)
+  assert.equal(readCouponRequest({ kind: 'months', freeMonths: 3 }, now).freeMonths, 3)
+  assert.ok(readCouponRequest({ kind: 'percent', percentOff: 0 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'percent', percentOff: 101 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'months', freeMonths: 0 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'months', freeMonths: 2.5 }, now).error)
+  assert.ok(readCouponRequest({ kind: 'gift' }, now).error)
+  assert.ok(readCouponRequest({ kind: 'percent', percentOff: 10, expiresAt: '2026-11-01' }, now).error)
+  assert.equal(readCouponRequest({ kind: 'percent', percentOff: 10, expiresAt: '2026-12-31' }, now).expiresAt, '2026-12-31T23:59:59.000Z')
+  assert.equal(readCouponRequest({ kind: 'percent', percentOff: 10 }, now).expiresAt, null)
+  // Typed with spaces, dashes or lower case, it's the same code.
+  assert.equal(normalizeCoupon('abcde-fgh2j '), 'ABCDEFGH2J')
+  assert.equal(hashCoupon('abcde-fgh2j'), hashCoupon('ABCDEFGH2J'))
+  assert.equal(couponLabel({ kind: 'percent', percent_off: '100.00' }), 'Next invoice free')
+  assert.equal(couponLabel({ kind: 'months', free_months: 1 }), '1 month free')
+})

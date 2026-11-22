@@ -3685,5 +3685,22 @@ export default {
   "Join your school to add proof as a link. Until then, upload the file.": "Присоединитесь к своей школе, чтобы добавлять подтверждение ссылкой. А пока загрузите файл.",
   "View proof": "Посмотреть подтверждение",
   "From Google Drive. If it doesn’t show, ask the student to set sharing to “Anyone on the internet with the link can view”.": "Из Google Диска. Если не отображается, попросите ученика выбрать доступ «Просматривать могут все в интернете, у кого есть ссылка».",
-  "Open in Google Drive instead": "Открыть в Google Диске"
+  "Open in Google Drive instead": "Открыть в Google Диске",
+  "Could not use the coupon.": "Не удалось использовать купон.",
+  "Done! Your next invoice will be free.": "Готово! Ваш следующий счёт будет бесплатным.",
+  "Done! Your next invoice will be {n}% off.": "Готово! На следующий счёт будет скидка {n}%.",
+  "Done! {n} free months: your next payment is now due {date}.": "Готово! {n} мес. бесплатно: следующий платёж теперь до {date}.",
+  "Done! {n} free months: you’re paid until {date}.": "Готово! {n} мес. бесплатно: оплачено до {date}.",
+  "a free invoice": "бесплатный счёт",
+  "{n}% off": "скидка {n}%",
+  "Have a coupon?": "Есть купон?",
+  "Enter a coupon code VolunTrack gave you.": "Введите код купона, который дал вам VolunTrack.",
+  "Waiting for your next invoice: {what}.": "Ждёт следующего счёта: {what}.",
+  "Use coupon": "Использовать купон",
+  "Enter your coupon code.": "Введите код купона.",
+  "That coupon code isn’t valid for your account.": "Этот код купона недействителен для вашего аккаунта.",
+  "That coupon has already been used.": "Этот купон уже использован.",
+  "That coupon was cancelled.": "Этот купон был отменён.",
+  "That coupon has expired.": "Срок действия купона истёк.",
+  "Too many coupon tries. Please wait an hour and try again.": "Слишком много попыток. Подождите час и попробуйте снова."
 }

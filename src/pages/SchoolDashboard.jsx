@@ -38,6 +38,7 @@ import PdfPreview from '@/components/PdfPreview.jsx'
 import SubmittedDocument from '@/components/SubmittedDocument.jsx'
 import { submitDocumentToSchool } from '@/lib/schoolDocument.js'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
+import CouponCard from '@/components/CouponCard.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import { fmtDate } from '@/utils/date.js'
 import InviteClassCard from '@/components/InviteClassCard.jsx'
@@ -744,6 +745,7 @@ export default function SchoolDashboard() {
           return null
         })()}
         {billingTab && <ReferralCard />}
+        {billingTab && <CouponCard onRedeemed={() => { refreshUser?.(); loadData() }} />}
         {/* How to pay only when something is owed (#952): a free club never pays. */}
         {billingTab && accountCode && (
           invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void')

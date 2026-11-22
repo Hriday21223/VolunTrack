@@ -20,6 +20,7 @@ import ImpactMapCard from '@/components/ImpactMapCard.jsx'
 import { generateInvoicePDF, poLabel } from '@/lib/export.js'
 import PdfPreview from '@/components/PdfPreview.jsx'
 import PaymentDetails from '@/components/PaymentDetails.jsx'
+import CouponCard from '@/components/CouponCard.jsx'
 import ReferralCard from '@/components/ReferralCard.jsx'
 import OrgRequirements from '@/components/OrgRequirements.jsx'
 import AnnouncementBanner from '@/components/AnnouncementBanner.jsx'
@@ -209,6 +210,7 @@ export default function OrganizationDashboard() {
         <SpotlightTour storageKey="voluntrack:tour-seen:org" steps={ORG_TOUR_STEPS} />
       )}
       {tab === 'schools' && <ReferralCard className="mb-4" />}
+      {tab === 'schools' && <CouponCard className="mb-4" onRedeemed={loadInvoices} />}
       {/* How to pay only while an invoice is open (#952). */}
       {tab === 'schools' && accountCode && invoices.some((inv) => inv.status !== 'paid' && inv.status !== 'void') && (
         <Card className="mb-4">

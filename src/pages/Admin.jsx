@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, Eye, ExternalLink, Megaphone, Flag } from 'lucide-react'
+import { Ticket, UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, Eye, ExternalLink, Megaphone, Flag } from 'lucide-react'
+import CouponsDialog from '@/components/CouponsDialog.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
 import { HANDOVER_ENDPOINTS } from '@/lib/handover.js'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -316,6 +317,10 @@ export default function Admin() {
   const [applyPromoToInvoice, setApplyPromoToInvoice] = useState(false)
   // The event-code discount (#907), when this account has one left.
   const [applyEventToInvoice, setApplyEventToInvoice] = useState(false)
+  // A percent coupon the account redeemed, waiting for this invoice (#966).
+  const [applyCouponToInvoice, setApplyCouponToInvoice] = useState(false)
+  // { entityType, entity } whose Coupons dialog is open (#966).
+  const [couponsFor, setCouponsFor] = useState(null)
   // A referral credit this customer has earned, chosen instead of the join
   // offer — the server rejects both on one invoice.
   const [selectedCreditId, setSelectedCreditId] = useState('')
@@ -854,12 +859,13 @@ export default function Admin() {
   const invoiceTotals = useMemo(() => {
     const base = Number(invoiceAmountDraft)
     if (!Number.isFinite(base) || base <= 0) return null
+    if (applyCouponToInvoice && invoicePromo?.coupon) return applyPromoAmount(base, Number(invoicePromo.coupon.percent_off))
     const credit = (invoicePromo?.credits || []).find((c) => c.id === selectedCreditId)
     if (credit) return applyPromoAmount(base, Number(credit.percent_off))
     if (applyEventToInvoice && invoicePromo?.eventOffer) return applyPromoAmount(base, invoicePromo.eventOffer.percentOff)
     if (!applyPromoToInvoice || !invoicePromoCheck.eligible) return null
     return applyPromoAmount(base, invoicePromo.offer.percentOff)
-  }, [invoiceAmountDraft, applyPromoToInvoice, applyEventToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
+  }, [invoiceAmountDraft, applyPromoToInvoice, applyEventToInvoice, applyCouponToInvoice, invoicePromoCheck, invoicePromo, selectedCreditId])
 
   const openInvoiceModal = (entityType, entity) => {
     const perSchool = entityType === 'organization' ? orgPerSchoolTotal(entity) : null
@@ -874,6 +880,7 @@ export default function Admin() {
     setInvoicePromo(null)
     setApplyPromoToInvoice(false)
     setApplyEventToInvoice(false)
+    setApplyCouponToInvoice(false)
     setSelectedCreditId('')
     ;(async () => {
       try {
@@ -890,6 +897,9 @@ export default function Admin() {
         if (data.credits?.length) { setSelectedCreditId(data.credits[0].id); setApplyPromoToInvoice(false) }
         // An account that came through an event code was promised its discount.
         else if (data.eventOffer) { setApplyEventToInvoice(true); setApplyPromoToInvoice(false) }
+        // A coupon the customer already used is what they were promised: it
+        // goes on this invoice, instead of any other discount.
+        if (data.coupon) { setApplyCouponToInvoice(true); setApplyPromoToInvoice(false); setApplyEventToInvoice(false); setSelectedCreditId('') }
       } catch {}
     })()
   }
@@ -904,9 +914,10 @@ export default function Admin() {
     description: invoiceDescriptionDraft.trim() || undefined,
     dueDate: invoiceDueDateDraft || undefined,
     poNumber: invoicePoNumberDraft.trim() || undefined,
-    applyPromo: !selectedCreditId && !applyEventToInvoice && applyPromoToInvoice && invoicePromoCheck.eligible,
-    applyEventCode: !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
-    referralCreditId: selectedCreditId || undefined,
+    applyPromo: !applyCouponToInvoice && !selectedCreditId && !applyEventToInvoice && applyPromoToInvoice && invoicePromoCheck.eligible,
+    applyEventCode: !applyCouponToInvoice && !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
+    referralCreditId: (!applyCouponToInvoice && selectedCreditId) || undefined,
+    applyCoupon: applyCouponToInvoice && Boolean(invoicePromo?.coupon),
   })
 
   // The server prices it (discounts are never worked out here); nothing is
@@ -947,7 +958,7 @@ export default function Admin() {
       const data = await res.json()
       if (!res.ok) throw new Error('Failed')
       setInvoiceModal(null); setInvoiceAmountDraft(''); setInvoiceDescriptionDraft(''); setInvoiceDueDateDraft(''); setInvoicePoNumberDraft('')
-      setInvoicePromo(null); setApplyPromoToInvoice(false); setApplyEventToInvoice(false); setSelectedCreditId('')
+      setInvoicePromo(null); setApplyPromoToInvoice(false); setApplyEventToInvoice(false); setApplyCouponToInvoice(false); setSelectedCreditId('')
       if (data.invoice?.hasContactEmail === false) {
         setToastMessage('Invoice created — no contact email on file, nothing was emailed')
       } else if (data.invoice?.emailSent === false) {
@@ -1838,6 +1849,9 @@ export default function Admin() {
                     <button onClick={() => { setNotifySchoolId(s.id); setNotifyAmount(s.price_amount || ''); setNotifyBillingPeriod(s.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this school">
                       <Bell className="w-4 h-4" />
                     </button>
+                    <button onClick={() => setCouponsFor({ entityType: 'school', entity: s })} className="text-brand-400 hover:text-brand-300 p-2" title="Coupons">
+                      <Ticket className="w-4 h-4" />
+                    </button>
                     <button onClick={() => openInvoiceModal('school', s)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
                       <Receipt className="w-4 h-4" />
                     </button>
@@ -2026,6 +2040,9 @@ export default function Admin() {
                     )}
                     <button onClick={() => { setNotifyOrgId(org.id); setNotifyAmount(orgPerSchoolTotal(org)?.total || org.price_amount || ''); setNotifyBillingPeriod(org.price_period || 'monthly'); setShowNotifyModal(true) }} className="text-brand-400 hover:text-brand-300 p-2" title="Notify this organization">
                       <Bell className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setCouponsFor({ entityType: 'organization', entity: org })} className="text-brand-400 hover:text-brand-300 p-2" title="Coupons">
+                      <Ticket className="w-4 h-4" />
                     </button>
                     <button onClick={() => openInvoiceModal('organization', org)} className="text-brand-400 hover:text-brand-300 p-2" title="Send invoice">
                       <Receipt className="w-4 h-4" />
@@ -3253,6 +3270,8 @@ export default function Admin() {
         </div>
       )}
 
+      {couponsFor && <CouponsDialog entityType={couponsFor.entityType} entity={couponsFor.entity} onClose={() => setCouponsFor(null)} />}
+
       {orgPriceModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOrgPriceModal(null)}>
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -3457,7 +3476,7 @@ export default function Admin() {
                   value={invoicePoNumberDraft} onChange={(e) => setInvoicePoNumberDraft(e.target.value)}
                 />
               </div>
-              {invoicePromo?.credits?.length > 0 && (
+              {invoicePromo?.credits?.length > 0 && !applyCouponToInvoice && (
                 <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
                   <p className="font-medium flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 text-brand-400" /> Referral credits</p>
                   <div className="mt-2 space-y-1.5">
@@ -3486,7 +3505,22 @@ export default function Admin() {
                   </div>
                 </div>
               )}
-              {invoicePromo?.eventOffer && !selectedCreditId && (
+              {invoicePromo?.coupon && (
+                <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
+                  <label className="flex items-start gap-2">
+                    <input type="checkbox" className="mt-0.5" checked={applyCouponToInvoice} onChange={(e) => setApplyCouponToInvoice(e.target.checked)} />
+                    <span>
+                      <span className="font-medium">Apply their coupon</span>
+                      {' — '}{Number(invoicePromo.coupon.percent_off) >= 100 ? 'free' : `${Number(invoicePromo.coupon.percent_off)}% off`}
+                      <span className="text-earth-500"> · <span className="font-mono">…{invoicePromo.coupon.code_hint}</span>{invoicePromo.coupon.note ? ` (${invoicePromo.coupon.note})` : ''}</span>
+                    </span>
+                  </label>
+                  {applyCouponToInvoice && invoiceTotals && (
+                    <p className="text-xs text-earth-600 dark:text-earth-300 mt-1.5 ml-6">They pay ${invoiceTotals.total.toFixed(2)} instead of ${invoiceTotals.subtotal.toFixed(2)}.</p>
+                  )}
+                </div>
+              )}
+              {invoicePromo?.eventOffer && !selectedCreditId && !applyCouponToInvoice && (
                 <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
                   <label className="flex items-start gap-2">
                     <input
@@ -3509,7 +3543,7 @@ export default function Admin() {
                   )}
                 </div>
               )}
-              {invoicePromo?.offer && !selectedCreditId && !applyEventToInvoice && (
+              {invoicePromo?.offer && !selectedCreditId && !applyEventToInvoice && !applyCouponToInvoice && (
                 <div className={`rounded-xl p-3 text-sm ${invoicePromoCheck.eligible ? 'bg-brand-500/10 border border-brand-500/30' : 'bg-earth-500/5'}`}>
                   <label className={`flex items-start gap-2 ${invoicePromoCheck.eligible ? '' : 'opacity-60'}`}>
                     <input
