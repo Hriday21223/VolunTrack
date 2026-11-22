@@ -94,3 +94,21 @@ test('coupon requests are checked before a code is made', async () => {
   assert.equal(couponLabel({ kind: 'percent', percent_off: '100.00' }), 'Next invoice free')
   assert.equal(couponLabel({ kind: 'months', free_months: 1 }), '1 month free')
 })
+
+// Fee lines and tax on an invoice (#968).
+test('fees are added after the discount and taxed with the price', async () => {
+  const { readCharges, invoiceCharges } = await import('../server/promo.js')
+  const asked = readCharges([{ label: 'Sign-up fee', amount: '50' }, { label: '', amount: '' }], '8.25')
+  assert.deepEqual(asked, { fees: [{ label: 'Sign-up fee', amount: 50 }], taxPercent: 8.25 })
+  // $500 with 10% off = $450, + $50 fee = $500, + 8.25% tax = $41.25 → $541.25
+  const c = invoiceCharges(450, asked.fees, asked.taxPercent)
+  assert.equal(c.feesTotal, 50)
+  assert.equal(c.taxAmount, 41.25)
+  assert.equal(c.total, 541.25)
+  assert.equal(invoiceCharges(100, [], null).total, 100)
+  assert.ok(readCharges([{ label: 'Fee', amount: -5 }]).error)
+  assert.ok(readCharges([{ label: '', amount: 5 }]).error)
+  assert.ok(readCharges([], '120').error)
+  assert.equal(readCharges([], '0').taxPercent, null)
+  assert.ok(readCharges(Array.from({ length: 11 }, () => ({ label: 'x', amount: 1 }))).error)
+})

@@ -189,3 +189,42 @@ export function promoLabel(offer) {
   if (offer.firstInvoiceOnly) return `${pct} your first ${noun}`
   return offer.appliesTo === 'any' ? pct : `${pct} every ${noun}`
 }
+
+// Fee lines and tax on an invoice (#968). Any discount comes off the price
+// first; the fee lines (a sign-up fee, say) are added; tax is charged on the
+// discounted price plus the fees. Used by POST /api/invoices/admin and the
+// admin's Send invoice form, so the form shows exactly what will be billed.
+export const MAX_FEE_LINES = 10
+
+const cents = (n) => Math.round(Number(n) * 100) / 100
+
+// Checks the fee lines and tax rate a request asked for. → { fees, taxPercent } or { error }.
+export function readCharges(fees, taxPercent) {
+  const lines = Array.isArray(fees) ? fees : []
+  if (lines.length > MAX_FEE_LINES) return { error: `An invoice can have at most ${MAX_FEE_LINES} fee lines.` }
+  const clean = []
+  for (const f of lines) {
+    const label = String(f?.label ?? '').trim()
+    const amount = Number(f?.amount)
+    if (!label && (f?.amount === '' || f?.amount == null)) continue // an empty row
+    if (!label || label.length > 80) return { error: 'Give each fee a name (up to 80 characters).' }
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000) return { error: `Enter an amount for "${label}".` }
+    clean.push({ label, amount: cents(amount) })
+  }
+  let tax = null
+  if (taxPercent !== undefined && taxPercent !== null && String(taxPercent).trim() !== '') {
+    tax = Number(taxPercent)
+    if (!Number.isFinite(tax) || tax < 0 || tax > 100) return { error: 'Tax must be between 0 and 100%.' }
+    if (tax === 0) tax = null
+  }
+  return { fees: clean, taxPercent: tax }
+}
+
+// → { priceTotal, fees, feesTotal, taxPercent, taxAmount, total }
+export function invoiceCharges(priceTotal, fees = [], taxPercent = null) {
+  const price = cents(priceTotal)
+  const feesTotal = cents(fees.reduce((sum, f) => sum + Number(f.amount), 0))
+  const taxAmount = taxPercent ? cents((price + feesTotal) * Number(taxPercent) / 100) : 0
+  return { priceTotal: price, fees, feesTotal, taxPercent: taxPercent || null, taxAmount, total: cents(price + feesTotal + taxAmount) }
+}
+

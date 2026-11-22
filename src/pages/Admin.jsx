@@ -19,7 +19,7 @@ import SpotlightTour from '@/components/SpotlightTour.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { getIncidents, createIncident, resolveIncident, deleteIncident, deleteResolvedIncidents, setIncidentPublished, getHealth, HEALTH_UNKNOWN } from '@/lib/status.js'
 import { generateInvoicePDF, generateInvoicesPDFBlob, poLabel } from '@/lib/export.js'
-import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES } from '@promo'
+import { NO_PROMO, promoAppliesTo, applyPromoAmount, promoLabel, promoRemaining, PROMO_AUDIENCES, PROMO_PERIODS, PROMO_VISIBILITIES, readCharges, invoiceCharges, MAX_FEE_LINES } from '@promo'
 import { fmtDate } from '@/utils/date.js'
 import { parseISO, format } from 'date-fns'
 import { csvCell } from '@/lib/csv.js'
@@ -270,6 +270,9 @@ export default function Admin() {
   const [invoiceDescriptionDraft, setInvoiceDescriptionDraft] = useState('')
   const [invoiceDueDateDraft, setInvoiceDueDateDraft] = useState('')
   const [invoicePoNumberDraft, setInvoicePoNumberDraft] = useState('')
+  // Fee lines ({ label, amount }) and a tax rate for this invoice (#968).
+  const [invoiceFeesDraft, setInvoiceFeesDraft] = useState([])
+  const [invoiceTaxDraft, setInvoiceTaxDraft] = useState('')
   const [sendingInvoice, setSendingInvoice] = useState(false)
   // The PDF open in the preview (#942): a draft from the Send invoice window, or
   // an invoice already sent, from Payment history.
@@ -876,6 +879,8 @@ export default function Admin() {
     setInvoiceDescriptionDraft(perSchool ? perSchool.label : '')
     setInvoiceDueDateDraft(entity.payment_due_date ? String(entity.payment_due_date).slice(0, 10) : '')
     setInvoicePoNumberDraft('')
+    setInvoiceFeesDraft([])
+    setInvoiceTaxDraft('')
     setInvoicePreviewError('')
     setInvoicePromo(null)
     setApplyPromoToInvoice(false)
@@ -918,6 +923,8 @@ export default function Admin() {
     applyEventCode: !applyCouponToInvoice && !selectedCreditId && applyEventToInvoice && Boolean(invoicePromo?.eventOffer),
     referralCreditId: (!applyCouponToInvoice && selectedCreditId) || undefined,
     applyCoupon: applyCouponToInvoice && Boolean(invoicePromo?.coupon),
+    fees: invoiceFeesDraft,
+    taxPercent: invoiceTaxDraft.trim() || undefined,
   })
 
   // The server prices it (discounts are never worked out here); nothing is
@@ -1011,6 +1018,7 @@ export default function Admin() {
       description: event.description,
       dueDate: event.due_date,
       createdAt: event.created_at,
+      charges: event.charges || null,
   })
 
   const downloadInvoicePdf = (event) => generateInvoicePDF(invoicePdfFields(event))
@@ -3475,6 +3483,39 @@ export default function Admin() {
                   placeholder="The PO number the customer gave you"
                   value={invoicePoNumberDraft} onChange={(e) => setInvoicePoNumberDraft(e.target.value)}
                 />
+              </div>
+              {/* Fee lines and tax (#968): tax is on the price after any discount plus the fees. */}
+              <div className="rounded-xl p-3 text-sm border border-white/10 space-y-2">
+                <p className="font-medium">Fees and tax (optional)</p>
+                {invoiceFeesDraft.map((f, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input className="input flex-1" maxLength={80} placeholder="e.g. Sign-up fee" aria-label="Fee name" value={f.label}
+                      onChange={(e) => setInvoiceFeesDraft((rows) => rows.map((r, j) => (j === i ? { ...r, label: e.target.value } : r)))} />
+                    <input className="input w-28" inputMode="decimal" placeholder="$" aria-label="Fee amount" value={f.amount}
+                      onChange={(e) => setInvoiceFeesDraft((rows) => rows.map((r, j) => (j === i ? { ...r, amount: e.target.value } : r)))} />
+                    <button type="button" className="btn-ghost btn-sm" aria-label="Remove fee" onClick={() => setInvoiceFeesDraft((rows) => rows.filter((_, j) => j !== i))}>✕</button>
+                  </div>
+                ))}
+                {invoiceFeesDraft.length < MAX_FEE_LINES && (
+                  <button type="button" className="btn-ghost btn-sm" onClick={() => setInvoiceFeesDraft((rows) => [...rows, { label: '', amount: '' }])}>+ Add a fee</button>
+                )}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="invoice-tax" className="text-earth-400">Tax %</label>
+                  <input id="invoice-tax" className="input w-24" inputMode="decimal" placeholder="0" value={invoiceTaxDraft} onChange={(e) => setInvoiceTaxDraft(e.target.value)} />
+                </div>
+                {(() => {
+                  const base = Number(invoiceAmountDraft)
+                  if (!Number.isFinite(base) || base <= 0) return null
+                  const asked = readCharges(invoiceFeesDraft, invoiceTaxDraft)
+                  if (asked.error) return <p className="text-xs text-red-400">{asked.error}</p>
+                  if (!asked.fees.length && !asked.taxPercent) return null
+                  const c = invoiceCharges(invoiceTotals ? invoiceTotals.total : base, asked.fees, asked.taxPercent)
+                  return (
+                    <p className="text-xs text-earth-300">
+                      Price ${c.priceTotal.toFixed(2)}{c.feesTotal ? ` + fees $${c.feesTotal.toFixed(2)}` : ''}{c.taxPercent ? ` + tax $${c.taxAmount.toFixed(2)}` : ''} = <strong>${c.total.toFixed(2)}</strong>
+                    </p>
+                  )
+                })()}
               </div>
               {invoicePromo?.credits?.length > 0 && !applyCouponToInvoice && (
                 <div className="rounded-xl p-3 text-sm bg-brand-500/10 border border-brand-500/30">
