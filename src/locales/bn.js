@@ -3702,5 +3702,6 @@ export default {
   "That coupon has already been used.": "এই কুপন আগেই ব্যবহার হয়েছে।",
   "That coupon was cancelled.": "এই কুপন বাতিল করা হয়েছে।",
   "That coupon has expired.": "এই কুপনের মেয়াদ শেষ।",
-  "Too many coupon tries. Please wait an hour and try again.": "অনেকবার চেষ্টা হয়েছে। এক ঘণ্টা পরে আবার চেষ্টা করুন।"
+  "Too many coupon tries. Please wait an hour and try again.": "অনেকবার চেষ্টা হয়েছে। এক ঘণ্টা পরে আবার চেষ্টা করুন।",
+  "Not paid yet": "এখনো পরিশোধ হয়নি"
 }

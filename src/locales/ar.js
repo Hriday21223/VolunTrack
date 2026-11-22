@@ -3702,5 +3702,6 @@ export default {
   "That coupon has already been used.": "تم استخدام هذه القسيمة من قبل.",
   "That coupon was cancelled.": "تم إلغاء هذه القسيمة.",
   "That coupon has expired.": "انتهت صلاحية هذه القسيمة.",
-  "Too many coupon tries. Please wait an hour and try again.": "محاولات كثيرة جدًا. انتظر ساعة ثم حاول مرة أخرى."
+  "Too many coupon tries. Please wait an hour and try again.": "محاولات كثيرة جدًا. انتظر ساعة ثم حاول مرة أخرى.",
+  "Not paid yet": "لم يُدفع بعد"
 }

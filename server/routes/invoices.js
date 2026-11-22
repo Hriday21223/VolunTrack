@@ -383,7 +383,7 @@ router.get('/admin/:entityType/:entityId/history', limiter, requireDb, requireAu
     const { rows } = await query(
       `SELECT e.id, e.event_type, e.amount, e.notes, e.created_at,
               i.id AS invoice_id, i.invoice_number, i.status AS invoice_status, i.due_date, i.description, i.billing_period,
-              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id, i.po_number, i.charges
+              i.subtotal, i.discount_percent, i.discount_label, i.discount_code, i.referral_id, i.po_number, i.charges, i.paid_at
        FROM payment_events e
        LEFT JOIN invoices i ON i.id = e.invoice_id
        WHERE e.entity_type = $1 AND e.entity_id = $2

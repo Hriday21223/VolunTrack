@@ -3703,5 +3703,6 @@ export default {
   "That coupon has already been used.": "Phiếu này đã được dùng.",
   "That coupon was cancelled.": "Phiếu này đã bị hủy.",
   "That coupon has expired.": "Phiếu này đã hết hạn.",
-  "Too many coupon tries. Please wait an hour and try again.": "Thử mã quá nhiều lần. Vui lòng đợi một giờ rồi thử lại."
+  "Too many coupon tries. Please wait an hour and try again.": "Thử mã quá nhiều lần. Vui lòng đợi một giờ rồi thử lại.",
+  "Not paid yet": "Chưa thanh toán"
 }

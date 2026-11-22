@@ -3703,5 +3703,6 @@ export default {
   "That coupon has already been used.": "Ese cupón ya se usó.",
   "That coupon was cancelled.": "Ese cupón fue cancelado.",
   "That coupon has expired.": "Ese cupón venció.",
-  "Too many coupon tries. Please wait an hour and try again.": "Demasiados intentos de cupón. Espera una hora e inténtalo de nuevo."
+  "Too many coupon tries. Please wait an hour and try again.": "Demasiados intentos de cupón. Espera una hora e inténtalo de nuevo.",
+  "Not paid yet": "Sin pagar aún"
 }

@@ -3702,5 +3702,6 @@ export default {
   "That coupon has already been used.": "Этот купон уже использован.",
   "That coupon was cancelled.": "Этот купон был отменён.",
   "That coupon has expired.": "Срок действия купона истёк.",
-  "Too many coupon tries. Please wait an hour and try again.": "Слишком много попыток. Подождите час и попробуйте снова."
+  "Too many coupon tries. Please wait an hour and try again.": "Слишком много попыток. Подождите час и попробуйте снова.",
+  "Not paid yet": "Ещё не оплачен"
 }

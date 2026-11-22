@@ -1019,6 +1019,8 @@ export default function Admin() {
       dueDate: event.due_date,
       createdAt: event.created_at,
       charges: event.charges || null,
+      status: event.invoice_status,
+      paidAt: event.paid_at || null,
   })
 
   const downloadInvoicePdf = (event) => generateInvoicePDF(invoicePdfFields(event))
@@ -1034,7 +1036,7 @@ export default function Admin() {
   const viewAllInvoices = () => setInvoicePdf({
     title: `All ${sentInvoices.length} invoice${sentInvoices.length === 1 ? '' : 's'} for ${historyModal?.entityName || ''}`,
     filename: 'invoices.pdf',
-    all: sentInvoices.map((ev) => ({ ...invoicePdfFields(ev), status: ev.invoice_status })),
+    all: sentInvoices.map((ev) => invoicePdfFields(ev)),
   })
 
   const loadPaymentInstructions = useCallback(async () => {

@@ -3703,5 +3703,6 @@ export default {
   "That coupon has already been used.": "该优惠券已被使用。",
   "That coupon was cancelled.": "该优惠券已被取消。",
   "That coupon has expired.": "该优惠券已过期。",
-  "Too many coupon tries. Please wait an hour and try again.": "尝试次数过多。请等一小时后再试。"
+  "Too many coupon tries. Please wait an hour and try again.": "尝试次数过多。请等一小时后再试。",
+  "Not paid yet": "尚未付款"
 }
