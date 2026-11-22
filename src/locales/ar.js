@@ -3935,5 +3935,10 @@ export default {
   "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "شكرًا! تمّ الدفع بالبطاقة. ستصبح الفاتورة مدفوعة خلال دقيقة.",
   "Payment cancelled. Nothing was charged.": "أُلغي الدفع. لم يُخصم أي مبلغ.",
   "Card payments are handled by Stripe. VolunTrack never sees your card number.": "تتولى Stripe الدفع بالبطاقة. لا يرى VolunTrack رقم بطاقتك أبدًا.",
-  "Paid by card": "مدفوعة بالبطاقة"
+  "Paid by card": "مدفوعة بالبطاقة",
+  "Google Drive": "Google Drive",
+  "Connected to Google Drive. Testing it now…": "تم الاتصال بـ Google Drive. جارٍ اختباره الآن…",
+  "Google Drive didn’t connect. Try again, and allow VolunTrack to add files.": "لم يتم الاتصال بـ Google Drive. حاول مرة أخرى واسمح لـ VolunTrack بإضافة الملفات.",
+  "Google Drive · {account} · folder “VolunTrack proof files”": "Google Drive · {account} · مجلد “VolunTrack proof files”",
+  "Proof files go into a “VolunTrack proof files” folder in the Google account you pick. VolunTrack can only see files it put there, and school staff open them inside VolunTrack, so they don’t need access to the folder.": "تُحفظ ملفات الإثبات في مجلد “VolunTrack proof files” في حساب Google الذي تختاره. لا يرى VolunTrack إلا الملفات التي وضعها هناك، ويفتحها موظفو المدرسة داخل VolunTrack، فلا يحتاجون إلى صلاحية الوصول إلى المجلد."
 }

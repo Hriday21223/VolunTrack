@@ -7,7 +7,8 @@ import { requireAuth } from '../auth.js'
 import { encryptSecret, decryptSecret, hasEncryptionKey } from '../secrets.js'
 import { uid } from '../ids.js'
 import { checkRoundTrip, checkCors, trimSlashes, presign, withPrefix } from '../storage/s3.js'
-import { mintUpload, mintDownload, roundTrip, isSharepoint } from '../storage/adapter.js'
+import { mintUpload, mintDownload, roundTrip, isSharepoint, isGdrive, isExternal } from '../storage/adapter.js'
+import { gdriveConfigured, gdriveAuthUrl, exchangeCode, createRootFolder, revokeToken, forgetToken, gdriveOpen } from '../storage/gdrive.js'
 import { sharepointConfigured, sharepointClientId, parseSiteUrl, validTenantId } from '../storage/graph.js'
 import jwt from 'jsonwebtoken'
 import { recordAudit, AUDIT } from '../audit.js'
@@ -237,7 +238,7 @@ router.post(
 
       let secretAccessKey
       try {
-        secretAccessKey = isSharepoint(row) ? (row.secret_encrypted ? decryptSecret(row.secret_encrypted) : null) : decryptSecret(row.secret_encrypted)
+        secretAccessKey = isExternal(row) ? (row.secret_encrypted ? decryptSecret(row.secret_encrypted) : null) : decryptSecret(row.secret_encrypted)
       } catch {
         return res.status(500).json({
           error: 'The stored secret could not be read. Re-enter the secret access key.',
@@ -253,10 +254,10 @@ router.post(
         secretAccessKey,
       }
 
-      const result = isSharepoint(row) ? await roundTrip(row) : await checkRoundTrip(config)
-      // Microsoft's upload URLs allow browser uploads on their own; only a
-      // bucket needs its CORS rule checked.
-      const cors = result.ok && !isSharepoint(row) ? await checkCors(config, req.headers.origin || null) : { ok: null }
+      const result = isExternal(row) ? await roundTrip(row) : await checkRoundTrip(config)
+      // Microsoft's and Google's upload URLs allow browser uploads on their
+      // own; only a bucket needs its CORS rule checked.
+      const cors = result.ok && !isExternal(row) ? await checkCors(config, req.headers.origin || null) : { ok: null }
 
       // A disabled config stays disabled — a passing test is necessary to go
       // active, not sufficient to override someone turning it off.
@@ -332,7 +333,7 @@ async function saveSharepoint(req, res) {
 
 // GET /api/storage/providers — which extra providers this server offers.
 router.get('/providers', limiter, requireAuth('school', 'org'), (_req, res) => {
-  return res.json({ sharepoint: sharepointConfigured(), sharepointAppId: sharepointConfigured() ? sharepointClientId() : null })
+  return res.json({ sharepoint: sharepointConfigured(), sharepointAppId: sharepointConfigured() ? sharepointClientId() : null, googleDrive: gdriveConfigured() })
 })
 
 const consentState = (owner) => jwt.sign({ purpose: 'ms_storage_consent', owner }, process.env.JWT_SECRET, { expiresIn: '30m' })
@@ -369,12 +370,87 @@ router.get('/microsoft/callback', limiter, (req, res) => {
   return back({ msTenant: String(req.query.tenant) })
 })
 
+// ---------------------------------------------------------------------------
+// Google Drive (#919)
+// ---------------------------------------------------------------------------
+const googleRedirect = () => `${apiBase()}/api/storage/google/callback`
+const storagePage = (column) => (column === 'organization_id' ? '/organization/dashboard/requirements' : '/school/dashboard/setup/storage')
+
+// GET /api/storage/google/connect-url — Google's sign-in page, where someone
+// at the school picks the Google account whose Drive will hold the files.
+router.get('/google/connect-url', limiter, requireDb, requireKey, requireAuth('school', 'org'), async (req, res) => {
+  if (!gdriveConfigured() || !apiBase()) return res.status(503).json({ error: 'Google Drive isn’t set up on this server yet.' })
+  const owner = await ownerFor(req.auth)
+  if (!owner) return res.status(403).json({ error: 'Not allowed.' })
+  // Co-admins can't change storage (the card is the main admin's), same as the other providers.
+  if (req.auth.role === 'school_staff') return res.status(403).json({ error: 'Only your school’s main admin can connect storage.' })
+  const state = jwt.sign({ purpose: 'gdrive_connect', owner: { column: owner.column, id: owner.id }, by: req.auth.sub, role: req.auth.role }, process.env.JWT_SECRET, { expiresIn: '15m' })
+  return res.json({ url: gdriveAuthUrl({ redirectUri: googleRedirect(), state }) })
+})
+
+// Google sends the person back here with ?code=&state=. We trade the code for
+// a refresh token, make the "VolunTrack proof files" folder in that Drive, and
+// save the storage as unverified; the dashboard then runs the usual test.
+router.get('/google/callback', limiter, async (req, res) => {
+  let page = storagePage('school_id')
+  const back = (q) => res.redirect(302, `${siteBase()}${page}?${new URLSearchParams(q)}`)
+  let st
+  try {
+    st = jwt.verify(String(req.query.state || ''), process.env.JWT_SECRET)
+    if (st?.purpose !== 'gdrive_connect' || !st.owner?.id) throw new Error('bad state')
+    page = storagePage(st.owner.column)
+  } catch { return back({ gdError: 'expired' }) }
+  if (req.query.error || !req.query.code) return back({ gdError: String(req.query.error || 'declined').slice(0, 40) })
+  if (!gdriveConfigured() || !hasDatabase() || !hasEncryptionKey()) return back({ gdError: 'unavailable' })
+  try {
+    const { refreshToken, accessToken, email } = await exchangeCode(String(req.query.code), googleRedirect())
+    const rootId = await createRootFolder(accessToken)
+    const column = st.owner.column === 'organization_id' ? 'organization_id' : 'school_id'
+    const other = column === 'school_id' ? 'organization_id' : 'school_id'
+    const { rows: existing } = await query(`SELECT id, provider, secret_encrypted FROM tenant_storage WHERE ${column} = $1`, [st.owner.id])
+    const { rows } = await query(
+      `INSERT INTO tenant_storage
+         (id, ${column}, ${other}, provider, bucket, region, endpoint, prefix, access_key_id, secret_encrypted, status)
+       VALUES ($1,$2,NULL,'gdrive',$3,'google',NULL,'',$4,$5,'unverified')
+       ON CONFLICT (${column}) WHERE ${column} IS NOT NULL DO UPDATE SET
+         provider = 'gdrive', bucket = $3, region = 'google', endpoint = NULL, prefix = '',
+         access_key_id = $4, secret_encrypted = $5,
+         status = 'unverified', last_test_at = NULL, last_test_ok = NULL, last_test_error = NULL, cors_ok = NULL
+       RETURNING id`,
+      [existing[0]?.id || uid('tsto'), st.owner.id, rootId, email, encryptSecret(refreshToken)],
+    )
+    forgetToken(rows[0].id)
+    // Replacing an older Google connection: let go of its token.
+    if (existing[0]?.provider === 'gdrive' && existing[0].secret_encrypted) {
+      try { revokeToken(decryptSecret(existing[0].secret_encrypted)) } catch { /* unreadable: nothing to revoke */ }
+    }
+    req.auth = { sub: st.by, role: st.role }
+    recordAudit(req, {
+      action: AUDIT.STORAGE_CONFIG_CHANGED,
+      ...(column === 'school_id' ? { schoolId: st.owner.id } : { organizationId: st.owner.id }),
+      objectType: 'tenant_storage',
+      objectId: rows[0].id,
+      meta: { provider: 'gdrive', account: email },
+    })
+    return back({ gdConnected: '1' })
+  } catch (error) {
+    console.error('google drive connect failed:', error.message)
+    return back({ gdError: 'failed' })
+  }
+})
+
 // DELETE /api/storage/config — stop using the bucket. Objects already in it
 // belong to the tenant and are deliberately left untouched.
 router.delete('/config', limiter, requireDb, requireAuth('school', 'org'), async (req, res) => {
   try {
     const owner = await ownerFor(req.auth)
     if (!owner) return res.status(403).json({ error: 'Not allowed.' })
+    // Google Drive: give the token back to Google too (files stay in the Drive).
+    const old = await loadConfig(owner)
+    if (isGdrive(old) && old.secret_encrypted) {
+      forgetToken(old.id)
+      try { revokeToken(decryptSecret(old.secret_encrypted)) } catch { /* unreadable: nothing to revoke */ }
+    }
     await query(`DELETE FROM tenant_storage WHERE ${owner.column} = $1`, [owner.id])
     return res.json({ ok: true })
   } catch (error) {
@@ -450,7 +526,7 @@ function usableConfig(row) {
     endpoint: row.endpoint,
     prefix: row.prefix,
     accessKeyId: row.access_key_id,
-    secretAccessKey: isSharepoint(row) ? null : decryptSecret(row.secret_encrypted),
+    secretAccessKey: isExternal(row) ? null : decryptSecret(row.secret_encrypted),
   }
 }
 
@@ -492,7 +568,7 @@ router.post('/upload-url', mintLimiter, requireDb, requireKey, requireAuth(), as
     // content-length is signed, so the upload is pinned to exactly the size
     // declared here — a client that sends more fails the signature at S3
     // rather than filling the school's bucket.
-    const minted = await mintUpload(row, { key, bytes })
+    const minted = await mintUpload(row, { key, bytes, origin: req.headers.origin || null })
 
     return res.json({ available: true, url: minted.url, kind: minted.kind, key, storageId: row.id, expiresIn: 300 })
   } catch (error) {
@@ -558,6 +634,41 @@ router.get('/download-url/:logId', mintLimiter, requireDb, requireKey, requireAu
   } catch (error) {
     console.error('mint download url failed:', error)
     return res.status(500).json({ error: 'Could not prepare the download.' })
+  }
+})
+
+// GET /api/storage/gdrive/file?t= — the file itself, read from Google Drive
+// and passed on (#919, Option B). The token came from mintDownload(), which is
+// where the audit event and the permission check happen; it lasts 5 minutes.
+router.get('/gdrive/file', mintLimiter, requireDb, requireKey, async (req, res) => {
+  let t
+  try {
+    t = jwt.verify(String(req.query.t || ''), process.env.JWT_SECRET)
+    if (t?.purpose !== 'gdrive_view' || !t.sid || !t.key) throw new Error('bad token')
+  } catch { return res.status(403).type('text/plain').send('This link has expired. Open the file again from VolunTrack.') }
+  try {
+    const { rows } = await query('SELECT * FROM tenant_storage WHERE id = $1', [t.sid])
+    const row = rows[0]
+    if (!row || !isGdrive(row)) return res.status(410).type('text/plain').send('This storage is no longer connected.')
+    const opened = await gdriveOpen({ id: row.id, refreshToken: decryptSecret(row.secret_encrypted), rootId: row.bucket, prefix: row.prefix }, t.key)
+    if (!opened) return res.status(404).type('text/plain').send('The file is no longer in Google Drive.')
+    // Only the types we accept for upload are ever served as themselves.
+    const mime = Object.prototype.hasOwnProperty.call(ALLOWED_TYPES, opened.mime) ? opened.mime : 'application/octet-stream'
+    res.set({
+      'Content-Type': mime,
+      'Content-Disposition': `inline; filename="${String(t.key).split('/').pop().replace(/[^\w.-]/g, '')}"`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      // Shown by the app's own pages (an <img>, or a new tab).
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      'Content-Security-Policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+    })
+    if (opened.size) res.set('Content-Length', String(opened.size))
+    const body = Buffer.from(await opened.res.arrayBuffer())
+    return res.send(body)
+  } catch (error) {
+    console.error('google drive view failed:', error.message)
+    return res.status(502).type('text/plain').send('Could not open the file from Google Drive. Try again.')
   }
 })
 

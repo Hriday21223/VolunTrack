@@ -3936,5 +3936,10 @@ export default {
   "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "谢谢！你的刷卡付款已成功。发票将在一分钟内变为已付款。",
   "Payment cancelled. Nothing was charged.": "付款已取消，没有扣款。",
   "Card payments are handled by Stripe. VolunTrack never sees your card number.": "刷卡付款由 Stripe 处理。VolunTrack 永远看不到你的卡号。",
-  "Paid by card": "已刷卡付款"
+  "Paid by card": "已刷卡付款",
+  "Google Drive": "Google Drive",
+  "Connected to Google Drive. Testing it now…": "已连接 Google Drive，正在测试…",
+  "Google Drive didn’t connect. Try again, and allow VolunTrack to add files.": "Google Drive 未能连接。请重试，并允许 VolunTrack 添加文件。",
+  "Google Drive · {account} · folder “VolunTrack proof files”": "Google Drive · {account} · 文件夹“VolunTrack proof files”",
+  "Proof files go into a “VolunTrack proof files” folder in the Google account you pick. VolunTrack can only see files it put there, and school staff open them inside VolunTrack, so they don’t need access to the folder.": "证明文件会存入你选择的 Google 账户中的“VolunTrack proof files”文件夹。VolunTrack 只能看到它自己放进去的文件，学校人员在 VolunTrack 内打开这些文件，因此不需要该文件夹的访问权限。"
 }

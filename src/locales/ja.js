@@ -3935,5 +3935,10 @@ export default {
   "Thanks! Your card payment went through. The invoice turns to Paid within a minute.": "ありがとうございます。カード決済が完了しました。1 分以内に請求書が支払い済みになります。",
   "Payment cancelled. Nothing was charged.": "支払いをキャンセルしました。請求はされていません。",
   "Card payments are handled by Stripe. VolunTrack never sees your card number.": "カード決済は Stripe が処理します。VolunTrack がカード番号を見ることはありません。",
-  "Paid by card": "カードで支払い済み"
+  "Paid by card": "カードで支払い済み",
+  "Google Drive": "Google Drive",
+  "Connected to Google Drive. Testing it now…": "Google Drive に接続しました。テストしています…",
+  "Google Drive didn’t connect. Try again, and allow VolunTrack to add files.": "Google Drive に接続できませんでした。もう一度試し、VolunTrack がファイルを追加することを許可してください。",
+  "Google Drive · {account} · folder “VolunTrack proof files”": "Google Drive · {account} · フォルダ「VolunTrack proof files」",
+  "Proof files go into a “VolunTrack proof files” folder in the Google account you pick. VolunTrack can only see files it put there, and school staff open them inside VolunTrack, so they don’t need access to the folder.": "証明ファイルは、選んだ Google アカウントの「VolunTrack proof files」フォルダに保存されます。VolunTrack が見られるのは自分で入れたファイルだけで、学校のスタッフは VolunTrack の中でファイルを開くため、フォルダへのアクセス権は不要です。"
 }

@@ -2443,7 +2443,7 @@ export async function initSchema() {
   } catch (error) { console.error('admin team tables failed:', error.message) }
   // SharePoint as a school's own storage (#924).
   try { await query('ALTER TABLE tenant_storage DROP CONSTRAINT IF EXISTS tenant_storage_provider_check') } catch {}
-  try { await query(`ALTER TABLE tenant_storage ADD CONSTRAINT tenant_storage_provider_check CHECK (provider IN ('s3','r2','gcs','azure_blob','sharepoint'))`) } catch {}
+  try { await query(`ALTER TABLE tenant_storage ADD CONSTRAINT tenant_storage_provider_check CHECK (provider IN ('s3','r2','gcs','azure_blob','sharepoint','gdrive'))`) } catch {}
   // Trial reminders (#894): the last one sent (7 or 1 days before), and
   // whether the school was a free club before its trial, so it can go back.
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_reminder_days INT') } catch {}
