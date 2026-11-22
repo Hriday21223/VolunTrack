@@ -3702,5 +3702,6 @@ export default {
   "That coupon has already been used.": "यह कूपन पहले ही इस्तेमाल हो चुका है।",
   "That coupon was cancelled.": "यह कूपन रद्द कर दिया गया था।",
   "That coupon has expired.": "यह कूपन समाप्त हो चुका है।",
-  "Too many coupon tries. Please wait an hour and try again.": "बहुत ज़्यादा कोशिशें। एक घंटा रुककर फिर कोशिश करें।"
+  "Too many coupon tries. Please wait an hour and try again.": "बहुत ज़्यादा कोशिशें। एक घंटा रुककर फिर कोशिश करें।",
+  "Not paid yet": "अभी भुगतान नहीं हुआ"
 }

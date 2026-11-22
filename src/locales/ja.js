@@ -3702,5 +3702,6 @@ export default {
   "That coupon has already been used.": "このクーポンはすでに使用されています。",
   "That coupon was cancelled.": "このクーポンは取り消されました。",
   "That coupon has expired.": "このクーポンは有効期限切れです。",
-  "Too many coupon tries. Please wait an hour and try again.": "試行回数が多すぎます。1時間待ってからもう一度お試しください。"
+  "Too many coupon tries. Please wait an hour and try again.": "試行回数が多すぎます。1時間待ってからもう一度お試しください。",
+  "Not paid yet": "未払い"
 }

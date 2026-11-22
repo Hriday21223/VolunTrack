@@ -134,6 +134,14 @@ export default function OrganizationDashboard() {
     loadInvoices()
   }, [user, loadSchools, loadInvoices])
 
+  // Coming back to the tab re-reads the invoices, so one VolunTrack has marked
+  // paid in the meantime shows Paid (#970).
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') loadInvoices() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadInvoices])
+
   const sendInvite = async () => {
     if (!inviteName.trim() || !inviteEmail.trim()) return
     setSendingInvite(true)
@@ -247,7 +255,7 @@ export default function OrganizationDashboard() {
                       ? 'bg-earth-500/20 text-earth-500'
                       : 'bg-amber-500/20 text-amber-600'
                   }`}>
-                    {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Sent')}
+                    {inv.status === 'paid' ? tr('Paid') : inv.status === 'void' ? tr('Void') : tr('Not paid yet')}
                   </span>
                   <button
                     onClick={() => setPreviewInvoice(inv)}
@@ -270,6 +278,8 @@ export default function OrganizationDashboard() {
                       dueDate: inv.due_date,
                       createdAt: inv.created_at,
                       charges: inv.charges || null,
+                      status: inv.status,
+                      paidAt: inv.paid_at || null,
                     })}
                     className="p-1.5 text-earth-400 hover:text-earth-300"
                     title={tr('Download PDF')}
@@ -466,6 +476,8 @@ export default function OrganizationDashboard() {
             dueDate: previewInvoice.due_date,
             createdAt: previewInvoice.created_at,
             charges: previewInvoice.charges || null,
+            status: previewInvoice.status,
+            paidAt: previewInvoice.paid_at || null,
             returnBlob: true,
           })}
           onClose={() => setPreviewInvoice(null)}
