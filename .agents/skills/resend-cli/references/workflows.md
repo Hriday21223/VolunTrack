@@ -7,11 +7,10 @@ Multi-step recipes for common Resend CLI tasks.
 ## 1. Initial Setup
 
 ```bash
-# Install (pick one — prefer a package manager)
+# Install (pick one)
 npm install -g resend-cli                          # npm
 brew install resend/cli/resend                     # Homebrew (macOS / Linux)
-curl -fsSL https://resend.com/install.sh | bash   # install script (executes a remote script)
-irm https://resend.com/install.ps1 | iex           # Windows PowerShell (executes a remote script)
+# Other install methods: https://resend.com/docs/cli
 
 # Authenticate — pass the key from an env var or secret manager;
 # never type a literal key (it lands in shell history)
@@ -166,7 +165,7 @@ resend webhooks create \
   --endpoint https://yourapp.com/webhooks/resend \
   --events email.delivered email.bounced email.complained
 
-# IMPORTANT: Save the signing_secret from output — shown once only
+# Use the signing_secret from output to verify payloads; "resend webhooks get" returns it again
 
 # Or subscribe to all events
 resend webhooks create \
