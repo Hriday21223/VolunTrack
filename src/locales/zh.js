@@ -3968,5 +3968,7 @@ export default {
   "Logged hours for {n} volunteers": "已为 {n} 名志愿者记录时长",
   "{n} already had hours for that day": "{n} 人当天已有时长",
   "Due {date}": "{date} 到期",
-  "Linked to {name}": "已关联 {name}"
+  "Linked to {name}": "已关联 {name}",
+  "For schools and organizations": "面向学校和组织",
+  "See the event": "查看活动"
 }

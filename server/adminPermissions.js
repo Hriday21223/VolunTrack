@@ -45,6 +45,7 @@ const RULES = [
   [/^\/client-errors\/admin/, 'incidents'],
   [/^\/reports\/admin/, 'reports'],
   [/^\/announcements\/admin/, 'announcements'],
+  [/^\/events\/admin/, 'invites'],
   [/^\/settings\/blueprint-docs/, 'blueprint'],
   [/^\/settings\/(email|office-hours)/, 'settings'],
   [/^\/parent\/admin/, 'settings'],

@@ -3967,5 +3967,7 @@ export default {
   "Logged hours for {n} volunteers": "Часы записаны для волонтёров: {n}",
   "{n} already had hours for that day": "Уже были часы за этот день: {n}",
   "Due {date}": "Оплатить до {date}",
-  "Linked to {name}": "Привязано: {name}"
+  "Linked to {name}": "Привязано: {name}",
+  "For schools and organizations": "Для школ и организаций",
+  "See the event": "Посмотреть мероприятие"
 }

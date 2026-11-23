@@ -5,6 +5,7 @@ import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PromoBanner from '@/components/PromoBanner.jsx'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
+import UpcomingEventBanner from '@/components/UpcomingEventBanner.jsx'
 import DashboardGallery from '@/components/DashboardGallery.jsx'
 import { HoursStory, FloatingStart, PhonePreview } from '@/components/HomeMotion.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
@@ -275,6 +276,8 @@ export default function About() {
         <main className="max-w-[1400px] mx-auto px-4 md:px-8 pb-20">
 
           <section data-animate className="mt-16 md:mt-24 text-center max-w-4xl mx-auto">
+            {/* The next event for schools (#995), only while one is coming up. */}
+            <UpcomingEventBanner className="mb-6" />
             {/* A running offer takes the spot above the headline; the standing
                 "free for students" pill is the fallback when there is none, so
                 the hero never opens with a hole. */}

@@ -9,6 +9,7 @@ import Card from '@/components/Card.jsx'
 import RegistrationCodesPanel from '@/components/RegistrationCodesPanel.jsx'
 import UpgradeCodesPanel from '@/components/UpgradeCodesPanel.jsx'
 import EventCodesPanel from '@/components/EventCodesPanel.jsx'
+import SchoolEventsPanel from '@/components/SchoolEventsPanel.jsx'
 import AnnouncementComposer from '@/components/AnnouncementComposer.jsx'
 import LiveChecksCard from '@/components/LiveChecksCard.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -1882,6 +1883,7 @@ export default function Admin() {
         <RegistrationCodesPanel />
         <UpgradeCodesPanel />
         <EventCodesPanel />
+        <SchoolEventsPanel />
         {loadingInvites ? (
           <Card><p className="text-center text-earth-400 py-8">Loading invites…</p></Card>
         ) : invites.length === 0 ? (

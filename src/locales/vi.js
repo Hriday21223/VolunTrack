@@ -3968,5 +3968,7 @@ export default {
   "Logged hours for {n} volunteers": "Đã ghi giờ cho {n} tình nguyện viên",
   "{n} already had hours for that day": "{n} người đã có giờ cho ngày đó",
   "Due {date}": "Hạn {date}",
-  "Linked to {name}": "Đã liên kết với {name}"
+  "Linked to {name}": "Đã liên kết với {name}",
+  "For schools and organizations": "Dành cho trường học và tổ chức",
+  "See the event": "Xem sự kiện"
 }
