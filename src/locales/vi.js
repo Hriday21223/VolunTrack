@@ -3976,5 +3976,8 @@ export default {
   "Show only this student": "Chỉ hiện học sinh này",
   "Search the questions": "Tìm trong các câu hỏi",
   "{n} matching answers": "{n} câu trả lời phù hợp",
-  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Không có câu trả lời nào khớp với “{q}”. Hãy thử từ khác, hoặc hỏi chúng tôi ở trang Liên hệ."
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Không có câu trả lời nào khớp với “{q}”. Hãy thử từ khác, hoặc hỏi chúng tôi ở trang Liên hệ.",
+  "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "Ghi một buổi tình nguyện bất cứ lúc nào: bạn đã làm gì, số giờ và bằng chứng. Bằng chứng có thể là ảnh hoặc tệp, hoặc, sau khi bạn tham gia trường, là đường link tới nó trên Google Drive hoặc OneDrive.",
+  "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "Thêm đồng quản trị và cho cố vấn chỉ thấy học sinh của mình, lưu tệp bằng chứng trong kho lưu trữ riêng (S3, SharePoint hoặc Google Drive), cho học sinh đăng nhập bằng tài khoản trường, và xem hóa đơn trong mục Thanh toán.",
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "Mọi trường bạn đã thêm, kèm số học sinh. Hóa đơn của bạn cũng ở đây: mở để xem trước khi thanh toán, hoặc tải về."
 }

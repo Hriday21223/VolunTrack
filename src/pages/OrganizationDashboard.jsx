@@ -42,7 +42,7 @@ const TAB_TITLES = {
 }
 
 const ORG_TOUR_STEPS = [
-  { selector: '[data-tour="org-schools-tab"]', title: tr('Your schools'), description: tr('Every school you’ve added lives here, along with their payment status and student counts.') },
+  { selector: '[data-tour="org-schools-tab"]', title: tr('Your schools'), description: tr('Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.') },
   { selector: '[data-tour="org-add-school"]', title: tr('Add a school'), description: tr('Add a school and they get an email invite to set their own password and school code.') },
   { selector: '[data-tour="org-invites-tab"]', title: tr('Invites'), description: tr('Track invites you’ve sent — pending, set up, or expired.') },
   { selector: '[data-tour="org-partners-tab"]', title: tr('Partners'), description: tr('Your partner nonprofits: send them a link to confirm students\' hours, see the hours each one received, and put your events on your website.') },

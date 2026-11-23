@@ -3975,5 +3975,8 @@ export default {
   "Show only this student": "Показать только этого ученика",
   "Search the questions": "Поиск по вопросам",
   "{n} matching answers": "Найдено ответов: {n}",
-  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Нет ответов по запросу «{q}». Попробуйте другие слова или спросите нас на странице «Связаться»."
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Нет ответов по запросу «{q}». Попробуйте другие слова или спросите нас на странице «Связаться».",
+  "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "Записывайте волонтёрское занятие в любое время: что вы делали, сколько часов и подтверждение. Подтверждение — фото или файл, а после того как вы присоединились к школе, ещё и ссылка на него в Google Drive или OneDrive.",
+  "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "Добавляйте соадминистраторов и давайте консультанту только его учеников, храните файлы подтверждений в своём хранилище (S3, SharePoint или Google Drive), разрешите ученикам входить через школьный аккаунт и смотрите счета в разделе «Оплата».",
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "Все добавленные школы и число учеников в каждой. Здесь же ваши счета: откройте счёт, чтобы посмотреть его до оплаты, или скачайте."
 }

@@ -38,8 +38,9 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 const RESOLVED_API_URL = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`
 
 const ADMIN_TOUR_STEPS = [
-  { selector: '[data-tour="admin-inbox"]', title: 'Inbox', description: 'Contact-form messages land here, threaded by conversation, with AI-drafted replies you can send or copy.' },
-  { selector: '[data-tour="admin-schools"]', title: 'Schools', description: 'Verify payments, leave internal-only notes, and manage every school on the platform.' },
+  { selector: '[data-tour="admin-inbox"]', title: 'Inbox', description: 'Contact-form messages land here, threaded by conversation, with a drafted reply in the sender’s language (any of the 11) you can edit, send or copy.' },
+  { selector: '[data-tour="admin-schools"]', title: 'Schools', description: 'Every school: send invoices (per-school prices, fees and tax, coupons), record payments, leave internal notes and switch plans. Organizations have the same on their tab.' },
+  { selector: '[data-tour="admin-invites"]', title: 'Invites & events', description: 'Registration, upgrade and event codes, invites, and Events for schools: sessions that show on /events and the home page while they’re coming up.' },
   { selector: '[data-tour="admin-incidents"]', title: 'Incidents', description: 'Real backend/database health checks show up here — resolve them, or log one yourself.' },
 ]
 
@@ -1577,7 +1578,7 @@ export default function Admin() {
           </button>
           )}
           {can('invites') && (
-          <button onClick={() => setTab('invites')} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
+          <button data-tour="admin-invites" onClick={() => setTab('invites')} className={`btn-sm ${tab === 'invites' ? 'btn-primary' : 'btn-ghost'}`}>
             <UserPlus className="w-3.5 h-3.5 mr-1" /> Invites
           </button>
           )}

@@ -78,7 +78,7 @@ const SCHOOL_TAB_HEADERS = {
   chat: { title: tr('Announcements'), subtitle: tr('Messages to all your students') },
 }
 
-const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: tr('School setup'), description: tr('Add co-admins, let students sign in with your school\'s Google or Microsoft account, and serve VolunTrack on your own domain.') }
+const SCHOOL_ADMIN_ONLY_TOUR_STEP = { selector: '[data-tour="tab-staff"]', title: tr('School setup'), description: tr('Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.') }
 
 // How full a free club is, and how to upgrade (#506). The club's own adviser
 // can type an upgrade code from us (#892); without one, Contact us.
@@ -715,7 +715,7 @@ export default function SchoolDashboard() {
       {isSchoolAdmin && (
         <SpotlightTour
           storageKey="voluntrack:tour-seen:school"
-          steps={user?.role === 'school' ? [...SCHOOL_TOUR_STEPS, SCHOOL_ADMIN_ONLY_TOUR_STEP] : SCHOOL_TOUR_STEPS}
+          steps={user?.role === 'school' ? [...SCHOOL_TOUR_STEPS.slice(0, -1), SCHOOL_ADMIN_ONLY_TOUR_STEP, SCHOOL_TOUR_STEPS[SCHOOL_TOUR_STEPS.length - 1]] : SCHOOL_TOUR_STEPS}
         />
       )}
       <div className="max-w-4xl mx-auto space-y-4">

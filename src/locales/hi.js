@@ -3975,5 +3975,8 @@ export default {
   "Show only this student": "सिर्फ़ यह छात्र दिखाएँ",
   "Search the questions": "सवालों में खोजें",
   "{n} matching answers": "{n} मिलते-जुलते जवाब",
-  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "“{q}” से कोई जवाब नहीं मिला। दूसरे शब्द आज़माएँ, या संपर्क पेज पर हमसे पूछें।"
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "“{q}” से कोई जवाब नहीं मिला। दूसरे शब्द आज़माएँ, या संपर्क पेज पर हमसे पूछें।",
+  "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "कभी भी स्वयंसेवा का सत्र दर्ज करें: आपने क्या किया, आपके घंटे और सबूत। सबूत फ़ोटो या फ़ाइल हो सकता है, या, स्कूल से जुड़ने के बाद, Google Drive या OneDrive में उसका लिंक।",
+  "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "सह-एडमिन जोड़ें और काउंसलर को सिर्फ़ उनके अपने छात्र दें, सबूत की फ़ाइलें अपने स्टोरेज (S3, SharePoint या Google Drive) में रखें, छात्रों को स्कूल खाते से साइन इन करने दें, और बिलिंग में अपने इनवॉइस देखें।",
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "आपके जोड़े हुए सभी स्कूल, उनके छात्रों की संख्या के साथ। आपके इनवॉइस भी यहीं हैं: भुगतान से पहले खोलकर देखें, या डाउनलोड करें।"
 }
