@@ -58,6 +58,22 @@ router.get('/upcoming', limiter, async (_req, res) => {
   }
 })
 
+// GET /api/events/one/:id — public. One published event, for a link to it
+// (/events?id=…), including one that has ended (the page then says so).
+router.get('/one/:id', limiter, async (req, res) => {
+  if (!/^sev_[A-Za-z0-9_]{4,60}$/.test(req.params.id)) return res.status(404).json({ error: 'Event not found.' })
+  if (!hasDatabase()) return res.status(404).json({ error: 'Event not found.' })
+  try {
+    const { rows } = await query('SELECT * FROM school_events WHERE id = $1 AND published', [req.params.id])
+    if (!rows[0]) return res.status(404).json({ error: 'Event not found.' })
+    res.set('Cache-Control', 'public, max-age=60')
+    return res.json({ event: shape(rows[0]) })
+  } catch (error) {
+    console.error('get event failed:', error.message)
+    return res.status(500).json({ error: 'Could not load the event.' })
+  }
+})
+
 // Admin: list, add, change, remove.
 router.get('/admin', limiter, requireDb, requireAuth('admin'), async (_req, res) => {
   try {

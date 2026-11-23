@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarDays, Clock, MapPin, Video, ArrowRight, Info, Ticket, Mail, CheckCircle2 } from 'lucide-react'
 import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
-import { upcomingEvent, eventWhen, agendaLines, isUnderWay } from '@/lib/schoolEvents.js'
+import { upcomingEvent, eventById, eventWhen, agendaLines, isUnderWay, isUpcoming } from '@/lib/schoolEvents.js'
 
 // /events (#995): the next session VolunTrack runs for school staff, districts
 // and nonprofits, added in Admin → Invites → Events for schools. Shown only
-// while one is coming up; otherwise a short note. English only, like
+// while one is coming up; otherwise a short note. /events?id=… links to one
+// event, and says so once it has ended. English only, like
 // /for-schools, since it's for US school staff.
 
 const CONTACT_EMAIL = 'volunteertrackinfo@gmail.com'
@@ -37,13 +38,19 @@ function CopyEmail() {
 }
 
 export default function SchoolEvent() {
+  const [params] = useSearchParams()
+  const id = params.get('id')
   const [ev, setEv] = useState(undefined) // undefined = loading, null = none
+  const [missing, setMissing] = useState(false)
   useEffect(() => {
     window.scrollTo(0, 0)
     let alive = true
-    upcomingEvent().then((e) => { if (alive) setEv(e) })
+    setEv(undefined); setMissing(false)
+    if (id) eventById(id).then((r) => { if (alive) { setEv(r.event); setMissing(r.missing) } })
+    else upcomingEvent().then((e) => { if (alive) setEv(e) })
     return () => { alive = false }
-  }, [])
+  }, [id])
+  const ended = Boolean(ev) && !isUpcoming(ev)
 
   useSeo({
     title: ev?.title || 'VolunTrack events for schools and organizations',
@@ -65,6 +72,16 @@ export default function SchoolEvent() {
       <main className="max-w-4xl mx-auto px-4 md:px-8 pb-20">
         {ev === undefined ? (
           <p className="text-center text-earth-500 py-24">Loading…</p>
+        ) : (missing || ended) ? (
+          <section className="text-center max-w-xl mx-auto py-20">
+            <CalendarDays className="w-10 h-10 mx-auto text-brand-600 dark:text-brand-400" aria-hidden="true" />
+            <h1 className="mt-4 text-3xl font-bold">{ended ? 'This event has ended' : 'We couldn’t find that event'}</h1>
+            <p className="mt-3 text-earth-600 dark:text-earth-300">{ended ? `${ev.title} took place on ${when.day}. Thanks to everyone who came.` : 'The link may be old, or the event was removed.'}</p>
+            <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+              <Link to="/events" className="btn-primary inline-flex items-center justify-center gap-2">See the next event <ArrowRight className="w-4 h-4" aria-hidden="true" /></Link>
+              <Link to="/for-schools" className="btn-secondary">VolunTrack for schools</Link>
+            </div>
+          </section>
         ) : !ev ? (
           <section className="text-center max-w-xl mx-auto py-20">
             <CalendarDays className="w-10 h-10 mx-auto text-brand-600 dark:text-brand-400" aria-hidden="true" />

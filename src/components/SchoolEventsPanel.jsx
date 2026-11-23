@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CalendarDays, Plus, Pencil, Trash2, ExternalLink } from 'lucide-react'
+import { CalendarDays, Plus, Pencil, Trash2, ExternalLink, Link2 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { EVENT_TIME_ZONES, utcToZoned, isUpcoming } from '@schoolEvents'
 
@@ -73,6 +73,12 @@ export default function SchoolEventsPanel() {
     } catch (e) { setMsg({ ok: false, text: e.message }) } finally { setBusy(false) }
   }
 
+  const [copied, setCopied] = useState(null)
+  const copyLink = async (ev) => {
+    const url = `${window.location.origin}/events?id=${encodeURIComponent(ev.id)}`
+    try { await navigator.clipboard.writeText(url); setCopied(ev.id); setTimeout(() => setCopied(null), 2000) } catch { setMsg({ ok: true, text: `Link: ${url}` }) }
+  }
+
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
   const live = events.find((ev) => isUpcoming(ev))
 
@@ -81,7 +87,7 @@ export default function SchoolEventsPanel() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold flex items-center gap-2"><CalendarDays className="w-4 h-4 text-brand-600" aria-hidden="true" /> Events for schools</h3>
-          <p className="text-sm text-earth-400 mt-1 max-w-2xl">Sessions for school staff and organizations to see VolunTrack. While a published event is coming up, it shows at <a href="/events" target="_blank" rel="noopener noreferrer" className="underline">/events</a> and as a banner on the home and For schools pages. Students can’t sign up for these.</p>
+          <p className="text-sm text-earth-400 mt-1 max-w-2xl">Sessions for school staff and organizations to see VolunTrack. While a published event is coming up, it shows at <a href="/events" target="_blank" rel="noopener noreferrer" className="underline">/events</a> and as a banner on the home and For schools pages. <b>Copy link</b> gives each event its own address (<code>/events?id=…</code>) for your emails and Eventbrite. Students can’t sign up for these.</p>
         </div>
         {!form && <button type="button" onClick={() => { setForm(empty()); setMsg(null) }} className="btn-primary btn-sm inline-flex items-center gap-1"><Plus className="w-4 h-4" aria-hidden="true" /> Add event</button>}
       </div>
@@ -175,7 +181,8 @@ export default function SchoolEventsPanel() {
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
-                    {upcoming && ev.published && <a href="/events" target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm inline-flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" aria-hidden="true" /> View</a>}
+                    {ev.published && <a href={`/events?id=${encodeURIComponent(ev.id)}`} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm inline-flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" aria-hidden="true" /> View</a>}
+                    {ev.published && <button type="button" onClick={() => copyLink(ev)} className="btn-ghost btn-sm inline-flex items-center gap-1"><Link2 className="w-3.5 h-3.5" aria-hidden="true" /> {copied === ev.id ? 'Copied' : 'Copy link'}</button>}
                     <button type="button" onClick={() => edit(ev)} className="btn-ghost btn-sm inline-flex items-center gap-1"><Pencil className="w-3.5 h-3.5" aria-hidden="true" /> Edit</button>
                     {confirmId === ev.id ? (
                       <>
