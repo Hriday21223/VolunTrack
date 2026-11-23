@@ -3978,5 +3978,13 @@ export default {
   "No answers match “{q}”. Try other words, or ask us on the Contact page.": "「{q}」に一致する回答はありません。別の言葉で探すか、お問い合わせページでご質問ください。",
   "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "いつでもボランティア活動を記録できます：何をしたか、時間、そして証明。証明は写真やファイル、または学校に参加した後なら Google Drive や OneDrive 上のリンクでも大丈夫です。",
   "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "共同管理者を追加し、カウンセラーには担当の生徒だけを表示、証明ファイルは自校のストレージ（S3、SharePoint、Google Drive）に保存、生徒は学校のアカウントでログイン、請求書は「請求」で確認できます。",
-  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "追加したすべての学校と生徒数。請求書もここにあります。支払う前に開いて確認したり、ダウンロードしたりできます。"
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "追加したすべての学校と生徒数。請求書もここにあります。支払う前に開いて確認したり、ダウンロードしたりできます。",
+  "The home page is now in your language, and Help has a search box: type a word to find the answer.": "ホームページがあなたの言語になり、ヘルプに検索ボックスができました。単語を入力して答えを探せます。",
+  "VolunTrack is easier to use with a screen reader or keyboard, and small grey text is easier to read.": "スクリーンリーダーやキーボードで VolunTrack を使いやすくなり、小さな灰色の文字も読みやすくなりました。",
+  "Once you’ve joined your school, your proof can be a link to the file in Google Drive, OneDrive, Dropbox, iCloud or Box instead of an upload.": "学校に参加すると、証明をアップロードする代わりに、Google Drive、OneDrive、Dropbox、iCloud、Box のファイルのリンクにできます。",
+  "Give a counselor or co-admin only their own students, by last name and grade, in School setup → Co-admins.": "「学校の設定 → 共同管理者」で、カウンセラーや共同管理者に、姓と学年で担当の生徒だけを割り当てられます。",
+  "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "カウンセラーの方は、担当の生徒を姓と学年で選ぶと、その生徒だけが表示されます。",
+  "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "「確認待ちの時間」で生徒の名前をクリックすると、その生徒の記録だけを表示できます。証明はリンクでもよくなり、Google Drive のファイルはここで開けます。",
+  "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "請求書には「未払い」または「支払い済み」が表示され、手数料や税も記載でき、支払う前に開いて確認できます。",
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "VolunTrack が学校・団体向けの説明会を開くときは、ホームページのバナーに詳細が表示されます。"
 }
