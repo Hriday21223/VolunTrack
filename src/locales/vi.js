@@ -3970,5 +3970,11 @@ export default {
   "Due {date}": "Hạn {date}",
   "Linked to {name}": "Đã liên kết với {name}",
   "For schools and organizations": "Dành cho trường học và tổ chức",
-  "See the event": "Xem sự kiện"
+  "See the event": "Xem sự kiện",
+  "Showing only {name}": "Chỉ hiện {name}",
+  "Nothing to check for this student.": "Không có gì cần kiểm tra cho học sinh này.",
+  "Show only this student": "Chỉ hiện học sinh này",
+  "Search the questions": "Tìm trong các câu hỏi",
+  "{n} matching answers": "{n} câu trả lời phù hợp",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Không có câu trả lời nào khớp với “{q}”. Hãy thử từ khác, hoặc hỏi chúng tôi ở trang Liên hệ."
 }

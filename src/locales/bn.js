@@ -3969,5 +3969,11 @@ export default {
   "Due {date}": "{date}-এর মধ্যে পরিশোধ",
   "Linked to {name}": "{name}-এর সাথে যুক্ত",
   "For schools and organizations": "স্কুল ও সংগঠনের জন্য",
-  "See the event": "ইভেন্ট দেখুন"
+  "See the event": "ইভেন্ট দেখুন",
+  "Showing only {name}": "শুধু {name} দেখানো হচ্ছে",
+  "Nothing to check for this student.": "এই শিক্ষার্থীর জন্য দেখার কিছু নেই।",
+  "Show only this student": "শুধু এই শিক্ষার্থী দেখান",
+  "Search the questions": "প্রশ্নগুলোতে খুঁজুন",
+  "{n} matching answers": "{n}টি মিলে যাওয়া উত্তর",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "“{q}”-এর সাথে কোনো উত্তর মেলেনি। অন্য শব্দ চেষ্টা করুন, বা যোগাযোগ পেজে আমাদের জিজ্ঞেস করুন।"
 }

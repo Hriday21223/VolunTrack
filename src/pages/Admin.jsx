@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Ticket, UserCog, ArrowLeft, Trash2, Mail, MessageSquare, ShieldCheck, XCircle, Sparkles, School, Users, CreditCard, Download, Calendar, Bell, Star, Heart, AlertTriangle, Wrench, CheckCircle2, UserPlus, RefreshCw, Copy, Check, Building2, DollarSign, Receipt, History, Ban, Terminal, Search, Tag, Gift, Send, Compass, Eye, ExternalLink, Megaphone, Flag } from 'lucide-react'
 import CouponsDialog from '@/components/CouponsDialog.jsx'
 import HandoverForm from '@/components/HandoverForm.jsx'
@@ -1409,6 +1409,22 @@ export default function Admin() {
   useEffect(() => {
     loadThreads()
   }, [loadThreads])
+
+  // /admin/inbox?thread=<id> (the new-message email links here) opens that
+  // conversation once the inbox has loaded.
+  const [searchParams] = useSearchParams()
+  const linkedThread = searchParams.get('thread')
+  const openedLinked = useRef(null)
+  useEffect(() => {
+    if (!linkedThread || openedLinked.current === linkedThread) return
+    if (!threads.some((t) => t.thread_id === linkedThread)) return
+    openedLinked.current = linkedThread
+    // toggleThreadMessages is defined further down; by the time this runs
+    // (after render, with threads loaded) it exists.
+    if (expandedThreadId !== linkedThread) toggleThreadMessages(linkedThread)
+    setTimeout(() => document.getElementById(`thread-${linkedThread}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open once per linked thread, when the list arrives
+  }, [linkedThread, threads])
 
   // Show access denied if user is not authorized
   if (!isAuthorized) {
@@ -2982,7 +2998,7 @@ export default function Admin() {
           {threads.map((c) => {
             const id = c.thread_id
             return (
-            <Card key={id} padded={false} className="p-5">
+            <Card key={id} id={`thread-${id}`} padded={false} className={`p-5 scroll-mt-28 ${linkedThread === id ? 'ring-2 ring-brand-500' : ''}`}>
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

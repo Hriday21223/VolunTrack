@@ -3970,5 +3970,11 @@ export default {
   "Due {date}": "{date} 到期",
   "Linked to {name}": "已关联 {name}",
   "For schools and organizations": "面向学校和组织",
-  "See the event": "查看活动"
+  "See the event": "查看活动",
+  "Showing only {name}": "只显示 {name}",
+  "Nothing to check for this student.": "这名学生没有需要检查的记录。",
+  "Show only this student": "只显示这名学生",
+  "Search the questions": "搜索问题",
+  "{n} matching answers": "{n} 个匹配的回答",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "没有与“{q}”匹配的回答。换个词试试，或在联系页面问我们。"
 }

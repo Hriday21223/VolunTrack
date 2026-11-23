@@ -328,10 +328,24 @@ export default function Opportunities() {
     reload()
   }
   // Filters run on the list already loaded; distance is the server's radius.
-  const [category, setCategory] = useState('')
-  const [when, setWhen] = useState('')
-  const [onlineOnly, setOnlineOnly] = useState(false)
-  const [wheelchairOnly, setWheelchairOnly] = useState(false)
+  // Category, date, online and step-free live in the address too
+  // (?category=Environmental&date=weekend&online=1&accessible=1), so a link
+  // can open the list already filtered.
+  const [category, setCategory] = useState(() => (ACTIVITY_CATEGORIES.includes(searchParams.get('category')) ? searchParams.get('category') : ''))
+  const [when, setWhen] = useState(() => (WHEN_OPTIONS.some((o) => o.value === searchParams.get('date')) ? searchParams.get('date') : ''))
+  const [onlineOnly, setOnlineOnly] = useState(() => searchParams.get('online') === '1')
+  const [wheelchairOnly, setWheelchairOnly] = useState(() => searchParams.get('accessible') === '1')
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      const put = (k, v) => { if (v) p.set(k, v); else p.delete(k) }
+      put('category', category)
+      put('date', when)
+      put('online', onlineOnly ? '1' : '')
+      put('accessible', wheelchairOnly ? '1' : '')
+      return p.toString() === prev.toString() ? prev : p
+    }, { replace: true })
+  }, [category, when, onlineOnly, wheelchairOnly, setSearchParams])
   const [freeOnly, setFreeOnly] = useState(false)
   const { freeTimes, save: saveFreeTimes } = useFreeTimes()
   const range = whenRange(when)

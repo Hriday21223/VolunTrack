@@ -3969,5 +3969,11 @@ export default {
   "Due {date}": "Оплатить до {date}",
   "Linked to {name}": "Привязано: {name}",
   "For schools and organizations": "Для школ и организаций",
-  "See the event": "Посмотреть мероприятие"
+  "See the event": "Посмотреть мероприятие",
+  "Showing only {name}": "Только {name}",
+  "Nothing to check for this student.": "У этого ученика нечего проверять.",
+  "Show only this student": "Показать только этого ученика",
+  "Search the questions": "Поиск по вопросам",
+  "{n} matching answers": "Найдено ответов: {n}",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Нет ответов по запросу «{q}». Попробуйте другие слова или спросите нас на странице «Связаться»."
 }

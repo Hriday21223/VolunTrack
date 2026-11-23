@@ -3969,5 +3969,11 @@ export default {
   "Due {date}": "{date} तक देय",
   "Linked to {name}": "{name} से जुड़ गए",
   "For schools and organizations": "स्कूलों और संगठनों के लिए",
-  "See the event": "इवेंट देखें"
+  "See the event": "इवेंट देखें",
+  "Showing only {name}": "सिर्फ़ {name} दिखाया जा रहा है",
+  "Nothing to check for this student.": "इस छात्र के लिए जाँचने को कुछ नहीं है।",
+  "Show only this student": "सिर्फ़ यह छात्र दिखाएँ",
+  "Search the questions": "सवालों में खोजें",
+  "{n} matching answers": "{n} मिलते-जुलते जवाब",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "“{q}” से कोई जवाब नहीं मिला। दूसरे शब्द आज़माएँ, या संपर्क पेज पर हमसे पूछें।"
 }

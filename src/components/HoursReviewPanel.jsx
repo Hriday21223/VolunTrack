@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CheckCircle, XCircle, MapPin, AlertTriangle, ClipboardCheck, ExternalLink, Eye } from 'lucide-react'
 import { cleanProofLink, drivePreviewUrl } from '@proofLink'
 import ProofLinkViewer from '@/components/ProofLinkViewer.jsx'
@@ -108,7 +109,18 @@ export default function HoursReviewPanel({ onSetPlaces }) {
     }
   }
 
-  const entries = data?.entries || []
+  // ?student=<id> shows one student's entries (a link from elsewhere, or a
+  // click on a name); "Show everyone" clears it.
+  const [params, setParams] = useSearchParams()
+  const onlyStudent = params.get('student')
+  const setOnlyStudent = (id) => setParams((prev) => {
+    const p = new URLSearchParams(prev)
+    if (id) p.set('student', id); else p.delete('student')
+    return p
+  }, { replace: true })
+  const allEntries = data?.entries || []
+  const entries = onlyStudent ? allEntries.filter((e) => e.student_id === onlyStudent) : allEntries
+  const onlyName = onlyStudent ? allEntries.find((e) => e.student_id === onlyStudent)?.student_name : null
   const allPicked = entries.length > 0 && entries.every((e) => picked.has(e.id))
   const toggle = (id) => setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n })
 
@@ -131,10 +143,16 @@ export default function HoursReviewPanel({ onSetPlaces }) {
           )}
         </div>
       )}
+      {data && onlyStudent && (
+        <p className="flex flex-wrap items-center gap-2 mb-3 text-sm rounded-lg bg-brand-500/10 px-3 py-2">
+          <span>{onlyName ? tr('Showing only {name}', { name: onlyName }) : tr('Nothing to check for this student.')}</span>
+          <button type="button" className="text-brand-600 dark:text-brand-300 underline" onClick={() => setOnlyStudent(null)}>{tr('Show everyone')}</button>
+        </p>
+      )}
       {message && <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2" role="status">{message}</p>}
       {error && <p className="text-sm text-red-500 mb-2" role="alert">{error}</p>}
       {!data && !error && <p className="text-sm text-earth-400">{tr('Loading…')}</p>}
-      {data && entries.length === 0 && <p className="text-sm text-earth-500 py-4 text-center">{tr('Nothing to check. 🎉')}</p>}
+      {data && entries.length === 0 && !onlyStudent && <p className="text-sm text-earth-500 py-4 text-center">{tr('Nothing to check. 🎉')}</p>}
       {entries.length > 0 && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2 text-sm">
@@ -152,7 +170,7 @@ export default function HoursReviewPanel({ onSetPlaces }) {
                 <div className="flex items-start gap-3">
                   <input type="checkbox" className="mt-1" checked={picked.has(e.id)} onChange={() => toggle(e.id)} aria-label={`Select ${e.student_name}'s entry`} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{e.student_name}{e.grade ? <span className="text-earth-500 font-normal"> · {tr('Grade {grade}', { grade: e.grade })}</span> : null}</p>
+                    <p className="font-medium">{onlyStudent ? e.student_name : <button type="button" className="hover:underline text-left" onClick={() => setOnlyStudent(e.student_id)} title={tr('Show only this student')}>{e.student_name}</button>}{e.grade ? <span className="text-earth-500 font-normal"> · {tr('Grade {grade}', { grade: e.grade })}</span> : null}</p>
                     <p>{e.activity || tr('Untitled')} · <strong>{e.hours}h</strong> · {fmtDate(e.date)}</p>
                     <p className={`flex items-center gap-1 text-xs ${e.offList ? 'text-amber-700 dark:text-amber-300' : 'text-earth-500 dark:text-earth-400'}`}>
                       <MapPin className="w-3 h-3" /> {e.org_name || tr('No place given')}{e.offList ? ` · ${tr('not on your approved list')}` : ''}
