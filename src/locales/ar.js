@@ -3967,5 +3967,7 @@ export default {
   "Logged hours for {n} volunteers": "سُجّلت ساعات {n} متطوعين",
   "{n} already had hours for that day": "{n} لديهم ساعات لذلك اليوم بالفعل",
   "Due {date}": "تستحق في {date}",
-  "Linked to {name}": "تم الربط بـ {name}"
+  "Linked to {name}": "تم الربط بـ {name}",
+  "For schools and organizations": "للمدارس والمنظمات",
+  "See the event": "عرض الفعالية"
 }

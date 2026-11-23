@@ -1631,6 +1631,29 @@ export async function initSchema() {
   // Card payments (#899): how it was paid ('manual' | 'card') and Stripe's checkout id.
   try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paid_via TEXT`) } catch {}
   try { await query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS card_session_id TEXT`) } catch {}
+  // Events for schools and organizations (#995), managed in Admin → Invites.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS school_events (
+        id               TEXT PRIMARY KEY,
+        title            TEXT NOT NULL,
+        starts_at        TIMESTAMPTZ NOT NULL,
+        time_zone        TEXT NOT NULL DEFAULT 'America/Chicago',
+        duration_minutes INTEGER NOT NULL DEFAULT 30,
+        mode             TEXT NOT NULL CHECK (mode IN ('in_person','online')),
+        place            TEXT,
+        agenda           TEXT,
+        offer_code       TEXT,
+        offer_text       TEXT,
+        rsvp_url         TEXT,
+        published        BOOLEAN NOT NULL DEFAULT true,
+        created_by       TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch {}
+  try { await query('CREATE INDEX IF NOT EXISTS idx_school_events_starts ON school_events(starts_at)') } catch {}
   // The customer's own purchase order number. A school's accounts-payable
   // office matches an invoice to the PO it approved, and often will not pay
   // one that doesn't quote it.

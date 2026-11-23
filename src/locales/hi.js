@@ -3967,5 +3967,7 @@ export default {
   "Logged hours for {n} volunteers": "{n} स्वयंसेवकों के घंटे दर्ज किए",
   "{n} already had hours for that day": "{n} के उस दिन के घंटे पहले से थे",
   "Due {date}": "{date} तक देय",
-  "Linked to {name}": "{name} से जुड़ गए"
+  "Linked to {name}": "{name} से जुड़ गए",
+  "For schools and organizations": "स्कूलों और संगठनों के लिए",
+  "See the event": "इवेंट देखें"
 }

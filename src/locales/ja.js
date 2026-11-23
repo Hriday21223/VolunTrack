@@ -3967,5 +3967,7 @@ export default {
   "Logged hours for {n} volunteers": "ボランティア {n} 人の時間を記録しました",
   "{n} already had hours for that day": "{n} 人はその日の時間がすでにありました",
   "Due {date}": "期限 {date}",
-  "Linked to {name}": "{name} とリンクしました"
+  "Linked to {name}": "{name} とリンクしました",
+  "For schools and organizations": "学校・団体向け",
+  "See the event": "イベントを見る"
 }

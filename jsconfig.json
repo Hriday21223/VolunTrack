@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
-    "paths": { "@/*": ["src/*"], "@policy": ["server/requirements.js"], "@promo": ["server/promo.js"], "@ageRules": ["server/ageRules.js"], "@proofLink": ["server/proofLink.js"] },
+    "paths": { "@/*": ["src/*"], "@policy": ["server/requirements.js"], "@promo": ["server/promo.js"], "@schoolEvents": ["server/schoolEvents.js"], "@ageRules": ["server/ageRules.js"], "@proofLink": ["server/proofLink.js"] },
     "jsx": "preserve",
     "module": "ESNext",
     "moduleResolution": "Bundler",

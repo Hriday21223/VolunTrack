@@ -7,6 +7,7 @@ import {
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
+import UpcomingEventBanner from '@/components/UpcomingEventBanner.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
 
 const SITE_URL = (import.meta.env.VITE_SITE_URL || 'http://localhost:5173').replace(/\/$/, '')
@@ -72,6 +73,7 @@ export default function ForSchools() {
 
       <main className="max-w-5xl mx-auto px-4 md:px-8 pb-20">
         <section className="text-center max-w-3xl mx-auto pt-4">
+          <UpcomingEventBanner tone="light" className="mb-6" />
           <p className="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">For advisers, coordinators and counselors</p>
           <h1 className="mt-3 text-3xl md:text-5xl font-bold leading-tight">Student volunteer hours, without the paper forms</h1>
           <p className="mt-4 text-lg text-earth-500 dark:text-earth-400">
