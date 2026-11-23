@@ -55,6 +55,7 @@ import referralRoutes from './server/routes/referral.js'
 import statsRoutes from './server/routes/stats.js'
 import registrationCodeRoutes from './server/routes/registrationCodes.js'
 import announcementRoutes from './server/routes/announcements.js'
+import schoolEventRoutes from './server/routes/schoolEvents.js'
 import notificationRoutes from './server/routes/notifications.js'
 import portfolioRoutes from './server/routes/portfolio.js'
 import comebackRoutes from './server/routes/comeback.js'
@@ -236,6 +237,7 @@ app.use('/api/referral', referralRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/registration-codes', registrationCodeRoutes)
 app.use('/api/announcements', announcementRoutes)
+app.use('/api/events', schoolEventRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/portfolio', portfolioRoutes)
 app.use('/api/comeback', comebackRoutes)
