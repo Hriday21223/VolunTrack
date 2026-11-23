@@ -233,6 +233,7 @@ async function attempt(deliveryId) {
     return r
   }
   const delay = RETRY_DELAYS_MIN[attempts - 1]
+  if (delay != null) noteDue(Date.now() + delay * 60_000)
   await query(
     `UPDATE webhook_deliveries SET attempts = $2, last_status_code = $3, last_error = $4,
             status = CASE WHEN $5::int IS NULL THEN 'failed' ELSE 'pending' END,
@@ -274,10 +275,48 @@ ${emailFooterHtml()}`,
   })
 }
 
+// The worker must not touch the database while nothing is waiting: a query
+// every minute keeps Neon's compute from ever suspending, which used up the
+// free plan's monthly allowance (Nov 23). So it remembers, in memory, when
+// the next retry is due (set at start-up, and whenever a retry is scheduled)
+// and only queries then, plus one sweep every few hours for endpoints that
+// kept failing. One backend instance, so memory is enough.
+let nextDueAt = null // ms, or null when nothing is pending
+const SWEEP_EVERY_MS = 6 * 60 * 60 * 1000
+let lastSweepAt = 0
+
+/** A retry is due at `at` (ms); the worker wakes for it. */
+export function noteDue(at) {
+  if (!Number.isFinite(at)) return
+  if (nextDueAt == null || at < nextDueAt) nextDueAt = at
+}
+
+async function refreshNextDue() {
+  const { rows } = await query("SELECT min(next_attempt_at) AS at FROM webhook_deliveries WHERE status = 'pending'")
+  nextDueAt = rows[0]?.at ? new Date(rows[0].at).getTime() : null
+}
+
+/** Whether the worker should query now (exported for tests). */
+export function workerShouldRun(now, due = nextDueAt, lastSweep = lastSweepAt) {
+  return (due != null && due <= now) || now - lastSweep >= SWEEP_EVERY_MS
+}
+
 let worker = null
+let running = false
 export function startWebhookWorker() {
   if (worker || !hasDatabase()) return
-  worker = setInterval(() => { runDueDeliveries().catch((e) => console.error('webhook worker failed:', e.message)) }, 60_000)
+  lastSweepAt = Date.now()
+  refreshNextDue().catch((e) => console.error('webhook worker start failed:', e.message))
+  worker = setInterval(() => {
+    const now = Date.now()
+    if (running || !workerShouldRun(now)) return
+    running = true
+    lastSweepAt = now
+    runDueDeliveries()
+      .then(refreshNextDue)
+      .catch((e) => console.error('webhook worker failed:', e.message))
+      .finally(() => { running = false })
+  }, 60_000)
   worker.unref?.()
 }
 
