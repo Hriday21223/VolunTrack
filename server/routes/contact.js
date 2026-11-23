@@ -125,7 +125,10 @@ router.post('/', submitLimiter, requireDb, verifyTurnstile(), async (req, res) =
     const to = process.env.CONTACT_EMAIL || process.env.ADMIN_EMAIL || process.env.EMAIL_USER
     const accountLine = accountCode ? `Customer ID: ${escapeHtml(accountCode)}<br>` : ''
     const couponLine = couponCode ? `Coupon: ${escapeHtml(couponCode)}<br>` : ''
-    const body = `New contact message from ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;<br>Subject: ${escapeHtml(subject)}<br>${accountLine}${couponLine}<br>${escapeHtml(message).replace(/\n/g, '<br>')}`
+    // A link straight to this conversation in Admin → Inbox.
+    const site = (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '')
+    const openLine = site ? `<br><br><a href="${escapeHtml(`${site}/admin/inbox?thread=${encodeURIComponent(id)}`)}">Open it in Admin → Inbox</a>` : ''
+    const body = `New contact message from ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;<br>Subject: ${escapeHtml(subject)}<br>${accountLine}${couponLine}<br>${escapeHtml(message).replace(/\n/g, '<br>')}${openLine}`
     if (to) await sendEmail({ to, subject: `VolunTrack contact: ${subject}`, html: body })
 
     return res.status(201).json({ ok: true, threadId: id })

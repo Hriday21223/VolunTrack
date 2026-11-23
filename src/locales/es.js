@@ -3970,5 +3970,11 @@ export default {
   "Due {date}": "Vence el {date}",
   "Linked to {name}": "Vinculado con {name}",
   "For schools and organizations": "Para escuelas y organizaciones",
-  "See the event": "Ver el evento"
+  "See the event": "Ver el evento",
+  "Showing only {name}": "Mostrando solo a {name}",
+  "Nothing to check for this student.": "No hay nada que revisar de este estudiante.",
+  "Show only this student": "Mostrar solo a este estudiante",
+  "Search the questions": "Busca en las preguntas",
+  "{n} matching answers": "{n} respuestas que coinciden",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Ninguna respuesta coincide con “{q}”. Prueba otras palabras o pregúntanos en la página de Contacto."
 }

@@ -3969,5 +3969,11 @@ export default {
   "Due {date}": "تستحق في {date}",
   "Linked to {name}": "تم الربط بـ {name}",
   "For schools and organizations": "للمدارس والمنظمات",
-  "See the event": "عرض الفعالية"
+  "See the event": "عرض الفعالية",
+  "Showing only {name}": "عرض {name} فقط",
+  "Nothing to check for this student.": "لا يوجد ما يُراجع لهذا الطالب.",
+  "Show only this student": "عرض هذا الطالب فقط",
+  "Search the questions": "ابحث في الأسئلة",
+  "{n} matching answers": "{n} إجابات مطابقة",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "لا توجد إجابات تطابق “{q}”. جرّب كلمات أخرى، أو اسألنا في صفحة التواصل."
 }

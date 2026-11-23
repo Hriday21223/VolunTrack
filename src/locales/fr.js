@@ -3969,5 +3969,11 @@ export default {
   "Due {date}": "À payer avant le {date}",
   "Linked to {name}": "Lié à {name}",
   "For schools and organizations": "Pour les écoles et les organisations",
-  "See the event": "Voir l’événement"
+  "See the event": "Voir l’événement",
+  "Showing only {name}": "Seulement {name}",
+  "Nothing to check for this student.": "Rien à vérifier pour cet élève.",
+  "Show only this student": "Afficher seulement cet élève",
+  "Search the questions": "Rechercher dans les questions",
+  "{n} matching answers": "{n} réponses correspondantes",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Aucune réponse ne correspond à « {q} ». Essayez d’autres mots ou posez-nous la question sur la page Contact."
 }

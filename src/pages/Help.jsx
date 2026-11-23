@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal, Download, FileSignature } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Search, X, BookOpen, School, Clock, Calendar, Trophy, FileText, MapPin, Users, CheckCircle, HelpCircle, Mail, ClipboardList, Phone, XCircle, Hand, ChevronDown, ShieldCheck, Zap, Building2, MessageSquare, Star, Bell, CreditCard, AlertTriangle, UserCheck, Link2, Lock, Terminal, Download, FileSignature } from 'lucide-react'
 import AppLayout from '@/components/AppLayout.jsx'
 import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
@@ -147,8 +147,8 @@ function Step({ icon: Icon, label, description }) {
   )
 }
 
-function FaqItem({ question, answer }) {
-  const [open, setOpen] = useState(false)
+function FaqItem({ question, answer, startOpen = false }) {
+  const [open, setOpen] = useState(startOpen)
   return (
     <button onClick={() => setOpen(!open)} className="w-full text-left rounded-xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/10">
       <div className="flex items-center justify-between gap-2">
@@ -715,16 +715,53 @@ function AdminHandbook() {
 
 // ── FAQ ──────────────────────────────────────────────────────────────────────
 
-function Faq() {
+// Words in a question or its answer, so /help?q=portfolio can link straight
+// to the answers about it.
+const faqWords = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+function faqMatches(query) {
+  const words = faqWords(query).split(/\s+/).filter(Boolean)
+  if (!words.length) return FAQ_ITEMS
+  return FAQ_ITEMS.filter(({ q, a }) => {
+    const text = faqWords(`${q} ${a}`)
+    return words.every((w) => text.includes(w))
+  })
+}
+
+function Faq({ query = '', onQuery }) {
+  const items = faqMatches(query)
+  const searching = Boolean(query.trim())
   return (
     <div>
       <HandbookIntro title={tr('Frequently Asked Questions')}>
         {tr('Quick answers to common questions.')}
       </HandbookIntro>
 
+      <div className="relative mb-4">
+        <Search className="w-4 h-4 text-earth-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+        <input
+          type="search"
+          className="input pl-9 pr-9"
+          value={query}
+          onChange={(e) => onQuery?.(e.target.value)}
+          placeholder={tr('Search the questions')}
+          aria-label={tr('Search the questions')}
+          maxLength={80}
+        />
+        {searching && (
+          <button type="button" onClick={() => onQuery?.('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-earth-400 hover:text-white" aria-label={tr('Clear search')}>
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+      {searching && (
+        <p className="text-sm text-earth-400 mb-3" role="status">
+          {items.length ? tr('{n} matching answers', { n: items.length }) : tr('No answers match “{q}”. Try other words, or ask us on the Contact page.', { q: query.trim() })}
+        </p>
+      )}
+
       <div className="space-y-3">
-        {FAQ_ITEMS.map(({ q, a }) => (
-          <FaqItem key={q} question={q} answer={a} />
+        {items.map(({ q, a }) => (
+          <FaqItem key={`${q}|${searching && items.length <= 5}`} question={q} answer={a} startOpen={searching && items.length <= 5} />
         ))}
       </div>
     </div>
@@ -783,7 +820,25 @@ export default function Help() {
   })
 
   const { user } = useAuth()
-  const [tab, setTab] = useState('quickstart')
+  // /help?q=words opens the FAQ searched for those words; /help?section=student a handbook.
+  const [params, setParams] = useSearchParams()
+  const faqQuery = params.get('q') || ''
+  const [tab, setTabState] = useState(() => (faqQuery ? 'faq' : (PANELS[params.get('section')] ? params.get('section') : 'quickstart')))
+  const setTab = (t) => {
+    setTabState(t)
+    setParams((prev) => {
+      const p = new URLSearchParams(prev)
+      p.delete('q')
+      if (t === 'quickstart') p.delete('section'); else p.set('section', t)
+      return p
+    }, { replace: true })
+  }
+  const setFaqQuery = (v) => setParams((prev) => {
+    const p = new URLSearchParams(prev)
+    p.delete('section')
+    if (v) p.set('q', v); else p.delete('q')
+    return p
+  }, { replace: true })
   const Panel = (tab === 'admin' && user?.role !== 'admin' ? null : PANELS[tab]) || QuickStart
 
   const content = (
@@ -809,7 +864,7 @@ export default function Help() {
       </nav>
 
       <div className="min-w-0 mt-6 lg:mt-0">
-        <Panel />
+        {Panel === Faq ? <Faq query={faqQuery} onQuery={setFaqQuery} /> : <Panel />}
       </div>
     </div>
   )

@@ -3969,5 +3969,11 @@ export default {
   "Due {date}": "期限 {date}",
   "Linked to {name}": "{name} とリンクしました",
   "For schools and organizations": "学校・団体向け",
-  "See the event": "イベントを見る"
+  "See the event": "イベントを見る",
+  "Showing only {name}": "{name} さんのみ表示中",
+  "Nothing to check for this student.": "この生徒に確認するものはありません。",
+  "Show only this student": "この生徒だけを表示",
+  "Search the questions": "質問を検索",
+  "{n} matching answers": "一致する回答 {n} 件",
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "「{q}」に一致する回答はありません。別の言葉で探すか、お問い合わせページでご質問ください。"
 }
