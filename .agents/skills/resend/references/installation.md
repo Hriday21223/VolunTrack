@@ -10,7 +10,7 @@ These are the minimum versions required for full functionality (sending, receivi
 |----------|---------|-------------|---------|
 | Node.js | `resend` | >= 6.14.0 | `npm install resend` |
 | Python | `resend` | >= 2.34.0 | `pip install resend` |
-| Go | `resend-go/v3` | >= 3.11.0 | `go get github.com/resend/resend-go/v3` |
+| Go | `resend-go/v4` | >= 4.0.0 | `go get github.com/resend/resend-go/v4` |
 | Ruby | `resend` | >= 1.6.0 | `gem install resend` |
 | PHP | `resend/resend-php` | >= 1.1.0 | `composer require resend/resend-php` |
 | Rust | `resend-rs` | >= 0.26.1 | `cargo add resend-rs` |
@@ -18,6 +18,8 @@ These are the minimum versions required for full functionality (sending, receivi
 | .NET | `Resend` | >= 0.2.1 | `dotnet add package Resend` |
 
 > **If the project already has a Resend SDK installed**, check the version and upgrade if it's below the minimum. Older SDKs may be missing `webhooks.verify()`, `emails.receiving.get()`, or `domains.claims.*`, which power webhook security, inbound email, and domain claiming.
+
+Inboxes (`inboxes.*`) need Node.js `resend` >= 6.36.0 or Python `resend` >= 2.51.0. For the other languages, install the latest version. See [inboxes.md](inboxes.md).
 
 ## Detecting Project Language
 
@@ -27,7 +29,7 @@ Check for these files to determine the project's language/framework:
 |------|----------|-----|
 | `package.json` | Node.js/TypeScript | resend |
 | `requirements.txt` or `pyproject.toml` | Python | resend |
-| `go.mod` | Go | resend-go/v3 |
+| `go.mod` | Go | resend-go/v4 |
 | `Gemfile` | Ruby | resend |
 | `composer.json` | PHP | resend/resend-php |
 | `Cargo.toml` | Rust | resend-rs |
@@ -59,7 +61,7 @@ pip install resend
 ### Go
 
 ```bash
-go get github.com/resend/resend-go/v3
+go get github.com/resend/resend-go/v4
 ```
 
 ### Ruby
