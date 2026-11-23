@@ -199,7 +199,7 @@ export default function OrgPartners() {
       if (partners.length === 0) throw new Error('No partners found in that file.')
       const out = await call('', { method: 'POST', body: JSON.stringify({ partners }) })
       setState(out)
-      setNote(`Added ${out.added} partner${out.added === 1 ? '' : 's'}${out.skipped ? `; ${out.skipped} already on the list` : ''}.`)
+      setNote(`${out.added === 1 ? tr('Added 1 partner.') : tr('Added {n} partners.', { n: out.added })}${out.skipped ? ` ${tr('{n} already on the list.', { n: out.skipped })}` : ''}`)
     })
   }
   const exportCsv = () => {

@@ -84,7 +84,7 @@ export default function ReviewPopup() {
         </div>
 
         <div className="mt-5">
-          <label className="text-sm text-earth-300 mb-2 block">Anything to add? (optional)</label>
+          <label className="text-sm text-earth-300 mb-2 block">{tr('Anything to add? (optional)')}</label>
           <textarea
             className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-white placeholder-earth-500 resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-brand-500/50"
             placeholder={tr('Tell us what you like or what could be better...')}

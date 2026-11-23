@@ -95,7 +95,7 @@ export default function HoursReviewPanel({ onSetPlaces }) {
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Could not send it back.')
-      setMessage(`Sent back to ${entry.student_name}. Those hours don't count until they fix the entry.`)
+      setMessage(tr('Sent back to {name}. Those hours don\'t count until they fix the entry.', { name: entry.student_name }))
       await load()
     } catch (e) {
       // Put the entry and the typed reason back, so nothing has to be retyped.
@@ -160,7 +160,7 @@ export default function HoursReviewPanel({ onSetPlaces }) {
                     {e.notes && <p className="text-xs text-earth-500 dark:text-earth-400 mt-1 line-clamp-3">{e.notes}</p>}
                     {e.parent_confirmed_name && <p className="text-xs text-sky-600 dark:text-sky-300 mt-1">{tr('Confirmed by a parent: {name}', { name: e.parent_confirmed_name })}</p>}
                     <p className="text-xs text-earth-400 mt-1">
-                      {e.verification_status === 'pending' ? `Waiting on supervisor${e.supervisor_name ? ` ${e.supervisor_name}` : ''}` : e.supervisor_name ? `Supervisor: ${e.supervisor_name} (not asked to confirm)` : tr('No supervisor given')}
+                      {e.verification_status === 'pending' ? (e.supervisor_name ? tr('Waiting on supervisor {name}', { name: e.supervisor_name }) : tr('Waiting on supervisor')) : e.supervisor_name ? tr('Supervisor: {name} (not asked to confirm)', { name: e.supervisor_name }) : tr('No supervisor given')}
                       {e.has_proof ? ` · ${tr('proof attached')}` : ''}
                     </p>
                     {/* Proof as a link (#955), checked again before it becomes a link.

@@ -18,7 +18,7 @@ export default function FileDrop({ onFile, accept = 'image/*,application/pdf', m
     setError('')
     if (!file) return
     if (file.size > maxBytes) {
-      setError(`File is too large. Keep it under ${Math.round(maxBytes / 1024)} KB.`)
+      setError(tr('File is too large. Keep it under {kb} KB.', { kb: Math.round(maxBytes / 1024) }))
       return
     }
     const reader = new FileReader()

@@ -96,13 +96,13 @@ export default function SsoSettings() {
         // The sign-in itself worked, but the domain belongs to someone else —
         // say so here rather than letting the admin discover it as an
         // unexplained refusal when they try to enable.
-        setErr(`Connection works (signed in as ${email}), but "${conflict}" is already claimed by another organization, so it could not be verified for this connection. Contact support to sort out who owns it.`)
+        setErr(tr('Connection works (signed in as {email}), but “{domain}” is already claimed by another organization, so it could not be verified for this connection. Contact support to sort out who owns it.', { email, domain: conflict }))
         setNotice('')
       } else {
         setNotice(
           unverified
-            ? `Connection works (signed in as ${email}), but we could not automatically prove you own "${unverified}". Add it below and verify by DNS.`
-            : `Connection works — signed in as ${email}, and your email domain is verified. You can enable SSO now.`,
+            ? tr('Connection works (signed in as {email}), but we could not automatically prove you own “{domain}”. Add it below and verify by DNS.', { email, domain: unverified })
+            : tr('Connection works — signed in as {email}, and your email domain is verified. You can enable SSO now.', { email }),
         )
       }
       window.history.replaceState({}, '', window.location.pathname)
