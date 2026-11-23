@@ -3979,5 +3979,13 @@ export default {
   "No answers match “{q}”. Try other words, or ask us on the Contact page.": "没有与“{q}”匹配的回答。换个词试试，或在联系页面问我们。",
   "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "随时记录一次志愿服务：做了什么、时长和证明。证明可以是照片或文件，或在你加入学校后，用它在 Google Drive 或 OneDrive 中的链接。",
   "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "添加协同管理员，让辅导员只看到自己的学生，把证明文件存到你们自己的存储（S3、SharePoint 或 Google Drive），让学生用学校账户登录，并在“账单”中查看发票。",
-  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "你添加的所有学校及其学生人数。你的发票也在这里：付款前可以打开查看，也可以下载。"
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "你添加的所有学校及其学生人数。你的发票也在这里：付款前可以打开查看，也可以下载。",
+  "The home page is now in your language, and Help has a search box: type a word to find the answer.": "主页现在有你的语言了，帮助页面也有搜索框：输入一个词就能找到答案。",
+  "VolunTrack is easier to use with a screen reader or keyboard, and small grey text is easier to read.": "使用屏幕阅读器或键盘操作 VolunTrack 更方便了，灰色小字也更容易看清。",
+  "Once you’ve joined your school, your proof can be a link to the file in Google Drive, OneDrive, Dropbox, iCloud or Box instead of an upload.": "加入学校后，你的证明可以是 Google Drive、OneDrive、Dropbox、iCloud 或 Box 中文件的链接，而不必上传。",
+  "Give a counselor or co-admin only their own students, by last name and grade, in School setup → Co-admins.": "在“学校设置 → 协同管理员”中，按姓氏和年级让辅导员或协同管理员只看到自己的学生。",
+  "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "如果你是辅导员，按姓氏和年级选择你负责的学生，这样你只会看到他们。",
+  "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "在“待检查时长”中，点击学生姓名即可只看该生的记录。证明现在可以是链接，Google Drive 文件可直接在这里打开。",
+  "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "发票会显示“未付款”或“已付款”，可列出费用和税，你也可以在付款前打开查看。",
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "当 VolunTrack 为学校和组织举办介绍会时，主页上会有横幅显示详情。"
 }
