@@ -34,5 +34,26 @@ export function eventWhen(ev, { withWeekday = true } = {}) {
   }
 }
 
+/**
+ * One event by id, for /events?id=…: { event } (it may have ended), or
+ * { event: null, missing: true } when there's no such published event.
+ */
+export async function eventById(id) {
+  if (!/^sev_[A-Za-z0-9_]{4,60}$/.test(String(id || ''))) return { event: null, missing: true }
+  try {
+    const r = await fetch(`${apiUrl}/events/one/${encodeURIComponent(id)}`)
+    if (r.status === 404) return { event: null, missing: true }
+    if (!r.ok) return { event: null, missing: false }
+    return { event: (await r.json()).event || null, missing: false }
+  } catch {
+    return { event: null, missing: false }
+  }
+}
+
+/** The address to share for one event. */
+export const eventPath = (id) => `/events?id=${encodeURIComponent(id)}`
+
+export { isUpcoming }
+
 /** True once it has started (and isUpcoming says it hasn't ended). */
 export const isUnderWay = (ev, now = new Date()) => new Date(ev.startsAt) <= now

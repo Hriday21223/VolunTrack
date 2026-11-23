@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, ArrowRight } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
-import { upcomingEvent, eventWhen } from '@/lib/schoolEvents.js'
+import { upcomingEvent, eventWhen, eventPath } from '@/lib/schoolEvents.js'
 
 // The next event for schools and organizations (#995), on the home and For
 // schools pages. Renders nothing unless one is coming up.
@@ -18,7 +18,7 @@ export default function UpcomingEventBanner({ className = '', tone = 'dark' }) {
   const dark = tone === 'dark'
   return (
     <Link
-      to="/events"
+      to={eventPath(ev.id)}
       className={`group inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-2xl border px-4 py-2.5 text-sm text-left transition-colors ${dark ? 'border-amber-300/30 bg-amber-300/10 text-amber-100 hover:bg-amber-300/15' : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100'} ${className}`}
     >
       <CalendarDays className="w-4 h-4 shrink-0" aria-hidden="true" />
