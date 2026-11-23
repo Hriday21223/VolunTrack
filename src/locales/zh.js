@@ -3976,5 +3976,8 @@ export default {
   "Show only this student": "只显示这名学生",
   "Search the questions": "搜索问题",
   "{n} matching answers": "{n} 个匹配的回答",
-  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "没有与“{q}”匹配的回答。换个词试试，或在联系页面问我们。"
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "没有与“{q}”匹配的回答。换个词试试，或在联系页面问我们。",
+  "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "随时记录一次志愿服务：做了什么、时长和证明。证明可以是照片或文件，或在你加入学校后，用它在 Google Drive 或 OneDrive 中的链接。",
+  "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "添加协同管理员，让辅导员只看到自己的学生，把证明文件存到你们自己的存储（S3、SharePoint 或 Google Drive），让学生用学校账户登录，并在“账单”中查看发票。",
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "你添加的所有学校及其学生人数。你的发票也在这里：付款前可以打开查看，也可以下载。"
 }

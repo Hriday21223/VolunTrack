@@ -75,7 +75,7 @@ const fmtDist = (km) => {
 }
 
 const STUDENT_TOUR_STEPS = [
-  { selector: '[data-tour="log-hours"]', title: tr('Log hours'), description: tr('Use this any time to record a volunteer session — activity, hours, and proof if you have it.') },
+  { selector: '[data-tour="log-hours"]', title: tr('Log hours'), description: tr('Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.') },
   { selector: '[data-tour="goal-progress"]', title: tr('Goal progress'), description: tr('Track how close you are to your primary volunteering goal, and how many hours are left.') },
   { selector: '[data-tour="weekly-chart"]', title: tr('Weekly chart'), description: tr('See your hours for the current week broken down by day, so you can keep momentum going.') },
   { selector: '[data-tour="recent-activity"]', title: tr('Recent activity'), description: tr('Your most recently logged sessions show up here — jump back in any time to log more.') },

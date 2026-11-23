@@ -3975,5 +3975,8 @@ export default {
   "Show only this student": "Afficher seulement cet élève",
   "Search the questions": "Rechercher dans les questions",
   "{n} matching answers": "{n} réponses correspondantes",
-  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Aucune réponse ne correspond à « {q} ». Essayez d’autres mots ou posez-nous la question sur la page Contact."
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "Aucune réponse ne correspond à « {q} ». Essayez d’autres mots ou posez-nous la question sur la page Contact.",
+  "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "Enregistrez une séance de bénévolat quand vous voulez : ce que vous avez fait, vos heures et une preuve. La preuve peut être une photo ou un fichier, ou, une fois que vous avez rejoint votre école, un lien vers elle dans Google Drive ou OneDrive.",
+  "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "Ajoutez des co-administrateurs et donnez à un conseiller seulement ses propres élèves, gardez les preuves dans votre propre stockage (S3, SharePoint ou Google Drive), laissez les élèves se connecter avec le compte de l’école, et consultez vos factures dans Facturation.",
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "Toutes les écoles que vous avez ajoutées, avec leur nombre d’élèves. Vos factures sont ici aussi : ouvrez-en une pour la voir avant de payer, ou téléchargez-la."
 }

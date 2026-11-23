@@ -3975,5 +3975,8 @@ export default {
   "Show only this student": "عرض هذا الطالب فقط",
   "Search the questions": "ابحث في الأسئلة",
   "{n} matching answers": "{n} إجابات مطابقة",
-  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "لا توجد إجابات تطابق “{q}”. جرّب كلمات أخرى، أو اسألنا في صفحة التواصل."
+  "No answers match “{q}”. Try other words, or ask us on the Contact page.": "لا توجد إجابات تطابق “{q}”. جرّب كلمات أخرى، أو اسألنا في صفحة التواصل.",
+  "Record a volunteer session any time: what you did, your hours, and proof. Proof can be a photo or file, or, once you’ve joined your school, a link to it in Google Drive or OneDrive.": "سجّل جلسة تطوع في أي وقت: ماذا فعلت، وساعاتك، والإثبات. يمكن أن يكون الإثبات صورة أو ملفًا، أو، بعد انضمامك إلى مدرستك، رابطًا له في Google Drive أو OneDrive.",
+  "Add co-admins and give a counselor just their own students, keep proof files in your own storage (S3, SharePoint or Google Drive), let students sign in with your school account, and see your invoices under Billing.": "أضف مسؤولين مشاركين وامنح المرشد طلابه فقط، واحفظ ملفات الإثبات في تخزينكم الخاص (S3 أو SharePoint أو Google Drive)، ودع الطلاب يسجلون الدخول بحساب المدرسة، واطّلع على فواتيرك في الفوترة.",
+  "Every school you’ve added, with their student counts. Your invoices are here too: open one to see it before you pay, or download it.": "كل المدارس التي أضفتها، مع عدد طلابها. فواتيرك هنا أيضًا: افتح الفاتورة لتراها قبل الدفع، أو نزّلها."
 }
