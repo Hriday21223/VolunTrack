@@ -41,7 +41,7 @@ export default function GroupHoursCard({ students = [], onDone }) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not add the hours.')
-      setMsg(`Added ${form.hours} hours for ${data.added} student${data.added === 1 ? '' : 's'}.${data.skipped ? ` ${data.skipped} already had this entry.` : ''}`)
+      setMsg(`${data.added === 1 ? tr('Added {hours} hours for 1 student.', { hours: form.hours }) : tr('Added {hours} hours for {n} students.', { hours: form.hours, n: data.added })}${data.skipped ? ` ${tr('{n} already had this entry.', { n: data.skipped })}` : ''}`)
       setPicked(new Set())
       setForm((f) => ({ ...f, activity: '', hours: '' }))
       onDone?.()

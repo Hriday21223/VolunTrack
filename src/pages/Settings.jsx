@@ -705,7 +705,7 @@ export default function Settings() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Could not link to that student.')
       setLinkChildInput('')
-      setToastMessage(`Linked to ${data.child?.name || 'student'}`)
+      setToastMessage(tr('Linked to {name}', { name: data.child?.name || tr('student') }))
       setToast(true)
       loadLinkedChildren()
     } catch (error) {

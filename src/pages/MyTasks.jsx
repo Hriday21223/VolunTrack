@@ -291,7 +291,7 @@ export default function MyTasks() {
       if (!res.ok) throw new Error(data.error || 'Could not send your message')
       setMessagingId(null)
       setMessageDraft('')
-      setToastMsg(`Sent to ${data.sent} volunteer${data.sent === 1 ? '' : 's'}`)
+      setToastMsg(data.sent === 1 ? tr('Sent to 1 volunteer') : tr('Sent to {n} volunteers', { n: data.sent }))
       setToast(true)
     } catch (e) {
       setToastMsg(e.message); setToast(true)
@@ -477,7 +477,7 @@ export default function MyTasks() {
         body: JSON.stringify({ status }),
       })
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
-      setToastMsg(`Marked ${status}`); setToast(true)
+      setToastMsg({ present: tr('Marked present'), absent: tr('Marked absent'), excused: tr('Marked excused') }[status] || tr('Saved.')); setToast(true)
       loadTasks()
     } catch (e) { setToastMsg(e.message); setToast(true) }
   }
@@ -543,7 +543,7 @@ export default function MyTasks() {
       })
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Failed') }
       const d = await res.json()
-      setToastMsg(`Logged hours for ${d.logged} volunteer${d.logged === 1 ? '' : 's'}${d.skipped ? ` · ${d.skipped} already had hours for that day` : ''}`); setToast(true)
+      setToastMsg(`${d.logged === 1 ? tr('Logged hours for 1 volunteer') : tr('Logged hours for {n} volunteers', { n: d.logged })}${d.skipped ? ` · ${tr('{n} already had hours for that day', { n: d.skipped })}` : ''}`); setToast(true)
       setBatchHours({}); setBatchDate('')
       refreshLogs(); loadTasks()
     } catch (e) { setToastMsg(e.message); setToast(true) } finally { setBatchBusy(false) }

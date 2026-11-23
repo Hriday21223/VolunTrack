@@ -217,7 +217,7 @@ export default function Contact() {
                       <CheckCircle2 className="w-3 h-3" /> {accountCheck.name}
                     </p>
                   )}
-                  <p className="text-xs text-earth-500 mt-1">Already a VolunTrack customer? Enter the account ID from your invoice so we can pull up your account.</p>
+                  <p className="text-xs text-earth-500 mt-1">{tr('Already a VolunTrack customer? Enter the account ID from your invoice so we can pull up your account.')}</p>
                 </div>
               )}
               {form.subject === 'School or organization partnership' && (
@@ -236,8 +236,8 @@ export default function Contact() {
                   ) : (
                     <p className="text-xs text-earth-500 mt-1">
                       {promo?.code
-                        ? `Have a coupon? Enter it here and we'll apply it when we set you up. ${promo.headline} is running now.`
-                        : "Have a coupon from a flyer, email or event? Enter it here and we'll apply it when we set you up."}
+                        ? tr('Have a coupon? Enter it here and we\'ll apply it when we set you up. {offer} is running now.', { offer: promo.headline })
+                        : tr('Have a coupon from a flyer, email or event? Enter it here and we\'ll apply it when we set you up.')}
                     </p>
                   )}
                 </div>
