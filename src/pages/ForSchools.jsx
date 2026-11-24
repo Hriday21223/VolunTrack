@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight, CheckCircle2, QrCode, ClipboardCheck, FileSpreadsheet, GraduationCap, Users,
-  ShieldCheck, Languages, Target, Mail, Printer, Layers, Zap,
+  ShieldCheck, Languages, Target, Mail, Printer, Layers, Zap, FileText, X,
 } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
@@ -38,7 +38,24 @@ const STEPS = [
   { title: 'Approve hours as they come in', text: 'Students who use your link land on your roster. Their hours wait for you on the Students tab.' },
 ]
 
+// Why a school pays when students can already download their own report.
+const COMPARE = {
+  pdfs: [
+    'One file per student, collected by email or on paper',
+    'Hours the student typed in; most are self-reported',
+    'A PDF can be edited before it reaches you',
+    'You add up totals and find who is behind by hand',
+  ],
+  schools: [
+    'Every student’s hours in one dashboard, as they log them',
+    'Hours signed off by the supervisor or organizer, marked Approved',
+    'You approve or send back entries yourself, with a reason',
+    'Who is behind, deadline reminders, school-wide reports and certificates',
+  ],
+}
+
 const FAQS = [
+  { q: 'Students can download their own reports. Why would we need an account?', a: 'A student’s report is one student’s own record: most of it is self-reported, it comes one file at a time, and a PDF can be edited before it reaches you. With a school account you see every student’s hours in one place as they log them, see which hours a supervisor or organizer signed off, approve or send back entries yourself, and get totals, who is behind and graduation reports without adding anything up by hand.' },
   { q: 'What does it cost?', a: 'VolunTrack is free for students, volunteers and parents. One club or class with up to 50 students is free too, with every feature. A whole school, or a club with more students, is paid: send us a message and we will reply with a quote. A district pays per school, on one invoice for all its schools. If another school referred you, you both get a discount.' },
   { q: 'Can each counselor see only their own students?', a: 'Yes. Add each counselor as a co-adviser. They are asked which last names (and grades) they look after, for example A to Chaw, and then see and approve only those students. You can change it any time in School setup.' },
   { q: 'Can students send proof without uploading a file?', a: 'Yes. A student at your school can paste a link to a file in Google Drive, OneDrive, Dropbox, iCloud or Box. A Google Drive file opens right inside your Hours to check list.' },
@@ -95,6 +112,31 @@ export default function ForSchools() {
                 <p className="mt-2 text-sm text-earth-500 dark:text-earth-400">{f.text}</p>
               </Card>
             ))}
+          </div>
+        </section>
+
+        <section className="mt-16" aria-labelledby="why">
+          <h2 id="why" className="text-2xl font-bold text-center">Why not just collect students’ reports?</h2>
+          <p className="mt-3 text-center text-earth-500 dark:text-earth-400 max-w-2xl mx-auto">
+            Students can download their own hours for free. That’s one student’s word, one file at a time. A school account is the whole school, checked.
+          </p>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <Card>
+              <h3 className="font-semibold flex items-center gap-2"><FileText className="w-5 h-5 text-earth-400 shrink-0" /> Students’ own reports</h3>
+              <ul className="mt-3 space-y-2 text-sm text-earth-500 dark:text-earth-400">
+                {COMPARE.pdfs.map((t) => (
+                  <li key={t} className="flex items-start gap-2"><X className="w-4 h-4 mt-0.5 text-earth-400 shrink-0" aria-hidden="true" /> {t}</li>
+                ))}
+              </ul>
+            </Card>
+            <Card className="border-brand-500/60">
+              <h3 className="font-semibold flex items-center gap-2"><ClipboardCheck className="w-5 h-5 text-brand-500 shrink-0" /> VolunTrack for schools</h3>
+              <ul className="mt-3 space-y-2 text-sm">
+                {COMPARE.schools.map((t) => (
+                  <li key={t} className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 mt-0.5 text-brand-500 shrink-0" aria-hidden="true" /> {t}</li>
+                ))}
+              </ul>
+            </Card>
           </div>
         </section>
 
