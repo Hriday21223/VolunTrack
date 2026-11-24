@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "Mais recente",
   "Share your year": "Compartilhe seu ano",
   "Shares your totals only — no names, places or notes.": "Compartilha só seus totais — sem nomes, lugares ou observações.",
+  "Screenshots aren’t allowed here.": "Capturas de tela não são permitidas aqui.",
   "Hidden while your screen is being recorded.": "Oculto enquanto sua tela está sendo gravada.",
   "Your school gets it without the VolunTrack mark.": "Sua escola recebe sem a marca do VolunTrack.",
   "Preview PDF": "Ver PDF",

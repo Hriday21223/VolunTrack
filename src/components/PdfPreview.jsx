@@ -14,13 +14,15 @@ import { guardScreen } from '@/lib/screenGuard.js'
  */
 // `action` (optional): an extra button for the header, e.g. "Send to school".
 // `note` (optional): one line under the title.
-// `allowDownload={false}` hides our Download button and the browser's PDF
-// toolbar (#toolbar=0), so its save button can't hand the file out either.
-// Every preview carries the same watermark as the downloaded file, so a
-// screenshot of a preview is marked too. In the phone apps the preview is
-// also guarded (src/lib/screenGuard.js): Android blocks screenshots while
-// it's open, and iOS closes it after a screenshot and hides it while the
-// screen is being recorded.
+// `allowDownload={false}` hides our Download button.
+// Previews are clean and downloads are watermarked: getBlob is called with
+// { watermark: false } for what's shown and { watermark: true } for Download
+// (every PDF builder in src/lib/export.js takes `watermark`). The browser's
+// own PDF toolbar is always hidden (#toolbar=0), so its save button can't
+// hand out the clean copy. In the phone apps the preview is also guarded
+// (src/lib/screenGuard.js): Android blocks screenshots while it's open, and
+// iOS shows a "Screenshots aren't allowed" page in the screenshot instead,
+// closes the preview after one, and hides it while the screen is recorded.
 export default function PdfPreview({ title, note, filename, getBlob, onClose, action, allowDownload = true }) {
   const [url, setUrl] = useState(null)
   const [error, setError] = useState('')
@@ -39,7 +41,7 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
     let cancelled = false
 
     Promise.resolve()
-      .then(() => getBlobRef.current())
+      .then(() => getBlobRef.current({ watermark: false }))
       .then((blob) => {
         if (cancelled || !blob) return
         blobRef.current = blob
@@ -74,7 +76,8 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
 
   const download = async () => {
     if (!blobRef.current) return
-    const file = blobRef.current
+    const file = await getBlobRef.current({ watermark: true })
+    if (!file) return
     const a = document.createElement('a')
     a.href = URL.createObjectURL(file)
     a.download = filename || 'document.pdf'
@@ -123,7 +126,7 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
           {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
               every preview blank on the live site. frame-src allows blob:. */}
           {url && captured && <p className="text-sm text-earth-600 p-6 text-center">{tr('Hidden while your screen is being recorded.')}</p>}
-          {url && !captured && <iframe src={allowDownload ? url : `${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
+          {url && !captured && <iframe src={`${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
         </div>
       </div>
     </div>

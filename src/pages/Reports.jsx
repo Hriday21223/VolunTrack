@@ -56,8 +56,7 @@ export default function Reports() {
   }, [logs, category, from, to])
 
   const total = countedLogs(filtered).reduce((s, l) => s + (Number(l.hours) || 0), 0)
-  // The preview shows the school copy with the VolunTrack mark (so a
-  // screenshot of it is marked); what's sent is the same copy without it.
+  // Sends the clean school copy, the same one the preview showed.
   const submitToSchool = async () => {
     setSubmitting(true)
     try {
@@ -185,9 +184,8 @@ export default function Reports() {
         {previewing && (
           <PdfPreview
             title={previewing === 'school' ? tr('What your school will get') : tr('Your hours report')}
-            note={previewing === 'school' ? tr('Your school gets it without the VolunTrack mark.') : null}
             filename="volunteer-log.pdf"
-            getBlob={() => exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: previewing, watermark: true })}
+            getBlob={(opts) => exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: previewing, ...opts })}
             onClose={() => setPreviewing(null)}
             allowDownload={previewing !== 'school'}
             action={previewing === 'school'

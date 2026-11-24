@@ -1485,6 +1485,7 @@ export default {
   "Most recent": "Gần đây nhất",
   "Share your year": "Chia sẻ năm của bạn",
   "Shares your totals only — no names, places or notes.": "Chỉ chia sẻ tổng số, không có tên, địa điểm hay ghi chú.",
+  "Screenshots aren’t allowed here.": "Không được chụp màn hình ở đây.",
   "Hidden while your screen is being recorded.": "Đã ẩn khi màn hình của bạn đang được ghi.",
   "Your school gets it without the VolunTrack mark.": "Trường bạn sẽ nhận bản không có dấu VolunTrack.",
   "Preview PDF": "Xem trước PDF",

@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "الأحدث",
   "Share your year": "شارك عامك",
   "Shares your totals only — no names, places or notes.": "يشارك إجمالياتك فقط — بلا أسماء أو أماكن أو ملاحظات.",
+  "Screenshots aren’t allowed here.": "لا يُسمح بلقطات الشاشة هنا.",
   "Hidden while your screen is being recorded.": "مخفي أثناء تسجيل شاشتك.",
   "Your school gets it without the VolunTrack mark.": "تتلقاه مدرستك بدون علامة VolunTrack.",
   "Preview PDF": "معاينة PDF",

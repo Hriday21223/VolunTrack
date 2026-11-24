@@ -1,11 +1,14 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import { tr } from '@/lib/i18n.js'
 
 // Guards a screen that shows a document (PdfPreview) in the phone apps.
 // - Android: blocks screenshots and screen recording while it's open
 //   (FLAG_SECURE, android ScreenGuardPlugin); they come out black.
-// - iOS can't block a screenshot, only report it afterwards, so the preview
-//   closes when one is taken, and hides while the screen is being recorded
-//   or mirrored (ScreenGuardPlugin in ios/App/App/SceneDelegate.swift).
+// - iOS can't block a screenshot, so the screenshot shows a "Screenshots
+//   aren't allowed here" page instead of the document (the password-field
+//   layer trick), the preview closes after one, and it hides while the screen
+//   is being recorded or mirrored (ScreenGuardPlugin in
+//   ios/App/App/SceneDelegate.swift).
 // A no-op on the website, where screenshots can't be detected reliably;
 // there the watermark on every preview is the protection.
 const ScreenGuard = registerPlugin('ScreenGuard')
@@ -23,6 +26,7 @@ export function guardScreen({ onScreenshot, onCaptured } = {}) {
   }
   if (platform !== 'ios') return () => {}
 
+  ScreenGuard.enable({ message: tr('Screenshots aren’t allowed here.') }).catch(() => {})
   const handles = []
   let stopped = false
   const add = (event, fn) => ScreenGuard.addListener(event, fn)
@@ -34,5 +38,6 @@ export function guardScreen({ onScreenshot, onCaptured } = {}) {
   return () => {
     stopped = true
     handles.forEach((h) => h.remove())
+    ScreenGuard.disable().catch(() => {})
   }
 }
