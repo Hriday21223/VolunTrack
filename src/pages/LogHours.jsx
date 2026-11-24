@@ -491,7 +491,12 @@ export default function LogHours({ editId, onCloseEdit }) {
       <UnsentBanner />
       <form onSubmit={onSubmit} className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
-          {!editId && <ScanPaperLog onAdd={(entry) => { addLog({ ...blank(), ...entry }); setToast(true) }} />}
+          {!editId && (
+            <ScanPaperLog
+              onAdd={(entry) => { addLog({ ...blank(), ...entry }); setToast(true) }}
+              onFinish={(entry) => { setForm({ ...blank(), ...entry }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+            />
+          )}
           {/* The way in to regular shifts (#763); the Dashboard card shows once one exists. */}
           {!editId && !shiftFromLink && hasAccount() && (
             <p className="text-sm text-earth-500 flex items-center gap-1.5">

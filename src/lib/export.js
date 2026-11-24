@@ -1002,9 +1002,14 @@ export function printSpotlightCertificate({ name, schoolName, month, note }) {
  * row, the date first, then hours written as "2.5 hrs" or a time range.
  * Name and school are filled in when we have them. No watermark: it's a
  * blank form, and a mark across it would get in the way of reading it.
+ * `columns` follow the student's school (paperLogColumns in
+ * src/lib/paperLogForm.js); `later` lists what can't go on paper.
  */
-export async function blankPaperLogPDF({ name = '', school = '', rows = 18, returnBlob = false } = {}) {
-  const doc = new jsPDF({ unit: 'pt', orientation: 'portrait', format: 'letter' })
+export async function blankPaperLogPDF({ name = '', school = '', columns = null, later = [], rows = 18, returnBlob = false } = {}) {
+  const head = columns?.length ? columns : ['Date', 'Activity / Place', 'Hours', 'Supervisor', 'Supervisor signature']
+  // More than six columns don't fit across a portrait page.
+  const wide = head.length > 6
+  const doc = new jsPDF({ unit: 'pt', orientation: wide ? 'landscape' : 'portrait', format: 'letter' })
   const logo = await getLogoDataUrl()
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
@@ -1031,17 +1036,21 @@ export async function blankPaperLogPDF({ name = '', school = '', rows = 18, retu
     }
   }
   line('Name:', name, left, 270, 92)
-  line('School:', school, left + 290, right - left - 290, 92)
+  line('School:', school, left + 290, Math.min(right - left - 290, 300), 92)
   doc.setTextColor(0)
 
+  // Fixed widths for the columns everyone has; the rest share what's left.
+  const fixed = { 'Date': 72, 'Hours': 52, 'Supervisor signature': 100, 'Your signature': 90 }
+  const columnStyles = {}
+  head.forEach((h, i) => { if (fixed[h]) columnStyles[i] = { cellWidth: fixed[h] } })
   autoTable(doc, {
     startY: 112,
-    head: [['Date', 'Activity / Place', 'Hours', 'Supervisor', 'Supervisor signature']],
-    body: Array.from({ length: rows }, () => ['', '', '', '', '']),
+    head: [head],
+    body: Array.from({ length: wide ? Math.min(rows, 12) : rows }, () => head.map(() => '')),
     theme: 'grid',
-    headStyles: { fillColor: [63, 131, 68], fontSize: 10 },
+    headStyles: { fillColor: [63, 131, 68], fontSize: head.length > 9 ? 7.5 : 9 },
     styles: { fontSize: 10, minCellHeight: 28, lineColor: [150, 150, 150], lineWidth: 0.6 },
-    columnStyles: { 0: { cellWidth: 78 }, 2: { cellWidth: 64 }, 3: { cellWidth: 100 }, 4: { cellWidth: 110 } },
+    columnStyles,
     margin: { left, right: 40, bottom: 90 },
   })
 
@@ -1057,7 +1066,8 @@ export async function blankPaperLogPDF({ name = '', school = '', rows = 18, retu
     'Write hours like "2.5 hrs", or the times you started and finished, like 9:00-11:30.',
     'Done? In VolunTrack, open Log Hours and press Scan a paper log, then take a photo of this page.',
   ]
-  tips.forEach((t, i) => doc.text(t, left, pageH - 62 + i * 12))
+  if (later.length) tips.push(`Your school also needs ${later.join(', ')}. You'll add that in VolunTrack after scanning.`)
+  tips.forEach((t, i) => doc.text(t, left, pageH - 62 - (tips.length - 3) * 12 + i * 12))
   doc.text('VolunTrack', right, pageH - 38, { align: 'right' })
   doc.setTextColor(0)
 

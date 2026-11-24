@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import { isTouchDevice } from '@/lib/platform.js'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
 import { parsePaperLog } from '@/lib/paperLogParse.js'
+import { useMyRequirements, validateLogAgainstPolicy } from '@/lib/requirements.js'
+import { paperLogColumns, paperLogLaterItems } from '@/lib/paperLogForm.js'
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
@@ -33,8 +35,11 @@ async function photoToDataUrl(file) {
 // sheet becomes a list the student checks and edits; only ticked rows are
 // saved. Read on the device, or by the server's AI reader when one is set up
 // (better with handwriting).
-export default function ScanPaperLog({ onAdd }) {
+// onAdd(entry): save it as is. onFinish(entry): fill the Log Hours form with
+// it, for an entry the school needs more on than a paper log can carry.
+export default function ScanPaperLog({ onAdd, onFinish }) {
   const { user } = useAuth()
+  const { policy } = useMyRequirements()
   const [serverScan, setServerScan] = useState(false)
   const [progress, setProgress] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -131,27 +136,52 @@ export default function ScanPaperLog({ onAdd }) {
   }
 
   const update = (key, field, value) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, [field]: value } : r)))
-  const ready = (rows || []).filter((r) => r.keep && r.date && r.activity.trim() && Number(r.hours) > 0)
+  // What each row becomes, and what the school still needs on it, checked
+  // with the same rules the server applies (validateLogAgainstPolicy), so an
+  // entry that would be refused when it syncs is finished in the form instead.
+  const entryFor = (r) => ({
+    date: r.date,
+    activity: r.activity.trim(),
+    hours: Number(r.hours),
+    category: ACTIVITY_CATEGORIES[0],
+    orgName: r.orgName || '',
+    supervisorName: r.supervisorName || '',
+    notes: tr('Added from a photo of a paper log.'),
+  })
+  const missingFor = (r) => validateLogAgainstPolicy(policy, { ...entryFor(r), hasProof: false, hasStudentSignature: false })
+  const filled = (r) => r.keep && r.date && r.activity.trim() && Number(r.hours) > 0
+  const ready = (rows || []).filter((r) => filled(r) && missingFor(r).length === 0)
+  const needsMore = (rows || []).filter((r) => filled(r) && missingFor(r).length > 0)
+
+  const finish = (r) => {
+    onFinish?.(entryFor(r))
+    setRows((rs) => {
+      const left = rs.filter((x) => x.key !== r.key)
+      return left.length ? left : null
+    })
+  }
 
   const addAll = () => {
     for (const r of ready) {
-      onAdd({
-        date: r.date,
-        activity: r.activity.trim(),
-        hours: Number(r.hours),
-        category: ACTIVITY_CATEGORIES[0],
-        orgName: r.orgName || '',
-        supervisorName: r.supervisorName || '',
-        notes: tr('Added from a photo of a paper log.'),
-      })
+      onAdd(entryFor(r))
     }
-    setRows(null)
+    // Keep the ones still waiting to be finished in the form.
+    const added = new Set(ready.map((r) => r.key))
+    setRows((rs) => {
+      const left = rs.filter((r) => !added.has(r.key) && filled(r))
+      return left.length ? left : null
+    })
   }
 
   // A blank log to print and fill in by hand, laid out for this reader.
   const printBlank = async () => {
     const { blankPaperLogPDF } = await import('@/lib/export.js')
-    await blankPaperLogPDF({ name: user?.name || '', school: user?.schoolName || user?.school || '' })
+    await blankPaperLogPDF({
+      name: user?.name || '',
+      school: user?.schoolName || user?.school || '',
+      columns: paperLogColumns(policy),
+      later: paperLogLaterItems(policy),
+    })
   }
 
   return (
@@ -199,6 +229,14 @@ export default function ScanPaperLog({ onAdd }) {
                   <input className="input min-w-0 col-span-2" value={r.orgName} placeholder={tr('Organization')} onChange={(e) => update(r.key, 'orgName', e.target.value)} aria-label={tr('Organization')} />
                   <input className="input min-w-0 col-span-2" value={r.supervisorName} placeholder={tr('Supervisor')} onChange={(e) => update(r.key, 'supervisorName', e.target.value)} aria-label={tr('Supervisor')} />
                 </div>
+                {filled(r) && missingFor(r).length > 0 && (
+                  <div className="col-start-2 flex flex-wrap items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                    <span>{tr('Your school needs more on this one: {what}', { what: missingFor(r).map((m) => tr(m.message)).join(' ') })}</span>
+                    {onFinish && (
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => finish(r)}>{tr('Finish in the form')}</button>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -206,6 +244,11 @@ export default function ScanPaperLog({ onAdd }) {
             <button type="button" className="btn-primary w-full" onClick={addAll} disabled={ready.length === 0}>
               {tr('Add {n} entries', { n: ready.length })}
             </button>
+          )}
+          {needsMore.length > 0 && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              {tr('{n} need more for your school. Use Finish in the form on each one.', { n: needsMore.length })}
+            </p>
           )}
           <p className="text-xs text-earth-400">{tr('Entries need a date, an activity and hours. The photo isn’t kept.')}{!serverScan && ` ${tr('Read on your phone: printed sheets work best; check handwritten ones closely.')}`}</p>
         </div>
