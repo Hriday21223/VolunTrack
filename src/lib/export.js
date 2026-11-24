@@ -116,22 +116,7 @@ export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }
   const footer = copy === 'school' ? SCHOOL_COPY_FOOTER : REPORT_FOOTER
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
-    if (copy === 'student') {
-      doc.saveGraphicsState()
-      doc.setGState(new doc.GState({ opacity: 0.14 }))
-      doc.setFont('helvetica', 'bold').setFontSize(110)
-      doc.setTextColor(63, 131, 68)
-      // jsPDF rotates around the text's start point, so work out where the
-      // start goes for the middle of the word to land on the page's centre.
-      const angle = 30
-      const rad = (angle * Math.PI) / 180
-      const w = doc.getTextWidth('VolunTrack')
-      const c = 110 * 0.35 // about half the letters' height, to centre it across too
-      const x = pageW / 2 - (w / 2) * Math.cos(rad) + c * Math.sin(rad)
-      const y = pageH / 2 + (w / 2) * Math.sin(rad) + c * Math.cos(rad)
-      doc.text('VolunTrack', x, y, { angle })
-      doc.restoreGraphicsState()
-    }
+    if (copy === 'student') drawWatermark(doc)
     doc.setFont('helvetica', 'normal').setFontSize(8)
     doc.setTextColor(110)
     // Leave room on the right for the page number.
@@ -144,6 +129,41 @@ export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }
     return doc.output('blob')
   }
   doc.save('volunteer-log.pdf')
+}
+
+// The faint diagonal "VolunTrack" across the middle of the current page.
+// On every PDF we hand out (student hours downloads, school hours and
+// graduation reports, invoices, sign-in sheets), but not on résumés,
+// certificates or the clean copy a student sends to their school.
+function drawWatermark(doc) {
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  const angle = 30
+  const rad = (angle * Math.PI) / 180
+  doc.saveGraphicsState()
+  doc.setGState(new doc.GState({ opacity: 0.14 }))
+  // As big as fits: the slanted word spans 80% of the page width, at most 110pt.
+  doc.setFont('helvetica', 'bold').setFontSize(100)
+  const widthAt100 = doc.getTextWidth('VolunTrack')
+  const size = Math.min(110, Math.floor((100 * pageW * 0.8) / (widthAt100 * Math.cos(rad))))
+  doc.setFontSize(size)
+  doc.setTextColor(63, 131, 68)
+  // jsPDF rotates around the text's start point, so work out where the
+  // start goes for the middle of the word to land on the page's centre.
+  const w = doc.getTextWidth('VolunTrack')
+  const c = size * 0.35 // about half the letters' height, to centre it across too
+  doc.text('VolunTrack', pageW / 2 - (w / 2) * Math.cos(rad) + c * Math.sin(rad), pageH / 2 + (w / 2) * Math.sin(rad) + c * Math.cos(rad), { angle })
+  doc.restoreGraphicsState()
+  doc.setTextColor(0)
+}
+
+// Every page, for the PDFs that don't already loop over their pages.
+function watermarkAllPages(doc) {
+  const pages = doc.getNumberOfPages()
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i)
+    drawWatermark(doc)
+  }
 }
 
 const logStatus = (l) => {
@@ -237,6 +257,7 @@ export async function generateInvoicePDF({ preview = false, returnBlob = false, 
   const logo = await getLogoDataUrl()
   // The admin's look before sending (#942): it must not pass for a real invoice.
   drawInvoice(doc, logo, { ...invoice, stamp: preview ? { text: 'PREVIEW - NOT SENT', color: [190, 40, 40] } : statusStamp(invoice) })
+  watermarkAllPages(doc)
   if (returnBlob) return doc.output('blob')
   doc.save(`${invoice.invoiceNumber}.pdf`)
 }
@@ -267,6 +288,7 @@ export async function generateInvoicesPDFBlob(invoices) {
     if (i > 0) doc.addPage()
     drawInvoice(doc, logo, { ...invoice, stamp: statusStamp(invoice) })
   })
+  watermarkAllPages(doc)
   return doc.output('blob')
 }
 
@@ -542,6 +564,7 @@ export async function schoolHoursPDF({ title, range, students, totals, returnBlo
   })
 
   const filename = `voluntrack-hours-${range.from}-to-${range.to}.pdf`
+  watermarkAllPages(doc)
   if (returnBlob) return doc.output('blob')
   doc.save(filename)
   return null
@@ -625,6 +648,7 @@ export async function graduationReportPDF({ report, returnBlob }) {
     },
   })
 
+  watermarkAllPages(doc)
   if (returnBlob) return doc.output('blob')
   doc.save(`voluntrack-graduation-report-grade-${graduationSlug(report)}.pdf`)
   return null
@@ -756,6 +780,7 @@ export async function generateSignInSheetPDF(task, { organizerName, returnBlob }
   const pageBottom = probe.internal.pageSize.getHeight() - SHEET_MARGIN_BOTTOM
   const room = Math.floor((pageBottom - probe.lastAutoTable.finalY - 0.5) / SHEET_ROW_H)
   const doc = drawSignInSheet({ ...sheet, blankRows: SHEET_MIN_BLANK_ROWS + Math.max(0, room) })
+  watermarkAllPages(doc)
 
   if (returnBlob) return doc.output('blob')
   const slug = String(task?.title || '').normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 40) || 'task'
