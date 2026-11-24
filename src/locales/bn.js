@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "সবশেষ",
   "Share your year": "আপনার বছর শেয়ার করুন",
   "Shares your totals only — no names, places or notes.": "শুধু আপনার মোট হিসাব শেয়ার হয় — কোনো নাম, জায়গা বা নোট নয়।",
+  "Screenshots aren’t allowed here.": "এখানে স্ক্রিনশট নেওয়া যায় না।",
   "Hidden while your screen is being recorded.": "আপনার স্ক্রিন রেকর্ড হওয়ার সময় লুকানো।",
   "Your school gets it without the VolunTrack mark.": "আপনার স্কুল এটি VolunTrack চিহ্ন ছাড়া পাবে।",
   "Preview PDF": "PDF প্রিভিউ",

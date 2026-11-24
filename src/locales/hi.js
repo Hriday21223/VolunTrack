@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "सबसे हाल की",
   "Share your year": "अपना साल साझा करें",
   "Shares your totals only — no names, places or notes.": "सिर्फ़ आपके कुल आँकड़े साझा होते हैं — कोई नाम, जगह या नोट नहीं।",
+  "Screenshots aren’t allowed here.": "यहाँ स्क्रीनशॉट लेने की अनुमति नहीं है।",
   "Hidden while your screen is being recorded.": "स्क्रीन रिकॉर्ड होते समय छिपा है।",
   "Your school gets it without the VolunTrack mark.": "आपके स्कूल को यह VolunTrack निशान के बिना मिलेगा।",
   "Preview PDF": "PDF पूर्वावलोकन",

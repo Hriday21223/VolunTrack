@@ -38,9 +38,8 @@ export function poLabel(poNumber) {
 // `copy`: 'student' (a download or the in-app preview) has the "schools can
 // check every student's hours" footer; 'school' (sent to the school through
 // the app, or the school's own packet) has a plain footer. `watermark`
-// defaults to on for 'student' and off for 'school'; the school copy's
-// preview passes `watermark: true` so a screenshot of it is marked too, while
-// the file actually sent stays clean.
+// defaults to on for 'student' and off for 'school'; PdfPreview passes
+// { watermark: false } to show it and { watermark: true } for its Download.
 export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student', watermark = copy !== 'school' }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   // Rejected entries stay in the table with their status, but not in the total.

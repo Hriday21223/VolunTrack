@@ -1485,6 +1485,7 @@ export default {
   "Most recent": "最近一次",
   "Share your year": "分享你的年度回顾",
   "Shares your totals only — no names, places or notes.": "只分享总数，不含姓名、地点或备注。",
+  "Screenshots aren’t allowed here.": "此处不允许截屏。",
   "Hidden while your screen is being recorded.": "屏幕录制期间已隐藏。",
   "Your school gets it without the VolunTrack mark.": "学校收到的版本没有 VolunTrack 水印。",
   "Preview PDF": "预览 PDF",
