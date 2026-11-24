@@ -119,12 +119,21 @@ export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }
       doc.setGState(new doc.GState({ opacity: 0.07 }))
       doc.setFont('helvetica', 'bold').setFontSize(110)
       doc.setTextColor(63, 131, 68)
-      doc.text('VolunTrack', pageW / 2, pageH / 2, { align: 'center', baseline: 'middle', angle: 30 })
+      // jsPDF rotates around the text's start point, so work out where the
+      // start goes for the middle of the word to land on the page's centre.
+      const angle = 30
+      const rad = (angle * Math.PI) / 180
+      const w = doc.getTextWidth('VolunTrack')
+      const c = 110 * 0.35 // about half the letters' height, to centre it across too
+      const x = pageW / 2 - (w / 2) * Math.cos(rad) + c * Math.sin(rad)
+      const y = pageH / 2 + (w / 2) * Math.sin(rad) + c * Math.cos(rad)
+      doc.text('VolunTrack', x, y, { angle })
       doc.restoreGraphicsState()
     }
     doc.setFont('helvetica', 'normal').setFontSize(8)
     doc.setTextColor(110)
-    doc.text(doc.splitTextToSize(footer, pageW - 80), 40, pageH - 36)
+    // Leave room on the right for the page number.
+    doc.text(doc.splitTextToSize(footer, pageW - 80 - 90), 40, pageH - 40)
     doc.text(`Page ${i} of ${pages}`, pageW - 40, pageH - 36, { align: 'right' })
   }
   doc.setTextColor(0)
