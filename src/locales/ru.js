@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "Последнее",
   "Share your year": "Поделиться годом",
   "Shares your totals only — no names, places or notes.": "Показывает только итоги — без имён, мест и заметок.",
+  "Need one? Get a blank log to print": "Нужен бланк? Скачай пустой журнал для печати",
   "Sign here (optional)": "Подпиши здесь (необязательно)",
   "You signed this entry on another device.": "Ты подписал эту запись на другом устройстве.",
   "Your signature shows on your hours report. Your school can make it required.": "Твоя подпись видна в отчёте о часах. Школа может сделать её обязательной.",

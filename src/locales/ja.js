@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "最新",
   "Share your year": "1年を共有",
   "Shares your totals only — no names, places or notes.": "合計だけを共有します。名前、場所、メモは含みません。",
+  "Need one? Get a blank log to print": "必要ですか？印刷用の空白の記録表を入手",
   "Sign here (optional)": "ここに署名（任意）",
   "You signed this entry on another device.": "この記録は別の端末で署名済みです。",
   "Your signature shows on your hours report. Your school can make it required.": "署名は時間レポートに表示されます。学校が必須にすることもできます。",

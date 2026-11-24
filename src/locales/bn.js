@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "সবশেষ",
   "Share your year": "আপনার বছর শেয়ার করুন",
   "Shares your totals only — no names, places or notes.": "শুধু আপনার মোট হিসাব শেয়ার হয় — কোনো নাম, জায়গা বা নোট নয়।",
+  "Need one? Get a blank log to print": "লাগবে? প্রিন্ট করার জন্য একটি খালি লগ নিন",
   "Sign here (optional)": "এখানে সই করুন (ঐচ্ছিক)",
   "You signed this entry on another device.": "আপনি এই এন্ট্রিটি অন্য ডিভাইসে সই করেছেন।",
   "Your signature shows on your hours report. Your school can make it required.": "আপনার সই আপনার ঘণ্টার রিপোর্টে দেখা যায়। আপনার স্কুল এটি বাধ্যতামূলক করতে পারে।",

@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "الأحدث",
   "Share your year": "شارك عامك",
   "Shares your totals only — no names, places or notes.": "يشارك إجمالياتك فقط — بلا أسماء أو أماكن أو ملاحظات.",
+  "Need one? Get a blank log to print": "تحتاج واحدًا؟ احصل على سجل فارغ للطباعة",
   "Sign here (optional)": "وقّع هنا (اختياري)",
   "You signed this entry on another device.": "وقّعت هذا الإدخال على جهاز آخر.",
   "Your signature shows on your hours report. Your school can make it required.": "يظهر توقيعك في تقرير ساعاتك. يمكن لمدرستك جعله إلزاميًا.",

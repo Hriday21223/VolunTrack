@@ -995,3 +995,73 @@ export function printSpotlightCertificate({ name, schoolName, month, note }) {
   w.document.close()
   return true
 }
+
+/**
+ * A blank paper hours log to print and fill in by hand, then add back with
+ * Scan a paper log (ScanPaperLog). Laid out for that reader: one entry per
+ * row, the date first, then hours written as "2.5 hrs" or a time range.
+ * Name and school are filled in when we have them. No watermark: it's a
+ * blank form, and a mark across it would get in the way of reading it.
+ */
+export async function blankPaperLogPDF({ name = '', school = '', rows = 18, returnBlob = false } = {}) {
+  const doc = new jsPDF({ unit: 'pt', orientation: 'portrait', format: 'letter' })
+  const logo = await getLogoDataUrl()
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  const left = 40
+  const right = pageW - 40
+
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', left, 32, LOGO_W, LOGO_H) } catch { /* skip the logo */ }
+  }
+  doc.setFont('helvetica', 'bold').setFontSize(20)
+  doc.text('Volunteer Hours Log', logo ? left + LOGO_W + 10 : left, 56)
+
+  // Name and school lines, pre-filled when known.
+  doc.setFont('helvetica', 'normal').setFontSize(11)
+  const line = (label, value, x, w, y) => {
+    doc.setTextColor(60)
+    doc.text(label, x, y)
+    const lx = x + doc.getTextWidth(label) + 6
+    doc.setDrawColor(150)
+    doc.line(lx, y + 3, x + w, y + 3)
+    if (value) {
+      doc.setTextColor(0)
+      drawAnyText(doc, value, lx + 4, y, { size: 11, maxWidth: x + w - lx - 8 })
+    }
+  }
+  line('Name:', name, left, 270, 92)
+  line('School:', school, left + 290, right - left - 290, 92)
+  doc.setTextColor(0)
+
+  autoTable(doc, {
+    startY: 112,
+    head: [['Date', 'Activity / Place', 'Hours', 'Supervisor', 'Supervisor signature']],
+    body: Array.from({ length: rows }, () => ['', '', '', '', '']),
+    theme: 'grid',
+    headStyles: { fillColor: [63, 131, 68], fontSize: 10 },
+    styles: { fontSize: 10, minCellHeight: 28, lineColor: [150, 150, 150], lineWidth: 0.6 },
+    columnStyles: { 0: { cellWidth: 78 }, 2: { cellWidth: 64 }, 3: { cellWidth: 100 }, 4: { cellWidth: 110 } },
+    margin: { left, right: 40, bottom: 90 },
+  })
+
+  const end = doc.lastAutoTable.finalY
+  doc.setFont('helvetica', 'bold').setFontSize(11)
+  doc.text('Total hours: ____________', right, end + 24, { align: 'right' })
+
+  // How to fill it in so Scan a paper log can read it.
+  doc.setFont('helvetica', 'normal').setFontSize(8.5)
+  doc.setTextColor(100)
+  const tips = [
+    'One entry per row. Write the date first, like 10/04/2026.',
+    'Write hours like "2.5 hrs", or the times you started and finished, like 9:00-11:30.',
+    'Done? In VolunTrack, open Log Hours and press Scan a paper log, then take a photo of this page.',
+  ]
+  tips.forEach((t, i) => doc.text(t, left, pageH - 62 + i * 12))
+  doc.text('VolunTrack', right, pageH - 38, { align: 'right' })
+  doc.setTextColor(0)
+
+  if (returnBlob) return doc.output('blob')
+  doc.save('blank-volunteer-hours-log.pdf')
+  return null
+}

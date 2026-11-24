@@ -1362,6 +1362,7 @@ export default {
   "Most recent": "सबसे हाल की",
   "Share your year": "अपना साल साझा करें",
   "Shares your totals only — no names, places or notes.": "सिर्फ़ आपके कुल आँकड़े साझा होते हैं — कोई नाम, जगह या नोट नहीं।",
+  "Need one? Get a blank log to print": "चाहिए? प्रिंट करने के लिए खाली लॉग लें",
   "Sign here (optional)": "यहाँ हस्ताक्षर करें (वैकल्पिक)",
   "You signed this entry on another device.": "आपने यह प्रविष्टि किसी दूसरे डिवाइस पर साइन की थी।",
   "Your signature shows on your hours report. Your school can make it required.": "आपका हस्ताक्षर आपकी घंटों की रिपोर्ट पर दिखता है। आपका स्कूल इसे ज़रूरी बना सकता है।",
