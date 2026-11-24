@@ -825,6 +825,24 @@ export default function LogHours({ editId, onCloseEdit }) {
             </Card>
           )}
 
+          {/* Every student may sign their own entry; it's required only when
+              their school asks for it (signing.studentSignature, shown in
+              Signatures above). Not with a paper form: they sign that. */}
+          {!signing.studentSignature && signatures.mode !== 'paperForm' && (
+            <Card>
+              <SectionTitle icon={FileSignature}>{tr('Your signature')}</SectionTitle>
+              <SignatureField
+                label={tr('Sign here (optional)')}
+                form={form}
+                setForm={setForm}
+                field="studentSignature"
+                help={form.studentSigned && !form.studentSignature
+                  ? tr('You signed this entry on another device.')
+                  : tr('Your signature shows on your hours report. Your school can make it required.')}
+              />
+            </Card>
+          )}
+
           {customFields.length > 0 && (
             <Card>
               <SectionTitle icon={ClipboardList}>
