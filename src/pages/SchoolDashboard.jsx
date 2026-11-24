@@ -1499,7 +1499,9 @@ export default function SchoolDashboard() {
         <PdfPreview
           title={`Invoice ${previewInvoice.invoice_number}`}
           filename={`${previewInvoice.invoice_number}.pdf`}
-          getBlob={() => generateInvoicePDF({
+          cleanPreview
+          getBlob={(opts) => generateInvoicePDF({
+            ...opts,
             invoiceNumber: previewInvoice.invoice_number,
             poNumber: previewInvoice.po_number,
             entityName: schoolInfo?.name,
