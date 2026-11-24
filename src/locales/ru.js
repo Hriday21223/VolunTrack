@@ -1362,6 +1362,8 @@ export default {
   "Most recent": "Последнее",
   "Share your year": "Поделиться годом",
   "Shares your totals only — no names, places or notes.": "Показывает только итоги — без имён, мест и заметок.",
+  "Hidden while your screen is being recorded.": "Скрыто, пока идёт запись экрана.",
+  "Your school gets it without the VolunTrack mark.": "Школа получит его без знака VolunTrack.",
   "Preview PDF": "Просмотр PDF",
   "What your school will get": "Что получит твоя школа",
   "Your hours report": "Твой отчёт о часах",

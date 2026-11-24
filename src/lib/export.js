@@ -35,12 +35,13 @@ export function poLabel(poNumber) {
   return /^p\.?o\b/i.test(value) ? value : `PO ${value}`
 }
 
-// `copy`: 'student' (a download) carries a faint diagonal VolunTrack mark and
-// the "schools can check every student's hours" note; 'view' is the same
-// without the mark, for looking at it inside the app (the mark is only on a
-// downloaded file); 'school' (sent to the school through the app, or the
-// school's own packet) is clean with its own footer.
-export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }) {
+// `copy`: 'student' (a download or the in-app preview) has the "schools can
+// check every student's hours" footer; 'school' (sent to the school through
+// the app, or the school's own packet) has a plain footer. `watermark`
+// defaults to on for 'student' and off for 'school'; the school copy's
+// preview passes `watermark: true` so a screenshot of it is marked too, while
+// the file actually sent stays clean.
+export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student', watermark = copy !== 'school' }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   // Rejected entries stay in the table with their status, but not in the total.
   const total = countedLogs(logs).reduce((s, l) => s + (Number(l.hours) || 0), 0)
@@ -116,7 +117,7 @@ export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }
   const footer = copy === 'school' ? SCHOOL_COPY_FOOTER : REPORT_FOOTER
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
-    if (copy === 'student') drawWatermark(doc)
+    if (watermark) drawWatermark(doc)
     doc.setFont('helvetica', 'normal').setFontSize(8)
     doc.setTextColor(110)
     // Leave room on the right for the page number.

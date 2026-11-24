@@ -480,7 +480,6 @@ export default function OrganizationDashboard() {
         <PdfPreview
           title={`Invoice ${previewInvoice.invoice_number}`}
           filename={`${previewInvoice.invoice_number}.pdf`}
-          cleanPreview
           getBlob={(opts) => generateInvoicePDF({
             ...opts,
             invoiceNumber: previewInvoice.invoice_number,
