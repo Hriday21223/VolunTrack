@@ -56,7 +56,7 @@ export default function Reports() {
   const submitToSchool = async () => {
     setSubmitting(true)
     try {
-      const blob = await exportLogsPDF({ user, logs: filtered, returnBlob: true })
+      const blob = await exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: 'school' })
       // Goes straight to the school's own storage where they have set one up,
       // and falls back to sending it through us where they haven't (#143).
       await submitDocumentToSchool(blob, {

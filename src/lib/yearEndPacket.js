@@ -76,7 +76,7 @@ async function addSchool(files, prefix, { title, students, logs, totals, range }
     const mine = byStudent.get(s.studentId) || []
     if (mine.length === 0) continue
     const name = uniqueName(used, safeName(s.name, 'Student'))
-    const blob = await exportLogsPDF({ user: { name: s.name, school: s.schoolName }, logs: mine, returnBlob: true })
+    const blob = await exportLogsPDF({ user: { name: s.name, school: s.schoolName }, logs: mine, returnBlob: true, copy: 'school' })
     files[`${prefix}students/${name}.pdf`] = await blobBytes(blob)
     onStep?.(++done, students.length)
   }
