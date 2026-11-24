@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { X, Download, Loader2 } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
 import { guardScreen } from '@/lib/screenGuard.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 
 /**
  * Full-screen preview for a generated PDF. Schools and orgs review invoices
@@ -27,6 +28,10 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
   const [url, setUrl] = useState(null)
   const [error, setError] = useState('')
   // iOS: true while the screen is being recorded or mirrored.
+  // Screenshot covers are for students, families, schools and organizers,
+  // not VolunTrack's own admins (the owner's choice, Nov 24).
+  const { user } = useAuth()
+  const guarded = user?.role !== 'admin'
   const [captured, setCaptured] = useState(false)
   const blobRef = useRef(null)
   // getBlob is nearly always an inline arrow, so its identity changes every
@@ -63,10 +68,13 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
   // hide the document while the screen is recorded. Off again on close.
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
-  useEffect(() => guardScreen({
-    onScreenshot: () => onCloseRef.current?.(),
-    onCaptured: setCaptured,
-  }), [])
+  useEffect(() => {
+    if (!guarded) return undefined
+    return guardScreen({
+      onScreenshot: () => onCloseRef.current?.(),
+      onCaptured: setCaptured,
+    })
+  }, [guarded])
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
