@@ -3,6 +3,7 @@ import { X, Download, Loader2 } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
 import { guardScreen } from '@/lib/screenGuard.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { isNativeApp } from '@/lib/platform.js'
 
 /**
  * Full-screen preview for a generated PDF. Schools and orgs review invoices
@@ -33,6 +34,8 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
   const { user } = useAuth()
   const guarded = user?.role !== 'admin'
   const [captured, setCaptured] = useState(false)
+  // Website: true while a screenshot looks likely (see the effect below).
+  const [shielded, setShielded] = useState(false)
   const blobRef = useRef(null)
   // getBlob is nearly always an inline arrow, so its identity changes every
   // render. Keeping it in a ref lets the effect depend on nothing and run
@@ -74,6 +77,52 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
       onScreenshot: () => onCloseRef.current?.(),
       onCaptured: setCaptured,
     })
+  }, [guarded])
+
+  // Website: browsers never say when a screenshot is taken, so hide the
+  // document when one is likely and show "Screenshots aren't allowed here":
+  //  - Cmd/Ctrl+Shift held: every Mac screenshot shortcut (Cmd+Shift+3/4/5)
+  //    starts with it, so the page is hidden before the number is pressed;
+  //  - Print Screen (Windows): only reported after the capture, so this
+  //    blanks it for the next ones;
+  //  - the window losing focus (a screenshot tool opening, another app).
+  // Clicking into the PDF itself also blurs this window, so a blur only
+  // counts when the document as a whole has lost focus. Phone apps use
+  // the native guard above instead.
+  useEffect(() => {
+    if (isNativeApp || !guarded) return undefined
+    let keysHeld = false
+    let printUntil = 0
+    // Focus is re-checked on a short timer rather than trusted to blur/focus
+    // events, which don't always come back in pairs (the PDF frame taking
+    // focus, other windows, the screenshot tool itself).
+    const update = () => {
+      const away = !document.hasFocus() || document.hidden
+      setShielded(keysHeld || Date.now() < printUntil || away)
+    }
+    const onDown = (e) => {
+      if (e.shiftKey && (e.metaKey || e.ctrlKey || e.key === 'Meta')) keysHeld = true
+      if (e.key === 'PrintScreen') printUntil = Date.now() + 2000
+      update()
+    }
+    const onUp = (e) => {
+      if (!(e.shiftKey && (e.metaKey || e.ctrlKey))) keysHeld = false
+      update()
+    }
+    const timer = setInterval(update, 250)
+    window.addEventListener('keydown', onDown, true)
+    window.addEventListener('keyup', onUp, true)
+    window.addEventListener('blur', update)
+    window.addEventListener('focus', update)
+    document.addEventListener('visibilitychange', update)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('keydown', onDown, true)
+      window.removeEventListener('keyup', onUp, true)
+      window.removeEventListener('blur', update)
+      window.removeEventListener('focus', update)
+      document.removeEventListener('visibilitychange', update)
+    }
   }, [guarded])
 
   useEffect(() => {
@@ -134,7 +183,18 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
           {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
               every preview blank on the live site. frame-src allows blob:. */}
           {url && captured && <p className="text-sm text-earth-600 p-6 text-center">{tr('Hidden while your screen is being recorded.')}</p>}
-          {url && !captured && <iframe src={`${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
+          {/* Kept mounted while shielded (just hidden) so the PDF doesn't
+              reload and lose its place when it comes back. */}
+          {url && !captured && (
+            <div className="relative w-full h-full">
+              <iframe src={`${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" style={shielded ? { visibility: 'hidden' } : undefined} />
+              {shielded && (
+                <div className="absolute inset-0 grid place-items-center bg-[#0b120e] text-white text-lg font-semibold p-6 text-center">
+                  {tr('Screenshots aren’t allowed here.')}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
