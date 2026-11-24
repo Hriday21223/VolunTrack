@@ -4,6 +4,7 @@ import Card from '@/components/Card.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { isTouchDevice } from '@/lib/platform.js'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
@@ -50,10 +51,31 @@ export default function ScanPaperLog({ onAdd }) {
       .catch(() => {})
   }, [token])
 
-  const onFile = async (e) => {
+  const onFile = (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
+    readPhoto(file)
+  }
+
+  // Dropping a photo on the card does the same as picking one.
+  const [dragging, setDragging] = useState(false)
+  const onDrop = (e) => {
+    e.preventDefault()
+    setDragging(false)
+    if (busy) return
+    const file = e.dataTransfer.files?.[0]
+    readPhoto(file)
+  }
+
+  // PNG and JPG only (not PDF or other files), whether picked or dropped.
+  const PHOTO_TYPES = ['image/png', 'image/jpeg']
+
+  const readPhoto = async (file) => {
     if (!file) return
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setError(tr('Use a PNG or JPG photo of your paper log. PDFs and other files can’t be read.'))
+      return
+    }
     setError('')
     setBusy(true)
     setProgress(0)
@@ -105,7 +127,12 @@ export default function ScanPaperLog({ onAdd }) {
   }
 
   return (
-    <Card>
+    <Card
+      className={dragging ? 'ring-2 ring-brand-500 ring-offset-2 ring-offset-transparent' : ''}
+      onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true) }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false) }}
+      onDrop={onDrop}
+    >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-display font-semibold flex items-center gap-2"><Camera className="w-4 h-4 text-brand-600" />{' '}{tr('Have a paper log?')}</h3>
@@ -117,8 +144,13 @@ export default function ScanPaperLog({ onAdd }) {
         <button type="button" className="btn-secondary btn-sm" onClick={() => input.current?.click()} disabled={busy}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}{' '}{busy ? (progress > 0 ? tr('Reading… {n}%', { n: Math.round(progress * 100) }) : tr('Reading…')) : tr('Scan a paper log')}
         </button>
-        <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
+        <input ref={input} type="file" accept="image/png,image/jpeg" capture="environment" className="hidden" onChange={onFile} />
       </div>
+      {!rows && !busy && !isTouchDevice && (
+        <p className="mt-3 rounded-xl border-2 border-dashed border-earth-200 dark:border-[#24382c] px-4 py-3 text-center text-sm text-earth-500 dark:text-earth-400">
+          {dragging ? tr('Drop it here') : tr('Or drag a photo of your log here (PNG or JPG)')}
+        </p>
+      )}
       {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {rows && (
