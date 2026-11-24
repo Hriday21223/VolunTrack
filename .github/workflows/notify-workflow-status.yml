@@ -1,0 +1,85 @@
+name: Notify workflow status
+
+# Emails NOTIFY_TO when a scheduled job (or the Vercel deploy) FAILS after
+# working, and again when it WORKS after failing: one email per change, not
+# one per run. While something stays broken (the database down, say) the
+# repeat failures are skipped, so the inbox isn't flooded.
+
+on:
+  workflow_run:
+    types: [completed]
+    workflows:
+      - Weekly adviser email
+      - Daily app errors email
+      - After-event attendance nudges
+      - Prune audit trail
+      - Comeback nudges
+      - Database snapshot
+      - Deadline reminders
+      - Deploy frontend (Vercel)
+      - End free trials
+      - Monthly impact emails
+      - Keep backend warm
+      - Live check
+      - Monthly progress email
+      - Parent weekly digest
+      - Reminder push
+      - Roster sync
+      - Supervisor reminders
+      - New opportunity alerts
+      - Volunteer task reminders
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether the state changed
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          case "$CONCLUSION" in
+            failure|timed_out) now=bad ;;
+            success) now=good ;;
+            *) echo "send=false" >> "$GITHUB_OUTPUT"; exit 0 ;;  # cancelled, skipped
+          esac
+          # The run before this one, among finished runs that passed or failed.
+          prev=$(gh api "repos/$REPO/actions/workflows/$WORKFLOW_ID/runs?status=completed&per_page=10" \
+            --jq "[.workflow_runs[] | select(.id != $RUN_ID) | select(.conclusion == \"success\" or .conclusion == \"failure\" or .conclusion == \"timed_out\")][0].conclusion // \"success\"")
+          case "$prev" in failure|timed_out) before=bad ;; *) before=good ;; esac
+          if [ "$now" = bad ] && [ "$before" = good ]; then echo "state=failed" >> "$GITHUB_OUTPUT"; echo "send=true" >> "$GITHUB_OUTPUT"
+          elif [ "$now" = good ] && [ "$before" = bad ]; then echo "state=recovered" >> "$GITHUB_OUTPUT"; echo "send=true" >> "$GITHUB_OUTPUT"
+          else echo "send=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.send == 'true'
+      - uses: actions/setup-node@v7
+        if: steps.gate.outputs.send == 'true'
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        if: steps.gate.outputs.send == 'true'
+        run: npm ci
+      - name: Send the email
+        if: steps.gate.outputs.send == 'true'
+        env:
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+          EMAIL_SECURE: ${{ secrets.EMAIL_SECURE }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          NOTIFY_TO: volunteertrackinfo@gmail.com
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          STATE: ${{ steps.gate.outputs.state }}
+        run: node scripts/notify-workflow-status.mjs

@@ -569,7 +569,8 @@ export async function handleStripeWebhook(req, res) {
       : paid.currency !== 'usd' || paid.amountCents !== toCents(invoice.amount) ? `Stripe charged ${usd(paid.amountCents)} ${paid.currency.toUpperCase()} but the invoice is for $${Number(invoice.amount).toFixed(2)}`
       : null
     if (problem) {
-      console.error('card payment needs attention:', paid.invoiceId, problem)
+      // JSON.stringify keeps a line break in the webhook's values from forging a log line.
+      console.error('card payment needs attention:', JSON.stringify({ invoiceId: paid.invoiceId, problem }))
       emailMainAdmin('A card payment needs a look', `<p>A card payment came in for ${label}, but ${problem}. Check it in the Stripe dashboard (checkout ${escapeHtml(paid.sessionId)}) and refund it if needed.</p>`)
       return res.json({ received: true })
     }

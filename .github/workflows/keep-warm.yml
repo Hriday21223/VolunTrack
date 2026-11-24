@@ -73,3 +73,14 @@ jobs:
           fi
           echo "::error::Backend unreachable at $HEALTH_URL ($now)"
           exit 1
+
+      # The backend can answer while its database can't (Nov 23: Neon over its
+      # quota). Fail the run then, so notify-workflow-status.yml emails once.
+      - name: Check the database answers
+        if: steps.ping.outputs.up == 'true'
+        run: |
+          ok=$(curl -s --max-time 60 "$HEALTH_URL" | jq -r '.checks.database.ok // false')
+          if [ "$ok" != "true" ]; then
+            echo "::error::The backend is up but its database is not answering ($HEALTH_URL)"
+            exit 1
+          fi
