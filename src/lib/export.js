@@ -67,36 +67,54 @@ export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student', 
   doc.text(`${fmtHours(approved)} approved by a supervisor or organizer`, 420, 86, { align: 'left' })
   doc.setTextColor(0)
 
+  // The drawn signatures are kept only on the device where they were made;
+  // the server keeps just that the entry was signed. So a signed entry with
+  // no drawing here says "Signed" instead of looking unsigned, and the
+  // Student Signature column only appears when some entry has one.
+  const SIG_COLUMN_STYLE = { cellWidth: 65 }
+  const studentSigned = (l) => Boolean(l.studentSignature || l.studentSigned)
+  const showStudentSig = logs.some(studentSigned)
+  const head = ['Date', 'Activity', 'Category', 'Time', 'Hours', 'Status', 'Location', 'Organization', 'Org Phone', 'Org Address', 'Supervisor', 'Supervisor Email', 'Notes', 'Supervisor Signature']
+  if (showStudentSig) head.push('Student Signature')
+  const SUP_COL = 13
+  const STU_COL = 14
+  const signedText = (image, signed) => (!image && signed ? 'Signed' : '')
+
   autoTable(doc, {
     startY: 120,
-    head: [['Date', 'Activity', 'Category', 'Time', 'Hours', 'Status', 'Location', 'Organization', 'Org Phone', 'Org Address', 'Supervisor', 'Supervisor Email', 'Notes', 'Supervisor Signature', 'Student Signature']],
-    body: logs.map((l) => [
-      fmtDate(l.date),
-      l.activity || '',
-      l.category || '',
-      l.startTime && l.endTime ? `${l.startTime}–${l.endTime}` : '',
-      fmtHours(Number(l.hours) || 0),
-      STATUS_TEXT[logStatus(l)],
-      l.location || '',
-      l.orgName || '',
-      l.orgPhone || '',
-      l.orgAddress || '',
-      l.supervisorName || '',
-      l.supervisorEmail || '',
-      l.notes || '',
-      '', // filled in by didDrawCell below — autoTable can't take an image as cell content directly
-      '', // student's own signature, when their school asks for one — same treatment
-    ]),
+    head: [head],
+    body: logs.map((l) => {
+      const row = [
+        fmtDate(l.date),
+        l.activity || '',
+        l.category || '',
+        l.startTime && l.endTime ? `${l.startTime}–${l.endTime}` : '',
+        fmtHours(Number(l.hours) || 0),
+        STATUS_TEXT[logStatus(l)],
+        l.location || '',
+        l.orgName || '',
+        l.orgPhone || '',
+        l.orgAddress || '',
+        l.supervisorName || '',
+        l.supervisorEmail || '',
+        l.notes || '',
+        // A drawing is added by didDrawCell below (autoTable can't take an
+        // image as cell content); text only when there's no drawing here.
+        signedText(l.supervisorSignature, l.supervisorSignedInPerson),
+      ]
+      if (showStudentSig) row.push(signedText(l.studentSignature, studentSigned(l)))
+      return row
+    }),
     headStyles: { fillColor: [63, 131, 68], fontSize: 8 },
     styles: { fontSize: 7.5, cellPadding: 4, minCellHeight: 28, overflow: 'linebreak' },
     alternateRowStyles: { fillColor: [241, 248, 241] },
-    columnStyles: { 13: { cellWidth: 65 }, 14: { cellWidth: 65 } },
+    columnStyles: showStudentSig ? { [SUP_COL]: SIG_COLUMN_STYLE, [STU_COL]: SIG_COLUMN_STYLE } : { [SUP_COL]: SIG_COLUMN_STYLE },
     // Leave room at the bottom of every page for the footer note.
     margin: { bottom: 56 },
     didDrawCell: (data) => {
-      if (data.section !== 'body' || (data.column.index !== 13 && data.column.index !== 14)) return
+      if (data.section !== 'body' || (data.column.index !== SUP_COL && data.column.index !== STU_COL)) return
       const log = logs[data.row.index]
-      const sig = data.column.index === 13 ? log?.supervisorSignature : log?.studentSignature
+      const sig = data.column.index === SUP_COL ? log?.supervisorSignature : log?.studentSignature
       if (!sig) return
       try {
         const h = data.cell.height - 8
