@@ -11,7 +11,14 @@ import { tr } from '@/lib/i18n.js'
  * helpers all take `returnBlob: true`). The object URL is revoked on close,
  * otherwise the blob stays in memory for the life of the tab.
  */
-export default function PdfPreview({ title, filename, getBlob, onClose }) {
+// `action` (optional): an extra button for the header, e.g. "Send to school".
+// It gets the built Blob, so the file that's sent is the one that was shown.
+// `allowDownload={false}` hides our Download button. `getDownloadBlob`
+// (optional) builds a different file for Download than the one shown, e.g. a
+// student report shown clean but downloaded with its watermark. With either,
+// the browser's own PDF toolbar is hidden (#toolbar=0) so its save button
+// doesn't hand out the shown file instead.
+export default function PdfPreview({ title, filename, getBlob, onClose, action, allowDownload = true, getDownloadBlob }) {
   const [url, setUrl] = useState(null)
   const [error, setError] = useState('')
   const blobRef = useRef(null)
@@ -51,10 +58,12 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const download = () => {
+  const download = async () => {
     if (!blobRef.current) return
+    const file = getDownloadBlob ? await getDownloadBlob() : blobRef.current
+    if (!file) return
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(blobRef.current)
+    a.href = URL.createObjectURL(file)
     a.download = filename || 'document.pdf'
     a.click()
     // The anchor holds its own URL, so revoke that one rather than the
@@ -74,9 +83,16 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
         <div className="flex items-center justify-between gap-3 mb-3">
           <h2 className="text-sm font-medium truncate">{title || tr('Preview')}</h2>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={download} disabled={!url} className="btn-sm btn-ghost">
-              <Download className="w-4 h-4 mr-1" />{' '}{tr('Download')}
-            </button>
+            {action && (
+              <button type="button" onClick={() => action.onClick(blobRef.current)} disabled={!url || action.busy} className="btn-sm btn-primary">
+                {action.icon}{action.label}
+              </button>
+            )}
+            {allowDownload && (
+              <button type="button" onClick={download} disabled={!url} className="btn-sm btn-ghost">
+                <Download className="w-4 h-4 mr-1" />{' '}{tr('Download')}
+              </button>
+            )}
             <button type="button" onClick={onClose} aria-label={tr('Close')} className="p-1 text-earth-400 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -90,7 +106,7 @@ export default function PdfPreview({ title, filename, getBlob, onClose }) {
               Download button above stays the fallback. */}
           {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
               every preview blank on the live site. frame-src allows blob:. */}
-          {url && <iframe src={url} title={title || tr('PDF preview')} className="w-full h-full" />}
+          {url && <iframe src={allowDownload && !getDownloadBlob ? url : `${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
         </div>
       </div>
     </div>
