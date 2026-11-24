@@ -252,12 +252,12 @@ function drawInvoice(doc, logo, { stamp, invoiceNumber, poNumber, entityName, ac
 }
 
 /** Generate a PDF for a single invoice. When `returnBlob` is true, returns the PDF blob instead of downloading. */
-export async function generateInvoicePDF({ preview = false, returnBlob = false, ...invoice }) {
+export async function generateInvoicePDF({ preview = false, returnBlob = false, watermark = true, ...invoice }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
   // The admin's look before sending (#942): it must not pass for a real invoice.
   drawInvoice(doc, logo, { ...invoice, stamp: preview ? { text: 'PREVIEW - NOT SENT', color: [190, 40, 40] } : statusStamp(invoice) })
-  watermarkAllPages(doc)
+  if (watermark) watermarkAllPages(doc)
   if (returnBlob) return doc.output('blob')
   doc.save(`${invoice.invoiceNumber}.pdf`)
 }
@@ -281,14 +281,14 @@ function statusStamp({ status, paidAt, dueDate }) {
 }
 
 /** Every invoice in one PDF, one per page, each marked with its status (#944). Returns a blob. */
-export async function generateInvoicesPDFBlob(invoices) {
+export async function generateInvoicesPDFBlob(invoices, { watermark = true } = {}) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
   invoices.forEach((invoice, i) => {
     if (i > 0) doc.addPage()
     drawInvoice(doc, logo, { ...invoice, stamp: statusStamp(invoice) })
   })
-  watermarkAllPages(doc)
+  if (watermark) watermarkAllPages(doc)
   return doc.output('blob')
 }
 
@@ -519,7 +519,7 @@ export function schoolSummaryCSV(students) {
  * leads with the totals and keeps approved and pending in separate columns
  * rather than presenting one blended number.
  */
-export async function schoolHoursPDF({ title, range, students, totals, returnBlob }) {
+export async function schoolHoursPDF({ title, range, students, totals, returnBlob, watermark = true }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   const logo = await getLogoDataUrl()
   if (logo) {
@@ -564,7 +564,7 @@ export async function schoolHoursPDF({ title, range, students, totals, returnBlo
   })
 
   const filename = `voluntrack-hours-${range.from}-to-${range.to}.pdf`
-  watermarkAllPages(doc)
+  if (watermark) watermarkAllPages(doc)
   if (returnBlob) return doc.output('blob')
   doc.save(filename)
   return null
@@ -599,7 +599,7 @@ export function graduationReportCSV(report) {
  * Graduation report PDF: who in one grade met or missed the school's hour
  * requirement, for a counselor to print or file.
  */
-export async function graduationReportPDF({ report, returnBlob }) {
+export async function graduationReportPDF({ report, returnBlob, watermark = true }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'portrait' })
   const logo = await getLogoDataUrl()
   if (logo) {
@@ -648,7 +648,7 @@ export async function graduationReportPDF({ report, returnBlob }) {
     },
   })
 
-  watermarkAllPages(doc)
+  if (watermark) watermarkAllPages(doc)
   if (returnBlob) return doc.output('blob')
   doc.save(`voluntrack-graduation-report-grade-${graduationSlug(report)}.pdf`)
   return null

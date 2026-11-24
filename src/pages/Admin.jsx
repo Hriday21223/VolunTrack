@@ -3666,9 +3666,10 @@ export default function Admin() {
         <PdfPreview
           title={invoicePdf.title}
           filename={invoicePdf.filename}
-          getBlob={() => (invoicePdf.all
-            ? generateInvoicesPDFBlob(invoicePdf.all)
-            : generateInvoicePDF({ ...invoicePdf.pdf, returnBlob: true }))}
+          cleanPreview
+          getBlob={(opts) => (invoicePdf.all
+            ? generateInvoicesPDFBlob(invoicePdf.all, opts)
+            : generateInvoicePDF({ ...invoicePdf.pdf, returnBlob: true, ...opts }))}
           onClose={() => setInvoicePdf(null)}
         />
       )}

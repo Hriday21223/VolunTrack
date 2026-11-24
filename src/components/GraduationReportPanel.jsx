@@ -187,7 +187,8 @@ export default function GraduationReportPanel({ onSetRequirement }) {
         <PdfPreview
           title={`${report.gradeLabel || 'Graduation'} report`}
           filename={`voluntrack-graduation-report-grade-${graduationSlug(report)}.pdf`}
-          getBlob={() => graduationReportPDF({ report, returnBlob: true })}
+          cleanPreview
+          getBlob={(opts) => graduationReportPDF({ report, returnBlob: true, ...opts })}
           onClose={() => setPreview(false)}
         />
       )}

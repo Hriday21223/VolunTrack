@@ -18,7 +18,10 @@ import { tr } from '@/lib/i18n.js'
 // student report shown clean but downloaded with its watermark. With either,
 // the browser's own PDF toolbar is hidden (#toolbar=0) so its save button
 // doesn't hand out the shown file instead.
-export default function PdfPreview({ title, filename, getBlob, onClose, action, allowDownload = true, getDownloadBlob }) {
+// `cleanPreview`: getBlob is called with { watermark: false } for what's shown
+// and { watermark: true } for Download, so the watermark is only ever on a
+// downloaded file. (getDownloadBlob, if given, still wins for Download.)
+export default function PdfPreview({ title, filename, getBlob, onClose, action, allowDownload = true, getDownloadBlob, cleanPreview = false }) {
   const [url, setUrl] = useState(null)
   const [error, setError] = useState('')
   const blobRef = useRef(null)
@@ -34,7 +37,7 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
     let cancelled = false
 
     Promise.resolve()
-      .then(() => getBlobRef.current())
+      .then(() => getBlobRef.current(cleanPreview ? { watermark: false } : undefined))
       .then((blob) => {
         if (cancelled || !blob) return
         blobRef.current = blob
@@ -60,7 +63,9 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
 
   const download = async () => {
     if (!blobRef.current) return
-    const file = getDownloadBlob ? await getDownloadBlob() : blobRef.current
+    const file = getDownloadBlob
+      ? await getDownloadBlob()
+      : cleanPreview ? await getBlobRef.current({ watermark: true }) : blobRef.current
     if (!file) return
     const a = document.createElement('a')
     a.href = URL.createObjectURL(file)
@@ -106,7 +111,7 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
               Download button above stays the fallback. */}
           {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
               every preview blank on the live site. frame-src allows blob:. */}
-          {url && <iframe src={allowDownload && !getDownloadBlob ? url : `${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
+          {url && <iframe src={allowDownload && !getDownloadBlob && !cleanPreview ? url : `${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
         </div>
       </div>
     </div>
