@@ -1362,6 +1362,8 @@ export default {
   "Most recent": "最新",
   "Share your year": "1年を共有",
   "Shares your totals only — no names, places or notes.": "合計だけを共有します。名前、場所、メモは含みません。",
+  "Hidden while your screen is being recorded.": "画面の録画中は表示しません。",
+  "Your school gets it without the VolunTrack mark.": "学校にはVolunTrackのマークなしで届きます。",
   "Preview PDF": "PDFをプレビュー",
   "What your school will get": "学校に届く内容",
   "Your hours report": "あなたの時間レポート",

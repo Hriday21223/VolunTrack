@@ -1362,6 +1362,8 @@ export default {
   "Most recent": "La plus récente",
   "Share your year": "Partager ton année",
   "Shares your totals only — no names, places or notes.": "Ne partage que tes totaux — ni noms, ni lieux, ni notes.",
+  "Hidden while your screen is being recorded.": "Masqué pendant l’enregistrement de ton écran.",
+  "Your school gets it without the VolunTrack mark.": "Ton école le reçoit sans la marque VolunTrack.",
   "Preview PDF": "Aperçu du PDF",
   "What your school will get": "Ce que ton école recevra",
   "Your hours report": "Ton rapport d’heures",

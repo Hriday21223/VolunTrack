@@ -56,11 +56,12 @@ export default function Reports() {
   }, [logs, category, from, to])
 
   const total = countedLogs(filtered).reduce((s, l) => s + (Number(l.hours) || 0), 0)
-  // Called from the preview, with the exact file the student just looked at.
-  const submitToSchool = async (shown) => {
+  // The preview shows the school copy with the VolunTrack mark (so a
+  // screenshot of it is marked); what's sent is the same copy without it.
+  const submitToSchool = async () => {
     setSubmitting(true)
     try {
-      const blob = shown || await exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: 'school' })
+      const blob = await exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: 'school' })
       // Goes straight to the school's own storage where they have set one up,
       // and falls back to sending it through us where they haven't (#143).
       await submitDocumentToSchool(blob, {
@@ -184,13 +185,13 @@ export default function Reports() {
         {previewing && (
           <PdfPreview
             title={previewing === 'school' ? tr('What your school will get') : tr('Your hours report')}
+            note={previewing === 'school' ? tr('Your school gets it without the VolunTrack mark.') : null}
             filename="volunteer-log.pdf"
-            getBlob={() => exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: previewing === 'school' ? 'school' : 'view' })}
-            getDownloadBlob={() => exportLogsPDF({ user, logs: filtered, returnBlob: true })}
+            getBlob={() => exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: previewing, watermark: true })}
             onClose={() => setPreviewing(null)}
             allowDownload={previewing !== 'school'}
             action={previewing === 'school'
-              ? { label: submitting ? tr('Sending…') : tr('Send to school'), icon: <Send className="w-4 h-4 mr-1" />, busy: submitting, onClick: submitToSchool }
+              ? { label: submitting ? tr('Sending…') : tr('Send to school'), icon: <Send className="w-4 h-4 mr-1" />, busy: submitting, onClick: () => submitToSchool() }
               : null}
           />
         )}

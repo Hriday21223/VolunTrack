@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
         // Plugins that live in this app (not an npm package) are registered
         // by hand, before the bridge starts.
         registerPlugin(ProgressWidgetPlugin.class);
+        registerPlugin(ScreenGuardPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

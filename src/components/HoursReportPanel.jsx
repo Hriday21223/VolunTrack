@@ -193,7 +193,6 @@ export default function HoursReportPanel({ title = 'Volunteer hours report' }) {
         <PdfPreview
           title={`${title} — hours summary`}
           filename="voluntrack-hours-summary.pdf"
-          cleanPreview
           getBlob={(opts) => schoolHoursPDF({
             title, range: report.range, students: report.students, totals: report.totals, returnBlob: true, ...opts,
           })}

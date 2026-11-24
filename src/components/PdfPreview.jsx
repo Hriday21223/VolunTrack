@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { X, Download, Loader2 } from 'lucide-react'
 import { tr } from '@/lib/i18n.js'
+import { guardScreen } from '@/lib/screenGuard.js'
 
 /**
  * Full-screen preview for a generated PDF. Schools and orgs review invoices
@@ -12,18 +13,19 @@ import { tr } from '@/lib/i18n.js'
  * otherwise the blob stays in memory for the life of the tab.
  */
 // `action` (optional): an extra button for the header, e.g. "Send to school".
-// It gets the built Blob, so the file that's sent is the one that was shown.
-// `allowDownload={false}` hides our Download button. `getDownloadBlob`
-// (optional) builds a different file for Download than the one shown, e.g. a
-// student report shown clean but downloaded with its watermark. With either,
-// the browser's own PDF toolbar is hidden (#toolbar=0) so its save button
-// doesn't hand out the shown file instead.
-// `cleanPreview`: getBlob is called with { watermark: false } for what's shown
-// and { watermark: true } for Download, so the watermark is only ever on a
-// downloaded file. (getDownloadBlob, if given, still wins for Download.)
-export default function PdfPreview({ title, filename, getBlob, onClose, action, allowDownload = true, getDownloadBlob, cleanPreview = false }) {
+// `note` (optional): one line under the title.
+// `allowDownload={false}` hides our Download button and the browser's PDF
+// toolbar (#toolbar=0), so its save button can't hand the file out either.
+// Every preview carries the same watermark as the downloaded file, so a
+// screenshot of a preview is marked too. In the phone apps the preview is
+// also guarded (src/lib/screenGuard.js): Android blocks screenshots while
+// it's open, and iOS closes it after a screenshot and hides it while the
+// screen is being recorded.
+export default function PdfPreview({ title, note, filename, getBlob, onClose, action, allowDownload = true }) {
   const [url, setUrl] = useState(null)
   const [error, setError] = useState('')
+  // iOS: true while the screen is being recorded or mirrored.
+  const [captured, setCaptured] = useState(false)
   const blobRef = useRef(null)
   // getBlob is nearly always an inline arrow, so its identity changes every
   // render. Keeping it in a ref lets the effect depend on nothing and run
@@ -37,7 +39,7 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
     let cancelled = false
 
     Promise.resolve()
-      .then(() => getBlobRef.current(cleanPreview ? { watermark: false } : undefined))
+      .then(() => getBlobRef.current())
       .then((blob) => {
         if (cancelled || !blob) return
         blobRef.current = blob
@@ -55,6 +57,15 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
     // Mount-only on purpose; see getBlobRef above.
   }, [])
 
+  // Phone apps only: block screenshots on Android; on iOS close after one and
+  // hide the document while the screen is recorded. Off again on close.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  useEffect(() => guardScreen({
+    onScreenshot: () => onCloseRef.current?.(),
+    onCaptured: setCaptured,
+  }), [])
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
     window.addEventListener('keydown', onKey)
@@ -63,10 +74,7 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
 
   const download = async () => {
     if (!blobRef.current) return
-    const file = getDownloadBlob
-      ? await getDownloadBlob()
-      : cleanPreview ? await getBlobRef.current({ watermark: true }) : blobRef.current
-    if (!file) return
+    const file = blobRef.current
     const a = document.createElement('a')
     a.href = URL.createObjectURL(file)
     a.download = filename || 'document.pdf'
@@ -86,10 +94,13 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
     >
       <div className="relative w-full max-w-5xl rounded-2xl border border-white/10 bg-[#0f1813] p-4 sm:p-6 shadow-soft text-white">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h2 className="text-sm font-medium truncate">{title || tr('Preview')}</h2>
+          <div className="min-w-0">
+            <h2 className="text-sm font-medium truncate">{title || tr('Preview')}</h2>
+            {note && <p className="text-xs text-earth-400 truncate">{note}</p>}
+          </div>
           <div className="flex items-center gap-2">
             {action && (
-              <button type="button" onClick={() => action.onClick(blobRef.current)} disabled={!url || action.busy} className="btn-sm btn-primary">
+              <button type="button" onClick={() => action.onClick()} disabled={!url || action.busy} className="btn-sm btn-primary">
                 {action.icon}{action.label}
               </button>
             )}
@@ -111,7 +122,8 @@ export default function PdfPreview({ title, filename, getBlob, onClose, action, 
               Download button above stays the fallback. */}
           {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
               every preview blank on the live site. frame-src allows blob:. */}
-          {url && <iframe src={allowDownload && !getDownloadBlob && !cleanPreview ? url : `${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
+          {url && captured && <p className="text-sm text-earth-600 p-6 text-center">{tr('Hidden while your screen is being recorded.')}</p>}
+          {url && !captured && <iframe src={allowDownload ? url : `${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" />}
         </div>
       </div>
     </div>
