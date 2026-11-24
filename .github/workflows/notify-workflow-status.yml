@@ -1,6 +1,6 @@
 name: Notify workflow status
 
-# Emails NOTIFY_TO when a scheduled job (or the Vercel deploy) FAILS after
+# Emails the ALERT_EMAIL secret (the owner's inbox) when a scheduled job (or the Vercel deploy) FAILS after
 # working, and again when it WORKS after failing: one email per change, not
 # one per run. While something stays broken (the database down, say) the
 # repeat failures are skipped, so the inbox isn't flooded.
@@ -78,7 +78,8 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          NOTIFY_TO: volunteertrackinfo@gmail.com
+          # The owner's own inbox, kept in a secret so it isn't published in this public repo.
+          NOTIFY_TO: ${{ secrets.ALERT_EMAIL }}
           WF_NAME: ${{ github.event.workflow_run.name }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           STATE: ${{ steps.gate.outputs.state }}
