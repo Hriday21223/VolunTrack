@@ -134,28 +134,35 @@ router.delete('/mine/:year', signedInLimiter, requireDb, requireAuth('student'),
   }
 })
 
+// What a link shows, or null when it's unknown, off, expired, or its owner
+// may not have one. Shared with the link preview (server/routes/og.js).
+export async function publicYearShare(slug) {
+  if (!SLUG_RE.test(String(slug || ''))) return null
+  const { rows } = await query(
+    `SELECT y.user_id, y.year, y.show_name, u.name
+       FROM year_shares y
+       JOIN users u ON u.id = y.user_id
+      WHERE y.slug = $1 AND y.expires_at > now() AND u.role = 'student'
+        AND u.under_13 IS NOT TRUE
+        AND u.parental_consent_status IS DISTINCT FROM 'pending'`,
+    [slug],
+  )
+  const share = rows[0]
+  if (!share) return null
+  const summary = yearShareSummary(await loadLogs(share.user_id, share.year), share.year)
+  if (!summary) return null
+  return { name: share.show_name ? firstNameOf(share.name) || null : null, ...summary }
+}
+
 // The public page's data. No sign-in; the slug is the key.
 router.get('/public/:slug', publicLimiter, requireDb, async (req, res) => {
   res.set('Cache-Control', 'no-store')
   res.set('X-Robots-Tag', 'noindex, nofollow')
   const notFound = () => res.status(404).json({ error: 'This link isn’t working anymore.' })
   try {
-    const slug = String(req.params.slug || '')
-    if (!SLUG_RE.test(slug)) return notFound()
-    const { rows } = await query(
-      `SELECT y.user_id, y.year, y.show_name, u.name
-         FROM year_shares y
-         JOIN users u ON u.id = y.user_id
-        WHERE y.slug = $1 AND y.expires_at > now() AND u.role = 'student'
-          AND u.under_13 IS NOT TRUE
-          AND u.parental_consent_status IS DISTINCT FROM 'pending'`,
-      [slug],
-    )
-    const share = rows[0]
-    if (!share) return notFound()
-    const summary = yearShareSummary(await loadLogs(share.user_id, share.year), share.year)
-    if (!summary) return notFound()
-    res.json({ name: share.show_name ? firstNameOf(share.name) || null : null, ...summary })
+    const data = await publicYearShare(String(req.params.slug || ''))
+    if (!data) return notFound()
+    res.json(data)
   } catch (error) {
     console.error('year-share public failed:', error.message)
     res.status(500).json({ error: 'Could not load this page.' })
