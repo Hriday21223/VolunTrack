@@ -23,6 +23,10 @@ const TESSERACT_FILES = {
   'core/tesseract-core-simd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js',
   'core/tesseract-core-relaxedsimd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js',
   'lang/eng.traineddata.gz': 'node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+  // pdf.js's worker, for PDFs in Scan a paper log (src/lib/paperLogPdf.js).
+  // Copied as .js, not .mjs: some servers (the Android app's among them)
+  // don't label .mjs as JavaScript, and a module worker needs that label.
+  'pdf/pdf.worker.min.js': 'node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs',
 }
 const tesseractAssets = {
   name: 'voluntrack-tesseract-assets',
@@ -132,7 +136,9 @@ export default defineConfig(({ mode }) => {
           // The easy-read font downloads only for people who turn it on (#553).
           // Link-preview pictures (public/og/) are for chat apps' robots, not
           // for visitors, so they aren't precached either.
-          globIgnores: ['tesseract/**', 'fonts/atkinson-*', 'og/**', 'og-image.png'],
+          // The scan readers (Tesseract, and pdf.js and its worker) load only when
+          // someone scans a paper log, so they aren't downloaded for everyone.
+          globIgnores: ['tesseract/**', 'assets/pdf-*.js', 'fonts/atkinson-*', 'og/**', 'og-image.png'],
           // Web Push handlers. generateSW can't host custom SW code, but it
           // can importScripts one — see public/push-sw.js.
           importScripts: ['/push-sw.js'],

@@ -6,6 +6,7 @@ import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { isTouchDevice } from '@/lib/platform.js'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
+import { parsePaperLog } from '@/lib/paperLogParse.js'
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
@@ -67,34 +68,61 @@ export default function ScanPaperLog({ onAdd }) {
     readPhoto(file)
   }
 
-  // PNG and JPG only (not PDF or other files), whether picked or dropped.
+  // A photo (PNG or JPG) or a PDF, whether picked or dropped.
   const PHOTO_TYPES = ['image/png', 'image/jpeg']
+  const isPdf = (file) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')
+
+  // One image (a photo, or a scanned PDF page): on this device, or on our
+  // server when it's set up for scans (better with handwriting).
+  const readImage = async (file, onProgress) => {
+    if (!serverScan || !token) return { entries: await readOnDevice(file, onProgress), note: '' }
+    const image = await photoToDataUrl(file)
+    const res = await fetch(`${apiUrl}/logs/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ image }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || tr("Couldn't read that photo. Please try again."))
+    return { entries: data.entries || [], note: data.note || '' }
+  }
 
   const readPhoto = async (file) => {
     if (!file) return
-    if (!PHOTO_TYPES.includes(file.type)) {
-      setError(tr('Use a PNG or JPG photo of your paper log. PDFs and other files can’t be read.'))
+    const pdf = isPdf(file)
+    if (!pdf && !PHOTO_TYPES.includes(file.type)) {
+      setError(tr('Use a PNG, JPG or PDF of your paper log.'))
       return
     }
     setError('')
     setBusy(true)
     setProgress(0)
     try {
-      if (!serverScan || !token) {
-        setRows((await readOnDevice(file, setProgress)).map((r, i) => ({ ...r, key: i, keep: Boolean(r.date && r.activity && r.hours > 0) })))
-        setNote('')
-        return
+      let entries = []
+      const notes = []
+      if (pdf) {
+        // Typed pages are read straight from the PDF's text; scanned pages
+        // go through the same reader as a photo.
+        const { readPdfPages, MAX_PAGES } = await import('@/lib/paperLogPdf.js')
+        const { pages, total } = await readPdfPages(file)
+        for (const [i, page] of pages.entries()) {
+          if (page.text) {
+            entries.push(...parsePaperLog(page.text))
+          } else {
+            const r = await readImage(page.image, (p) => setProgress((i + p) / pages.length))
+            entries.push(...r.entries)
+            if (r.note) notes.push(r.note)
+          }
+          setProgress((i + 1) / pages.length)
+        }
+        if (total > MAX_PAGES) notes.push(tr('Read the first {n} pages of {total}.', { n: MAX_PAGES, total }))
+      } else {
+        const r = await readImage(file, setProgress)
+        entries = r.entries
+        if (r.note) notes.push(r.note)
       }
-      const image = await photoToDataUrl(file)
-      const res = await fetch(`${apiUrl}/logs/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ image }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || tr("Couldn't read that photo. Please try again."))
-      setRows((data.entries || []).map((r, i) => ({ ...r, key: i, keep: Boolean(r.date && r.activity && r.hours > 0) })))
-      setNote(data.note || '')
+      setRows(entries.map((r, i) => ({ ...r, key: i, keep: Boolean(r.date && r.activity && r.hours > 0) })))
+      setNote([...new Set(notes)].join(' '))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -136,7 +164,7 @@ export default function ScanPaperLog({ onAdd }) {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-display font-semibold flex items-center gap-2"><Camera className="w-4 h-4 text-brand-600" />{' '}{tr('Have a paper log?')}</h3>
-          <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">{tr('Take a photo and we’ll fill in the entries. You check every one before it’s saved.')}</p>
+          <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">{tr('Take a photo or add a PDF and we’ll fill in the entries. You check every one before it’s saved.')}</p>
           <button type="button" onClick={printBlank} className="mt-1 text-sm text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">
             <Printer className="w-3.5 h-3.5" aria-hidden="true" />{' '}{tr('Need one? Get a blank log to print')}
           </button>
@@ -144,11 +172,11 @@ export default function ScanPaperLog({ onAdd }) {
         <button type="button" className="btn-secondary btn-sm" onClick={() => input.current?.click()} disabled={busy}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}{' '}{busy ? (progress > 0 ? tr('Reading… {n}%', { n: Math.round(progress * 100) }) : tr('Reading…')) : tr('Scan a paper log')}
         </button>
-        <input ref={input} type="file" accept="image/png,image/jpeg" capture="environment" className="hidden" onChange={onFile} />
+        <input ref={input} type="file" accept="image/png,image/jpeg,application/pdf,.pdf" className="hidden" onChange={onFile} />
       </div>
       {!rows && !busy && !isTouchDevice && (
         <p className="mt-3 rounded-xl border-2 border-dashed border-earth-200 dark:border-[#24382c] px-4 py-3 text-center text-sm text-earth-500 dark:text-earth-400">
-          {dragging ? tr('Drop it here') : tr('Or drag a photo of your log here (PNG or JPG)')}
+          {dragging ? tr('Drop it here') : tr('Or drag a photo or PDF of your log here (PNG, JPG or PDF)')}
         </p>
       )}
       {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}

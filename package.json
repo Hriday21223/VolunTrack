@@ -60,6 +60,7 @@
     "nodemailer": "^10.0.12",
     "openid-client": "^6.8.7",
     "otpauth": "^9.5.1",
+    "pdfjs-dist": "4.10.38",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
