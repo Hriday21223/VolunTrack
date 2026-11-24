@@ -52,7 +52,9 @@ export default function TestAccountsCard() {
       if (!res.ok || !d.token) {
         throw new Error(d.triesLeft ? `${d.error} ${d.triesLeft} ${d.triesLeft === 1 ? 'try' : 'tries'} left.` : (d.error || 'Could not sign in.'))
       }
-      localStorage.setItem(ADMIN_RETURN_KEY, localStorage.getItem('voluntrack:auth_token') || '')
+      // Keep only the one-time return ticket, never the admin's own token:
+      // "Back to admin" needs it and the PIN again (src/lib/testSession.js).
+      localStorage.setItem(ADMIN_RETURN_KEY, d.returnTicket || '')
       adoptSession(d)
       window.location.assign('/')
     } catch (err) { setError(err.message); setPin(''); setBusy(null) }
@@ -64,7 +66,7 @@ export default function TestAccountsCard() {
     <Card>
       <h3 className="font-display font-semibold mb-1 flex items-center gap-2"><FlaskConical className="w-4 h-4" aria-hidden="true" /> Sign in as a test account</h3>
       <p className="text-sm text-earth-500 dark:text-earth-400 mb-4">
-        Try VolunTrack as each kind of account on the live site. This only opens the five live-…@test.com test accounts, never a real person’s account, and each use goes in the audit log. A test session lasts 2 hours; use “Back to admin” at the top to return.
+        Try VolunTrack as each kind of account on the live site. This only opens the five live-…@test.com test accounts, never a real person’s account, and each use goes in the audit log. A test session lasts 2 hours; use “Back to admin” at the top, with this PIN, to return. Signing out of a test account signs you out fully.
       </p>
       {!info && !error && <p className="text-sm text-earth-400">Loading…</p>}
       {info && !info.secondStep && (

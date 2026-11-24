@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { LogOut, Menu } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { inTestSession, backToAdmin } from '@/lib/testSession.js'
+import { inTestSession } from '@/lib/testSession.js'
 import { okToSignOut } from '@/lib/signOutGuard.js'
 import { cn } from '@/utils/cn.js'
 import { isNativeApp } from '@/lib/platform.js'
@@ -13,7 +13,7 @@ import NotificationBell from './NotificationBell.jsx'
 import { tr } from '@/lib/i18n.js'
 
 export default function AppLayout({ children, title, subtitle, action, actionWide = false }) {
-  const { user, logout, adoptSession } = useAuth()
+  const { user, logout } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -106,7 +106,7 @@ export default function AppLayout({ children, title, subtitle, action, actionWid
                 </div>
               </div>
               <button
-                onClick={async () => { if (inTestSession(user)) backToAdmin({ adoptSession, logout }); else if (await okToSignOut()) { logout(); navigate('/login') } }}
+                onClick={async () => { if (inTestSession(user)) { logout(); navigate('/login') } else if (await okToSignOut()) { logout(); navigate('/login') } }}
                 className="p-2 rounded-lg text-earth-200 hover:text-red-400 hover:bg-red-500/10"
                 title={tr('Log out')}
                 aria-label={tr('Log out')}

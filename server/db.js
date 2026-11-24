@@ -2412,6 +2412,19 @@ export async function initSchema() {
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS unlock_pin_hash TEXT') } catch {}
   // The admin's 6-digit PIN for signing in as a live test account (#890).
   try { await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS test_login_pin_hash TEXT') } catch {}
+  // "Back to admin" from a test account: a one-time ticket made at test
+  // sign-in (only its hash kept), traded with the admin's PIN for a new admin
+  // session. The admin's own token is never kept on the device meanwhile.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS admin_return_tickets (
+        ticket_hash TEXT PRIMARY KEY,
+        admin_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at  TIMESTAMPTZ NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `)
+  } catch (error) { console.error('admin_return_tickets table failed:', error.message) }
   // Free trials (#892): while trial_ends_at is set the account counts as paid;
   // endExpiredTrials() (server/trials.js) turns it unpaid when the date passes.
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}
