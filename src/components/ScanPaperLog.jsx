@@ -4,6 +4,7 @@ import Card from '@/components/Card.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { tr } from '@/lib/i18n.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
+import { isTouchDevice } from '@/lib/platform.js'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
@@ -50,9 +51,27 @@ export default function ScanPaperLog({ onAdd }) {
       .catch(() => {})
   }, [token])
 
-  const onFile = async (e) => {
+  const onFile = (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
+    readPhoto(file)
+  }
+
+  // Dropping a photo on the card does the same as picking one.
+  const [dragging, setDragging] = useState(false)
+  const onDrop = (e) => {
+    e.preventDefault()
+    setDragging(false)
+    if (busy) return
+    const file = e.dataTransfer.files?.[0]
+    if (file && !file.type.startsWith('image/')) {
+      setError(tr('That isn’t a photo. Drop a picture of your paper log (JPG or PNG).'))
+      return
+    }
+    readPhoto(file)
+  }
+
+  const readPhoto = async (file) => {
     if (!file) return
     setError('')
     setBusy(true)
@@ -105,7 +124,12 @@ export default function ScanPaperLog({ onAdd }) {
   }
 
   return (
-    <Card>
+    <Card
+      className={dragging ? 'ring-2 ring-brand-500 ring-offset-2 ring-offset-transparent' : ''}
+      onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true) }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false) }}
+      onDrop={onDrop}
+    >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-display font-semibold flex items-center gap-2"><Camera className="w-4 h-4 text-brand-600" />{' '}{tr('Have a paper log?')}</h3>
@@ -119,6 +143,11 @@ export default function ScanPaperLog({ onAdd }) {
         </button>
         <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
       </div>
+      {!rows && !busy && !isTouchDevice && (
+        <p className="mt-3 rounded-xl border-2 border-dashed border-earth-200 dark:border-[#24382c] px-4 py-3 text-center text-sm text-earth-500 dark:text-earth-400">
+          {dragging ? tr('Drop it here') : tr('Or drag a photo of your log here')}
+        </p>
+      )}
       {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {rows && (
