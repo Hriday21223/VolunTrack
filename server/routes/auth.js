@@ -599,7 +599,7 @@ router.post('/sign-out-everywhere/:token', signOutLimiter, requireDb, async (req
 const EXPORT_SOURCES = [
   ['logs', 'user_id'], ['goals', 'user_id'], ['reminders', 'user_id'], ['regular_shifts', 'user_id'],
   ['saved_tasks', 'user_id'], ['public_task_signups', 'user_id'], ['task_ratings', 'user_id'],
-  ['task_questions', 'asker_id'], ['reference_requests', 'user_id'], ['portfolios', 'user_id'],
+  ['task_questions', 'asker_id'], ['reference_requests', 'user_id'], ['portfolios', 'user_id'], ['year_shares', 'user_id'],
   ['notifications', 'user_id'], ['parent_child_links', 'parent_id'], ['parent_child_links', 'child_id'],
   ['family_weekly_goals', 'parent_id'], ['family_weekly_goals', 'child_id'], ['emergency_contacts', 'parent_id'],
   ['log_cheers', 'parent_id'], ['organizer_follows', 'user_id'], ['user_blocks', 'blocker_id'],

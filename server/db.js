@@ -637,6 +637,23 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('portfolios table failed:', error.message) }
+  // Year in review share links (#1005, server/routes/yearShare.js): one per
+  // student per year, working for 30 days. Deleting the row (or expires_at
+  // passing) turns the public /y/<slug> page off.
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS year_shares (
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        year       INTEGER NOT NULL,
+        slug       TEXT NOT NULL UNIQUE,
+        show_name  BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + interval '30 days',
+        PRIMARY KEY (user_id, year)
+      )
+    `)
+  } catch (error) { console.error('year_shares table failed:', error.message) }
   // A parent's OK before an under-13 joins a task (server/routes/school.js,
   // requestParentOk/decideParentOk): the sign-up waits as 'parent_pending'
   // (holds no slot, hidden from the organizer) until a linked parent decides
