@@ -118,7 +118,7 @@ export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }
     doc.setPage(i)
     if (copy === 'student') {
       doc.saveGraphicsState()
-      doc.setGState(new doc.GState({ opacity: 0.07 }))
+      doc.setGState(new doc.GState({ opacity: 0.14 }))
       doc.setFont('helvetica', 'bold').setFontSize(110)
       doc.setTextColor(63, 131, 68)
       // jsPDF rotates around the text's start point, so work out where the
