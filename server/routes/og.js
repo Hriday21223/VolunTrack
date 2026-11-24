@@ -11,6 +11,7 @@ import { query, hasDatabase } from '../db.js'
 import { escapeHtml } from '../html.js'
 import { inviterForCode } from './invites.js'
 import { sanitizeOptions, displayName } from './portfolio.js'
+import { publicYearShare } from './yearShare.js'
 
 const router = express.Router()
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: 'Too many requests.' })
@@ -21,13 +22,13 @@ const DEFAULT = {
   description: 'VolunTrack is a calm volunteer hour tracker. Log hours, set goals, earn badges, and generate reports for school or community service.',
 }
 
-function page(res, { title, description, path }) {
+function page(res, { title, description, path, image: imagePath = '/og-image.png', maxAge = 600 }) {
   const url = `${site()}${path}`
-  const image = `${site()}/og-image.png`
+  const image = `${site()}${imagePath}`
   const t = escapeHtml(title)
   const d = escapeHtml(description)
   res.set('Content-Type', 'text/html; charset=utf-8')
-  res.set('Cache-Control', 'public, max-age=600')
+  res.set('Cache-Control', `public, max-age=${maxAge}`)
   res.set('X-Robots-Tag', 'noindex')
   return res.send(`<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>${t}</title>
@@ -106,6 +107,29 @@ router.get('/p/:slug', limiter, safe(async (req, res) => {
     title: `${name}'s volunteer portfolio · VolunTrack`,
     description: `${hours} verified volunteer hours, with the causes and places ${name} served.`,
     path,
+  })
+}))
+
+// Year in review link: /y/<slug> (#1005). The same rules and numbers as
+// GET /api/year-share/public/:slug: totals only, first name only if the
+// student ticked it, nothing once it's off or past its 30 days. One picture
+// for every link; the numbers are in the title and description. Cached for
+// 5 minutes so a link that's turned off stops previewing soon after.
+router.get('/y/:slug', limiter, safe(async (req, res) => {
+  const slug = String(req.params.slug || '')
+  const path = `/y/${encodeURIComponent(slug.slice(0, 32))}`
+  const data = await publicYearShare(slug)
+  if (!data) return page(res, { ...DEFAULT, path, maxAge: 300 })
+  const hours = Math.round(data.totalHours * 10) / 10
+  const hoursText = hours === 1 ? '1 volunteer hour' : `${hours} volunteer hours`
+  const sessions = data.sessions === 1 ? '1 session' : `${data.sessions} sessions`
+  const cause = data.categories[0]?.category
+  return page(res, {
+    title: data.name ? `${data.name}'s ${data.year} in volunteering` : `A ${data.year} in volunteering`,
+    description: `${hoursText} across ${sessions}${cause ? `. Top cause: ${cause}` : ''}. Tracked with VolunTrack.`,
+    path,
+    image: '/og/year-in-review.png',
+    maxAge: 300,
   })
 }))
 
