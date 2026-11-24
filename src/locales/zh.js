@@ -1485,6 +1485,7 @@ export default {
   "Most recent": "最近一次",
   "Share your year": "分享你的年度回顾",
   "Shares your totals only — no names, places or notes.": "只分享总数，不含姓名、地点或备注。",
+  "Need one? Get a blank log to print": "需要吗？获取空白记录表打印",
   "Sign here (optional)": "在此签名（可选）",
   "You signed this entry on another device.": "你已在另一台设备上签署了这条记录。",
   "Your signature shows on your hours report. Your school can make it required.": "你的签名会显示在时长报告上。学校可以将其设为必填。",

@@ -1124,6 +1124,7 @@ export default {
   "Most recent": "Más reciente",
   "Share your year": "Comparte tu año",
   "Shares your totals only — no names, places or notes.": "Solo comparte tus totales — sin nombres, lugares ni notas.",
+  "Need one? Get a blank log to print": "¿Necesitas uno? Descarga un registro en blanco para imprimir",
   "Sign here (optional)": "Firma aquí (opcional)",
   "You signed this entry on another device.": "Firmaste este registro en otro dispositivo.",
   "Your signature shows on your hours report. Your school can make it required.": "Tu firma aparece en tu informe de horas. Tu escuela puede hacerla obligatoria.",

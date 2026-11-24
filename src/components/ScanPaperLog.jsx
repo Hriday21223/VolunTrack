@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Loader2, X } from 'lucide-react'
+import { Camera, Loader2, X, Printer } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import { ACTIVITY_CATEGORIES } from '@/lib/categories.js'
 import { tr } from '@/lib/i18n.js'
+import { useAuth } from '@/hooks/useAuth.jsx'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
@@ -31,6 +32,7 @@ async function photoToDataUrl(file) {
 // saved. Read on the device, or by the server's AI reader when one is set up
 // (better with handwriting).
 export default function ScanPaperLog({ onAdd }) {
+  const { user } = useAuth()
   const [serverScan, setServerScan] = useState(false)
   const [progress, setProgress] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -96,12 +98,21 @@ export default function ScanPaperLog({ onAdd }) {
     setRows(null)
   }
 
+  // A blank log to print and fill in by hand, laid out for this reader.
+  const printBlank = async () => {
+    const { blankPaperLogPDF } = await import('@/lib/export.js')
+    await blankPaperLogPDF({ name: user?.name || '', school: user?.schoolName || user?.school || '' })
+  }
+
   return (
     <Card>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-display font-semibold flex items-center gap-2"><Camera className="w-4 h-4 text-brand-600" />{' '}{tr('Have a paper log?')}</h3>
           <p className="text-sm text-earth-500 dark:text-earth-400 mt-0.5">{tr('Take a photo and we’ll fill in the entries. You check every one before it’s saved.')}</p>
+          <button type="button" onClick={printBlank} className="mt-1 text-sm text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">
+            <Printer className="w-3.5 h-3.5" aria-hidden="true" />{' '}{tr('Need one? Get a blank log to print')}
+          </button>
         </div>
         <button type="button" className="btn-secondary btn-sm" onClick={() => input.current?.click()} disabled={busy}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}{' '}{busy ? (progress > 0 ? tr('Reading… {n}%', { n: Math.round(progress * 100) }) : tr('Reading…')) : tr('Scan a paper log')}
