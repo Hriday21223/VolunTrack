@@ -64,15 +64,18 @@ export default function ScanPaperLog({ onAdd }) {
     setDragging(false)
     if (busy) return
     const file = e.dataTransfer.files?.[0]
-    if (file && !file.type.startsWith('image/')) {
-      setError(tr('That isn’t a photo. Drop a picture of your paper log (JPG or PNG).'))
-      return
-    }
     readPhoto(file)
   }
 
+  // PNG and JPG only (not PDF or other files), whether picked or dropped.
+  const PHOTO_TYPES = ['image/png', 'image/jpeg']
+
   const readPhoto = async (file) => {
     if (!file) return
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setError(tr('Use a PNG or JPG photo of your paper log. PDFs and other files can’t be read.'))
+      return
+    }
     setError('')
     setBusy(true)
     setProgress(0)
@@ -141,11 +144,11 @@ export default function ScanPaperLog({ onAdd }) {
         <button type="button" className="btn-secondary btn-sm" onClick={() => input.current?.click()} disabled={busy}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}{' '}{busy ? (progress > 0 ? tr('Reading… {n}%', { n: Math.round(progress * 100) }) : tr('Reading…')) : tr('Scan a paper log')}
         </button>
-        <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
+        <input ref={input} type="file" accept="image/png,image/jpeg" capture="environment" className="hidden" onChange={onFile} />
       </div>
       {!rows && !busy && !isTouchDevice && (
         <p className="mt-3 rounded-xl border-2 border-dashed border-earth-200 dark:border-[#24382c] px-4 py-3 text-center text-sm text-earth-500 dark:text-earth-400">
-          {dragging ? tr('Drop it here') : tr('Or drag a photo of your log here')}
+          {dragging ? tr('Drop it here') : tr('Or drag a photo of your log here (PNG or JPG)')}
         </p>
       )}
       {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
