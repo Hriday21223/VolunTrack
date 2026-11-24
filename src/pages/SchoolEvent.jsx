@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CalendarDays, Clock, MapPin, Video, ArrowRight, Info, Ticket, Mail, CheckCircle2 } from 'lucide-react'
+import { CalendarDays, Clock, MapPin, Video, ArrowRight, Info, Ticket, Mail, CheckCircle2, Gift } from 'lucide-react'
 import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
 import { useSeo } from '@/hooks/useSeo.js'
@@ -148,13 +148,20 @@ export default function SchoolEvent() {
               </p>
             </section>
 
-            {(ev.offerCode || ev.offerText) && (
+            {(ev.hasOfferCode || ev.offerText) && (
               <section className="mt-14">
                 <p className="text-sm font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">For everyone who attends</p>
                 <h2 className="mt-2 text-2xl md:text-3xl font-bold">An event code for your school</h2>
                 <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-dashed border-brand-500 bg-white dark:bg-white/5 p-6">
-                  {ev.offerCode && <span className="font-mono text-xl tracking-widest px-4 py-3 rounded-xl border border-earth-200 dark:border-white/10 self-start">{ev.offerCode}</span>}
-                  <p className="text-earth-700 dark:text-earth-200 min-w-0">{ev.offerText || 'Use it when you sign up your school or organization.'} Clubs of up to 50 students are always free.</p>
+                  {ev.hasOfferCode && (
+                    <span className="inline-flex shrink-0 whitespace-nowrap items-center gap-2 font-semibold px-4 py-3 rounded-xl border border-earth-200 dark:border-white/10 self-start">
+                      <Gift className="w-5 h-5 text-brand-500" aria-hidden="true" /> Shared live at the event
+                    </span>
+                  )}
+                  <p className="text-earth-700 dark:text-earth-200 min-w-0">
+                    {ev.offerText || 'A code to use when you sign up your school or organization.'}
+                    {ev.hasOfferCode && ' We give the code out during the session, so be there to get it.'} Clubs of up to 50 students are always free.
+                  </p>
                 </div>
               </section>
             )}

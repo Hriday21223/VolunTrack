@@ -40,6 +40,14 @@ const shape = (r) => ({
   updatedAt: r.updated_at,
 })
 
+// What anyone may see. The event code is the reward for attending, so it is
+// never sent publicly: it's read out during the session. The page only learns
+// that there is one.
+const publicShape = (r) => {
+  const { offerCode, ...rest } = shape(r)
+  return { ...rest, hasOfferCode: Boolean(offerCode) }
+}
+
 // GET /api/events/upcoming — public. The next published event still to come
 // (or under way), or { event: null }.
 router.get('/upcoming', limiter, async (_req, res) => {
@@ -51,7 +59,7 @@ router.get('/upcoming', limiter, async (_req, res) => {
         ORDER BY starts_at LIMIT 1`,
     )
     res.set('Cache-Control', 'public, max-age=60')
-    return res.json({ event: rows[0] ? shape(rows[0]) : null })
+    return res.json({ event: rows[0] ? publicShape(rows[0]) : null })
   } catch (error) {
     console.error('upcoming event failed:', error.message)
     return res.json({ event: null })
@@ -67,7 +75,7 @@ router.get('/one/:id', limiter, async (req, res) => {
     const { rows } = await query('SELECT * FROM school_events WHERE id = $1 AND published', [req.params.id])
     if (!rows[0]) return res.status(404).json({ error: 'Event not found.' })
     res.set('Cache-Control', 'public, max-age=60')
-    return res.json({ event: shape(rows[0]) })
+    return res.json({ event: publicShape(rows[0]) })
   } catch (error) {
     console.error('get event failed:', error.message)
     return res.status(500).json({ error: 'Could not load the event.' })
