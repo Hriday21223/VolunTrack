@@ -30,6 +30,7 @@ import reportsRouter from './reports.js'
 import clientErrorsRouter from './clientErrors.js'
 import notificationsRouter from './notifications.js'
 import portfolioRouter from './portfolio.js'
+import yearShareRouter from './yearShare.js'
 import comebackRouter from './comeback.js'
 import progressRouter from './progress.js'
 import adviserDigestRouter from './adviserDigest.js'
@@ -305,6 +306,7 @@ const MOUNTED_ROUTERS = [
   ['client-errors', '/api/client-errors', clientErrorsRouter],
   ['notifications', '/api/notifications', notificationsRouter],
   ['portfolio', '/api/portfolio', portfolioRouter],
+  ['year-share', '/api/year-share', yearShareRouter],
   ['comeback', '/api/comeback', comebackRouter],
   ['progress', '/api/progress', progressRouter],
   ['adviser-digest', '/api/adviser-digest', adviserDigestRouter],

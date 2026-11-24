@@ -58,6 +58,7 @@ import announcementRoutes from './server/routes/announcements.js'
 import schoolEventRoutes from './server/routes/schoolEvents.js'
 import notificationRoutes from './server/routes/notifications.js'
 import portfolioRoutes from './server/routes/portfolio.js'
+import yearShareRoutes from './server/routes/yearShare.js'
 import comebackRoutes from './server/routes/comeback.js'
 import progressRoutes from './server/routes/progress.js'
 import adviserDigestRoutes from './server/routes/adviserDigest.js'
@@ -240,6 +241,7 @@ app.use('/api/announcements', announcementRoutes)
 app.use('/api/events', schoolEventRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/portfolio', portfolioRoutes)
+app.use('/api/year-share', yearShareRoutes)
 app.use('/api/comeback', comebackRoutes)
 app.use('/api/progress', progressRoutes)
 app.use('/api/adviser-digest', adviserDigestRoutes)

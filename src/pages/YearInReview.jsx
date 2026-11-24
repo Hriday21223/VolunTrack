@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Clock, Heart, MapPin, CalendarDays, Flame, Award, Flag, Sparkles, Share2, Download, PartyPopper,
+  Clock, Heart, MapPin, CalendarDays, Flame, Award, Flag, Sparkles, Share2, Download, PartyPopper, Copy, LinkIcon,
 } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { SITE, shortUrl } from '@/lib/starterKit.js'
+import { hasServerSession, getMyYearShares, saveYearShare, deleteYearShare, yearShareUrl } from '@/lib/yearShare.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { BADGES } from '@/lib/achievements.js'
@@ -139,6 +140,94 @@ export default function YearInReview() {
   const [busy, setBusy] = useState(false)
 
   const fileName = `voluntrack-${year}-in-review.png`
+
+  // Share gives a link (#1005) for a signed-in student 13+. Local-only
+  // accounts and under-13s keep the old text/image share.
+  const canLink = hasServerSession() && !user?.under13
+  const [links, setLinks] = useState({}) // year → { slug, showName }
+  // A link past its 30 days is gone; Share makes a new one.
+  const link = links[year] && new Date(links[year].expiresAt) > new Date() ? links[year] : null
+
+  useEffect(() => {
+    if (!canLink) return
+    let live = true
+    getMyYearShares()
+      .then(({ links: list }) => {
+        if (!live) return
+        setLinks(Object.fromEntries((list || []).map((l) => [l.year, l])))
+      })
+      .catch(() => {})
+    return () => { live = false }
+  }, [canLink])
+
+  // A link that already shows the name keeps the box ticked.
+  useEffect(() => { if (link) setShowName(link.showName) }, [link])
+
+  const makeLink = async (withName) => {
+    const saved = await saveYearShare(year, withName)
+    setLinks((cur) => ({ ...cur, [year]: { year, slug: saved.slug, showName: saved.showName, expiresAt: saved.expiresAt } }))
+    return yearShareUrl(saved.slug)
+  }
+
+  const shareLink = async () => {
+    setBusy(true)
+    setNotice('')
+    try {
+      const url = await makeLink(!!name)
+      const title = name
+        ? tr("{name}'s {year} in volunteering", { name, year })
+        : tr('My {year} in volunteering 🎉', { year })
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, text: title, url })
+          return
+        } catch (err) {
+          if (err?.name === 'AbortError') return // closed the share sheet
+        }
+      }
+      await navigator.clipboard.writeText(url)
+      setNotice(tr('Link copied — paste it anywhere.'))
+    } catch (err) {
+      setNotice(err?.message || tr('Could not make your share link.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const copyLink = async () => {
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(yearShareUrl(link.slug))
+      setNotice(tr('Link copied — paste it anywhere.'))
+    } catch {
+      setNotice(tr("Couldn't copy. Select the link and copy it yourself."))
+    }
+  }
+
+  const turnOffLink = async () => {
+    setBusy(true)
+    setNotice('')
+    try {
+      await deleteYearShare(year)
+      setLinks((cur) => { const next = { ...cur }; delete next[year]; return next })
+      setNotice(tr('Link turned off. Anyone who opens it now sees that it isn’t working.'))
+    } catch (err) {
+      setNotice(err?.message || tr('Could not turn off your share link.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Ticking the box changes a link that's already out there, too.
+  const toggleName = async (checked) => {
+    setShowName(checked)
+    if (!link) return
+    try {
+      await makeLink(checked)
+    } catch (err) {
+      setNotice(err?.message || tr('Could not make your share link.'))
+    }
+  }
 
   const share = async () => {
     if (!summary) return
@@ -329,18 +418,22 @@ export default function YearInReview() {
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-semibold">{tr('Share your year')}</h2>
               <p className="text-sm text-earth-500 dark:text-earth-400">
-                {name
-                  ? tr('Shares your first name and totals — no places or notes.')
-                  : tr('Shares your totals only — no names, places or notes.')}
+                {canLink
+                  ? (name
+                    ? tr('Shares a link with your first name and totals — no places or notes.')
+                    : tr('Shares a link to your totals only — no names, places or notes.'))
+                  : (name
+                    ? tr('Shares your first name and totals — no places or notes.')
+                    : tr('Shares your totals only — no names, places or notes.'))}
               </p>
               {canShowName && (
                 <label className="mt-3 flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="h-4 w-4" checked={showName} onChange={(e) => setShowName(e.target.checked)} />
+                  <input type="checkbox" className="h-4 w-4" checked={showName} onChange={(e) => toggleName(e.target.checked)} />
                   {tr('Show my first name')}
                 </label>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={share} className="btn-primary btn-sm">
+                <button type="button" onClick={canLink ? shareLink : share} disabled={busy} className="btn-primary btn-sm">
                   <Share2 className="w-4 h-4" /> {tr('Share')}
                 </button>
                 {!isNativeApp && (
@@ -349,6 +442,31 @@ export default function YearInReview() {
                   </button>
                 )}
               </div>
+              {canLink && link && (
+                <div className="mt-3 rounded-xl border border-earth-200 dark:border-[#24382c] p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <LinkIcon className="w-4 h-4 text-brand-500 shrink-0" aria-hidden="true" /> {tr('Your link is on')}
+                  </div>
+                  <input
+                    readOnly
+                    value={yearShareUrl(link.slug)}
+                    onFocus={(e) => e.target.select()}
+                    aria-label={tr('Your share link')}
+                    className="input mt-2 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-earth-500 dark:text-earth-400">
+                    {tr('Works until {date}. Anyone with the link can see it, and it updates as you log more hours. Turn it off any time.', { date: new Date(link.expiresAt).toLocaleDateString(language || undefined, { month: 'short', day: 'numeric', year: 'numeric' }) })}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button type="button" onClick={copyLink} className="btn-secondary btn-sm">
+                      <Copy className="w-4 h-4" /> {tr('Copy link')}
+                    </button>
+                    <button type="button" onClick={turnOffLink} disabled={busy} className="btn-ghost btn-sm text-red-600 dark:text-red-400">
+                      {tr('Turn off link')}
+                    </button>
+                  </div>
+                </div>
+              )}
               {notice && <p className="mt-2 text-sm text-earth-600 dark:text-earth-300" role="status">{notice}</p>}
             </div>
           </div>

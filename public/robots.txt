@@ -7,6 +7,7 @@ Disallow: /sync-login
 Disallow: /verify-hours
 Disallow: /join/
 Disallow: /invite/
+Disallow: /y/
 Disallow: /handover
 Disallow: /admin-invite
 Disallow: /s/
@@ -48,6 +49,7 @@ Disallow: /sync-login
 Disallow: /verify-hours
 Disallow: /join/
 Disallow: /invite/
+Disallow: /y/
 Disallow: /handover
 Disallow: /admin-invite
 Disallow: /s/

@@ -42,6 +42,8 @@ const DISALLOWED_PATHS = [
   '/join/',
   // A student's personal invite link (#493).
   '/invite/',
+  // A student's Year in review share link (#1005).
+  '/y/',
   '/handover',
   '/admin-invite',
   '/s/',

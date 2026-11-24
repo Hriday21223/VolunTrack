@@ -79,6 +79,7 @@ const AdminInvite = lazy(() => import('@/pages/AdminInvite.jsx'))
 const SchoolPage = lazy(() => import('@/pages/SchoolPage.jsx'))
 const VerifyTranscript = lazy(() => import('@/pages/VerifyTranscript.jsx'))
 const Portfolio = lazy(() => import('@/pages/Portfolio.jsx'))
+const YearShare = lazy(() => import('@/pages/YearShare.jsx'))
 const ParentDashboard = lazy(() => import('@/pages/ParentDashboard.jsx'))
 
 function RouteFallback() {
@@ -186,6 +187,8 @@ function Shell() {
           <Route path="/verify-transcript" element={<VerifyTranscript />} />
           {/* A student's opt-in public volunteer portfolio — open to anyone with the link. */}
           <Route path="/p/:slug"        element={<Portfolio />} />
+          {/* A student's Year in review share link (#1005) — totals only, open to anyone with the link. */}
+          <Route path="/y/:slug"        element={<YearShare />} />
 
           <Route path="/"             element={<Home />} />
           <Route path="/welcome"      element={<Protected roles={ROUTE_ROLES['/welcome']}><Welcome /></Protected>} />
