@@ -56,16 +56,22 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
   doc.setTextColor(0)
   doc.setFont('helvetica', 'bold').setFontSize(13)
   doc.text(`Total: ${fmtHours(total)}`, 420, 70, { align: 'left' })
+  const approved = logs.filter((l) => logStatus(l) === 'approved').reduce((s, l) => s + (Number(l.hours) || 0), 0)
+  doc.setFont('helvetica', 'normal').setFontSize(10)
+  doc.setTextColor(90)
+  doc.text(`${fmtHours(approved)} approved by a supervisor or organizer`, 420, 86, { align: 'left' })
+  doc.setTextColor(0)
 
   autoTable(doc, {
     startY: 120,
-    head: [['Date', 'Activity', 'Category', 'Time', 'Hours', 'Location', 'Organization', 'Org Phone', 'Org Address', 'Supervisor', 'Supervisor Email', 'Notes', 'Supervisor Signature', 'Student Signature']],
+    head: [['Date', 'Activity', 'Category', 'Time', 'Hours', 'Status', 'Location', 'Organization', 'Org Phone', 'Org Address', 'Supervisor', 'Supervisor Email', 'Notes', 'Supervisor Signature', 'Student Signature']],
     body: logs.map((l) => [
       fmtDate(l.date),
       l.activity || '',
       l.category || '',
       l.startTime && l.endTime ? `${l.startTime}–${l.endTime}` : '',
       fmtHours(Number(l.hours) || 0),
+      STATUS_TEXT[logStatus(l)],
       l.location || '',
       l.orgName || '',
       l.orgPhone || '',
@@ -79,11 +85,13 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
     headStyles: { fillColor: [63, 131, 68], fontSize: 8 },
     styles: { fontSize: 7.5, cellPadding: 4, minCellHeight: 28, overflow: 'linebreak' },
     alternateRowStyles: { fillColor: [241, 248, 241] },
-    columnStyles: { 12: { cellWidth: 65 }, 13: { cellWidth: 65 } },
+    columnStyles: { 13: { cellWidth: 65 }, 14: { cellWidth: 65 } },
+    // Leave room at the bottom of every page for the footer note.
+    margin: { bottom: 56 },
     didDrawCell: (data) => {
-      if (data.section !== 'body' || (data.column.index !== 12 && data.column.index !== 13)) return
+      if (data.section !== 'body' || (data.column.index !== 13 && data.column.index !== 14)) return
       const log = logs[data.row.index]
-      const sig = data.column.index === 12 ? log?.supervisorSignature : log?.studentSignature
+      const sig = data.column.index === 13 ? log?.supervisorSignature : log?.studentSignature
       if (!sig) return
       try {
         const h = data.cell.height - 8
@@ -95,11 +103,34 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
     },
   })
 
+  // On every page: who made this report and what "Approved" means, so an
+  // adviser handed one knows which hours someone else confirmed.
+  const pages = doc.getNumberOfPages()
+  const pageW = doc.internal.pageSize.getWidth()
+  const pageH = doc.internal.pageSize.getHeight()
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal').setFontSize(8)
+    doc.setTextColor(110)
+    doc.text(doc.splitTextToSize(REPORT_FOOTER, pageW - 80), 40, pageH - 36)
+    doc.text(`Page ${i} of ${pages}`, pageW - 40, pageH - 36, { align: 'right' })
+  }
+  doc.setTextColor(0)
+
   if (returnBlob) {
     return doc.output('blob')
   }
   doc.save('volunteer-log.pdf')
 }
+
+const logStatus = (l) => {
+  const s = l.verificationStatus || l.verification_status
+  if (s === 'approved' || s === 'rejected' || s === 'pending') return s
+  return 'none'
+}
+const STATUS_TEXT = { approved: 'Approved', rejected: 'Rejected', pending: 'Waiting', none: 'Self-reported' }
+const REPORT_FOOTER = 'Prepared by the student. Hours marked Approved were confirmed by a supervisor or organizer; the rest are self-reported. '
+  + 'Schools can see and check every student’s hours in one place with VolunTrack for schools.'
 
 const BILLING_PERIOD_LABELS = { monthly: '/ month', yearly: '/ year', one_time: 'one-time' }
 
