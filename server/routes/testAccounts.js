@@ -1,6 +1,7 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { query, hasDatabase } from '../db.js'
 import { requireAuth, signToken, verifyPassword } from '../auth.js'
 import { hasPasskeys } from '../passkeys.js'
@@ -17,8 +18,16 @@ import { publicUser, USER_WITH_SCHOOL_SELECT } from './auth.js'
 //     the admin's password). Five wrong PINs lock it for 15 minutes;
 //   - the account is picked by role from LIVE_TEST_ACCOUNTS, never by id or
 //     email from the request, so no real account can be reached;
-//   - every sign-in is in the audit log, and the session lasts 2 hours.
+//   - every sign-in is in the audit log, and the session lasts 2 hours;
+//   - the admin's own token is NOT kept on the device. Sign-in hands back a
+//     one-time return ticket instead, and "Back to admin" trades it, with the
+//     same PIN, for a new admin session (returnRouter below), so someone at
+//     the computer can't get into admin from a test account.
 const router = express.Router()
+export const returnRouter = express.Router()
+
+const hashTicket = (t) => crypto.createHash('sha256').update(String(t)).digest('hex')
+const TICKET_RE = /^[A-Za-z0-9_-]{43}$/
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -136,11 +145,63 @@ router.post('/sign-in', async (req, res) => {
     const target = rows[0]
     if (!target || !target.email.endsWith('@test.com')) return res.status(500).json({ error: 'Could not find the test account.' })
     const user = publicUser(target)
+    // One ticket per admin at a time; it lasts as long as the test session.
+    const returnTicket = crypto.randomBytes(32).toString('base64url')
+    await query('DELETE FROM admin_return_tickets WHERE admin_id = $1 OR expires_at < now()', [row.id])
+    await query(
+      "INSERT INTO admin_return_tickets (ticket_hash, admin_id, expires_at) VALUES ($1, $2, now() + interval '2 hours')",
+      [hashTicket(returnTicket), row.id],
+    )
     recordAudit(req, { action: AUDIT.TEST_ACCOUNT_SIGNIN, subjectUserId: target.id, meta: { role: account.role } })
-    return res.json({ token: signToken(user, { expiresIn: TEST_SESSION_TTL, extra: { testBy: row.id } }), user })
+    return res.json({ token: signToken(user, { expiresIn: TEST_SESSION_TTL, extra: { testBy: row.id } }), user, returnTicket })
   } catch (error) {
     console.error('test account sign-in failed:', error)
     return res.status(500).json({ error: 'Could not sign in as the test account.' })
+  }
+})
+
+// POST /api/test-return { ticket, pin }: from a test session back to the
+// admin who opened it. Needs the test session's own token (which carries
+// testBy), the one-time ticket from sign-in, and the admin's PIN. Wrong PINs
+// count toward the same 5-try, 15-minute lock as sign-in.
+returnRouter.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const adminId = req.auth?.testBy
+    if (!adminId) return res.status(403).json({ error: 'This is not a test session.' })
+    const ticket = String(req.body?.ticket || '')
+    if (!TICKET_RE.test(ticket)) return res.status(400).json({ error: 'Your way back has expired. Sign out and sign in again.', expired: true })
+    const { rows: tickets } = await query(
+      'SELECT admin_id FROM admin_return_tickets WHERE ticket_hash = $1 AND admin_id = $2 AND expires_at > now()',
+      [hashTicket(ticket), adminId],
+    )
+    if (!tickets[0]) return res.status(400).json({ error: 'Your way back has expired. Sign out and sign in again.', expired: true })
+
+    const { rows: admins } = await query('SELECT id, test_login_pin_hash FROM users WHERE id = $1 AND role = $2', [adminId, 'admin'])
+    const admin = admins[0]
+    if (!admin?.test_login_pin_hash) return res.status(400).json({ error: 'Your way back has expired. Sign out and sign in again.', expired: true })
+
+    const locked = lockedFor(admin.id)
+    if (locked) return res.status(429).json({ error: 'Too many wrong PINs.', lockedSeconds: Math.ceil(locked / 1000) })
+    const pin = String(req.body?.pin ?? '')
+    if (!PIN_RE.test(pin) || !(await bcrypt.compare(pin, admin.test_login_pin_hash))) {
+      const n = noteFail(admin.id)
+      recordAudit(req, { action: AUDIT.TEST_ACCOUNT_RETURN, outcome: 'denied' })
+      if (n >= MAX_FAILS) return res.status(429).json({ error: 'Too many wrong PINs.', lockedSeconds: LOCK_MS / 1000 })
+      return res.status(401).json({ error: 'Wrong PIN.', triesLeft: MAX_FAILS - n })
+    }
+    fails.delete(admin.id)
+
+    // Spend the ticket first, so it can only ever be used once.
+    const spent = await query('DELETE FROM admin_return_tickets WHERE ticket_hash = $1 RETURNING admin_id', [hashTicket(ticket)])
+    if (!spent.rows[0]) return res.status(400).json({ error: 'Your way back has expired. Sign out and sign in again.', expired: true })
+    const { rows } = await query(`${USER_WITH_SCHOOL_SELECT} WHERE u.id = $1`, [admin.id])
+    if (!rows[0]) return res.status(400).json({ error: 'Your way back has expired. Sign out and sign in again.', expired: true })
+    const user = publicUser(rows[0])
+    recordAudit(req, { action: AUDIT.TEST_ACCOUNT_RETURN })
+    return res.json({ token: signToken(user), user })
+  } catch (error) {
+    console.error('back to admin failed:', error)
+    return res.status(500).json({ error: 'Could not go back to admin.' })
   }
 })
 

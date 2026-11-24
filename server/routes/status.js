@@ -45,7 +45,7 @@ import rosterSyncRouter from './rosterSync.js'
 import apiKeysRouter from './apiKeys.js'
 import webhooksRouter from './webhooks.js'
 import apiV1Router from './apiV1.js'
-import testAccountsRouter from './testAccounts.js'
+import testAccountsRouter, { returnRouter as testReturnRouter } from './testAccounts.js'
 import adminTeamRouter from './adminTeam.js'
 
 function frontendUrl() {
@@ -284,6 +284,7 @@ router.get('/health', pollLimiter, async (_req, res) => {
 const MOUNTED_ROUTERS = [
   ['auth', '/api/auth', authRouter],
   ['admin', '/api/admin/test-accounts', testAccountsRouter],
+  ['admin', '/api/test-return', testReturnRouter],
   ['admin', '/api/admin/team', adminTeamRouter],
   ['school', '/api/school', schoolRouter],
   ['embed', '/api/embed', embedRouter],

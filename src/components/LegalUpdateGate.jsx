@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ScrollText } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
-import { inTestSession, backToAdmin } from '@/lib/testSession.js'
 import { tr } from '@/lib/i18n.js'
 import { LEGAL_VERSION, LEGAL_CHANGES, legalSummaryFor } from '@/lib/legal.js'
 
@@ -12,7 +11,7 @@ const apiUrl = import.meta.env.VITE_API_URL || '/api'
 // hasn't accepted the current version sees this over the app until it agrees
 // or signs out. The Terms and Privacy pages stay readable underneath.
 export default function LegalUpdateGate() {
-  const { user, refreshUser, logout, adoptSession } = useAuth()
+  const { user, refreshUser, logout } = useAuth()
   const { pathname } = useLocation()
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -68,7 +67,7 @@ export default function LegalUpdateGate() {
         {error && <p role="alert" className="text-sm text-red-500 mt-2">{error}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={accept} disabled={!agree || busy}>{busy ? tr('Saving…') : tr('Agree and continue')}</button>
-          <button type="button" className="btn-ghost" onClick={() => (inTestSession(user) ? backToAdmin({ adoptSession, logout }) : logout())}>{tr("I don't agree — sign out")}</button>
+          <button type="button" className="btn-ghost" onClick={() => logout()}>{tr("I don't agree — sign out")}</button>
         </div>
         <p className="mt-3 text-xs text-earth-500 dark:text-earth-400">{tr('If you don’t agree, you can sign out and ask us to delete your account from the Privacy Policy page.')}</p>
       </div>

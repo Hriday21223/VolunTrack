@@ -61,6 +61,7 @@ export const AUDIT = {
   // The admin signed in as one of the five live test accounts (#890).
   TEST_ACCOUNT_SIGNIN: 'admin.test_account_signin',
   TEST_ACCOUNT_PIN_SET: 'admin.test_account_pin_set',
+  TEST_ACCOUNT_RETURN: 'admin.test_account_return',
   // The admin team (#909): who was invited, joined or removed.
   ADMIN_INVITED: 'admin.invited',
   ADMIN_ADDED: 'admin.added',
