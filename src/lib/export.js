@@ -35,7 +35,10 @@ export function poLabel(poNumber) {
   return /^p\.?o\b/i.test(value) ? value : `PO ${value}`
 }
 
-export async function exportLogsPDF({ user, logs, returnBlob }) {
+// `copy`: 'student' (a download) carries a faint diagonal VolunTrack mark and
+// the "schools can check every student's hours" note; 'school' (sent to the
+// school through the app, or the school's own packet) is clean.
+export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   // Rejected entries stay in the table with their status, but not in the total.
   const total = countedLogs(logs).reduce((s, l) => s + (Number(l.hours) || 0), 0)
@@ -108,11 +111,20 @@ export async function exportLogsPDF({ user, logs, returnBlob }) {
   const pages = doc.getNumberOfPages()
   const pageW = doc.internal.pageSize.getWidth()
   const pageH = doc.internal.pageSize.getHeight()
+  const footer = copy === 'school' ? SCHOOL_COPY_FOOTER : REPORT_FOOTER
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
+    if (copy !== 'school') {
+      doc.saveGraphicsState()
+      doc.setGState(new doc.GState({ opacity: 0.07 }))
+      doc.setFont('helvetica', 'bold').setFontSize(110)
+      doc.setTextColor(63, 131, 68)
+      doc.text('VolunTrack', pageW / 2, pageH / 2, { align: 'center', baseline: 'middle', angle: 30 })
+      doc.restoreGraphicsState()
+    }
     doc.setFont('helvetica', 'normal').setFontSize(8)
     doc.setTextColor(110)
-    doc.text(doc.splitTextToSize(REPORT_FOOTER, pageW - 80), 40, pageH - 36)
+    doc.text(doc.splitTextToSize(footer, pageW - 80), 40, pageH - 36)
     doc.text(`Page ${i} of ${pages}`, pageW - 40, pageH - 36, { align: 'right' })
   }
   doc.setTextColor(0)
@@ -129,6 +141,7 @@ const logStatus = (l) => {
   return 'none'
 }
 const STATUS_TEXT = { approved: 'Approved', rejected: 'Rejected', pending: 'Waiting', none: 'Self-reported' }
+const SCHOOL_COPY_FOOTER = 'Sent to the school through VolunTrack. Hours marked Approved were confirmed by a supervisor or organizer; the rest are self-reported.'
 const REPORT_FOOTER = 'Prepared by the student. Hours marked Approved were confirmed by a supervisor or organizer; the rest are self-reported. '
   + 'Schools can see and check every student’s hours in one place with VolunTrack for schools.'
 
