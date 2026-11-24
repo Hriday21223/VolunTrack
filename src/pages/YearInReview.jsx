@@ -4,6 +4,8 @@ import {
   Clock, Heart, MapPin, CalendarDays, Flame, Award, Flag, Sparkles, Share2, Download, PartyPopper,
 } from 'lucide-react'
 import { useData } from '@/hooks/useData.jsx'
+import { useAuth } from '@/hooks/useAuth.jsx'
+import { SITE, shortUrl } from '@/lib/starterKit.js'
 import AppLayout from '@/components/AppLayout.jsx'
 import Card from '@/components/Card.jsx'
 import { BADGES } from '@/lib/achievements.js'
@@ -21,20 +23,30 @@ const hoursText = (n) => {
   return v === 1 ? tr('1 hour') : tr('{n} hours', { n: v })
 }
 
-function shareText(s) {
+// First word of the account name, only when the student ticks "Show my first
+// name" (#1005). Never the full name: the image is meant to be posted publicly.
+function firstNameOf(name) {
+  const first = String(name || '').trim().split(/\s+/)[0] || ''
+  return first.slice(0, 30)
+}
+
+function shareText(s, name) {
   const lines = [
-    tr('My {year} in volunteering 🎉', { year: s.year }),
+    name
+      ? `${tr("{name}'s {year} in volunteering", { name, year: s.year })} 🎉`
+      : tr('My {year} in volunteering 🎉', { year: s.year }),
     tr('{hours} across {n} sessions', { hours: hoursText(s.totalHours), n: s.sessions }),
   ]
   if (s.topCategory) lines.push(tr('Top cause: {cause}', { cause: tr(s.topCategory) }))
   if (s.places > 0) lines.push(tr('Places helped: {n}', { n: s.places }))
   if (s.badges.length > 0) lines.push(tr('Badges earned: {n}', { n: s.badges.length }))
   lines.push(tr('Tracked with VolunTrack'))
+  lines.push(SITE)
   return lines.join('\n')
 }
 
 /** Draw the summary as a 1080×1350 PNG (portrait, the shape social apps crop to). */
-async function renderImage(s) {
+async function renderImage(s, name) {
   const W = 1080
   const H = 1350
   const canvas = document.createElement('canvas')
@@ -59,7 +71,8 @@ async function renderImage(s) {
 
   ctx.fillStyle = '#86efac'
   ctx.font = font(36, 600)
-  ctx.fillText(tr('Year in review').toUpperCase(), 80, 140)
+  const heading = name ? tr("{name}'s year in review", { name }) : tr('Year in review')
+  ctx.fillText(fit(heading.toUpperCase(), W - 160, 36, 600), 80, 140)
   ctx.fillStyle = '#ffffff'
   ctx.font = font(120, 800)
   ctx.fillText(String(s.year), 80, 270)
@@ -102,12 +115,22 @@ async function renderImage(s) {
   ctx.fillStyle = '#86efac'
   ctx.font = font(34, 600)
   ctx.fillText('VolunTrack', 80, H - 70)
+  // The site address, so anyone who sees a posted image can find us.
+  ctx.fillStyle = '#cbd5e1'
+  const site = fit(shortUrl(SITE), W - 160 - 260, 30, 500)
+  ctx.font = font(30, 500)
+  ctx.fillText(site, W - 80 - ctx.measureText(site).width, H - 70)
 
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
 }
 
 export default function YearInReview() {
   const { logs, goals } = useData()
+  const { user } = useAuth()
+  // Off by default every visit, and never offered to under-13s.
+  const canShowName = !user?.under13 && !!firstNameOf(user?.name)
+  const [showName, setShowName] = useState(false)
+  const name = canShowName && showName ? firstNameOf(user?.name) : ''
   const years = useMemo(() => yearsWithLogs(logs), [logs])
   const [picked, setPicked] = useState(null)
   const year = picked ?? defaultReviewYear(years)
@@ -119,14 +142,14 @@ export default function YearInReview() {
 
   const share = async () => {
     if (!summary) return
-    const text = shareText(summary)
+    const text = shareText(summary, name)
     setNotice('')
     try {
       if (navigator.share) {
         // An image if the device can share files, else just the words.
         let files
         try {
-          const blob = await renderImage(summary)
+          const blob = await renderImage(summary, name)
           const file = blob && new File([blob], fileName, { type: 'image/png' })
           if (file && navigator.canShare?.({ files: [file] })) files = [file]
         } catch { /* fall back to text */ }
@@ -146,7 +169,7 @@ export default function YearInReview() {
     setBusy(true)
     setNotice('')
     try {
-      const blob = await renderImage(summary)
+      const blob = await renderImage(summary, name)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -199,7 +222,7 @@ export default function YearInReview() {
         {/* Hero */}
         <Card padded={false} className="overflow-hidden">
           <div className="bg-gradient-to-br from-brand-800 via-slate-950 to-slate-900 p-5 sm:p-7 text-white">
-            <div className="text-xs uppercase tracking-[0.3em] text-brand-300">{tr('Your {year} in volunteering', { year: s.year })}</div>
+            <div className="text-xs uppercase tracking-[0.3em] text-brand-300">{name ? tr("{name}'s {year} in volunteering", { name, year: s.year }) : tr('Your {year} in volunteering', { year: s.year })}</div>
             <div className="mt-3 flex items-end gap-2 flex-wrap">
               <span className="font-display text-5xl sm:text-6xl font-extrabold leading-none text-brand-200">{Math.round(s.totalHours * 10) / 10}</span>
               <span className="text-xl font-semibold text-slate-200 pb-1">{s.totalHours === 1 ? tr('hour') : tr('hours')}</span>
@@ -306,8 +329,16 @@ export default function YearInReview() {
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-semibold">{tr('Share your year')}</h2>
               <p className="text-sm text-earth-500 dark:text-earth-400">
-                {tr('Shares your totals only — no names, places or notes.')}
+                {name
+                  ? tr('Shares your first name and totals — no places or notes.')
+                  : tr('Shares your totals only — no names, places or notes.')}
               </p>
+              {canShowName && (
+                <label className="mt-3 flex items-center gap-2 text-sm">
+                  <input type="checkbox" className="h-4 w-4" checked={showName} onChange={(e) => setShowName(e.target.checked)} />
+                  {tr('Show my first name')}
+                </label>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={share} className="btn-primary btn-sm">
                   <Share2 className="w-4 h-4" /> {tr('Share')}
