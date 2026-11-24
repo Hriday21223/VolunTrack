@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, Download, Printer, FileDown, Filter, Send, School, ShieldCheck, Upload, Share2 } from 'lucide-react'
+import { FileText, Download, Printer, FileDown, Filter, Send, School, ShieldCheck, Upload, Share2, Eye } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { useData } from '@/hooks/useData.jsx'
 import AppLayout from '@/components/AppLayout.jsx'
@@ -14,6 +14,7 @@ import ReflectionsCard from '@/components/ReflectionsCard.jsx'
 import SkillsCard from '@/components/SkillsCard.jsx'
 import ReferencesCard from '@/components/ReferencesCard.jsx'
 import SentReportsCard from '@/components/SentReportsCard.jsx'
+import PdfPreview from '@/components/PdfPreview.jsx'
 import { todayLocal, fmtDate, fmtHours } from '@/utils/date.js'
 import { exportLogsPDF, exportLogsCSV, printCertificate } from '@/lib/export.js'
 import { downloadResume } from '@/lib/resume.js'
@@ -42,6 +43,8 @@ export default function Reports() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [sharing, setSharing] = useState(false)
+  // null | 'student' (Preview PDF) | 'school' (what Submit to school sends)
+  const [previewing, setPreviewing] = useState(null)
 
   const filtered = useMemo(() => {
     return logs.filter((l) => {
@@ -53,10 +56,11 @@ export default function Reports() {
   }, [logs, category, from, to])
 
   const total = countedLogs(filtered).reduce((s, l) => s + (Number(l.hours) || 0), 0)
-  const submitToSchool = async () => {
+  // Called from the preview, with the exact file the student just looked at.
+  const submitToSchool = async (shown) => {
     setSubmitting(true)
     try {
-      const blob = await exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: 'school' })
+      const blob = shown || await exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: 'school' })
       // Goes straight to the school's own storage where they have set one up,
       // and falls back to sending it through us where they haven't (#143).
       await submitDocumentToSchool(blob, {
@@ -64,6 +68,7 @@ export default function Reports() {
         fileType: 'application/pdf',
       })
       setSentCount((n) => n + 1)
+      setPreviewing(null)
       setToastMsg(tr('Report submitted to school!'))
       setToastOpen(true)
     } catch (e) {
@@ -140,9 +145,14 @@ export default function Reports() {
               </div>
             </div>
             <div className="pt-2 space-y-2">
-              <button className="btn-primary w-full" onClick={() => exportLogsPDF({ user, logs: filtered })}>
-                <FileDown className="w-4 h-4" />{' '}{tr('Download PDF')}
-              </button>
+              <div className="space-y-2">
+                <button className="btn-secondary w-full" onClick={() => setPreviewing('student')} disabled={filtered.length === 0}>
+                  <Eye className="w-4 h-4" />{' '}{tr('Preview PDF')}
+                </button>
+                <button className="btn-primary w-full" onClick={() => exportLogsPDF({ user, logs: filtered })}>
+                  <FileDown className="w-4 h-4" />{' '}{tr('Download PDF')}
+                </button>
+              </div>
               <button className="btn-secondary w-full" onClick={async () => { if (!(await downloadResume({ user, logs, earned }))) window.alert(tr('Log some hours first, then make your résumé.')) }}>
                 <FileText className="w-4 h-4" />{' '}{tr('Download résumé')}
               </button>
@@ -157,7 +167,7 @@ export default function Reports() {
                 <Printer className="w-4 h-4" />{' '}{tr('Print certificate')}
               </button>
               {user?.schoolId && (
-                <button className="btn-primary w-full" onClick={submitToSchool} disabled={submitting}>
+                <button className="btn-primary w-full" onClick={() => setPreviewing('school')} disabled={submitting || filtered.length === 0}>
                   <Send className="w-4 h-4" /> {submitting ? tr('Sending…') : tr('Submit to school')}
                 </button>
               )}
@@ -171,6 +181,19 @@ export default function Reports() {
         <SkillsCard logs={logs} />
         <ReflectionsCard logs={logs} />
         <TranscriptCard notify={(msg) => { setToastMsg(msg); setToastOpen(true) }} />
+        {previewing && (
+          <PdfPreview
+            title={previewing === 'school' ? tr('What your school will get') : tr('Your hours report')}
+            filename="volunteer-log.pdf"
+            getBlob={() => exportLogsPDF({ user, logs: filtered, returnBlob: true, copy: previewing === 'school' ? 'school' : 'view' })}
+            getDownloadBlob={() => exportLogsPDF({ user, logs: filtered, returnBlob: true })}
+            onClose={() => setPreviewing(null)}
+            allowDownload={previewing !== 'school'}
+            action={previewing === 'school'
+              ? { label: submitting ? tr('Sending…') : tr('Send to school'), icon: <Send className="w-4 h-4 mr-1" />, busy: submitting, onClick: submitToSchool }
+              : null}
+          />
+        )}
         {sharing && (
           <ShareHoursModal
             name={user?.name || ''}

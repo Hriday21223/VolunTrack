@@ -36,8 +36,10 @@ export function poLabel(poNumber) {
 }
 
 // `copy`: 'student' (a download) carries a faint diagonal VolunTrack mark and
-// the "schools can check every student's hours" note; 'school' (sent to the
-// school through the app, or the school's own packet) is clean.
+// the "schools can check every student's hours" note; 'view' is the same
+// without the mark, for looking at it inside the app (the mark is only on a
+// downloaded file); 'school' (sent to the school through the app, or the
+// school's own packet) is clean with its own footer.
 export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }) {
   const doc = new jsPDF({ unit: 'pt', orientation: 'landscape' })
   // Rejected entries stay in the table with their status, but not in the total.
@@ -114,7 +116,7 @@ export async function exportLogsPDF({ user, logs, returnBlob, copy = 'student' }
   const footer = copy === 'school' ? SCHOOL_COPY_FOOTER : REPORT_FOOTER
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
-    if (copy !== 'school') {
+    if (copy === 'student') {
       doc.saveGraphicsState()
       doc.setGState(new doc.GState({ opacity: 0.07 }))
       doc.setFont('helvetica', 'bold').setFontSize(110)
