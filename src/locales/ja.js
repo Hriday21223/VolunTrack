@@ -4044,5 +4044,7 @@ export default {
   "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "カウンセラーの方は、担当の生徒を姓と学年で選ぶと、その生徒だけが表示されます。",
   "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "「確認待ちの時間」で生徒の名前をクリックすると、その生徒の記録だけを表示できます。証明はリンクでもよくなり、Google Drive のファイルはここで開けます。",
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "請求書には「未払い」または「支払い済み」が表示され、手数料や税も記載でき、支払う前に開いて確認できます。",
-  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "VolunTrack が学校・団体向けの説明会を開くときは、ホームページのバナーに詳細が表示されます。"
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "VolunTrack が学校・団体向けの説明会を開くときは、ホームページのバナーに詳細が表示されます。",
+  "Page {n} of {total}": "{total} ページ中 {n} ページ",
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total} ページ中、最初の {n} ページを表示しています。すべて見るにはファイルをダウンロードしてください。"
 }

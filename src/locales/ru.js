@@ -4044,5 +4044,7 @@ export default {
   "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "Если вы консультант, выберите своих учеников по фамилии и классу, чтобы видеть только их.",
   "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "В разделе «Часы на проверку» нажмите на имя ученика, чтобы увидеть только его записи. Подтверждением теперь может быть ссылка, а файлы Google Drive открываются прямо здесь.",
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "На счетах указано «Ещё не оплачен» или «Оплачен», в них могут быть сборы и налог, и счёт можно открыть и посмотреть до оплаты.",
-  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Когда VolunTrack проводит встречу для школ и организаций, баннер на главной странице покажет подробности."
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Когда VolunTrack проводит встречу для школ и организаций, баннер на главной странице покажет подробности.",
+  "Page {n} of {total}": "Страница {n} из {total}",
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "Показаны первые {n} из {total} страниц. Скачайте файл, чтобы увидеть все."
 }

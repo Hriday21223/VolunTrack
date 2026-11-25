@@ -4044,5 +4044,7 @@ export default {
   "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "إن كنت مرشدًا، فاختر الطلاب الذين تتابعهم، حسب اسم العائلة والصف، لترى طلابك فقط.",
   "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "في الساعات المطلوب مراجعتها، انقر اسم الطالب لترى سجلاته فقط. يمكن أن يكون الإثبات الآن رابطًا، وتُفتح ملفات Google Drive هنا مباشرة.",
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "تُظهر الفواتير لم تُدفع بعد أو مدفوعة، ويمكن أن تتضمن رسومًا وضرائب، ويمكنك فتح الفاتورة لتراها قبل الدفع.",
-  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "عندما يقيم VolunTrack جلسة للمدارس والمنظمات، يظهر شريط في الصفحة الرئيسية بالتفاصيل."
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "عندما يقيم VolunTrack جلسة للمدارس والمنظمات، يظهر شريط في الصفحة الرئيسية بالتفاصيل.",
+  "Page {n} of {total}": "الصفحة {n} من {total}",
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "تُعرض أول {n} صفحة من {total}. نزّل الملف لرؤيتها كلها."
 }

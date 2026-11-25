@@ -4045,5 +4045,7 @@ export default {
   "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "Nếu bạn là cố vấn, hãy chọn những học sinh bạn phụ trách, theo họ và khối lớp, để chỉ thấy các em.",
   "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "Trong Giờ cần kiểm tra, bấm vào tên học sinh để chỉ xem các lần ghi của em đó. Bằng chứng giờ có thể là đường link, và tệp Google Drive mở ngay tại đây.",
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "Hóa đơn ghi Chưa thanh toán hoặc Đã thanh toán, có thể liệt kê phí và thuế, và bạn có thể mở để xem trước khi thanh toán.",
-  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Khi VolunTrack tổ chức buổi giới thiệu cho trường học và tổ chức, một thông báo trên trang chủ sẽ hiện chi tiết."
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Khi VolunTrack tổ chức buổi giới thiệu cho trường học và tổ chức, một thông báo trên trang chủ sẽ hiện chi tiết.",
+  "Page {n} of {total}": "Trang {n} / {total}",
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "Đang hiển thị {n} trang đầu trong {total} trang. Tải tệp xuống để xem tất cả."
 }

@@ -16,7 +16,8 @@ export const MAX_PAGES = 5
 const MIN_TEXT_CHARS = 20
 
 let pdfjsPromise = null
-function loadPdfJs() {
+// Shared with PdfPreview, which draws previews with it.
+export function loadPdfJs() {
   if (!pdfjsPromise) {
     // The legacy build runs on older phone browsers too.
     // Its worker is copied next to Tesseract's files (vite.config.js).

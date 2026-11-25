@@ -4044,5 +4044,7 @@ export default {
   "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "Si vous êtes conseiller, choisissez les élèves que vous suivez, par nom de famille et niveau, pour ne voir qu’eux.",
   "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "Dans Heures à vérifier, cliquez sur le nom d’un élève pour ne voir que ses entrées. La preuve peut maintenant être un lien, et les fichiers Google Drive s’ouvrent ici.",
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "Les factures indiquent Pas encore payée ou Payée, peuvent lister des frais et des taxes, et vous pouvez en ouvrir une pour la voir avant de payer.",
-  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Quand VolunTrack organise une séance pour les écoles et les organisations, une bannière sur la page d’accueil en donne les détails."
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Quand VolunTrack organise une séance pour les écoles et les organisations, une bannière sur la page d’accueil en donne les détails.",
+  "Page {n} of {total}": "Page {n} sur {total}",
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "Affichage des {n} premières pages sur {total}. Télécharge le fichier pour toutes les voir."
 }

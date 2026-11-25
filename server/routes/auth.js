@@ -458,6 +458,7 @@ router.post('/email-otp/send', authLimiter, requireDb, async (req, res) => {
       return res.status(400).json({ error: 'Email codes are not turned on for this account.' })
     }
     const problem = await issueEmailOtp(row, 'login')
+    if (problem?.status === 429) res.set('Retry-After', '60')
     if (problem) return res.status(problem.status).json({ error: problem.error })
     return res.json({ ok: true, expiresInMinutes: SIGNUP_CODE_TTL_MINUTES })
   } catch (error) {
@@ -1285,7 +1286,26 @@ router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req
     // The PIN is already spent, so a resend refused for being under a minute
     // (429) isn't a dead end: the code from a moment ago is still waiting.
     const problem = await issueEmailOtp(rows[0], 'login')
-    if (problem && problem.status !== 429) return res.status(problem.status).json({ error: problem.error })
+    // A 429 is fine only when the code waiting is a sign-in code (the one
+    // from a moment ago). Otherwise (the email couldn't be sent, or another
+    // kind of code, e.g. an email change, is still waiting) no code is on
+    // its way, so give the PIN back for another try instead of wasting it.
+    let usable = !problem
+    if (problem?.status === 429) {
+      const { rows: waiting } = await query("SELECT 1 FROM email_otp_codes WHERE user_id = $1 AND purpose = 'login' AND expires_at > now()", [rows[0].id])
+      usable = waiting.length > 0
+    }
+    if (!usable) {
+      await query(
+        `UPDATE users SET sync_pin = $2, sync_pin_expires_at = $3
+          WHERE id = $1 AND sync_pin IS NULL AND $3 > now()
+            AND NOT EXISTS (SELECT 1 FROM users o WHERE o.sync_pin = $2)`,
+        [rows[0].id, syncPin, rows[0].sync_pin_expires_at],
+      ).catch((e) => console.error('sync PIN give-back failed:', e.message))
+      // The wait is the one-a-minute resend limit, not the sign-in limiter's window.
+      if (problem.status === 429) res.set('Retry-After', '60')
+      return res.status(problem.status).json({ error: problem.error })
+    }
     return res.json({ requiresTotp: true, methods: ['email'], emailSent: true, tempToken: signTempToken(user, { syncEmail: true }) })
   } catch (error) {
     console.error('sync-login failed:', error)
