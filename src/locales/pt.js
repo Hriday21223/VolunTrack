@@ -1371,6 +1371,7 @@ export default {
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "Para terminar a sincronização, digite o código de 6 dígitos que acabamos de enviar ao e-mail da sua conta.",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "Para terminar a sincronização, enviaremos um código de 6 dígitos ao e-mail da sua conta.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "O login com PIN é para contas salvas neste dispositivo. Use sua senha, ou \"Usar PIN de sincronização\" abaixo para trazer sua conta para cá.",
+  "Scan QR": "Ler QR",
   "Your school needs more on this one: {what}": "Sua escola precisa de mais neste: {what}",
   "Finish in the form": "Terminar no formulário",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} precisam de mais para sua escola. Use Terminar no formulário em cada um.",

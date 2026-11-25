@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Shield, ArrowRight, Smartphone, Monitor, Scan, Camera, CameraOff, Fingerprint } from 'lucide-react'
+import { ArrowLeft, Shield, ArrowRight, Smartphone, Monitor, ScanQrCode, Camera, CameraOff, Fingerprint } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -433,8 +433,18 @@ export default function SyncLogin() {
                       {busy ? tr('Syncing…') : <>{tr('Sync account')}{' '}<ArrowRight className="w-4 h-4" /></>}
                     </button>
                     {/* Scanning signs in the moment a code is read, so it needs a token up front. */}
-                    <button type="button" onClick={startScanning} className="btn-secondary px-4" disabled={busy || captchaMissing} title={captchaMissing ? tr('Complete the CAPTCHA first') : tr('Scan a QR code')}>
-                      <Scan className="w-5 h-5" />
+                    {/* A QR-code icon and a word, so it's clear what the button does
+                        (the old bare corners icon didn't say "QR"). */}
+                    <button
+                      type="button"
+                      onClick={startScanning}
+                      className="btn-secondary px-4 text-sm font-semibold inline-flex items-center gap-2"
+                      disabled={busy || captchaMissing}
+                      title={captchaMissing ? tr('Complete the CAPTCHA first') : tr('Scan a QR code')}
+                      aria-label={tr('Scan a QR code')}
+                    >
+                      <ScanQrCode className="w-5 h-5" aria-hidden="true" />
+                      <span>{tr('Scan QR')}</span>
                     </button>
                   </div>
                 </form>

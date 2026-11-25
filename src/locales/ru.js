@@ -1371,6 +1371,7 @@ export default {
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "Чтобы закончить синхронизацию, введи 6-значный код, который мы только что отправили на почту аккаунта.",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "Чтобы закончить синхронизацию, мы отправим 6-значный код на почту аккаунта.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "Вход по PIN — для аккаунтов, сохранённых на этом устройстве. Используй пароль или «Войти по PIN синхронизации» ниже, чтобы перенести аккаунт сюда.",
+  "Scan QR": "Сканировать QR",
   "Your school needs more on this one: {what}": "Школе нужно больше для этой записи: {what}",
   "Finish in the form": "Закончить в форме",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} требуют больше для школы. Нажми «Закончить в форме» у каждой.",
