@@ -11,7 +11,10 @@ name: End free trials
 
 on:
   schedule:
-    - cron: '17 * * * *'
+    # Every 6 hours, not hourly: each run wakes the database, and Neon's free
+    # plan counts every wake-up (Nov 2026). Trials end on a day, so a few
+    # hours' delay doesn't matter.
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 
 jobs:

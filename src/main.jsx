@@ -56,6 +56,12 @@ installTranslateGuard()
 // Catch Chrome's install offer early, for the Install card (#936).
 installInstallPromptCatcher()
 installApiFetchGuard()
+// Wake the backend as the app opens (it sleeps when nobody has used it for a
+// while, server/keepAwake.js), so it's up by the time someone signs in.
+// Fire-and-forget; nothing waits on it.
+try {
+  fetch(`${(import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')}/status/ping`, { cache: 'no-store' }).catch(() => {})
+} catch { /* never block start-up */ }
 applyStoredTheme()
 applyStoredDisplay()
 applyNativeAppChrome()

@@ -76,7 +76,7 @@ import { emailFooterHtml, sendEmail, hasEmail } from './server/email.js'
 import { loadEmailOverrides } from './server/emailSettings.js'
 import { isLocalDatabaseUrl } from './server/localDb.js'
 import { seedMonitor } from './server/monitor.js'
-import { startKeepAwake } from './server/keepAwake.js'
+import { startKeepAwake, noteActivity } from './server/keepAwake.js'
 import { runTrialJob } from './server/trials.js'
 import { isSignatureImage } from './server/signature.js'
 import { recordLogEvent } from './server/logHistory.js'
@@ -126,6 +126,9 @@ const webhookLimiter = rateLimit({
 })
 
 app.set('trust proxy', 1)
+// First: notes when people last used the API, so the keep-awake ping stops
+// (and the free-tier service can sleep) once nobody is around.
+app.use(noteActivity)
 app.use(helmet())
 // The public API (#622): server-to-server, so mounted ahead of CORS (no
 // browser page can use a key) and of the app's session auth and limiter; it
