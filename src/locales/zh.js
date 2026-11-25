@@ -1489,6 +1489,7 @@ export default {
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "要完成同步，请输入我们刚发送到你账户邮箱的 6 位验证码。",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "要完成同步，我们会向你账户的邮箱发送一个 6 位验证码。",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PIN 登录仅适用于保存在此设备上的账户。请使用密码，或点击下方“使用同步 PIN”把账户转到这里。",
+  "Scan QR": "扫描二维码",
   "Your school needs more on this one: {what}": "学校对这条还需要：{what}",
   "Finish in the form": "在表单中完成",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} 条需要补充学校要求的信息。请对每条使用“在表单中完成”。",

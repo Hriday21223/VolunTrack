@@ -1366,6 +1366,7 @@ export default {
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "لإكمال المزامنة، أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه للتو إلى بريد حسابك.",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "لإكمال المزامنة، سنرسل رمزًا من 6 أرقام إلى بريد حسابك.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "تسجيل الدخول برمز PIN مخصص للحسابات المحفوظة على هذا الجهاز. استخدم كلمة المرور، أو \"استخدم رمز المزامنة\" بالأسفل لنقل حسابك إلى هنا.",
+  "Scan QR": "مسح QR",
   "Your school needs more on this one: {what}": "تحتاج مدرستك إلى المزيد في هذا الإدخال: {what}",
   "Finish in the form": "أكمله في النموذج",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} تحتاج إلى المزيد لمدرستك. استخدم أكمله في النموذج لكل واحد.",

@@ -1366,6 +1366,7 @@ export default {
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "Pour finir la synchro, saisis le code à 6 chiffres que nous venons d’envoyer à l’adresse e-mail de ton compte.",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "Pour finir la synchro, nous enverrons un code à 6 chiffres à l’adresse e-mail de ton compte.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "La connexion par PIN est pour les comptes enregistrés sur cet appareil. Utilise ton mot de passe, ou « Utiliser le PIN de synchro » ci-dessous pour amener ton compte ici.",
+  "Scan QR": "Scanner QR",
   "Your school needs more on this one: {what}": "Ton école demande plus sur celle-ci : {what}",
   "Finish in the form": "Terminer dans le formulaire",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} demandent plus pour ton école. Utilise Terminer dans le formulaire sur chacune.",

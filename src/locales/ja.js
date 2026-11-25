@@ -1366,6 +1366,7 @@ export default {
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "同期を完了するには、アカウントのメールアドレスに送った6桁のコードを入力してください。",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "同期を完了するため、アカウントのメールアドレスに6桁のコードを送ります。",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PINでのサインインはこの端末に保存されたアカウント用です。パスワードを使うか、下の「同期PINを使う」でアカウントをこちらに移してください。",
+  "Scan QR": "QRを読み取る",
   "Your school needs more on this one: {what}": "学校はこの記録にさらに必要としています：{what}",
   "Finish in the form": "フォームで仕上げる",
   "{n} need more for your school. Use Finish in the form on each one.": "{n}件は学校の要件が足りません。それぞれ「フォームで仕上げる」を使ってください。",

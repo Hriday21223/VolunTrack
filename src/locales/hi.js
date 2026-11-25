@@ -1366,6 +1366,7 @@ export default {
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "सिंक पूरा करने के लिए, आपके खाते के ईमेल पर अभी भेजा गया 6 अंकों का कोड डालें।",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "सिंक पूरा करने के लिए, हम आपके खाते के ईमेल पर 6 अंकों का कोड भेजेंगे।",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PIN से साइन इन इस डिवाइस पर सेव खातों के लिए है। अपना पासवर्ड इस्तेमाल करें, या नीचे \"सिंक PIN इस्तेमाल करें\" से अपना खाता यहाँ लाएँ।",
+  "Scan QR": "QR स्कैन करें",
   "Your school needs more on this one: {what}": "आपके स्कूल को इसमें और चाहिए: {what}",
   "Finish in the form": "फ़ॉर्म में पूरा करें",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। हर एक पर फ़ॉर्म में पूरा करें इस्तेमाल करें।",
