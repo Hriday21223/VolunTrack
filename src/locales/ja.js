@@ -1361,6 +1361,8 @@ export default {
   "Most recent": "最新",
   "Share your year": "1年を共有",
   "Shares your totals only — no names, places or notes.": "合計だけを共有します。名前、場所、メモは含みません。",
+  "Use your passkey": "パスキーを使う",
+  "or use a backup code": "またはバックアップコードを使う",
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "同期を完了するには、アカウントのメールアドレスに送った6桁のコードを入力してください。",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "同期を完了するため、アカウントのメールアドレスに6桁のコードを送ります。",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PINでのサインインはこの端末に保存されたアカウント用です。パスワードを使うか、下の「同期PINを使う」でアカウントをこちらに移してください。",
