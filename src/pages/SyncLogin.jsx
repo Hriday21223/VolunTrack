@@ -8,7 +8,7 @@ import Turnstile from '@/components/Turnstile.jsx'
 import { turnstileEnabled } from '@/lib/turnstile.js'
 import { useSeo } from '@/hooks/useSeo.js'
 import { Html5Qrcode } from 'html5-qrcode'
-import { isPasskeyCancel } from '@/lib/passkey.js'
+import { passkeyErrorMessage } from '@/lib/passkey.js'
 import { tr } from '@/lib/i18n.js'
 
 export default function SyncLogin() {
@@ -160,7 +160,7 @@ export default function SyncLogin() {
       setToast(true)
       setTimeout(() => nav('/', { replace: true }), 600)
     } catch (e) {
-      setErr(isPasskeyCancel(e) ? 'Passkey check was cancelled.' : e.message)
+      setErr(passkeyErrorMessage(e))
     } finally {
       setBusy(false)
     }

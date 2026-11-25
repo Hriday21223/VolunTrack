@@ -8,6 +8,7 @@
 // same JSON.
 
 import { isNativeApp } from '@/lib/platform.js'
+import { tr } from '@/lib/i18n.js'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 
@@ -50,6 +51,26 @@ async function getCredential(optionsJSON) {
 export function isPasskeyCancel(err) {
   const s = `${err?.name || ''} ${err?.code || ''} ${err?.message || ''}`
   return /NotAllowedError|cancel/i.test(s)
+}
+
+/**
+ * What to tell someone whose passkey check at sign-in didn't work. Browsers
+ * report "no passkey for this account on this device" and "cancelled" as the
+ * same error, so one message covers both, and every case points to the other
+ * ways on the screen (authenticator, emailed code, backup code).
+ */
+export function passkeyErrorMessage(err) {
+  const s = `${err?.name || ''} ${err?.code || ''} ${err?.message || ''}`
+  if (/NotSupported|not supported|isn.t supported|PublicKeyCredential/i.test(s)) {
+    return tr('This browser can’t use passkeys. Use a different way below.')
+  }
+  if (isPasskeyCancel(err)) {
+    return tr('No passkey was used. This device may not have a passkey for your account, or the check was cancelled. Try again, or use a different way below.')
+  }
+  if (/isn.t registered to this account|No passkey is set up/i.test(s)) {
+    return tr('That passkey isn’t set up for this account. Use a different way below.')
+  }
+  return `${err?.message || tr('Passkey check didn’t work.')} ${tr('Use a different way below.')}`
 }
 
 async function post(path, body, token) {
