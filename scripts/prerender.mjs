@@ -52,6 +52,7 @@ const ROUTES = [
   // The adviser-facing page (#491).
   '/for-schools',
   // The public API docs (#622).
+  '/developers',
   ...GUIDES.map((g) => `/guides/${g.slug}`),
 ]
 
