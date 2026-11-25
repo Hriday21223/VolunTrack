@@ -1361,6 +1361,7 @@ export default {
   "Most recent": "الأحدث",
   "Share your year": "شارك عامك",
   "Shares your totals only — no names, places or notes.": "يشارك إجمالياتك فقط — بلا أسماء أو أماكن أو ملاحظات.",
+  "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "تسجيل الدخول برمز PIN مخصص للحسابات المحفوظة على هذا الجهاز. استخدم كلمة المرور، أو \"استخدم رمز المزامنة\" بالأسفل لنقل حسابك إلى هنا.",
   "Your school needs more on this one: {what}": "تحتاج مدرستك إلى المزيد في هذا الإدخال: {what}",
   "Finish in the form": "أكمله في النموذج",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} تحتاج إلى المزيد لمدرستك. استخدم أكمله في النموذج لكل واحد.",

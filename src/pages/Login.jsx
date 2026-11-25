@@ -14,7 +14,6 @@ import QRCode from 'qrcode'
 import { isNativeApp } from '@/lib/platform.js'
 import { deviceLockAvailable, setKeepSignedIn } from '@/lib/appSession.js'
 import { isPasskeyCancel } from '@/lib/passkey.js'
-import { hasLocalPinAccount } from '@/api/index.js'
 import { tr } from '@/lib/i18n.js'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
@@ -40,8 +39,10 @@ export default function Login() {
   const loc = useLocation()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState('password')
-  // Only offered when a PIN was set on this device; see hasLocalPinAccount().
-  const [pinAvailable] = useState(hasLocalPinAccount)
+  // The Password | PIN switch is on every device (the owner's choice,
+  // Nov 24). A PIN signs in to an account saved on this device only;
+  // anyone else is pointed to their password or the sync PIN.
+  const pinAvailable = true
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [pin, setPin] = useState('')

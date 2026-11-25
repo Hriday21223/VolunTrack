@@ -1361,6 +1361,7 @@ export default {
   "Most recent": "সবশেষ",
   "Share your year": "আপনার বছর শেয়ার করুন",
   "Shares your totals only — no names, places or notes.": "শুধু আপনার মোট হিসাব শেয়ার হয় — কোনো নাম, জায়গা বা নোট নয়।",
+  "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PIN দিয়ে সাইন ইন এই ডিভাইসে সেভ করা অ্যাকাউন্টের জন্য। আপনার পাসওয়ার্ড ব্যবহার করুন, অথবা নিচে \"সিঙ্ক PIN ব্যবহার করুন\" দিয়ে আপনার অ্যাকাউন্ট এখানে আনুন।",
   "Your school needs more on this one: {what}": "আপনার স্কুলের এটিতে আরও দরকার: {what}",
   "Finish in the form": "ফর্মে শেষ করুন",
   "{n} need more for your school. Use Finish in the form on each one.": "{n}টিতে আপনার স্কুলের জন্য আরও দরকার। প্রতিটিতে ফর্মে শেষ করুন ব্যবহার করুন।",

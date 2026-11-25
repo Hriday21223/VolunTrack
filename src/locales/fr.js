@@ -1361,6 +1361,7 @@ export default {
   "Most recent": "La plus récente",
   "Share your year": "Partager ton année",
   "Shares your totals only — no names, places or notes.": "Ne partage que tes totaux — ni noms, ni lieux, ni notes.",
+  "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "La connexion par PIN est pour les comptes enregistrés sur cet appareil. Utilise ton mot de passe, ou « Utiliser le PIN de synchro » ci-dessous pour amener ton compte ici.",
   "Your school needs more on this one: {what}": "Ton école demande plus sur celle-ci : {what}",
   "Finish in the form": "Terminer dans le formulaire",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} demandent plus pour ton école. Utilise Terminer dans le formulaire sur chacune.",
