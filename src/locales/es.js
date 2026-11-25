@@ -1123,6 +1123,8 @@ export default {
   "Most recent": "Más reciente",
   "Share your year": "Comparte tu año",
   "Shares your totals only — no names, places or notes.": "Solo comparte tus totales — sin nombres, lugares ni notas.",
+  "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "Para terminar de sincronizar, escribe el código de 6 dígitos que acabamos de enviar al correo de tu cuenta.",
+  "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "Para terminar de sincronizar, enviaremos un código de 6 dígitos al correo de tu cuenta.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "El inicio con PIN es para cuentas guardadas en este dispositivo. Usa tu contraseña, o \"Usar PIN de sincronización\" abajo para traer tu cuenta aquí.",
   "Your school needs more on this one: {what}": "Tu escuela necesita más en este: {what}",
   "Finish in the form": "Terminar en el formulario",
