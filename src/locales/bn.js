@@ -4044,5 +4044,7 @@ export default {
   "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "আপনি কাউন্সেলর হলে, পদবি ও শ্রেণি অনুযায়ী আপনার শিক্ষার্থীদের বেছে নিন, যাতে শুধু তাদেরই দেখেন।",
   "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "যাচাইয়ের অপেক্ষায় থাকা ঘণ্টায়, কোনো শিক্ষার্থীর নামে ক্লিক করে শুধু তার এন্ট্রি দেখুন। প্রমাণ এখন লিংক হতে পারে, আর Google Drive ফাইল এখানেই খোলে।",
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "ইনভয়েসে এখনো পরিশোধ হয়নি বা পরিশোধিত লেখা থাকে, ফি ও কর থাকতে পারে, আর পরিশোধের আগে খুলে দেখতে পারেন।",
-  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "VolunTrack যখন স্কুল ও সংগঠনের জন্য সেশন করবে, হোম পেজে একটি ব্যানারে বিস্তারিত দেখাবে।"
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "VolunTrack যখন স্কুল ও সংগঠনের জন্য সেশন করবে, হোম পেজে একটি ব্যানারে বিস্তারিত দেখাবে।",
+  "Page {n} of {total}": "পৃষ্ঠা {n} / {total}",
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total}টির মধ্যে প্রথম {n}টি পৃষ্ঠা দেখানো হচ্ছে। সবগুলো দেখতে ফাইলটি ডাউনলোড করুন।"
 }

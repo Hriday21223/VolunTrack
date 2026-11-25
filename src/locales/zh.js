@@ -4045,5 +4045,7 @@ export default {
   "If you’re a counselor, pick the students you help, by last name and grade, so you only see them.": "如果你是辅导员，按姓氏和年级选择你负责的学生，这样你只会看到他们。",
   "In Hours to check, click a student’s name to see only their entries. Proof can now be a link, and Google Drive files open right here.": "在“待检查时长”中，点击学生姓名即可只看该生的记录。证明现在可以是链接，Google Drive 文件可直接在这里打开。",
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "发票会显示“未付款”或“已付款”，可列出费用和税，你也可以在付款前打开查看。",
-  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "当 VolunTrack 为学校和组织举办介绍会时，主页上会有横幅显示详情。"
+  "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "当 VolunTrack 为学校和组织举办介绍会时，主页上会有横幅显示详情。",
+  "Page {n} of {total}": "第 {n} 页，共 {total} 页",
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "显示前 {n} 页，共 {total} 页。下载文件可查看全部。"
 }

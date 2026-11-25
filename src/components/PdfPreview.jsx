@@ -4,6 +4,65 @@ import { tr } from '@/lib/i18n.js'
 import { guardScreen } from '@/lib/screenGuard.js'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import { isNativeApp } from '@/lib/platform.js'
+import { loadPdfJs } from '@/lib/paperLogPdf.js'
+
+// Pages drawn at most; longer files say so and are complete in Download.
+const MAX_PREVIEW_PAGES = 40
+
+// The pages as pictures (pdf.js), not the browser's PDF viewer: the viewer
+// can save the clean preview with Cmd/Ctrl+S even with its toolbar hidden,
+// and pictures also show on iPhones, whose browser won't show a PDF inline.
+// Right-click is turned off on them so "Save image" isn't one click away.
+function PdfPages({ blob, title, onError, onMore }) {
+  const box = useRef(null)
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
+  const onMoreRef = useRef(onMore)
+  onMoreRef.current = onMore
+  useEffect(() => {
+    const el = box.current
+    let cancelled = false
+    let doc = null
+    ;(async () => {
+      const pdfjs = await loadPdfJs()
+      doc = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise
+      if (cancelled) return
+      if (doc.numPages > MAX_PREVIEW_PAGES) onMoreRef.current?.(doc.numPages)
+      const width = Math.max(280, el.clientWidth - 32)
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      for (let n = 1; n <= Math.min(doc.numPages, MAX_PREVIEW_PAGES); n++) {
+        const page = await doc.getPage(n)
+        if (cancelled) return
+        const fit = width / page.getViewport({ scale: 1 }).width
+        const viewport = page.getViewport({ scale: fit * dpr })
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.ceil(viewport.width)
+        canvas.height = Math.ceil(viewport.height)
+        canvas.style.width = `${Math.round(viewport.width / dpr)}px`
+        canvas.style.maxWidth = '100%'
+        canvas.style.height = 'auto'
+        canvas.className = 'block mx-auto mb-4 bg-white shadow'
+        canvas.setAttribute('role', 'img')
+        canvas.setAttribute('aria-label', `${title || 'PDF'}: ${tr('Page {n} of {total}', { n, total: doc.numPages })}`)
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
+        if (cancelled) return
+        el.appendChild(canvas)
+      }
+    })().catch((e) => { if (!cancelled) onErrorRef.current?.(e?.message || 'Could not show the PDF.') })
+    return () => {
+      cancelled = true
+      doc?.destroy()
+      el.replaceChildren()
+    }
+  }, [blob, title])
+  return (
+    <div
+      ref={box}
+      onContextMenu={(e) => e.preventDefault()}
+      className="w-full h-full overflow-auto p-4 bg-earth-100 select-none"
+    />
+  )
+}
 
 /**
  * Full-screen preview for a generated PDF. Schools and orgs review invoices
@@ -19,14 +78,15 @@ import { isNativeApp } from '@/lib/platform.js'
 // `allowDownload={false}` hides our Download button.
 // Previews are clean and downloads are watermarked: getBlob is called with
 // { watermark: false } for what's shown and { watermark: true } for Download
-// (every PDF builder in src/lib/export.js takes `watermark`). The browser's
-// own PDF toolbar is always hidden (#toolbar=0), so its save button can't
-// hand out the clean copy. In the phone apps the preview is also guarded
+// (every PDF builder in src/lib/export.js takes `watermark`). The preview is
+// drawn as pictures (PdfPages), never handed to the browser's PDF viewer,
+// so there's no clean file in the page to save. In the phone apps the preview is also guarded
 // (src/lib/screenGuard.js): Android blocks screenshots while it's open, and
 // iOS shows a "Screenshots aren't allowed" page in the screenshot instead,
 // closes the preview after one, and hides it while the screen is recorded.
 export default function PdfPreview({ title, note, filename, getBlob, onClose, action, allowDownload = true }) {
-  const [url, setUrl] = useState(null)
+  const [blob, setBlob] = useState(null)
+  const [morePages, setMorePages] = useState(0)
   const [error, setError] = useState('')
   // iOS: true while the screen is being recorded or mirrored.
   // Screenshot covers are for students, families, schools and organizers,
@@ -45,25 +105,20 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
   getBlobRef.current = getBlob
 
   useEffect(() => {
-    let objectUrl = null
     let cancelled = false
 
     Promise.resolve()
       .then(() => getBlobRef.current({ watermark: false }))
-      .then((blob) => {
-        if (cancelled || !blob) return
-        blobRef.current = blob
-        objectUrl = URL.createObjectURL(blob)
-        setUrl(objectUrl)
+      .then((b) => {
+        if (cancelled || !b) return
+        blobRef.current = b
+        setBlob(b)
       })
       .catch((e) => {
         if (!cancelled) setError(e?.message || 'Could not build the PDF.')
       })
 
-    return () => {
-      cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
+    return () => { cancelled = true }
     // Mount-only on purpose; see getBlobRef above.
   }, [])
 
@@ -86,8 +141,7 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
   //  - Print Screen (Windows): only reported after the capture, so this
   //    blanks it for the next ones;
   //  - the window losing focus (a screenshot tool opening, another app).
-  // Clicking into the PDF itself also blurs this window, so a blur only
-  // counts when the document as a whole has lost focus. Phone apps use
+  // A blur only counts when the document as a whole has lost focus. Phone apps use
   // the native guard above instead.
   useEffect(() => {
     if (isNativeApp || !guarded) return undefined
@@ -139,9 +193,10 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
     a.href = URL.createObjectURL(file)
     a.download = filename || 'document.pdf'
     a.click()
-    // The anchor holds its own URL, so revoke that one rather than the
-    // preview's — revoking the preview's would blank the frame.
-    URL.revokeObjectURL(a.href)
+    // Not straight away: some browsers (Safari) are still reading the file
+    // after click() returns, and revoking now cancels the download.
+    const href = a.href
+    setTimeout(() => URL.revokeObjectURL(href), 60_000)
   }
 
   return (
@@ -157,15 +212,16 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
           <div className="min-w-0">
             <h2 className="text-sm font-medium truncate">{title || tr('Preview')}</h2>
             {note && <p className="text-xs text-earth-400 truncate">{note}</p>}
+            {morePages > 0 && <p className="text-xs text-earth-400">{tr('Showing the first {n} of {total} pages. Download the file for all of them.', { n: MAX_PREVIEW_PAGES, total: morePages })}</p>}
           </div>
           <div className="flex items-center gap-2">
             {action && (
-              <button type="button" onClick={() => action.onClick()} disabled={!url || action.busy} className="btn-sm btn-primary">
+              <button type="button" onClick={() => action.onClick()} disabled={!blob || action.busy} className="btn-sm btn-primary">
                 {action.icon}{action.label}
               </button>
             )}
             {allowDownload && (
-              <button type="button" onClick={download} disabled={!url} className="btn-sm btn-ghost">
+              <button type="button" onClick={download} disabled={!blob} className="btn-sm btn-ghost">
                 <Download className="w-4 h-4 mr-1" />{' '}{tr('Download')}
               </button>
             )}
@@ -177,17 +233,15 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
 
         <div className="bg-white rounded-xl overflow-hidden grid place-items-center" style={{ height: '78vh' }}>
           {error && <p className="text-sm text-red-600 p-6">{error}</p>}
-          {!error && !url && <Loader2 className="w-6 h-6 animate-spin text-earth-500" />}
-          {/* Some browsers (notably iOS Safari) won't render a PDF inline; the
-              Download button above stays the fallback. */}
-          {/* Not <embed>: the CSP's object-src 'none' blocks it, which left
-              every preview blank on the live site. frame-src allows blob:. */}
-          {url && captured && <p className="text-sm text-earth-600 p-6 text-center">{tr('Hidden while your screen is being recorded.')}</p>}
-          {/* Kept mounted while shielded (just hidden) so the PDF doesn't
-              reload and lose its place when it comes back. */}
-          {url && !captured && (
+          {!error && !blob && <Loader2 className="w-6 h-6 animate-spin text-earth-500" />}
+          {blob && captured && <p className="text-sm text-earth-600 p-6 text-center">{tr('Hidden while your screen is being recorded.')}</p>}
+          {/* Kept mounted while shielded (just hidden) so the pages aren't
+              drawn again and the scroll place is kept when it comes back. */}
+          {blob && !captured && !error && (
             <div className="relative w-full h-full">
-              <iframe src={`${url}#toolbar=0`} title={title || tr('PDF preview')} className="w-full h-full" style={shielded ? { visibility: 'hidden' } : undefined} />
+              <div className="w-full h-full" style={shielded ? { visibility: 'hidden' } : undefined}>
+                <PdfPages blob={blob} title={title} onError={setError} onMore={setMorePages} />
+              </div>
               {shielded && (
                 <div className="absolute inset-0 grid place-items-center bg-[#0b120e] text-white text-lg font-semibold p-6 text-center">
                   {tr('Screenshots aren’t allowed here.')}
