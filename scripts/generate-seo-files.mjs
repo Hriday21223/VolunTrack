@@ -88,7 +88,14 @@ const SITEMAP_ENTRIES = [
   // Guides (src/lib/guides.js) are what students and parents search for.
   { path: '/guides', changefreq: 'monthly', priority: '0.6' },
   ...GUIDES.map((g) => ({ path: `/guides/${g.slug}`, changefreq: 'monthly', priority: '0.7' })),
+  // The public API docs (#622), prerendered like the rest.
+  { path: '/developers', changefreq: 'monthly', priority: '0.5' },
 ]
+
+// Search engines mostly ignore changefreq/priority and use <lastmod> to decide
+// what to re-crawl, so every entry carries the date of this build (the day
+// the site last changed). YYYY-MM-DD in UTC, as the sitemap format expects.
+const LASTMOD = new Date().toISOString().slice(0, 10)
 
 // AI / LLM crawlers we explicitly welcome so the marketing pages can be read,
 // summarised, and cited by answer engines. A named User-agent group is the
@@ -134,16 +141,25 @@ const llmsTxt = `# VolunTrack
 - [For schools](${SITE_URL}/for-schools): for NHS, Key Club and service-club advisers — approving hours, requirements, QR check-in, reports, and the starter kit (join link, QR flyer, ready-to-send messages)
 - [Guides](${SITE_URL}/guides): practical articles on logging service hours
 ${GUIDES.map((g) => `- [${g.title}](${SITE_URL}/guides/${g.slug}): ${g.description}`).join('\n')}
+- [Developers](${SITE_URL}/developers): the read-only API and webhooks for schools, districts and event organizers
 - [Contact](${SITE_URL}/contact): support and feedback
 - [System status](${SITE_URL}/status): live service status
 
 ## Key facts
 
-- Free for individual students and volunteers; schools and organizations are on custom pricing
-- Works with no account, entirely in the browser; an optional server account adds cross-device sync, school linking, and two-factor authentication
-- Progressive Web App — installable and works offline after the first visit
-- Supervisor verification uses a one-time email link; the supervisor needs no account
-- Exports: PDF reports, CSV, and printable service certificates
+- Free for students, volunteers and parents. One club or class with up to 50 students is free too, with every feature; a whole school, a larger club or an organization (district) is paid, with a quote from VolunTrack
+- For NHS, Key Club, service clubs, schools and districts in the US; built for community service and volunteer hour requirements
+- Students log hours in about a minute (date, hours, activity, place, supervisor), add proof as a photo, file or link, and see progress toward their goal or school requirement
+- Hours can be confirmed by a supervisor from an emailed link (no account needed), by the event organizer, by QR check-in and check-out at events, or by the school's adviser in one place
+- Scan a paper log: a photo or PDF of a paper hours sheet becomes entries to check, and a blank log can be printed
+- Reports: PDF and CSV hours reports, printable certificates, a graduation report for counselors, an impact report, Common App activity entries, and a signed transcript anyone can verify
+- Schools set their own rules: required fields, hour requirements by grade, approved places, award levels (e.g. Bronze/Silver/Gold), deadlines with automatic reminders
+- Event organizers (nonprofits, clubs) post events with shifts, waitlists, waivers and QR or kiosk check-in, then sign everyone's hours in one place
+- Parents link to their student's account, see their hours, set a weekly goal and get a weekly summary
+- Available in 11 languages: English, Spanish, Vietnamese, Chinese, Hindi, Arabic, Portuguese, French, Bengali, Russian and Japanese
+- Privacy: VolunTrack never sells personal data; students under 13 need a parent's approval to sign up; people can download their data anytime
+- Works in any web browser and installs as an app (Progressive Web App); works offline after the first visit
+- A read-only API and webhooks for schools, districts and organizers ([Developers](${SITE_URL}/developers))
 
 ## Policies
 
@@ -155,6 +171,7 @@ const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${SITEMAP_ENTRIES.map(({ path, changefreq, priority }) => `  <url>
     <loc>${SITE_URL}${path}</loc>
+    <lastmod>${LASTMOD}</lastmod>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`).join('\n')}
