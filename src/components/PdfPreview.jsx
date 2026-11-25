@@ -59,7 +59,7 @@ function PdfPages({ blob, title, onError, onMore }) {
     <div
       ref={box}
       onContextMenu={(e) => e.preventDefault()}
-      className="w-full h-full overflow-auto p-4 bg-earth-100 select-none"
+      className="absolute inset-0 overflow-auto overscroll-contain p-4 bg-earth-100 select-none"
     />
   )
 }
@@ -231,15 +231,18 @@ export default function PdfPreview({ title, note, filename, getBlob, onClose, ac
           </div>
         </div>
 
-        <div className="bg-white rounded-xl overflow-hidden grid place-items-center" style={{ height: '78vh' }}>
+        <div className="relative bg-white rounded-xl overflow-hidden grid place-items-center" style={{ height: '78vh' }}>
           {error && <p className="text-sm text-red-600 p-6">{error}</p>}
           {!error && !blob && <Loader2 className="w-6 h-6 animate-spin text-earth-500" />}
           {blob && captured && <p className="text-sm text-earth-600 p-6 text-center">{tr('Hidden while your screen is being recorded.')}</p>}
           {/* Kept mounted while shielded (just hidden) so the pages aren't
               drawn again and the scroll place is kept when it comes back. */}
           {blob && !captured && !error && (
-            <div className="relative w-full h-full">
-              <div className="w-full h-full" style={shielded ? { visibility: 'hidden' } : undefined}>
+            // Pinned to the frame (absolute, not h-full: a grid item grows to
+            // its content, which left the pages taller than the frame and
+            // nothing to scroll).
+            <div className="absolute inset-0">
+              <div className="absolute inset-0" style={shielded ? { visibility: 'hidden' } : undefined}>
                 <PdfPages blob={blob} title={title} onError={setError} onMore={setMorePages} />
               </div>
               {shielded && (
