@@ -24,6 +24,16 @@ const limiter = rateLimit({
 // generous window costs nothing but avoids silently dropping a reminder.
 const LOOKBACK_MS = 60 * 60 * 1000
 
+// The cron calls run-due every 15 minutes. Reading every reminder each time
+// woke Neon's compute all day long and used up the free plan's monthly
+// allowance (Nov 2026). So, like the webhook worker, the backend remembers in
+// memory when the next reminder is due and only reads the database then.
+// Anything that changes reminders (PUT /sync) forgets it, and a restart
+// starts with nothing remembered, so the next run reads once. One backend
+// instance, so memory is enough.
+let nextFireAt = null // ms; null = unknown, read the database
+export function forgetNextReminder() { nextFireAt = null }
+
 const KINDS = ['one-off', 'daily', 'weekly', 'monthly']
 const MAX_REMINDERS = 100
 
@@ -117,6 +127,7 @@ router.put('/sync', limiter, requireDb, requireAuth(), async (req, res) => {
   }
 
   try {
+    forgetNextReminder() // before any change, so a sync that fails halfway can't leave it stale
     await query('DELETE FROM reminders WHERE user_id = $1', [req.auth.sub])
     for (const row of rows) {
       await query(
@@ -135,6 +146,7 @@ router.put('/sync', limiter, requireDb, requireAuth(), async (req, res) => {
         row,
       )
     }
+    forgetNextReminder()
     return res.json({ ok: true, synced: rows.length })
   } catch (error) {
     console.error('reminder sync failed:', error)
@@ -152,9 +164,24 @@ router.post('/internal/run-due', cronLimiter(), requireCronKey, requireDb, async
   const dryRun = req.body?.dryRun === true
   const summary = { considered: 0, due: 0, sent: 0, failed: 0, pruned: 0, skippedAlreadySent: 0 }
 
+  // Nothing due yet, as far as we know: answer without touching the database.
+  if (!dryRun && nextFireAt != null && now < nextFireAt) {
+    return res.json({ ok: true, dryRun, ...summary, skipped: 'nothing due', nextDueInMinutes: Math.ceil((nextFireAt - now) / 60000) })
+  }
+
   try {
     const { rows: reminders } = await query('SELECT * FROM reminders WHERE enabled = true')
     summary.considered = reminders.length
+
+    // When the next one after now is due, for the check above next time.
+    let soonest = Infinity
+    for (const r of reminders) {
+      const upcoming = nextOccurrenceUtc({
+        kind: r.kind, time: r.time, weekday: r.weekday, dayOfMonth: r.day_of_month,
+        startDate: r.start_date, endDate: r.end_date, enabled: r.enabled, timezone: r.timezone,
+      }, now + 1)
+      if (upcoming != null && upcoming < soonest) soonest = upcoming
+    }
 
     for (const r of reminders) {
       const fireAt = nextOccurrenceUtc({
@@ -204,6 +231,7 @@ router.post('/internal/run-due', cronLimiter(), requireCronKey, requireDb, async
       }
     }
 
+    if (!dryRun) nextFireAt = soonest
     return res.json({ ok: true, dryRun, ...summary })
   } catch (error) {
     console.error('reminder run-due failed:', error)
