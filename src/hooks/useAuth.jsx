@@ -363,7 +363,7 @@ export function AuthProvider({ children }) {
       // finishes with verifyTotp(tempToken, code) — or
       // verifyPasskey when `methods` includes 'passkey'.
       if (data.requiresTotp) {
-        return { requiresTotp: true, tempToken: data.tempToken, methods: data.methods || ['totp'] }
+        return { requiresTotp: true, tempToken: data.tempToken, methods: data.methods || ['totp'], emailSent: Boolean(data.emailSent) }
       }
 
       // Store the token for future authenticated requests

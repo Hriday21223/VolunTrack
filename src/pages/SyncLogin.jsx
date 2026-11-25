@@ -18,7 +18,7 @@ export default function SyncLogin() {
     path: '/sync-login',
   })
 
-  const { loginWithSyncPin, verifyTotp, verifyPasskey, verifyBackupCode } = useAuth()
+  const { loginWithSyncPin, verifyTotp, verifyPasskey, verifyBackupCode, sendEmailCode, verifyEmailCode } = useAuth()
   const nav = useNavigate()
   const [syncPin, setSyncPin] = useState('')
   // A sync PIN alone signs an account in, so every attempt — typed or scanned —
@@ -48,6 +48,11 @@ export default function SyncLogin() {
   const [totpMethods, setTotpMethods] = useState(['totp'])
   const [totpCode, setTotpCode] = useState('')
   const [useBackupCode, setUseBackupCode] = useState(false)
+  // Emailed-code second step: the account's own, or the one every sync PIN
+  // without another second step needs (sent by the server straight away).
+  const [emailMode, setEmailMode] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailCode, setEmailCode] = useState('')
   // A passkey-only account has no authenticator app: the code box can only
   // ever take one of its backup codes.
   const backupOnly = !totpMethods.includes('totp')
@@ -71,21 +76,59 @@ export default function SyncLogin() {
     }
   }, [])
 
+  // What happens after the sync PIN (typed or scanned) is accepted: the
+  // second step if one is needed (it always is now), else straight in.
+  const afterSync = (result) => {
+    if (result?.requiresTotp) {
+      const methods = result.methods || ['totp']
+      setTotpTempToken(result.tempToken)
+      setTotpMethods(methods)
+      // Emailed code first when it's the only way, or already on its way.
+      setEmailMode(result.emailSent || (methods.length === 1 && methods[0] === 'email'))
+      setEmailSent(Boolean(result.emailSent))
+      setSyncPin('')
+      setBusy(false)
+      return
+    }
+    setToast(true)
+    setTimeout(() => nav('/', { replace: true }), 600)
+  }
+
+  const onSendEmail = async () => {
+    setErr('')
+    setBusy(true)
+    try {
+      await sendEmailCode(totpTempToken)
+      setEmailSent(true)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onSubmitEmail = async (e) => {
+    e.preventDefault()
+    setErr('')
+    setBusy(true)
+    try {
+      await verifyEmailCode(totpTempToken, emailCode.trim())
+      setToast(true)
+      setTimeout(() => nav('/', { replace: true }), 600)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const onSubmit = async (e) => {
     e.preventDefault()
     setErr('')
     if (captchaMissing) { setErr(tr('Please complete the CAPTCHA below.')); return }
     setBusy(true)
     try {
-      const result = await syncWithCaptcha(syncPin)
-      if (result?.requiresTotp) {
-        setTotpTempToken(result.tempToken)
-        setTotpMethods(result.methods || ['totp'])
-        setSyncPin('')
-        return
-      }
-      setToast(true)
-      setTimeout(() => nav('/', { replace: true }), 600)
+      afterSync(await syncWithCaptcha(syncPin))
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -146,10 +189,7 @@ export default function SyncLogin() {
             setSyncPin(pin)
             setBusy(true)
             syncWithCaptcha(pin)
-              .then(() => {
-                setToast(true)
-                setTimeout(() => nav('/', { replace: true }), 600)
-              })
+              .then(afterSync)
               .catch((e) => {
                 setErr(e.message)
                 setBusy(false)
@@ -179,9 +219,7 @@ export default function SyncLogin() {
       if (pin.length === 5) {
         setSyncPin(pin)
         scannerInstance.current = null
-        await syncWithCaptcha(pin)
-        setToast(true)
-        setTimeout(() => nav('/', { replace: true }), 600)
+        afterSync(await syncWithCaptcha(pin))
       } else {
         setErr(tr('Invalid QR code — no 5-digit PIN found.'))
         setBusy(false)
@@ -242,6 +280,54 @@ export default function SyncLogin() {
                   <CameraOff className="w-4 h-4 mr-2" />{' '}{tr('Cancel')}
                 </button>
               </div>
+            ) : totpTempToken && emailMode ? (
+              <>
+                <p className="text-sm text-slate-300 mb-6">
+                  {emailSent
+                    ? tr('To finish syncing, enter the 6-digit code we just emailed to your account’s email address.')
+                    : tr('To finish syncing, we’ll email a 6-digit code to your account’s email address.')}
+                </p>
+                {emailSent ? (
+                  <form onSubmit={onSubmitEmail} className="space-y-5">
+                    <div>
+                      <label className="label text-slate-300" htmlFor="emailCode">{tr('6-digit code')}</label>
+                      <input
+                        id="emailCode"
+                        type="text"
+                        required
+                        autoFocus
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        maxLength={6}
+                        className="input bg-slate-900/80 text-white border-white/10 text-center text-2xl tracking-widest font-mono"
+                        placeholder="123456"
+                        value={emailCode}
+                        onChange={(e) => setEmailCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                      />
+                    </div>
+                    <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
+                      {busy ? tr('Verifying…') : <>{tr('Verify and sync')}{' '}<ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
+                ) : (
+                  <button type="button" onClick={onSendEmail} className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
+                    {busy ? tr('Sending…') : tr('Email me a code')}
+                  </button>
+                )}
+
+                {err && <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">{err}</div>}
+
+                {emailSent && (
+                  <button type="button" onClick={onSendEmail} disabled={busy} className="mt-4 w-full text-center text-sm text-sky-200 font-semibold hover:text-white">
+                    {tr('Send a new code')}
+                  </button>
+                )}
+                {(totpMethods.includes('totp') || totpMethods.includes('passkey')) && (
+                  <button type="button" onClick={() => { setEmailMode(false); setErr('') }} className="mt-3 w-full text-center text-sm text-sky-200 font-semibold hover:text-white">
+                    {totpMethods.includes('totp') ? tr('Use your authenticator app instead') : tr('Use a passkey instead')}
+                  </button>
+                )}
+              </>
             ) : totpTempToken ? (
               <>
                 <p className="text-sm text-slate-300 mb-6">
@@ -286,6 +372,11 @@ export default function SyncLogin() {
                     className="mt-4 w-full text-center text-sm text-sky-200 font-semibold hover:text-white"
                   >
                     {useBackupCode ? tr('Use your authenticator app instead') : tr('Use a backup code instead')}
+                  </button>
+                )}
+                {totpMethods.includes('email') && (
+                  <button type="button" onClick={() => { setEmailMode(true); setErr('') }} className="mt-3 w-full text-center text-sm text-sky-200 font-semibold hover:text-white">
+                    {tr('Email me a code instead')}
                   </button>
                 )}
                 {totpMethods.includes('passkey') && (

@@ -55,9 +55,11 @@ export function signToken(user, { expiresIn = TOKEN_TTL, extra = null } = {}) {
   )
 }
 
-export function signTempToken(user) {
+// `extra` adds claims, e.g. { syncEmail: true } for a sync-PIN sign-in whose
+// second step is an emailed code even though the account hasn't turned one on.
+export function signTempToken(user, extra = null) {
   return jwt.sign(
-    { sub: user.id, role: user.role, email: user.email, purpose: 'totp' },
+    { ...(extra || {}), sub: user.id, role: user.role, email: user.email, purpose: 'totp' },
     secret(),
     { expiresIn: '5m' },
   )

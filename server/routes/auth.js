@@ -453,7 +453,8 @@ router.post('/email-otp/send', authLimiter, requireDb, async (req, res) => {
   try {
     const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
     const row = rows[0]
-    if (!row || !row.email_otp_enabled || !emailOtpAllowed(row)) {
+    // A sync-PIN sign-in's emailed code works for any account (syncEmail).
+    if (!row || (!payload.syncEmail && (!row.email_otp_enabled || !emailOtpAllowed(row)))) {
       return res.status(400).json({ error: 'Email codes are not turned on for this account.' })
     }
     const problem = await issueEmailOtp(row, 'login')
@@ -472,7 +473,8 @@ router.post('/email-otp/challenge', authLimiter, requireDb, async (req, res) => 
   try {
     const { rows } = await query('SELECT * FROM users WHERE id = $1', [payload.sub])
     const row = rows[0]
-    if (!row || !row.email_otp_enabled || !emailOtpAllowed(row)) {
+    // A sync-PIN sign-in's emailed code works for any account (syncEmail).
+    if (!row || (!payload.syncEmail && (!row.email_otp_enabled || !emailOtpAllowed(row)))) {
       return res.status(400).json({ error: 'Email codes are not turned on for this account.' })
     }
     const problem = await useEmailOtp(row.id, 'login', req.body.code)
@@ -1271,11 +1273,20 @@ router.post('/sync-login', authLimiter, requireDb, verifyTurnstile(), async (req
     }
     const user = publicUser({ ...rows[0], sync_pin: null, sync_pin_expires_at: null })
 
+    // A sync PIN is never the whole sign-in (the owner's rule, Nov 24): the
+    // account's own second step if it has one (authenticator, passkey,
+    // emailed code)...
     const gate = await secondFactorGate(rows[0])
     if (gate) return res.status(gate.status).json(gate.body)
 
-    noteSignIn(req, user) // new-device email (#886); not awaited
-    return res.json({ token: signToken(user), user })
+    // ...and otherwise a 6-digit code emailed to the account, sent now. The
+    // temp token's syncEmail claim lets /email-otp/send and /challenge take
+    // it although the account hasn't turned emailed codes on.
+    // The PIN is already spent, so a resend refused for being under a minute
+    // (429) isn't a dead end: the code from a moment ago is still waiting.
+    const problem = await issueEmailOtp(rows[0], 'login')
+    if (problem && problem.status !== 429) return res.status(problem.status).json({ error: problem.error })
+    return res.json({ requiresTotp: true, methods: ['email'], emailSent: true, tempToken: signTempToken(user, { syncEmail: true }) })
   } catch (error) {
     console.error('sync-login failed:', error)
     return res.status(500).json({ error: 'Could not sign in with sync PIN.' })

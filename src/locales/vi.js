@@ -1484,6 +1484,8 @@ export default {
   "Most recent": "Gần đây nhất",
   "Share your year": "Chia sẻ năm của bạn",
   "Shares your totals only — no names, places or notes.": "Chỉ chia sẻ tổng số, không có tên, địa điểm hay ghi chú.",
+  "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "Để hoàn tất đồng bộ, hãy nhập mã 6 chữ số chúng tôi vừa gửi đến email tài khoản của bạn.",
+  "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "Để hoàn tất đồng bộ, chúng tôi sẽ gửi mã 6 chữ số đến email tài khoản của bạn.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "Đăng nhập bằng PIN dành cho tài khoản lưu trên thiết bị này. Hãy dùng mật khẩu, hoặc \"Dùng PIN đồng bộ\" bên dưới để chuyển tài khoản sang đây.",
   "Your school needs more on this one: {what}": "Trường của bạn cần thêm cho mục này: {what}",
   "Finish in the form": "Hoàn tất trong biểu mẫu",
