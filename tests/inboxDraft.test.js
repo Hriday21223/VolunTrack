@@ -40,5 +40,6 @@ test('a French partnership question gets a French reply with the price answer', 
   const d = generateDraft({ name: 'Ana', subject: 'School or organization partnership', message: 'Bonjour, combien coûte VolunTrack pour notre école ? Nous avons des élèves', language: null }, 'https://example.org')
   assert.match(d, /^Bonjour Ana/)
   assert.match(d, /Côté prix/)
-  assert.ok(d.includes('https://example.org/for-schools'))
+  // The whole link, not a substring (CodeQL js/incomplete-url-substring-sanitization).
+  assert.ok(d.split(/\s+/).some((w) => /^https:\/\/example\.org\/for-schools[.,)]?$/.test(w)))
 })

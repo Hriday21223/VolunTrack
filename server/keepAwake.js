@@ -25,12 +25,16 @@
 const ACTIVE_WINDOW_MS = 20 * 60 * 1000
 let lastActivityAt = Date.now() // whoever woke it counts as activity
 
-const NOT_PEOPLE = /^\/api\/(status\/health|og\/|embed\/)|\/internal\//
+// Paths that are never a person: the outside monitor, link-preview robots,
+// the embed widget. Anchored at the start; scheduled jobs are caught
+// separately by their x-cron-key header and their /internal/ path.
+const NOT_PEOPLE = /^\/api\/(?:status\/health$|og\/|embed\/)/
 export function noteActivity(req, _res, next) {
   if (req.path.startsWith('/api/')
     && !req.get('x-keep-awake')
     && !req.get('x-cron-key')
-    && !NOT_PEOPLE.test(req.path)) {
+    && !NOT_PEOPLE.test(req.path)
+    && !req.path.includes('/internal/')) {
     lastActivityAt = Date.now()
   }
   next()
