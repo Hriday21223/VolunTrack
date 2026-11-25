@@ -142,6 +142,10 @@ export default defineConfig(({ mode }) => {
           // Web Push handlers. generateSW can't host custom SW code, but it
           // can importScripts one — see public/push-sw.js.
           importScripts: ['/push-sw.js'],
+          // Opening a real file's address (sitemap.xml, robots.txt, llms.txt,
+          // /.well-known/…, the API) must reach the file, not be answered with
+          // the app, which showed its own 404 for /sitemap.xml.
+          navigateFallbackDenylist: [/^\/api\//, /^\/\.well-known\//, /\.(?:xml|txt|json|pdf|pkpass)$/i],
         },
       }),
     ],
