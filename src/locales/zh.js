@@ -1484,6 +1484,7 @@ export default {
   "Most recent": "最近一次",
   "Share your year": "分享你的年度回顾",
   "Shares your totals only — no names, places or notes.": "只分享总数，不含姓名、地点或备注。",
+  "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PIN 登录仅适用于保存在此设备上的账户。请使用密码，或点击下方“使用同步 PIN”把账户转到这里。",
   "Your school needs more on this one: {what}": "学校对这条还需要：{what}",
   "Finish in the form": "在表单中完成",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} 条需要补充学校要求的信息。请对每条使用“在表单中完成”。",

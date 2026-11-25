@@ -1361,6 +1361,7 @@ export default {
   "Most recent": "最新",
   "Share your year": "1年を共有",
   "Shares your totals only — no names, places or notes.": "合計だけを共有します。名前、場所、メモは含みません。",
+  "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PINでのサインインはこの端末に保存されたアカウント用です。パスワードを使うか、下の「同期PINを使う」でアカウントをこちらに移してください。",
   "Your school needs more on this one: {what}": "学校はこの記録にさらに必要としています：{what}",
   "Finish in the form": "フォームで仕上げる",
   "{n} need more for your school. Use Finish in the form on each one.": "{n}件は学校の要件が足りません。それぞれ「フォームで仕上げる」を使ってください。",

@@ -14,7 +14,7 @@ import { signInWithPasskey } from '@/lib/passkey.js'
 import { syncNativeReminders } from '@/lib/nativeReminders.js'
 import { clearWidget } from '@/lib/widget.js'
 import { forgetNativePushOnSignOut } from '@/lib/nativePush.js'
-import { syncLanguageWithServer } from '@/lib/i18n.js'
+import { syncLanguageWithServer, tr } from '@/lib/i18n.js'
 
 const AuthContext = createContext(null)
 
@@ -324,7 +324,7 @@ export function AuthProvider({ children }) {
 
   const loginWithPin = useCallback(async (email, pin) => {
     const account = findUserByEmail(email)
-    if (!account) throw new Error('No account with that email.')
+    if (!account) throw new Error(tr('PIN sign-in is for accounts saved on this device. Use your password, or "Use sync PIN" below to bring your account here.'))
     if (!verifyPin(account, pin)) throw new Error('Incorrect PIN.')
     const { passwordHash, pinHash, resetPinCode, resetPinCodeExpiresAt, ...safe } = account
     write(SESSION_KEY, safe)

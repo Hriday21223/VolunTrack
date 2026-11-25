@@ -1361,6 +1361,7 @@ export default {
   "Most recent": "सबसे हाल की",
   "Share your year": "अपना साल साझा करें",
   "Shares your totals only — no names, places or notes.": "सिर्फ़ आपके कुल आँकड़े साझा होते हैं — कोई नाम, जगह या नोट नहीं।",
+  "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PIN से साइन इन इस डिवाइस पर सेव खातों के लिए है। अपना पासवर्ड इस्तेमाल करें, या नीचे \"सिंक PIN इस्तेमाल करें\" से अपना खाता यहाँ लाएँ।",
   "Your school needs more on this one: {what}": "आपके स्कूल को इसमें और चाहिए: {what}",
   "Finish in the form": "फ़ॉर्म में पूरा करें",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। हर एक पर फ़ॉर्म में पूरा करें इस्तेमाल करें।",

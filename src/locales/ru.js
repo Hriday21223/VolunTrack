@@ -1361,6 +1361,7 @@ export default {
   "Most recent": "Последнее",
   "Share your year": "Поделиться годом",
   "Shares your totals only — no names, places or notes.": "Показывает только итоги — без имён, мест и заметок.",
+  "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "Вход по PIN — для аккаунтов, сохранённых на этом устройстве. Используй пароль или «Войти по PIN синхронизации» ниже, чтобы перенести аккаунт сюда.",
   "Your school needs more on this one: {what}": "Школе нужно больше для этой записи: {what}",
   "Finish in the form": "Закончить в форме",
   "{n} need more for your school. Use Finish in the form on each one.": "{n} требуют больше для школы. Нажми «Закончить в форме» у каждой.",
