@@ -13,7 +13,7 @@ import { resolveTenant, forgetTenantCode } from '@/lib/tenant.js'
 import QRCode from 'qrcode'
 import { isNativeApp } from '@/lib/platform.js'
 import { deviceLockAvailable, setKeepSignedIn } from '@/lib/appSession.js'
-import { isPasskeyCancel } from '@/lib/passkey.js'
+import { passkeyErrorMessage } from '@/lib/passkey.js'
 import { tr } from '@/lib/i18n.js'
 import LanguagePicker from '@/components/LanguagePicker.jsx'
 import AccessibilitySettings from '@/components/AccessibilitySettings.jsx'
@@ -312,7 +312,7 @@ export default function Login() {
       setToast(true)
       setTimeout(() => nav(fromPath(loc), { replace: true }), 600)
     } catch (e) {
-      setErr(isPasskeyCancel(e) ? tr('Passkey check was cancelled.') : e.message)
+      setErr(passkeyErrorMessage(e))
     } finally {
       setBusy(false)
     }
