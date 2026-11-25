@@ -1484,6 +1484,8 @@ export default {
   "Most recent": "最近一次",
   "Share your year": "分享你的年度回顾",
   "Shares your totals only — no names, places or notes.": "只分享总数，不含姓名、地点或备注。",
+  "Use your passkey": "使用你的通行密钥",
+  "or use a backup code": "或使用备用码",
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "要完成同步，请输入我们刚发送到你账户邮箱的 6 位验证码。",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "要完成同步，我们会向你账户的邮箱发送一个 6 位验证码。",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PIN 登录仅适用于保存在此设备上的账户。请使用密码，或点击下方“使用同步 PIN”把账户转到这里。",

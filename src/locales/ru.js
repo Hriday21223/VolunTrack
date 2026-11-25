@@ -1361,6 +1361,8 @@ export default {
   "Most recent": "Последнее",
   "Share your year": "Поделиться годом",
   "Shares your totals only — no names, places or notes.": "Показывает только итоги — без имён, мест и заметок.",
+  "Use your passkey": "Использовать ключ доступа",
+  "or use a backup code": "или используй резервный код",
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "Чтобы закончить синхронизацию, введи 6-значный код, который мы только что отправили на почту аккаунта.",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "Чтобы закончить синхронизацию, мы отправим 6-значный код на почту аккаунта.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "Вход по PIN — для аккаунтов, сохранённых на этом устройстве. Используй пароль или «Войти по PIN синхронизации» ниже, чтобы перенести аккаунт сюда.",

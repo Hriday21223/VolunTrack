@@ -1361,6 +1361,8 @@ export default {
   "Most recent": "Mais recente",
   "Share your year": "Compartilhe seu ano",
   "Shares your totals only — no names, places or notes.": "Compartilha só seus totais — sem nomes, lugares ou observações.",
+  "Use your passkey": "Usar sua chave de acesso",
+  "or use a backup code": "ou use um código de backup",
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "Para terminar a sincronização, digite o código de 6 dígitos que acabamos de enviar ao e-mail da sua conta.",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "Para terminar a sincronização, enviaremos um código de 6 dígitos ao e-mail da sua conta.",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "O login com PIN é para contas salvas neste dispositivo. Use sua senha, ou \"Usar PIN de sincronização\" abaixo para trazer sua conta para cá.",

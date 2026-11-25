@@ -1361,6 +1361,8 @@ export default {
   "Most recent": "सबसे हाल की",
   "Share your year": "अपना साल साझा करें",
   "Shares your totals only — no names, places or notes.": "सिर्फ़ आपके कुल आँकड़े साझा होते हैं — कोई नाम, जगह या नोट नहीं।",
+  "Use your passkey": "अपनी पासकी इस्तेमाल करें",
+  "or use a backup code": "या बैकअप कोड इस्तेमाल करें",
   "To finish syncing, enter the 6-digit code we just emailed to your account’s email address.": "सिंक पूरा करने के लिए, आपके खाते के ईमेल पर अभी भेजा गया 6 अंकों का कोड डालें।",
   "To finish syncing, we’ll email a 6-digit code to your account’s email address.": "सिंक पूरा करने के लिए, हम आपके खाते के ईमेल पर 6 अंकों का कोड भेजेंगे।",
   "PIN sign-in is for accounts saved on this device. Use your password, or \"Use sync PIN\" below to bring your account here.": "PIN से साइन इन इस डिवाइस पर सेव खातों के लिए है। अपना पासवर्ड इस्तेमाल करें, या नीचे \"सिंक PIN इस्तेमाल करें\" से अपना खाता यहाँ लाएँ।",

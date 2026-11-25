@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Shield, ArrowRight, Smartphone, Monitor, Scan, Camera, CameraOff } from 'lucide-react'
+import { ArrowLeft, Shield, ArrowRight, Smartphone, Monitor, Scan, Camera, CameraOff, Fingerprint } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth.jsx'
 import Card from '@/components/Card.jsx'
 import Toast from '@/components/Toast.jsx'
@@ -336,6 +336,17 @@ export default function SyncLogin() {
                     : tr('This account uses two-factor authentication. Enter the current code from your authenticator app to finish syncing.')}
                 </p>
 
+                {/* A passkey-only account: the passkey is the way in, so it leads;
+                    the backup-code box below is the fallback. */}
+                {backupOnly && totpMethods.includes('passkey') && (
+                  <>
+                    <button type="button" onClick={onPasskey} disabled={busy} className="btn-primary w-full py-3 text-sm font-semibold inline-flex items-center justify-center gap-2">
+                      <Fingerprint className="w-5 h-5" aria-hidden="true" />{' '}{busy ? tr('Verifying…') : tr('Use your passkey')}
+                    </button>
+                    <p className="my-5 text-center text-xs uppercase tracking-widest text-slate-400">{tr('or use a backup code')}</p>
+                  </>
+                )}
+
                 <form onSubmit={onSubmitTotp} className="space-y-5">
                   <div>
                     <label className="label text-slate-300" htmlFor="totpCode">
@@ -345,7 +356,7 @@ export default function SyncLogin() {
                       id="totpCode"
                       type="text"
                       required
-                      autoFocus
+                      autoFocus={!backupOnly}
                       autoComplete="one-time-code"
                       inputMode={usingBackup ? 'text' : 'numeric'}
                       maxLength={usingBackup ? 32 : 6}
@@ -358,7 +369,7 @@ export default function SyncLogin() {
                     />
                   </div>
 
-                  <button type="submit" className="btn-primary w-full py-3 text-sm font-semibold" disabled={busy}>
+                  <button type="submit" className={`${backupOnly ? 'btn-secondary' : 'btn-primary'} w-full py-3 text-sm font-semibold`} disabled={busy}>
                     {busy ? tr('Verifying…') : <>{tr('Verify and sync')}{' '}<ArrowRight className="w-4 h-4" /></>}
                   </button>
                 </form>
@@ -379,7 +390,7 @@ export default function SyncLogin() {
                     {tr('Email me a code instead')}
                   </button>
                 )}
-                {totpMethods.includes('passkey') && (
+                {totpMethods.includes('passkey') && !backupOnly && (
                   <button
                     type="button"
                     onClick={onPasskey}
