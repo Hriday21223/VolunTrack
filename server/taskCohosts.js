@@ -42,13 +42,18 @@ export const MANAGED_BY_SQL = (taskAlias, userExpr) => `(${taskAlias}.created_by
 export const CLOSED_OUT_SQL = (taskAlias) => `(${taskAlias}.date < CURRENT_DATE AND (
   ${taskAlias}.date < CURRENT_DATE - 30
   OR ${taskAlias}.status = 'cancelled'
-  OR NOT EXISTS (
+  OR (NOT EXISTS (
     SELECT 1 FROM public_task_signups co_s
      WHERE co_s.task_id = ${taskAlias}.id AND co_s.status = 'approved'
        AND COALESCE(co_s.attendance_status, '') NOT IN ('absent', 'excused')
        AND NOT EXISTS (SELECT 1 FROM logs co_l
                         WHERE co_l.task_id = co_s.task_id AND co_l.user_id = co_s.user_id
-                          AND co_l.verification_status IN ('approved', 'rejected')))))`
+                          AND co_l.verification_status IN ('approved', 'rejected')))
+  -- Sign-ups without an account still waiting for their hours.
+  AND NOT EXISTS (
+    SELECT 1 FROM public_task_email_signups co_e
+     WHERE co_e.task_id = ${taskAlias}.id AND co_e.confirmed_at IS NOT NULL AND co_e.cancelled_at IS NULL
+       AND co_e.hours IS NULL AND NOT co_e.absent))))`
 
 /** Is this task closed out? False for an unknown id. */
 export async function taskClosedOut(taskId) {

@@ -43,9 +43,169 @@ const T2 = {
   ru: ['Бесплатный период VolunTrack заканчивается {date}', 'Ваш бесплатный период заканчивается {date}.', 'После этого {name} вернётся на бесплатный тариф для клуба: до 50 учеников и все функции для школ.', 'После этого аккаунт будет заблокирован до оплаты. Оплатите заранее, чтобы работать без перерыва.', 'Открыть VolunTrack', 'Бесплатный период VolunTrack закончился', '{name} снова на бесплатном тарифе для клуба: до 50 учеников и все функции для школ. Перейти на тариф для школы можно в любое время.', 'Аккаунт заблокирован до оплаты. Войдите в VolunTrack, чтобы узнать, как оплатить.'],
   ja: ['VolunTrack の無料トライアルは {date} に終了します', '無料トライアルは {date} に終了します。', 'その後、{name} は無料のクラブプランに戻ります（生徒 50 人まで、学校向けの機能はすべて利用可能）。', 'その後、お支払いが完了するまでアカウントはロックされます。中断なく使い続けるには、それまでにお支払いください。', 'VolunTrack を開く', 'VolunTrack の無料トライアルが終了しました', '{name} は無料のクラブプランに戻りました（生徒 50 人まで、学校向けの機能はすべて利用可能）。いつでも再びアップグレードできます。', 'お支払いが完了するまでアカウントはロックされています。VolunTrack にサインインしてお支払い方法をご確認ください。'],
 }
+// Signing up for an opportunity without an account (Nov 27).
+const K3 = ["Confirm your spot: {title}", "You signed up for {title} on {date} without an account. Open the link below and press Confirm to hold your spot. Your volunteer badge, with the QR code to show at check-in, is on the same page.", "Confirm my spot", "The link works until the event is over. If you didn’t sign up, ignore this email and nothing happens.", "Want your hours tracked and signed? Create a free VolunTrack account with this email address."]
+const T3 = {
+ "es": [
+  "Confirma tu lugar: {title}",
+  "Te inscribiste en {title} el {date} sin una cuenta. Abre el enlace de abajo y pulsa Confirmar para guardar tu lugar. Tu credencial de voluntario, con el código QR para el registro de llegada, está en la misma página.",
+  "Confirmar mi lugar",
+  "El enlace funciona hasta que termine el evento. Si no te inscribiste, ignora este correo y no pasará nada.",
+  "¿Quieres que tus horas se registren y se firmen? Crea una cuenta gratuita de VolunTrack con este correo."
+ ],
+ "vi": [
+  "Xác nhận chỗ của bạn: {title}",
+  "Bạn đã đăng ký {title} vào {date} mà không cần tài khoản. Mở liên kết bên dưới và nhấn Xác nhận để giữ chỗ. Thẻ tình nguyện viên của bạn, có mã QR để xuất trình khi điểm danh, nằm trên cùng trang.",
+  "Xác nhận chỗ của tôi",
+  "Liên kết dùng được đến khi sự kiện kết thúc. Nếu bạn không đăng ký, hãy bỏ qua email này và sẽ không có gì xảy ra.",
+  "Muốn giờ của bạn được ghi và ký xác nhận? Hãy tạo tài khoản VolunTrack miễn phí bằng địa chỉ email này."
+ ],
+ "zh": [
+  "确认你的名额：{title}",
+  "你在未注册账户的情况下报名了 {date} 的 {title}。打开下面的链接并点击“确认”即可保留名额。你的志愿者徽章（签到时出示的二维码）也在同一页面。",
+  "确认我的名额",
+  "链接在活动结束前有效。如果不是你报名的，请忽略这封邮件，不会有任何影响。",
+  "想记录并签核你的时长？用这个邮箱地址创建一个免费的 VolunTrack 账户。"
+ ],
+ "hi": [
+  "अपनी जगह पक्की करें: {title}",
+  "आपने बिना खाते के {date} को {title} के लिए साइन अप किया। अपनी जगह पक्की करने के लिए नीचे दिया लिंक खोलें और पुष्टि करें दबाएँ। चेक-इन पर दिखाने वाले QR कोड के साथ आपका स्वयंसेवक बैज उसी पेज पर है।",
+  "मेरी जगह पक्की करें",
+  "लिंक कार्यक्रम खत्म होने तक काम करता है। अगर आपने साइन अप नहीं किया, तो यह ईमेल अनदेखा करें, कुछ नहीं होगा।",
+  "अपने घंटे दर्ज और हस्ताक्षरित करवाना चाहते हैं? इसी ईमेल पते से मुफ़्त VolunTrack खाता बनाएँ।"
+ ],
+ "ar": [
+  "أكّد مكانك: {title}",
+  "سجّلت في {title} بتاريخ {date} دون حساب. افتح الرابط أدناه واضغط «تأكيد» لحجز مكانك. شارة المتطوع الخاصة بك، مع رمز QR لإظهاره عند الحضور، موجودة في الصفحة نفسها.",
+  "أكّد مكاني",
+  "يعمل الرابط حتى انتهاء الفعالية. إن لم تسجّل، فتجاهل هذه الرسالة ولن يحدث شيء.",
+  "تريد تسجيل ساعاتك وتوقيعها؟ أنشئ حسابًا مجانيًا في VolunTrack بعنوان البريد هذا."
+ ],
+ "pt": [
+  "Confirme sua vaga: {title}",
+  "Você se inscreveu em {title} em {date} sem uma conta. Abra o link abaixo e toque em Confirmar para garantir sua vaga. Seu crachá de voluntário, com o código QR para mostrar na chegada, está na mesma página.",
+  "Confirmar minha vaga",
+  "O link funciona até o evento terminar. Se não foi você que se inscreveu, ignore este e-mail e nada acontece.",
+  "Quer suas horas registradas e assinadas? Crie uma conta grátis no VolunTrack com este e-mail."
+ ],
+ "fr": [
+  "Confirme ta place : {title}",
+  "Tu t’es inscrit(e) à {title} le {date} sans compte. Ouvre le lien ci-dessous et appuie sur Confirmer pour garder ta place. Ton badge de bénévole, avec le code QR à montrer à l’arrivée, est sur la même page.",
+  "Confirmer ma place",
+  "Le lien fonctionne jusqu’à la fin de l’événement. Si tu ne t’es pas inscrit(e), ignore cet e-mail et rien ne se passera.",
+  "Tu veux que tes heures soient suivies et signées ? Crée un compte VolunTrack gratuit avec cette adresse e-mail."
+ ],
+ "bn": [
+  "আপনার জায়গা নিশ্চিত করুন: {title}",
+  "আপনি অ্যাকাউন্ট ছাড়াই {date} তারিখে {title}-এ সাইন আপ করেছেন। জায়গা ধরে রাখতে নিচের লিংক খুলে নিশ্চিত করুন চাপুন। চেক-ইনে দেখানোর QR কোডসহ আপনার স্বেচ্ছাসেবক ব্যাজ একই পাতায় আছে।",
+  "আমার জায়গা নিশ্চিত করুন",
+  "লিংকটি ইভেন্ট শেষ হওয়া পর্যন্ত কাজ করে। আপনি সাইন আপ না করে থাকলে এই ইমেলটি উপেক্ষা করুন, কিছুই হবে না।",
+  "আপনার ঘণ্টা লেখা ও স্বাক্ষর করাতে চান? এই ইমেল ঠিকানা দিয়ে একটি ফ্রি VolunTrack অ্যাকাউন্ট খুলুন।"
+ ],
+ "ru": [
+  "Подтвердите место: {title}",
+  "Вы записались на «{title}» ({date}) без аккаунта. Откройте ссылку ниже и нажмите «Подтвердить», чтобы закрепить место. Ваш бейдж волонтёра с QR-кодом для отметки на входе — на той же странице.",
+  "Подтвердить место",
+  "Ссылка работает до конца мероприятия. Если вы не записывались, просто проигнорируйте это письмо.",
+  "Хотите, чтобы ваши часы учитывались и подписывались? Создайте бесплатный аккаунт VolunTrack на этот адрес."
+ ],
+ "ja": [
+  "参加を確定してください：{title}",
+  "アカウントなしで {date} の「{title}」に申し込みました。下のリンクを開いて「確定」を押すと参加枠が確保されます。受付で見せる QR コード付きのボランティアバッジも同じページにあります。",
+  "参加を確定する",
+  "リンクはイベント終了まで使えます。申し込んだ覚えがない場合は、このメールを無視してください。何も起こりません。",
+  "時間を記録して署名してもらいたい場合は、このメールアドレスで無料の VolunTrack アカウントを作成してください。"
+ ]
+}
+// The certificate emailed after the event to someone without an account.
+const K4 = ["Your certificate of service: {title}", "Certificate of Service", "This certifies that", "volunteered {hours} hours at {title} on {date}.", "Organizer", "Thank you for volunteering! Create a free VolunTrack account with this email address to keep all your hours in one place."]
+const T4 = {
+ "es": [
+  "Tu certificado de servicio: {title}",
+  "Certificado de servicio",
+  "Se certifica que",
+  "hizo {hours} horas de voluntariado en {title} el {date}.",
+  "Organizador",
+  "¡Gracias por tu voluntariado! Crea una cuenta gratuita de VolunTrack con este correo para tener todas tus horas en un solo lugar."
+ ],
+ "vi": [
+  "Giấy chứng nhận phục vụ của bạn: {title}",
+  "Giấy chứng nhận phục vụ",
+  "Chứng nhận rằng",
+  "đã tình nguyện {hours} giờ tại {title} vào {date}.",
+  "Người tổ chức",
+  "Cảm ơn bạn đã tình nguyện! Hãy tạo tài khoản VolunTrack miễn phí bằng email này để giữ mọi giờ của bạn ở một nơi."
+ ],
+ "zh": [
+  "你的服务证书：{title}",
+  "服务证书",
+  "兹证明",
+  "于 {date} 在 {title} 志愿服务 {hours} 小时。",
+  "组织者",
+  "感谢你的志愿服务！用这个邮箱地址创建免费 VolunTrack 账户，把所有时长集中在一处。"
+ ],
+ "hi": [
+  "आपका सेवा प्रमाणपत्र: {title}",
+  "सेवा प्रमाणपत्र",
+  "यह प्रमाणित किया जाता है कि",
+  "ने {date} को {title} में {hours} घंटे स्वयंसेवा की।",
+  "आयोजक",
+  "स्वयंसेवा के लिए धन्यवाद! अपने सारे घंटे एक जगह रखने के लिए इसी ईमेल पते से मुफ़्त VolunTrack खाता बनाएँ।"
+ ],
+ "ar": [
+  "شهادة الخدمة الخاصة بك: {title}",
+  "شهادة خدمة",
+  "نشهد بأن",
+  "تطوّع {hours} ساعة في {title} بتاريخ {date}.",
+  "المنظّم",
+  "شكرًا لتطوعك! أنشئ حسابًا مجانيًا في VolunTrack بعنوان البريد هذا لتحتفظ بكل ساعاتك في مكان واحد."
+ ],
+ "pt": [
+  "Seu certificado de serviço: {title}",
+  "Certificado de serviço",
+  "Certificamos que",
+  "fez {hours} horas de voluntariado em {title} em {date}.",
+  "Organizador",
+  "Obrigado pelo voluntariado! Crie uma conta grátis no VolunTrack com este e-mail para manter todas as suas horas em um só lugar."
+ ],
+ "fr": [
+  "Ton certificat de bénévolat : {title}",
+  "Certificat de bénévolat",
+  "Nous certifions que",
+  "a fait {hours} heures de bénévolat à {title} le {date}.",
+  "Organisateur",
+  "Merci pour ton bénévolat ! Crée un compte VolunTrack gratuit avec cette adresse e-mail pour garder toutes tes heures au même endroit."
+ ],
+ "bn": [
+  "আপনার সেবার সার্টিফিকেট: {title}",
+  "সেবার সার্টিফিকেট",
+  "এই মর্মে প্রত্যয়ন করা হচ্ছে যে",
+  "{date} তারিখে {title}-এ {hours} ঘণ্টা স্বেচ্ছাসেবা করেছেন।",
+  "আয়োজক",
+  "স্বেচ্ছাসেবার জন্য ধন্যবাদ! সব ঘণ্টা এক জায়গায় রাখতে এই ইমেল ঠিকানা দিয়ে একটি ফ্রি VolunTrack অ্যাকাউন্ট খুলুন।"
+ ],
+ "ru": [
+  "Ваш сертификат волонтёра: {title}",
+  "Сертификат волонтёра",
+  "Настоящим подтверждается, что",
+  "отработал(а) волонтёром {hours} ч на мероприятии «{title}» {date}.",
+  "Организатор",
+  "Спасибо за помощь! Создайте бесплатный аккаунт VolunTrack на этот адрес, чтобы хранить все свои часы в одном месте."
+ ],
+ "ja": [
+  "奉仕活動の修了証：{title}",
+  "奉仕活動修了証",
+  "以下の者は",
+  "{date} に「{title}」で {hours} 時間のボランティア活動を行ったことを証明します。",
+  "主催者",
+  "ボランティアへのご参加ありがとうございました！このメールアドレスで無料の VolunTrack アカウントを作れば、すべての時間を一か所で管理できます。"
+ ]
+}
 export const ACCOUNT_EMAIL_STRINGS = Object.fromEntries(
   Object.entries(T).map(([lang, vals]) => [lang, {
     ...Object.fromEntries(K.map((k, i) => [k, vals[i]])),
     ...Object.fromEntries(K2.map((k, i) => [k, T2[lang][i]])),
+    ...Object.fromEntries(K3.map((k, i) => [k, T3[lang][i]])),
+    ...Object.fromEntries(K4.map((k, i) => [k, T4[lang][i]])),
   }]),
 )

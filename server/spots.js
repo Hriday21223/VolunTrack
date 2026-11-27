@@ -18,8 +18,12 @@ export const SIGNUP_SPOTS_SQL = (alias) => `(1 + COALESCE(${alias}.guest_count, 
 
 // The spots taken on a task, as an int SQL expression; `taskExpr` is a column
 // (t.id) or a placeholder ($1).
-export const SPOTS_USED_SQL = (taskExpr) => `(SELECT COALESCE(SUM(${SIGNUP_SPOTS_SQL('su')}), 0)::int
-     FROM public_task_signups su WHERE su.task_id = ${taskExpr} AND su.status IN ('pending', 'approved'))`
+// Confirmed sign-ups without an account (public_task_email_signups) take one
+// spot each; they're only allowed on tasks without shifts.
+export const SPOTS_USED_SQL = (taskExpr) => `((SELECT COALESCE(SUM(${SIGNUP_SPOTS_SQL('su')}), 0)::int
+     FROM public_task_signups su WHERE su.task_id = ${taskExpr} AND su.status IN ('pending', 'approved'))
+   + (SELECT COUNT(*)::int FROM public_task_email_signups es
+       WHERE es.task_id = ${taskExpr} AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL))`
 
 // Spots taken on one task, read with `db` (a pool client inside a
 // transaction, or the shared query helper's shape { query }).

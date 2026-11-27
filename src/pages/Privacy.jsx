@@ -31,7 +31,7 @@ export default function Privacy() {
 
       <main id="main" className="max-w-3xl mx-auto px-4 md:px-8 pb-20">
         <h1 className="text-3xl md:text-4xl font-bold text-center">Privacy Policy</h1>
-        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 22, 2026</p>
+        <p className="text-center text-earth-500 dark:text-earth-400 mt-2 text-sm">Last updated: November 27, 2026</p>
 
         <Card className="mt-10 space-y-6 text-sm text-earth-700 dark:text-earth-200">
           <Section title="Data We Collect">
@@ -70,6 +70,7 @@ export default function Privacy() {
               <li><strong>Error reports</strong> — when something breaks in the website or the app, the error message, technical details, the page it happened on, your browser or device type and the app version are sent to us so we can fix it. Your name, email and account are not attached, and nothing you typed is included. We keep the most recent few hundred.</li>
               <li><strong>Reports and blocks</strong> — if you report a volunteer task, the reason and any details you add, and who sent it, so we can review it; the organizer isn't told who reported. If you block an organizer, we keep that so their tasks stay hidden from you and their messages don't reach you.</li>
               <li><strong>Volunteer badge</strong> — when you open your badge for an approved event, we make a random code for that sign-up. Anyone who scans it sees only your first name and last initial, the event, and whether the badge is valid and you&apos;ve checked in.</li>
+              <li><strong>Signing up without an account</strong> — on our public opportunities page, someone 13 or older can sign up for an event with just their name and email. We email them one link to confirm their spot; their volunteer badge works like the one above. The event&apos;s organizer sees their name and email. After the event the organizer may enter their hours, and we email them a certificate signed by the organizer and VolunTrack. We delete these sign-ups 30 days after the event. Under 13s can&apos;t sign up this way; they make an account so a parent can approve.</li>
               <li><strong>Event waivers</strong> — if an event has a waiver, we record the name you typed to agree, when, and which version of the text. If you say you&apos;re under 18, we keep the parent or guardian&apos;s name and email you give, email them once with a link, and record their typed name and when they agreed. The organizer sees who agreed; the parent&apos;s email is never shown to them.</li>
               <li><strong>Your school&apos;s review of your hours</strong> — if your school approves an entry or sends it back, we keep who decided and, for a send-back, the reason they gave, so you can see it next to the entry.</li>
               <li><strong>References</strong> — if you ask someone for a reference, we keep their name and email address, the place and your note, and then what they write, their name and title, and whether they agreed it may be shown on your public portfolio. We email them once with a link and never show their address to anyone else. The link shows them your name and the hours you logged at that place. Delete a request or a reference on Reports at any time.</li>

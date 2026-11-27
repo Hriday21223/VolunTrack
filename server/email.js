@@ -745,3 +745,59 @@ function logsCsv(logs, lang) {
   // A byte-order mark so Excel opens accented (Spanish) text correctly.
   return '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n')
 }
+
+// Signing up for an opportunity without an account (server/routes/emailSignups.js):
+// the link opens a page whose Confirm button holds the spot, so a mail
+// scanner opening the link can't. The badge is on that same page.
+export async function sendEmailSignupConfirm({ to, language, title, date, link }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const safeTitle = escapeHtml(title)
+  return sendEmail({
+    priority: 'high',
+    to,
+    subject: t('Confirm your spot: {title}', { title }),
+    html: `<p>${t('You signed up for {title} on {date} without an account. Open the link below and press Confirm to hold your spot. Your volunteer badge, with the QR code to show at check-in, is on the same page.', { title: `<strong>${safeTitle}</strong>`, date: escapeHtml(date) })}</p>
+<p><a href="${link}" style="display:inline-block;background:#3f8344;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">${t('Confirm my spot')}</a></p>
+<p>${t('The link works until the event is over. If you didn’t sign up, ignore this email and nothing happens.')}</p>
+<p>${t('Want your hours tracked and signed? Create a free VolunTrack account with this email address.')}</p>
+${emailFooterHtml(lang)}`,
+  })
+}
+
+// The certificate for someone who volunteered without an account: their hours
+// as the organizer entered them (POST /public-tasks/:id/email-signups/:id in
+// routes/school.js), signed by the organizer and by VolunTrack, in the email
+// itself (the same look as the app's printed certificate).
+export async function sendServiceCertificateEmail({ to, language, ...rest }) {
+  const { subject, html } = serviceCertificateEmail({ language, ...rest })
+  return sendEmail({ to, subject, html })
+}
+
+/** { subject, html } of the certificate email (also for a preview). */
+export function serviceCertificateEmail({ language, name, hours, title, date, organizer }) {
+  const lang = emailLang(language)
+  const t = (text, vars) => et(lang, text, vars)
+  const h = Number(hours)
+  const hoursText = String(h)
+  const when = emailDate(lang, new Date(`${date}T00:00:00Z`), true)
+  const sig = (signer, role) => `<td style="width:50%;padding:0 12px;text-align:center;vertical-align:bottom">
+  <div style="font-family:'Brush Script MT','Segoe Script',cursive;font-size:22px;color:#214327;white-space:nowrap">${escapeHtml(signer)}</div>
+  <div style="border-top:1px solid #6c502d;padding-top:6px;margin-top:4px;color:#6c502d;font-size:13px">${escapeHtml(role)}</div></td>`
+  return {
+    subject: t('Your certificate of service: {title}', { title }),
+    html: `<div style="max-width:600px;margin:0 auto;background:#ffffff;border:8px double #3f8344;padding:32px 28px;text-align:center;font-family:Arial,Helvetica,sans-serif">
+  <div style="color:#6c502d;font-size:13px;letter-spacing:2px;text-transform:uppercase">${t('Certificate of Service')}</div>
+  <div style="color:#27542d;font-size:30px;font-weight:700;margin:6px 0 18px">VolunTrack</div>
+  <div style="color:#3a3024;font-size:15px">${t('This certifies that')}</div>
+  <div style="color:#214327;font-size:32px;font-weight:700;margin:14px 0 8px">${escapeHtml(name)}</div>
+  <div style="color:#3a3024;font-size:15px;line-height:1.6">${t('volunteered {hours} hours at {title} on {date}.', { hours: `<strong style="color:#3f8344">${escapeHtml(hoursText)}</strong>`, title: `<strong>${escapeHtml(title)}</strong>`, date: escapeHtml(when) })}</div>
+  <table role="presentation" style="width:100%;margin-top:36px;border-collapse:collapse"><tr>
+    ${sig(organizer || t('Organizer'), t('Organizer'))}
+    ${sig('VolunTrack Org', 'VolunTrack')}
+  </tr></table>
+</div>
+<p>${t('Thank you for volunteering! Create a free VolunTrack account with this email address to keep all your hours in one place.')}</p>
+${emailFooterHtml(lang)}`,
+  }
+}

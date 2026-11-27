@@ -24,6 +24,8 @@ export const DISALLOWED_PATHS = [
   '/admin-invite',
   '/s/',
   '/sign-certificate/',
+  // The emailed link for a sign-up without an account (its token is the credential).
+  '/signup/',
   // Authenticated app pages, behind a login/admin guard.
   '/parent',
   // Robots rules match by prefix, so a bare '/log' also blocked /login

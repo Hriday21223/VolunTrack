@@ -1065,6 +1065,15 @@ export default function MyTasks() {
                     </div>
                   )}
 
+                  {!t.closed_out && (t.email_signups || []).length > 0 && (
+                    // Signed up from the public page without an account.
+                    <div className="space-y-2 mb-3">
+                      <p className="text-xs font-medium text-earth-400 uppercase tracking-wider">{tr('Signed up without an account')}</p>
+                      {t.email_signups.map((g) => (
+                        <EmailSignupRow key={g.id} taskId={t.id} taskDate={t.date} signup={g} onSaved={loadTasks} />
+                      ))}
+                    </div>
+                  )}
                   {t.closed_out ? (
                     // Signed off (#865): counts only, never who.
                     <p className="text-sm text-earth-500 text-center py-4">
@@ -1073,7 +1082,7 @@ export default function MyTasks() {
                       <span className="block text-xs mt-1">{tr("Volunteers' details are no longer shown.")}</span>
                     </p>
                   ) : signups.length === 0 ? (
-                    <p className="text-sm text-earth-500 text-center py-4">{tr('No one has signed up yet.')}</p>
+                    (t.email_signups || []).length ? null : <p className="text-sm text-earth-500 text-center py-4">{tr('No one has signed up yet.')}</p>
                   ) : (
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1450,5 +1459,52 @@ function WaiverStatus({ signup: s }) {
     <p className={`text-xs ${className} flex items-center gap-1`} title={s.waiver_at ? `Agreed ${new Date(s.waiver_at).toLocaleString()}` : undefined}>
       <FileSignature className="w-3 h-3 shrink-0" /> {label}{who ? ` (${who})` : ''}
     </p>
+  )
+}
+
+// Someone who signed up without an account (public page). After the event the
+// organizer gives their hours, which emails them a certificate signed by the
+// organizer and VolunTrack, or marks that they didn't come.
+function EmailSignupRow({ taskId, taskDate, signup, onSaved }) {
+  const [hours, setHours] = useState(signup.hours != null ? String(Number(signup.hours)) : '')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const started = taskDate && taskDate <= new Date().toLocaleDateString('en-CA')
+  const send = async (body) => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const res = await fetch(`${apiUrl}/school/public-tasks/${encodeURIComponent(taskId)}/email-signups/${encodeURIComponent(signup.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('voluntrack:auth_token')}` },
+        body: JSON.stringify(body),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || tr('Could not save the hours.'))
+      setMsg(d.absent ? tr('Marked as not there.') : tr('Saved. Their certificate is on its way.'))
+      onSaved?.()
+    } catch (e) {
+      setMsg(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="rounded-xl bg-white/5 p-3 space-y-2">
+      <div>
+        <p className="text-sm font-medium truncate">{signup.name}</p>
+        <p className="text-xs text-earth-400 truncate">{signup.email}</p>
+        {signup.certificate_sent_at && <p className="text-xs text-brand-400">{tr('Certificate sent for {n} hours', { n: Number(signup.hours) })}</p>}
+        {signup.absent && <p className="text-xs text-amber-400">{tr('Didn’t come')}</p>}
+      </div>
+      {started && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="number" min="0.25" max="24" step="0.25" className="input w-24" value={hours} onChange={(e) => setHours(e.target.value)} placeholder={tr('Hours')} aria-label={tr('Hours')} />
+          <button type="button" className="btn-primary btn-sm" disabled={busy || !(Number(hours) > 0)} onClick={() => send({ hours: Number(hours) })}>{tr('Save and send certificate')}</button>
+          <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={() => send({ absent: true })}>{tr('Didn’t come')}</button>
+        </div>
+      )}
+      {msg && <p className="text-xs text-earth-300">{msg}</p>}
+    </div>
   )
 }
