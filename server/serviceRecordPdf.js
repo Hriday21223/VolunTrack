@@ -79,3 +79,50 @@ export function serviceRecordPdf({ name, title, date, location, organizer, timeI
   if (recordId) doc.text(`Record ${recordId}`, left, y + 28)
   return Buffer.from(doc.output('arraybuffer'))
 }
+
+/**
+ * The certificate itself as a PDF (landscape, the look of the app's printed
+ * certificate), so it can be downloaded and printed: name, hours, event and
+ * date, signed by the organizer and by VolunTrack.
+ */
+export function certificatePdf({ name, title, date, organizer, timeIn, timeOut, hours }) {
+  const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'landscape' })
+  const W = doc.internal.pageSize.getWidth()
+  const H = doc.internal.pageSize.getHeight()
+  const cx = W / 2
+  const green = [39, 84, 45]
+  const brown = [108, 80, 45]
+
+  doc.setFillColor(241, 248, 241).rect(0, 0, W, H, 'F')
+  doc.setFillColor(255, 255, 255).rect(36, 36, W - 72, H - 72, 'F')
+  doc.setDrawColor(63, 131, 68).setLineWidth(3).rect(36, 36, W - 72, H - 72)
+  doc.setLineWidth(1).rect(46, 46, W - 92, H - 92)
+
+  let y = 92
+  if (logo) { try { doc.addImage(logo, 'PNG', cx - 24, y - 20, 48, 42) } catch { /* skip */ } }
+  y += 46
+  doc.setFont('helvetica', 'normal').setFontSize(12).setTextColor(...brown)
+  doc.text('CERTIFICATE OF SERVICE', cx, y, { align: 'center', charSpace: 2 })
+  doc.setFont('helvetica', 'bold').setFontSize(30).setTextColor(...green)
+  doc.text('VolunTrack', cx, y + 36, { align: 'center' })
+  doc.setFont('helvetica', 'normal').setFontSize(14).setTextColor(58, 48, 36)
+  doc.text('This certifies that', cx, y + 74, { align: 'center' })
+  doc.setFont('helvetica', 'bold').setFontSize(34).setTextColor(33, 67, 39)
+  doc.text(String(name || ''), cx, y + 120, { align: 'center' })
+  doc.setFont('helvetica', 'normal').setFontSize(14).setTextColor(58, 48, 36)
+  doc.text(`volunteered ${hours} hours at ${title}`, cx, y + 156, { align: 'center', maxWidth: W - 200 })
+  doc.text(`on ${longDate(date)}${timeIn && timeOut ? ` (${twelveHour(timeIn)} to ${twelveHour(timeOut)})` : ''}.`, cx, y + 178, { align: 'center' })
+
+  const sy = H - 120
+  const colW = 220
+  const sign = (x, signer, role) => {
+    doc.setFont('times', 'italic').setFontSize(22).setTextColor(...green)
+    doc.text(String(signer || '').slice(0, 32), x + colW / 2, sy, { align: 'center' })
+    doc.setDrawColor(...brown).setLineWidth(0.8).line(x, sy + 8, x + colW, sy + 8)
+    doc.setFont('helvetica', 'normal').setFontSize(11).setTextColor(...brown)
+    doc.text(role, x + colW / 2, sy + 24, { align: 'center' })
+  }
+  sign(cx - colW - 40, organizer || 'Organizer', 'Organizer')
+  sign(cx + 40, 'VolunTrack Org', 'VolunTrack')
+  return Buffer.from(doc.output('arraybuffer'))
+}

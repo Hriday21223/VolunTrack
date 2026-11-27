@@ -244,6 +244,39 @@ const T5 = {
   "イベント、日付、開始・終了時刻、時間を記載した署名済みの活動記録を PDF で添付しています。"
  ]
 }
+const K6 = ["Your certificate and your signed service record (with the event, date, time in, time out and hours) are attached as PDFs to download and print."]
+const T6 = {
+ "es": [
+  "Tu certificado y tu registro de servicio firmado (con el evento, la fecha, la hora de entrada, la de salida y las horas) van adjuntos en PDF para descargar e imprimir."
+ ],
+ "vi": [
+  "Giấy chứng nhận và bản ghi phục vụ đã ký của bạn (gồm sự kiện, ngày, giờ vào, giờ ra và số giờ) được đính kèm dưới dạng PDF để tải xuống và in."
+ ],
+ "zh": [
+  "附件为你的证书和已签名的服务记录 PDF（包括活动、日期、签到和签退时间及时长），可下载和打印。"
+ ],
+ "hi": [
+  "आपका प्रमाणपत्र और हस्ताक्षरित सेवा रिकॉर्ड (कार्यक्रम, तारीख, आने-जाने के समय और घंटों के साथ) डाउनलोड और प्रिंट करने के लिए PDF के रूप में संलग्न हैं।"
+ ],
+ "ar": [
+  "شهادتك وسجل خدمتك الموقّع (مع الفعالية والتاريخ ووقت الحضور والانصراف والساعات) مرفقان بصيغة PDF للتنزيل والطباعة."
+ ],
+ "pt": [
+  "Seu certificado e seu registro de serviço assinado (com o evento, a data, os horários de entrada e saída e as horas) estão anexados em PDF para baixar e imprimir."
+ ],
+ "fr": [
+  "Ton certificat et ton relevé de bénévolat signé (avec l’événement, la date, l’heure d’arrivée, l’heure de départ et les heures) sont joints en PDF à télécharger et imprimer."
+ ],
+ "bn": [
+  "আপনার সার্টিফিকেট ও স্বাক্ষরিত সেবার রেকর্ড (ইভেন্ট, তারিখ, আসা-যাওয়ার সময় ও ঘণ্টাসহ) ডাউনলোড ও প্রিন্টের জন্য PDF হিসেবে সংযুক্ত আছে।"
+ ],
+ "ru": [
+  "Ваш сертификат и подписанная запись о работе (мероприятие, дата, время прихода и ухода, часы) во вложении в PDF — их можно скачать и распечатать."
+ ],
+ "ja": [
+  "修了証と署名済みの活動記録（イベント、日付、開始・終了時刻、時間）を PDF で添付しています。ダウンロードして印刷できます。"
+ ]
+}
 export const ACCOUNT_EMAIL_STRINGS = Object.fromEntries(
   Object.entries(T).map(([lang, vals]) => [lang, {
     ...Object.fromEntries(K.map((k, i) => [k, vals[i]])),
@@ -251,5 +284,6 @@ export const ACCOUNT_EMAIL_STRINGS = Object.fromEntries(
     ...Object.fromEntries(K3.map((k, i) => [k, T3[lang][i]])),
     ...Object.fromEntries(K4.map((k, i) => [k, T4[lang][i]])),
     ...Object.fromEntries(K5.map((k, i) => [k, T5[lang][i]])),
+    ...Object.fromEntries(K6.map((k, i) => [k, T6[lang][i]])),
   }]),
 )

@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer'
 import { escapeHtml } from './html.js'
-import { serviceRecordPdf, twelveHour } from './serviceRecordPdf.js'
+import { serviceRecordPdf, certificatePdf, twelveHour } from './serviceRecordPdf.js'
 import { et, emailLang, emailDate } from './emailStrings.js'
 import { takeEmailBudget, emailBudgetLimits } from './emailBudget.js'
 import { csvCell } from '../src/lib/csv.js'
@@ -772,9 +772,15 @@ ${emailFooterHtml(lang)}`,
 // itself (the same look as the app's printed certificate).
 export async function sendServiceCertificateEmail({ to, language, ...rest }) {
   const { subject, html } = serviceCertificateEmail({ language, ...rest })
-  // The signed service record (event, date, time in and out, hours) as a PDF.
-  const pdf = serviceRecordPdf({ ...rest })
-  return sendEmail({ to, subject, html, attachments: [{ name: 'volunteer-service-record.pdf', content: pdf }] })
+  // Two PDFs to download and print: the certificate, and the signed service
+  // record (event, date, time in and out, hours).
+  return sendEmail({
+    to, subject, html,
+    attachments: [
+      { name: 'volunteer-certificate.pdf', content: certificatePdf({ ...rest }) },
+      { name: 'volunteer-service-record.pdf', content: serviceRecordPdf({ ...rest }) },
+    ],
+  })
 }
 
 /** { subject, html } of the certificate email (also for a preview). */
@@ -801,7 +807,7 @@ export function serviceCertificateEmail({ language, name, hours, title, date, or
     ${sig('VolunTrack Org', 'VolunTrack')}
   </tr></table>
 </div>
-<p>${t('Your signed service record, with the event, date, time in, time out and hours, is attached as a PDF.')}</p>
+<p>${t('Your certificate and your signed service record (with the event, date, time in, time out and hours) are attached as PDFs to download and print.')}</p>
 <p>${t('Thank you for volunteering! Create a free VolunTrack account with this email address to keep all your hours in one place.')}</p>
 ${emailFooterHtml(lang)}`,
   }
