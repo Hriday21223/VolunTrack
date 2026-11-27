@@ -4098,5 +4098,7 @@ export default {
   "Save and send certificate": "Lưu và gửi giấy chứng nhận",
   "Saved. Their certificate is on its way.": "Đã lưu. Giấy chứng nhận đang được gửi.",
   "Time in": "Giờ vào",
-  "Time out": "Giờ ra"
+  "Time out": "Giờ ra",
+  "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "Giờ đây ai cũng có thể xem cơ hội tình nguyện trên trang web của chúng tôi và đăng ký chỉ với tên và email, không cần tài khoản. Họ nhận thẻ tình nguyện viên qua email.",
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Người không có tài khoản giờ có thể đăng ký sự kiện của bạn từ trang web của chúng tôi. Sau sự kiện, hãy thêm giờ vào và giờ ra của họ trong Nhiệm vụ của tôi để gửi giấy chứng nhận và bản ghi đã ký."
 }

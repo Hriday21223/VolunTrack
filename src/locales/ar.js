@@ -4097,5 +4097,7 @@ export default {
   "Save and send certificate": "احفظ وأرسل الشهادة",
   "Saved. Their certificate is on its way.": "تم الحفظ. شهادته في الطريق.",
   "Time in": "وقت الحضور",
-  "Time out": "وقت الانصراف"
+  "Time out": "وقت الانصراف",
+  "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "يمكن لأي شخص الآن تصفّح فرص التطوع على موقعنا والتسجيل باسمه وبريده فقط دون حساب. ويصله شارة المتطوع بالبريد.",
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "يمكن الآن لمن ليس لديهم حساب التسجيل في فعالياتك من موقعنا. بعد الفعالية، أضف وقت حضورهم وانصرافهم في «مهامي» لنرسل لهم شهادة وسجلًا موقّعًا."
 }

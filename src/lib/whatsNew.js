@@ -6,7 +6,7 @@ export const WHATS_NEW = [
     id: '2026-11-27',
     date: '2026-11-27',
     items: [
-      { text: "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account." },
+      { text: "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email." },
       { text: "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe." },
       { text: "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.", for: ["student"] },
       { text: "Sign your own entries on Log Hours. Your school can make it required.", for: ["student"] },
@@ -14,6 +14,7 @@ export const WHATS_NEW = [
       { text: "Your certificate now carries VolunTrack’s signature too.", for: ["student"] },
       { text: "Share your Year in review as a link that works for 30 days.", for: ["student"] },
       { text: "Your events now show on our public opportunities page too, so more people can find them.", for: ["volunteer"] },
+      { text: "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.", for: ["volunteer", "org"] },
       { text: "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.", for: ["school", "school_staff"] },
     ],
   },
