@@ -127,7 +127,7 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
         if (r.note) notes.push(r.note)
       }
       setRows(entries.map((r, i) => ({
-        location: '', supervisorEmail: '', category: '', description: '', ...r, customFields: {},
+        location: '', supervisorEmail: '', category: '', description: '', startTime: '', endTime: '', ...r, customFields: {},
         key: i, keep: Boolean(r.date && r.activity && r.hours > 0),
       })))
       setNote([...new Set(notes)].join(' '))
@@ -176,6 +176,9 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
       location: (r.location || '').trim(),
       supervisorEmail: (r.supervisorEmail || '').trim(),
       customFields: r.customFields || {},
+      // Times come with VolunTrack's own service record (parseServiceRecord).
+      startTime: r.startTime || '',
+      endTime: r.endTime || '',
       notes: description ? `${description}\n\n${marker}` : marker,
     }
   }

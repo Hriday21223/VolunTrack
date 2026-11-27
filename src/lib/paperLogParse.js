@@ -86,7 +86,54 @@ export function findHours(line) {
 
 const tidy = (s) => s.replace(/[|_[\]{}<>~*=]+/g, ' ').replace(/\s+/g, ' ').replace(/^[\s,.;:–-]+|[\s,.;:–-]+$/g, '').trim()
 
+// "9:00 AM" / "14:30" → "09:00" / "14:30", or ''.
+function toHHMM(s) {
+  const m = /(\d{1,2}):(\d{2})\s*(am|pm|a\.m\.|p\.m\.)?/i.exec(String(s || ''))
+  if (!m) return ''
+  const mins = toMinutes(m[1], m[2], (m[3] || '').replace(/\./g, ''), false)
+  return mins >= 0 && mins < 24 * 60 ? `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}` : ''
+}
+
+/**
+ * VolunTrack's own signed service record (server/serviceRecordPdf.js, emailed
+ * to someone who volunteered without an account): labelled fields, not a
+ * table, so it's read field by field into one entry with its times. Null
+ * when the text isn't one.
+ */
+export function parseServiceRecord(text, today = new Date()) {
+  const t = String(text || '')
+  if (!/volunteer\s+service\s+record/i.test(t) || !/total\s+hours/i.test(t)) return null
+  // The first "Label value" line for each label (later ones are signature captions).
+  const field = (label) => {
+    const m = new RegExp(`^\\s*${label}\\s*[:\\s]\\s*(\\S.*)$`, 'im').exec(t)
+    return m ? m[1].replace(/\s{2,}/g, ' ').trim() : ''
+  }
+  const date = findDate(field('Date'), today).date
+  const startTime = toHHMM(field('Time in'))
+  const endTime = toHHMM(field('Time out'))
+  let hours = Number((/[\d.]+/.exec(field('Total hours')) || [])[0])
+  if (!(hours > 0) && startTime && endTime) {
+    const [a, b] = [startTime, endTime].map((x) => Number(x.slice(0, 2)) * 60 + Number(x.slice(3)))
+    hours = (b - a) / 60
+  }
+  hours = hours > 0 && hours <= 24 ? Math.round(hours * 4) / 4 : 0
+  const organizer = field('Organizer').slice(0, 200)
+  const location = field('Location')
+  return [{
+    date,
+    activity: field('Event').slice(0, 200),
+    orgName: organizer,
+    supervisorName: organizer,
+    hours,
+    location: /^online$/i.test(location) ? 'Online' : location.slice(0, 200),
+    startTime,
+    endTime,
+  }]
+}
+
 export function parsePaperLog(text, today = new Date()) {
+  const record = parseServiceRecord(text, today)
+  if (record) return record
   const entries = []
   for (const raw of String(text || '').split(/\r?\n/)) {
     const line = raw.trim()
