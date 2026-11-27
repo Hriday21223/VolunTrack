@@ -4100,5 +4100,6 @@ export default {
   "Time in": "签到时间",
   "Time out": "签退时间",
   "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "现在任何人都能在我们的网站上浏览志愿机会，只需姓名和邮箱即可报名，无需账户。他们会通过邮件收到志愿者徽章。",
-  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "没有账户的人现在也能从我们的网站报名你的活动。活动结束后，在“我的任务”中填写他们的签到和签退时间，即可给他们发送证书和签名记录。"
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "没有账户的人现在也能从我们的网站报名你的活动。活动结束后，在“我的任务”中填写他们的签到和签退时间，即可给他们发送证书和签名记录。",
+  "Use your supervisor’s email, not your own. They’re the one who confirms your hours.": "请填写负责人的邮箱，而不是你自己的。确认你时长的是他们。"
 }

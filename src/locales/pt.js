@@ -4099,5 +4099,6 @@ export default {
   "Time in": "Entrada",
   "Time out": "Saída",
   "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "Agora qualquer pessoa pode ver oportunidades de voluntariado no nosso site e se inscrever só com nome e e-mail, sem conta. Ela recebe um crachá de voluntário por e-mail.",
-  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Pessoas sem conta agora podem se inscrever nos seus eventos pelo nosso site. Depois do evento, adicione o horário de entrada e saída delas em Minhas tarefas para enviar um certificado e um registro assinado."
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Pessoas sem conta agora podem se inscrever nos seus eventos pelo nosso site. Depois do evento, adicione o horário de entrada e saída delas em Minhas tarefas para enviar um certificado e um registro assinado.",
+  "Use your supervisor’s email, not your own. They’re the one who confirms your hours.": "Use o e-mail do seu supervisor, não o seu. É ele quem confirma suas horas."
 }

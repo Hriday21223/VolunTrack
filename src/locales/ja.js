@@ -4099,5 +4099,6 @@ export default {
   "Time in": "開始時刻",
   "Time out": "終了時刻",
   "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "誰でも私たちのウェブサイトでボランティア募集を見て、アカウントなしで名前とメールだけで申し込めるようになりました。ボランティアバッジはメールで届きます。",
-  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "アカウントのない人も、私たちのウェブサイトからあなたのイベントに申し込めるようになりました。イベント後に「マイタスク」で開始・終了時刻を入力すると、修了証と署名済みの記録がメールで送られます。"
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "アカウントのない人も、私たちのウェブサイトからあなたのイベントに申し込めるようになりました。イベント後に「マイタスク」で開始・終了時刻を入力すると、修了証と署名済みの記録がメールで送られます。",
+  "Use your supervisor’s email, not your own. They’re the one who confirms your hours.": "ご自身ではなく、責任者のメールアドレスを入力してください。時間を確認するのは責任者です。"
 }

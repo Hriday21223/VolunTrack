@@ -4099,5 +4099,6 @@ export default {
   "Time in": "وقت الحضور",
   "Time out": "وقت الانصراف",
   "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "يمكن لأي شخص الآن تصفّح فرص التطوع على موقعنا والتسجيل باسمه وبريده فقط دون حساب. ويصله شارة المتطوع بالبريد.",
-  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "يمكن الآن لمن ليس لديهم حساب التسجيل في فعالياتك من موقعنا. بعد الفعالية، أضف وقت حضورهم وانصرافهم في «مهامي» لنرسل لهم شهادة وسجلًا موقّعًا."
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "يمكن الآن لمن ليس لديهم حساب التسجيل في فعالياتك من موقعنا. بعد الفعالية، أضف وقت حضورهم وانصرافهم في «مهامي» لنرسل لهم شهادة وسجلًا موقّعًا.",
+  "Use your supervisor’s email, not your own. They’re the one who confirms your hours.": "استخدم بريد مشرفك، لا بريدك. فهو من يؤكد ساعاتك."
 }

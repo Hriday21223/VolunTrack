@@ -12,7 +12,7 @@ import SignaturePad from '@/components/SignaturePad.jsx'
 import Toast from '@/components/Toast.jsx'
 import LocationPicker from '@/components/LocationPicker.jsx'
 import { ACTIVITY_CATEGORIES, categoryColor } from '@/lib/categories.js'
-import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds, isLockedDate, lockedMessage, placeApproved } from '@/lib/requirements.js'
+import { useMyRequirements, formFieldRequirements, validateLogAgainstPolicy, describePolicy, signatureNeeds, isLockedDate, lockedMessage, placeApproved, isOwnEmail, OWN_EMAIL_AS_SUPERVISOR } from '@/lib/requirements.js'
 import { listShifts } from '@/lib/shifts.js'
 import { hoursBetween, fmtHours, fmtDate, fmtDateLong } from '@/utils/date.js'
 import { notifySupervisor, createVerificationLink, smsAvailable } from '@/lib/supervisorNotify.js'
@@ -331,6 +331,8 @@ export default function LogHours({ editId, onCloseEdit }) {
         : tr("Please enter your supervisor's email."))
       return
     }
+    // Not the student's own address: the supervisor is who confirms the hours.
+    if (isOwnEmail(form.supervisorEmail, user?.email)) { setError(tr(OWN_EMAIL_AS_SUPERVISOR)); return }
     if (signsInPerson && !form.supervisorSignature) { setError(tr('Have your supervisor sign in the box under Signatures.')); return }
     const proofLink = cleanProofLink(form.proofLink)
     if (proofLink.error) { setError(tr(proofLink.error)); return }
