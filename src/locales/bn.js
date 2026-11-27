@@ -4097,5 +4097,7 @@ export default {
   "Save and send certificate": "সেভ করে সার্টিফিকেট পাঠান",
   "Saved. Their certificate is on its way.": "সেভ হয়েছে। সার্টিফিকেট পাঠানো হচ্ছে।",
   "Time in": "আসার সময়",
-  "Time out": "যাওয়ার সময়"
+  "Time out": "যাওয়ার সময়",
+  "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "এখন যে কেউ আমাদের ওয়েবসাইটে স্বেচ্ছাসেবার সুযোগ দেখতে পারেন এবং অ্যাকাউন্ট ছাড়াই শুধু নাম ও ইমেল দিয়ে সাইন আপ করতে পারেন। তারা ইমেলে স্বেচ্ছাসেবক ব্যাজ পান।",
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "অ্যাকাউন্ট নেই এমন মানুষ এখন আমাদের ওয়েবসাইট থেকে আপনার ইভেন্টে সাইন আপ করতে পারেন। ইভেন্টের পরে আমার কাজ-এ তাদের আসা ও যাওয়ার সময় দিন, তাতে তাদের সার্টিফিকেট ও স্বাক্ষরিত রেকর্ড ইমেল হবে।"
 }

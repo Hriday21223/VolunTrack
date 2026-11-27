@@ -4098,5 +4098,7 @@ export default {
   "Save and send certificate": "Guardar y enviar certificado",
   "Saved. Their certificate is on its way.": "Guardado. Su certificado va en camino.",
   "Time in": "Entrada",
-  "Time out": "Salida"
+  "Time out": "Salida",
+  "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "Ahora cualquiera puede ver oportunidades de voluntariado en nuestro sitio web e inscribirse solo con su nombre y correo, sin cuenta. Recibe una credencial de voluntario por correo.",
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Ahora personas sin cuenta pueden inscribirse en tus eventos desde nuestro sitio web. Después del evento, añade su hora de entrada y de salida en Mis tareas para enviarles un certificado y un registro firmado."
 }
