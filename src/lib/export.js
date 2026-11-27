@@ -346,8 +346,11 @@ export function printCertificate({ user, totalHours, goalReached, certificate, a
   const style = certificate?.signStyle || 'typed'
   const signer = certificate?.signerName?.trim()
   const ownSigner = Boolean(signer) || style !== 'typed'
-  const signerName = signer || (ownSigner ? school : 'VolunTrack Org')
+  const signerName = signer || (ownSigner ? school : VOLUNTRACK_SIGNER)
   const signerTitle = ownSigner ? (certificate.signerTitle?.trim() || 'Adviser') : 'VolunTrack'
+  // VolunTrack signs every student certificate (the owner's choice, Nov 27):
+  // beside the school's signer when it has one, or on its own.
+  const voluntrackSig = ownSigner ? signatureBlock({ name: VOLUNTRACK_SIGNER, title: 'VolunTrack', style: 'typed' }) : ''
   const issuedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   w.document.write(`
     <html><head><title>Certificate of Service</title>
@@ -364,6 +367,8 @@ export function printCertificate({ user, totalHours, goalReached, certificate, a
       .sig div { text-align:center; }
       .sig-value { margin-bottom:6px; white-space:nowrap; }
       .sig-line { border-top:1px solid #6c502d; padding-top:6px; width:200px; }
+      .sig.three { gap:16px; }
+      .sig.three .sig-line { width:170px; }
       .signature { font-family:'Brush Script MT','Segoe Script',cursive; font-size:20px; color:#214327; }
       .sig-img { display:block; height:48px; width:auto; margin:0 auto 2px; }
       .sig-blank { height:42px; }
@@ -383,12 +388,13 @@ export function printCertificate({ user, totalHours, goalReached, certificate, a
             ? 'and has reached their service goal — a true community hero.'
             : 'in service of their community.'}
         </div>
-        <div class="sig">
+        <div class="sig${voluntrackSig ? ' three' : ''}">
           <div>
             <div class="sig-value">${escapeHtml(issuedDate)}</div>
             <div class="sig-line">Date</div>
           </div>
           ${signatureBlock({ name: signerName, title: signerTitle, style, image: certificate?.signatureImage })}
+          ${voluntrackSig}
         </div>
       </div>
       <script>window.onload=()=>window.print();</script>
@@ -462,6 +468,8 @@ function hoursWords(h) {
 // The signer's half of a certificate's signature row, per the school's
 // certificates settings: a typed name, a drawn signature, or a blank line to
 // sign by hand. Drawn and blank print the name and title under the line.
+const VOLUNTRACK_SIGNER = 'VolunTrack Org'
+
 function signatureBlock({ name, title, style, image }) {
   const caption = escapeHtml([style === 'typed' ? '' : name, title].filter(Boolean).join(', '))
   if (style === 'drawn' && /^data:image\/png;base64,/.test(image || '')) {
