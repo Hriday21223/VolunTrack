@@ -2425,6 +2425,34 @@ export async function initSchema() {
       )
     `)
   } catch (error) { console.error('admin_return_tickets table failed:', error.message) }
+  // Signing up for an opportunity without an account (Nov 27): name and
+  // email only, 13 and older, held once the emailed link's Confirm is
+  // pressed. token_hash is the emailed link; badge_code the QR. Deleted 30
+  // days after the event (server/routes/emailSignups.js).
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS public_task_email_signups (
+        id           TEXT PRIMARY KEY,
+        task_id      TEXT NOT NULL REFERENCES public_tasks(id) ON DELETE CASCADE,
+        name         TEXT NOT NULL,
+        email        TEXT NOT NULL,
+        language     TEXT,
+        token_hash   TEXT NOT NULL UNIQUE,
+        badge_code   TEXT UNIQUE,
+        sent_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        confirmed_at TIMESTAMPTZ,
+        cancelled_at TIMESTAMPTZ,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (task_id, email)
+      )
+    `)
+  } catch (error) { console.error('public_task_email_signups table failed:', error.message) }
+  // The organizer's hours for them after the event, which emails a
+  // certificate signed by the organizer and VolunTrack (or "didn't come").
+  try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS hours NUMERIC(5,2)') } catch {}
+  try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS absent BOOLEAN NOT NULL DEFAULT false') } catch {}
+  try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS certificate_sent_at TIMESTAMPTZ') } catch {}
+  try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS certificate_hours NUMERIC(5,2)') } catch {}
   // Free trials (#892): while trial_ends_at is set the account counts as paid;
   // endExpiredTrials() (server/trials.js) turns it unpaid when the date passes.
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}

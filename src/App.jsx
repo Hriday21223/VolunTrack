@@ -73,6 +73,7 @@ const SupervisorInbox = lazy(() => import('@/pages/SupervisorInbox.jsx'))
 const SignCertificate = lazy(() => import('@/pages/SignCertificate.jsx'))
 const PartnerSignoff = lazy(() => import('@/pages/PartnerSignoff.jsx'))
 const BadgeCheck = lazy(() => import('@/pages/BadgeCheck.jsx'))
+const EmailSignup = lazy(() => import('@/pages/EmailSignup.jsx'))
 const ParentWaiver = lazy(() => import('@/pages/ParentWaiver.jsx'))
 const WriteReference = lazy(() => import('@/pages/WriteReference.jsx'))
 const AccountHandover = lazy(() => import('@/pages/AccountHandover.jsx'))
@@ -181,6 +182,7 @@ function Shell() {
           <Route path="/sign-certificate/:token" element={<SignCertificate />} />
           <Route path="/partner-signoff/:token" element={<PartnerSignoff />} />
           <Route path="/badge/:code" element={<BadgeCheck />} />
+          <Route path="/signup/:token" element={<EmailSignup />} />
           <Route path="/waiver/:token" element={<ParentWaiver />} />
           <Route path="/reference/:token" element={<WriteReference />} />
           <Route path="/handover" element={<AccountHandover />} />

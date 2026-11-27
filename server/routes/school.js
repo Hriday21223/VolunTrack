@@ -19,7 +19,7 @@ import { saveRoster, rosterEntry, rosterGrade, applyRosterGrade } from '../roste
 import { hashPassword, verifyPassword, signToken, requireAuth, authenticate } from '../auth.js'
 import { isWeakPassword, WEAK_PASSWORD_MESSAGE, isValidDateString, MAX_HOURS_PER_ENTRY } from '../validate.js'
 import { verifyTurnstile } from '../turnstile.js'
-import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeEmail, hasEmail, emailApiBase, sendHoursSignedEmail } from '../email.js'
+import { sendEmail, sendWelcomeEmail, emailFooterHtml, paymentNoticeEmail, hasEmail, emailApiBase, sendHoursSignedEmail, sendServiceCertificateEmail } from '../email.js'
 import { getPaymentInstructions } from './settings.js'
 import { escapeHtml } from '../html.js'
 import { friendlyWhen } from '../when.js'
@@ -4531,7 +4531,20 @@ router.get('/badge/:code', badgeLimiter, requireDb, async (req, res) => {
         WHERE s.badge_code = $1`,
       [code],
     )
-    const b = rows[0]
+    let b = rows[0]
+    if (!b) {
+      // A badge from a sign-up without an account: confirmed is "approved".
+      const { rows: es } = await query(
+        `SELECT CASE WHEN es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL THEN 'approved' ELSE 'pending' END AS status,
+                NULL AS checked_in_at, es.name,
+                t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.creator_name, t.status AS task_status,
+                t.date < CURRENT_DATE - 1 AS past
+           FROM public_task_email_signups es JOIN public_tasks t ON t.id = es.task_id
+          WHERE es.badge_code = $1`,
+        [code],
+      )
+      b = es[0]
+    }
     if (!b) return res.status(404).json({ valid: false, reason: 'unknown' })
     const reason = b.task_status === 'cancelled' ? 'cancelled'
       : b.status !== 'approved' ? 'not_approved'
@@ -4988,7 +5001,7 @@ export const WAITLIST_POSITION_SQL = (taskExpr, userExpr) => `(
          END
     FROM public_task_signups me WHERE me.task_id = ${taskExpr} AND me.user_id = ${userExpr})`
 
-async function promoteFromWaitlist(taskId) {
+export async function promoteFromWaitlist(taskId) {
   const client = await getPool().connect()
   let promoted = []
   try {
@@ -5743,7 +5756,11 @@ router.post('/public-tasks/:id/status', limiter, requireDb, requireAuth(), async
 async function cancellationRecipients(taskId) {
   const { rows } = await query(
     `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
-      WHERE s.task_id = $1 AND s.status NOT IN ('rejected', 'parent_declined')`,
+      WHERE s.task_id = $1 AND s.status NOT IN ('rejected', 'parent_declined')
+     UNION ALL
+     -- Signed up without an account (routes/emailSignups.js), confirmed.
+     SELECT es.email, es.name, es.language FROM public_task_email_signups es
+      WHERE es.task_id = $1 AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL`,
     [taskId],
   )
   return rows
@@ -5804,6 +5821,65 @@ export function notifyEventsCancelledByDeletion(events) {
     for (const { task, people } of events) await sendCancellationEmails(task, people, { accountClosed: true })
   })().catch((error) => console.error('account-deletion cancellation emails failed:', error))
 }
+
+// POST /api/school/public-tasks/:id/email-signups/:signupId { hours } | { absent: true }
+// After the event, the organizer (or a co-host) gives someone who signed up
+// without an account (routes/emailSignups.js) their hours, which emails them
+// a certificate signed by the organizer and VolunTrack; or marks that they
+// didn't come. Changing the hours sends a corrected certificate.
+router.post('/public-tasks/:id/email-signups/:signupId', limiter, requireDb, requireAuth(), async (req, res) => {
+  try {
+    const access = await canManageTask(req.params.id, req.auth.sub)
+    if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can do this.")) return
+    const { rows } = await query(
+      `SELECT es.id, es.name, es.email, es.language, es.hours, es.certificate_hours, es.certificate_sent_at,
+              t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.creator_name, t.status,
+              t.date > CURRENT_DATE AS future, t.date < CURRENT_DATE - 30 AS too_old
+         FROM public_task_email_signups es JOIN public_tasks t ON t.id = es.task_id
+        WHERE es.id = $1 AND es.task_id = $2 AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL`,
+      [req.params.signupId, req.params.id],
+    )
+    const r = rows[0]
+    if (!r) return res.status(404).json({ error: 'Sign-up not found.' })
+    if (r.status === 'cancelled') return res.status(400).json({ error: 'This task was cancelled.' })
+    if (r.future) return res.status(400).json({ error: 'Add hours on or after the day of the event.' })
+    if (r.too_old) return res.status(400).json({ error: CLOSED_OUT_ERROR, closedOut: true })
+
+    if (req.body?.absent === true) {
+      await query('UPDATE public_task_email_signups SET absent = true, hours = NULL WHERE id = $1', [r.id])
+      return res.json({ ok: true, absent: true })
+    }
+    const hours = Number(req.body?.hours)
+    if (!Number.isFinite(hours) || hours < 0.25 || hours > 24) return res.status(400).json({ error: 'Enter hours between 0.25 and 24.' })
+    const rounded = Math.round(hours * 4) / 4
+    await query('UPDATE public_task_email_signups SET hours = $2, absent = false WHERE id = $1', [r.id, rounded])
+
+    // One certificate per amount: a correction sends a new one.
+    let certificateSent = Boolean(r.certificate_sent_at) && Number(r.certificate_hours) === rounded
+    if (!certificateSent) {
+      const { rowCount } = await query(
+        `UPDATE public_task_email_signups SET certificate_sent_at = now(), certificate_hours = $2
+          WHERE id = $1 AND (certificate_hours IS DISTINCT FROM $2)`,
+        [r.id, rounded],
+      )
+      if (rowCount) {
+        const organizer = r.creator_name || ''
+        const result = r.email.endsWith('@test.com')
+          ? { sent: true }
+          : await sendServiceCertificateEmail({ to: r.email, language: r.language, name: r.name, hours: rounded, title: r.title, date: r.date, organizer })
+        if (!result?.sent) {
+          await query('UPDATE public_task_email_signups SET certificate_sent_at = NULL, certificate_hours = NULL WHERE id = $1', [r.id])
+          return res.status(502).json({ error: 'Hours saved, but the certificate email could not be sent. Try again in a moment.' })
+        }
+        certificateSent = true
+      }
+    }
+    return res.json({ ok: true, hours: rounded, certificateSent })
+  } catch (error) {
+    console.error('email sign-up hours failed:', error)
+    return res.status(500).json({ error: 'Could not save the hours.' })
+  }
+})
 
 // POST /api/school/public-tasks/:id/cancel { reason }
 // Cancelling is the honest end state for an event that will not happen:
@@ -5867,7 +5943,10 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
       // (server/routes/reports.js).
       `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved'
-          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id IN ($2, $3))`,
+          AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id IN ($2, $3))
+       UNION ALL
+       SELECT es.email, es.name, es.language FROM public_task_email_signups es
+        WHERE es.task_id = $1 AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL`,
       [req.params.id, access.createdBy, req.auth.sub],
     )
     if (people.length === 0) return res.status(400).json({ error: 'No approved volunteers to message yet.' })
@@ -6414,6 +6493,13 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
               -- Not before a parent's OK (decideParentOk): an under-13's name
               -- and email reach the organizer only once a parent agreed.
               WHERE s.task_id = t.id AND s.status NOT IN ('parent_pending', 'parent_declined')) END AS signups,
+              -- Signed up without an account (confirmed), hidden once closed out.
+              CASE WHEN ${CLOSED_OUT_SQL('t')} THEN '[]'::json ELSE
+              (SELECT COALESCE(json_agg(json_build_object('id', es.id, 'name', es.name, 'email', es.email, 'confirmed_at', es.confirmed_at,
+                 'hours', es.hours, 'absent', es.absent, 'certificate_sent_at', es.certificate_sent_at)
+                 ORDER BY es.confirmed_at), '[]'::json)
+                 FROM public_task_email_signups es
+                WHERE es.task_id = t.id AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL) END AS email_signups,
               -- Ratings (PUT /public-tasks/:id/rating): the average, the count
               -- and the comments with their stars and date — never the
               -- student's name or id, so a comment can't be traced to a row.

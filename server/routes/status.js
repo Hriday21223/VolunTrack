@@ -25,6 +25,7 @@ import statsRouter from './stats.js'
 import registrationCodesRouter from './registrationCodes.js'
 import announcementsRouter from './announcements.js'
 import schoolEventsRouter from './schoolEvents.js'
+import emailSignupsRouter from './emailSignups.js'
 import goalsRouter from './goals.js'
 import reportsRouter from './reports.js'
 import clientErrorsRouter from './clientErrors.js'
@@ -302,6 +303,7 @@ const MOUNTED_ROUTERS = [
   ['registration-codes', '/api/registration-codes', registrationCodesRouter],
   ['announcements', '/api/announcements', announcementsRouter],
   ['events', '/api/events', schoolEventsRouter],
+  ['events', '/api/email-signups', emailSignupsRouter],
   ['goals', '/api/goals', goalsRouter],
   ['reports', '/api/reports', reportsRouter],
   ['client-errors', '/api/client-errors', clientErrorsRouter],
