@@ -51,7 +51,11 @@ const DISALLOWED_PATHS = [
   '/sign-certificate/',
   // Authenticated app pages, behind a login/admin guard.
   '/parent',
-  '/log',
+  // Robots rules match by prefix, so a bare '/log' also blocked /login
+  // (Search Console: "Blocked by robots.txt"). '$' ends the match at /log,
+  // '/log?' covers its links like /log?shift=…; Google and Bing read both.
+  '/log$',
+  '/log?',
   '/calendar',
   '/achievements',
   '/reminders',
