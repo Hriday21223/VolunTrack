@@ -3911,8 +3911,8 @@ export default {
   "Do I need to create an account?": "我需要创建账户吗？",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "需要。免费账户可以保存你的时长，在设备间同步，并分享给学校。用你的姓名、邮箱、密码（至少 8 个字符）和出生日期注册，然后输入我们发到邮箱的 6 位验证码确认地址；验证码 10 分钟后失效。如果你未满 13 岁，需要家长或监护人先通过邮件批准账户。",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Android 和 iPhone 应用即将登陆 Google Play 和 App Store。在此之前，VolunTrack 是一个渐进式网页应用：在手机浏览器中打开，点击“添加到主屏幕”，就能像应用一样使用，离线也能用。",
-  "Volunteer Hour Tracker for Students & Schools": "面向学生和学校的志愿时长记录工具",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "免费的学生志愿时长记录工具。记录时长，请负责人签名，下载报告用于 NHS、奖学金或毕业。",
+  "Volunteer Hour Tracker App for Students & Schools": "面向学生和学校的志愿时长记录应用",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "免费的学生志愿时长记录应用。记录社区服务时长，请人签名确认，下载报告用于 NHS、奖学金或毕业。",
   "Volunteer hour tracking": "志愿时长记录",
   "Close menu": "关闭菜单",
   "Free for students, no credit card": "学生免费，无需信用卡",
@@ -4049,5 +4049,7 @@ export default {
   "Page {n} of {total}": "第 {n} 页，共 {total} 页",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "显示前 {n} 页，共 {total} 页。下载文件可查看全部。",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} 条还需要补充学校要求的内容。填写方框，或使用“在表单中完成”。",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n} 条还需要补充学校要求的内容。请填写每条的方框。"
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} 条还需要补充学校要求的内容。请填写每条的方框。",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "免费的志愿时长记录表，可直接打印（PDF，Letter 尺寸）。",
+  "Download the log sheet": "下载记录表"
 }

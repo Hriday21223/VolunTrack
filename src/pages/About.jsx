@@ -196,8 +196,8 @@ export default function About() {
   // Rendered at both "/" and "/about" for logged-out visitors — canonicalize
   // to "/" so search engines don't treat them as duplicate pages.
   useSeo({
-    title: tr('Volunteer Hour Tracker for Students & Schools'),
-    description: tr('Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.'),
+    title: tr('Volunteer Hour Tracker App for Students & Schools'),
+    description: tr('Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.'),
     canonicalPath: '/',
     jsonLd: faqJsonLd,
   })

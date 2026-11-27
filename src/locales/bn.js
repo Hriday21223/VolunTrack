@@ -3910,8 +3910,8 @@ export default {
   "Do I need to create an account?": "আমাকে কি অ্যাকাউন্ট খুলতে হবে?",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "হ্যাঁ। ফ্রি অ্যাকাউন্টই আপনার ঘণ্টা সংরক্ষণ করে, ডিভাইসগুলোতে সিঙ্ক করে আর স্কুলের সাথে শেয়ার করে। নাম, ইমেল, পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর) আর জন্মতারিখ দিয়ে সাইন আপ করুন, তারপর ঠিকানা নিশ্চিত করতে আমাদের ইমেল করা ৬ সংখ্যার কোডটি লিখুন; কোড ১০ মিনিট পর মেয়াদোত্তীর্ণ হয়। আপনার বয়স ১৩-এর কম হলে প্রথমে বাবা-মা বা অভিভাবক ইমেলে অ্যাকাউন্ট অনুমোদন করবেন।",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Android ও iPhone অ্যাপ শিগগিরই Google Play আর App Store-এ আসছে। ততদিন VolunTrack একটি প্রগ্রেসিভ ওয়েব অ্যাপ: ফোনের ব্রাউজারে খুলে \"হোম স্ক্রিনে যোগ করুন\" ট্যাপ করুন, অফলাইনেও চলা অ্যাপের মতো ব্যবহার করতে পারবেন।",
-  "Volunteer Hour Tracker for Students & Schools": "শিক্ষার্থী ও স্কুলের জন্য স্বেচ্ছাসেবা ঘণ্টা ট্র্যাকার",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "শিক্ষার্থীদের জন্য ফ্রি স্বেচ্ছাসেবা ঘণ্টা ট্র্যাকার। ঘণ্টা লিখুন, সুপারভাইজারের স্বাক্ষর নিন, আর NHS, বৃত্তি বা গ্র্যাজুয়েশনের জন্য রিপোর্ট ডাউনলোড করুন।",
+  "Volunteer Hour Tracker App for Students & Schools": "শিক্ষার্থী ও স্কুলের জন্য স্বেচ্ছাসেবা ঘণ্টা ট্র্যাকার অ্যাপ",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "শিক্ষার্থীদের জন্য ফ্রি স্বেচ্ছাসেবা ঘণ্টা ট্র্যাকার অ্যাপ। কমিউনিটি সার্ভিসের ঘণ্টা লিখুন, স্বাক্ষর নিন, আর NHS, বৃত্তি বা গ্র্যাজুয়েশনের জন্য রিপোর্ট ডাউনলোড করুন।",
   "Volunteer hour tracking": "স্বেচ্ছাসেবা ঘণ্টার হিসাব",
   "Close menu": "মেনু বন্ধ করুন",
   "Free for students, no credit card": "শিক্ষার্থীদের জন্য ফ্রি, ক্রেডিট কার্ড লাগবে না",
@@ -4048,5 +4048,7 @@ export default {
   "Page {n} of {total}": "পৃষ্ঠা {n} / {total}",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "{total}টির মধ্যে প্রথম {n}টি পৃষ্ঠা দেখানো হচ্ছে। সবগুলো দেখতে ফাইলটি ডাউনলোড করুন।",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n}টিতে আপনার স্কুলের জন্য আরও তথ্য লাগবে। ঘরগুলো পূরণ করুন, অথবা ফর্মে শেষ করুন ব্যবহার করুন।",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n}টিতে আপনার স্কুলের জন্য আরও তথ্য লাগবে। প্রতিটির ঘর পূরণ করুন।"
+  "{n} need more for your school. Fill in the boxes on each one.": "{n}টিতে আপনার স্কুলের জন্য আরও তথ্য লাগবে। প্রতিটির ঘর পূরণ করুন।",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "ফ্রি স্বেচ্ছাসেবা ঘণ্টার লগ শিট, প্রিন্টের জন্য তৈরি (PDF, লেটার সাইজ)।",
+  "Download the log sheet": "লগ শিট ডাউনলোড করুন"
 }

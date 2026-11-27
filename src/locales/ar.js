@@ -3910,8 +3910,8 @@ export default {
   "Do I need to create an account?": "هل أحتاج إلى إنشاء حساب؟",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "نعم. الحساب المجاني هو ما يحفظ ساعاتك ويزامنها بين أجهزتك ويشاركها مع مدرستك. سجّل باسمك وبريدك وكلمة مرور (8 أحرف على الأقل) وتاريخ ميلادك، ثم أدخل الرمز المكوّن من 6 أرقام الذي نرسله إلى بريدك لتأكيد عنوانك؛ ينتهي الرمز بعد 10 دقائق. إن كان عمرك أقل من 13 عامًا، يوافق أحد والديك أو وليّ أمرك على الحساب بالبريد أولًا.",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "تطبيقا Android وiPhone في طريقهما إلى Google Play وApp Store. وحتى ذلك الحين، VolunTrack تطبيق ويب تقدّمي: افتحه في متصفح هاتفك واضغط \"إضافة إلى الشاشة الرئيسية\" لتجربة تشبه التطبيق وتعمل دون اتصال.",
-  "Volunteer Hour Tracker for Students & Schools": "متتبّع ساعات التطوع للطلاب والمدارس",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "متتبّع مجاني لساعات التطوع للطلاب. سجّل ساعاتك، واطلب من مشرفك توقيعها، ونزّل تقريرًا لجمعية NHS أو المنح الدراسية أو التخرج.",
+  "Volunteer Hour Tracker App for Students & Schools": "تطبيق تتبّع ساعات التطوع للطلاب والمدارس",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "تطبيق مجاني لتتبّع ساعات التطوع للطلاب. سجّل ساعات خدمة المجتمع، واحصل على توقيعها، ونزّل تقريرًا لجمعية NHS أو المنح الدراسية أو التخرج.",
   "Volunteer hour tracking": "تتبّع ساعات التطوع",
   "Close menu": "إغلاق القائمة",
   "Free for students, no credit card": "مجاني للطلاب، بلا بطاقة ائتمان",
@@ -4048,5 +4048,7 @@ export default {
   "Page {n} of {total}": "الصفحة {n} من {total}",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "تُعرض أول {n} صفحة من {total}. نزّل الملف لرؤيتها كلها.",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} تحتاج إلى المزيد لمدرستك. املأ الخانات، أو استخدم «أكمل في النموذج».",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n} تحتاج إلى المزيد لمدرستك. املأ الخانات في كل واحدة."
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} تحتاج إلى المزيد لمدرستك. املأ الخانات في كل واحدة.",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "ورقة مجانية لتسجيل ساعات التطوع، جاهزة للطباعة (PDF، مقاس Letter).",
+  "Download the log sheet": "نزّل ورقة التسجيل"
 }
