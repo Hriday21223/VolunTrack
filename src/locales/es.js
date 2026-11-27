@@ -3911,8 +3911,8 @@ export default {
   "Do I need to create an account?": "¿Necesito crear una cuenta?",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "Sí. Una cuenta gratuita es lo que guarda tus horas, las sincroniza entre tus dispositivos y las comparte con tu escuela. Regístrate con tu nombre, correo, contraseña (al menos 8 caracteres) y fecha de nacimiento, y luego escribe el código de 6 dígitos que te enviamos por correo para confirmar tu dirección; el código vence a los 10 minutos. Si tienes menos de 13 años, un padre, madre o tutor aprueba primero la cuenta por correo.",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Las apps para Android y iPhone están en camino a Google Play y la App Store. Mientras tanto, VolunTrack es una aplicación web progresiva: ábrela en el navegador de tu teléfono y toca \"Agregar a la pantalla de inicio\" para usarla como una app que funciona sin conexión.",
-  "Volunteer Hour Tracker for Students & Schools": "Registro de horas de voluntariado para estudiantes y escuelas",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "Registro gratuito de horas de voluntariado para estudiantes. Registra tus horas, haz que tu supervisor las firme y descarga un informe para la NHS, becas o la graduación.",
+  "Volunteer Hour Tracker App for Students & Schools": "App para registrar horas de voluntariado para estudiantes y escuelas",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "App gratuita para registrar horas de voluntariado. Registra tus horas de servicio comunitario, haz que las firmen y descarga un informe para la NHS, becas o la graduación.",
   "Volunteer hour tracking": "Registro de horas de voluntariado",
   "Close menu": "Cerrar menú",
   "Free for students, no credit card": "Gratis para estudiantes, sin tarjeta de crédito",
@@ -4049,5 +4049,7 @@ export default {
   "Page {n} of {total}": "Página {n} de {total}",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "Se muestran las primeras {n} de {total} páginas. Descarga el archivo para verlas todas.",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} necesitan más para tu escuela. Completa las casillas o usa Terminar en el formulario.",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n} necesitan más para tu escuela. Completa las casillas de cada una."
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} necesitan más para tu escuela. Completa las casillas de cada una.",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Hoja de registro de horas de voluntariado gratis, lista para imprimir (PDF, tamaño carta).",
+  "Download the log sheet": "Descargar la hoja de registro"
 }

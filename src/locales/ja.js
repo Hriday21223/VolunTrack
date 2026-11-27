@@ -3910,8 +3910,8 @@ export default {
   "Do I need to create an account?": "アカウントは必要ですか？",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "はい。無料アカウントがあることで、時間が保存され、端末間で同期され、学校と共有されます。名前、メールアドレス、パスワード（8 文字以上）、生年月日で登録し、メールで届く 6 桁のコードを入力してアドレスを確認します。コードは 10 分で期限が切れます。13 歳未満の場合は、まず保護者がメールでアカウントを承認します。",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Android と iPhone のアプリは Google Play と App Store に向けて準備中です。それまでは、VolunTrack はプログレッシブウェブアプリとして使えます。スマホのブラウザで開き、\"ホーム画面に追加\"をタップすれば、オフラインでも動くアプリのように使えます。",
-  "Volunteer Hour Tracker for Students & Schools": "生徒と学校のためのボランティア時間記録アプリ",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "生徒向けの無料ボランティア時間記録アプリ。時間を記録し、責任者に署名してもらい、NHS、奨学金、卒業のためのレポートをダウンロードできます。",
+  "Volunteer Hour Tracker App for Students & Schools": "生徒と学校のためのボランティア時間記録アプリ",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "生徒向けの無料ボランティア時間記録アプリ。地域奉仕の時間を記録し、署名をもらい、NHS、奨学金、卒業のためのレポートをダウンロードできます。",
   "Volunteer hour tracking": "ボランティア時間の記録",
   "Close menu": "メニューを閉じる",
   "Free for students, no credit card": "生徒は無料、クレジットカード不要",
@@ -4048,5 +4048,7 @@ export default {
   "Page {n} of {total}": "{total} ページ中 {n} ページ",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "{total} ページ中、最初の {n} ページを表示しています。すべて見るにはファイルをダウンロードしてください。",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} 件は学校の要件にまだ足りません。欄を入力するか、「フォームで仕上げる」を使ってください。",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n} 件は学校の要件にまだ足りません。各行の欄を入力してください。"
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} 件は学校の要件にまだ足りません。各行の欄を入力してください。",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "印刷してすぐ使える無料のボランティア時間記録シート（PDF、レターサイズ）。",
+  "Download the log sheet": "記録シートをダウンロード"
 }

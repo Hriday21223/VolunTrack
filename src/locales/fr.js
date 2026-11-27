@@ -3910,8 +3910,8 @@ export default {
   "Do I need to create an account?": "Dois-je créer un compte ?",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "Oui. Un compte gratuit permet d’enregistrer vos heures, de les synchroniser entre vos appareils et de les partager avec votre école. Inscrivez-vous avec votre nom, votre e-mail, un mot de passe (au moins 8 caractères) et votre date de naissance, puis saisissez le code à 6 chiffres que nous vous envoyons par e-mail pour confirmer votre adresse ; le code expire au bout de 10 minutes. Si vous avez moins de 13 ans, un parent ou un tuteur approuve d’abord le compte par e-mail.",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Les applications Android et iPhone arrivent bientôt sur Google Play et l’App Store. En attendant, VolunTrack est une application web progressive : ouvrez-la dans le navigateur de votre téléphone et touchez \"Ajouter à l’écran d’accueil\" pour une expérience proche d’une app qui fonctionne hors ligne.",
-  "Volunteer Hour Tracker for Students & Schools": "Suivi des heures de bénévolat pour élèves et écoles",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "Suivi gratuit des heures de bénévolat pour les élèves. Enregistrez vos heures, faites-les signer par votre responsable et téléchargez un rapport pour la NHS, une bourse ou la remise des diplômes.",
+  "Volunteer Hour Tracker App for Students & Schools": "Appli de suivi des heures de bénévolat pour élèves et écoles",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "Appli gratuite de suivi des heures de bénévolat pour les élèves. Enregistrez vos heures de service communautaire, faites-les signer et téléchargez un rapport pour la NHS, une bourse ou la remise des diplômes.",
   "Volunteer hour tracking": "Suivi des heures de bénévolat",
   "Close menu": "Fermer le menu",
   "Free for students, no credit card": "Gratuit pour les élèves, sans carte bancaire",
@@ -4048,5 +4048,7 @@ export default {
   "Page {n} of {total}": "Page {n} sur {total}",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "Affichage des {n} premières pages sur {total}. Télécharge le fichier pour toutes les voir.",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} demandent plus d’infos pour ton école. Remplis les cases, ou utilise Terminer dans le formulaire.",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n} demandent plus d’infos pour ton école. Remplis les cases de chacune."
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} demandent plus d’infos pour ton école. Remplis les cases de chacune.",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Feuille de suivi des heures de bénévolat gratuite, prête à imprimer (PDF, format Letter).",
+  "Download the log sheet": "Télécharger la feuille"
 }

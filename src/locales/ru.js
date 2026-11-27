@@ -3910,8 +3910,8 @@ export default {
   "Do I need to create an account?": "Нужно ли создавать аккаунт?",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "Да. Бесплатный аккаунт сохраняет ваши часы, синхронизирует их между устройствами и делится ими со школой. Зарегистрируйтесь, указав имя, почту, пароль (не менее 8 символов) и дату рождения, затем введите 6-значный код из нашего письма, чтобы подтвердить адрес; код действует 10 минут. Если вам меньше 13 лет, сначала аккаунт одобряет по почте родитель или опекун.",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Приложения для Android и iPhone скоро появятся в Google Play и App Store. А пока VolunTrack — прогрессивное веб-приложение: откройте его в браузере телефона и нажмите \"На экран «Домой»\", чтобы пользоваться им как приложением, которое работает без интернета.",
-  "Volunteer Hour Tracker for Students & Schools": "Учёт волонтёрских часов для учеников и школ",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "Бесплатный учёт волонтёрских часов для учеников. Записывайте часы, получайте подпись руководителя и скачивайте отчёт для NHS, стипендий или выпуска.",
+  "Volunteer Hour Tracker App for Students & Schools": "Приложение для учёта волонтёрских часов для учеников и школ",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "Бесплатное приложение для учёта волонтёрских часов. Записывайте часы общественной работы, получайте подпись и скачивайте отчёт для NHS, стипендий или выпуска.",
   "Volunteer hour tracking": "Учёт волонтёрских часов",
   "Close menu": "Закрыть меню",
   "Free for students, no credit card": "Бесплатно для учеников, без банковской карты",
@@ -4048,5 +4048,7 @@ export default {
   "Page {n} of {total}": "Страница {n} из {total}",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "Показаны первые {n} из {total} страниц. Скачайте файл, чтобы увидеть все.",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "Для {n} нужно больше данных для вашей школы. Заполните поля или нажмите «Закончить в форме».",
-  "{n} need more for your school. Fill in the boxes on each one.": "Для {n} нужно больше данных для вашей школы. Заполните поля в каждой."
+  "{n} need more for your school. Fill in the boxes on each one.": "Для {n} нужно больше данных для вашей школы. Заполните поля в каждой.",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Бесплатный бланк учёта волонтёрских часов, готовый к печати (PDF, формат Letter).",
+  "Download the log sheet": "Скачать бланк"
 }

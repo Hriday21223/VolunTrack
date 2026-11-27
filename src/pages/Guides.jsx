@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowRight, BookOpen, ChevronRight } from 'lucide-react'
+import { ArrowRight, BookOpen, ChevronRight, Download } from 'lucide-react'
 import Card from '@/components/Card.jsx'
 import Footer from '@/components/Footer.jsx'
 import PublicHeader from '@/components/PublicHeader.jsx'
@@ -41,7 +41,7 @@ function SignUpCta() {
 export function GuidesIndex() {
   useSeo({
     title: 'Volunteer Hour Guides',
-    description: 'Practical guides for students and parents: tracking NHS service hours, community service hours for high school, and volunteer hours for college applications.',
+    description: 'Practical guides for students and parents: NHS service hours, community service hours, how many hours you need, a free printable log sheet, the President’s Volunteer Service Award and finding places to volunteer.',
     path: '/guides',
     image: '/og/guides.png',
     jsonLd: {
@@ -91,6 +91,30 @@ function Paragraph({ p }) {
   return <p>{p}</p>
 }
 
+// The free printable log sheet (the volunteer-hours-log-sheet guide): the
+// same blank log the app prints from Scan a paper log, built in the browser.
+const BLANK_LOG_COLUMNS = ['Date', 'Activity / Place', 'Hours', 'Supervisor', 'Supervisor email', 'Supervisor signature']
+function BlankLogDownload() {
+  const [busy, setBusy] = useState(false)
+  const download = async () => {
+    setBusy(true)
+    try {
+      const { blankPaperLogPDF } = await import('@/lib/export.js')
+      await blankPaperLogPDF({ columns: BLANK_LOG_COLUMNS })
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Card className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-earth-700 dark:text-earth-200">{tr('Free volunteer hours log sheet, ready to print (PDF, letter size).')}</p>
+      <button type="button" className="btn-primary" onClick={download} disabled={busy}>
+        <Download className="w-4 h-4" aria-hidden="true" />{' '}{busy ? tr('Preparing…') : tr('Download the log sheet')}
+      </button>
+    </Card>
+  )
+}
+
 export function GuidePage() {
   const { slug } = useParams()
   const guide = guideBySlug(slug)
@@ -138,6 +162,7 @@ export function GuidePage() {
           <h1 className="mt-3 text-3xl md:text-4xl font-bold leading-tight">{guide.title}</h1>
           <p className="mt-2 text-xs text-earth-500 dark:text-earth-400">Updated {new Date(`${guide.updated}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
           <p className="mt-6 text-lg text-earth-700 dark:text-earth-200">{guide.intro}</p>
+          {guide.download === 'blank-log' && <BlankLogDownload />}
           <Card className="mt-8 space-y-8 text-earth-700 dark:text-earth-200">
             {guide.sections.map((s) => (
               <section key={s.heading} className="space-y-3">

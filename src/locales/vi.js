@@ -3911,8 +3911,8 @@ export default {
   "Do I need to create an account?": "Tôi có cần tạo tài khoản không?",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "Có. Tài khoản miễn phí là cách giờ của bạn được lưu, đồng bộ giữa các thiết bị và chia sẻ với trường. Đăng ký bằng tên, email, mật khẩu (ít nhất 8 ký tự) và ngày sinh, rồi nhập mã 6 chữ số chúng tôi gửi qua email để xác nhận địa chỉ; mã hết hạn sau 10 phút. Nếu bạn dưới 13 tuổi, phụ huynh hoặc người giám hộ sẽ duyệt tài khoản qua email trước.",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Ứng dụng Android và iPhone sắp có trên Google Play và App Store. Trong lúc chờ, VolunTrack là ứng dụng web tiến bộ: mở trong trình duyệt điện thoại và chạm \"Thêm vào màn hình chính\" để dùng như một ứng dụng chạy được khi không có mạng.",
-  "Volunteer Hour Tracker for Students & Schools": "Ứng dụng ghi giờ tình nguyện cho học sinh và trường học",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "Ứng dụng ghi giờ tình nguyện miễn phí cho học sinh. Ghi giờ, nhờ người giám sát ký và tải báo cáo cho NHS, học bổng hoặc tốt nghiệp.",
+  "Volunteer Hour Tracker App for Students & Schools": "Ứng dụng ghi giờ tình nguyện cho học sinh và trường học",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "Ứng dụng ghi giờ tình nguyện miễn phí cho học sinh. Ghi giờ phục vụ cộng đồng, nhờ ký xác nhận và tải báo cáo cho NHS, học bổng hoặc tốt nghiệp.",
   "Volunteer hour tracking": "Ghi giờ tình nguyện",
   "Close menu": "Đóng menu",
   "Free for students, no credit card": "Miễn phí cho học sinh, không cần thẻ tín dụng",
@@ -4049,5 +4049,7 @@ export default {
   "Page {n} of {total}": "Trang {n} / {total}",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "Đang hiển thị {n} trang đầu trong {total} trang. Tải tệp xuống để xem tất cả.",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} mục cần thêm thông tin cho trường của bạn. Điền vào các ô, hoặc dùng Hoàn tất trong biểu mẫu.",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n} mục cần thêm thông tin cho trường của bạn. Điền vào các ô ở mỗi mục."
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} mục cần thêm thông tin cho trường của bạn. Điền vào các ô ở mỗi mục.",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Phiếu ghi giờ tình nguyện miễn phí, sẵn sàng để in (PDF, khổ letter).",
+  "Download the log sheet": "Tải phiếu ghi giờ"
 }

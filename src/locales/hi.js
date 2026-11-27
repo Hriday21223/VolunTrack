@@ -3910,8 +3910,8 @@ export default {
   "Do I need to create an account?": "क्या मुझे खाता बनाना होगा?",
   "Yes. A free account is how your hours are saved, synced across your devices, and shared with your school. Sign up with your name, email, password (at least 8 characters) and date of birth, then enter the 6-digit code we email you to confirm your address; the code expires after 10 minutes. If you're under 13, a parent or guardian approves the account by email first.": "हाँ। मुफ़्त खाते से ही आपके घंटे सेव होते हैं, आपके डिवाइसों में सिंक होते हैं और आपके स्कूल से साझा होते हैं। अपने नाम, ईमेल, पासवर्ड (कम से कम 8 अक्षर) और जन्मतिथि से साइन अप करें, फिर पता पक्का करने के लिए हमारे ईमेल किए 6 अंकों का कोड दर्ज करें; कोड 10 मिनट बाद खत्म हो जाता है। अगर आप 13 साल से कम हैं, तो पहले माता-पिता या अभिभावक ईमेल से खाता मंज़ूर करते हैं।",
   "Android and iPhone apps are on the way to Google Play and the App Store. Until then, VolunTrack is a Progressive Web App: open it in your phone's browser and tap \"Add to Home Screen\" for an app-like experience that works offline.": "Android और iPhone ऐप जल्द ही Google Play और App Store पर आ रहे हैं। तब तक VolunTrack एक प्रोग्रेसिव वेब ऐप है: इसे अपने फ़ोन के ब्राउज़र में खोलें और \"होम स्क्रीन पर जोड़ें\" पर टैप करें, ताकि यह ऑफ़लाइन भी चलने वाले ऐप जैसा लगे।",
-  "Volunteer Hour Tracker for Students & Schools": "छात्रों और स्कूलों के लिए स्वयंसेवा घंटे ट्रैकर",
-  "Free volunteer hour tracker for students. Log hours, get them signed by your supervisor, and download a report for NHS, scholarships or graduation.": "छात्रों के लिए मुफ़्त स्वयंसेवा घंटे ट्रैकर। घंटे दर्ज करें, सुपरवाइज़र से हस्ताक्षर करवाएँ, और NHS, छात्रवृत्ति या ग्रेजुएशन के लिए रिपोर्ट डाउनलोड करें।",
+  "Volunteer Hour Tracker App for Students & Schools": "छात्रों और स्कूलों के लिए स्वयंसेवा घंटे ट्रैकर ऐप",
+  "Free volunteer hour tracker app for students. Log community service hours, get them signed, and download a report for NHS, scholarships or graduation.": "छात्रों के लिए मुफ़्त स्वयंसेवा घंटे ट्रैकर ऐप। सामुदायिक सेवा के घंटे दर्ज करें, हस्ताक्षर करवाएँ, और NHS, छात्रवृत्ति या ग्रेजुएशन के लिए रिपोर्ट डाउनलोड करें।",
   "Volunteer hour tracking": "स्वयंसेवा घंटों का हिसाब",
   "Close menu": "मेन्यू बंद करें",
   "Free for students, no credit card": "छात्रों के लिए मुफ़्त, क्रेडिट कार्ड नहीं",
@@ -4048,5 +4048,7 @@ export default {
   "Page {n} of {total}": "पेज {n} / {total}",
   "Showing the first {n} of {total} pages. Download the file for all of them.": "{total} में से पहले {n} पेज दिखाए जा रहे हैं। सभी देखने के लिए फ़ाइल डाउनलोड करें।",
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। बॉक्स भरें, या फ़ॉर्म में पूरा करें का उपयोग करें।",
-  "{n} need more for your school. Fill in the boxes on each one.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। हर एक के बॉक्स भरें।"
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। हर एक के बॉक्स भरें।",
+  "Free volunteer hours log sheet, ready to print (PDF, letter size).": "मुफ़्त स्वयंसेवा घंटे लॉग शीट, प्रिंट के लिए तैयार (PDF, लेटर साइज़)।",
+  "Download the log sheet": "लॉग शीट डाउनलोड करें"
 }
