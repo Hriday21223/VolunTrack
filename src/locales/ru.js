@@ -4050,5 +4050,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "Для {n} нужно больше данных для вашей школы. Заполните поля или нажмите «Закончить в форме».",
   "{n} need more for your school. Fill in the boxes on each one.": "Для {n} нужно больше данных для вашей школы. Заполните поля в каждой.",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Бесплатный бланк учёта волонтёрских часов, готовый к печати (PDF, формат Letter).",
-  "Download the log sheet": "Скачать бланк"
+  "Download the log sheet": "Скачать бланк",
+  "Volunteer Opportunities Near You": "Волонтёрские возможности рядом с вами",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "Найдите волонтёрские возможности рядом с вами — от продовольственных банков до репетиторства. Смотрите бесплатно, а чтобы записаться и учитывать часы, создайте бесплатный аккаунт.",
+  "Near you": "Рядом с вами",
+  "Use my location": "Использовать моё местоположение",
+  "Couldn’t load opportunities. Try again in a moment.": "Не удалось загрузить возможности. Попробуйте чуть позже.",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "Чтобы записаться, нужен бесплатный аккаунт: так организатор знает, кто придёт, а ваши часы записываются автоматически.",
+  "See volunteer opportunities near you": "Посмотреть волонтёрские возможности рядом"
 }

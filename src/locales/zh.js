@@ -4051,5 +4051,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} 条还需要补充学校要求的内容。填写方框，或使用“在表单中完成”。",
   "{n} need more for your school. Fill in the boxes on each one.": "{n} 条还需要补充学校要求的内容。请填写每条的方框。",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "免费的志愿时长记录表，可直接打印（PDF，Letter 尺寸）。",
-  "Download the log sheet": "下载记录表"
+  "Download the log sheet": "下载记录表",
+  "Volunteer Opportunities Near You": "你附近的志愿机会",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "查找你附近的志愿机会，从食物银行到辅导。免费浏览，然后创建免费账户报名并记录时长。",
+  "Near you": "你附近",
+  "Use my location": "使用我的位置",
+  "Couldn’t load opportunities. Try again in a moment.": "无法加载志愿机会，请稍后再试。",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "报名志愿机会需要一个免费账户，这样组织者知道谁会来，你的时长也会自动记录。",
+  "See volunteer opportunities near you": "查看你附近的志愿机会"
 }

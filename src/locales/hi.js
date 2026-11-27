@@ -4050,5 +4050,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। बॉक्स भरें, या फ़ॉर्म में पूरा करें का उपयोग करें।",
   "{n} need more for your school. Fill in the boxes on each one.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। हर एक के बॉक्स भरें।",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "मुफ़्त स्वयंसेवा घंटे लॉग शीट, प्रिंट के लिए तैयार (PDF, लेटर साइज़)।",
-  "Download the log sheet": "लॉग शीट डाउनलोड करें"
+  "Download the log sheet": "लॉग शीट डाउनलोड करें",
+  "Volunteer Opportunities Near You": "आपके पास स्वयंसेवा के अवसर",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "अपने पास स्वयंसेवा के अवसर खोजें, फ़ूड बैंक से लेकर ट्यूशन तक। मुफ़्त में देखें, फिर साइन अप करने और अपने घंटे ट्रैक करने के लिए मुफ़्त खाता बनाएँ।",
+  "Near you": "आपके पास",
+  "Use my location": "मेरी लोकेशन इस्तेमाल करें",
+  "Couldn’t load opportunities. Try again in a moment.": "अवसर लोड नहीं हो सके। थोड़ी देर में फिर कोशिश करें।",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "किसी अवसर के लिए साइन अप करने को मुफ़्त खाता चाहिए, ताकि आयोजक जाने कौन आ रहा है और आपके घंटे अपने-आप दर्ज हों।",
+  "See volunteer opportunities near you": "अपने पास स्वयंसेवा के अवसर देखें"
 }

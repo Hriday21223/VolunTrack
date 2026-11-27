@@ -4050,5 +4050,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} 件は学校の要件にまだ足りません。欄を入力するか、「フォームで仕上げる」を使ってください。",
   "{n} need more for your school. Fill in the boxes on each one.": "{n} 件は学校の要件にまだ足りません。各行の欄を入力してください。",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "印刷してすぐ使える無料のボランティア時間記録シート（PDF、レターサイズ）。",
-  "Download the log sheet": "記録シートをダウンロード"
+  "Download the log sheet": "記録シートをダウンロード",
+  "Volunteer Opportunities Near You": "近くのボランティア募集",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "フードバンクから学習支援まで、近くのボランティア募集を探せます。無料で見られて、申し込みと時間の記録には無料アカウントを作成します。",
+  "Near you": "近く",
+  "Use my location": "現在地を使う",
+  "Couldn’t load opportunities. Try again in a moment.": "募集を読み込めませんでした。少ししてからもう一度お試しください。",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "申し込むには無料アカウントが必要です。主催者が参加者を把握でき、あなたの時間も自動で記録されます。",
+  "See volunteer opportunities near you": "近くのボランティア募集を見る"
 }

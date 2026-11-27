@@ -317,6 +317,7 @@ export const GUIDES = [
   },
   {
     slug: 'volunteer-opportunities-for-teens',
+    link: { to: '/volunteer-opportunities', label: 'See volunteer opportunities near you' },
     title: 'How to Find Volunteer Opportunities for Teens Near You',
     short: 'Volunteer opportunities for teens',
     description: 'Where teens can find volunteer opportunities near them, which places accept volunteers under 18, and how to sign up and keep your hours so they count for school.',

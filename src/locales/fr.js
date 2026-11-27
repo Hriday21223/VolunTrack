@@ -4050,5 +4050,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} demandent plus d’infos pour ton école. Remplis les cases, ou utilise Terminer dans le formulaire.",
   "{n} need more for your school. Fill in the boxes on each one.": "{n} demandent plus d’infos pour ton école. Remplis les cases de chacune.",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Feuille de suivi des heures de bénévolat gratuite, prête à imprimer (PDF, format Letter).",
-  "Download the log sheet": "Télécharger la feuille"
+  "Download the log sheet": "Télécharger la feuille",
+  "Volunteer Opportunities Near You": "Missions de bénévolat près de chez toi",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "Trouve des missions de bénévolat près de chez toi, des banques alimentaires au soutien scolaire. Parcours-les gratuitement, puis crée un compte gratuit pour t’inscrire et suivre tes heures.",
+  "Near you": "Près de toi",
+  "Use my location": "Utiliser ma position",
+  "Couldn’t load opportunities. Try again in a moment.": "Impossible de charger les missions. Réessaie dans un instant.",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "S’inscrire à une mission demande un compte gratuit, pour que l’organisateur sache qui vient et que tes heures soient enregistrées pour toi.",
+  "See volunteer opportunities near you": "Voir les missions de bénévolat près de chez toi"
 }

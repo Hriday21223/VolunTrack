@@ -7,6 +7,7 @@ const LINKS = [
   { to: '/contact', label: 'Contact' },
   { to: '/status', label: 'Status' },
   { to: '/help', label: 'Help' },
+  { to: '/volunteer-opportunities', label: 'Volunteer opportunities' },
   { to: '/guides', label: 'Guides' },
   { to: '/for-schools', label: 'For schools' },
   { to: '/terms', label: 'Terms' },

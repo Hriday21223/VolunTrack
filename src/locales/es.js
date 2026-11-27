@@ -4051,5 +4051,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} necesitan más para tu escuela. Completa las casillas o usa Terminar en el formulario.",
   "{n} need more for your school. Fill in the boxes on each one.": "{n} necesitan más para tu escuela. Completa las casillas de cada una.",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Hoja de registro de horas de voluntariado gratis, lista para imprimir (PDF, tamaño carta).",
-  "Download the log sheet": "Descargar la hoja de registro"
+  "Download the log sheet": "Descargar la hoja de registro",
+  "Volunteer Opportunities Near You": "Oportunidades de voluntariado cerca de ti",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "Encuentra oportunidades de voluntariado cerca de ti, desde bancos de alimentos hasta tutorías. Explóralas gratis y crea una cuenta gratuita para inscribirte y registrar tus horas.",
+  "Near you": "Cerca de ti",
+  "Use my location": "Usar mi ubicación",
+  "Couldn’t load opportunities. Try again in a moment.": "No se pudieron cargar las oportunidades. Inténtalo de nuevo en un momento.",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "Para inscribirte en una oportunidad necesitas una cuenta gratuita, así el organizador sabe quién va y tus horas se registran solas.",
+  "See volunteer opportunities near you": "Ver oportunidades de voluntariado cerca de ti"
 }
