@@ -4095,5 +4095,7 @@ export default {
   "Didn’t come": "আসেননি",
   "Marked as not there.": "অনুপস্থিত হিসেবে চিহ্নিত।",
   "Save and send certificate": "সেভ করে সার্টিফিকেট পাঠান",
-  "Saved. Their certificate is on its way.": "সেভ হয়েছে। সার্টিফিকেট পাঠানো হচ্ছে।"
+  "Saved. Their certificate is on its way.": "সেভ হয়েছে। সার্টিফিকেট পাঠানো হচ্ছে।",
+  "Time in": "আসার সময়",
+  "Time out": "যাওয়ার সময়"
 }

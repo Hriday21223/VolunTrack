@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { escapeHtml } from './html.js'
+import { serviceRecordPdf, twelveHour } from './serviceRecordPdf.js'
 import { et, emailLang, emailDate } from './emailStrings.js'
 import { takeEmailBudget, emailBudgetLimits } from './emailBudget.js'
 import { csvCell } from '../src/lib/csv.js'
@@ -771,11 +772,13 @@ ${emailFooterHtml(lang)}`,
 // itself (the same look as the app's printed certificate).
 export async function sendServiceCertificateEmail({ to, language, ...rest }) {
   const { subject, html } = serviceCertificateEmail({ language, ...rest })
-  return sendEmail({ to, subject, html })
+  // The signed service record (event, date, time in and out, hours) as a PDF.
+  const pdf = serviceRecordPdf({ ...rest })
+  return sendEmail({ to, subject, html, attachments: [{ name: 'volunteer-service-record.pdf', content: pdf }] })
 }
 
 /** { subject, html } of the certificate email (also for a preview). */
-export function serviceCertificateEmail({ language, name, hours, title, date, organizer }) {
+export function serviceCertificateEmail({ language, name, hours, title, date, organizer, timeIn, timeOut }) {
   const lang = emailLang(language)
   const t = (text, vars) => et(lang, text, vars)
   const h = Number(hours)
@@ -792,11 +795,13 @@ export function serviceCertificateEmail({ language, name, hours, title, date, or
   <div style="color:#3a3024;font-size:15px">${t('This certifies that')}</div>
   <div style="color:#214327;font-size:32px;font-weight:700;margin:14px 0 8px">${escapeHtml(name)}</div>
   <div style="color:#3a3024;font-size:15px;line-height:1.6">${t('volunteered {hours} hours at {title} on {date}.', { hours: `<strong style="color:#3f8344">${escapeHtml(hoursText)}</strong>`, title: `<strong>${escapeHtml(title)}</strong>`, date: escapeHtml(when) })}</div>
+  ${timeIn && timeOut ? `<div style="color:#6c502d;font-size:13px;margin-top:8px">${t('Time in {in} · Time out {out}', { in: escapeHtml(twelveHour(timeIn)), out: escapeHtml(twelveHour(timeOut)) })}</div>` : ''}
   <table role="presentation" style="width:100%;margin-top:36px;border-collapse:collapse"><tr>
     ${sig(organizer || t('Organizer'), t('Organizer'))}
     ${sig('VolunTrack Org', 'VolunTrack')}
   </tr></table>
 </div>
+<p>${t('Your signed service record, with the event, date, time in, time out and hours, is attached as a PDF.')}</p>
 <p>${t('Thank you for volunteering! Create a free VolunTrack account with this email address to keep all your hours in one place.')}</p>
 ${emailFooterHtml(lang)}`,
   }

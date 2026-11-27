@@ -201,11 +201,55 @@ const T4 = {
   "ボランティアへのご参加ありがとうございました！このメールアドレスで無料の VolunTrack アカウントを作れば、すべての時間を一か所で管理できます。"
  ]
 }
+const K5 = ["Time in {in} · Time out {out}", "Your signed service record, with the event, date, time in, time out and hours, is attached as a PDF."]
+const T5 = {
+ "es": [
+  "Entrada {in} · Salida {out}",
+  "Tu registro de servicio firmado, con el evento, la fecha, la hora de entrada, la de salida y las horas, va adjunto en PDF."
+ ],
+ "vi": [
+  "Giờ vào {in} · Giờ ra {out}",
+  "Bản ghi phục vụ đã ký của bạn, gồm sự kiện, ngày, giờ vào, giờ ra và số giờ, được đính kèm dưới dạng PDF."
+ ],
+ "zh": [
+  "签到 {in} · 签退 {out}",
+  "附件为你已签名的服务记录 PDF，包括活动、日期、签到时间、签退时间和时长。"
+ ],
+ "hi": [
+  "आने का समय {in} · जाने का समय {out}",
+  "आपका हस्ताक्षरित सेवा रिकॉर्ड, कार्यक्रम, तारीख, आने-जाने के समय और घंटों के साथ, PDF के रूप में संलग्न है।"
+ ],
+ "ar": [
+  "الحضور {in} · الانصراف {out}",
+  "سجل خدمتك الموقّع، مع الفعالية والتاريخ ووقت الحضور والانصراف والساعات، مرفق بصيغة PDF."
+ ],
+ "pt": [
+  "Entrada {in} · Saída {out}",
+  "Seu registro de serviço assinado, com o evento, a data, os horários de entrada e saída e as horas, está anexado em PDF."
+ ],
+ "fr": [
+  "Arrivée {in} · Départ {out}",
+  "Ton relevé de bénévolat signé, avec l’événement, la date, l’heure d’arrivée, l’heure de départ et les heures, est joint en PDF."
+ ],
+ "bn": [
+  "আসার সময় {in} · যাওয়ার সময় {out}",
+  "ইভেন্ট, তারিখ, আসা-যাওয়ার সময় ও ঘণ্টাসহ আপনার স্বাক্ষরিত সেবার রেকর্ড PDF হিসেবে সংযুক্ত আছে।"
+ ],
+ "ru": [
+  "Приход {in} · Уход {out}",
+  "Подписанная запись о волонтёрской работе — мероприятие, дата, время прихода и ухода, часы — во вложении в PDF."
+ ],
+ "ja": [
+  "開始 {in} ・ 終了 {out}",
+  "イベント、日付、開始・終了時刻、時間を記載した署名済みの活動記録を PDF で添付しています。"
+ ]
+}
 export const ACCOUNT_EMAIL_STRINGS = Object.fromEntries(
   Object.entries(T).map(([lang, vals]) => [lang, {
     ...Object.fromEntries(K.map((k, i) => [k, vals[i]])),
     ...Object.fromEntries(K2.map((k, i) => [k, T2[lang][i]])),
     ...Object.fromEntries(K3.map((k, i) => [k, T3[lang][i]])),
     ...Object.fromEntries(K4.map((k, i) => [k, T4[lang][i]])),
+    ...Object.fromEntries(K5.map((k, i) => [k, T5[lang][i]])),
   }]),
 )

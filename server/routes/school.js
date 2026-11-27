@@ -5822,18 +5822,21 @@ export function notifyEventsCancelledByDeletion(events) {
   })().catch((error) => console.error('account-deletion cancellation emails failed:', error))
 }
 
-// POST /api/school/public-tasks/:id/email-signups/:signupId { hours } | { absent: true }
+// POST /api/school/public-tasks/:id/email-signups/:signupId { timeIn, timeOut } | { absent: true }
 // After the event, the organizer (or a co-host) gives someone who signed up
-// without an account (routes/emailSignups.js) their hours, which emails them
-// a certificate signed by the organizer and VolunTrack; or marks that they
-// didn't come. Changing the hours sends a corrected certificate.
+// without an account (routes/emailSignups.js) their time in and time out
+// (HH:MM, 24-hour); the hours come from those. That emails them a
+// certificate signed by the organizer and VolunTrack, with the signed service
+// record (event, date, time in, time out, hours) as a PDF. Or it marks that
+// they didn't come. Changed times send a corrected pair.
+const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/
 router.post('/public-tasks/:id/email-signups/:signupId', limiter, requireDb, requireAuth(), async (req, res) => {
   try {
     const access = await canManageTask(req.params.id, req.auth.sub)
     if (refuseTaskAccess(res, access, "Only the task's organizer or a co-host can do this.")) return
     const { rows } = await query(
-      `SELECT es.id, es.name, es.email, es.language, es.hours, es.certificate_hours, es.certificate_sent_at,
-              t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.creator_name, t.status,
+      `SELECT es.id, es.name, es.email, es.language, es.certificate_key,
+              t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.location, t.is_online, t.creator_name, t.status,
               t.date > CURRENT_DATE AS future, t.date < CURRENT_DATE - 30 AS too_old
          FROM public_task_email_signups es JOIN public_tasks t ON t.id = es.task_id
         WHERE es.id = $1 AND es.task_id = $2 AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL`,
@@ -5846,35 +5849,43 @@ router.post('/public-tasks/:id/email-signups/:signupId', limiter, requireDb, req
     if (r.too_old) return res.status(400).json({ error: CLOSED_OUT_ERROR, closedOut: true })
 
     if (req.body?.absent === true) {
-      await query('UPDATE public_task_email_signups SET absent = true, hours = NULL WHERE id = $1', [r.id])
+      await query('UPDATE public_task_email_signups SET absent = true, hours = NULL, time_in = NULL, time_out = NULL WHERE id = $1', [r.id])
       return res.json({ ok: true, absent: true })
     }
-    const hours = Number(req.body?.hours)
-    if (!Number.isFinite(hours) || hours < 0.25 || hours > 24) return res.status(400).json({ error: 'Enter hours between 0.25 and 24.' })
-    const rounded = Math.round(hours * 4) / 4
-    await query('UPDATE public_task_email_signups SET hours = $2, absent = false WHERE id = $1', [r.id, rounded])
+    const timeIn = String(req.body?.timeIn || '')
+    const timeOut = String(req.body?.timeOut || '')
+    const a = HHMM.exec(timeIn)
+    const b = HHMM.exec(timeOut)
+    if (!a || !b) return res.status(400).json({ error: 'Enter a time in and a time out.' })
+    const minutes = (Number(b[1]) * 60 + Number(b[2])) - (Number(a[1]) * 60 + Number(a[2]))
+    if (minutes < 15) return res.status(400).json({ error: 'Time out must be at least 15 minutes after time in.' })
+    const hours = Math.round((minutes / 60) * 4) / 4
+    await query('UPDATE public_task_email_signups SET hours = $2, time_in = $3, time_out = $4, absent = false WHERE id = $1', [r.id, hours, timeIn, timeOut])
 
-    // One certificate per amount: a correction sends a new one.
-    let certificateSent = Boolean(r.certificate_sent_at) && Number(r.certificate_hours) === rounded
+    // One certificate per set of times: a correction sends a new pair.
+    const key = `${timeIn}-${timeOut}`
+    let certificateSent = r.certificate_key === key
     if (!certificateSent) {
       const { rowCount } = await query(
-        `UPDATE public_task_email_signups SET certificate_sent_at = now(), certificate_hours = $2
-          WHERE id = $1 AND (certificate_hours IS DISTINCT FROM $2)`,
-        [r.id, rounded],
+        `UPDATE public_task_email_signups SET certificate_sent_at = now(), certificate_hours = $2, certificate_key = $3
+          WHERE id = $1 AND certificate_key IS DISTINCT FROM $3`,
+        [r.id, hours, key],
       )
       if (rowCount) {
-        const organizer = r.creator_name || ''
         const result = r.email.endsWith('@test.com')
           ? { sent: true }
-          : await sendServiceCertificateEmail({ to: r.email, language: r.language, name: r.name, hours: rounded, title: r.title, date: r.date, organizer })
+          : await sendServiceCertificateEmail({
+            to: r.email, language: r.language, name: r.name, hours, title: r.title, date: r.date,
+            organizer: r.creator_name || '', timeIn, timeOut, location: r.is_online ? null : r.location, recordId: r.id,
+          })
         if (!result?.sent) {
-          await query('UPDATE public_task_email_signups SET certificate_sent_at = NULL, certificate_hours = NULL WHERE id = $1', [r.id])
+          await query('UPDATE public_task_email_signups SET certificate_sent_at = NULL, certificate_hours = NULL, certificate_key = NULL WHERE id = $1', [r.id])
           return res.status(502).json({ error: 'Hours saved, but the certificate email could not be sent. Try again in a moment.' })
         }
         certificateSent = true
       }
     }
-    return res.json({ ok: true, hours: rounded, certificateSent })
+    return res.json({ ok: true, hours, certificateSent })
   } catch (error) {
     console.error('email sign-up hours failed:', error)
     return res.status(500).json({ error: 'Could not save the hours.' })
@@ -6496,7 +6507,8 @@ router.get('/public-tasks/mine', limiter, requireDb, requireAuth(), async (req, 
               -- Signed up without an account (confirmed), hidden once closed out.
               CASE WHEN ${CLOSED_OUT_SQL('t')} THEN '[]'::json ELSE
               (SELECT COALESCE(json_agg(json_build_object('id', es.id, 'name', es.name, 'email', es.email, 'confirmed_at', es.confirmed_at,
-                 'hours', es.hours, 'absent', es.absent, 'certificate_sent_at', es.certificate_sent_at)
+                 'hours', es.hours, 'absent', es.absent, 'certificate_sent_at', es.certificate_sent_at,
+                 'time_in', es.time_in, 'time_out', es.time_out)
                  ORDER BY es.confirmed_at), '[]'::json)
                  FROM public_task_email_signups es
                 WHERE es.task_id = t.id AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL) END AS email_signups,

@@ -4095,5 +4095,7 @@ export default {
   "Didn’t come": "Não veio",
   "Marked as not there.": "Marcado como ausente.",
   "Save and send certificate": "Salvar e enviar certificado",
-  "Saved. Their certificate is on its way.": "Salvo. O certificado está a caminho."
+  "Saved. Their certificate is on its way.": "Salvo. O certificado está a caminho.",
+  "Time in": "Entrada",
+  "Time out": "Saída"
 }

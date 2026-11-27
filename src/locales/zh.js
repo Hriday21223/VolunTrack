@@ -4096,5 +4096,7 @@ export default {
   "Didn’t come": "未到场",
   "Marked as not there.": "已标记为未到场。",
   "Save and send certificate": "保存并发送证书",
-  "Saved. Their certificate is on its way.": "已保存。证书正在发送。"
+  "Saved. Their certificate is on its way.": "已保存。证书正在发送。",
+  "Time in": "签到时间",
+  "Time out": "签退时间"
 }

@@ -4096,5 +4096,7 @@ export default {
   "Didn’t come": "Không đến",
   "Marked as not there.": "Đã đánh dấu vắng mặt.",
   "Save and send certificate": "Lưu và gửi giấy chứng nhận",
-  "Saved. Their certificate is on its way.": "Đã lưu. Giấy chứng nhận đang được gửi."
+  "Saved. Their certificate is on its way.": "Đã lưu. Giấy chứng nhận đang được gửi.",
+  "Time in": "Giờ vào",
+  "Time out": "Giờ ra"
 }

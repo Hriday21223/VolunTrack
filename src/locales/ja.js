@@ -4095,5 +4095,7 @@ export default {
   "Didn’t come": "来なかった",
   "Marked as not there.": "欠席として記録しました。",
   "Save and send certificate": "保存して修了証を送る",
-  "Saved. Their certificate is on its way.": "保存しました。修了証を送信しています。"
+  "Saved. Their certificate is on its way.": "保存しました。修了証を送信しています。",
+  "Time in": "開始時刻",
+  "Time out": "終了時刻"
 }
