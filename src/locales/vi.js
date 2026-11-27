@@ -4100,5 +4100,6 @@ export default {
   "Time in": "Giờ vào",
   "Time out": "Giờ ra",
   "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "Giờ đây ai cũng có thể xem cơ hội tình nguyện trên trang web của chúng tôi và đăng ký chỉ với tên và email, không cần tài khoản. Họ nhận thẻ tình nguyện viên qua email.",
-  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Người không có tài khoản giờ có thể đăng ký sự kiện của bạn từ trang web của chúng tôi. Sau sự kiện, hãy thêm giờ vào và giờ ra của họ trong Nhiệm vụ của tôi để gửi giấy chứng nhận và bản ghi đã ký."
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Người không có tài khoản giờ có thể đăng ký sự kiện của bạn từ trang web của chúng tôi. Sau sự kiện, hãy thêm giờ vào và giờ ra của họ trong Nhiệm vụ của tôi để gửi giấy chứng nhận và bản ghi đã ký.",
+  "Use your supervisor’s email, not your own. They’re the one who confirms your hours.": "Hãy dùng email của người giám sát, không phải email của bạn. Họ là người xác nhận giờ của bạn."
 }

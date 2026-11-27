@@ -10,6 +10,7 @@ export { validateLogAgainstPolicy, goalHoursFor, signatureNeeds, awardFor, requi
 export { SIGNATURE_MODES, SIGNERS, classifyFormUrl } from '@policy'
 export { SCHOOL_GRADES, gradeKey, gradeLabel, gradeName, gradeOptionLabel, currentTerm } from '@policy'
 export { CUSTOM_FIELD_TYPES, SECTIONS, DEFAULTS, normalizePolicy } from '@policy'
+export { isOwnEmail, OWN_EMAIL_AS_SUPERVISOR } from '@policy'
 
 const apiUrl = import.meta.env.VITE_API_URL || '/api'
 

@@ -4099,5 +4099,6 @@ export default {
   "Time in": "आने का समय",
   "Time out": "जाने का समय",
   "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "अब कोई भी हमारी वेबसाइट पर स्वयंसेवा के अवसर देख सकता है और बिना खाते के सिर्फ़ नाम और ईमेल से साइन अप कर सकता है। उन्हें ईमेल से स्वयंसेवक बैज मिलता है।",
-  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "बिना खाते वाले लोग अब हमारी वेबसाइट से आपके कार्यक्रमों के लिए साइन अप कर सकते हैं। कार्यक्रम के बाद, मेरे कार्य में उनके आने और जाने का समय जोड़ें, ताकि उन्हें प्रमाणपत्र और हस्ताक्षरित रिकॉर्ड ईमेल हो।"
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "बिना खाते वाले लोग अब हमारी वेबसाइट से आपके कार्यक्रमों के लिए साइन अप कर सकते हैं। कार्यक्रम के बाद, मेरे कार्य में उनके आने और जाने का समय जोड़ें, ताकि उन्हें प्रमाणपत्र और हस्ताक्षरित रिकॉर्ड ईमेल हो।",
+  "Use your supervisor’s email, not your own. They’re the one who confirms your hours.": "अपने सुपरवाइज़र का ईमेल डालें, अपना नहीं। आपके घंटों की पुष्टि वही करते हैं।"
 }

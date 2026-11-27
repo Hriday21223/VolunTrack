@@ -51,6 +51,7 @@ import { isAllowedTenantOrigin } from './server/tenantOrigins.js'
 import storageRoutes from './server/routes/storage.js'
 import transcriptRoutes from './server/routes/transcript.js'
 import requirementsRoutes from './server/routes/requirements.js'
+import { isOwnEmail, OWN_EMAIL_AS_SUPERVISOR } from './server/requirements.js'
 import referralRoutes from './server/routes/referral.js'
 import statsRoutes from './server/routes/stats.js'
 import registrationCodeRoutes from './server/routes/registrationCodes.js'
@@ -637,6 +638,15 @@ app.post('/api/notify-supervisor', emailLimiter, requireAuth(), async (req, res)
   const { supervisorEmail, supervisorName, signupUrl, logId } = req.body
   const parsed = parseVerificationRequest(req.body)
   if (parsed.error) return res.status(400).json({ error: parsed.error })
+  // Never a link to the student's own inbox: they'd be signing their own hours.
+  if (hasDatabase()) {
+    try {
+      const { rows: [me] } = await query('SELECT email FROM users WHERE id = $1', [req.auth.sub])
+      if (isOwnEmail(supervisorEmail, me?.email)) return res.status(400).json({ error: OWN_EMAIL_AS_SUPERVISOR, field: 'supervisorEmail' })
+    } catch { /* checked again when the entry syncs */ }
+  } else if (isOwnEmail(supervisorEmail, req.auth?.email)) {
+    return res.status(400).json({ error: OWN_EMAIL_AS_SUPERVISOR, field: 'supervisorEmail' })
+  }
   // Optional mobile number (#609): the same link also goes by text.
   let supervisorPhone = null
   if (req.body.supervisorPhone) {

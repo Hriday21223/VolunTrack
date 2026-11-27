@@ -888,3 +888,23 @@ export function emailAllowedBySignIn(policy, email) {
   const host = String(email).toLowerCase().slice(at + 1)
   return domains.some((d) => host === d || host.endsWith(`.${d}`))
 }
+
+// A student can't name themselves as their own supervisor (the owner's rule,
+// Nov 27): the supervisor email may not be the address the account signed up
+// with. Compared loosely, so "Name+1@Gmail.com" or "n.a.m.e@gmail.com" for
+// name@gmail.com doesn't get past it. Shared with the Log Hours form via @policy.
+export const OWN_EMAIL_AS_SUPERVISOR = 'Use your supervisor’s email, not your own. They’re the one who confirms your hours.'
+export function emailKey(email) {
+  const e = String(email || '').trim().toLowerCase()
+  const at = e.lastIndexOf('@')
+  if (at < 1) return e
+  let local = e.slice(0, at).split('+')[0]
+  let domain = e.slice(at + 1)
+  if (domain === 'googlemail.com') domain = 'gmail.com'
+  if (domain === 'gmail.com') local = local.replace(/\./g, '')
+  return `${local}@${domain}`
+}
+export function isOwnEmail(supervisorEmail, accountEmail) {
+  if (!supervisorEmail || !accountEmail) return false
+  return emailKey(supervisorEmail) === emailKey(accountEmail)
+}

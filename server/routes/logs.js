@@ -10,7 +10,7 @@ import { cleanProofLink } from '../proofLink.js'
 import { uid } from '../ids.js'
 import { keyBelongsTo } from '../storage/s3.js'
 import { emailHash } from '../transcript.js'
-import { validateLogAgainstPolicy, sanitizeCustomFieldValues, isLockedDate, lockedMessage, autoApproveReason } from '../requirements.js'
+import { validateLogAgainstPolicy, sanitizeCustomFieldValues, isLockedDate, lockedMessage, autoApproveReason, isOwnEmail, OWN_EMAIL_AS_SUPERVISOR } from '../requirements.js'
 import { policyForUser, hoursLoggedOn } from '../policy.js'
 import { paperScanAvailable, scanPaperLog } from '../paperScan.js'
 import { recordLogEvent } from '../logHistory.js'
@@ -140,6 +140,17 @@ router.post('/scan', requireAuth('student', 'volunteer'), scanLimiter, requireDb
   }
 })
 
+// The supervisor email can't be the account's own (requirements.js isOwnEmail).
+async function ownEmailAsSupervisor(userId, supervisorEmail) {
+  if (!supervisorEmail || typeof supervisorEmail !== 'string' || supervisorEmail === 'on-file') return false
+  try {
+    const { rows } = await query('SELECT email FROM users WHERE id = $1', [userId])
+    return isOwnEmail(supervisorEmail, rows[0]?.email)
+  } catch {
+    return false
+  }
+}
+
 // Write-through sync target for a student's own Log Hours form. Always
 // writes to the caller's own account — there is no way to pass a target
 // user id here, which is what keeps a parent unable to write regardless of
@@ -157,6 +168,7 @@ router.post('/', limiter, requireDb, requireAuth(), async (req, res) => {
   if (hoursNum > MAX_HOURS_PER_ENTRY) {
     return res.status(400).json({ error: `One entry can be at most ${MAX_HOURS_PER_ENTRY} hours.` })
   }
+  if (await ownEmailAsSupervisor(req.auth.sub, supervisorEmail)) return res.status(400).json({ error: OWN_EMAIL_AS_SUPERVISOR, field: 'supervisorEmail' })
   const textError = logTextError(req.body)
   if (textError) return res.status(400).json({ error: textError })
   const proofLink = cleanProofLink(req.body.proofLink)
@@ -280,6 +292,7 @@ router.patch('/:id', limiter, requireDb, requireAuth(), async (req, res) => {
     }
 
     const { date, activity, category, hours, notes, reflection, location, orgName, supervisorName, supervisorEmail, taskId, customFields, hasLocalProof } = req.body
+    if (await ownEmailAsSupervisor(req.auth.sub, supervisorEmail)) return res.status(400).json({ error: OWN_EMAIL_AS_SUPERVISOR, field: 'supervisorEmail' })
     const signoff = signoffFlags(req.body)
     const patchSkills = cleanSkills(req.body.skills)
     // Optional text a student can empty out. COALESCE alone treats an empty

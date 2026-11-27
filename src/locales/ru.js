@@ -4099,5 +4099,6 @@ export default {
   "Time in": "Приход",
   "Time out": "Уход",
   "Anyone can now browse volunteer opportunities on our website and sign up with just a name and email, no account needed. They get a volunteer badge by email.": "Теперь любой может смотреть волонтёрские возможности на нашем сайте и записываться, указав только имя и почту, без аккаунта. Бейдж волонтёра приходит по почте.",
-  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Люди без аккаунта теперь могут записываться на ваши мероприятия с нашего сайта. После мероприятия укажите время их прихода и ухода в «Мои задачи», чтобы отправить им сертификат и подписанную запись."
+  "People without an account can now sign up for your events from our website. After the event, add their time in and out on My Tasks to email them a certificate and a signed record.": "Люди без аккаунта теперь могут записываться на ваши мероприятия с нашего сайта. После мероприятия укажите время их прихода и ухода в «Мои задачи», чтобы отправить им сертификат и подписанную запись.",
+  "Use your supervisor’s email, not your own. They’re the one who confirms your hours.": "Укажите почту руководителя, а не свою. Ваши часы подтверждает он."
 }
