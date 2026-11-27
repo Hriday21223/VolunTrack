@@ -12,7 +12,7 @@
 // the usual static-host pretty-URL behavior — both serve `<path>.html` for a
 // request to `<path>` before falling back to the SPA rewrite.
 //
-// Keep ROUTES in sync with SITEMAP_ENTRIES in generate-seo-files.mjs (plus
+// Keep ROUTES in sync with SITEMAP_ENTRIES in seo-pages.mjs (plus
 // /about, /terms, /privacy, which are crawlable but intentionally excluded
 // from the sitemap — see comments there).
 import { createServer } from 'http'
