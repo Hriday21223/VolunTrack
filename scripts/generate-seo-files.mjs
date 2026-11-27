@@ -9,6 +9,7 @@
 // writes nothing, leaving the committed files as they are — falling back to
 // localhost here would dirty tracked files with URLs that must never ship.
 import { writeFileSync } from 'fs'
+import { execFileSync } from 'child_process'
 import { fileURLToPath } from 'url'
 import { GUIDES } from '../src/lib/guides.js'
 import { dirname, resolve } from 'path'
@@ -70,32 +71,44 @@ const DISALLOWED_PATHS = [
 // intentionally omitted — it canonicalizes to `/` (see About.jsx) to avoid
 // duplicate content, so it's crawlable but not a separate sitemap entry.
 const SITEMAP_ENTRIES = [
-  { path: '/', changefreq: 'weekly', priority: '1.0' },
-  { path: '/register', changefreq: 'monthly', priority: '0.8' },
-  { path: '/register/student', changefreq: 'monthly', priority: '0.7' },
-  { path: '/register/parent', changefreq: 'monthly', priority: '0.7' },
-  { path: '/register/organizer', changefreq: 'monthly', priority: '0.7' },
-  { path: '/for-schools', changefreq: 'monthly', priority: '0.8' },
-  { path: '/school/register', changefreq: 'monthly', priority: '0.7' },
-  { path: '/organization/register', changefreq: 'monthly', priority: '0.7' },
-  { path: '/contact', changefreq: 'monthly', priority: '0.6' },
-  { path: '/login', changefreq: 'monthly', priority: '0.5' },
-  { path: '/help', changefreq: 'monthly', priority: '0.5' },
-  { path: '/status', changefreq: 'daily', priority: '0.3' },
+  { path: '/', src: ['src/pages/About.jsx'], changefreq: 'weekly', priority: '1.0' },
+  { path: '/register', src: ['src/pages/Register.jsx'], changefreq: 'monthly', priority: '0.8' },
+  { path: '/register/student', src: ['src/pages/Register.jsx'], changefreq: 'monthly', priority: '0.7' },
+  { path: '/register/parent', src: ['src/pages/Register.jsx'], changefreq: 'monthly', priority: '0.7' },
+  { path: '/register/organizer', src: ['src/pages/Register.jsx'], changefreq: 'monthly', priority: '0.7' },
+  { path: '/for-schools', src: ['src/pages/ForSchools.jsx'], changefreq: 'monthly', priority: '0.8' },
+  { path: '/school/register', src: ['src/pages/SchoolRegister.jsx'], changefreq: 'monthly', priority: '0.7' },
+  { path: '/organization/register', src: ['src/pages/OrganizationRegister.jsx'], changefreq: 'monthly', priority: '0.7' },
+  { path: '/contact', src: ['src/pages/Contact.jsx'], changefreq: 'monthly', priority: '0.6' },
+  { path: '/login', src: ['src/pages/Login.jsx'], changefreq: 'monthly', priority: '0.5' },
+  { path: '/help', src: ['src/pages/Help.jsx'], changefreq: 'monthly', priority: '0.5' },
+  { path: '/status', src: ['src/pages/Status.jsx'], changefreq: 'daily', priority: '0.3' },
   // Schools and districts reviewing an app look for these.
-  { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
-  { path: '/terms', changefreq: 'monthly', priority: '0.4' },
+  { path: '/privacy', src: ['src/pages/Privacy.jsx'], changefreq: 'monthly', priority: '0.4' },
+  { path: '/terms', src: ['src/pages/Terms.jsx'], changefreq: 'monthly', priority: '0.4' },
   // Guides (src/lib/guides.js) are what students and parents search for.
-  { path: '/guides', changefreq: 'monthly', priority: '0.6' },
-  ...GUIDES.map((g) => ({ path: `/guides/${g.slug}`, changefreq: 'monthly', priority: '0.7' })),
+  { path: '/guides', src: ['src/pages/Guides.jsx', 'src/lib/guides.js'], changefreq: 'monthly', priority: '0.6' },
+  ...GUIDES.map((g) => ({ path: `/guides/${g.slug}`, src: ['src/pages/Guides.jsx', 'src/lib/guides.js'], changefreq: 'monthly', priority: '0.7' })),
   // The public API docs (#622), prerendered like the rest.
-  { path: '/developers', changefreq: 'monthly', priority: '0.5' },
+  { path: '/developers', src: ['src/pages/Developers.jsx'], changefreq: 'monthly', priority: '0.5' },
 ]
 
 // Search engines mostly ignore changefreq/priority and use <lastmod> to decide
-// what to re-crawl, so every entry carries the date of this build (the day
-// the site last changed). YYYY-MM-DD in UTC, as the sitemap format expects.
-const LASTMOD = new Date().toISOString().slice(0, 10)
+// what to re-crawl, and they stop trusting it when it's always "today". So
+// each entry's date is the last commit that touched its page's source (`src`),
+// YYYY-MM-DD as the sitemap format expects. Without git history (a shallow
+// clone gives every file the same date) the entry has no <lastmod> at all,
+// which is better than a wrong one; the deploy workflow fetches full history.
+function lastChanged(files) {
+  if (!files?.length) return null
+  try {
+    if (execFileSync('git', ['rev-parse', '--is-shallow-repository'], { encoding: 'utf8' }).trim() === 'true') return null
+    const day = execFileSync('git', ['log', '-1', '--format=%cs', '--', ...files], { encoding: 'utf8' }).trim()
+    return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
+  } catch {
+    return null
+  }
+}
 
 // AI / LLM crawlers we explicitly welcome so the marketing pages can be read,
 // summarised, and cited by answer engines. A named User-agent group is the
@@ -169,10 +182,9 @@ ${GUIDES.map((g) => `- [${g.title}](${SITE_URL}/guides/${g.slug}): ${g.descripti
 
 const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${SITEMAP_ENTRIES.map(({ path, changefreq, priority }) => `  <url>
+${SITEMAP_ENTRIES.map(({ path, src, changefreq, priority }) => `  <url>
     <loc>${SITE_URL}${path}</loc>
-    <lastmod>${LASTMOD}</lastmod>
-    <changefreq>${changefreq}</changefreq>
+${lastChanged(src) ? `    <lastmod>${lastChanged(src)}</lastmod>\n` : ''}    <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`).join('\n')}
 </urlset>

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { paperLogColumns, paperLogLaterItems } from '../src/lib/paperLogForm.js'
+import { paperLogColumns, paperLogLaterItems, paperLogExtraFields } from '../src/lib/paperLogForm.js'
 
 test('no school rules: the basic columns', () => {
   assert.deepEqual(paperLogColumns({}), ['Date', 'Activity / Place', 'Hours', 'Supervisor', 'Supervisor signature'])
@@ -18,4 +18,13 @@ test('a strict school: its rules and its own questions become columns', () => {
     'What you did', 'Club *', 'Paid? (yes/no)', 'Supervisor signature', 'Your signature',
   ])
   assert.deepEqual(paperLogLaterItems(policy), ['a proof file', 'your signature in the app'])
+})
+
+test('the scan review list asks for the school\'s extra fields', () => {
+  assert.deepEqual(paperLogExtraFields({}), [])
+  const policy = {
+    logRules: { locationRequired: true, supervisorRequired: true, notesMinLength: 20, allowedCategories: ['Education'] },
+    customFields: [{ key: 'club', label: 'Club', type: 'select', required: true, options: ['NHS'] }],
+  }
+  assert.deepEqual(paperLogExtraFields(policy).map((f) => f.key), ['category', 'location', 'supervisorEmail', 'description', 'custom:club'])
 })

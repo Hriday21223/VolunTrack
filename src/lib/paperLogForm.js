@@ -37,3 +37,25 @@ export function paperLogLaterItems(policy) {
   if (needs.formSubmitted) out.push('your school’s online form')
   return out
 }
+
+/**
+ * The fields the school asks for beyond date, activity, hours, organization
+ * and supervisor name, for the scan's review list: each scanned row gets a box
+ * for them, so what the student wrote in those columns on paper can be typed
+ * in (or checked, when the reader filled it) without leaving the list.
+ * Keys match the Log Hours entry: location, supervisorEmail, category,
+ * description (saved into notes), and custom:<key> for the school's own.
+ */
+export function paperLogExtraFields(policy) {
+  const rules = policy?.logRules || {}
+  const needs = signatureNeeds(policy)
+  const out = []
+  if (rules.allowedCategories?.length) out.push({ key: 'category', label: 'Category', type: 'select', options: rules.allowedCategories, required: true })
+  if (rules.locationRequired) out.push({ key: 'location', label: 'Location', type: 'text', required: true })
+  if (rules.supervisorRequired || needs.supervisorSignature) out.push({ key: 'supervisorEmail', label: 'Supervisor email', type: 'email', required: true })
+  if (rules.notesMinLength > 0) out.push({ key: 'description', label: 'Description', type: 'text', required: true, minLength: rules.notesMinLength })
+  for (const f of policy?.customFields || []) {
+    out.push({ key: `custom:${f.key}`, label: f.label, type: f.type || 'text', options: f.options || [], required: Boolean(f.required), custom: true })
+  }
+  return out
+}

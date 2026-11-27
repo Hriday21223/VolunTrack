@@ -4046,5 +4046,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "На счетах указано «Ещё не оплачен» или «Оплачен», в них могут быть сборы и налог, и счёт можно открыть и посмотреть до оплаты.",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Когда VolunTrack проводит встречу для школ и организаций, баннер на главной странице покажет подробности.",
   "Page {n} of {total}": "Страница {n} из {total}",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "Показаны первые {n} из {total} страниц. Скачайте файл, чтобы увидеть все."
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "Показаны первые {n} из {total} страниц. Скачайте файл, чтобы увидеть все.",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "Для {n} нужно больше данных для вашей школы. Заполните поля или нажмите «Закончить в форме».",
+  "{n} need more for your school. Fill in the boxes on each one.": "Для {n} нужно больше данных для вашей школы. Заполните поля в каждой."
 }

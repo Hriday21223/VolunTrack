@@ -8,7 +8,7 @@ import { isTouchDevice } from '@/lib/platform.js'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
 import { parsePaperLog } from '@/lib/paperLogParse.js'
 import { useMyRequirements, validateLogAgainstPolicy } from '@/lib/requirements.js'
-import { paperLogColumns, paperLogLaterItems } from '@/lib/paperLogForm.js'
+import { paperLogColumns, paperLogLaterItems, paperLogExtraFields } from '@/lib/paperLogForm.js'
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
@@ -126,7 +126,10 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
         entries = r.entries
         if (r.note) notes.push(r.note)
       }
-      setRows(entries.map((r, i) => ({ ...r, key: i, keep: Boolean(r.date && r.activity && r.hours > 0) })))
+      setRows(entries.map((r, i) => ({
+        location: '', supervisorEmail: '', category: '', description: '', ...r, customFields: {},
+        key: i, keep: Boolean(r.date && r.activity && r.hours > 0),
+      })))
       setNote([...new Set(notes)].join(' '))
     } catch (err) {
       setError(err.message)
@@ -135,20 +138,50 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
     }
   }
 
-  const update = (key, field, value) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, [field]: value } : r)))
+  const update = (key, field, value) => setRows((rs) => rs.map((r) => {
+    if (r.key !== key) return r
+    if (field.startsWith('custom:')) return { ...r, customFields: { ...r.customFields, [field.slice(7)]: value } }
+    return { ...r, [field]: value }
+  }))
+  // The school's other columns (category, location, supervisor email,
+  // description, its own questions) get a box on every row, so what's on the
+  // paper can be typed in here instead of in the form, one row at a time.
+  const extras = paperLogExtraFields(policy)
+  const allowedCats = policy?.logRules?.allowedCategories || []
+  const pickCategory = (raw) => {
+    const want = String(raw || '').trim().toLowerCase()
+    const hit = (allowedCats.length ? allowedCats : ACTIVITY_CATEGORIES).find((c) => c.toLowerCase() === want)
+    return hit || (allowedCats.length ? '' : ACTIVITY_CATEGORIES[0])
+  }
+  const extraValue = (r, f) => {
+    if (f.key === 'category') return pickCategory(r.category)
+    if (f.custom) return r.customFields?.[f.key.slice(7)] ?? (f.type === 'checkbox' ? false : '')
+    return r[f.key] || ''
+  }
+  // What only the form can do (proof, signatures, the school's online form…).
+  const BOX_FIELDS = new Set(['date', 'hours', 'activity', 'orgName', 'supervisorName', 'notes', ...extras.map((f) => f.key)])
   // What each row becomes, and what the school still needs on it, checked
   // with the same rules the server applies (validateLogAgainstPolicy), so an
   // entry that would be refused when it syncs is finished in the form instead.
-  const entryFor = (r) => ({
-    date: r.date,
-    activity: r.activity.trim(),
-    hours: Number(r.hours),
-    category: ACTIVITY_CATEGORIES[0],
-    orgName: r.orgName || '',
-    supervisorName: r.supervisorName || '',
-    notes: tr('Added from a photo of a paper log.'),
-  })
-  const missingFor = (r) => validateLogAgainstPolicy(policy, { ...entryFor(r), hasProof: false, hasStudentSignature: false })
+  const entryFor = (r) => {
+    const description = (r.description || '').trim()
+    const marker = tr('Added from a photo of a paper log.')
+    return {
+      date: r.date,
+      activity: r.activity.trim(),
+      hours: Number(r.hours),
+      category: pickCategory(r.category),
+      orgName: r.orgName || '',
+      supervisorName: r.supervisorName || '',
+      location: (r.location || '').trim(),
+      supervisorEmail: (r.supervisorEmail || '').trim(),
+      customFields: r.customFields || {},
+      notes: description ? `${description}\n\n${marker}` : marker,
+    }
+  }
+  // The description rule is checked on what the student wrote, not on our note.
+  const missingFor = (r) => validateLogAgainstPolicy(policy, { ...entryFor(r), notes: (r.description || '').trim(), hasProof: false, hasStudentSignature: false })
+  const formOnly = (r) => missingFor(r).some((m) => !BOX_FIELDS.has(m.field))
   const filled = (r) => r.keep && r.date && r.activity.trim() && Number(r.hours) > 0
   const ready = (rows || []).filter((r) => filled(r) && missingFor(r).length === 0)
   const needsMore = (rows || []).filter((r) => filled(r) && missingFor(r).length > 0)
@@ -228,11 +261,12 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
                   <input className="input min-w-0 col-span-2" value={r.activity} placeholder={tr('Activity')} onChange={(e) => update(r.key, 'activity', e.target.value)} aria-label={tr('Activity')} />
                   <input className="input min-w-0 col-span-2" value={r.orgName} placeholder={tr('Organization')} onChange={(e) => update(r.key, 'orgName', e.target.value)} aria-label={tr('Organization')} />
                   <input className="input min-w-0 col-span-2" value={r.supervisorName} placeholder={tr('Supervisor')} onChange={(e) => update(r.key, 'supervisorName', e.target.value)} aria-label={tr('Supervisor')} />
+                  {extras.map((f) => <ExtraField key={f.key} field={f} value={extraValue(r, f)} onChange={(v) => update(r.key, f.key, v)} />)}
                 </div>
                 {filled(r) && missingFor(r).length > 0 && (
                   <div className="col-start-2 flex flex-wrap items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
                     <span>{tr('Your school needs more on this one: {what}', { what: missingFor(r).map((m) => tr(m.message)).join(' ') })}</span>
-                    {onFinish && (
+                    {onFinish && formOnly(r) && (
                       <button type="button" className="btn-secondary btn-sm" onClick={() => finish(r)}>{tr('Finish in the form')}</button>
                     )}
                   </div>
@@ -247,7 +281,9 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
           )}
           {needsMore.length > 0 && (
             <p className="text-xs text-amber-700 dark:text-amber-300">
-              {tr('{n} need more for your school. Use Finish in the form on each one.', { n: needsMore.length })}
+              {needsMore.some(formOnly)
+                ? tr('{n} need more for your school. Fill in the boxes, or use Finish in the form.', { n: needsMore.length })
+                : tr('{n} need more for your school. Fill in the boxes on each one.', { n: needsMore.length })}
             </p>
           )}
           <p className="text-xs text-earth-400">{tr('Entries need a date, an activity and hours. The photo isn’t kept.')}{!serverScan && ` ${tr('Read on your phone: printed sheets work best; check handwritten ones closely.')}`}</p>
@@ -255,4 +291,30 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
       )}
     </Card>
   )
+}
+
+// One box for a school column on a scanned row. Built-in labels are
+// translated; a school's own question shows as the school wrote it.
+function ExtraField({ field, value, onChange }) {
+  const label = field.custom ? field.label : tr(field.label)
+  const shown = field.required ? `${label} *` : label
+  const cls = 'input min-w-0 col-span-2'
+  if (field.type === 'checkbox') {
+    return (
+      <label className="col-span-2 flex items-center gap-2 text-sm">
+        <input type="checkbox" className="w-4 h-4" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} />
+        {shown}
+      </label>
+    )
+  }
+  if (field.type === 'select') {
+    return (
+      <select className={cls} value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
+        <option value="">{shown}</option>
+        {field.options.map((o) => <option key={o} value={o}>{field.custom ? o : tr(o)}</option>)}
+      </select>
+    )
+  }
+  const type = field.type === 'number' || field.type === 'date' || field.type === 'email' ? field.type : 'text'
+  return <input type={type} className={cls} value={value} placeholder={shown} onChange={(e) => onChange(e.target.value)} aria-label={label} />
 }

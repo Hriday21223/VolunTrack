@@ -32,8 +32,12 @@ const ENTRY_SCHEMA = {
           organization: { type: 'string', description: 'Where or for whom, or empty' },
           hours: { type: 'number', description: 'Hours for this row; 0 if not readable' },
           supervisor: { type: 'string', description: 'Supervisor name, or empty' },
+          location: { type: 'string', description: 'Location or address column, or empty' },
+          supervisor_email: { type: 'string', description: 'Supervisor email column, or empty' },
+          category: { type: 'string', description: 'Category column, or empty' },
+          description: { type: 'string', description: 'Description / "What you did" column, or empty' },
         },
-        required: ['date', 'activity', 'organization', 'hours', 'supervisor'],
+        required: ['date', 'activity', 'organization', 'hours', 'supervisor', 'location', 'supervisor_email', 'category', 'description'],
         additionalProperties: false,
       },
     },
@@ -47,9 +51,11 @@ const INSTRUCTIONS = `This is a photo of a student's paper volunteer or communit
 Copy each row into an entry, exactly as written. Do not invent rows or values.
 - date: as YYYY-MM-DD. If the year is missing, use {YEAR}. Leave empty if you can't read it.
 - hours: the hours for that row as a number (convert times like "9-11:30" to 2.5). Use 0 if unreadable.
+- location, supervisor_email, category, description: only when the sheet has such a column; otherwise empty.
 - Skip header rows, totals and blank rows.
 If the photo isn't an hours log, return no entries and say so in note.`
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const clip = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
 
 // Keeps only values the Log Hours form would accept, so a misread can't put
@@ -64,6 +70,10 @@ export function cleanEntries(raw) {
       orgName: clip(e?.organization, 200),
       hours: Number.isFinite(hours) && hours > 0 && hours <= MAX_HOURS_PER_ENTRY ? Math.round(hours * 4) / 4 : 0,
       supervisorName: clip(e?.supervisor, 200),
+      location: clip(e?.location, 200),
+      supervisorEmail: EMAIL.test(clip(e?.supervisor_email, 200)) ? clip(e?.supervisor_email, 200) : '',
+      category: clip(e?.category, 80),
+      description: clip(e?.description, 1000),
     }
   }).filter((e) => e.activity || e.hours > 0)
 }

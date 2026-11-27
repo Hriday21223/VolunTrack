@@ -4047,5 +4047,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "Hóa đơn ghi Chưa thanh toán hoặc Đã thanh toán, có thể liệt kê phí và thuế, và bạn có thể mở để xem trước khi thanh toán.",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Khi VolunTrack tổ chức buổi giới thiệu cho trường học và tổ chức, một thông báo trên trang chủ sẽ hiện chi tiết.",
   "Page {n} of {total}": "Trang {n} / {total}",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "Đang hiển thị {n} trang đầu trong {total} trang. Tải tệp xuống để xem tất cả."
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "Đang hiển thị {n} trang đầu trong {total} trang. Tải tệp xuống để xem tất cả.",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} mục cần thêm thông tin cho trường của bạn. Điền vào các ô, hoặc dùng Hoàn tất trong biểu mẫu.",
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} mục cần thêm thông tin cho trường của bạn. Điền vào các ô ở mỗi mục."
 }

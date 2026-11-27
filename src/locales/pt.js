@@ -4046,5 +4046,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "As faturas mostram Não paga ou Paga, podem listar taxas e impostos, e você pode abrir uma para ver antes de pagar.",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "Quando o VolunTrack fizer uma sessão para escolas e organizações, um aviso na página inicial mostrará os detalhes.",
   "Page {n} of {total}": "Página {n} de {total}",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "Mostrando as primeiras {n} de {total} páginas. Baixe o arquivo para ver todas."
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "Mostrando as primeiras {n} de {total} páginas. Baixe o arquivo para ver todas.",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} precisam de mais para sua escola. Preencha os campos ou use Concluir no formulário.",
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} precisam de mais para sua escola. Preencha os campos de cada uma."
 }
