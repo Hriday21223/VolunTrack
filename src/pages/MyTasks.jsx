@@ -1463,10 +1463,12 @@ function WaiverStatus({ signup: s }) {
 }
 
 // Someone who signed up without an account (public page). After the event the
-// organizer gives their hours, which emails them a certificate signed by the
-// organizer and VolunTrack, or marks that they didn't come.
+// organizer gives their time in and time out, which emails them a certificate
+// and a signed service record (PDF), both signed by the organizer and
+// VolunTrack; or marks that they didn't come.
 function EmailSignupRow({ taskId, taskDate, signup, onSaved }) {
-  const [hours, setHours] = useState(signup.hours != null ? String(Number(signup.hours)) : '')
+  const [timeIn, setTimeIn] = useState(signup.time_in || '')
+  const [timeOut, setTimeOut] = useState(signup.time_out || '')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const started = taskDate && taskDate <= new Date().toLocaleDateString('en-CA')
@@ -1499,8 +1501,13 @@ function EmailSignupRow({ taskId, taskDate, signup, onSaved }) {
       </div>
       {started && (
         <div className="flex flex-wrap items-center gap-2">
-          <input type="number" min="0.25" max="24" step="0.25" className="input w-24" value={hours} onChange={(e) => setHours(e.target.value)} placeholder={tr('Hours')} aria-label={tr('Hours')} />
-          <button type="button" className="btn-primary btn-sm" disabled={busy || !(Number(hours) > 0)} onClick={() => send({ hours: Number(hours) })}>{tr('Save and send certificate')}</button>
+          <label className="text-xs text-earth-400 flex items-center gap-1">{tr('Time in')}
+            <input type="time" className="input w-28" value={timeIn} onChange={(e) => setTimeIn(e.target.value)} />
+          </label>
+          <label className="text-xs text-earth-400 flex items-center gap-1">{tr('Time out')}
+            <input type="time" className="input w-28" value={timeOut} onChange={(e) => setTimeOut(e.target.value)} />
+          </label>
+          <button type="button" className="btn-primary btn-sm" disabled={busy || !timeIn || !timeOut} onClick={() => send({ timeIn, timeOut })}>{tr('Save and send certificate')}</button>
           <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={() => send({ absent: true })}>{tr('Didn’t come')}</button>
         </div>
       )}

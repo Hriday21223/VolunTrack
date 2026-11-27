@@ -4095,5 +4095,7 @@ export default {
   "Didn’t come": "Не пришёл",
   "Marked as not there.": "Отмечен как отсутствовавший.",
   "Save and send certificate": "Сохранить и отправить сертификат",
-  "Saved. Their certificate is on its way.": "Сохранено. Сертификат уже в пути."
+  "Saved. Their certificate is on its way.": "Сохранено. Сертификат уже в пути.",
+  "Time in": "Приход",
+  "Time out": "Уход"
 }

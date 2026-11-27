@@ -4095,5 +4095,7 @@ export default {
   "Didn’t come": "नहीं आए",
   "Marked as not there.": "नहीं आए के रूप में चिह्नित।",
   "Save and send certificate": "सेव करें और प्रमाणपत्र भेजें",
-  "Saved. Their certificate is on its way.": "सेव हो गया। उनका प्रमाणपत्र भेजा जा रहा है।"
+  "Saved. Their certificate is on its way.": "सेव हो गया। उनका प्रमाणपत्र भेजा जा रहा है।",
+  "Time in": "आने का समय",
+  "Time out": "जाने का समय"
 }

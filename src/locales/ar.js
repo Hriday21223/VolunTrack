@@ -4095,5 +4095,7 @@ export default {
   "Didn’t come": "لم يحضر",
   "Marked as not there.": "تم وضع علامة بعدم الحضور.",
   "Save and send certificate": "احفظ وأرسل الشهادة",
-  "Saved. Their certificate is on its way.": "تم الحفظ. شهادته في الطريق."
+  "Saved. Their certificate is on its way.": "تم الحفظ. شهادته في الطريق.",
+  "Time in": "وقت الحضور",
+  "Time out": "وقت الانصراف"
 }

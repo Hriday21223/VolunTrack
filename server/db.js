@@ -2453,6 +2453,10 @@ export async function initSchema() {
   try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS absent BOOLEAN NOT NULL DEFAULT false') } catch {}
   try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS certificate_sent_at TIMESTAMPTZ') } catch {}
   try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS certificate_hours NUMERIC(5,2)') } catch {}
+  // Time in and out (HH:MM) as the organizer entered them; hours come from these.
+  try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS time_in TEXT') } catch {}
+  try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS time_out TEXT') } catch {}
+  try { await query('ALTER TABLE public_task_email_signups ADD COLUMN IF NOT EXISTS certificate_key TEXT') } catch {}
   // Free trials (#892): while trial_ends_at is set the account counts as paid;
   // endExpiredTrials() (server/trials.js) turns it unpaid when the date passes.
   try { await query('ALTER TABLE schools ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ') } catch {}

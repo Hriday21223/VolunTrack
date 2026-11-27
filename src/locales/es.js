@@ -4096,5 +4096,7 @@ export default {
   "Didn’t come": "No vino",
   "Marked as not there.": "Marcado como ausente.",
   "Save and send certificate": "Guardar y enviar certificado",
-  "Saved. Their certificate is on its way.": "Guardado. Su certificado va en camino."
+  "Saved. Their certificate is on its way.": "Guardado. Su certificado va en camino.",
+  "Time in": "Entrada",
+  "Time out": "Salida"
 }
