@@ -68,6 +68,8 @@ export const SITEMAP_ENTRIES = [
   // Guides (src/lib/guides.js) are what students and parents search for.
   { path: '/guides', src: ['src/pages/Guides.jsx', 'src/lib/guides.js'], changefreq: 'monthly', priority: '0.6' },
   ...GUIDES.map((g) => ({ path: `/guides/${g.slug}`, src: ['src/pages/Guides.jsx', 'src/lib/guides.js'], changefreq: 'monthly', priority: '0.7' })),
+  // Open opportunities anyone can browse; signing up needs an account.
+  { path: '/volunteer-opportunities', src: ['src/pages/PublicOpportunities.jsx'], changefreq: 'daily', priority: '0.8' },
   // The public API docs (#622), prerendered like the rest.
   { path: '/developers', src: ['src/pages/Developers.jsx'], changefreq: 'monthly', priority: '0.5' },
 ]

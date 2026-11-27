@@ -53,6 +53,8 @@ const ROUTES = [
   '/for-schools',
   // The public API docs (#622).
   '/developers',
+  // Open opportunities anyone can browse (the list loads in the browser).
+  '/volunteer-opportunities',
   ...GUIDES.map((g) => `/guides/${g.slug}`),
 ]
 

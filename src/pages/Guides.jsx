@@ -163,6 +163,11 @@ export function GuidePage() {
           <p className="mt-2 text-xs text-earth-500 dark:text-earth-400">Updated {new Date(`${guide.updated}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
           <p className="mt-6 text-lg text-earth-700 dark:text-earth-200">{guide.intro}</p>
           {guide.download === 'blank-log' && <BlankLogDownload />}
+          {guide.link && (
+            <Card className="mt-6 flex justify-center">
+              <Link to={guide.link.to} className="btn-primary">{tr(guide.link.label)} <ArrowRight className="w-4 h-4" aria-hidden="true" /></Link>
+            </Card>
+          )}
           <Card className="mt-8 space-y-8 text-earth-700 dark:text-earth-200">
             {guide.sections.map((s) => (
               <section key={s.heading} className="space-y-3">

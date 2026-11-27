@@ -4051,5 +4051,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} mục cần thêm thông tin cho trường của bạn. Điền vào các ô, hoặc dùng Hoàn tất trong biểu mẫu.",
   "{n} need more for your school. Fill in the boxes on each one.": "{n} mục cần thêm thông tin cho trường của bạn. Điền vào các ô ở mỗi mục.",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "Phiếu ghi giờ tình nguyện miễn phí, sẵn sàng để in (PDF, khổ letter).",
-  "Download the log sheet": "Tải phiếu ghi giờ"
+  "Download the log sheet": "Tải phiếu ghi giờ",
+  "Volunteer Opportunities Near You": "Cơ hội tình nguyện gần bạn",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "Tìm cơ hội tình nguyện gần bạn, từ ngân hàng thực phẩm đến dạy kèm. Xem miễn phí, rồi tạo tài khoản miễn phí để đăng ký và theo dõi giờ.",
+  "Near you": "Gần bạn",
+  "Use my location": "Dùng vị trí của tôi",
+  "Couldn’t load opportunities. Try again in a moment.": "Không tải được các cơ hội. Hãy thử lại sau giây lát.",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "Để đăng ký một cơ hội, bạn cần tài khoản miễn phí, để người tổ chức biết ai sẽ đến và giờ của bạn được ghi tự động.",
+  "See volunteer opportunities near you": "Xem cơ hội tình nguyện gần bạn"
 }

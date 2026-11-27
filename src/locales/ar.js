@@ -4050,5 +4050,12 @@ export default {
   "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} تحتاج إلى المزيد لمدرستك. املأ الخانات، أو استخدم «أكمل في النموذج».",
   "{n} need more for your school. Fill in the boxes on each one.": "{n} تحتاج إلى المزيد لمدرستك. املأ الخانات في كل واحدة.",
   "Free volunteer hours log sheet, ready to print (PDF, letter size).": "ورقة مجانية لتسجيل ساعات التطوع، جاهزة للطباعة (PDF، مقاس Letter).",
-  "Download the log sheet": "نزّل ورقة التسجيل"
+  "Download the log sheet": "نزّل ورقة التسجيل",
+  "Volunteer Opportunities Near You": "فرص تطوع بالقرب منك",
+  "Find volunteer opportunities near you, from food banks to tutoring. Browse for free, then create a free account to sign up and track your hours.": "اعثر على فرص تطوع بالقرب منك، من بنوك الطعام إلى الدروس الخصوصية. تصفّحها مجانًا، ثم أنشئ حسابًا مجانيًا للتسجيل وتتبّع ساعاتك.",
+  "Near you": "بالقرب منك",
+  "Use my location": "استخدم موقعي",
+  "Couldn’t load opportunities. Try again in a moment.": "تعذّر تحميل الفرص. حاول مرة أخرى بعد قليل.",
+  "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "التسجيل في فرصة يحتاج إلى حساب مجاني، ليعرف المنظّم من سيحضر وتُسجَّل ساعاتك تلقائيًا.",
+  "See volunteer opportunities near you": "اطّلع على فرص التطوع بالقرب منك"
 }
