@@ -78,6 +78,9 @@ const blank = () => ({
   skills: [],
   orgName: '',
   orgAddress: '',
+  // Only for the Organization address map pin; not saved with the entry.
+  orgLatitude: null,
+  orgLongitude: null,
   orgPhone: '',
   supervisorName: '',
   supervisorEmail: '',
@@ -655,7 +658,16 @@ export default function LogHours({ editId, onCloseEdit }) {
               <Field icon={Phone}     label={tr('Organization phone')} value={form.orgPhone} onChange={onChange('orgPhone')} placeholder="(555) 123-4567" type="tel" />
               <div className="sm:col-span-2">
                 <label className="label flex items-center gap-1.5"><MapPin className="w-4 h-4" />{' '}{tr('Organization address')}</label>
-                <input className="input" placeholder={tr('123 Main St, Springfield, IL')} value={form.orgAddress} onChange={onChange('orgAddress')} />
+                {/* The same address search, Current button and map as Location
+                    (the owner's request, Nov 27). The pin's position is only
+                    for picking here; the entry keeps the address text. */}
+                <LocationPicker
+                  address={form.orgAddress}
+                  lat={form.orgLatitude}
+                  lng={form.orgLongitude}
+                  placeholder={tr('123 Main St, Springfield, IL')}
+                  onChange={({ address, lat, lng }) => setForm((f) => ({ ...f, orgAddress: address, orgLatitude: lat, orgLongitude: lng }))}
+                />
               </div>
             </div>
             {/* The school's approved places (#591): a place off the list is
