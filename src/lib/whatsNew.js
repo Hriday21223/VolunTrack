@@ -3,6 +3,21 @@
 // shows a dot until the viewer opens the page. `for` limits an item to roles.
 export const WHATS_NEW = [
   {
+    id: '2026-11-27',
+    date: '2026-11-27',
+    items: [
+      { text: "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account." },
+      { text: "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe." },
+      { text: "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.", for: ["student"] },
+      { text: "Sign your own entries on Log Hours. Your school can make it required.", for: ["student"] },
+      { text: "Preview your hours report before you download it, and see exactly what your school will get before you send it.", for: ["student"] },
+      { text: "Your certificate now carries VolunTrack’s signature too.", for: ["student"] },
+      { text: "Share your Year in review as a link that works for 30 days.", for: ["student"] },
+      { text: "Your events now show on our public opportunities page too, so more people can find them.", for: ["volunteer"] },
+      { text: "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.", for: ["school", "school_staff"] },
+    ],
+  },
+  {
     id: '2026-11-23',
     date: '2026-11-23',
     items: [

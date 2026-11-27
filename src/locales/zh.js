@@ -4058,5 +4058,14 @@ export default {
   "Use my location": "使用我的位置",
   "Couldn’t load opportunities. Try again in a moment.": "无法加载志愿机会，请稍后再试。",
   "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "报名志愿机会需要一个免费账户，这样组织者知道谁会来，你的时长也会自动记录。",
-  "See volunteer opportunities near you": "查看你附近的志愿机会"
+  "See volunteer opportunities near you": "查看你附近的志愿机会",
+  "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account.": "现在任何人无需账户就能在我们的网站上浏览志愿机会。报名仍需要账户。",
+  "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe.": "使用同步 PIN 登录时，现在还会要求你的第二步验证，或我们通过邮件发送的验证码，以保护你的账户。",
+  "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.": "扫描纸质记录现在也能读取 PDF，你还可以把照片或 PDF 拖到上面。需要表格？打印一份按学校栏目设置好的空白记录表。",
+  "Sign your own entries on Log Hours. Your school can make it required.": "在“记录时长”中为自己的记录签名。学校可以将其设为必填。",
+  "Preview your hours report before you download it, and see exactly what your school will get before you send it.": "下载前先预览你的时长报告，发送前也能看到学校将收到的确切内容。",
+  "Your certificate now carries VolunTrack’s signature too.": "你的证书现在也带有 VolunTrack 的签名。",
+  "Share your Year in review as a link that works for 30 days.": "将你的年度回顾以链接分享，链接有效期 30 天。",
+  "Your events now show on our public opportunities page too, so more people can find them.": "你的活动现在也会显示在我们的公开志愿机会页面上，让更多人找到。",
+  "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.": "扫描的纸质记录现在会在保存前要求填写学校的栏目（类别、地点、负责人邮箱和学校自己的问题）。"
 }
