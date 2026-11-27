@@ -84,3 +84,9 @@ export function robotsRuleBlocks(rule, path) {
     .split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*')
   return new RegExp(`^${body}${anchored ? '$' : ''}`).test(path)
 }
+
+// IndexNow (Bing, Yandex, Naver, Seznam; not Google): after a production
+// deploy, scripts/indexnow.mjs tells them which sitemap pages changed. The
+// key isn't a secret; it's published at /<key>.txt (public/), which is how
+// they know the ping comes from this site.
+export const INDEXNOW_KEY = '6e892c295bb0e1f9be481965265596b4'
