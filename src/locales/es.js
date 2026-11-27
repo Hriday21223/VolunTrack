@@ -4058,5 +4058,14 @@ export default {
   "Use my location": "Usar mi ubicación",
   "Couldn’t load opportunities. Try again in a moment.": "No se pudieron cargar las oportunidades. Inténtalo de nuevo en un momento.",
   "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "Para inscribirte en una oportunidad necesitas una cuenta gratuita, así el organizador sabe quién va y tus horas se registran solas.",
-  "See volunteer opportunities near you": "Ver oportunidades de voluntariado cerca de ti"
+  "See volunteer opportunities near you": "Ver oportunidades de voluntariado cerca de ti",
+  "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account.": "Ahora cualquiera puede ver oportunidades de voluntariado en nuestro sitio web sin una cuenta. Para inscribirse sigue haciendo falta una cuenta.",
+  "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe.": "Al iniciar sesión con un PIN de sincronización ahora también se pide tu segundo paso, o un código que te enviamos por correo, para proteger tu cuenta.",
+  "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.": "Escanear un registro en papel ahora también lee PDF, y puedes arrastrar una foto o un PDF encima. ¿Necesitas una hoja? Imprime un registro en blanco con las columnas de tu escuela.",
+  "Sign your own entries on Log Hours. Your school can make it required.": "Firma tus propias entradas en Registrar horas. Tu escuela puede hacerlo obligatorio.",
+  "Preview your hours report before you download it, and see exactly what your school will get before you send it.": "Mira tu informe de horas antes de descargarlo, y ve exactamente lo que recibirá tu escuela antes de enviarlo.",
+  "Your certificate now carries VolunTrack’s signature too.": "Tu certificado ahora también lleva la firma de VolunTrack.",
+  "Share your Year in review as a link that works for 30 days.": "Comparte tu Resumen del año como un enlace que funciona durante 30 días.",
+  "Your events now show on our public opportunities page too, so more people can find them.": "Tus eventos ahora también aparecen en nuestra página pública de oportunidades, para que más personas los encuentren.",
+  "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.": "Los registros en papel escaneados ahora piden las columnas de tu escuela (categoría, lugar, correo del supervisor y tus propias preguntas) antes de guardarse."
 }

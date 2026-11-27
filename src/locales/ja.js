@@ -4057,5 +4057,14 @@ export default {
   "Use my location": "現在地を使う",
   "Couldn’t load opportunities. Try again in a moment.": "募集を読み込めませんでした。少ししてからもう一度お試しください。",
   "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "申し込むには無料アカウントが必要です。主催者が参加者を把握でき、あなたの時間も自動で記録されます。",
-  "See volunteer opportunities near you": "近くのボランティア募集を見る"
+  "See volunteer opportunities near you": "近くのボランティア募集を見る",
+  "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account.": "アカウントがなくても、誰でも私たちのウェブサイトでボランティア募集を見られるようになりました。申し込みには引き続きアカウントが必要です。",
+  "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe.": "同期 PIN でのサインインでも、アカウントを守るため 2 段階目の確認、またはメールで送るコードを求めるようになりました。",
+  "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.": "紙の記録のスキャンが PDF にも対応し、写真や PDF をドラッグして入れられます。用紙が必要なら、学校の項目入りの白紙の記録を印刷できます。",
+  "Sign your own entries on Log Hours. Your school can make it required.": "時間の記録で、自分のエントリーに自分で署名できます。学校が必須にすることもできます。",
+  "Preview your hours report before you download it, and see exactly what your school will get before you send it.": "ダウンロード前に時間のレポートをプレビューでき、送る前に学校に届く内容をそのまま確認できます。",
+  "Your certificate now carries VolunTrack’s signature too.": "修了証に VolunTrack の署名も入るようになりました。",
+  "Share your Year in review as a link that works for 30 days.": "年間のまとめを 30 日間使えるリンクで共有できます。",
+  "Your events now show on our public opportunities page too, so more people can find them.": "あなたのイベントが公開の募集ページにも表示され、より多くの人に見つけてもらえます。",
+  "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.": "スキャンした紙の記録は、保存前に学校の項目（カテゴリー、場所、責任者のメール、学校独自の質問）を入力するようになりました。"
 }

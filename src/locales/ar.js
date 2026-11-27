@@ -4057,5 +4057,14 @@ export default {
   "Use my location": "استخدم موقعي",
   "Couldn’t load opportunities. Try again in a moment.": "تعذّر تحميل الفرص. حاول مرة أخرى بعد قليل.",
   "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "التسجيل في فرصة يحتاج إلى حساب مجاني، ليعرف المنظّم من سيحضر وتُسجَّل ساعاتك تلقائيًا.",
-  "See volunteer opportunities near you": "اطّلع على فرص التطوع بالقرب منك"
+  "See volunteer opportunities near you": "اطّلع على فرص التطوع بالقرب منك",
+  "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account.": "يمكن لأي شخص الآن تصفّح فرص التطوع على موقعنا دون حساب. لا يزال التسجيل في فرصة يحتاج إلى حساب.",
+  "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe.": "تسجيل الدخول برمز PIN للمزامنة يطلب الآن أيضًا خطوتك الثانية، أو رمزًا نرسله إلى بريدك، للحفاظ على أمان حسابك.",
+  "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.": "مسح سجل ورقي يقرأ الآن ملفات PDF أيضًا، ويمكنك سحب صورة أو ملف PDF إليه. تحتاج إلى ورقة؟ اطبع سجلًا فارغًا بأعمدة مدرستك.",
+  "Sign your own entries on Log Hours. Your school can make it required.": "وقّع على إدخالاتك بنفسك في تسجيل الساعات. يمكن لمدرستك أن تجعل ذلك إلزاميًا.",
+  "Preview your hours report before you download it, and see exactly what your school will get before you send it.": "اعرض تقرير ساعاتك قبل تنزيله، وشاهد بالضبط ما ستحصل عليه مدرستك قبل إرساله.",
+  "Your certificate now carries VolunTrack’s signature too.": "تحمل شهادتك الآن توقيع VolunTrack أيضًا.",
+  "Share your Year in review as a link that works for 30 days.": "شارك ملخص عامك كرابط يعمل لمدة 30 يومًا.",
+  "Your events now show on our public opportunities page too, so more people can find them.": "تظهر فعالياتك الآن أيضًا في صفحة الفرص العامة لدينا، ليجدها عدد أكبر من الناس.",
+  "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.": "السجلات الورقية الممسوحة تطلب الآن أعمدة مدرستك (الفئة والمكان وبريد المشرف وأسئلتك الخاصة) قبل حفظها."
 }

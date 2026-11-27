@@ -16,6 +16,7 @@
 // AI-written summary of what probably broke.
 import { execSync } from 'node:child_process'
 import puppeteer from 'puppeteer'
+import { GUIDES } from '../src/lib/guides.js'
 
 const SITE = (process.env.SITE_URL || 'https://volunteer-track-two.vercel.app').replace(/\/$/, '')
 const API = (process.env.API_URL || 'https://voluntrack-backend-frrh.onrender.com/api').replace(/\/$/, '')
@@ -23,8 +24,12 @@ const API = (process.env.API_URL || 'https://voluntrack-backend-frrh.onrender.co
 // which only works mid sign-in. The verify pages load without a token and
 // show their own "link missing" message, which is still a working page.
 const PAGES = [
-  '/', '/about', '/help', '/contact', '/terms', '/privacy', '/guides', '/guides/nhs-service-hours', '/for-schools',
-  '/login', '/register', '/forgot-password', '/reset-password', '/reset-pin', '/sync-login',
+  '/', '/about', '/help', '/contact', '/terms', '/privacy', '/for-schools', '/developers',
+  '/volunteer-opportunities',
+  // Every guide (src/lib/guides.js), so a broken one is noticed.
+  '/guides', ...GUIDES.map((g) => `/guides/${g.slug}`),
+  '/login', '/register', '/register/student', '/register/parent', '/register/organizer',
+  '/forgot-password', '/reset-password', '/reset-pin', '/sync-login',
   '/school/register', '/organization/register',
   '/status', '/status/incidents', '/status/system',
   '/verify-hours', '/verify-transcript',

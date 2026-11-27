@@ -4057,5 +4057,14 @@ export default {
   "Use my location": "मेरी लोकेशन इस्तेमाल करें",
   "Couldn’t load opportunities. Try again in a moment.": "अवसर लोड नहीं हो सके। थोड़ी देर में फिर कोशिश करें।",
   "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "किसी अवसर के लिए साइन अप करने को मुफ़्त खाता चाहिए, ताकि आयोजक जाने कौन आ रहा है और आपके घंटे अपने-आप दर्ज हों।",
-  "See volunteer opportunities near you": "अपने पास स्वयंसेवा के अवसर देखें"
+  "See volunteer opportunities near you": "अपने पास स्वयंसेवा के अवसर देखें",
+  "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account.": "अब कोई भी बिना खाते के हमारी वेबसाइट पर स्वयंसेवा के अवसर देख सकता है। किसी अवसर के लिए साइन अप करने को अब भी खाता चाहिए।",
+  "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe.": "सिंक पिन से साइन इन करते समय अब आपका दूसरा चरण, या ईमेल से भेजा गया कोड भी माँगा जाता है, ताकि आपका खाता सुरक्षित रहे।",
+  "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.": "पेपर लॉग स्कैन अब PDF भी पढ़ता है, और आप उस पर फ़ोटो या PDF खींचकर डाल सकते हैं। शीट चाहिए? अपने स्कूल के कॉलम वाला खाली लॉग प्रिंट करें।",
+  "Sign your own entries on Log Hours. Your school can make it required.": "घंटे दर्ज करें में अपनी एंट्री पर खुद हस्ताक्षर करें। आपका स्कूल इसे ज़रूरी बना सकता है।",
+  "Preview your hours report before you download it, and see exactly what your school will get before you send it.": "डाउनलोड करने से पहले अपनी घंटों की रिपोर्ट देखें, और भेजने से पहले देखें कि आपके स्कूल को ठीक क्या मिलेगा।",
+  "Your certificate now carries VolunTrack’s signature too.": "आपके प्रमाणपत्र पर अब VolunTrack का हस्ताक्षर भी है।",
+  "Share your Year in review as a link that works for 30 days.": "अपना साल भर का सारांश 30 दिन चलने वाले लिंक के रूप में शेयर करें।",
+  "Your events now show on our public opportunities page too, so more people can find them.": "आपके कार्यक्रम अब हमारे सार्वजनिक अवसर पेज पर भी दिखते हैं, ताकि ज़्यादा लोग उन्हें ढूँढ सकें।",
+  "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.": "स्कैन किए गए पेपर लॉग अब सेव होने से पहले आपके स्कूल के कॉलम (श्रेणी, जगह, सुपरवाइज़र का ईमेल और आपके अपने सवाल) माँगते हैं।"
 }

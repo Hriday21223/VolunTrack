@@ -4057,5 +4057,14 @@ export default {
   "Use my location": "Использовать моё местоположение",
   "Couldn’t load opportunities. Try again in a moment.": "Не удалось загрузить возможности. Попробуйте чуть позже.",
   "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "Чтобы записаться, нужен бесплатный аккаунт: так организатор знает, кто придёт, а ваши часы записываются автоматически.",
-  "See volunteer opportunities near you": "Посмотреть волонтёрские возможности рядом"
+  "See volunteer opportunities near you": "Посмотреть волонтёрские возможности рядом",
+  "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account.": "Теперь любой может смотреть волонтёрские возможности на нашем сайте без аккаунта. Чтобы записаться, аккаунт по-прежнему нужен.",
+  "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe.": "Вход по PIN-коду синхронизации теперь также запрашивает ваш второй шаг или код, который мы отправим на почту, чтобы защитить аккаунт.",
+  "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.": "Сканирование бумажного журнала теперь читает и PDF, а фото или PDF можно просто перетащить. Нужен бланк? Распечатайте пустой журнал с колонками вашей школы.",
+  "Sign your own entries on Log Hours. Your school can make it required.": "Подписывайте свои записи сами в разделе «Записать часы». Школа может сделать это обязательным.",
+  "Preview your hours report before you download it, and see exactly what your school will get before you send it.": "Просматривайте отчёт о часах перед скачиванием и смотрите, что именно получит школа, до отправки.",
+  "Your certificate now carries VolunTrack’s signature too.": "Теперь на вашем сертификате есть и подпись VolunTrack.",
+  "Share your Year in review as a link that works for 30 days.": "Делитесь итогами года по ссылке, которая работает 30 дней.",
+  "Your events now show on our public opportunities page too, so more people can find them.": "Ваши мероприятия теперь видны и на нашей публичной странице возможностей, чтобы их нашло больше людей.",
+  "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.": "Отсканированные бумажные журналы теперь запрашивают колонки вашей школы (категорию, место, почту руководителя и ваши вопросы) перед сохранением."
 }

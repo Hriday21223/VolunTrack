@@ -4058,5 +4058,14 @@ export default {
   "Use my location": "Dùng vị trí của tôi",
   "Couldn’t load opportunities. Try again in a moment.": "Không tải được các cơ hội. Hãy thử lại sau giây lát.",
   "Signing up for an opportunity needs a free account, so the organizer knows who’s coming and your hours are logged for you.": "Để đăng ký một cơ hội, bạn cần tài khoản miễn phí, để người tổ chức biết ai sẽ đến và giờ của bạn được ghi tự động.",
-  "See volunteer opportunities near you": "Xem cơ hội tình nguyện gần bạn"
+  "See volunteer opportunities near you": "Xem cơ hội tình nguyện gần bạn",
+  "Anyone can now browse volunteer opportunities on our website without an account. Signing up for one still needs an account.": "Giờ đây ai cũng có thể xem các cơ hội tình nguyện trên trang web của chúng tôi mà không cần tài khoản. Muốn đăng ký vẫn cần có tài khoản.",
+  "Signing in with a sync PIN now also asks for your second step, or a code we email you, to keep your account safe.": "Đăng nhập bằng mã PIN đồng bộ giờ cũng yêu cầu bước xác minh thứ hai của bạn, hoặc mã chúng tôi gửi qua email, để giữ an toàn cho tài khoản.",
+  "Scan a paper log reads PDFs too, and you can drag a photo or PDF onto it. Need a sheet? Print a blank log set up with your school’s columns.": "Quét nhật ký giấy giờ đọc được cả PDF, và bạn có thể kéo ảnh hoặc PDF vào đó. Cần một tờ? In nhật ký trống có sẵn các cột của trường bạn.",
+  "Sign your own entries on Log Hours. Your school can make it required.": "Tự ký các mục của bạn trong Ghi giờ. Trường của bạn có thể bắt buộc việc này.",
+  "Preview your hours report before you download it, and see exactly what your school will get before you send it.": "Xem trước báo cáo giờ trước khi tải xuống, và xem chính xác những gì trường bạn sẽ nhận trước khi gửi.",
+  "Your certificate now carries VolunTrack’s signature too.": "Giấy chứng nhận của bạn giờ có thêm chữ ký của VolunTrack.",
+  "Share your Year in review as a link that works for 30 days.": "Chia sẻ Tổng kết năm của bạn dưới dạng liên kết dùng được trong 30 ngày.",
+  "Your events now show on our public opportunities page too, so more people can find them.": "Các sự kiện của bạn giờ cũng hiện trên trang cơ hội công khai của chúng tôi, để nhiều người tìm thấy hơn.",
+  "Scanned paper logs now ask for your school’s columns (category, location, supervisor email and your own questions) before they’re saved.": "Nhật ký giấy được quét giờ sẽ hỏi các cột của trường bạn (loại hoạt động, địa điểm, email người giám sát và câu hỏi riêng của trường) trước khi lưu."
 }
