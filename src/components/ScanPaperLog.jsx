@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth.jsx'
 import { isTouchDevice } from '@/lib/platform.js'
 import { readOnDevice } from '@/lib/paperLogOcr.js'
 import { parsePaperLog } from '@/lib/paperLogParse.js'
-import { useMyRequirements, validateLogAgainstPolicy } from '@/lib/requirements.js'
+import { useMyRequirements, validateLogAgainstPolicy, isOwnEmail, OWN_EMAIL_AS_SUPERVISOR } from '@/lib/requirements.js'
 import { paperLogColumns, paperLogLaterItems, paperLogExtraFields } from '@/lib/paperLogForm.js'
 
 const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
@@ -183,7 +183,12 @@ export default function ScanPaperLog({ onAdd, onFinish }) {
     }
   }
   // The description rule is checked on what the student wrote, not on our note.
-  const missingFor = (r) => validateLogAgainstPolicy(policy, { ...entryFor(r), notes: (r.description || '').trim(), hasProof: false, hasStudentSignature: false })
+  const missingFor = (r) => {
+    const out = validateLogAgainstPolicy(policy, { ...entryFor(r), notes: (r.description || '').trim(), hasProof: false, hasStudentSignature: false })
+    // Never their own email as the supervisor: the server refuses it.
+    if (isOwnEmail(r.supervisorEmail, user?.email)) out.push({ field: 'supervisorEmail', message: OWN_EMAIL_AS_SUPERVISOR })
+    return out
+  }
   const formOnly = (r) => missingFor(r).some((m) => !BOX_FIELDS.has(m.field))
   const filled = (r) => r.keep && r.date && r.activity.trim() && Number(r.hours) > 0
   const ready = (rows || []).filter((r) => filled(r) && missingFor(r).length === 0)

@@ -168,7 +168,13 @@ export async function saveShifts(db, taskId, shifts) {
       "SELECT 1 FROM public_task_signups WHERE task_id = $1 AND status IN ('pending', 'approved', 'waitlisted', 'parent_pending') LIMIT 1",
       [taskId],
     )
-    if (rows.length) return { ok: false, error: 'People have already signed up, so shifts can only be added to a new event.' }
+    // Confirmed sign-ups without an account (routes/emailSignups.js) are in
+    // no shift either, and shift limits wouldn't count them.
+    const { rows: noAccount } = rows.length ? { rows: [] } : await db.query(
+      'SELECT 1 FROM public_task_email_signups WHERE task_id = $1 AND confirmed_at IS NOT NULL AND cancelled_at IS NULL LIMIT 1',
+      [taskId],
+    )
+    if (rows.length || noAccount.length) return { ok: false, error: 'People have already signed up, so shifts can only be added to a new event.' }
   }
   for (const s of next) {
     const used = s.id ? usage.get(s.id)?.used || 0 : 0

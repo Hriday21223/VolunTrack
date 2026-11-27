@@ -9,6 +9,7 @@ import { requestLang, emailDate } from '../emailStrings.js'
 import { spotsUsed } from '../spots.js'
 import { newBadgeCode } from '../badge.js'
 import { promoteFromWaitlist } from './school.js'
+import { pruneEmailSignups } from '../emailSignupPrune.js'
 
 // Signing up for an opportunity without an account (the owner's request,
 // Nov 27), from the public /volunteer-opportunities page:
@@ -25,13 +26,17 @@ import { promoteFromWaitlist } from './school.js'
 // Only on tasks without shifts, a waiver, an age limit over 13 or a parent
 // requirement; those still need an account. Confirmed ones count as spots
 // (SPOTS_USED_SQL in server/spots.js) and show on the organizer's My Tasks.
-// Rows are deleted 30 days after the event, on the next sign-up.
+// Rows are deleted 30 days after the event (server/emailSignupPrune.js, on each
+// sign-up and daily). At most 5 sign-up emails a day go to one address, and a
+// confirmed spot's link is never replaced.
 
 const router = express.Router()
 const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex')
 const TOKEN_RE = /^[A-Za-z0-9_-]{20,128}$/
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/
-const KEEP_DAYS = 30
+// At most this many sign-up emails to one address a day, so the form can't
+// be used to fill a stranger's inbox.
+const EMAILS_PER_ADDRESS_PER_DAY = 5
 
 const requireDb = (_req, res, next) => (hasDatabase() ? next() : res.status(503).json({ error: 'Sign-ups are unavailable right now.' }))
 // Public and unauthenticated: keyed on the address on purpose.
@@ -66,9 +71,8 @@ router.post('/:taskId', submitLimiter, requireDb, verifyTurnstile(), async (req,
   if (req.body?.over13 !== true) return res.status(400).json({ error: 'Under 13? Ask a parent to help you make a free account instead.', needsAccount: true })
   if (!hasEmail() && process.env.NODE_ENV === 'production') return res.status(503).json({ error: 'Sign-ups are unavailable right now.' })
   try {
-    // Personal data kept only as long as it's useful.
-    query(`DELETE FROM public_task_email_signups es USING public_tasks t
-            WHERE t.id = es.task_id AND t.date < CURRENT_DATE - ${KEEP_DAYS}`).catch(() => {})
+    // Personal data kept only as long as it's useful (also run daily).
+    pruneEmailSignups()
 
     const { rows } = await query(`SELECT ${TASK_COLS} FROM public_tasks t WHERE t.id = $1`, [String(req.params.taskId)])
     const task = rows[0]
@@ -78,9 +82,19 @@ router.post('/:taskId', submitLimiter, requireDb, verifyTurnstile(), async (req,
       return res.status(409).json({ error: 'This opportunity is full.' })
     }
 
+    // Same quiet "ok" for every refusal below, so this can't be used to learn
+    // who signed up. Too many emails to this address today: send nothing.
+    const { rows: [today] } = await query(
+      "SELECT COUNT(*)::int AS n FROM public_task_email_signups WHERE email = $1 AND sent_at > now() - interval '1 day'",
+      [email],
+    )
+    if (today.n >= EMAILS_PER_ADDRESS_PER_DAY) return res.json({ ok: true })
+
     const token = generateToken()
     // One row per address per task. A new request sends a new link (at most
-    // once a minute); an address already confirmed just gets its link again.
+    // once a minute) until the spot is confirmed. A confirmed spot keeps its
+    // link: replacing it would let anyone who knows the address break the
+    // volunteer's link (and badge page) by signing up again.
     const { rows: saved } = await query(
       `INSERT INTO public_task_email_signups (id, task_id, name, email, language, token_hash)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -89,6 +103,7 @@ router.post('/:taskId', submitLimiter, requireDb, verifyTurnstile(), async (req,
              name = CASE WHEN public_task_email_signups.confirmed_at IS NULL THEN EXCLUDED.name ELSE public_task_email_signups.name END,
              cancelled_at = NULL, confirmed_at = CASE WHEN public_task_email_signups.cancelled_at IS NOT NULL THEN NULL ELSE public_task_email_signups.confirmed_at END
          WHERE public_task_email_signups.sent_at < now() - interval '60 seconds'
+           AND NOT (public_task_email_signups.confirmed_at IS NOT NULL AND public_task_email_signups.cancelled_at IS NULL)
        RETURNING id`,
       [uid('esu'), task.id, name, email, requestLang(req), hashToken(token)],
     )

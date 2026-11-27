@@ -41,6 +41,7 @@ import { isSignatureImage } from '../signature.js'
 import { icsCalendar, icsEvent } from '../ics.js'
 import { notify } from '../notifications.js'
 import { displayName } from './portfolio.js'
+import { pruneEmailSignups } from '../emailSignupPrune.js'
 import { canManageTask, refuseTaskAccess, MANAGED_BY_SQL, CLOSED_OUT_SQL, CLOSED_OUT_ERROR, taskClosedOut, COHOST_MAX, COHOST_ROLES, COHOST_GENERIC_REFUSAL } from '../taskCohosts.js'
 import { schoolIsActive, schoolInactiveMessage, schoolActiveCols, clubSeatProblem, clubStudentCount, joinWithSeat, CLUB_STUDENT_LIMIT, CLUB_MAX_CO_ADMINS, PLANS } from '../plans.js'
 import { SPOTS_USED_SQL, SIGNUP_SPOTS_SQL, spotsUsed, readGuests, groupTooBigMessage } from '../spots.js'
@@ -3321,6 +3322,8 @@ router.post('/public-tasks/internal/run-attendance-nudges', cronLimiter(), requi
   const dryRun = req.body?.dryRun === true
   const results = { organizers: [], volunteers: [], dryRun, emailConfigured: hasEmail() }
   try {
+    // Daily: names and emails of sign-ups without an account, 30 days after the event.
+    if (!dryRun) results.emailSignupsDeleted = await pruneEmailSignups()
     // 1. Organizers, the day after (up to 3 days, to survive a missed run).
     const { rows: forOrganizers } = await query(
       `SELECT t.id, t.title, to_char(t.date, 'YYYY-MM-DD') AS date, t.time, t.location, t.creator_name,
@@ -5755,11 +5758,11 @@ router.post('/public-tasks/:id/status', limiter, requireDb, requireAuth(), async
 // Everyone a cancellation should reach: signed up, not turned away.
 async function cancellationRecipients(taskId) {
   const { rows } = await query(
-    `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
+    `SELECT u.email, u.name, u.language, false AS guest FROM public_task_signups s JOIN users u ON u.id = s.user_id
       WHERE s.task_id = $1 AND s.status NOT IN ('rejected', 'parent_declined')
      UNION ALL
      -- Signed up without an account (routes/emailSignups.js), confirmed.
-     SELECT es.email, es.name, es.language FROM public_task_email_signups es
+     SELECT es.email, es.name, es.language, true AS guest FROM public_task_email_signups es
       WHERE es.task_id = $1 AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL`,
     [taskId],
   )
@@ -5789,8 +5792,9 @@ async function sendCancellationEmails(task, people, { reason = '', accountClosed
             ...(reason ? [et(lang, 'Reason given: {reason}', { reason })] : []),
           ],
           task,
-          // The cancelled task isn't listed any more, so point at the rest.
-          link: `${frontendBase()}/opportunities`,
+          // The cancelled task isn't listed any more, so point at the rest:
+          // the public page for someone without an account (it needs no sign-in).
+          link: `${frontendBase()}${person.guest ? '/volunteer-opportunities' : '/opportunities'}`,
           linkLabel: et(lang, 'Find another task'),
         }),
       })
@@ -5952,11 +5956,11 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
     const { rows: people } = await query(
       // Not to anyone who blocked the task's creator or the sender
       // (server/routes/reports.js).
-      `SELECT u.email, u.name, u.language FROM public_task_signups s JOIN users u ON u.id = s.user_id
+      `SELECT u.email, u.name, u.language, false AS guest FROM public_task_signups s JOIN users u ON u.id = s.user_id
         WHERE s.task_id = $1 AND s.status = 'approved'
           AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = s.user_id AND b.blocked_id IN ($2, $3))
        UNION ALL
-       SELECT es.email, es.name, es.language FROM public_task_email_signups es
+       SELECT es.email, es.name, es.language, true AS guest FROM public_task_email_signups es
         WHERE es.task_id = $1 AND es.confirmed_at IS NOT NULL AND es.cancelled_at IS NULL`,
       [req.params.id, access.createdBy, req.auth.sub],
     )
@@ -5974,7 +5978,8 @@ router.post('/public-tasks/:id/message', taskMailLimiter, requireDb, requireAuth
             heading: et(lang, 'A message from {from}', { from: fromFor(lang) }),
             lines: [message],
             task: rows[0],
-            link: taskPageLink(req.params.id),
+            // Someone without an account can't open the app's task page.
+            link: person.guest ? `${frontendBase()}/volunteer-opportunities` : taskPageLink(req.params.id),
             linkLabel: et(lang, 'View task'),
           }),
         })
