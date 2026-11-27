@@ -4046,5 +4046,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "請求書には「未払い」または「支払い済み」が表示され、手数料や税も記載でき、支払う前に開いて確認できます。",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "VolunTrack が学校・団体向けの説明会を開くときは、ホームページのバナーに詳細が表示されます。",
   "Page {n} of {total}": "{total} ページ中 {n} ページ",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total} ページ中、最初の {n} ページを表示しています。すべて見るにはファイルをダウンロードしてください。"
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total} ページ中、最初の {n} ページを表示しています。すべて見るにはファイルをダウンロードしてください。",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} 件は学校の要件にまだ足りません。欄を入力するか、「フォームで仕上げる」を使ってください。",
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} 件は学校の要件にまだ足りません。各行の欄を入力してください。"
 }

@@ -4046,5 +4046,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "تُظهر الفواتير لم تُدفع بعد أو مدفوعة، ويمكن أن تتضمن رسومًا وضرائب، ويمكنك فتح الفاتورة لتراها قبل الدفع.",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "عندما يقيم VolunTrack جلسة للمدارس والمنظمات، يظهر شريط في الصفحة الرئيسية بالتفاصيل.",
   "Page {n} of {total}": "الصفحة {n} من {total}",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "تُعرض أول {n} صفحة من {total}. نزّل الملف لرؤيتها كلها."
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "تُعرض أول {n} صفحة من {total}. نزّل الملف لرؤيتها كلها.",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} تحتاج إلى المزيد لمدرستك. املأ الخانات، أو استخدم «أكمل في النموذج».",
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} تحتاج إلى المزيد لمدرستك. املأ الخانات في كل واحدة."
 }

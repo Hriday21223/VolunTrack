@@ -4047,5 +4047,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "发票会显示“未付款”或“已付款”，可列出费用和税，你也可以在付款前打开查看。",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "当 VolunTrack 为学校和组织举办介绍会时，主页上会有横幅显示详情。",
   "Page {n} of {total}": "第 {n} 页，共 {total} 页",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "显示前 {n} 页，共 {total} 页。下载文件可查看全部。"
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "显示前 {n} 页，共 {total} 页。下载文件可查看全部。",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} 条还需要补充学校要求的内容。填写方框，或使用“在表单中完成”。",
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} 条还需要补充学校要求的内容。请填写每条的方框。"
 }

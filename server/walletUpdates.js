@@ -5,6 +5,7 @@
 // phone holding the Apple card to fetch it again (an empty APNs push with the
 // pass type as topic, sent with the pass certificate). Off until the wallet
 // keys are set.
+import { lastApiWriteAt } from './keepAwake.js'
 import http2 from 'node:http2'
 import { query, hasDatabase } from './db.js'
 import {
@@ -42,11 +43,20 @@ async function pushApple(tokens) {
   return gone
 }
 
+// Hours only change through the API, so a run with no API write since the
+// last one has nothing to find and doesn't touch the database (it used to
+// read wallet_cards every 15 minutes, which kept Neon's compute awake).
+// `more` is set when the last run hit BATCH, so the rest are still checked.
+let lastRunAt = 0
+let more = true
+
 /** One pass over the saved cards. Returns counts only. */
-export async function runWalletUpdates() {
+export async function runWalletUpdates({ force = false } = {}) {
   const google = googleWalletConfigured()
   const apple = appleWalletConfigured() && Boolean(appleWebServiceUrl())
   if (!google && !apple) return { checked: 0, changed: 0 }
+  if (!force && !more && lastApiWriteAt() <= lastRunAt) return { checked: 0, changed: 0, skipped: 'nothing written' }
+  lastRunAt = Date.now()
   const { rows } = await query(
     `SELECT user_id, serial, apple, google, shown FROM wallet_cards
       WHERE checked_at IS NULL OR checked_at < now() - interval '10 minutes'
@@ -75,6 +85,7 @@ export async function runWalletUpdates() {
       console.error('wallet update failed:', error.message)
     }
   }
+  more = rows.length >= BATCH
   return { checked: rows.length, changed }
 }
 

@@ -4046,5 +4046,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "ইনভয়েসে এখনো পরিশোধ হয়নি বা পরিশোধিত লেখা থাকে, ফি ও কর থাকতে পারে, আর পরিশোধের আগে খুলে দেখতে পারেন।",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "VolunTrack যখন স্কুল ও সংগঠনের জন্য সেশন করবে, হোম পেজে একটি ব্যানারে বিস্তারিত দেখাবে।",
   "Page {n} of {total}": "পৃষ্ঠা {n} / {total}",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total}টির মধ্যে প্রথম {n}টি পৃষ্ঠা দেখানো হচ্ছে। সবগুলো দেখতে ফাইলটি ডাউনলোড করুন।"
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total}টির মধ্যে প্রথম {n}টি পৃষ্ঠা দেখানো হচ্ছে। সবগুলো দেখতে ফাইলটি ডাউনলোড করুন।",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n}টিতে আপনার স্কুলের জন্য আরও তথ্য লাগবে। ঘরগুলো পূরণ করুন, অথবা ফর্মে শেষ করুন ব্যবহার করুন।",
+  "{n} need more for your school. Fill in the boxes on each one.": "{n}টিতে আপনার স্কুলের জন্য আরও তথ্য লাগবে। প্রতিটির ঘর পূরণ করুন।"
 }

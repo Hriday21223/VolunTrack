@@ -29,7 +29,19 @@ let lastActivityAt = Date.now() // whoever woke it counts as activity
 // the embed widget. Anchored at the start; scheduled jobs are caught
 // separately by their x-cron-key header and their /internal/ path.
 const NOT_PEOPLE = /^\/api\/(?:status\/health$|og\/|embed\/)/
+// The last time someone (not a scheduled job) asked the API to change
+// something. Timers that recompute from the database (wallet cards) skip a
+// run when nothing was written since their last one, so an idle backend
+// doesn't wake the database (Neon's free plan, see webhooks.js).
+let lastWriteAt = Date.now()
+export function lastApiWriteAt() { return lastWriteAt }
+const READS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
 export function noteActivity(req, _res, next) {
+  // Scheduled jobs post every few minutes but never change anyone's hours,
+  // so they don't count (else the wallet check would run every time).
+  if (req.path.startsWith('/api/') && !READS.has(req.method)
+    && !req.get('x-cron-key') && !req.path.includes('/internal/')) lastWriteAt = Date.now()
   if (req.path.startsWith('/api/')
     && !req.get('x-keep-awake')
     && !req.get('x-cron-key')

@@ -4046,5 +4046,7 @@ export default {
   "Invoices say Not paid yet or Paid, can list fees and tax, and you can open one to see it before you pay.": "इनवॉइस पर अभी भुगतान नहीं हुआ या भुगतान हो गया लिखा होता है, उनमें शुल्क और टैक्स हो सकते हैं, और भुगतान से पहले आप उसे खोलकर देख सकते हैं।",
   "When VolunTrack runs a session for schools and organizations, a banner on the home page shows the details.": "जब VolunTrack स्कूलों और संगठनों के लिए सत्र रखेगा, तो होम पेज पर एक बैनर में पूरी जानकारी दिखेगी।",
   "Page {n} of {total}": "पेज {n} / {total}",
-  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total} में से पहले {n} पेज दिखाए जा रहे हैं। सभी देखने के लिए फ़ाइल डाउनलोड करें।"
+  "Showing the first {n} of {total} pages. Download the file for all of them.": "{total} में से पहले {n} पेज दिखाए जा रहे हैं। सभी देखने के लिए फ़ाइल डाउनलोड करें।",
+  "{n} need more for your school. Fill in the boxes, or use Finish in the form.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। बॉक्स भरें, या फ़ॉर्म में पूरा करें का उपयोग करें।",
+  "{n} need more for your school. Fill in the boxes on each one.": "{n} में आपके स्कूल के लिए और जानकारी चाहिए। हर एक के बॉक्स भरें।"
 }
