@@ -42,3 +42,9 @@ test('every sitemap page names source files that exist', () => {
     for (const f of src) readFileSync(new URL(`../${f}`, import.meta.url))
   }
 })
+
+test('the IndexNow key file is published with the key in it', async () => {
+  const { INDEXNOW_KEY } = await import('../scripts/seo-pages.mjs')
+  assert.match(INDEXNOW_KEY, /^[a-f0-9]{32}$/)
+  assert.equal(readFileSync(new URL(`../public/${INDEXNOW_KEY}.txt`, import.meta.url), 'utf8').trim(), INDEXNOW_KEY)
+})

@@ -176,6 +176,15 @@ jobs:
           fi
           echo "/terms served prerendered OK"
 
+      - name: Tell IndexNow which pages changed
+        # Bing and other IndexNow engines re-crawl the changed sitemap pages
+        # now instead of whenever they next read sitemap.xml. Production only;
+        # the script never fails the deploy (scripts/indexnow.mjs).
+        if: env.TARGET == 'production'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: node scripts/indexnow.mjs .vercel/output/static/sitemap.xml "$BEFORE"
+
       - name: Summarise
         if: always()
         env:
